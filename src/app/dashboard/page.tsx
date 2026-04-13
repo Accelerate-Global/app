@@ -2,7 +2,6 @@ import { redirect } from "next/navigation";
 
 import { DashboardClient } from "@/components/dashboard/dashboard-client";
 import { SiteHeader } from "@/components/layout/site-header";
-import { getDatasetAdminEmail } from "@/lib/dataset-access";
 import { getCurrentIdentity } from "@/lib/auth";
 import { listDatasets } from "@/lib/datasets";
 
@@ -29,8 +28,7 @@ export default async function DashboardPage() {
         </section>
         <DashboardClient
           initialDatasets={datasets}
-          canUpload={identity.isDatasetAdmin}
-          datasetAdminEmail={getDatasetAdminEmail()}
+          canManageDatasets={identity.isDatasetAdmin}
         />
       </div>
     </main>

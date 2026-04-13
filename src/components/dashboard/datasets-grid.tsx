@@ -26,8 +26,6 @@ type DatasetsGridProps = {
   canManageDatasets: boolean;
   isBusy?: boolean;
   onRenameDataset?: (dataset: DatasetSummary) => void;
-  onRequestReplace?: (dataset: DatasetSummary) => void;
-  replacingDatasetId?: string | null;
   renamingDatasetId?: string | null;
 };
 
@@ -55,13 +53,10 @@ export function DatasetsGrid({
   canManageDatasets,
   isBusy = false,
   onRenameDataset,
-  onRequestReplace,
-  replacingDatasetId,
   renamingDatasetId,
 }: DatasetsGridProps) {
   const [filter, setFilter] = useState("");
   const [sorting, setSorting] = useState<SortingState>([]);
-  const isReplacingDataset = replacingDatasetId !== null;
   const isRenamingDataset = renamingDatasetId !== null;
 
   const columns = useMemo<ColumnDef<DatasetSummary>[]>(
@@ -81,7 +76,7 @@ export function DatasetsGrid({
                   variant="ghost"
                   size="sm"
                   className="h-7 px-2 text-muted-foreground"
-                  disabled={isBusy || isReplacingDataset || isRenamingDataset}
+                  disabled={isBusy || isRenamingDataset}
                   onClick={() => onRenameDataset(row.original)}
                 >
                   <PencilIcon className="size-3.5" />
@@ -138,23 +133,31 @@ export function DatasetsGrid({
               )}
               href={`/dashboard/datasets/${row.original.id}`}
             >
-              Open
+              View
             </Link>
-            {canManageDatasets && onRequestReplace ? (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-7"
-                disabled={isBusy || isReplacingDataset || isRenamingDataset}
-                onClick={() => onRequestReplace(row.original)}
+            <a
+              className={cn(
+                buttonVariants({ variant: "outline", size: "sm" }),
+                "h-7",
+              )}
+              href={`/api/datasets/${row.original.id}/download`}
+            >
+              Download
+            </a>
+            {canManageDatasets ? (
+              <Link
+                className={cn(
+                  buttonVariants({ variant: "outline", size: "sm" }),
+                  "h-7",
+                )}
+                href={`/dashboard/upload?replace=${row.original.id}`}
               >
                 Replace
-              </Button>
+              </Link>
             ) : null}
           </div>
         ),
-        size: canManageDatasets ? 190 : 90,
+        size: canManageDatasets ? 290 : 190,
         enableSorting: false,
         enableHiding: false,
       },
@@ -162,10 +165,8 @@ export function DatasetsGrid({
     [
       canManageDatasets,
       isRenamingDataset,
-      isReplacingDataset,
       isBusy,
       onRenameDataset,
-      onRequestReplace,
     ],
   );
 
@@ -196,7 +197,7 @@ export function DatasetsGrid({
         <div>
           <h2 className="text-lg font-medium">Datasets</h2>
           <p className="text-sm text-muted-foreground">
-            Open a saved CSV to filter, sort, and scroll rows.
+            View a saved CSV to filter, sort, and scroll rows.
           </p>
         </div>
       </div>
@@ -218,7 +219,7 @@ export function DatasetsGrid({
         recordCount={datasets.length}
         emptyMessage={
           datasets.length === 0
-            ? "Upload a CSV to create your first table."
+            ? "No datasets have been added yet."
             : "No datasets match your filter."
         }
         tableLayout={{

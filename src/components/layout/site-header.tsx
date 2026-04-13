@@ -17,13 +17,17 @@ type NavLink = {
 
 function getNavLinks(identity: CurrentIdentity | null): NavLink[] {
   if (identity) {
+    if (identity.isDatasetAdmin) {
+      return [
+        { href: "/dashboard", label: "Dashboard" },
+        { href: "/dashboard#datasets", label: "Data" },
+        { href: "/dashboard/upload", label: "Upload" },
+      ];
+    }
+
     return [
       { href: "/dashboard", label: "Dashboard" },
       { href: "/dashboard#datasets", label: "Data" },
-      {
-        href: identity.isDatasetAdmin ? "/dashboard#upload" : "/dashboard#datasets",
-        label: identity.isDatasetAdmin ? "Upload" : "People Groups",
-      },
     ];
   }
 
