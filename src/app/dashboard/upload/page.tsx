@@ -34,9 +34,6 @@ export default async function UploadPage({ searchParams }: UploadPageProps) {
       <SiteHeader identity={identity} />
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-10 sm:px-6 lg:px-8">
         <section className="space-y-2">
-          <p className="text-[0.72rem] font-black uppercase tracking-[0.16em] text-foreground/55">
-            Accelerate Global Data
-          </p>
           <h1 className="text-4xl font-semibold tracking-[-0.04em] sm:text-[3.1rem]">
             {targetDataset ? "Replace dataset" : "Upload dataset"}
           </h1>
