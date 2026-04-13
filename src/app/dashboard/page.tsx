@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { AccountControl } from "@/components/auth/account-control";
 import { DashboardClient } from "@/components/dashboard/dashboard-client";
+import { getDatasetAdminEmail } from "@/lib/dataset-access";
 import { getCurrentIdentity } from "@/lib/auth";
 import { listDatasets } from "@/lib/datasets";
 
@@ -12,7 +13,7 @@ export default async function DashboardPage() {
     redirect("/");
   }
 
-  const datasets = await listDatasets(identity.ownerId);
+  const datasets = await listDatasets();
 
   return (
     <main className="min-h-svh bg-background">
@@ -26,7 +27,11 @@ export default async function DashboardPage() {
           </div>
           <AccountControl identity={identity} />
         </header>
-        <DashboardClient initialDatasets={datasets} />
+        <DashboardClient
+          initialDatasets={datasets}
+          canUpload={identity.isDatasetAdmin}
+          datasetAdminEmail={getDatasetAdminEmail()}
+        />
       </div>
     </main>
   );

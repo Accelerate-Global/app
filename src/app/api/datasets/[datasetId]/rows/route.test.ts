@@ -1,19 +1,26 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { getCurrentOwnerId } from "@/lib/auth";
+import { getCurrentIdentity } from "@/lib/auth";
 import { getDatasetRows } from "@/lib/datasets";
 import { GET } from "./route";
 
 vi.mock("@/lib/auth", () => ({
-  getCurrentOwnerId: vi.fn(),
+  getCurrentIdentity: vi.fn(),
 }));
 
 vi.mock("@/lib/datasets", () => ({
   getDatasetRows: vi.fn(),
 }));
 
-const getCurrentOwnerIdMock = vi.mocked(getCurrentOwnerId);
+const getCurrentIdentityMock = vi.mocked(getCurrentIdentity);
 const getDatasetRowsMock = vi.mocked(getDatasetRows);
+
+const identity = {
+  ownerId: "viewer-user",
+  email: "viewer@example.com",
+  isDatasetAdmin: false,
+  mode: "supabase" as const,
+};
 
 const context = {
   params: Promise.resolve({
@@ -38,11 +45,11 @@ const rowsResponse = {
 describe("/api/datasets/[datasetId]/rows", () => {
   beforeEach(() => {
     vi.resetAllMocks();
-    getCurrentOwnerIdMock.mockResolvedValue("supabase-user");
+    getCurrentIdentityMock.mockResolvedValue(identity);
   });
 
   it("rejects unauthenticated row requests", async () => {
-    getCurrentOwnerIdMock.mockResolvedValue(null);
+    getCurrentIdentityMock.mockResolvedValue(null);
 
     const response = await GET(
       new Request("http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001/rows"),
@@ -53,7 +60,7 @@ describe("/api/datasets/[datasetId]/rows", () => {
     expect(getDatasetRowsMock).not.toHaveBeenCalled();
   });
 
-  it("reads rows through the Supabase owner id", async () => {
+  it("reads rows for any authenticated user", async () => {
     getDatasetRowsMock.mockResolvedValue(rowsResponse);
 
     const response = await GET(
@@ -67,7 +74,6 @@ describe("/api/datasets/[datasetId]/rows", () => {
     await expect(response.json()).resolves.toEqual(rowsResponse);
     expect(getDatasetRowsMock).toHaveBeenCalledWith({
       datasetId: "f0000000-0000-4000-8000-000000000001",
-      ownerId: "supabase-user",
       page: 2,
       pageSize: 10,
       filter: "ada",
@@ -76,7 +82,7 @@ describe("/api/datasets/[datasetId]/rows", () => {
     });
   });
 
-  it("returns not found for cross-owner row access", async () => {
+  it("returns not found when the dataset does not exist", async () => {
     getDatasetRowsMock.mockResolvedValue(null);
 
     const response = await GET(

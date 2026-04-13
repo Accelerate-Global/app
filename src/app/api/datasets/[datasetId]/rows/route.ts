@@ -1,4 +1,4 @@
-import { getCurrentOwnerId } from "@/lib/auth";
+import { getCurrentIdentity } from "@/lib/auth";
 import { getDatasetRows } from "@/lib/datasets";
 import { jsonError } from "@/lib/http";
 
@@ -18,9 +18,9 @@ function numberParam(value: string | null, fallback: number) {
 }
 
 export async function GET(request: Request, context: RowsContext) {
-  const ownerId = await getCurrentOwnerId();
+  const identity = await getCurrentIdentity();
 
-  if (!ownerId) {
+  if (!identity) {
     return jsonError("Unauthorized.", 401);
   }
 
@@ -31,7 +31,6 @@ export async function GET(request: Request, context: RowsContext) {
 
   const result = await getDatasetRows({
     datasetId,
-    ownerId,
     page: numberParam(url.searchParams.get("page"), 1),
     pageSize: numberParam(url.searchParams.get("pageSize"), 25),
     filter: url.searchParams.get("filter") ?? undefined,

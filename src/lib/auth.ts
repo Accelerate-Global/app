@@ -1,11 +1,13 @@
 import { cookies } from "next/headers";
 
+import { isDatasetAdminEmail } from "@/lib/dataset-access";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
 
 export type CurrentIdentity = {
   ownerId: string;
   email: string | null;
+  isDatasetAdmin: boolean;
   mode: "supabase";
 };
 
@@ -27,9 +29,12 @@ export async function getCurrentIdentity(): Promise<CurrentIdentity | null> {
       } = await supabase.auth.getUser();
 
       if (user) {
+        const email = user.email ?? null;
+
         return {
           ownerId: user.id,
-          email: user.email ?? null,
+          email,
+          isDatasetAdmin: isDatasetAdminEmail(email),
           mode: "supabase",
         };
       }

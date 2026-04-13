@@ -3,7 +3,7 @@ import { and, asc, count, desc, eq, sql, type SQL } from "drizzle-orm";
 import { getDb } from "@/db";
 import { datasetRows, datasets } from "@/db/schema";
 import type { CsvColumn, DatasetStatus, DatasetSummary } from "@/lib/api-types";
-import { isDatasetOwner } from "@/lib/authz";
+import { getDatasetStorageObjectUrl } from "@/lib/dataset-storage";
 
 function toDatasetSummary(row: typeof datasets.$inferSelect): DatasetSummary {
   return {
@@ -21,21 +21,20 @@ function toDatasetSummary(row: typeof datasets.$inferSelect): DatasetSummary {
   };
 }
 
-export async function listDatasets(ownerId: string) {
+export async function listDatasets() {
   const rows = await getDb()
     .select()
     .from(datasets)
-    .where(eq(datasets.ownerId, ownerId))
     .orderBy(desc(datasets.createdAt));
 
   return rows.map(toDatasetSummary);
 }
 
-export async function getDatasetForOwner(datasetId: string, ownerId: string) {
+export async function getDataset(datasetId: string) {
   const [dataset] = await getDb()
     .select()
     .from(datasets)
-    .where(and(eq(datasets.id, datasetId), eq(datasets.ownerId, ownerId)))
+    .where(eq(datasets.id, datasetId))
     .limit(1);
 
   return dataset ? toDatasetSummary(dataset) : null;
@@ -44,7 +43,6 @@ export async function getDatasetForOwner(datasetId: string, ownerId: string) {
 export async function createDataset(input: {
   ownerId: string;
   fileName: string;
-  blobUrl: string;
   blobPath: string;
   sizeBytes: number;
   columns: CsvColumn[];
@@ -54,7 +52,7 @@ export async function createDataset(input: {
     .values({
       ownerId: input.ownerId,
       fileName: input.fileName,
-      blobUrl: input.blobUrl,
+      blobUrl: getDatasetStorageObjectUrl(input.blobPath),
       blobPath: input.blobPath,
       sizeBytes: input.sizeBytes,
       columns: input.columns,
@@ -68,7 +66,6 @@ export async function createDataset(input: {
 
 export async function updateDatasetStatus(input: {
   datasetId: string;
-  ownerId: string;
   status: DatasetStatus;
   error?: string | null;
 }) {
@@ -79,20 +76,20 @@ export async function updateDatasetStatus(input: {
       error: input.error ?? null,
       updatedAt: new Date(),
     })
-    .where(and(eq(datasets.id, input.datasetId), eq(datasets.ownerId, input.ownerId)))
+    .where(eq(datasets.id, input.datasetId))
     .returning();
 
   return dataset ? toDatasetSummary(dataset) : null;
 }
 
-export async function deleteDatasetForOwner(datasetId: string, ownerId: string) {
+export async function deleteDataset(datasetId: string) {
   const [dataset] = await getDb()
     .select()
     .from(datasets)
-    .where(and(eq(datasets.id, datasetId), eq(datasets.ownerId, ownerId)))
+    .where(eq(datasets.id, datasetId))
     .limit(1);
 
-  if (!isDatasetOwner(dataset, ownerId)) {
+  if (!dataset) {
     return null;
   }
 
@@ -104,13 +101,12 @@ export async function deleteDatasetForOwner(datasetId: string, ownerId: string) 
 
 export async function insertDatasetRowBatch(input: {
   datasetId: string;
-  ownerId: string;
   rows: Record<string, string>[];
   startIndex: number;
   isFinalBatch: boolean;
   totalRows?: number;
 }) {
-  const dataset = await getDatasetForOwner(input.datasetId, input.ownerId);
+  const dataset = await getDataset(input.datasetId);
 
   if (!dataset) {
     return null;
@@ -146,7 +142,7 @@ export async function insertDatasetRowBatch(input: {
       error: null,
       updatedAt: new Date(),
     })
-    .where(and(eq(datasets.id, input.datasetId), eq(datasets.ownerId, input.ownerId)))
+    .where(eq(datasets.id, input.datasetId))
     .returning();
 
   return toDatasetSummary(updated);
@@ -154,14 +150,13 @@ export async function insertDatasetRowBatch(input: {
 
 export async function getDatasetRows(input: {
   datasetId: string;
-  ownerId: string;
   page: number;
   pageSize: number;
   filter?: string;
   sortColumn?: string;
   sortDirection?: "asc" | "desc";
 }) {
-  const dataset = await getDatasetForOwner(input.datasetId, input.ownerId);
+  const dataset = await getDataset(input.datasetId);
 
   if (!dataset) {
     return null;

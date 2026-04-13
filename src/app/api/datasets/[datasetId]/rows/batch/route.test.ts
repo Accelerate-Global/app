@@ -1,19 +1,26 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { getCurrentOwnerId } from "@/lib/auth";
+import { getCurrentIdentity } from "@/lib/auth";
 import { insertDatasetRowBatch } from "@/lib/datasets";
 import { POST } from "./route";
 
 vi.mock("@/lib/auth", () => ({
-  getCurrentOwnerId: vi.fn(),
+  getCurrentIdentity: vi.fn(),
 }));
 
 vi.mock("@/lib/datasets", () => ({
   insertDatasetRowBatch: vi.fn(),
 }));
 
-const getCurrentOwnerIdMock = vi.mocked(getCurrentOwnerId);
+const getCurrentIdentityMock = vi.mocked(getCurrentIdentity);
 const insertDatasetRowBatchMock = vi.mocked(insertDatasetRowBatch);
+
+const identity = {
+  ownerId: "supabase-user",
+  email: "admin@example.com",
+  isDatasetAdmin: true,
+  mode: "supabase" as const,
+};
 
 const context = {
   params: Promise.resolve({
@@ -24,8 +31,9 @@ const context = {
 const dataset = {
   id: "f0000000-0000-4000-8000-000000000001",
   fileName: "customers.csv",
-  blobUrl: "https://blob.vercel-storage.com/customers.csv",
-  blobPath: "users/user_1/csv/customers.csv",
+  blobUrl:
+    "https://example.supabase.co/storage/v1/object/datasets/datasets/csv/customers.csv",
+  blobPath: "datasets/csv/customers.csv",
   status: "ready" as const,
   rowCount: 2,
   sizeBytes: 100,
@@ -38,11 +46,11 @@ const dataset = {
 describe("/api/datasets/[datasetId]/rows/batch", () => {
   beforeEach(() => {
     vi.resetAllMocks();
-    getCurrentOwnerIdMock.mockResolvedValue("supabase-user");
+    getCurrentIdentityMock.mockResolvedValue(identity);
   });
 
   it("rejects unauthenticated row batch requests", async () => {
-    getCurrentOwnerIdMock.mockResolvedValue(null);
+    getCurrentIdentityMock.mockResolvedValue(null);
 
     const response = await POST(
       new Request("http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001/rows/batch", {
@@ -61,7 +69,31 @@ describe("/api/datasets/[datasetId]/rows/batch", () => {
     expect(insertDatasetRowBatchMock).not.toHaveBeenCalled();
   });
 
-  it("inserts batches through the Supabase owner id", async () => {
+  it("rejects row batch writes for non-admin users", async () => {
+    getCurrentIdentityMock.mockResolvedValue({
+      ...identity,
+      email: "viewer@example.com",
+      isDatasetAdmin: false,
+    });
+
+    const response = await POST(
+      new Request("http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001/rows/batch", {
+        method: "POST",
+        body: JSON.stringify({
+          startIndex: 0,
+          rows: [{ email: "ada@example.com" }],
+          isFinalBatch: true,
+          totalRows: 1,
+        }),
+      }),
+      context,
+    );
+
+    expect(response.status).toBe(403);
+    expect(insertDatasetRowBatchMock).not.toHaveBeenCalled();
+  });
+
+  it("inserts batches through the admin-only data helper", async () => {
     insertDatasetRowBatchMock.mockResolvedValue(dataset);
 
     const response = await POST(
@@ -81,7 +113,6 @@ describe("/api/datasets/[datasetId]/rows/batch", () => {
     await expect(response.json()).resolves.toEqual({ dataset });
     expect(insertDatasetRowBatchMock).toHaveBeenCalledWith({
       datasetId: "f0000000-0000-4000-8000-000000000001",
-      ownerId: "supabase-user",
       startIndex: 1,
       rows: [{ email: "ada@example.com" }],
       isFinalBatch: true,
@@ -89,7 +120,7 @@ describe("/api/datasets/[datasetId]/rows/batch", () => {
     });
   });
 
-  it("returns not found for cross-owner batch writes", async () => {
+  it("returns not found when the dataset does not exist", async () => {
     insertDatasetRowBatchMock.mockResolvedValue(null);
 
     const response = await POST(
