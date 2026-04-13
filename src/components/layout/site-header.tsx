@@ -1,0 +1,87 @@
+import Image from "next/image";
+import Link from "next/link";
+
+import { AccountControl } from "@/components/auth/account-control";
+import type { CurrentIdentity } from "@/lib/auth";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+
+type SiteHeaderProps = {
+  identity?: CurrentIdentity | null;
+};
+
+type NavLink = {
+  href: string;
+  label: string;
+};
+
+function getNavLinks(identity: CurrentIdentity | null): NavLink[] {
+  if (identity) {
+    return [
+      { href: "/dashboard", label: "Dashboard" },
+      { href: "/dashboard#datasets", label: "Data" },
+      {
+        href: identity.isDatasetAdmin ? "/dashboard#upload" : "/dashboard#datasets",
+        label: identity.isDatasetAdmin ? "Upload" : "People Groups",
+      },
+    ];
+  }
+
+  return [
+    { href: "/", label: "Home" },
+    { href: "/", label: "Data" },
+    { href: "/sign-up", label: "Access" },
+  ];
+}
+
+export function SiteHeader({ identity = null }: SiteHeaderProps) {
+  const navLinks = getNavLinks(identity);
+
+  return (
+    <header className="bg-background">
+      <div className="mx-auto flex w-full max-w-[1500px] flex-col gap-8 px-4 py-7 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8 lg:py-8">
+        <Link
+          href={identity ? "/dashboard" : "/"}
+          className="shrink-0 self-start transition-opacity hover:opacity-90"
+        >
+          <Image
+            src="/ag-logo.svg"
+            alt="Accelerate Global"
+            width={504}
+            height={146}
+            priority
+            className="block h-auto w-[220px] sm:w-[270px] lg:w-[320px]"
+          />
+        </Link>
+
+        <nav className="flex flex-1 flex-wrap items-center justify-center gap-x-8 gap-y-3 lg:gap-x-12">
+          {navLinks.map((item) => (
+            <Link
+              key={`${item.href}-${item.label}`}
+              href={item.href}
+              className="text-[0.98rem] font-black uppercase tracking-[0.06em] text-foreground transition-opacity hover:opacity-70"
+            >
+              {item.label}
+            </Link>
+          ))}
+        </nav>
+
+        <div className="flex shrink-0 items-center justify-end">
+          {identity ? (
+            <AccountControl identity={identity} />
+          ) : (
+            <Link
+              href="/"
+              className={cn(
+                buttonVariants({ variant: "outline" }),
+                "h-14 rounded-[1.2rem] border-[3px] border-primary bg-transparent px-6 text-sm font-black uppercase tracking-[0.08em] text-primary shadow-none hover:bg-accent/45",
+              )}
+            >
+              Sign In
+            </Link>
+          )}
+        </div>
+      </div>
+    </header>
+  );
+}

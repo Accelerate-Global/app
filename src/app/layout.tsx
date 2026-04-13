@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "CSV Dataset Viewer",
-  description: "Browse shared datasets backed by Supabase.",
+  title: "Accelerate Global Data",
+  description: "Access shared people group datasets for Accelerate Global.",
 };
 
 export default function RootLayout({

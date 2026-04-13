@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 
-import { AccountControl } from "@/components/auth/account-control";
 import { DashboardClient } from "@/components/dashboard/dashboard-client";
+import { SiteHeader } from "@/components/layout/site-header";
 import { getDatasetAdminEmail } from "@/lib/dataset-access";
 import { getCurrentIdentity } from "@/lib/auth";
 import { listDatasets } from "@/lib/datasets";
@@ -17,15 +17,16 @@ export default async function DashboardPage() {
 
   return (
     <main className="min-h-svh bg-background">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-6 sm:px-6 lg:px-8">
-        <header className="flex flex-wrap items-center justify-between gap-4 border-b pb-5">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">
-              Dataset viewer
-            </h1>
-          </div>
-          <AccountControl identity={identity} />
-        </header>
+      <SiteHeader identity={identity} />
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-10 sm:px-6 lg:px-8">
+        <section className="space-y-2">
+          <p className="text-[0.72rem] font-black uppercase tracking-[0.16em] text-foreground/55">
+            Accelerate Global Data
+          </p>
+          <h1 className="text-4xl font-semibold tracking-[-0.04em] sm:text-[3.1rem]">
+            Dataset viewer
+          </h1>
+        </section>
         <DashboardClient
           initialDatasets={datasets}
           canUpload={identity.isDatasetAdmin}

@@ -642,7 +642,7 @@ export function DashboardClient({
 
   return (
     <div className="space-y-6">
-      <Card>
+      <Card id="upload">
         <CardHeader>
           <CardTitle>{canUpload ? "Upload CSV" : "Uploads are restricted"}</CardTitle>
           {canUpload ? null : (
