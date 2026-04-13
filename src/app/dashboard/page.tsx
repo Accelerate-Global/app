@@ -20,7 +20,6 @@ export default async function DashboardPage() {
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-6 sm:px-6 lg:px-8">
         <header className="flex flex-wrap items-center justify-between gap-4 border-b pb-5">
           <div>
-            <p className="text-sm text-muted-foreground">CSV workspace</p>
             <h1 className="text-2xl font-semibold tracking-tight">
               Dataset viewer
             </h1>

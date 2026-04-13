@@ -28,7 +28,16 @@ export const rowBatchSchema = z.object({
   totalRows: z.number().int().nonnegative().optional(),
 });
 
-export const datasetPatchSchema = z.object({
+export const datasetStatusPatchSchema = z.object({
   status: z.enum(["processing", "ready", "failed"]),
   error: z.string().max(1000).nullable().optional(),
 });
+
+export const datasetRenamePatchSchema = z.object({
+  fileName: z.string().trim().min(1).max(255),
+});
+
+export const datasetPatchSchema = z.union([
+  datasetStatusPatchSchema,
+  datasetRenamePatchSchema,
+]);

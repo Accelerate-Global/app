@@ -82,6 +82,65 @@ export async function updateDatasetStatus(input: {
   return dataset ? toDatasetSummary(dataset) : null;
 }
 
+export async function renameDataset(input: {
+  datasetId: string;
+  fileName: string;
+}) {
+  const [dataset] = await getDb()
+    .update(datasets)
+    .set({
+      fileName: input.fileName,
+      updatedAt: new Date(),
+    })
+    .where(eq(datasets.id, input.datasetId))
+    .returning();
+
+  return dataset ? toDatasetSummary(dataset) : null;
+}
+
+export async function replaceDatasetContents(input: {
+  datasetId: string;
+  fileName: string;
+  blobPath: string;
+  sizeBytes: number;
+  columns: CsvColumn[];
+}) {
+  return getDb().transaction(async (tx) => {
+    const [existing] = await tx
+      .select()
+      .from(datasets)
+      .where(eq(datasets.id, input.datasetId))
+      .limit(1);
+
+    if (!existing) {
+      return null;
+    }
+
+    await tx.delete(datasetRows).where(eq(datasetRows.datasetId, input.datasetId));
+
+    const [updated] = await tx
+      .update(datasets)
+      .set({
+        fileName: input.fileName,
+        blobUrl: getDatasetStorageObjectUrl(input.blobPath),
+        blobPath: input.blobPath,
+        sizeBytes: input.sizeBytes,
+        columns: input.columns,
+        status: "processing",
+        rowCount: 0,
+        error: null,
+        updatedAt: new Date(),
+      })
+      .where(eq(datasets.id, input.datasetId))
+      .returning();
+
+    return {
+      dataset: toDatasetSummary(updated),
+      previousBlobPath: existing.blobPath,
+    };
+  });
+}
+
 export async function deleteDataset(datasetId: string) {
   const [dataset] = await getDb()
     .select()

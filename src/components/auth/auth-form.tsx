@@ -101,8 +101,8 @@ export function AuthForm({ mode, message }: AuthFormProps) {
         <CardTitle>{isSignIn ? "Sign in" : "Create account"}</CardTitle>
         <CardDescription>
           {isSignIn
-            ? "Use your Supabase account to open your CSV workspace."
-            : "Create a Supabase account for your CSV workspace."}
+            ? "Use your Supabase account to open the dataset viewer."
+            : "Create a Supabase account for the dataset viewer."}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

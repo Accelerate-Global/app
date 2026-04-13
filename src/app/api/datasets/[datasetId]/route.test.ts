@@ -2,7 +2,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getCurrentIdentity } from "@/lib/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { deleteDataset, getDataset, updateDatasetStatus } from "@/lib/datasets";
+import {
+  deleteDataset,
+  getDataset,
+  renameDataset,
+  updateDatasetStatus,
+} from "@/lib/datasets";
 import { DELETE, GET, PATCH } from "./route";
 
 vi.mock("@/lib/auth", () => ({
@@ -29,6 +34,7 @@ vi.mock("@/lib/supabase/admin", () => ({
 vi.mock("@/lib/datasets", () => ({
   deleteDataset: vi.fn(),
   getDataset: vi.fn(),
+  renameDataset: vi.fn(),
   updateDatasetStatus: vi.fn(),
 }));
 
@@ -36,6 +42,7 @@ const getCurrentIdentityMock = vi.mocked(getCurrentIdentity);
 const createSupabaseAdminClientMock = vi.mocked(createSupabaseAdminClient);
 const deleteDatasetMock = vi.mocked(deleteDataset);
 const getDatasetMock = vi.mocked(getDataset);
+const renameDatasetMock = vi.mocked(renameDataset);
 const updateDatasetStatusMock = vi.mocked(updateDatasetStatus);
 
 const identity = {
@@ -118,6 +125,28 @@ describe("/api/datasets/[datasetId]", () => {
       status: "failed",
       error: "bad csv",
     });
+  });
+
+  it("renames datasets for the configured admin", async () => {
+    renameDatasetMock.mockResolvedValue({
+      ...dataset,
+      fileName: "renamed.csv",
+    });
+
+    const response = await PATCH(
+      new Request("http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001", {
+        method: "PATCH",
+        body: JSON.stringify({ fileName: "renamed.csv" }),
+      }),
+      context,
+    );
+
+    expect(response.status).toBe(200);
+    expect(renameDatasetMock).toHaveBeenCalledWith({
+      datasetId: dataset.id,
+      fileName: "renamed.csv",
+    });
+    expect(updateDatasetStatusMock).not.toHaveBeenCalled();
   });
 
   it("rejects dataset mutations for non-admin users", async () => {
