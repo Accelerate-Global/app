@@ -56,3 +56,14 @@ export const datasetRows = pgTable(
     index("dataset_rows_dataset_idx").on(table.datasetId),
   ],
 );
+
+export const signupEmailAllowlist = pgTable("signup_email_allowlist", {
+  email: text("email").primaryKey(),
+  note: text("note"),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});

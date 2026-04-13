@@ -3,13 +3,10 @@ import { cookies } from "next/headers";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
 
-export const BYPASS_OWNER_ID = "bypass-user";
-export const BYPASS_COOKIE_NAME = "csv-viewer-bypass-owner";
-
 export type CurrentIdentity = {
   ownerId: string;
   email: string | null;
-  mode: "supabase" | "bypass";
+  mode: "supabase";
 };
 
 function isDynamicServerUsageError(error: unknown) {
@@ -20,24 +17,10 @@ function isDynamicServerUsageError(error: unknown) {
   );
 }
 
-export async function getBypassIdentity(): Promise<CurrentIdentity | null> {
-  const cookieStore = await cookies();
-  const bypassCookie = cookieStore.get(BYPASS_COOKIE_NAME);
-
-  if (bypassCookie?.value !== BYPASS_OWNER_ID) {
-    return null;
-  }
-
-  return {
-    ownerId: BYPASS_OWNER_ID,
-    email: null,
-    mode: "bypass",
-  };
-}
-
 export async function getCurrentIdentity(): Promise<CurrentIdentity | null> {
   if (hasSupabaseConfig()) {
     try {
+      await cookies();
       const supabase = await createSupabaseServerClient();
       const {
         data: { user },
@@ -59,7 +42,7 @@ export async function getCurrentIdentity(): Promise<CurrentIdentity | null> {
     }
   }
 
-  return getBypassIdentity();
+  return null;
 }
 
 export async function getCurrentOwnerId() {

@@ -25,11 +25,7 @@ export function AccountControl({ identity }: AccountControlProps) {
 
   return (
     <div className="flex flex-wrap items-center justify-end gap-2">
-      <Badge variant={identity.mode === "bypass" ? "secondary" : "outline"}>
-        {identity.mode === "bypass"
-          ? "Testing mode"
-          : identity.email ?? "Supabase user"}
-      </Badge>
+      <Badge variant="outline">{identity.email ?? "Supabase user"}</Badge>
       <Button
         type="button"
         variant="outline"
