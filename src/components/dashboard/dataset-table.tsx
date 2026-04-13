@@ -1,0 +1,332 @@
+"use client";
+
+import {
+  getCoreRowModel,
+  getFilteredRowModel,
+  getSortedRowModel,
+  useReactTable,
+  type ColumnDef,
+  type SortingState,
+  type VisibilityState,
+} from "@tanstack/react-table";
+import { Loader2Icon, SearchIcon, Settings2Icon, Trash2Icon } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+
+import { DataGrid, DataGridContainer } from "@/components/reui/data-grid/data-grid";
+import { DataGridColumnHeader } from "@/components/reui/data-grid/data-grid-column-header";
+import { DataGridColumnVisibility } from "@/components/reui/data-grid/data-grid-column-visibility";
+import { DataGridScrollArea } from "@/components/reui/data-grid/data-grid-scroll-area";
+import { DataGridTableVirtual } from "@/components/reui/data-grid/data-grid-table-virtual";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import type { DatasetRowsResponse, DatasetSummary } from "@/lib/api-types";
+
+const ROW_FETCH_PAGE_SIZE = 1000;
+const ROW_HEIGHT_ESTIMATE = 37;
+const ROW_OVERSCAN = 30;
+
+type DatasetRow = DatasetRowsResponse["rows"][number];
+
+type DatasetTableProps = {
+  dataset: DatasetSummary;
+};
+
+function getCellValue(row: DatasetRow, key: string) {
+  return row.data[key] ?? "";
+}
+
+function rowMatchesSearch(row: DatasetRow, value: unknown) {
+  const query = String(value ?? "").trim().toLowerCase();
+
+  if (!query) return true;
+
+  return [
+    String(row.rowIndex + 1),
+    ...Object.values(row.data),
+  ].some((item) => String(item).toLowerCase().includes(query));
+}
+
+async function fetchRowsPage(input: {
+  datasetId: string;
+  page: number;
+  signal: AbortSignal;
+}) {
+  const params = new URLSearchParams({
+    page: String(input.page),
+    pageSize: String(ROW_FETCH_PAGE_SIZE),
+  });
+  const response = await fetch(
+    `/api/datasets/${input.datasetId}/rows?${params.toString()}`,
+    {
+      signal: input.signal,
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error("Rows could not be loaded.");
+  }
+
+  return (await response.json()) as DatasetRowsResponse;
+}
+
+export function DatasetTable({ dataset }: DatasetTableProps) {
+  const router = useRouter();
+  const [rows, setRows] = useState<DatasetRow[]>([]);
+  const [totalRows, setTotalRows] = useState(dataset.rowCount);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadMessage, setLoadMessage] = useState("Loading rows");
+  const [error, setError] = useState<string | null>(null);
+  const [filter, setFilter] = useState("");
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+
+  const columns = useMemo<ColumnDef<DatasetRow>[]>(
+    () => [
+      {
+        id: "rowIndex",
+        accessorFn: (row) => row.rowIndex + 1,
+        header: ({ column }) => (
+          <DataGridColumnHeader title="#" column={column} />
+        ),
+        cell: ({ row }) => (
+          <span className="text-muted-foreground tabular-nums">
+            {row.original.rowIndex + 1}
+          </span>
+        ),
+        meta: { headerTitle: "#" },
+        size: 72,
+        enableHiding: false,
+        enableSorting: true,
+      },
+      ...dataset.columns.map(
+        (column): ColumnDef<DatasetRow> => ({
+          id: column.key,
+          accessorFn: (row) => getCellValue(row, column.key),
+          header: ({ column: tableColumn }) => (
+            <DataGridColumnHeader title={column.label} column={tableColumn} />
+          ),
+          cell: ({ row }) => (
+            <span className="block max-w-[28rem] truncate">
+              {getCellValue(row.original, column.key)}
+            </span>
+          ),
+          meta: { headerTitle: column.label },
+          size: Math.min(Math.max(column.label.length * 12, 160), 280),
+          enableSorting: true,
+        }),
+      ),
+    ],
+    [dataset.columns],
+  );
+
+  const table = useReactTable({
+    data: rows,
+    columns,
+    getRowId: (row) => row.id,
+    state: {
+      sorting,
+      columnVisibility,
+      globalFilter: filter,
+    },
+    initialState: {
+      columnPinning: {
+        left: ["rowIndex"],
+      },
+    },
+    columnResizeMode: "onChange",
+    onSortingChange: setSorting,
+    onColumnVisibilityChange: setColumnVisibility,
+    onGlobalFilterChange: setFilter,
+    autoResetPageIndex: false,
+    globalFilterFn: (row, _columnId, value) =>
+      rowMatchesSearch(row.original, value),
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+  });
+
+  const visibleRowCount = table.getFilteredRowModel().rows.length;
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function loadRows() {
+      const nextRows: DatasetRow[] = [];
+      let page = 1;
+      let pageCount = 1;
+
+      setRows([]);
+      setTotalRows(dataset.rowCount);
+      setLoadMessage("Loading rows");
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        let resolvedTotalRows = dataset.rowCount;
+
+        do {
+          const payload = await fetchRowsPage({
+            datasetId: dataset.id,
+            page,
+            signal: controller.signal,
+          });
+
+          nextRows.push(...payload.rows);
+          pageCount = payload.pageCount;
+          page += 1;
+          resolvedTotalRows = payload.totalRows;
+
+          setTotalRows(payload.totalRows);
+          setLoadMessage(
+            `Preloading ${nextRows.length.toLocaleString()} of ${payload.totalRows.toLocaleString()} rows`,
+          );
+        } while (page <= pageCount);
+
+        if (!controller.signal.aborted) {
+          setRows(nextRows);
+          setTotalRows(resolvedTotalRows);
+          setLoadMessage(
+            `Loaded ${nextRows.length.toLocaleString()} of ${resolvedTotalRows.toLocaleString()} rows`,
+          );
+        }
+      } catch (fetchError) {
+        if (
+          fetchError instanceof DOMException &&
+          fetchError.name === "AbortError"
+        ) {
+          return;
+        }
+
+        setError(
+          fetchError instanceof Error
+            ? fetchError.message
+            : "Rows could not be loaded.",
+        );
+      } finally {
+        if (!controller.signal.aborted) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    void loadRows();
+
+    return () => controller.abort();
+  }, [dataset.id, dataset.rowCount]);
+
+  async function deleteDataset() {
+    const confirmed = window.confirm(
+      `Delete ${dataset.fileName}? This removes the stored file and parsed rows.`,
+    );
+
+    if (!confirmed) return;
+
+    const response = await fetch(`/api/datasets/${dataset.id}`, {
+      method: "DELETE",
+    });
+
+    if (response.ok) {
+      router.push("/dashboard");
+      router.refresh();
+    } else {
+      setError("Dataset could not be deleted.");
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant={dataset.status === "ready" ? "default" : "secondary"}>
+            {dataset.status}
+          </Badge>
+          <span className="text-sm text-muted-foreground">
+            {visibleRowCount.toLocaleString()} shown ·{" "}
+            {totalRows.toLocaleString()} rows · {dataset.columns.length} columns
+          </span>
+        </div>
+        <Button variant="destructive" size="sm" onClick={deleteDataset}>
+          <Trash2Icon />
+          Delete
+        </Button>
+      </div>
+
+      {dataset.error ? (
+        <Alert variant="destructive">
+          <AlertTitle>Dataset error</AlertTitle>
+          <AlertDescription>{dataset.error}</AlertDescription>
+        </Alert>
+      ) : null}
+
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <label className="relative block sm:w-80">
+          <SearchIcon className="pointer-events-none absolute left-2 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            className="pl-8"
+            value={filter}
+            placeholder="Filter all cells"
+            onChange={(event) => setFilter(event.target.value)}
+          />
+        </label>
+
+        <DataGridColumnVisibility
+          table={table}
+          trigger={
+            <Button variant="outline" size="sm">
+              <Settings2Icon />
+              Columns
+            </Button>
+          }
+        />
+      </div>
+
+      {isLoading ? (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2Icon className="size-4 animate-spin" />
+          {loadMessage}
+        </div>
+      ) : null}
+
+      {error ? (
+        <Alert variant="destructive">
+          <AlertTitle>Table error</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      ) : null}
+
+      <DataGrid
+        table={table}
+        recordCount={rows.length}
+        isLoading={isLoading}
+        emptyMessage={
+          isLoading
+            ? loadMessage
+            : rows.length === 0
+              ? "No rows found."
+              : "No rows match your filter."
+        }
+        tableLayout={{
+          columnsPinnable: true,
+          columnsResizable: true,
+          columnsVisibility: true,
+          headerSticky: true,
+        }}
+        tableClassNames={{
+          headerSticky: "sticky top-0 z-10 bg-muted/90 backdrop-blur-xs",
+        }}
+      >
+        <DataGridContainer>
+          <DataGridScrollArea className="h-[560px]">
+            <DataGridTableVirtual
+              estimateSize={ROW_HEIGHT_ESTIMATE}
+              overscan={ROW_OVERSCAN}
+            />
+          </DataGridScrollArea>
+        </DataGridContainer>
+      </DataGrid>
+    </div>
+  );
+}

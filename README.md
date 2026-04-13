@@ -1,36 +1,70 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# CSV Dataset Viewer
 
-## Getting Started
+A Vercel-hosted Next.js app for authenticated CSV uploads, private file storage, persisted parsed rows, and table exploration.
 
-First, run the development server:
+## Stack
+
+- Next.js App Router, React, TypeScript, Tailwind CSS
+- Supabase email/password authentication
+- shadcn/ui with Base UI primitives
+- Vercel Blob for private CSV files
+- Supabase Postgres with Drizzle for dataset metadata and JSONB row storage
+- Papa Parse and TanStack Table for client-side ingestion and table controls
+
+## Local Setup
+
+Install dependencies:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+pnpm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Create local environment variables:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+cp .env.example .env.local
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Fill in:
 
-## Learn More
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+- `DATABASE_URL`
+- `BLOB_READ_WRITE_TOKEN` for Vercel Blob uploads
 
-To learn more about Next.js, take a look at the following resources:
+When `BLOB_READ_WRITE_TOKEN` is empty in local development, the app skips raw
+Blob storage so you can still test CSV parsing and persisted rows. Production
+uploads require a real Vercel Blob read/write token.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Apply the database schema:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+pnpm db:push
+```
 
-## Deploy on Vercel
+Start the app:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+pnpm dev
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Open `http://localhost:3000`.
+
+## Vercel Setup
+
+Use Supabase for Auth and Postgres, and Vercel Blob for private CSV files. After configuring project environment variables in Vercel, pull them locally:
+
+```bash
+vercel env pull .env.local
+```
+
+The app owns the Supabase sign-in and sign-up routes at `/sign-in` and `/sign-up`. The “Bypass login for testing” button is intentionally always visible and stores data under the fixed owner id `bypass-user`; remove or gate it before a public production launch.
+
+## Verification
+
+```bash
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm build
+```
