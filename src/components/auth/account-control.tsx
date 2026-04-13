@@ -19,7 +19,7 @@ export function AccountControl({ identity }: AccountControlProps) {
   async function signOut() {
     setIsSigningOut(true);
     await fetch("/auth/sign-out", { method: "POST" });
-    router.push("/sign-in");
+    router.push("/");
     router.refresh();
   }
 

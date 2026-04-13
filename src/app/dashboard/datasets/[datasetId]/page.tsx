@@ -18,7 +18,7 @@ export default async function DatasetPage({ params }: DatasetPageProps) {
   const { datasetId } = await params;
 
   if (!identity) {
-    redirect("/sign-in");
+    redirect("/");
   }
 
   const dataset = await getDatasetForOwner(datasetId, identity.ownerId);

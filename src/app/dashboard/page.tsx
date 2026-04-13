@@ -9,7 +9,7 @@ export default async function DashboardPage() {
   const identity = await getCurrentIdentity();
 
   if (!identity) {
-    redirect("/sign-in");
+    redirect("/");
   }
 
   const datasets = await listDatasets(identity.ownerId);

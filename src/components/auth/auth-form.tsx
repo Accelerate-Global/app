@@ -57,7 +57,7 @@ export function AuthForm({ mode, message }: AuthFormProps) {
 
       if (mode === "sign-up" && !result.data.session) {
         router.push(
-          "/sign-in?message=Check your email to confirm your account, then sign in.",
+          "/?message=Check your email to confirm your account, then sign in.",
         );
         return;
       }
@@ -163,7 +163,7 @@ export function AuthForm({ mode, message }: AuthFormProps) {
           {isSignIn ? "Need an account?" : "Already have an account?"}{" "}
           <Link
             className="font-medium text-foreground underline-offset-4 hover:underline"
-            href={isSignIn ? "/sign-up" : "/sign-in"}
+            href={isSignIn ? "/sign-up" : "/"}
           >
             {isSignIn ? "Sign up" : "Sign in"}
           </Link>
