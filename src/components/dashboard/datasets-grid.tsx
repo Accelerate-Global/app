@@ -7,15 +7,13 @@ import {
   useReactTable,
   type ColumnDef,
   type SortingState,
-  type VisibilityState,
 } from "@tanstack/react-table";
-import { FileTextIcon, SearchIcon, Settings2Icon } from "lucide-react";
+import { FileTextIcon, PencilIcon, SearchIcon } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
 import { DataGrid, DataGridContainer } from "@/components/reui/data-grid/data-grid";
 import { DataGridColumnHeader } from "@/components/reui/data-grid/data-grid-column-header";
-import { DataGridColumnVisibility } from "@/components/reui/data-grid/data-grid-column-visibility";
 import { DataGridScrollArea } from "@/components/reui/data-grid/data-grid-scroll-area";
 import { DataGridTableVirtual } from "@/components/reui/data-grid/data-grid-table-virtual";
 import { Badge } from "@/components/ui/badge";
@@ -26,25 +24,19 @@ import { cn } from "@/lib/utils";
 
 type DatasetsGridProps = {
   datasets: DatasetSummary[];
+  canManageDatasets: boolean;
+  isBusy?: boolean;
+  onRenameDataset?: (dataset: DatasetSummary) => void;
+  onRequestReplace?: (dataset: DatasetSummary) => void;
+  replacingDatasetId?: string | null;
+  renamingDatasetId?: string | null;
 };
-
-function formatBytes(bytes: number) {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("en", {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(value));
-}
-
-function statusVariant(status: DatasetSummary["status"]) {
-  if (status === "ready") return "default";
-  if (status === "failed") return "destructive";
-  return "secondary";
 }
 
 function datasetMatchesSearch(dataset: DatasetSummary, value: unknown) {
@@ -54,52 +46,57 @@ function datasetMatchesSearch(dataset: DatasetSummary, value: unknown) {
 
   return [
     dataset.fileName,
-    dataset.status,
     String(dataset.rowCount),
     String(dataset.columns.length),
-    formatBytes(dataset.sizeBytes),
     formatDate(dataset.createdAt),
   ].some((item) => item.toLowerCase().includes(query));
 }
 
-export function DatasetsGrid({ datasets }: DatasetsGridProps) {
+export function DatasetsGrid({
+  datasets,
+  canManageDatasets,
+  isBusy = false,
+  onRenameDataset,
+  onRequestReplace,
+  replacingDatasetId,
+  renamingDatasetId,
+}: DatasetsGridProps) {
   const [filter, setFilter] = useState("");
   const [sorting, setSorting] = useState<SortingState>([]);
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  const isReplacingDataset = replacingDatasetId !== null;
+  const isRenamingDataset = renamingDatasetId !== null;
 
   const columns = useMemo<ColumnDef<DatasetSummary>[]>(
     () => [
       {
         accessorKey: "fileName",
         id: "fileName",
-        header: ({ column }) => (
-          <DataGridColumnHeader title="File" column={column} visibility />
-        ),
+        header: ({ column }) => <DataGridColumnHeader title="File" column={column} />,
         cell: ({ row }) => (
           <div className="flex min-w-0 items-center gap-3">
             <FileTextIcon className="size-4 shrink-0 text-muted-foreground" />
-            <span className="truncate font-medium">{row.original.fileName}</span>
+            <div className="flex min-w-0 items-center gap-2">
+              <span className="truncate font-medium">{row.original.fileName}</span>
+              {canManageDatasets && onRenameDataset ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-muted-foreground"
+                  disabled={isBusy || isReplacingDataset || isRenamingDataset}
+                  onClick={() => onRenameDataset(row.original)}
+                >
+                  <PencilIcon className="size-3.5" />
+                  Rename
+                </Button>
+              ) : null}
+            </div>
           </div>
         ),
         meta: { headerTitle: "File" },
-        size: 320,
+        size: 360,
         enableSorting: true,
         enableHiding: false,
-      },
-      {
-        accessorKey: "status",
-        id: "status",
-        header: ({ column }) => (
-          <DataGridColumnHeader title="Status" column={column} />
-        ),
-        cell: ({ row }) => (
-          <Badge variant={statusVariant(row.original.status)}>
-            {row.original.status}
-          </Badge>
-        ),
-        meta: { headerTitle: "Status" },
-        size: 120,
-        enableSorting: true,
       },
       {
         accessorKey: "rowCount",
@@ -130,19 +127,6 @@ export function DatasetsGrid({ datasets }: DatasetsGridProps) {
         enableSorting: true,
       },
       {
-        accessorKey: "sizeBytes",
-        id: "sizeBytes",
-        header: ({ column }) => (
-          <DataGridColumnHeader title="Size" column={column} />
-        ),
-        cell: ({ row }) => (
-          <span className="tabular-nums">{formatBytes(row.original.sizeBytes)}</span>
-        ),
-        meta: { headerTitle: "Size" },
-        size: 120,
-        enableSorting: true,
-      },
-      {
         accessorKey: "createdAt",
         id: "createdAt",
         header: ({ column }) => (
@@ -161,22 +145,43 @@ export function DatasetsGrid({ datasets }: DatasetsGridProps) {
         id: "actions",
         header: "",
         cell: ({ row }) => (
-          <Link
-            className={cn(
-              buttonVariants({ variant: "outline", size: "sm" }),
-              "h-7",
-            )}
-            href={`/dashboard/datasets/${row.original.id}`}
-          >
-            Open
-          </Link>
+          <div className="flex items-center justify-end gap-2">
+            <Link
+              className={cn(
+                buttonVariants({ variant: "outline", size: "sm" }),
+                "h-7",
+              )}
+              href={`/dashboard/datasets/${row.original.id}`}
+            >
+              Open
+            </Link>
+            {canManageDatasets && onRequestReplace ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7"
+                disabled={isBusy || isReplacingDataset || isRenamingDataset}
+                onClick={() => onRequestReplace(row.original)}
+              >
+                Replace
+              </Button>
+            ) : null}
+          </div>
         ),
-        size: 90,
+        size: canManageDatasets ? 190 : 90,
         enableSorting: false,
         enableHiding: false,
       },
     ],
-    [],
+    [
+      canManageDatasets,
+      isRenamingDataset,
+      isReplacingDataset,
+      isBusy,
+      onRenameDataset,
+      onRequestReplace,
+    ],
   );
 
   // TanStack Table intentionally returns non-memoizable handlers owned by this component.
@@ -187,12 +192,10 @@ export function DatasetsGrid({ datasets }: DatasetsGridProps) {
     getRowId: (row) => row.id,
     state: {
       sorting,
-      columnVisibility,
       globalFilter: filter,
     },
     columnResizeMode: "onChange",
     onSortingChange: setSorting,
-    onColumnVisibilityChange: setColumnVisibility,
     onGlobalFilterChange: setFilter,
     autoResetPageIndex: false,
     globalFilterFn: (row, _columnId, value) =>
@@ -228,16 +231,6 @@ export function DatasetsGrid({ datasets }: DatasetsGridProps) {
             onChange={(event) => setFilter(event.target.value)}
           />
         </label>
-
-        <DataGridColumnVisibility
-          table={table}
-          trigger={
-            <Button variant="outline" size="sm">
-              <Settings2Icon />
-              Columns
-            </Button>
-          }
-        />
       </div>
 
       <DataGrid
@@ -250,7 +243,6 @@ export function DatasetsGrid({ datasets }: DatasetsGridProps) {
         }
         tableLayout={{
           columnsResizable: true,
-          columnsVisibility: true,
           headerSticky: true,
         }}
         tableClassNames={{
@@ -258,8 +250,8 @@ export function DatasetsGrid({ datasets }: DatasetsGridProps) {
         }}
       >
         <DataGridContainer>
-          <DataGridScrollArea className="h-[420px]">
-            <DataGridTableVirtual estimateSize={52} />
+          <DataGridScrollArea>
+            <DataGridTableVirtual />
           </DataGridScrollArea>
         </DataGridContainer>
       </DataGrid>

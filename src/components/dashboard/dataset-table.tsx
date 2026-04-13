@@ -7,15 +7,13 @@ import {
   useReactTable,
   type ColumnDef,
   type SortingState,
-  type VisibilityState,
 } from "@tanstack/react-table";
-import { Loader2Icon, SearchIcon, Settings2Icon, Trash2Icon } from "lucide-react";
+import { Loader2Icon, SearchIcon, Trash2Icon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { DataGrid, DataGridContainer } from "@/components/reui/data-grid/data-grid";
 import { DataGridColumnHeader } from "@/components/reui/data-grid/data-grid-column-header";
-import { DataGridColumnVisibility } from "@/components/reui/data-grid/data-grid-column-visibility";
 import { DataGridScrollArea } from "@/components/reui/data-grid/data-grid-scroll-area";
 import { DataGridTableVirtual } from "@/components/reui/data-grid/data-grid-table-virtual";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -82,7 +80,6 @@ export function DatasetTable({ dataset, canDelete }: DatasetTableProps) {
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState("");
   const [sorting, setSorting] = useState<SortingState>([]);
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
 
   const columns = useMemo<ColumnDef<DatasetRow>[]>(
     () => [
@@ -129,7 +126,6 @@ export function DatasetTable({ dataset, canDelete }: DatasetTableProps) {
     getRowId: (row) => row.id,
     state: {
       sorting,
-      columnVisibility,
       globalFilter: filter,
     },
     initialState: {
@@ -139,7 +135,6 @@ export function DatasetTable({ dataset, canDelete }: DatasetTableProps) {
     },
     columnResizeMode: "onChange",
     onSortingChange: setSorting,
-    onColumnVisibilityChange: setColumnVisibility,
     onGlobalFilterChange: setFilter,
     autoResetPageIndex: false,
     globalFilterFn: (row, _columnId, value) =>
@@ -274,16 +269,6 @@ export function DatasetTable({ dataset, canDelete }: DatasetTableProps) {
             onChange={(event) => setFilter(event.target.value)}
           />
         </label>
-
-        <DataGridColumnVisibility
-          table={table}
-          trigger={
-            <Button variant="outline" size="sm">
-              <Settings2Icon />
-              Columns
-            </Button>
-          }
-        />
       </div>
 
       {isLoading ? (
@@ -314,7 +299,6 @@ export function DatasetTable({ dataset, canDelete }: DatasetTableProps) {
         tableLayout={{
           columnsPinnable: true,
           columnsResizable: true,
-          columnsVisibility: true,
           headerSticky: true,
         }}
         tableClassNames={{

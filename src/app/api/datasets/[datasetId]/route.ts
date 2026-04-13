@@ -1,5 +1,10 @@
 import { getCurrentIdentity } from "@/lib/auth";
-import { deleteDataset, getDataset, updateDatasetStatus } from "@/lib/datasets";
+import {
+  deleteDataset,
+  getDataset,
+  renameDataset,
+  updateDatasetStatus,
+} from "@/lib/datasets";
 import { jsonError } from "@/lib/http";
 import { getDatasetStorageBucket } from "@/lib/dataset-storage";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -43,14 +48,20 @@ export async function PATCH(request: Request, context: DatasetContext) {
   const parsed = datasetPatchSchema.safeParse(await request.json());
 
   if (!parsed.success) {
-    return jsonError("Dataset status payload is invalid.");
+    return jsonError("Dataset update payload is invalid.");
   }
 
-  const dataset = await updateDatasetStatus({
-    datasetId,
-    status: parsed.data.status,
-    error: parsed.data.error,
-  });
+  const dataset =
+    "fileName" in parsed.data
+      ? await renameDataset({
+          datasetId,
+          fileName: parsed.data.fileName,
+        })
+      : await updateDatasetStatus({
+          datasetId,
+          status: parsed.data.status,
+          error: parsed.data.error,
+        });
 
   if (!dataset) {
     return jsonError("Dataset not found.", 404);
