@@ -32,16 +32,9 @@ export type DatasetRowsResponse = {
   pageCount: number;
 };
 
-export type BlobUploadTokenResponse =
-  | {
-      mode: "vercel-blob";
-      clientToken: string;
-      pathname: string;
-    }
-  | {
-      mode: "local-dev";
-      clientToken: null;
-      pathname: string;
-      blobUrl: string;
-      warning: string;
-    };
+export type DatasetUploadAuthorizationResponse = {
+  mode: "supabase-storage";
+  bucket: string;
+  path: string;
+  token: string;
+};

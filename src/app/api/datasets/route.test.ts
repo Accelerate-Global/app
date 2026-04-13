@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { getCurrentOwnerId } from "@/lib/auth";
+import { getCurrentIdentity } from "@/lib/auth";
 import { createDataset, listDatasets } from "@/lib/datasets";
 import { GET, POST } from "./route";
 
 vi.mock("@/lib/auth", () => ({
-  getCurrentOwnerId: vi.fn(),
+  getCurrentIdentity: vi.fn(),
 }));
 
 vi.mock("@/lib/datasets", () => ({
@@ -13,15 +13,23 @@ vi.mock("@/lib/datasets", () => ({
   listDatasets: vi.fn(),
 }));
 
-const getCurrentOwnerIdMock = vi.mocked(getCurrentOwnerId);
+const getCurrentIdentityMock = vi.mocked(getCurrentIdentity);
 const createDatasetMock = vi.mocked(createDataset);
 const listDatasetsMock = vi.mocked(listDatasets);
+
+const identity = {
+  ownerId: "supabase-user",
+  email: "admin@example.com",
+  isDatasetAdmin: true,
+  mode: "supabase" as const,
+};
 
 const dataset = {
   id: "f0000000-0000-4000-8000-000000000001",
   fileName: "customers.csv",
-  blobUrl: "https://blob.vercel-storage.com/customers.csv",
-  blobPath: "users/supabase-user/csv/customers.csv",
+  blobUrl:
+    "https://example.supabase.co/storage/v1/object/datasets/datasets/csv/customers.csv",
+  blobPath: "datasets/csv/customers.csv",
   status: "processing" as const,
   rowCount: 0,
   sizeBytes: 100,
@@ -37,7 +45,7 @@ describe("/api/datasets", () => {
   });
 
   it("rejects unauthenticated list requests", async () => {
-    getCurrentOwnerIdMock.mockResolvedValue(null);
+    getCurrentIdentityMock.mockResolvedValue(null);
 
     const response = await GET();
 
@@ -45,18 +53,18 @@ describe("/api/datasets", () => {
     expect(listDatasetsMock).not.toHaveBeenCalled();
   });
 
-  it("lists datasets for the authenticated user", async () => {
-    getCurrentOwnerIdMock.mockResolvedValue("supabase-user");
+  it("lists datasets for any authenticated user", async () => {
+    getCurrentIdentityMock.mockResolvedValue(identity);
     listDatasetsMock.mockResolvedValue([dataset]);
 
     const response = await GET();
 
     await expect(response.json()).resolves.toEqual({ datasets: [dataset] });
-    expect(listDatasetsMock).toHaveBeenCalledWith("supabase-user");
+    expect(listDatasetsMock).toHaveBeenCalledWith();
   });
 
-  it("creates owner-scoped dataset records", async () => {
-    getCurrentOwnerIdMock.mockResolvedValue("supabase-user");
+  it("creates dataset records for the configured admin", async () => {
+    getCurrentIdentityMock.mockResolvedValue(identity);
     createDatasetMock.mockResolvedValue(dataset);
 
     const response = await POST(
@@ -64,8 +72,7 @@ describe("/api/datasets", () => {
         method: "POST",
         body: JSON.stringify({
           fileName: "customers.csv",
-          blobUrl: "https://blob.vercel-storage.com/customers.csv",
-          blobPath: "users/supabase-user/csv/customers.csv",
+          blobPath: "datasets/csv/customers.csv",
           sizeBytes: 100,
           columns: [{ key: "email", label: "Email", sourceIndex: 0 }],
         }),
@@ -77,22 +84,43 @@ describe("/api/datasets", () => {
     expect(createDatasetMock).toHaveBeenCalledWith({
       ownerId: "supabase-user",
       fileName: "customers.csv",
-      blobUrl: "https://blob.vercel-storage.com/customers.csv",
-      blobPath: "users/supabase-user/csv/customers.csv",
+      blobPath: "datasets/csv/customers.csv",
       sizeBytes: 100,
       columns: [{ key: "email", label: "Email", sourceIndex: 0 }],
     });
   });
 
-  it("rejects dataset records for another owner's blob path", async () => {
-    getCurrentOwnerIdMock.mockResolvedValue("supabase-user");
+  it("rejects dataset creation for non-admin users", async () => {
+    getCurrentIdentityMock.mockResolvedValue({
+      ...identity,
+      email: "viewer@example.com",
+      isDatasetAdmin: false,
+    });
 
     const response = await POST(
       new Request("http://localhost/api/datasets", {
         method: "POST",
         body: JSON.stringify({
           fileName: "customers.csv",
-          blobUrl: "https://blob.vercel-storage.com/customers.csv",
+          blobPath: "datasets/csv/customers.csv",
+          sizeBytes: 100,
+          columns: [{ key: "email", label: "Email", sourceIndex: 0 }],
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(403);
+    expect(createDatasetMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects dataset records outside the shared storage prefix", async () => {
+    getCurrentIdentityMock.mockResolvedValue(identity);
+
+    const response = await POST(
+      new Request("http://localhost/api/datasets", {
+        method: "POST",
+        body: JSON.stringify({
+          fileName: "customers.csv",
           blobPath: "users/other-user/csv/customers.csv",
           sizeBytes: 100,
           columns: [{ key: "email", label: "Email", sourceIndex: 0 }],

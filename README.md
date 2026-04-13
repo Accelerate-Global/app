@@ -1,13 +1,13 @@
 # CSV Dataset Viewer
 
-A Vercel-hosted Next.js app for authenticated CSV uploads, private file storage, persisted parsed rows, and table exploration.
+A Vercel-hosted Next.js app for authenticated CSV uploads, Supabase-backed CSV storage, persisted parsed rows, and shared table exploration.
 
 ## Stack
 
 - Next.js App Router, React, TypeScript, Tailwind CSS
 - Supabase email/password authentication
 - shadcn/ui with Base UI primitives
-- Vercel Blob for private CSV files
+- Supabase Storage for raw CSV files
 - Supabase Postgres with Drizzle for dataset metadata and JSONB row storage
 - Papa Parse and TanStack Table for client-side ingestion and table controls
 
@@ -29,12 +29,15 @@ Fill in:
 
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `SUPABASE_STORAGE_BUCKET` (defaults to `datasets`)
+- `DATASET_ADMIN_EMAIL` (defaults to `admin@example.com`)
 - `DATABASE_URL`
-- `BLOB_READ_WRITE_TOKEN` for Vercel Blob uploads
 
-When `BLOB_READ_WRITE_TOKEN` is empty in local development, the app skips raw
-Blob storage so you can still test CSV parsing and persisted rows. Production
-uploads require a real Vercel Blob read/write token.
+Raw CSV files are stored in Supabase Storage. Uploads require a server-side
+`SUPABASE_SERVICE_ROLE_KEY`, and only the configured dataset admin account can
+create, update, or delete datasets. All signed-in users can browse shared
+datasets and rows.
 
 Apply the database schema:
 
@@ -52,7 +55,8 @@ Open `http://localhost:3000`.
 
 ## Vercel Setup
 
-Use Supabase for Auth and Postgres, and Vercel Blob for private CSV files. After configuring project environment variables in Vercel, pull them locally:
+Use Supabase for Auth, Postgres, and Storage. After configuring project
+environment variables in Vercel, pull them locally:
 
 ```bash
 vercel env pull .env.local

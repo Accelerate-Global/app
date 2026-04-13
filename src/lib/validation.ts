@@ -16,7 +16,6 @@ export const blobUploadTokenSchema = z.object({
 
 export const createDatasetSchema = z.object({
   fileName: z.string().min(1).max(255),
-  blobUrl: z.url(),
   blobPath: z.string().min(1).max(1024),
   sizeBytes: z.number().int().positive().max(MAX_CSV_BYTES),
   columns: z.array(csvColumnSchema).min(1).max(500),

@@ -1,16 +1,22 @@
-import { generateClientTokenFromReadWriteToken } from "@vercel/blob/client";
-import { randomUUID } from "node:crypto";
-
-import { getCurrentOwnerId } from "@/lib/auth";
+import { getCurrentIdentity } from "@/lib/auth";
+import {
+  createDatasetStoragePath,
+  getDatasetStorageBucket,
+} from "@/lib/dataset-storage";
 import { MAX_CSV_BYTES, sanitizeFileName } from "@/lib/csv";
 import { jsonError } from "@/lib/http";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { blobUploadTokenSchema } from "@/lib/validation";
 
 export async function POST(request: Request) {
-  const ownerId = await getCurrentOwnerId();
+  const identity = await getCurrentIdentity();
 
-  if (!ownerId) {
+  if (!identity) {
     return jsonError("Unauthorized.", 401);
+  }
+
+  if (!identity.isDatasetAdmin) {
+    return jsonError("Only admin@example.com can upload CSV files.", 403);
   }
 
   const parsed = blobUploadTokenSchema.safeParse(await request.json());
@@ -25,47 +31,52 @@ export async function POST(request: Request) {
     return jsonError("Only CSV uploads are supported.");
   }
 
-  const pathname = `users/${ownerId}/csv/${randomUUID()}-${fileName}`;
-  const blobToken = process.env.BLOB_READ_WRITE_TOKEN?.trim();
-
-  if (!blobToken) {
-    if (process.env.NODE_ENV !== "production") {
-      return Response.json({
-        mode: "local-dev",
-        clientToken: null,
-        pathname,
-        blobUrl: new URL(
-          `/api/blob/local/${encodeURIComponent(pathname)}`,
-          request.url,
-        ).toString(),
-        warning:
-          "BLOB_READ_WRITE_TOKEN is not configured, so local development will skip raw Blob storage.",
-      });
-    }
-
-    return jsonError(
-      "CSV uploads are not configured. Set BLOB_READ_WRITE_TOKEN in the app environment.",
-      503,
-    );
-  }
+  const bucket = getDatasetStorageBucket();
+  const path = createDatasetStoragePath(fileName);
 
   try {
-    const clientToken = await generateClientTokenFromReadWriteToken({
-      token: blobToken,
-      pathname,
-      maximumSizeInBytes: MAX_CSV_BYTES,
-      allowedContentTypes: [
-        "text/csv",
-        "application/vnd.ms-excel",
-        "text/plain",
-      ],
-      addRandomSuffix: false,
-      allowOverwrite: false,
-    });
+    const supabase = createSupabaseAdminClient();
+    const bucketLookup = await supabase.storage.getBucket(bucket);
 
-    return Response.json({ mode: "vercel-blob", clientToken, pathname });
+    if (bucketLookup.error) {
+      if (bucketLookup.error.status !== 404) {
+        throw bucketLookup.error;
+      }
+
+      const createdBucket = await supabase.storage.createBucket(bucket, {
+        public: false,
+        allowedMimeTypes: [
+          "text/csv",
+          "application/vnd.ms-excel",
+          "text/plain",
+        ],
+        fileSizeLimit: MAX_CSV_BYTES,
+      });
+
+      if (createdBucket.error) {
+        throw createdBucket.error;
+      }
+    }
+
+    const signedUpload = await supabase.storage
+      .from(bucket)
+      .createSignedUploadUrl(path);
+
+    if (signedUpload.error) {
+      throw signedUpload.error;
+    }
+
+    return Response.json({
+      mode: "supabase-storage",
+      bucket,
+      path,
+      token: signedUpload.data.token,
+    });
   } catch (error) {
-    console.error("Failed to create Vercel Blob client token", error);
-    return jsonError("The upload could not be authorized by Vercel Blob.", 502);
+    console.error("Failed to create Supabase Storage upload authorization", error);
+    return jsonError(
+      "The upload could not be authorized by Supabase Storage.",
+      502,
+    );
   }
 }

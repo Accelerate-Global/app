@@ -1,4 +1,4 @@
-import { getCurrentOwnerId } from "@/lib/auth";
+import { getCurrentIdentity } from "@/lib/auth";
 import { insertDatasetRowBatch } from "@/lib/datasets";
 import { jsonError } from "@/lib/http";
 import { rowBatchSchema } from "@/lib/validation";
@@ -10,10 +10,14 @@ type RowBatchContext = {
 };
 
 export async function POST(request: Request, context: RowBatchContext) {
-  const ownerId = await getCurrentOwnerId();
+  const identity = await getCurrentIdentity();
 
-  if (!ownerId) {
+  if (!identity) {
     return jsonError("Unauthorized.", 401);
+  }
+
+  if (!identity.isDatasetAdmin) {
+    return jsonError("Only admin@example.com can upload CSV data.", 403);
   }
 
   const { datasetId } = await context.params;
@@ -25,7 +29,6 @@ export async function POST(request: Request, context: RowBatchContext) {
 
   const dataset = await insertDatasetRowBatch({
     datasetId,
-    ownerId,
     ...parsed.data,
   });
 

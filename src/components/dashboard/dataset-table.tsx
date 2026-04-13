@@ -32,6 +32,7 @@ type DatasetRow = DatasetRowsResponse["rows"][number];
 
 type DatasetTableProps = {
   dataset: DatasetSummary;
+  canDelete: boolean;
 };
 
 function getCellValue(row: DatasetRow, key: string) {
@@ -72,7 +73,7 @@ async function fetchRowsPage(input: {
   return (await response.json()) as DatasetRowsResponse;
 }
 
-export function DatasetTable({ dataset }: DatasetTableProps) {
+export function DatasetTable({ dataset, canDelete }: DatasetTableProps) {
   const router = useRouter();
   const [rows, setRows] = useState<DatasetRow[]>([]);
   const [totalRows, setTotalRows] = useState(dataset.rowCount);
@@ -248,10 +249,12 @@ export function DatasetTable({ dataset }: DatasetTableProps) {
             {totalRows.toLocaleString()} rows · {dataset.columns.length} columns
           </span>
         </div>
-        <Button variant="destructive" size="sm" onClick={deleteDataset}>
-          <Trash2Icon />
-          Delete
-        </Button>
+        {canDelete ? (
+          <Button variant="destructive" size="sm" onClick={deleteDataset}>
+            <Trash2Icon />
+            Delete
+          </Button>
+        ) : null}
       </div>
 
       {dataset.error ? (

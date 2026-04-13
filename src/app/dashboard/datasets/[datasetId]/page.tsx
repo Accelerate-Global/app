@@ -5,7 +5,7 @@ import { AccountControl } from "@/components/auth/account-control";
 import { DatasetTable } from "@/components/dashboard/dataset-table";
 import { buttonVariants } from "@/components/ui/button";
 import { getCurrentIdentity } from "@/lib/auth";
-import { getDatasetForOwner } from "@/lib/datasets";
+import { getDataset } from "@/lib/datasets";
 
 type DatasetPageProps = {
   params: Promise<{
@@ -21,7 +21,7 @@ export default async function DatasetPage({ params }: DatasetPageProps) {
     redirect("/");
   }
 
-  const dataset = await getDatasetForOwner(datasetId, identity.ownerId);
+  const dataset = await getDataset(datasetId);
 
   if (!dataset) {
     notFound();
@@ -44,7 +44,10 @@ export default async function DatasetPage({ params }: DatasetPageProps) {
           </div>
           <AccountControl identity={identity} />
         </header>
-        <DatasetTable dataset={dataset} />
+        <DatasetTable
+          dataset={dataset}
+          canDelete={identity.isDatasetAdmin}
+        />
       </div>
     </main>
   );

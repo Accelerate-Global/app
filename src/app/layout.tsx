@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "CSV Dataset Viewer",
-  description: "Upload CSV files and explore persisted datasets.",
+  description: "Browse shared datasets backed by Supabase.",
 };
 
 export default function RootLayout({

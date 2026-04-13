@@ -1,6 +1,5 @@
 "use client";
 
-import { put } from "@vercel/blob/client";
 import {
   AlertCircleIcon,
   CheckCircle2Icon,
@@ -12,9 +11,9 @@ import { useRef, useState, type DragEvent } from "react";
 
 import { DatasetsGrid } from "@/components/dashboard/datasets-grid";
 import type {
-  BlobUploadTokenResponse,
   CsvColumn,
   DatasetSummary,
+  DatasetUploadAuthorizationResponse,
 } from "@/lib/api-types";
 import {
   isCsvFile,
@@ -34,10 +33,13 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
 type DashboardClientProps = {
   initialDatasets: DatasetSummary[];
+  canUpload: boolean;
+  datasetAdminEmail: string;
 };
 
 type UploadState = {
@@ -85,7 +87,7 @@ async function parseHeader(file: File) {
   });
 }
 
-async function createBlobToken(file: File) {
+async function authorizeUpload(file: File) {
   const response = await fetch("/api/blob/upload-token", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -102,13 +104,12 @@ async function createBlobToken(file: File) {
     );
   }
 
-  return (await response.json()) as BlobUploadTokenResponse;
+  return (await response.json()) as DatasetUploadAuthorizationResponse;
 }
 
 async function createDataset(input: {
   file: File;
   columns: CsvColumn[];
-  blobUrl: string;
   blobPath: string;
 }) {
   const response = await fetch("/api/datasets", {
@@ -116,7 +117,6 @@ async function createDataset(input: {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       fileName: input.file.name,
-      blobUrl: input.blobUrl,
       blobPath: input.blobPath,
       sizeBytes: input.file.size,
       columns: input.columns,
@@ -124,7 +124,9 @@ async function createDataset(input: {
   });
 
   if (!response.ok) {
-    throw new Error("The dataset record could not be created.");
+    throw new Error(
+      await getErrorMessage(response, "The dataset record could not be created."),
+    );
   }
 
   return ((await response.json()) as DatasetResponse).dataset;
@@ -144,7 +146,9 @@ async function postRows(input: {
   });
 
   if (!response.ok) {
-    throw new Error("A row batch could not be saved.");
+    throw new Error(
+      await getErrorMessage(response, "A row batch could not be saved."),
+    );
   }
 
   return ((await response.json()) as DatasetResponse).dataset;
@@ -226,26 +230,32 @@ async function parseAndPersistRows(input: {
           .catch(fail);
       },
       complete: () => {
-        void pendingChunk.then(async () => {
-          if (settled) return;
-          await flushBatch();
-          const dataset = await postRows({
-            datasetId: input.datasetId,
-            startIndex: rowIndex,
-            rows: [],
-            isFinalBatch: true,
-            totalRows: rowIndex,
-          });
-          settled = true;
-          resolve(dataset);
-        }).catch(fail);
+        void pendingChunk
+          .then(async () => {
+            if (settled) return;
+            await flushBatch();
+            const dataset = await postRows({
+              datasetId: input.datasetId,
+              startIndex: rowIndex,
+              rows: [],
+              isFinalBatch: true,
+              totalRows: rowIndex,
+            });
+            settled = true;
+            resolve(dataset);
+          })
+          .catch(fail);
       },
       error: (error) => fail(error),
     });
   });
 }
 
-export function DashboardClient({ initialDatasets }: DashboardClientProps) {
+export function DashboardClient({
+  initialDatasets,
+  canUpload,
+  datasetAdminEmail,
+}: DashboardClientProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [datasets, setDatasets] = useState(initialDatasets);
   const [upload, setUpload] = useState<UploadState | null>(null);
@@ -259,6 +269,17 @@ export function DashboardClient({ initialDatasets }: DashboardClientProps) {
   }
 
   async function handleFile(file: File) {
+    if (!canUpload) {
+      setUpload({
+        fileName: file.name,
+        phase: "failed",
+        progress: 100,
+        rowsParsed: 0,
+        message: `Only ${datasetAdminEmail} can upload CSV files.`,
+      });
+      return;
+    }
+
     let datasetId: string | null = null;
 
     try {
@@ -279,47 +300,39 @@ export function DashboardClient({ initialDatasets }: DashboardClientProps) {
       });
 
       const columns = await parseHeader(file);
-      const blobUpload = await createBlobToken(file);
-      let blobUrl = blobUpload.mode === "local-dev" ? blobUpload.blobUrl : "";
-      let blobPath = blobUpload.pathname;
+      const uploadAuthorization = await authorizeUpload(file);
 
-      if (blobUpload.mode === "local-dev") {
-        setUpload((current) =>
-          current
-            ? {
-                ...current,
-                progress: 40,
-                message: "Local testing mode: skipping Blob storage",
-              }
-            : current,
-        );
-      } else {
-        const blob = await put(blobUpload.pathname, file, {
-          access: "private",
-          token: blobUpload.clientToken,
-          contentType: file.type || "text/csv",
-          multipart: file.size > 8 * 1024 * 1024,
-          onUploadProgress: ({ percentage }) => {
-            setUpload((current) =>
-              current
-                ? {
-                    ...current,
-                    progress: Math.max(5, Math.round(percentage * 0.4)),
-                    message: "Uploading CSV",
-                  }
-                : current,
-            );
+      setUpload((current) =>
+        current
+          ? {
+              ...current,
+              progress: 35,
+              message: "Uploading CSV to Supabase",
+            }
+          : current,
+      );
+
+      const supabase = createSupabaseBrowserClient();
+      const uploadResult = await supabase.storage
+        .from(uploadAuthorization.bucket)
+        .uploadToSignedUrl(
+          uploadAuthorization.path,
+          uploadAuthorization.token,
+          file,
+          {
+            contentType: file.type || "text/csv",
+            upsert: false,
           },
-        });
-        blobUrl = blob.url;
-        blobPath = blob.pathname;
+        );
+
+      if (uploadResult.error) {
+        throw uploadResult.error;
       }
 
       const dataset = await createDataset({
         file,
         columns,
-        blobUrl,
-        blobPath,
+        blobPath: uploadAuthorization.path,
       });
       datasetId = dataset.id;
       setDatasets((current) => [dataset, ...current]);
@@ -387,6 +400,10 @@ export function DashboardClient({ initialDatasets }: DashboardClientProps) {
   }
 
   function handleDrop(event: DragEvent<HTMLDivElement>) {
+    if (!canUpload) {
+      return;
+    }
+
     event.preventDefault();
     setIsDragging(false);
     const file = event.dataTransfer.files[0];
@@ -397,19 +414,25 @@ export function DashboardClient({ initialDatasets }: DashboardClientProps) {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Upload CSV</CardTitle>
+          <CardTitle>{canUpload ? "Upload CSV" : "Uploads are restricted"}</CardTitle>
           <CardDescription>
-            Save a private file and turn its rows into a table you can return
-            to later.
+            {canUpload
+              ? "Store the source CSV in Supabase and turn its rows into a shared table."
+              : `Signed-in users can browse every dataset, but only ${datasetAdminEmail} can upload new CSV files.`}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div
             className={cn(
               "flex min-h-48 flex-col items-center justify-center gap-3 rounded-lg border border-dashed bg-muted/30 p-6 text-center transition-colors",
-              isDragging && "border-foreground bg-muted",
+              canUpload && isDragging && "border-foreground bg-muted",
+              !canUpload && "border-solid",
             )}
             onDragOver={(event) => {
+              if (!canUpload) {
+                return;
+              }
+
               event.preventDefault();
               setIsDragging(true);
             }}
@@ -420,24 +443,32 @@ export function DashboardClient({ initialDatasets }: DashboardClientProps) {
               <UploadIcon className="size-5" />
             </div>
             <div className="space-y-1">
-              <p className="text-sm font-medium">Drop a CSV here</p>
+              <p className="text-sm font-medium">
+                {canUpload ? "Drop a CSV here" : "Read-only access"}
+              </p>
               <p className="text-sm text-muted-foreground">
-                Files up to 25MB are uploaded privately.
+                {canUpload
+                  ? "Files up to 25MB are stored in Supabase Storage."
+                  : "Uploads are hidden for non-admin accounts."}
               </p>
             </div>
-            <input
-              ref={inputRef}
-              className="sr-only"
-              type="file"
-              accept=".csv,text/csv"
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-                if (file) void handleFile(file);
-              }}
-            />
-            <Button type="button" onClick={() => inputRef.current?.click()}>
-              Choose CSV
-            </Button>
+            {canUpload ? (
+              <>
+                <input
+                  ref={inputRef}
+                  className="sr-only"
+                  type="file"
+                  accept=".csv,text/csv"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    if (file) void handleFile(file);
+                  }}
+                />
+                <Button type="button" onClick={() => inputRef.current?.click()}>
+                  Choose CSV
+                </Button>
+              </>
+            ) : null}
           </div>
 
           {upload ? (

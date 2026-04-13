@@ -1,12 +1,8 @@
-import { del } from "@vercel/blob";
-
-import { getCurrentOwnerId } from "@/lib/auth";
-import {
-  deleteDatasetForOwner,
-  getDatasetForOwner,
-  updateDatasetStatus,
-} from "@/lib/datasets";
+import { getCurrentIdentity } from "@/lib/auth";
+import { deleteDataset, getDataset, updateDatasetStatus } from "@/lib/datasets";
 import { jsonError } from "@/lib/http";
+import { getDatasetStorageBucket } from "@/lib/dataset-storage";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { datasetPatchSchema } from "@/lib/validation";
 
 type DatasetContext = {
@@ -16,14 +12,14 @@ type DatasetContext = {
 };
 
 export async function GET(_request: Request, context: DatasetContext) {
-  const ownerId = await getCurrentOwnerId();
+  const identity = await getCurrentIdentity();
 
-  if (!ownerId) {
+  if (!identity) {
     return jsonError("Unauthorized.", 401);
   }
 
   const { datasetId } = await context.params;
-  const dataset = await getDatasetForOwner(datasetId, ownerId);
+  const dataset = await getDataset(datasetId);
 
   if (!dataset) {
     return jsonError("Dataset not found.", 404);
@@ -33,10 +29,14 @@ export async function GET(_request: Request, context: DatasetContext) {
 }
 
 export async function PATCH(request: Request, context: DatasetContext) {
-  const ownerId = await getCurrentOwnerId();
+  const identity = await getCurrentIdentity();
 
-  if (!ownerId) {
+  if (!identity) {
     return jsonError("Unauthorized.", 401);
+  }
+
+  if (!identity.isDatasetAdmin) {
+    return jsonError("Only admin@example.com can modify datasets.", 403);
   }
 
   const { datasetId } = await context.params;
@@ -48,7 +48,6 @@ export async function PATCH(request: Request, context: DatasetContext) {
 
   const dataset = await updateDatasetStatus({
     datasetId,
-    ownerId,
     status: parsed.data.status,
     error: parsed.data.error,
   });
@@ -61,28 +60,34 @@ export async function PATCH(request: Request, context: DatasetContext) {
 }
 
 export async function DELETE(_request: Request, context: DatasetContext) {
-  const ownerId = await getCurrentOwnerId();
+  const identity = await getCurrentIdentity();
 
-  if (!ownerId) {
+  if (!identity) {
     return jsonError("Unauthorized.", 401);
   }
 
+  if (!identity.isDatasetAdmin) {
+    return jsonError("Only admin@example.com can delete datasets.", 403);
+  }
+
   const { datasetId } = await context.params;
-  const dataset = await deleteDatasetForOwner(datasetId, ownerId);
+  const dataset = await deleteDataset(datasetId);
 
   if (!dataset) {
     return jsonError("Dataset not found.", 404);
   }
 
-  const blobToken = process.env.BLOB_READ_WRITE_TOKEN?.trim();
-  const isLocalDevBlob = dataset.blobUrl.includes("/api/blob/local/");
+  try {
+    const supabase = createSupabaseAdminClient();
+    const deletion = await supabase.storage
+      .from(getDatasetStorageBucket())
+      .remove([dataset.blobPath]);
 
-  if (blobToken && !isLocalDevBlob) {
-    try {
-      await del(dataset.blobUrl, { token: blobToken });
-    } catch (error) {
-      console.error("Failed to delete blob", error);
+    if (deletion.error) {
+      console.error("Failed to delete dataset file from Supabase Storage", deletion.error);
     }
+  } catch (error) {
+    console.error("Failed to delete dataset file from Supabase Storage", error);
   }
 
   return Response.json({ dataset });
