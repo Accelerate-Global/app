@@ -1,0 +1,56 @@
+import { redirect } from "next/navigation";
+
+import { DatasetUploadClient } from "@/components/dashboard/dataset-upload-client";
+import { SiteHeader } from "@/components/layout/site-header";
+import { getCurrentIdentity } from "@/lib/auth";
+import { getDataset } from "@/lib/datasets";
+
+type UploadPageProps = {
+  searchParams: Promise<{
+    replace?: string;
+  }>;
+};
+
+export default async function UploadPage({ searchParams }: UploadPageProps) {
+  const identity = await getCurrentIdentity();
+
+  if (!identity) {
+    redirect("/");
+  }
+
+  if (!identity.isDatasetAdmin) {
+    redirect("/dashboard");
+  }
+
+  const { replace } = await searchParams;
+  const targetDataset = replace ? await getDataset(replace) : null;
+
+  if (replace && !targetDataset) {
+    redirect("/dashboard");
+  }
+
+  return (
+    <main className="min-h-svh bg-background">
+      <SiteHeader identity={identity} />
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-10 sm:px-6 lg:px-8">
+        <section className="space-y-2">
+          <p className="text-[0.72rem] font-black uppercase tracking-[0.16em] text-foreground/55">
+            Accelerate Global Data
+          </p>
+          <h1 className="text-4xl font-semibold tracking-[-0.04em] sm:text-[3.1rem]">
+            {targetDataset ? "Replace dataset" : "Upload dataset"}
+          </h1>
+          {targetDataset ? (
+            <p className="text-sm text-muted-foreground">
+              Replacing{" "}
+              <span className="font-medium text-foreground">
+                {targetDataset.fileName}
+              </span>
+            </p>
+          ) : null}
+        </section>
+        <DatasetUploadClient targetDataset={targetDataset} />
+      </div>
+    </main>
+  );
+}
