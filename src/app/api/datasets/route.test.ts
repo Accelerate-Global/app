@@ -1,11 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { getCurrentOwnerId, BYPASS_OWNER_ID } from "@/lib/auth";
+import { getCurrentOwnerId } from "@/lib/auth";
 import { createDataset, listDatasets } from "@/lib/datasets";
 import { GET, POST } from "./route";
 
 vi.mock("@/lib/auth", () => ({
-  BYPASS_OWNER_ID: "bypass-user",
   getCurrentOwnerId: vi.fn(),
 }));
 
@@ -56,16 +55,6 @@ describe("/api/datasets", () => {
     expect(listDatasetsMock).toHaveBeenCalledWith("supabase-user");
   });
 
-  it("lists datasets for the bypass owner", async () => {
-    getCurrentOwnerIdMock.mockResolvedValue(BYPASS_OWNER_ID);
-    listDatasetsMock.mockResolvedValue([dataset]);
-
-    const response = await GET();
-
-    await expect(response.json()).resolves.toEqual({ datasets: [dataset] });
-    expect(listDatasetsMock).toHaveBeenCalledWith(BYPASS_OWNER_ID);
-  });
-
   it("creates owner-scoped dataset records", async () => {
     getCurrentOwnerIdMock.mockResolvedValue("supabase-user");
     createDatasetMock.mockResolvedValue(dataset);
@@ -90,34 +79,6 @@ describe("/api/datasets", () => {
       fileName: "customers.csv",
       blobUrl: "https://blob.vercel-storage.com/customers.csv",
       blobPath: "users/supabase-user/csv/customers.csv",
-      sizeBytes: 100,
-      columns: [{ key: "email", label: "Email", sourceIndex: 0 }],
-    });
-  });
-
-  it("creates bypass-scoped dataset records", async () => {
-    getCurrentOwnerIdMock.mockResolvedValue(BYPASS_OWNER_ID);
-    createDatasetMock.mockResolvedValue(dataset);
-
-    const response = await POST(
-      new Request("http://localhost/api/datasets", {
-        method: "POST",
-        body: JSON.stringify({
-          fileName: "customers.csv",
-          blobUrl: "https://blob.vercel-storage.com/customers.csv",
-          blobPath: "users/bypass-user/csv/customers.csv",
-          sizeBytes: 100,
-          columns: [{ key: "email", label: "Email", sourceIndex: 0 }],
-        }),
-      }),
-    );
-
-    expect(response.status).toBe(201);
-    expect(createDatasetMock).toHaveBeenCalledWith({
-      ownerId: BYPASS_OWNER_ID,
-      fileName: "customers.csv",
-      blobUrl: "https://blob.vercel-storage.com/customers.csv",
-      blobPath: "users/bypass-user/csv/customers.csv",
       sizeBytes: 100,
       columns: [{ key: "email", label: "Email", sourceIndex: 0 }],
     });

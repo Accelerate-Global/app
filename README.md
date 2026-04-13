@@ -58,7 +58,25 @@ Use Supabase for Auth and Postgres, and Vercel Blob for private CSV files. After
 vercel env pull .env.local
 ```
 
-The app owns the Supabase sign-in and sign-up routes at `/sign-in` and `/sign-up`. The “Bypass login for testing” button is intentionally always visible and stores data under the fixed owner id `bypass-user`; remove or gate it before a public production launch.
+The app starts unauthenticated users at `/` and sends authenticated users to `/dashboard`.
+
+## Signup Allowlist
+
+Only emails present in `public.signup_email_allowlist` can create accounts.
+Add rows in Supabase before a user signs up:
+
+```sql
+insert into public.signup_email_allowlist (email, note)
+values ('person@example.com', 'Initial access');
+```
+
+Check the current allowlist:
+
+```sql
+select email, note, created_at
+from public.signup_email_allowlist
+order by email;
+```
 
 ## Verification
 

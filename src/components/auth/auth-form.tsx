@@ -27,6 +27,7 @@ export function AuthForm({ mode, message }: AuthFormProps) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isSignIn = mode === "sign-in";
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -38,9 +39,28 @@ export function AuthForm({ mode, message }: AuthFormProps) {
     const password = String(formData.get("password") ?? "");
 
     try {
+      if (!isSignIn) {
+        const response = await fetch("/auth/sign-up", {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({ email }),
+        });
+
+        if (!response.ok) {
+          const payload = (await response.json().catch(() => null)) as
+            | { message?: string }
+            | null;
+
+          setError(payload?.message ?? "This email address cannot sign up.");
+          return;
+        }
+      }
+
       const supabase = createSupabaseBrowserClient();
       const result =
-        mode === "sign-in"
+        isSignIn
           ? await supabase.auth.signInWithPassword({ email, password })
           : await supabase.auth.signUp({
               email,
@@ -74,34 +94,6 @@ export function AuthForm({ mode, message }: AuthFormProps) {
       setIsSubmitting(false);
     }
   }
-
-  async function bypassLogin() {
-    setError(null);
-    setIsSubmitting(true);
-
-    try {
-      const response = await fetch("/auth/bypass", {
-        method: "POST",
-      });
-
-      if (!response.ok) {
-        throw new Error("Testing mode could not be started.");
-      }
-
-      router.push("/dashboard");
-      router.refresh();
-    } catch (bypassError) {
-      setError(
-        bypassError instanceof Error
-          ? bypassError.message
-          : "Testing mode could not be started.",
-      );
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
-
-  const isSignIn = mode === "sign-in";
 
   return (
     <Card className="w-full max-w-md">
@@ -149,16 +141,6 @@ export function AuthForm({ mode, message }: AuthFormProps) {
           </Button>
         </form>
 
-        <Button
-          className="w-full"
-          type="button"
-          variant="outline"
-          onClick={bypassLogin}
-          disabled={isSubmitting}
-        >
-          Bypass login for testing
-        </Button>
-
         <p className="text-center text-sm text-muted-foreground">
           {isSignIn ? "Need an account?" : "Already have an account?"}{" "}
           <Link
@@ -168,6 +150,13 @@ export function AuthForm({ mode, message }: AuthFormProps) {
             {isSignIn ? "Sign up" : "Sign in"}
           </Link>
         </p>
+
+        {!isSignIn ? (
+          <p className="text-center text-sm text-muted-foreground">
+            Sign-up is limited to emails already listed in the database
+            allowlist.
+          </p>
+        ) : null}
       </CardContent>
     </Card>
   );

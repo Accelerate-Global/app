@@ -1,11 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { BYPASS_OWNER_ID, getCurrentOwnerId } from "@/lib/auth";
+import { getCurrentOwnerId } from "@/lib/auth";
 import { getDatasetRows } from "@/lib/datasets";
 import { GET } from "./route";
 
 vi.mock("@/lib/auth", () => ({
-  BYPASS_OWNER_ID: "bypass-user",
   getCurrentOwnerId: vi.fn(),
 }));
 
@@ -74,27 +73,6 @@ describe("/api/datasets/[datasetId]/rows", () => {
       filter: "ada",
       sortColumn: "email",
       sortDirection: "desc",
-    });
-  });
-
-  it("reads rows through the bypass owner id", async () => {
-    getCurrentOwnerIdMock.mockResolvedValue(BYPASS_OWNER_ID);
-    getDatasetRowsMock.mockResolvedValue(rowsResponse);
-
-    const response = await GET(
-      new Request("http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001/rows"),
-      context,
-    );
-
-    expect(response.status).toBe(200);
-    expect(getDatasetRowsMock).toHaveBeenCalledWith({
-      datasetId: "f0000000-0000-4000-8000-000000000001",
-      ownerId: BYPASS_OWNER_ID,
-      page: 1,
-      pageSize: 25,
-      filter: undefined,
-      sortColumn: undefined,
-      sortDirection: "asc",
     });
   });
 

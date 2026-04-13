@@ -1,11 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { BYPASS_OWNER_ID, getCurrentOwnerId } from "@/lib/auth";
+import { getCurrentOwnerId } from "@/lib/auth";
 import { insertDatasetRowBatch } from "@/lib/datasets";
 import { POST } from "./route";
 
 vi.mock("@/lib/auth", () => ({
-  BYPASS_OWNER_ID: "bypass-user",
   getCurrentOwnerId: vi.fn(),
 }));
 
@@ -87,33 +86,6 @@ describe("/api/datasets/[datasetId]/rows/batch", () => {
       rows: [{ email: "ada@example.com" }],
       isFinalBatch: true,
       totalRows: 2,
-    });
-  });
-
-  it("inserts batches through the bypass owner id", async () => {
-    getCurrentOwnerIdMock.mockResolvedValue(BYPASS_OWNER_ID);
-    insertDatasetRowBatchMock.mockResolvedValue(dataset);
-
-    const response = await POST(
-      new Request("http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001/rows/batch", {
-        method: "POST",
-        body: JSON.stringify({
-          startIndex: 0,
-          rows: [{ email: "ada@example.com" }],
-          isFinalBatch: false,
-        }),
-      }),
-      context,
-    );
-
-    expect(response.status).toBe(200);
-    expect(insertDatasetRowBatchMock).toHaveBeenCalledWith({
-      datasetId: "f0000000-0000-4000-8000-000000000001",
-      ownerId: BYPASS_OWNER_ID,
-      startIndex: 0,
-      rows: [{ email: "ada@example.com" }],
-      isFinalBatch: false,
-      totalRows: undefined,
     });
   });
 

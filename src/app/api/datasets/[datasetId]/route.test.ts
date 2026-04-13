@@ -1,7 +1,7 @@
 import { del } from "@vercel/blob";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { BYPASS_OWNER_ID, getCurrentOwnerId } from "@/lib/auth";
+import { getCurrentOwnerId } from "@/lib/auth";
 import {
   deleteDatasetForOwner,
   getDatasetForOwner,
@@ -10,7 +10,6 @@ import {
 import { DELETE, GET, PATCH } from "./route";
 
 vi.mock("@/lib/auth", () => ({
-  BYPASS_OWNER_ID: "bypass-user",
   getCurrentOwnerId: vi.fn(),
 }));
 
@@ -101,30 +100,6 @@ describe("/api/datasets/[datasetId]", () => {
       ownerId: "supabase-user",
       status: "failed",
       error: "bad csv",
-    });
-  });
-
-  it("updates status for the bypass owner", async () => {
-    getCurrentOwnerIdMock.mockResolvedValue(BYPASS_OWNER_ID);
-    updateDatasetStatusMock.mockResolvedValue({
-      ...dataset,
-      status: "ready",
-    });
-
-    const response = await PATCH(
-      new Request("http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001", {
-        method: "PATCH",
-        body: JSON.stringify({ status: "ready" }),
-      }),
-      context,
-    );
-
-    expect(response.status).toBe(200);
-    expect(updateDatasetStatusMock).toHaveBeenCalledWith({
-      datasetId: dataset.id,
-      ownerId: BYPASS_OWNER_ID,
-      status: "ready",
-      error: undefined,
     });
   });
 
