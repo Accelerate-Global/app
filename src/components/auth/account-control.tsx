@@ -1,10 +1,8 @@
 "use client";
 
-import { LogOutIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { CurrentIdentity } from "@/lib/auth";
 
@@ -24,17 +22,22 @@ export function AccountControl({ identity }: AccountControlProps) {
   }
 
   return (
-    <div className="flex flex-wrap items-center justify-end gap-2">
-      {identity.isDatasetAdmin ? <Badge>Admin</Badge> : null}
-      <Badge variant="outline">{identity.email ?? "Supabase user"}</Badge>
+    <div className="flex items-center gap-4">
+      <div className="hidden min-w-0 text-right sm:block">
+        <p className="text-[0.68rem] font-black uppercase tracking-[0.16em] text-foreground/55">
+          {identity.isDatasetAdmin ? "Admin Access" : "Viewer Access"}
+        </p>
+        <p className="truncate text-sm font-semibold text-foreground">
+          {identity.email ?? "Supabase user"}
+        </p>
+      </div>
       <Button
         type="button"
         variant="outline"
-        size="sm"
+        className="h-14 rounded-[1.2rem] border-[3px] border-primary bg-transparent px-6 text-sm font-black uppercase tracking-[0.08em] text-primary shadow-none hover:bg-accent/45"
         onClick={signOut}
         disabled={isSigningOut}
       >
-        <LogOutIcon />
         Sign out
       </Button>
     </div>

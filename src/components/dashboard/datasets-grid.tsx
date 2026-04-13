@@ -16,7 +16,6 @@ import { DataGrid, DataGridContainer } from "@/components/reui/data-grid/data-gr
 import { DataGridColumnHeader } from "@/components/reui/data-grid/data-grid-column-header";
 import { DataGridScrollArea } from "@/components/reui/data-grid/data-grid-scroll-area";
 import { DataGridTableVirtual } from "@/components/reui/data-grid/data-grid-table-virtual";
-import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { DatasetSummary } from "@/lib/api-types";
@@ -47,7 +46,6 @@ function datasetMatchesSearch(dataset: DatasetSummary, value: unknown) {
   return [
     dataset.fileName,
     String(dataset.rowCount),
-    String(dataset.columns.length),
     formatDate(dataset.createdAt),
   ].some((item) => item.toLowerCase().includes(query));
 }
@@ -71,7 +69,7 @@ export function DatasetsGrid({
       {
         accessorKey: "fileName",
         id: "fileName",
-        header: ({ column }) => <DataGridColumnHeader title="File" column={column} />,
+        header: ({ column }) => <DataGridColumnHeader title="Name" column={column} />,
         cell: ({ row }) => (
           <div className="flex min-w-0 items-center gap-3">
             <FileTextIcon className="size-4 shrink-0 text-muted-foreground" />
@@ -93,7 +91,7 @@ export function DatasetsGrid({
             </div>
           </div>
         ),
-        meta: { headerTitle: "File" },
+        meta: { headerTitle: "Name" },
         size: 360,
         enableSorting: true,
         enableHiding: false,
@@ -102,28 +100,15 @@ export function DatasetsGrid({
         accessorKey: "rowCount",
         id: "rowCount",
         header: ({ column }) => (
-          <DataGridColumnHeader title="Rows" column={column} />
+          <DataGridColumnHeader title="People Groups" column={column} />
         ),
         cell: ({ row }) => (
           <span className="tabular-nums">
             {row.original.rowCount.toLocaleString()}
           </span>
         ),
-        meta: { headerTitle: "Rows" },
+        meta: { headerTitle: "People Groups" },
         size: 110,
-        enableSorting: true,
-      },
-      {
-        id: "columnCount",
-        accessorFn: (row) => row.columns.length,
-        header: ({ column }) => (
-          <DataGridColumnHeader title="Columns" column={column} />
-        ),
-        cell: ({ row }) => (
-          <span className="tabular-nums">{row.original.columns.length}</span>
-        ),
-        meta: { headerTitle: "Columns" },
-        size: 120,
         enableSorting: true,
       },
       {
@@ -205,20 +190,15 @@ export function DatasetsGrid({
     getFilteredRowModel: getFilteredRowModel(),
   });
 
-  const filteredCount = table.getFilteredRowModel().rows.length;
-
   return (
-    <section className="space-y-3">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+    <section id="datasets" className="space-y-3">
+      <div>
         <div>
           <h2 className="text-lg font-medium">Datasets</h2>
           <p className="text-sm text-muted-foreground">
             Open a saved CSV to filter, sort, and scroll rows.
           </p>
         </div>
-        <Badge variant="secondary">
-          {filteredCount} of {datasets.length} saved
-        </Badge>
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

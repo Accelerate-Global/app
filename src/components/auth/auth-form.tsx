@@ -96,9 +96,11 @@ export function AuthForm({ mode, message }: AuthFormProps) {
   }
 
   return (
-    <Card className="w-full max-w-md">
+    <Card className="w-full max-w-md border-[rgb(38_37_49_/_0.12)] bg-card shadow-[0_24px_70px_-36px_rgba(38,37,49,0.42)]">
       <CardHeader>
-        <CardTitle>{isSignIn ? "Sign in" : "Create account"}</CardTitle>
+        <CardTitle className="text-2xl font-semibold tracking-[-0.03em]">
+          {isSignIn ? "Sign in" : "Create account"}
+        </CardTitle>
         <CardDescription>
           {isSignIn
             ? "Use your Supabase account to open the dataset viewer."
