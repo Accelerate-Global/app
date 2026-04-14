@@ -10,6 +10,7 @@ export async function GET(request: NextRequest) {
   const tokenHash = searchParams.get("token_hash");
   const type = searchParams.get("type") as EmailOtpType | null;
   const next = searchParams.get("next") ?? "/dashboard";
+  const isRecoveryFlow = type === "recovery" || next.startsWith("/reset-password");
 
   if (hasSupabaseConfig()) {
     const supabase = await createSupabaseServerClient();
@@ -35,6 +36,11 @@ export async function GET(request: NextRequest) {
   }
 
   return NextResponse.redirect(
-    new URL("/?message=Confirmation link could not be verified.", origin),
+    new URL(
+      isRecoveryFlow
+        ? "/forgot-password?message=Recovery link could not be verified."
+        : "/?message=Confirmation link could not be verified.",
+      origin,
+    ),
   );
 }
