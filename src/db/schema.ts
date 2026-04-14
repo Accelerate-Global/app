@@ -64,6 +64,46 @@ export const datasetRows = pgTable(
   ],
 );
 
+export const filterRegions = pgTable(
+  "filter_regions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    name: text("name").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("filter_regions_name_lower_idx").on(
+      sql`lower(btrim(${table.name}))`,
+    ),
+  ],
+);
+
+export const filterRegionCountries = pgTable(
+  "filter_region_countries",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    regionId: uuid("region_id")
+      .notNull()
+      .references(() => filterRegions.id, { onDelete: "cascade" }),
+    countryName: text("country_name").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("filter_region_countries_region_idx").on(table.regionId),
+    uniqueIndex("filter_region_countries_region_country_lower_idx").on(
+      table.regionId,
+      sql`lower(btrim(${table.countryName}))`,
+    ),
+  ],
+);
+
 export const signupEmailAllowlist = pgTable("signup_email_allowlist", {
   email: text("email").primaryKey(),
   note: text("note"),

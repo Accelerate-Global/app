@@ -12,6 +12,14 @@ export type DatasetTag = {
   color: string;
 };
 
+export type FilterRegion = {
+  id: string;
+  name: string;
+  countries: string[];
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type DatasetSummary = {
   id: string;
   sortOrder: number;
@@ -46,4 +54,16 @@ export type DatasetUploadAuthorizationResponse = {
   bucket: string;
   path: string;
   token: string;
+};
+
+export type FilterRegionsResponse = {
+  regions: FilterRegion[];
+};
+
+export type FilterRegionResponse = {
+  region: FilterRegion;
+};
+
+export type FilterRegionCountryOptionsResponse = {
+  countries: string[];
 };

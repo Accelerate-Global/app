@@ -15,6 +15,10 @@ import { DataGridScrollArea } from "@/components/reui/data-grid/data-grid-scroll
 import { DataGridTableVirtual } from "@/components/reui/data-grid/data-grid-table-virtual";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import type { DatasetRowsResponse, DatasetSummary } from "@/lib/api-types";
+import {
+  filterDatasetRowsByRegion,
+  type DatasetRegionFilterState,
+} from "@/lib/dataset-region-filtering";
 
 const ROW_HEIGHT_ESTIMATE = 40;
 const ROW_OVERSCAN = 60;
@@ -23,6 +27,7 @@ type DatasetRow = DatasetRowsResponse["rows"][number];
 
 type DatasetTableProps = {
   dataset: DatasetSummary;
+  regionFilter?: DatasetRegionFilterState;
 };
 
 function getCellValue(row: DatasetRow, key: string) {
@@ -50,12 +55,16 @@ async function fetchAllRows(input: {
   return (await response.json()) as DatasetRowsResponse;
 }
 
-export function DatasetTable({ dataset }: DatasetTableProps) {
+export function DatasetTable({ dataset, regionFilter }: DatasetTableProps) {
   const [rows, setRows] = useState<DatasetRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sorting, setSorting] = useState<SortingState>([]);
   const loadMessage = "Loading people groups...";
+  const filteredRows = useMemo(
+    () => filterDatasetRowsByRegion(rows, regionFilter),
+    [rows, regionFilter],
+  );
 
   const columns = useMemo<ColumnDef<DatasetRow>[]>(
     () => [
@@ -97,7 +106,7 @@ export function DatasetTable({ dataset }: DatasetTableProps) {
   );
 
   const table = useReactTable({
-    data: rows,
+    data: filteredRows,
     columns,
     getRowId: (row) => row.id,
     state: {
@@ -175,7 +184,7 @@ export function DatasetTable({ dataset }: DatasetTableProps) {
 
       <DataGrid
         table={table}
-        recordCount={rows.length}
+        recordCount={filteredRows.length}
         isLoading={isLoading}
         loadingMessage={loadMessage}
         emptyMessage={

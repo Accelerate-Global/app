@@ -2,13 +2,13 @@ import { ChevronLeftIcon } from "lucide-react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
-import { DatasetTable } from "@/components/dashboard/dataset-table";
-import { DatasetViewSwitchGrid } from "@/components/dashboard/dataset-view-switch-grid";
+import { DatasetDetailClient } from "@/components/dashboard/dataset-detail-client";
 import { SiteHeader } from "@/components/layout/site-header";
 import { buttonVariants } from "@/components/ui/button";
 import { getCurrentIdentity } from "@/lib/auth";
 import { getDataset } from "@/lib/datasets";
 import { getDatasetViewOption } from "@/lib/dataset-view-options";
+import { listFilterRegions } from "@/lib/filter-settings";
 import { cn } from "@/lib/utils";
 
 type DatasetPageProps = {
@@ -31,7 +31,10 @@ export default async function DatasetPage({ params }: DatasetPageProps) {
     notFound();
   }
 
-  const headerDescription = getDatasetViewOption(dataset.fileName)?.description;
+  const [regions, headerDescription] = await Promise.all([
+    listFilterRegions(),
+    Promise.resolve(getDatasetViewOption(dataset.fileName)?.description),
+  ]);
 
   return (
     <main className="min-h-svh bg-background">
@@ -57,8 +60,7 @@ export default async function DatasetPage({ params }: DatasetPageProps) {
             </p>
           ) : null}
         </section>
-        <DatasetViewSwitchGrid />
-        <DatasetTable dataset={dataset} />
+        <DatasetDetailClient dataset={dataset} regions={regions} />
       </div>
     </main>
   );

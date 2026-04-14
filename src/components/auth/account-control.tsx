@@ -2,6 +2,7 @@
 
 import {
   ChevronDownIcon,
+  SlidersHorizontalIcon,
   LayoutDashboardIcon,
   LogOutIcon,
   MoonIcon,
@@ -108,10 +109,16 @@ export function AccountControl({ identity }: AccountControlProps) {
             Dashboard
           </DropdownMenuItem>
           {identity.isDatasetAdmin ? (
-            <DropdownMenuItem onClick={() => navigateTo("/dashboard/upload")}>
-              <UploadIcon aria-hidden="true" />
-              Upload
-            </DropdownMenuItem>
+            <>
+              <DropdownMenuItem onClick={() => navigateTo("/dashboard/filter-settings")}>
+                <SlidersHorizontalIcon aria-hidden="true" />
+                Filter Settings
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigateTo("/dashboard/upload")}>
+                <UploadIcon aria-hidden="true" />
+                Upload
+              </DropdownMenuItem>
+            </>
           ) : null}
           <DropdownMenuItem onClick={toggleTheme}>
             {theme === "dark" ? (
