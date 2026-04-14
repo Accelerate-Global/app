@@ -24,7 +24,7 @@ type DatasetsGridProps = {
 };
 
 const DATASET_GRID_TEMPLATE_COLUMNS =
-  "minmax(18rem,1fr) minmax(10rem,max-content) 22rem";
+  "minmax(18rem,1fr) minmax(12rem,0.8fr) minmax(10rem,max-content) 22rem";
 
 function datasetMatchesSearch(dataset: DatasetSummary, value: unknown) {
   const query = String(value ?? "").trim().toLowerCase();
@@ -118,10 +118,11 @@ function DatasetListRow({
           )
         ) : null}
         <FileTextIcon className="size-4 shrink-0 text-muted-foreground" />
-        <div className="min-w-0 space-y-2">
-          <span className="block truncate font-medium">{dataset.fileName}</span>
-          <DatasetTagList tags={dataset.tags} />
-        </div>
+        <span className="block truncate font-medium">{dataset.fileName}</span>
+      </div>
+
+      <div className="min-w-0">
+        <DatasetTagList tags={dataset.tags} />
       </div>
 
       <span className="justify-self-center text-center tabular-nums">
@@ -145,6 +146,7 @@ function DatasetListHeader() {
       style={{ gridTemplateColumns: DATASET_GRID_TEMPLATE_COLUMNS }}
     >
       <span>Name</span>
+      <span>Tags</span>
       <span className="justify-self-center text-center">People Groups</span>
       <span className="text-right" />
     </div>
