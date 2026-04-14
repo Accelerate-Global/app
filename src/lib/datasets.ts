@@ -332,3 +332,29 @@ export async function getDatasetRows(input: {
     pageCount: Math.max(1, Math.ceil(totalRows / pageSize)),
   };
 }
+
+export async function getAllDatasetRows(input: { datasetId: string }) {
+  const dataset = await getDataset(input.datasetId);
+
+  if (!dataset) {
+    return null;
+  }
+
+  const rows = await getDb()
+    .select({
+      id: datasetRows.id,
+      rowIndex: datasetRows.rowIndex,
+      data: datasetRows.data,
+    })
+    .from(datasetRows)
+    .where(eq(datasetRows.datasetId, input.datasetId))
+    .orderBy(asc(datasetRows.rowIndex));
+
+  return {
+    rows,
+    page: 1,
+    pageSize: rows.length,
+    totalRows: rows.length,
+    pageCount: 1,
+  };
+}

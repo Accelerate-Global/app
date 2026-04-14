@@ -1,7 +1,7 @@
 "use client";
 
 import { CheckIcon, ChevronDownIcon, PlusIcon, XIcon } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -26,12 +26,15 @@ import type { DatasetSummary, DatasetTag } from "@/lib/api-types";
 import {
   DATASET_TAG_COLOR_OPTIONS,
   DEFAULT_DATASET_TAG_COLOR,
+  getDatasetTagIdentity,
+  getDatasetTagStyle,
   normalizeDatasetTagColor,
   normalizeDatasetTags,
 } from "@/lib/dataset-tags";
 
 type DatasetEditDrawerProps = {
   dataset: DatasetSummary;
+  availableTags: DatasetTag[];
   open: boolean;
   isSaving: boolean;
   onOpenChange: (open: boolean) => void;
@@ -230,6 +233,7 @@ function NewTagComposer({
 
 export function DatasetEditDrawer({
   dataset,
+  availableTags,
   open,
   isSaving,
   onOpenChange,
@@ -240,6 +244,7 @@ export function DatasetEditDrawer({
   const [newTagLabel, setNewTagLabel] = useState("");
   const [newTagColor, setNewTagColor] = useState(DEFAULT_DATASET_TAG_COLOR);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const nextTagIdRef = useRef(0);
 
   const trimmedFileName = fileName.trim();
   const normalizedTags = useMemo(() => normalizeDatasetTags(tags), [tags]);
@@ -258,10 +263,26 @@ export function DatasetEditDrawer({
     () => formatUploadedAt(dataset.createdAt),
     [dataset.createdAt],
   );
+  const currentTagIdentities = useMemo(
+    () => new Set(normalizedTags.map((tag) => getDatasetTagIdentity(tag))),
+    [normalizedTags],
+  );
+  const reusableTags = useMemo(
+    () =>
+      availableTags.filter(
+        (tag) => !currentTagIdentities.has(getDatasetTagIdentity(tag)),
+      ),
+    [availableTags, currentTagIdentities],
+  );
 
   function createTagId() {
-    return globalThis.crypto?.randomUUID?.() ??
-      `tag-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    if (globalThis.crypto?.randomUUID) {
+      return globalThis.crypto.randomUUID();
+    }
+
+    const nextId = nextTagIdRef.current;
+    nextTagIdRef.current += 1;
+    return `tag-${dataset.id}-${nextId}`;
   }
 
   function handleAddTag() {
@@ -303,6 +324,27 @@ export function DatasetEditDrawer({
 
   function handleRemoveTag(tagId: string) {
     setTags((current) => current.filter((tag) => tag.id !== tagId));
+  }
+
+  function handleAddExistingTag(tag: DatasetTag) {
+    const normalizedTag = {
+      ...tag,
+      color: normalizeDatasetTagColor(tag.color),
+    };
+
+    if (currentTagIdentities.has(getDatasetTagIdentity(normalizedTag))) {
+      return;
+    }
+
+    setTags((current) => [
+      ...current,
+      {
+        id: createTagId(),
+        label: normalizedTag.label,
+        color: normalizedTag.color,
+      },
+    ]);
+    setErrorMessage(null);
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -396,6 +438,33 @@ export function DatasetEditDrawer({
                 onAdd={handleAddTag}
               />
 
+              {reusableTags.length > 0 ? (
+                <div className="space-y-3 rounded-2xl border border-border bg-card px-4 py-4">
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium text-foreground">
+                      Saved tags
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Reuse tags that already exist on other datasets.
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {reusableTags.map((tag) => (
+                      <button
+                        key={getDatasetTagIdentity(tag)}
+                        type="button"
+                        disabled={isSaving}
+                        className="inline-flex items-center rounded-full border px-2.5 py-1 text-[0.72rem] font-medium leading-none transition-opacity hover:opacity-75 disabled:cursor-not-allowed disabled:opacity-45"
+                        style={getDatasetTagStyle(tag.color)}
+                        onClick={() => handleAddExistingTag(tag)}
+                      >
+                        {tag.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
               {tags.length > 0 ? (
                 <div className="space-y-3">
                   {tags.map((tag) => (
@@ -413,6 +482,7 @@ export function DatasetEditDrawer({
                   No tags added yet.
                 </div>
               )}
+
             </section>
 
             <section className="space-y-2">

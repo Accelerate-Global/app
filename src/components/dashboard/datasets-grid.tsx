@@ -50,7 +50,7 @@ function DatasetActions({
   onEditDataset?: (datasetId: string) => void;
 }) {
   return (
-    <div className="flex items-center justify-end gap-2">
+    <div className="flex w-full items-center justify-end gap-2 text-right">
       <Link
         className={cn(buttonVariants({ variant: "outline", size: "sm" }), "h-7")}
         href={`/dashboard/datasets/${dataset.id}`}
@@ -121,11 +121,11 @@ function DatasetListRow({
         <span className="block truncate font-medium">{dataset.fileName}</span>
       </div>
 
-      <div className="min-w-0">
-        <DatasetTagList tags={dataset.tags} />
+      <div className="flex min-w-0 w-full justify-end text-right">
+        <DatasetTagList tags={dataset.tags} className="justify-end" />
       </div>
 
-      <span className="justify-self-center text-center tabular-nums">
+      <span className="block w-full text-right tabular-nums">
         {dataset.rowCount.toLocaleString()}
       </span>
 
@@ -146,9 +146,9 @@ function DatasetListHeader() {
       style={{ gridTemplateColumns: DATASET_GRID_TEMPLATE_COLUMNS }}
     >
       <span>Name</span>
-      <span>Tags</span>
-      <span className="justify-self-center text-center">People Groups</span>
-      <span className="text-right" />
+      <span className="block w-full text-right">Tags</span>
+      <span className="block w-full text-right">People Groups</span>
+      <span className="block w-full text-right" />
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { useState } from "react";
 import { DatasetEditDrawer } from "@/components/dashboard/dataset-edit-drawer";
 import { DatasetsGrid } from "@/components/dashboard/datasets-grid";
 import type { DatasetSummary, DatasetTag } from "@/lib/api-types";
+import { getReusableDatasetTags } from "@/lib/dataset-tags";
 
 type DashboardClientProps = {
   initialDatasets: DatasetSummary[];
@@ -83,6 +84,9 @@ export function DashboardClient({
     editingDatasetId === null
       ? null
       : datasets.find((dataset) => dataset.id === editingDatasetId) ?? null;
+  const availableTags = getReusableDatasetTags(
+    datasets.flatMap((dataset) => dataset.tags),
+  );
 
   async function handleSaveDataset(input: {
     datasetId: string;
@@ -175,6 +179,7 @@ export function DashboardClient({
         <DatasetEditDrawer
           key={`${editingDataset.id}:${editingDataset.updatedAt}`}
           dataset={editingDataset}
+          availableTags={availableTags}
           isSaving={editingDataset?.id === updatingDatasetId}
           open
           onOpenChange={(nextOpen) => {
