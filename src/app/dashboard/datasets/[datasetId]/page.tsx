@@ -8,6 +8,7 @@ import { SiteHeader } from "@/components/layout/site-header";
 import { buttonVariants } from "@/components/ui/button";
 import { getCurrentIdentity } from "@/lib/auth";
 import { getDataset } from "@/lib/datasets";
+import { getDatasetViewOption } from "@/lib/dataset-view-options";
 import { cn } from "@/lib/utils";
 
 type DatasetPageProps = {
@@ -30,6 +31,8 @@ export default async function DatasetPage({ params }: DatasetPageProps) {
     notFound();
   }
 
+  const headerDescription = getDatasetViewOption(dataset.fileName)?.description;
+
   return (
     <main className="min-h-svh bg-background">
       <SiteHeader identity={identity} />
@@ -48,6 +51,11 @@ export default async function DatasetPage({ params }: DatasetPageProps) {
           <h1 className="truncate text-4xl font-semibold tracking-[-0.04em] sm:text-[3rem]">
             {dataset.fileName}
           </h1>
+          {headerDescription ? (
+            <p className="max-w-3xl text-base leading-7 text-muted-foreground sm:text-lg">
+              {headerDescription}
+            </p>
+          ) : null}
         </section>
         <DatasetViewSwitchGrid />
         <DatasetTable dataset={dataset} />
