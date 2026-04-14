@@ -31,6 +31,7 @@ const orderedDatasets = [
     blobUrl:
       "https://example.supabase.co/storage/v1/object/datasets/datasets/csv/customers.csv",
     blobPath: "datasets/csv/customers.csv",
+    isPrimary: false,
     status: "ready" as const,
     rowCount: 10,
     sizeBytes: 100,
@@ -47,6 +48,7 @@ const orderedDatasets = [
     blobUrl:
       "https://example.supabase.co/storage/v1/object/datasets/datasets/csv/teams.csv",
     blobPath: "datasets/csv/teams.csv",
+    isPrimary: false,
     status: "ready" as const,
     rowCount: 7,
     sizeBytes: 80,

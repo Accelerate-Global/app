@@ -1,4 +1,14 @@
-import { and, asc, count, desc, eq, inArray, sql, type SQL } from "drizzle-orm";
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  inArray,
+  ne,
+  sql,
+  type SQL,
+} from "drizzle-orm";
 
 import { getDb } from "@/db";
 import { datasetRows, datasets } from "@/db/schema";
@@ -17,6 +27,7 @@ function toDatasetSummary(row: typeof datasets.$inferSelect): DatasetSummary {
     fileName: row.fileName,
     blobUrl: row.blobUrl,
     blobPath: row.blobPath,
+    isPrimary: row.isPrimary,
     status: row.status,
     rowCount: row.rowCount,
     sizeBytes: row.sizeBytes,
@@ -42,6 +53,16 @@ export async function getDataset(datasetId: string) {
     .select()
     .from(datasets)
     .where(eq(datasets.id, datasetId))
+    .limit(1);
+
+  return dataset ? toDatasetSummary(dataset) : null;
+}
+
+export async function getDefaultDataset() {
+  const [dataset] = await getDb()
+    .select()
+    .from(datasets)
+    .orderBy(desc(datasets.isPrimary), asc(datasets.sortOrder), desc(datasets.createdAt))
     .limit(1);
 
   return dataset ? toDatasetSummary(dataset) : null;
@@ -105,26 +126,43 @@ export async function updateDatasetDetails(input: {
   datasetId: string;
   fileName?: string;
   tags?: DatasetTag[];
+  isPrimary?: boolean;
 }) {
-  const updates: Partial<typeof datasets.$inferInsert> = {
-    updatedAt: new Date(),
-  };
+  return getDb().transaction(async (tx) => {
+    const updates: Partial<typeof datasets.$inferInsert> = {
+      updatedAt: new Date(),
+    };
 
-  if (input.fileName !== undefined) {
-    updates.fileName = input.fileName;
-  }
+    if (input.fileName !== undefined) {
+      updates.fileName = input.fileName;
+    }
 
-  if (input.tags !== undefined) {
-    updates.tags = input.tags;
-  }
+    if (input.tags !== undefined) {
+      updates.tags = input.tags;
+    }
 
-  const [dataset] = await getDb()
-    .update(datasets)
-    .set(updates)
-    .where(eq(datasets.id, input.datasetId))
-    .returning();
+    if (input.isPrimary !== undefined) {
+      updates.isPrimary = input.isPrimary;
+    }
 
-  return dataset ? toDatasetSummary(dataset) : null;
+    if (input.isPrimary) {
+      await tx
+        .update(datasets)
+        .set({
+          isPrimary: false,
+          updatedAt: updates.updatedAt,
+        })
+        .where(and(eq(datasets.isPrimary, true), ne(datasets.id, input.datasetId)));
+    }
+
+    const [dataset] = await tx
+      .update(datasets)
+      .set(updates)
+      .where(eq(datasets.id, input.datasetId))
+      .returning();
+
+    return dataset ? toDatasetSummary(dataset) : null;
+  });
 }
 
 export async function replaceDatasetContents(input: {

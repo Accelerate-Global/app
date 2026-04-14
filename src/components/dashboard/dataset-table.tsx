@@ -115,8 +115,6 @@ export function DatasetTable({ dataset }: DatasetTableProps) {
     getSortedRowModel: getSortedRowModel(),
   });
 
-  const shownPeopleGroupCount = rows.length;
-
   useEffect(() => {
     const controller = new AbortController();
 
@@ -161,12 +159,6 @@ export function DatasetTable({ dataset }: DatasetTableProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-sm text-muted-foreground">
-          {shownPeopleGroupCount.toLocaleString()} people groups shown
-        </span>
-      </div>
-
       {dataset.error ? (
         <Alert variant="destructive">
           <AlertTitle>Dataset error</AlertTitle>

@@ -18,6 +18,7 @@ export type DatasetSummary = {
   fileName: string;
   blobUrl: string;
   blobPath: string;
+  isPrimary: boolean;
   status: DatasetStatus;
   rowCount: number;
   sizeBytes: number;

@@ -66,6 +66,7 @@ const dataset = {
   blobUrl:
     "https://example.supabase.co/storage/v1/object/datasets/datasets/csv/customers.csv",
   blobPath: "datasets/csv/customers.csv",
+  isPrimary: false,
   status: "ready" as const,
   rowCount: 10,
   sizeBytes: 100,
@@ -134,6 +135,7 @@ describe("/api/datasets/[datasetId]", () => {
     updateDatasetDetailsMock.mockResolvedValue({
       ...dataset,
       fileName: "renamed.csv",
+      isPrimary: true,
       tags: [
         {
           id: "tag-1",
@@ -148,6 +150,7 @@ describe("/api/datasets/[datasetId]", () => {
         method: "PATCH",
         body: JSON.stringify({
           fileName: "renamed.csv",
+          isPrimary: true,
           tags: [
             {
               id: "tag-1",
@@ -164,6 +167,7 @@ describe("/api/datasets/[datasetId]", () => {
     expect(updateDatasetDetailsMock).toHaveBeenCalledWith({
       datasetId: dataset.id,
       fileName: "renamed.csv",
+      isPrimary: true,
       tags: [
         {
           id: "tag-1",
@@ -173,6 +177,29 @@ describe("/api/datasets/[datasetId]", () => {
       ],
     });
     expect(updateDatasetStatusMock).not.toHaveBeenCalled();
+  });
+
+  it("updates the primary dataset flag for the configured admin", async () => {
+    updateDatasetDetailsMock.mockResolvedValue({
+      ...dataset,
+      isPrimary: true,
+    });
+
+    const response = await PATCH(
+      new Request("http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001", {
+        method: "PATCH",
+        body: JSON.stringify({ isPrimary: true }),
+      }),
+      context,
+    );
+
+    expect(response.status).toBe(200);
+    expect(updateDatasetDetailsMock).toHaveBeenCalledWith({
+      datasetId: dataset.id,
+      fileName: undefined,
+      tags: undefined,
+      isPrimary: true,
+    });
   });
 
   it("rejects dataset mutations for non-admin users", async () => {

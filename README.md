@@ -64,6 +64,9 @@ vercel env pull .env.local
 
 The app starts unauthenticated users at `/` and sends authenticated users to `/dashboard`.
 
+For branded Supabase auth emails and password reset links, use the runbook in
+`docs/auth-email-branding.md`.
+
 ## Signup Allowlist
 
 Only emails present in `public.signup_email_allowlist` can create accounts.

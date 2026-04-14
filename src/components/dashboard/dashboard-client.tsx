@@ -33,6 +33,7 @@ async function updateDatasetRecord(input: {
   datasetId: string;
   fileName: string;
   tags: DatasetTag[];
+  isPrimary: boolean;
 }) {
   const response = await fetch(`/api/datasets/${input.datasetId}`, {
     method: "PATCH",
@@ -40,6 +41,7 @@ async function updateDatasetRecord(input: {
     body: JSON.stringify({
       fileName: input.fileName,
       tags: input.tags,
+      isPrimary: input.isPrimary,
     }),
   });
 
@@ -92,6 +94,7 @@ export function DashboardClient({
     datasetId: string;
     fileName: string;
     tags: DatasetTag[];
+    isPrimary: boolean;
   }) {
     if (!canManageDatasets || updatingDatasetId !== null) {
       return;
@@ -100,12 +103,14 @@ export function DashboardClient({
     const dataset = datasets.find((item) => item.id === input.datasetId);
     const nextName = input.fileName.trim();
     const nextTags = input.tags;
+    const nextIsPrimary = input.isPrimary;
 
     if (
       !dataset ||
       !nextName ||
       (nextName === dataset.fileName &&
-        JSON.stringify(nextTags) === JSON.stringify(dataset.tags))
+        JSON.stringify(nextTags) === JSON.stringify(dataset.tags) &&
+        nextIsPrimary === dataset.isPrimary)
     ) {
       return;
     }
@@ -117,11 +122,16 @@ export function DashboardClient({
         datasetId: dataset.id,
         fileName: nextName,
         tags: nextTags,
+        isPrimary: nextIsPrimary,
       });
 
       setDatasets((current) =>
         current.map((item) =>
-          item.id === updatedDataset.id ? updatedDataset : item,
+          item.id === updatedDataset.id
+            ? updatedDataset
+            : updatedDataset.isPrimary
+              ? { ...item, isPrimary: false }
+              : item,
         ),
       );
     } catch (error) {

@@ -47,11 +47,15 @@ export const datasetMetadataPatchSchema = z
   .object({
     fileName: z.string().trim().min(1).max(255).optional(),
     tags: z.array(datasetTagSchema).max(24).optional(),
+    isPrimary: z.boolean().optional(),
   })
   .refine(
-    (value) => value.fileName !== undefined || value.tags !== undefined,
+    (value) =>
+      value.fileName !== undefined ||
+      value.tags !== undefined ||
+      value.isPrimary !== undefined,
     {
-      message: "A dataset update must include a name or tags.",
+      message: "A dataset update must include a name, tags, or primary flag.",
     },
   );
 

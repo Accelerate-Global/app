@@ -10,14 +10,14 @@ export function getSiteNavLinks(identity: CurrentIdentity | null): SiteNavLink[]
     if (identity.isDatasetAdmin) {
       return [
         { href: "/dashboard", label: "Dashboard" },
-        { href: "/dashboard", label: "Data" },
+        { href: "/dashboard/datasets", label: "Data" },
         { href: "/dashboard/upload", label: "Upload" },
       ];
     }
 
     return [
       { href: "/dashboard", label: "Dashboard" },
-      { href: "/dashboard", label: "Data" },
+      { href: "/dashboard/datasets", label: "Data" },
     ];
   }
 
