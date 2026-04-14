@@ -1,6 +1,29 @@
 import type { DatasetTag } from "@/lib/api-types";
 
-export const DEFAULT_DATASET_TAG_COLOR = "#8f9f6f";
+export const DATASET_TAG_COLOR_OPTIONS = [
+  {
+    label: "White",
+    color: "#f7f6ef",
+  },
+  {
+    label: "Purple",
+    color: "#262531",
+  },
+  {
+    label: "Yellow",
+    color: "#fcab2a",
+  },
+  {
+    label: "Sage",
+    color: "#cad3b8",
+  },
+  {
+    label: "Blue",
+    color: "#078bc9",
+  },
+] as const;
+
+export const DEFAULT_DATASET_TAG_COLOR = "#262531";
 
 function isHexColor(value: string) {
   return /^#[0-9a-f]{6}$/i.test(value);
@@ -45,12 +68,20 @@ function toRgba(value: string, alpha: number) {
   return `rgba(${color.red}, ${color.green}, ${color.blue}, ${alpha})`;
 }
 
+function getDatasetTagTextColor(value: string) {
+  const color = hexToRgb(value);
+  const brightness =
+    (color.red * 299 + color.green * 587 + color.blue * 114) / 1000;
+
+  return brightness > 170 ? "#262531" : value;
+}
+
 export function getDatasetTagStyle(color: string) {
   const normalizedColor = normalizeDatasetTagColor(color);
 
   return {
     borderColor: toRgba(normalizedColor, 0.34),
     backgroundColor: toRgba(normalizedColor, 0.14),
-    color: normalizedColor,
+    color: getDatasetTagTextColor(normalizedColor),
   };
 }

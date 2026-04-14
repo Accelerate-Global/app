@@ -17,6 +17,7 @@ import {
 import { Input } from "@/components/ui/input";
 import type { DatasetSummary, DatasetTag } from "@/lib/api-types";
 import {
+  DATASET_TAG_COLOR_OPTIONS,
   DEFAULT_DATASET_TAG_COLOR,
   normalizeDatasetTagColor,
   normalizeDatasetTags,
@@ -39,6 +40,53 @@ function formatUploadedAt(value: string) {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(value));
+}
+
+function DatasetTagColorSelector({
+  label,
+  value,
+  disabled,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  disabled: boolean;
+  onChange: (value: string) => void;
+}) {
+  const normalizedValue = normalizeDatasetTagColor(value);
+
+  return (
+    <div className="space-y-2">
+      <p className="text-sm font-medium text-foreground">{label}</p>
+      <div className="flex flex-wrap gap-2">
+        {DATASET_TAG_COLOR_OPTIONS.map((option) => {
+          const isSelected = normalizedValue === option.color;
+
+          return (
+            <button
+              key={option.color}
+              type="button"
+              disabled={disabled}
+              aria-label={`${option.label} ${option.color}`}
+              aria-pressed={isSelected}
+              className="inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-medium text-foreground transition-colors hover:bg-accent/35 disabled:cursor-not-allowed disabled:opacity-60"
+              style={{
+                borderColor: isSelected ? option.color : undefined,
+                backgroundColor: isSelected ? `${option.color}1f` : undefined,
+              }}
+              onClick={() => onChange(option.color)}
+            >
+              <span
+                className="size-3 rounded-full border border-border"
+                style={{ backgroundColor: option.color }}
+              />
+              <span>{option.label}</span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 export function DatasetEditDrawer({
@@ -126,7 +174,7 @@ export function DatasetEditDrawer({
       return;
     }
 
-    if (trimmedFileName === dataset.fileName) {
+    if (trimmedFileName === dataset.fileName && !hasTagChanges) {
       setErrorMessage(null);
       return;
     }
@@ -216,17 +264,6 @@ export function DatasetEditDrawer({
                     onChange={(event) => setNewTagLabel(event.target.value)}
                   />
                 </div>
-                <label className="space-y-2 text-sm font-medium text-foreground">
-                  <span>Color</span>
-                  <input
-                    type="color"
-                    value={newTagColor}
-                    disabled={isSaving}
-                    aria-label="New tag color"
-                    className="h-11 w-14 rounded-2xl border border-border bg-transparent p-1"
-                    onChange={(event) => setNewTagColor(event.target.value)}
-                  />
-                </label>
                 <Button
                   type="button"
                   variant="outline"
@@ -238,59 +275,82 @@ export function DatasetEditDrawer({
                 </Button>
               </div>
 
+              <DatasetTagColorSelector
+                label="Preset colors"
+                value={newTagColor}
+                disabled={isSaving}
+                onChange={setNewTagColor}
+              />
+
               {tags.length > 0 ? (
                 <div className="space-y-3">
                   {tags.map((tag) => (
-                    <div key={tag.id} className="flex items-end gap-3">
-                      <div className="min-w-0 flex-1 space-y-2">
-                        <label
-                          className="text-sm font-medium text-foreground"
-                          htmlFor={`dataset-tag-${tag.id}`}
-                        >
-                          Tag text
-                        </label>
-                        <Input
-                          id={`dataset-tag-${tag.id}`}
-                          value={tag.label}
+                    <div
+                      key={tag.id}
+                      className="space-y-3 rounded-2xl border border-border bg-card px-4 py-4"
+                    >
+                      <div className="flex items-end gap-3">
+                        <div className="min-w-0 flex-1 space-y-2">
+                          <label
+                            className="text-sm font-medium text-foreground"
+                            htmlFor={`dataset-tag-${tag.id}`}
+                          >
+                            Tag text
+                          </label>
+                          <Input
+                            id={`dataset-tag-${tag.id}`}
+                            value={tag.label}
+                            disabled={isSaving}
+                            onChange={(event) =>
+                              handleTagChange(tag.id, {
+                                label: event.target.value,
+                              })
+                            }
+                          />
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
                           disabled={isSaving}
-                          onChange={(event) =>
-                            handleTagChange(tag.id, {
-                              label: event.target.value,
-                            })
-                          }
+                          aria-label={`Remove ${tag.label}`}
+                          onClick={() => handleRemoveTag(tag.id)}
+                        >
+                          <XIcon />
+                        </Button>
+                      </div>
+
+                      <DatasetTagColorSelector
+                        label="Tag color"
+                        value={tag.color}
+                        disabled={isSaving}
+                        onChange={(value) =>
+                          handleTagChange(tag.id, {
+                            color: value,
+                          })
+                        }
+                      />
+
+                      <div className="rounded-2xl border border-border bg-background px-4 py-4">
+                        <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                          Preview
+                        </p>
+                        <DatasetTagList
+                          tags={[
+                            {
+                              ...tag,
+                              color: normalizeDatasetTagColor(tag.color),
+                            },
+                          ]}
+                          className="mt-3"
                         />
                       </div>
-                      <label className="space-y-2 text-sm font-medium text-foreground">
-                        <span>Color</span>
-                        <input
-                          type="color"
-                          value={tag.color}
-                          disabled={isSaving}
-                          aria-label={`Tag color for ${tag.label}`}
-                          className="h-11 w-14 rounded-2xl border border-border bg-transparent p-1"
-                          onChange={(event) =>
-                            handleTagChange(tag.id, {
-                              color: event.target.value,
-                            })
-                          }
-                        />
-                      </label>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="icon"
-                        disabled={isSaving}
-                        aria-label={`Remove ${tag.label}`}
-                        onClick={() => handleRemoveTag(tag.id)}
-                      >
-                        <XIcon />
-                      </Button>
                     </div>
                   ))}
 
                   <div className="rounded-2xl border border-border bg-card px-4 py-4">
                     <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
-                      Preview
+                      All tags
                     </p>
                     <DatasetTagList tags={normalizedTags} className="mt-3" />
                   </div>

@@ -24,7 +24,7 @@ type DatasetsGridProps = {
 };
 
 const DATASET_GRID_TEMPLATE_COLUMNS =
-  "minmax(18rem,1.7fr) max-content auto";
+  "minmax(18rem,1fr) minmax(10rem,max-content) 22rem";
 
 function datasetMatchesSearch(dataset: DatasetSummary, value: unknown) {
   const query = String(value ?? "").trim().toLowerCase();
