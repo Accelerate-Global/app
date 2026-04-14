@@ -14,10 +14,38 @@ function normalizeCountryName(value: string | null | undefined) {
   return value?.trim() ?? "";
 }
 
+function normalizeDatasetColumnKey(value: string | null | undefined) {
+  return value
+    ?.trim()
+    .toLowerCase()
+    .replace(/\s+/g, "_")
+    .replace(/[^a-z0-9_]/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_|_$/g, "") ?? "";
+}
+
+function isRegionDatasetColumnKey(value: string | null | undefined) {
+  return normalizeDatasetColumnKey(value) === REGION_DATASET_COLUMN_KEY;
+}
+
+function getRegionDatasetValue(row: DatasetRow) {
+  for (const [key, value] of Object.entries(row.data)) {
+    if (isRegionDatasetColumnKey(key)) {
+      return value;
+    }
+  }
+
+  return "";
+}
+
 export function datasetSupportsRegionFiltering(
   dataset: Pick<DatasetSummary, "columns">,
 ) {
-  return dataset.columns.some((column) => column.key === REGION_DATASET_COLUMN_KEY);
+  return dataset.columns.some(
+    (column) =>
+      isRegionDatasetColumnKey(column.key) ||
+      isRegionDatasetColumnKey(column.label),
+  );
 }
 
 export function getEnabledRegionCountryNames(
@@ -67,9 +95,7 @@ export function filterDatasetRowsByRegion(
   );
 
   return rows.filter((row) => {
-    const countryName = normalizeCountryName(
-      row.data[REGION_DATASET_COLUMN_KEY],
-    );
+    const countryName = normalizeCountryName(getRegionDatasetValue(row));
 
     if (!countryName) {
       return false;

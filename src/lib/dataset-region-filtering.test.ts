@@ -1,21 +1,25 @@
 import { describe, expect, it } from "vitest";
 
-import type { DatasetRowsResponse } from "@/lib/api-types";
-import { filterDatasetRowsByRegion, getEnabledRegionCountryNames } from "./dataset-region-filtering";
+import type { DatasetRowsResponse, DatasetSummary } from "@/lib/api-types";
+import {
+  datasetSupportsRegionFiltering,
+  filterDatasetRowsByRegion,
+  getEnabledRegionCountryNames,
+} from "./dataset-region-filtering";
 
 const rows: DatasetRowsResponse["rows"] = [
   {
     id: "row-1",
     rowIndex: 0,
     data: {
-      Geo_Country_Name: "India",
+      geo_country_name: "India",
     },
   },
   {
     id: "row-2",
     rowIndex: 1,
     data: {
-      Geo_Country_Name: "Nepal",
+      geo_country_name: "Nepal",
     },
   },
   {
@@ -27,7 +31,34 @@ const rows: DatasetRowsResponse["rows"] = [
   },
 ];
 
+const dataset = {
+  id: "dataset-1",
+  sortOrder: 0,
+  fileName: "Global",
+  blobUrl: "https://example.com/dataset.csv",
+  blobPath: "datasets/global.csv",
+  isPrimary: true,
+  status: "ready",
+  rowCount: 2,
+  sizeBytes: 512,
+  columns: [
+    {
+      key: "geo_country_name",
+      label: "Geo_Country_Name",
+      sourceIndex: 0,
+    },
+  ],
+  tags: [],
+  error: null,
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+} satisfies DatasetSummary;
+
 describe("dataset-region-filtering", () => {
+  it("detects support when the dataset stores normalized column keys", () => {
+    expect(datasetSupportsRegionFiltering(dataset)).toBe(true);
+  });
+
   it("builds the union of selected region countries", () => {
     const countries = getEnabledRegionCountryNames(
       [
@@ -65,6 +96,29 @@ describe("dataset-region-filtering", () => {
 
     expect(filteredRows).toHaveLength(1);
     expect(filteredRows[0]?.id).toBe("row-2");
+  });
+
+  it("still reads legacy row keys that use the raw header casing", () => {
+    const filteredRows = filterDatasetRowsByRegion(
+      [
+        {
+          id: "row-legacy",
+          rowIndex: 0,
+          data: {
+            Geo_Country_Name: "India",
+          },
+        },
+      ],
+      {
+        enabled: true,
+        isSupported: true,
+        hasConfiguredRegions: true,
+        enabledCountryNames: ["India"],
+      },
+    );
+
+    expect(filteredRows).toHaveLength(1);
+    expect(filteredRows[0]?.id).toBe("row-legacy");
   });
 
   it("returns no rows when region filtering is on with no selectors enabled", () => {
