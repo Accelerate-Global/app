@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  GlobeIcon,
   MapIcon,
   MicroscopeIcon,
   UserRoundIcon,
@@ -18,40 +17,20 @@ import {
   FieldTitle,
 } from "@/components/ui/field";
 import { Switch } from "@/components/ui/switch";
+import { DATASET_VIEW_OPTIONS } from "@/lib/dataset-view-options";
 
-const VIEW_OPTIONS = [
-  {
-    id: "global",
-    title: "Global",
-    description:
-      "Contains all unique people groups from IMB, Joshua Project, Accelerate, Etnopedia, and World Christian Database.",
-    defaultChecked: true,
-    icon: GlobeIcon,
-  },
-  {
-    id: "region",
-    title: "Region",
-    description: "A grouping of people groups based on geography.",
-    defaultChecked: false,
-    icon: MapIcon,
-  },
-  {
-    id: "watchlist",
-    title: "Watchlist",
-    description:
-      "People groups unengaged or would be unengaged if the current mission work stopped today.",
-    defaultChecked: false,
-    icon: MicroscopeIcon,
-  },
-  {
-    id: "uupg",
-    title: "UUPG",
-    description: "People groups who have no record of engagement among them.",
-    defaultChecked: false,
-    icon: UserRoundIcon,
-  },
-] as const satisfies ReadonlyArray<{
-  id: string;
+const VIEW_OPTIONS = DATASET_VIEW_OPTIONS.filter((option) => option.id !== "global").map(
+  (option) => ({
+    ...option,
+    icon:
+      option.id === "region"
+        ? MapIcon
+        : option.id === "watchlist"
+          ? MicroscopeIcon
+          : UserRoundIcon,
+  }),
+ ) satisfies ReadonlyArray<{
+  id: "region" | "watchlist" | "uupg";
   title: string;
   description: string;
   defaultChecked: boolean;
@@ -72,7 +51,7 @@ export function DatasetViewSwitchGrid() {
   const [viewStates, setViewStates] = useState(INITIAL_VIEW_STATES);
 
   return (
-    <FieldGroup className="grid w-full gap-4 md:grid-cols-2 xl:grid-cols-4">
+    <FieldGroup className="grid w-full gap-4 md:grid-cols-2 xl:grid-cols-3">
       {VIEW_OPTIONS.map((option) => {
         const Icon = option.icon;
 
