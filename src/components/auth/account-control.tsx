@@ -2,6 +2,7 @@
 
 import {
   ChevronDownIcon,
+  LayoutDashboardIcon,
   LogOutIcon,
   MoonIcon,
   UploadIcon,
@@ -68,17 +69,17 @@ export function AccountControl({ identity }: AccountControlProps) {
         render={
           <button
             type="button"
-            className="flex h-14 min-w-[220px] items-center gap-3 rounded-[1.25rem] border border-border bg-background px-4 text-left shadow-none transition-colors hover:bg-accent/35 sm:min-w-[260px]"
+            className="inline-flex h-14 w-fit max-w-full items-center gap-3 rounded-[1.25rem] border border-border bg-background px-4 text-left shadow-none transition-colors hover:bg-accent/35"
           />
         }
       >
         <Avatar size="sm" className="size-7">
           <AvatarFallback>{initials}</AvatarFallback>
         </Avatar>
-        <span className="min-w-0 truncate text-base font-semibold text-foreground">
+        <span className="truncate text-base font-semibold text-foreground">
           {displayName}
         </span>
-        <ChevronDownIcon className="ml-auto size-4 text-foreground/60" aria-hidden="true" />
+        <ChevronDownIcon className="size-4 text-foreground/60" aria-hidden="true" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" sideOffset={10} className="w-72 rounded-2xl p-2">
         <DropdownMenuGroup>
@@ -101,6 +102,10 @@ export function AccountControl({ identity }: AccountControlProps) {
           <DropdownMenuItem onClick={() => navigateTo("/dashboard/profile")}>
             <UserIcon aria-hidden="true" />
             Profile
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => navigateTo("/dashboard")}>
+            <LayoutDashboardIcon aria-hidden="true" />
+            Dashboard
           </DropdownMenuItem>
           {identity.isDatasetAdmin ? (
             <DropdownMenuItem onClick={() => navigateTo("/dashboard/upload")}>
