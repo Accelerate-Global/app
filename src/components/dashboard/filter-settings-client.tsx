@@ -481,7 +481,7 @@ export function FilterSettingsClient({
             <div className="space-y-1">
               <p className="text-sm font-medium text-foreground">Countries</p>
               <p className="text-sm text-muted-foreground">
-                Country options come from distinct <code>Geo_Country_Name</code> values in ready datasets.
+                Choose from the shared country master list used to build Region selectors across dataset pages.
               </p>
             </div>
             <CountrySelector
