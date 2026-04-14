@@ -10,7 +10,7 @@ import {
   SortableItem,
   SortableItemHandle,
 } from "@/components/reui/sortable";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
 import { Input } from "@/components/ui/input";
 import type { DatasetSummary } from "@/lib/api-types";
@@ -51,31 +51,26 @@ function DatasetActions({
 }) {
   return (
     <div className="flex w-full justify-end text-right">
-      <ButtonGroup className="gap-3">
-        <Button
-          render={<Link href={`/dashboard/datasets/${dataset.id}`} />}
-          type="button"
-          variant="outline"
-          size="sm"
-          className="min-w-[5.4rem]"
+      <ButtonGroup>
+        <Link
+          data-slot="button"
+          className={buttonVariants({ variant: "outline", size: "sm" })}
+          href={`/dashboard/datasets/${dataset.id}`}
         >
           View
-        </Button>
-        <Button
-          render={<a href={`/api/datasets/${dataset.id}/download`} />}
-          type="button"
-          variant="outline"
-          size="sm"
-          className="min-w-[6.8rem]"
+        </Link>
+        <a
+          data-slot="button"
+          className={buttonVariants({ variant: "outline", size: "sm" })}
+          href={`/api/datasets/${dataset.id}/download`}
         >
           Download
-        </Button>
+        </a>
         {canManageDatasets ? (
           <Button
             type="button"
             variant="outline"
             size="sm"
-            className="min-w-[5rem]"
             disabled={isBusy}
             onClick={() => onEditDataset?.(dataset.id)}
           >
@@ -83,15 +78,13 @@ function DatasetActions({
           </Button>
         ) : null}
         {canManageDatasets ? (
-          <Button
-            render={<Link href={`/dashboard/upload?replace=${dataset.id}`} />}
-            type="button"
-            variant="outline"
-            size="sm"
-            className="min-w-[6rem]"
+          <Link
+            data-slot="button"
+            className={buttonVariants({ variant: "outline", size: "sm" })}
+            href={`/dashboard/upload?replace=${dataset.id}`}
           >
             Replace
-          </Button>
+          </Link>
         ) : null}
       </ButtonGroup>
     </div>

@@ -21,7 +21,6 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -93,25 +92,29 @@ export function AccountControl({ identity }: AccountControlProps) {
           render={
             <button
               type="button"
-              className="flex items-center gap-2 rounded-full border border-border bg-background px-2 py-2 text-left shadow-none transition-colors hover:bg-accent/35"
+              className="flex h-auto items-center gap-3 rounded-[1.25rem] border border-border bg-transparent px-3 py-2 text-left shadow-none transition-colors hover:bg-accent/35"
             />
           }
         >
-          <Avatar size="lg" className="size-10">
-            <AvatarFallback className="bg-card text-sm font-semibold text-foreground">
-              {initials}
-            </AvatarFallback>
+          <div className="hidden min-w-0 text-right sm:block">
+            <p className="text-[0.68rem] font-black uppercase tracking-[0.16em] text-foreground/55">
+              {accountTypeLabel}
+            </p>
+            <p className="truncate text-sm font-semibold text-foreground">
+              {identity.email ?? "Supabase user"}
+            </p>
+          </div>
+          <Avatar className="size-10">
+            <AvatarFallback>{initials}</AvatarFallback>
           </Avatar>
           <ChevronDownIcon className="size-4 text-foreground/65" />
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" sideOffset={12} className="w-72">
+        <DropdownMenuContent align="end" sideOffset={12} className="w-80">
           <DropdownMenuLabel className="px-2 py-2">
             <div className="space-y-3">
               <div className="flex items-center gap-3">
-                <Avatar size="lg" className="size-10">
-                  <AvatarFallback className="bg-card text-sm font-semibold text-foreground">
-                    {initials}
-                  </AvatarFallback>
+                <Avatar className="size-10">
+                  <AvatarFallback>{initials}</AvatarFallback>
                 </Avatar>
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold text-foreground">
@@ -150,48 +153,42 @@ export function AccountControl({ identity }: AccountControlProps) {
             </div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuGroup>
-            <DropdownMenuLabel inset>Navigate</DropdownMenuLabel>
-            {navLinks.map((item) => (
-              <DropdownMenuItem
-                key={`${item.href}-${item.label}`}
-                onClick={() => navigateTo(item.href)}
-              >
-                {item.label}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuGroup>
-          <DropdownMenuSeparator />
-          <DropdownMenuGroup>
-            <DropdownMenuLabel inset>Preferences</DropdownMenuLabel>
-            <DropdownMenuItem onClick={toggleTheme}>
-              {theme === "dark" ? (
-                <SunIcon className="size-4 opacity-70" aria-hidden="true" />
-              ) : (
-                <MoonIcon className="size-4 opacity-70" aria-hidden="true" />
-              )}
-              {theme === "dark" ? "Light mode" : "Dark mode"}
-            </DropdownMenuItem>
-          </DropdownMenuGroup>
-          <DropdownMenuSeparator />
-          <DropdownMenuGroup>
-            <DropdownMenuLabel inset>Account</DropdownMenuLabel>
-            <DropdownMenuItem onClick={() => openDrawer("name")}>
-              <PencilIcon className="size-4 opacity-70" aria-hidden="true" />
-              Update full name
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => openDrawer("email")}>
-              <PencilIcon className="size-4 opacity-70" aria-hidden="true" />
-              Update email address
-            </DropdownMenuItem>
+          <DropdownMenuLabel inset>Navigate</DropdownMenuLabel>
+          {navLinks.map((item) => (
             <DropdownMenuItem
-              variant="destructive"
-              onClick={() => openDrawer("delete")}
+              key={`${item.href}-${item.label}`}
+              onClick={() => navigateTo(item.href)}
             >
-              <Trash2Icon className="size-4" aria-hidden="true" />
-              Delete account
+              {item.label}
             </DropdownMenuItem>
-          </DropdownMenuGroup>
+          ))}
+          <DropdownMenuSeparator />
+          <DropdownMenuLabel inset>Preferences</DropdownMenuLabel>
+          <DropdownMenuItem onClick={toggleTheme}>
+            {theme === "dark" ? (
+              <SunIcon className="size-4 opacity-70" aria-hidden="true" />
+            ) : (
+              <MoonIcon className="size-4 opacity-70" aria-hidden="true" />
+            )}
+            {theme === "dark" ? "Light mode" : "Dark mode"}
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuLabel inset>Account</DropdownMenuLabel>
+          <DropdownMenuItem onClick={() => openDrawer("name")}>
+            <PencilIcon className="size-4 opacity-70" aria-hidden="true" />
+            Update full name
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => openDrawer("email")}>
+            <PencilIcon className="size-4 opacity-70" aria-hidden="true" />
+            Update email address
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            variant="destructive"
+            onClick={() => openDrawer("delete")}
+          >
+            <Trash2Icon className="size-4" aria-hidden="true" />
+            Delete account
+          </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem disabled={isSigningOut} onClick={signOut}>
             <LogOutIcon className="size-4 opacity-70" aria-hidden="true" />
