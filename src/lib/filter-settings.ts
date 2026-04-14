@@ -1,9 +1,9 @@
 import { and, asc, eq, ne, sql } from "drizzle-orm";
 
 import { getDb } from "@/db";
-import { datasetRows, datasets, filterRegionCountries, filterRegions } from "@/db/schema";
+import { filterRegionCountries, filterRegions } from "@/db/schema";
 import type { FilterRegion } from "@/lib/api-types";
-import { REGION_DATASET_COLUMN_KEY } from "@/lib/dataset-region-constants";
+import { REGION_COUNTRY_OPTIONS } from "@/lib/region-country-options";
 
 function normalizeRegionName(name: string) {
   return name.trim();
@@ -206,20 +206,5 @@ export async function deleteFilterRegion(regionId: string) {
 }
 
 export async function listRegionCountryOptions() {
-  const geoCountryName = sql<string>`btrim(${datasetRows.data}->>${sql.raw(`'${REGION_DATASET_COLUMN_KEY}'`)})`;
-  const rows = await getDb()
-    .selectDistinct({
-      countryName: geoCountryName,
-    })
-    .from(datasetRows)
-    .innerJoin(datasets, eq(datasets.id, datasetRows.datasetId))
-    .where(
-      and(
-        eq(datasets.status, "ready"),
-        sql`nullif(${geoCountryName}, '') is not null`,
-      ),
-    )
-    .orderBy(geoCountryName);
-
-  return rows.map((row) => row.countryName);
+  return [...REGION_COUNTRY_OPTIONS];
 }
