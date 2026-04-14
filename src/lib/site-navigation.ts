@@ -7,18 +7,7 @@ export type SiteNavLink = {
 
 export function getSiteNavLinks(identity: CurrentIdentity | null): SiteNavLink[] {
   if (identity) {
-    if (identity.isDatasetAdmin) {
-      return [
-        { href: "/dashboard", label: "Dashboard" },
-        { href: "/dashboard/datasets", label: "Data" },
-        { href: "/dashboard/upload", label: "Upload" },
-      ];
-    }
-
-    return [
-      { href: "/dashboard", label: "Dashboard" },
-      { href: "/dashboard/datasets", label: "Data" },
-    ];
+    return [];
   }
 
   return [

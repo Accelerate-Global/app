@@ -19,7 +19,8 @@ export function SiteHeader({
   showAuthAction = true,
 }: SiteHeaderProps) {
   const navLinks = getSiteNavLinks(identity);
-  const showRightCluster = showNav || showAuthAction;
+  const showNavLinks = showNav && navLinks.length > 0;
+  const showRightCluster = showNavLinks || showAuthAction;
 
   return (
     <header className="bg-background">
@@ -44,7 +45,7 @@ export function SiteHeader({
 
         {showRightCluster ? (
           <div className="ml-auto flex w-full flex-col items-start gap-4 sm:items-end lg:w-auto lg:flex-row lg:items-center lg:gap-8">
-            {showNav ? (
+            {showNavLinks ? (
               <nav className="flex flex-wrap items-center justify-start gap-x-8 gap-y-2 sm:justify-end lg:gap-x-10">
                 {navLinks.map((item) => (
                   <Link
