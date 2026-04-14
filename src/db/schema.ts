@@ -1,4 +1,6 @@
-import type { CsvColumn, DatasetStatus } from "@/lib/api-types";
+import { sql } from "drizzle-orm";
+
+import type { CsvColumn, DatasetStatus, DatasetTag } from "@/lib/api-types";
 import {
   index,
   integer,
@@ -23,6 +25,7 @@ export const datasets = pgTable(
     rowCount: integer("row_count").notNull().default(0),
     sizeBytes: integer("size_bytes").notNull(),
     columns: jsonb("columns").$type<CsvColumn[]>().notNull(),
+    tags: jsonb("tags").$type<DatasetTag[]>().notNull().default(sql`'[]'::jsonb`),
     error: text("error"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()

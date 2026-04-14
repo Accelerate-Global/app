@@ -2,7 +2,12 @@ import { and, asc, count, desc, eq, inArray, sql, type SQL } from "drizzle-orm";
 
 import { getDb } from "@/db";
 import { datasetRows, datasets } from "@/db/schema";
-import type { CsvColumn, DatasetStatus, DatasetSummary } from "@/lib/api-types";
+import type {
+  CsvColumn,
+  DatasetStatus,
+  DatasetSummary,
+  DatasetTag,
+} from "@/lib/api-types";
 import { getDatasetStorageObjectUrl } from "@/lib/dataset-storage";
 
 function toDatasetSummary(row: typeof datasets.$inferSelect): DatasetSummary {
@@ -16,6 +21,7 @@ function toDatasetSummary(row: typeof datasets.$inferSelect): DatasetSummary {
     rowCount: row.rowCount,
     sizeBytes: row.sizeBytes,
     columns: row.columns,
+    tags: row.tags,
     error: row.error,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
@@ -65,6 +71,7 @@ export async function createDataset(input: {
         blobPath: input.blobPath,
         sizeBytes: input.sizeBytes,
         columns: input.columns,
+        tags: [],
         status: "processing",
         rowCount: 0,
       })
@@ -94,16 +101,26 @@ export async function updateDatasetStatus(input: {
   return dataset ? toDatasetSummary(dataset) : null;
 }
 
-export async function renameDataset(input: {
+export async function updateDatasetDetails(input: {
   datasetId: string;
-  fileName: string;
+  fileName?: string;
+  tags?: DatasetTag[];
 }) {
+  const updates: Partial<typeof datasets.$inferInsert> = {
+    updatedAt: new Date(),
+  };
+
+  if (input.fileName !== undefined) {
+    updates.fileName = input.fileName;
+  }
+
+  if (input.tags !== undefined) {
+    updates.tags = input.tags;
+  }
+
   const [dataset] = await getDb()
     .update(datasets)
-    .set({
-      fileName: input.fileName,
-      updatedAt: new Date(),
-    })
+    .set(updates)
     .where(eq(datasets.id, input.datasetId))
     .returning();
 
@@ -138,6 +155,7 @@ export async function replaceDatasetContents(input: {
         blobPath: input.blobPath,
         sizeBytes: input.sizeBytes,
         columns: input.columns,
+        tags: existing.tags,
         status: "processing",
         rowCount: 0,
         error: null,

@@ -8,6 +8,12 @@ export const csvColumnSchema = z.object({
   sourceIndex: z.number().int().nonnegative(),
 });
 
+export const datasetTagSchema = z.object({
+  id: z.string().trim().min(1).max(64),
+  label: z.string().trim().min(1).max(40),
+  color: z.string().trim().regex(/^#[0-9a-fA-F]{6}$/),
+});
+
 export const blobUploadTokenSchema = z.object({
   fileName: z.string().min(1).max(255),
   sizeBytes: z.number().int().positive().max(MAX_CSV_BYTES),
@@ -37,6 +43,18 @@ export const datasetRenamePatchSchema = z.object({
   fileName: z.string().trim().min(1).max(255),
 });
 
+export const datasetMetadataPatchSchema = z
+  .object({
+    fileName: z.string().trim().min(1).max(255).optional(),
+    tags: z.array(datasetTagSchema).max(24).optional(),
+  })
+  .refine(
+    (value) => value.fileName !== undefined || value.tags !== undefined,
+    {
+      message: "A dataset update must include a name or tags.",
+    },
+  );
+
 export const datasetReorderSchema = z.object({
   datasetIds: z
     .array(z.string().uuid())
@@ -48,5 +66,5 @@ export const datasetReorderSchema = z.object({
 
 export const datasetPatchSchema = z.union([
   datasetStatusPatchSchema,
-  datasetRenamePatchSchema,
+  datasetMetadataPatchSchema,
 ]);

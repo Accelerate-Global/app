@@ -4,7 +4,7 @@ import { useState } from "react";
 
 import { DatasetEditDrawer } from "@/components/dashboard/dataset-edit-drawer";
 import { DatasetsGrid } from "@/components/dashboard/datasets-grid";
-import type { DatasetSummary } from "@/lib/api-types";
+import type { DatasetSummary, DatasetTag } from "@/lib/api-types";
 
 type DashboardClientProps = {
   initialDatasets: DatasetSummary[];
@@ -28,19 +28,26 @@ async function getErrorMessage(response: Response, fallback: string) {
   }
 }
 
-async function renameDatasetRecord(input: {
+async function updateDatasetRecord(input: {
   datasetId: string;
   fileName: string;
+  tags: DatasetTag[];
 }) {
   const response = await fetch(`/api/datasets/${input.datasetId}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ fileName: input.fileName }),
+    body: JSON.stringify({
+      fileName: input.fileName,
+      tags: input.tags,
+    }),
   });
 
   if (!response.ok) {
     throw new Error(
-      await getErrorMessage(response, "The dataset name could not be updated."),
+      await getErrorMessage(
+        response,
+        "The dataset details could not be updated.",
+      ),
     );
   }
 
@@ -77,9 +84,10 @@ export function DashboardClient({
       ? null
       : datasets.find((dataset) => dataset.id === editingDatasetId) ?? null;
 
-  async function handleRenameDataset(input: {
+  async function handleSaveDataset(input: {
     datasetId: string;
     fileName: string;
+    tags: DatasetTag[];
   }) {
     if (!canManageDatasets || updatingDatasetId !== null) {
       return;
@@ -87,17 +95,24 @@ export function DashboardClient({
 
     const dataset = datasets.find((item) => item.id === input.datasetId);
     const nextName = input.fileName.trim();
+    const nextTags = input.tags;
 
-    if (!dataset || !nextName || nextName === dataset.fileName) {
+    if (
+      !dataset ||
+      !nextName ||
+      (nextName === dataset.fileName &&
+        JSON.stringify(nextTags) === JSON.stringify(dataset.tags))
+    ) {
       return;
     }
 
     setUpdatingDatasetId(dataset.id);
 
     try {
-      const updatedDataset = await renameDatasetRecord({
+      const updatedDataset = await updateDatasetRecord({
         datasetId: dataset.id,
         fileName: nextName,
+        tags: nextTags,
       });
 
       setDatasets((current) =>
@@ -109,7 +124,7 @@ export function DashboardClient({
       throw new Error(
         error instanceof Error
           ? error.message
-          : "The dataset name could not be updated.",
+          : "The dataset details could not be updated.",
       );
     } finally {
       setUpdatingDatasetId(null);
@@ -158,6 +173,7 @@ export function DashboardClient({
       />
       {canManageDatasets && editingDataset ? (
         <DatasetEditDrawer
+          key={`${editingDataset.id}:${editingDataset.updatedAt}`}
           dataset={editingDataset}
           isSaving={editingDataset?.id === updatingDatasetId}
           open
@@ -166,7 +182,7 @@ export function DashboardClient({
               setEditingDatasetId(null);
             }
           }}
-          onSaveDatasetName={handleRenameDataset}
+          onSaveDataset={handleSaveDataset}
         />
       ) : null}
     </>
