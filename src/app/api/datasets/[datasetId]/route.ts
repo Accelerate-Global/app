@@ -62,6 +62,7 @@ export async function PATCH(request: Request, context: DatasetContext) {
           datasetId,
           fileName: parsed.data.fileName,
           tags: parsed.data.tags,
+          isPrimary: parsed.data.isPrimary,
         });
 
   if (!dataset) {

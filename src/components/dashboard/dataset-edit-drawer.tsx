@@ -4,6 +4,7 @@ import { CheckIcon, ChevronDownIcon, PlusIcon, XIcon } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Drawer,
   DrawerClose,
@@ -21,6 +22,13 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldLabel,
+  FieldTitle,
+} from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import type { DatasetSummary, DatasetTag } from "@/lib/api-types";
 import {
@@ -42,6 +50,7 @@ type DatasetEditDrawerProps = {
     datasetId: string;
     fileName: string;
     tags: DatasetTag[];
+    isPrimary: boolean;
   }) => Promise<void>;
 };
 
@@ -240,6 +249,7 @@ export function DatasetEditDrawer({
   onSaveDataset,
 }: DatasetEditDrawerProps) {
   const [fileName, setFileName] = useState(dataset.fileName);
+  const [isPrimary, setIsPrimary] = useState(dataset.isPrimary);
   const [tags, setTags] = useState(() => normalizeDatasetTags(dataset.tags));
   const [newTagLabel, setNewTagLabel] = useState("");
   const [newTagColor, setNewTagColor] = useState(DEFAULT_DATASET_TAG_COLOR);
@@ -254,10 +264,13 @@ export function DatasetEditDrawer({
   );
   const hasTagChanges =
     JSON.stringify(normalizedTags) !== JSON.stringify(initialTags);
+  const hasPrimaryChange = isPrimary !== dataset.isPrimary;
   const canSave = Boolean(
     trimmedFileName &&
       !isSaving &&
-      (trimmedFileName !== dataset.fileName || hasTagChanges),
+      (trimmedFileName !== dataset.fileName ||
+        hasTagChanges ||
+        hasPrimaryChange),
   );
   const uploadedAt = useMemo(
     () => formatUploadedAt(dataset.createdAt),
@@ -355,7 +368,11 @@ export function DatasetEditDrawer({
       return;
     }
 
-    if (trimmedFileName === dataset.fileName && !hasTagChanges) {
+    if (
+      trimmedFileName === dataset.fileName &&
+      !hasTagChanges &&
+      !hasPrimaryChange
+    ) {
       setErrorMessage(null);
       return;
     }
@@ -372,6 +389,7 @@ export function DatasetEditDrawer({
         datasetId: dataset.id,
         fileName: trimmedFileName,
         tags: normalizedTags,
+        isPrimary,
       });
     } catch (error) {
       setErrorMessage(
@@ -419,6 +437,44 @@ export function DatasetEditDrawer({
               <p className="text-sm text-muted-foreground">
                 Update the name shown in the dataset list.
               </p>
+            </section>
+
+            <section className="space-y-3">
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-foreground">
+                  Primary dataset
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Show this dataset by default when someone opens Data.
+                </p>
+              </div>
+
+              <FieldLabel
+                htmlFor="dataset-is-primary"
+                className="rounded-2xl border border-border bg-card p-0!"
+              >
+                <Field
+                  orientation="horizontal"
+                  className="items-start justify-between gap-4 px-4 py-4"
+                >
+                  <FieldContent className="gap-1.5">
+                    <FieldTitle className="text-sm font-medium">
+                      Use as the default Data view
+                    </FieldTitle>
+                    <FieldDescription className="text-sm leading-5">
+                      Only one dataset can be primary at a time. Selecting this
+                      clears the primary flag from any other dataset.
+                    </FieldDescription>
+                  </FieldContent>
+                  <Checkbox
+                    id="dataset-is-primary"
+                    checked={isPrimary}
+                    disabled={isSaving}
+                    onCheckedChange={(checked) => setIsPrimary(!!checked)}
+                    aria-label="Set dataset as primary"
+                  />
+                </Field>
+              </FieldLabel>
             </section>
 
             <section className="space-y-4">

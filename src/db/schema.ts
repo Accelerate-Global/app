@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 
 import type { CsvColumn, DatasetStatus, DatasetTag } from "@/lib/api-types";
 import {
+  boolean,
   index,
   integer,
   jsonb,
@@ -21,6 +22,7 @@ export const datasets = pgTable(
     sortOrder: integer("sort_order").notNull().default(0),
     blobUrl: text("blob_url").notNull(),
     blobPath: text("blob_path").notNull(),
+    isPrimary: boolean("is_primary").notNull().default(false),
     status: text("status").$type<DatasetStatus>().notNull().default("processing"),
     rowCount: integer("row_count").notNull().default(0),
     sizeBytes: integer("size_bytes").notNull(),

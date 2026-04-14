@@ -212,20 +212,23 @@ otp_length = 6
 # Number of seconds before the email OTP expires (defaults to 1 hour).
 otp_expiry = 3600
 
-# Use a production-ready SMTP server
+# Use a production-ready SMTP server for hosted auth emails.
+# Configure the hosted project in the Dashboard with Resend once the domain and
+# SMTP credentials are ready.
 # [auth.email.smtp]
 # enabled = true
-# host = "smtp.sendgrid.net"
+# host = "smtp.resend.com"
 # port = 587
-# user = "apikey"
-# pass = "env(SENDGRID_API_KEY)"
-# admin_email = "admin@email.com"
-# sender_name = "Admin"
+# user = "resend"
+# pass = "env(RESEND_SMTP_API_KEY)"
+# admin_email = "noreply@accelerateglobal.org"
+# sender_name = "Accelerate Global Data"
 
-# Uncomment to customize email template
-# [auth.email.template.invite]
-# subject = "You have been invited"
-# content_path = "./supabase/templates/invite.html"
+# Customize the password recovery email during local development. Copy the same
+# HTML into the hosted project's Recovery template in the Dashboard.
+[auth.email.template.recovery]
+subject = "Reset your Accelerate Global Data password"
+content_path = "./supabase/templates/recovery.html"
 
 # Uncomment to customize notification email template
 # [auth.email.notification.password_changed]

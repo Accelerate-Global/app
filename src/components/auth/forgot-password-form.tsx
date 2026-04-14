@@ -31,7 +31,8 @@ export function ForgotPasswordForm({ message }: ForgotPasswordFormProps) {
     setSuccessMessage(null);
     setIsSubmitting(true);
 
-    const formData = new FormData(event.currentTarget);
+    const form = event.currentTarget;
+    const formData = new FormData(form);
     const email = String(formData.get("email") ?? "").trim();
 
     try {
@@ -48,7 +49,7 @@ export function ForgotPasswordForm({ message }: ForgotPasswordFormProps) {
       setSuccessMessage(
         "If an account exists for that email, a password reset link is on its way.",
       );
-      event.currentTarget.reset();
+      form.reset();
     } catch (submitError) {
       setError(
         submitError instanceof Error
@@ -92,7 +93,13 @@ export function ForgotPasswordForm({ message }: ForgotPasswordFormProps) {
         <form className="space-y-4" onSubmit={handleSubmit}>
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
-            <Input id="email" name="email" type="email" required />
+            <Input
+              id="email"
+              name="email"
+              type="email"
+              required
+              disabled={isSubmitting}
+            />
           </div>
           <Button className="w-full" type="submit" disabled={isSubmitting}>
             {isSubmitting ? <Loader2Icon className="animate-spin" /> : null}

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { DatasetTable } from "@/components/dashboard/dataset-table";
+import { DatasetViewSwitchGrid } from "@/components/dashboard/dataset-view-switch-grid";
 import { SiteHeader } from "@/components/layout/site-header";
 import { buttonVariants } from "@/components/ui/button";
 import { getCurrentIdentity } from "@/lib/auth";
@@ -48,6 +49,7 @@ export default async function DatasetPage({ params }: DatasetPageProps) {
             {dataset.fileName}
           </h1>
         </section>
+        <DatasetViewSwitchGrid />
         <DatasetTable dataset={dataset} />
       </div>
     </main>
