@@ -10,7 +10,6 @@ import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -101,11 +100,6 @@ export function AuthForm({ mode, message }: AuthFormProps) {
         <CardTitle className="text-2xl font-semibold tracking-[-0.03em]">
           {isSignIn ? "Sign in" : "Create account"}
         </CardTitle>
-        <CardDescription>
-          {isSignIn
-            ? "Use your Supabase account to open the dataset viewer."
-            : "Create a Supabase account for the dataset viewer."}
-        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {message ? (
