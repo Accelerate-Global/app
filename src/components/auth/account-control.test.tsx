@@ -30,7 +30,7 @@ describe("AccountControl", () => {
     cleanup();
   });
 
-  it("shows the full name when present and includes the admin upload link", () => {
+  it("shows the full name when present and includes dashboard and upload links", () => {
     render(
       <AccountControl
         identity={{
@@ -47,6 +47,7 @@ describe("AccountControl", () => {
 
     expect(screen.getAllByText("Blake Lewis").length).toBeGreaterThan(0);
     expect(screen.getByText("admin@example.com")).toBeTruthy();
+    expect(screen.getByText("Dashboard")).toBeTruthy();
     expect(screen.getByText("Upload")).toBeTruthy();
   });
 
