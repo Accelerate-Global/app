@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, sql, type SQL } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, sql, type SQL } from "drizzle-orm";
 
 import { getDb } from "@/db";
 import { datasetRows, datasets } from "@/db/schema";
@@ -8,6 +8,7 @@ import { getDatasetStorageObjectUrl } from "@/lib/dataset-storage";
 function toDatasetSummary(row: typeof datasets.$inferSelect): DatasetSummary {
   return {
     id: row.id,
+    sortOrder: row.sortOrder,
     fileName: row.fileName,
     blobUrl: row.blobUrl,
     blobPath: row.blobPath,
@@ -25,7 +26,7 @@ export async function listDatasets() {
   const rows = await getDb()
     .select()
     .from(datasets)
-    .orderBy(desc(datasets.createdAt));
+    .orderBy(asc(datasets.sortOrder), desc(datasets.createdAt));
 
   return rows.map(toDatasetSummary);
 }
@@ -47,19 +48,30 @@ export async function createDataset(input: {
   sizeBytes: number;
   columns: CsvColumn[];
 }) {
-  const [dataset] = await getDb()
-    .insert(datasets)
-    .values({
-      ownerId: input.ownerId,
-      fileName: input.fileName,
-      blobUrl: getDatasetStorageObjectUrl(input.blobPath),
-      blobPath: input.blobPath,
-      sizeBytes: input.sizeBytes,
-      columns: input.columns,
-      status: "processing",
-      rowCount: 0,
-    })
-    .returning();
+  const dataset = await getDb().transaction(async (tx) => {
+    const [position] = await tx
+      .select({
+        value: sql<number>`coalesce(max(${datasets.sortOrder}), -1)`,
+      })
+      .from(datasets);
+
+    const [created] = await tx
+      .insert(datasets)
+      .values({
+        ownerId: input.ownerId,
+        fileName: input.fileName,
+        sortOrder: (position?.value ?? -1) + 1,
+        blobUrl: getDatasetStorageObjectUrl(input.blobPath),
+        blobPath: input.blobPath,
+        sizeBytes: input.sizeBytes,
+        columns: input.columns,
+        status: "processing",
+        rowCount: 0,
+      })
+      .returning();
+
+    return created;
+  });
 
   return toDatasetSummary(dataset);
 }
@@ -156,6 +168,39 @@ export async function deleteDataset(datasetId: string) {
   await getDb().delete(datasets).where(eq(datasets.id, datasetId));
 
   return toDatasetSummary(dataset);
+}
+
+export async function reorderDatasets(datasetIds: string[]) {
+  return getDb().transaction(async (tx) => {
+    const existingDatasets = await tx
+      .select({ id: datasets.id })
+      .from(datasets)
+      .where(inArray(datasets.id, datasetIds));
+    const [{ value: totalDatasetCount }] = await tx
+      .select({ value: count() })
+      .from(datasets);
+
+    if (
+      existingDatasets.length !== datasetIds.length ||
+      totalDatasetCount !== datasetIds.length
+    ) {
+      return null;
+    }
+
+    for (const [index, datasetId] of datasetIds.entries()) {
+      await tx
+        .update(datasets)
+        .set({ sortOrder: index })
+        .where(eq(datasets.id, datasetId));
+    }
+
+    const rows = await tx
+      .select()
+      .from(datasets)
+      .orderBy(asc(datasets.sortOrder), desc(datasets.createdAt));
+
+    return rows.map(toDatasetSummary);
+  });
 }
 
 export async function insertDatasetRowBatch(input: {

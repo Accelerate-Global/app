@@ -2,6 +2,23 @@ import type { Metadata } from "next";
 import { Geist_Mono, Lexend } from "next/font/google";
 import "./globals.css";
 
+const themeScript = `
+(() => {
+  const storageKey = "ag-theme";
+  const root = document.documentElement;
+  const storedTheme = localStorage.getItem(storageKey);
+  const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+  const theme = storedTheme === "light" || storedTheme === "dark"
+    ? storedTheme
+    : prefersDark
+      ? "dark"
+      : "light";
+
+  root.classList.toggle("dark", theme === "dark");
+  root.style.colorScheme = theme;
+})();
+`;
+
 const lexend = Lexend({
   variable: "--font-lexend",
   subsets: ["latin"],
@@ -25,10 +42,12 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      suppressHydrationWarning
       className={`${lexend.variable} ${geistMono.variable} h-full antialiased`}
     >
       <head>
         <link rel="stylesheet" href="https://use.typekit.net/nyp5ner.css" />
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body className="flex min-h-full flex-col">{children}</body>
     </html>

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import { DatasetEditDrawer } from "@/components/dashboard/dataset-edit-drawer";
 import { DatasetsGrid } from "@/components/dashboard/datasets-grid";
 import type { DatasetSummary } from "@/lib/api-types";
 
@@ -12,6 +13,10 @@ type DashboardClientProps = {
 
 type DatasetResponse = {
   dataset: DatasetSummary;
+};
+
+type DatasetsResponse = {
+  datasets: DatasetSummary[];
 };
 
 async function getErrorMessage(response: Response, fallback: string) {
@@ -42,25 +47,52 @@ async function renameDatasetRecord(input: {
   return ((await response.json()) as DatasetResponse).dataset;
 }
 
+async function reorderDatasetRecords(datasetIds: string[]) {
+  const response = await fetch("/api/datasets/reorder", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ datasetIds }),
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      await getErrorMessage(response, "The dataset order could not be updated."),
+    );
+  }
+
+  return ((await response.json()) as DatasetsResponse).datasets;
+}
+
 export function DashboardClient({
   initialDatasets,
   canManageDatasets,
 }: DashboardClientProps) {
   const [datasets, setDatasets] = useState(initialDatasets);
-  const [renamingDatasetId, setRenamingDatasetId] = useState<string | null>(null);
+  const [editingDatasetId, setEditingDatasetId] = useState<string | null>(null);
+  const [updatingDatasetId, setUpdatingDatasetId] = useState<string | null>(null);
+  const [isReordering, setIsReordering] = useState(false);
 
-  async function handleRenameDataset(dataset: DatasetSummary) {
-    if (!canManageDatasets || renamingDatasetId !== null) {
+  const editingDataset =
+    editingDatasetId === null
+      ? null
+      : datasets.find((dataset) => dataset.id === editingDatasetId) ?? null;
+
+  async function handleRenameDataset(input: {
+    datasetId: string;
+    fileName: string;
+  }) {
+    if (!canManageDatasets || updatingDatasetId !== null) {
       return;
     }
 
-    const nextName = window.prompt("Rename dataset", dataset.fileName)?.trim();
+    const dataset = datasets.find((item) => item.id === input.datasetId);
+    const nextName = input.fileName.trim();
 
-    if (!nextName || nextName === dataset.fileName) {
+    if (!dataset || !nextName || nextName === dataset.fileName) {
       return;
     }
 
-    setRenamingDatasetId(dataset.id);
+    setUpdatingDatasetId(dataset.id);
 
     try {
       const updatedDataset = await renameDatasetRecord({
@@ -74,23 +106,69 @@ export function DashboardClient({
         ),
       );
     } catch (error) {
-      const message =
+      throw new Error(
         error instanceof Error
           ? error.message
-          : "The dataset name could not be updated.";
-      window.alert(message);
+          : "The dataset name could not be updated.",
+      );
     } finally {
-      setRenamingDatasetId(null);
+      setUpdatingDatasetId(null);
+    }
+  }
+
+  async function handleReorderDatasets(nextDatasets: DatasetSummary[]) {
+    if (!canManageDatasets || updatingDatasetId !== null || isReordering) {
+      return;
+    }
+
+    const currentDatasetIds = datasets.map((dataset) => dataset.id);
+    const nextDatasetIds = nextDatasets.map((dataset) => dataset.id);
+
+    if (currentDatasetIds.join(",") === nextDatasetIds.join(",")) {
+      return;
+    }
+
+    const previousDatasets = datasets;
+    setDatasets(nextDatasets);
+    setIsReordering(true);
+
+    try {
+      const reorderedDatasets = await reorderDatasetRecords(nextDatasetIds);
+      setDatasets(reorderedDatasets);
+    } catch (error) {
+      setDatasets(previousDatasets);
+      window.alert(
+        error instanceof Error
+          ? error.message
+          : "The dataset order could not be updated.",
+      );
+    } finally {
+      setIsReordering(false);
     }
   }
 
   return (
-    <DatasetsGrid
-      datasets={datasets}
-      canManageDatasets={canManageDatasets}
-      isBusy={renamingDatasetId !== null}
-      onRenameDataset={handleRenameDataset}
-      renamingDatasetId={renamingDatasetId}
-    />
+    <>
+      <DatasetsGrid
+        datasets={datasets}
+        canManageDatasets={canManageDatasets}
+        isBusy={updatingDatasetId !== null || isReordering}
+        onEditDataset={setEditingDatasetId}
+        onReorderDatasets={handleReorderDatasets}
+      />
+      {canManageDatasets && editingDataset ? (
+        <DatasetEditDrawer
+          dataset={editingDataset}
+          isSaving={editingDataset?.id === updatingDatasetId}
+          open
+          onOpenChange={(nextOpen) => {
+            if (!nextOpen) {
+              setEditingDatasetId(null);
+            }
+          }}
+          onSaveDatasetName={handleRenameDataset}
+        />
+      ) : null}
+    </>
   );
 }
