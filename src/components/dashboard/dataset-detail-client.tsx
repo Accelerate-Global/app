@@ -41,7 +41,7 @@ export function DatasetDetailClient({
         id: region.id,
         label: region.name,
         checked: selectedRegionIds[region.id] ?? false,
-        countryCount: region.countries.length,
+        countries: region.countries,
       })),
     [regions, selectedRegionIds],
   );
