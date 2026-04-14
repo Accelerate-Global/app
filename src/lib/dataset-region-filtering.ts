@@ -53,9 +53,10 @@ export function getEnabledRegionCountryNames(
   selectedRegionIds: Record<string, boolean>,
 ) {
   const countryNames = new Set<string>();
+  const hasSelectedRegion = regions.some((region) => selectedRegionIds[region.id]);
 
   for (const region of regions) {
-    if (!selectedRegionIds[region.id]) {
+    if (hasSelectedRegion && !selectedRegionIds[region.id]) {
       continue;
     }
 
@@ -82,10 +83,6 @@ export function filterDatasetRowsByRegion(
     !regionFilter.hasConfiguredRegions
   ) {
     return rows;
-  }
-
-  if (regionFilter.enabledCountryNames.length === 0) {
-    return [];
   }
 
   const allowedCountryNames = new Set(

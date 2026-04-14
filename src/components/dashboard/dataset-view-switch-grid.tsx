@@ -108,38 +108,32 @@ export function DatasetViewSwitchGrid({
             No regions have been configured yet.
           </div>
         ) : (
-          <div className="flex min-h-0 flex-1 flex-col rounded-xl border border-border/70 bg-background/70">
-            <div className="flex items-center justify-between border-b border-border px-3 py-2 text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground">
-              <span>Selectors</span>
-              <span>{regionCard.selectors.filter((selector) => selector.checked).length} on</span>
-            </div>
-            <div className="min-h-0 flex-1 overflow-y-auto">
-              <div className="divide-y divide-border">
-                {regionCard.selectors.map((selector) => (
-                  <div
-                    key={selector.id}
-                    className="flex items-center justify-between gap-3 px-3 py-2.5"
-                  >
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-foreground">
-                        {selector.label}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {selector.countryCount} countries
-                      </p>
-                    </div>
-                    <Switch
-                      size="sm"
-                      checked={selector.checked}
-                      disabled={!regionCard.enabled}
-                      onCheckedChange={(checked) =>
-                        regionCard.onSelectorChange(selector.id, checked)
-                      }
-                      aria-label={`Toggle ${selector.label}`}
-                    />
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <div className="divide-y divide-border/70">
+              {regionCard.selectors.map((selector) => (
+                <div
+                  key={selector.id}
+                  className="flex items-center justify-between gap-3 py-2.5"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-foreground">
+                      {selector.label}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {selector.countryCount} countries
+                    </p>
                   </div>
-                ))}
-              </div>
+                  <Switch
+                    size="sm"
+                    checked={selector.checked}
+                    disabled={!regionCard.enabled}
+                    onCheckedChange={(checked) =>
+                      regionCard.onSelectorChange(selector.id, checked)
+                    }
+                    aria-label={`Toggle ${selector.label}`}
+                  />
+                </div>
+              ))}
             </div>
           </div>
         )}

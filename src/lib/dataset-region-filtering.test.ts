@@ -86,6 +86,33 @@ describe("dataset-region-filtering", () => {
     expect(countries).toEqual(["India", "Nepal"]);
   });
 
+  it("treats no selector choices as all configured regions", () => {
+    const countries = getEnabledRegionCountryNames(
+      [
+        {
+          id: "region-1",
+          name: "South Asia",
+          countries: ["India", "Nepal"],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+        {
+          id: "region-2",
+          name: "EMENA",
+          countries: ["Turkey", "Jordan"],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      ],
+      {
+        "region-1": false,
+        "region-2": false,
+      },
+    );
+
+    expect(countries).toEqual(["India", "Nepal", "Turkey", "Jordan"]);
+  });
+
   it("filters rows by enabled region countries", () => {
     const filteredRows = filterDatasetRowsByRegion(rows, {
       enabled: true,
@@ -121,15 +148,31 @@ describe("dataset-region-filtering", () => {
     expect(filteredRows[0]?.id).toBe("row-legacy");
   });
 
-  it("returns no rows when region filtering is on with no selectors enabled", () => {
+  it("keeps rows from all configured regions when no selectors are enabled", () => {
+    const enabledCountryNames = getEnabledRegionCountryNames(
+      [
+        {
+          id: "region-1",
+          name: "South Asia",
+          countries: ["India", "Nepal"],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      ],
+      {
+        "region-1": false,
+      },
+    );
+
     const filteredRows = filterDatasetRowsByRegion(rows, {
       enabled: true,
       isSupported: true,
       hasConfiguredRegions: true,
-      enabledCountryNames: [],
+      enabledCountryNames,
     });
 
-    expect(filteredRows).toEqual([]);
+    expect(filteredRows).toHaveLength(2);
+    expect(filteredRows.map((row) => row.id)).toEqual(["row-1", "row-2"]);
   });
 
   it("keeps all rows when region filtering is disabled", () => {
