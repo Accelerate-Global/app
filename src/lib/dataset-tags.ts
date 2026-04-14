@@ -1,3 +1,5 @@
+import type { CSSProperties } from "react";
+
 import type { DatasetTag } from "@/lib/api-types";
 
 export const DATASET_TAG_COLOR_OPTIONS = [
@@ -91,7 +93,18 @@ function toRgba(value: string, alpha: number) {
   return `rgba(${color.red}, ${color.green}, ${color.blue}, ${alpha})`;
 }
 
-function getDatasetTagTextColor(value: string) {
+function mixRgbChannel(start: number, end: number, ratio: number) {
+  return Math.round(start + (end - start) * ratio);
+}
+
+function mixHexColors(start: string, end: string, ratio: number) {
+  const startColor = hexToRgb(start);
+  const endColor = hexToRgb(end);
+
+  return `rgb(${mixRgbChannel(startColor.red, endColor.red, ratio)}, ${mixRgbChannel(startColor.green, endColor.green, ratio)}, ${mixRgbChannel(startColor.blue, endColor.blue, ratio)})`;
+}
+
+function getDatasetTagLightTextColor(value: string) {
   const color = hexToRgb(value);
   const brightness =
     (color.red * 299 + color.green * 587 + color.blue * 114) / 1000;
@@ -99,12 +112,26 @@ function getDatasetTagTextColor(value: string) {
   return brightness > 170 ? "#262531" : value;
 }
 
-export function getDatasetTagStyle(color: string) {
+function getDatasetTagDarkTextColor(value: string) {
+  const color = hexToRgb(value);
+  const brightness =
+    (color.red * 299 + color.green * 587 + color.blue * 114) / 1000;
+
+  return brightness > 170 ? value : mixHexColors(value, "#f5f1e8", 0.72);
+}
+
+type DatasetTagStyle = CSSProperties & {
+  "--dataset-tag-text-light": string;
+  "--dataset-tag-text-dark": string;
+};
+
+export function getDatasetTagStyle(color: string): DatasetTagStyle {
   const normalizedColor = normalizeDatasetTagColor(color);
 
   return {
+    "--dataset-tag-text-light": getDatasetTagLightTextColor(normalizedColor),
+    "--dataset-tag-text-dark": getDatasetTagDarkTextColor(normalizedColor),
     borderColor: toRgba(normalizedColor, 0.34),
     backgroundColor: toRgba(normalizedColor, 0.14),
-    color: getDatasetTagTextColor(normalizedColor),
   };
 }

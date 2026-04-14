@@ -11,9 +11,9 @@ import {
   SortableItemHandle,
 } from "@/components/reui/sortable";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { ButtonGroup } from "@/components/ui/button-group";
 import { Input } from "@/components/ui/input";
 import type { DatasetSummary } from "@/lib/api-types";
-import { cn } from "@/lib/utils";
 
 type DatasetsGridProps = {
   datasets: DatasetSummary[];
@@ -50,39 +50,43 @@ function DatasetActions({
   onEditDataset?: (datasetId: string) => void;
 }) {
   return (
-    <div className="flex w-full items-center justify-end gap-2 text-right">
-      <Link
-        className={cn(buttonVariants({ variant: "outline", size: "sm" }), "h-7")}
-        href={`/dashboard/datasets/${dataset.id}`}
-      >
-        View
-      </Link>
-      <a
-        className={cn(buttonVariants({ variant: "outline", size: "sm" }), "h-7")}
-        href={`/api/datasets/${dataset.id}/download`}
-      >
-        Download
-      </a>
-      {canManageDatasets ? (
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="h-7"
-          disabled={isBusy}
-          onClick={() => onEditDataset?.(dataset.id)}
-        >
-          Edit
-        </Button>
-      ) : null}
-      {canManageDatasets ? (
+    <div className="flex w-full justify-end text-right">
+      <ButtonGroup>
         <Link
-          className={cn(buttonVariants({ variant: "outline", size: "sm" }), "h-7")}
-          href={`/dashboard/upload?replace=${dataset.id}`}
+          data-slot="button"
+          className={buttonVariants({ variant: "outline", size: "sm" })}
+          href={`/dashboard/datasets/${dataset.id}`}
         >
-          Replace
+          View
         </Link>
-      ) : null}
+        <a
+          data-slot="button"
+          className={buttonVariants({ variant: "outline", size: "sm" })}
+          href={`/api/datasets/${dataset.id}/download`}
+        >
+          Download
+        </a>
+        {canManageDatasets ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={isBusy}
+            onClick={() => onEditDataset?.(dataset.id)}
+          >
+            Edit
+          </Button>
+        ) : null}
+        {canManageDatasets ? (
+          <Link
+            data-slot="button"
+            className={buttonVariants({ variant: "outline", size: "sm" })}
+            href={`/dashboard/upload?replace=${dataset.id}`}
+          >
+            Replace
+          </Link>
+        ) : null}
+      </ButtonGroup>
     </div>
   );
 }
@@ -121,11 +125,11 @@ function DatasetListRow({
         <span className="block truncate font-medium">{dataset.fileName}</span>
       </div>
 
-      <div className="flex min-w-0 w-full justify-end text-right">
-        <DatasetTagList tags={dataset.tags} className="justify-end" />
+      <div className="flex min-w-0 w-full justify-center text-center">
+        <DatasetTagList tags={dataset.tags} className="justify-center" />
       </div>
 
-      <span className="block w-full text-right tabular-nums">
+      <span className="block w-full text-center tabular-nums">
         {dataset.rowCount.toLocaleString()}
       </span>
 
@@ -146,8 +150,8 @@ function DatasetListHeader() {
       style={{ gridTemplateColumns: DATASET_GRID_TEMPLATE_COLUMNS }}
     >
       <span>Name</span>
-      <span className="block w-full text-right">Tags</span>
-      <span className="block w-full text-right">People Groups</span>
+      <span className="block w-full text-center">Tags</span>
+      <span className="block w-full text-center">People Groups</span>
       <span className="block w-full text-right" />
     </div>
   );

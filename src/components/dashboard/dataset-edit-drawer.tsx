@@ -454,7 +454,7 @@ export function DatasetEditDrawer({
                         key={getDatasetTagIdentity(tag)}
                         type="button"
                         disabled={isSaving}
-                        className="inline-flex items-center rounded-full border px-2.5 py-1 text-[0.72rem] font-medium leading-none transition-opacity hover:opacity-75 disabled:cursor-not-allowed disabled:opacity-45"
+                        className="inline-flex items-center rounded-full border px-2.5 py-1 text-[0.72rem] font-medium leading-none text-[var(--dataset-tag-text-light)] transition-opacity hover:opacity-75 disabled:cursor-not-allowed disabled:opacity-45 dark:text-[var(--dataset-tag-text-dark)]"
                         style={getDatasetTagStyle(tag.color)}
                         onClick={() => handleAddExistingTag(tag)}
                       >

@@ -4,17 +4,29 @@ import { MoonIcon, SunIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
-const THEME_STORAGE_KEY = "ag-theme";
+export const THEME_STORAGE_KEY = "ag-theme";
+
+export type AppTheme = "light" | "dark";
+
+export function getDocumentTheme(): AppTheme {
+  return document.documentElement.classList.contains("dark") ? "dark" : "light";
+}
+
+export function applyDocumentTheme(theme: AppTheme) {
+  document.documentElement.classList.toggle("dark", theme === "dark");
+  document.documentElement.style.colorScheme = theme;
+  localStorage.setItem(THEME_STORAGE_KEY, theme);
+}
+
+export function toggleDocumentTheme() {
+  const nextTheme = getDocumentTheme() === "dark" ? "light" : "dark";
+  applyDocumentTheme(nextTheme);
+  return nextTheme;
+}
 
 export function ThemeToggle() {
   function toggleTheme() {
-    const nextTheme = document.documentElement.classList.contains("dark")
-      ? "light"
-      : "dark";
-
-    document.documentElement.classList.toggle("dark", nextTheme === "dark");
-    document.documentElement.style.colorScheme = nextTheme;
-    localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
+    toggleDocumentTheme();
   }
 
   return (

@@ -17,7 +17,7 @@ export function DatasetTagList({ tags, className }: DatasetTagListProps) {
       {tags.map((tag) => (
         <span
           key={tag.id}
-          className="inline-flex items-center rounded-full border px-2.5 py-1 text-[0.72rem] font-medium leading-none"
+          className="inline-flex items-center rounded-full border px-2.5 py-1 text-[0.72rem] font-medium leading-none text-[var(--dataset-tag-text-light)] dark:text-[var(--dataset-tag-text-dark)]"
           style={getDatasetTagStyle(tag.color)}
         >
           {tag.label}
