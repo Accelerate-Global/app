@@ -23,7 +23,7 @@ type DatasetsGridProps = {
 };
 
 const DATASET_GRID_TEMPLATE_COLUMNS =
-  "minmax(18rem,1.7fr) minmax(12rem,max-content) auto";
+  "minmax(18rem,1.7fr) max-content auto";
 
 function datasetMatchesSearch(dataset: DatasetSummary, value: unknown) {
   const query = String(value ?? "").trim().toLowerCase();
@@ -118,7 +118,9 @@ function DatasetListRow({
         <span className="truncate font-medium">{dataset.fileName}</span>
       </div>
 
-      <span className="tabular-nums">{dataset.rowCount.toLocaleString()}</span>
+      <span className="justify-self-center text-center tabular-nums">
+        {dataset.rowCount.toLocaleString()}
+      </span>
 
       <DatasetActions
         dataset={dataset}
@@ -137,7 +139,7 @@ function DatasetListHeader() {
       style={{ gridTemplateColumns: DATASET_GRID_TEMPLATE_COLUMNS }}
     >
       <span>Name</span>
-      <span>People Groups</span>
+      <span className="justify-self-center text-center">People Groups</span>
       <span className="text-right" />
     </div>
   );
@@ -173,7 +175,7 @@ export function DatasetsGrid({
       </div>
 
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-        <div className="space-y-2">
+        <div>
           <label className="relative block sm:w-80">
             <SearchIcon className="pointer-events-none absolute left-2 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -183,15 +185,6 @@ export function DatasetsGrid({
               onChange={(event) => setFilter(event.target.value)}
             />
           </label>
-          {canManageDatasets ? (
-            <p className="text-xs text-muted-foreground">
-              {filter.trim().length > 0
-                ? "Clear the filter to reorder datasets."
-                : datasets.length > 1
-                  ? "Drag and drop datasets to set their display order."
-                  : "Add another dataset to enable manual ordering."}
-            </p>
-          ) : null}
         </div>
       </div>
 

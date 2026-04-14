@@ -2,13 +2,11 @@
 
 import {
   getCoreRowModel,
-  getFilteredRowModel,
   getSortedRowModel,
   useReactTable,
   type ColumnDef,
   type SortingState,
 } from "@tanstack/react-table";
-import { SearchIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { DataGrid, DataGridContainer } from "@/components/reui/data-grid/data-grid";
@@ -16,7 +14,6 @@ import { DataGridColumnHeader } from "@/components/reui/data-grid/data-grid-colu
 import { DataGridScrollArea } from "@/components/reui/data-grid/data-grid-scroll-area";
 import { DataGridTableVirtual } from "@/components/reui/data-grid/data-grid-table-virtual";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Input } from "@/components/ui/input";
 import {
   Progress,
   ProgressLabel,
@@ -37,17 +34,6 @@ type DatasetTableProps = {
 
 function getCellValue(row: DatasetRow, key: string) {
   return row.data[key] ?? "";
-}
-
-function rowMatchesSearch(row: DatasetRow, value: unknown) {
-  const query = String(value ?? "").trim().toLowerCase();
-
-  if (!query) return true;
-
-  return [
-    String(row.rowIndex + 1),
-    ...Object.values(row.data),
-  ].some((item) => String(item).toLowerCase().includes(query));
 }
 
 async function fetchRowsPage(input: {
@@ -81,7 +67,6 @@ export function DatasetTable({ dataset }: DatasetTableProps) {
   const [loadPhase, setLoadPhase] = useState<RowLoadPhase>("starting");
   const [loadMessage, setLoadMessage] = useState("Loading rows");
   const [error, setError] = useState<string | null>(null);
-  const [filter, setFilter] = useState("");
   const [sorting, setSorting] = useState<SortingState>([]);
 
   const columns = useMemo<ColumnDef<DatasetRow>[]>(
@@ -129,7 +114,6 @@ export function DatasetTable({ dataset }: DatasetTableProps) {
     getRowId: (row) => row.id,
     state: {
       sorting,
-      globalFilter: filter,
     },
     initialState: {
       columnPinning: {
@@ -138,23 +122,21 @@ export function DatasetTable({ dataset }: DatasetTableProps) {
     },
     columnResizeMode: "onChange",
     onSortingChange: setSorting,
-    onGlobalFilterChange: setFilter,
     autoResetPageIndex: false,
-    globalFilterFn: (row, _columnId, value) =>
-      rowMatchesSearch(row.original, value),
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
   });
 
-  const visibleRowCount = table.getFilteredRowModel().rows.length;
+  const shownPeopleGroupCount = rows.length;
   const downloadProgress =
     totalRows > 0
       ? Math.min((downloadedRowCount / totalRows) * 100, 100)
       : loadPhase === "finished"
         ? 100
         : 0;
-  const showDownloadStatus = !error && loadPhase !== "idle";
+  const showDownloadStatus =
+    !error &&
+    (loadPhase === "starting" || loadPhase === "downloading");
 
   useEffect(() => {
     const controller = new AbortController();
@@ -234,8 +216,7 @@ export function DatasetTable({ dataset }: DatasetTableProps) {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-sm text-muted-foreground">
-          {visibleRowCount.toLocaleString()} people groups shown ·{" "}
-          {totalRows.toLocaleString()} people groups
+          {shownPeopleGroupCount.toLocaleString()} people groups shown
         </span>
       </div>
 
@@ -245,18 +226,6 @@ export function DatasetTable({ dataset }: DatasetTableProps) {
           <AlertDescription>{dataset.error}</AlertDescription>
         </Alert>
       ) : null}
-
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <label className="relative block sm:w-80">
-          <SearchIcon className="pointer-events-none absolute left-2 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            className="pl-8"
-            value={filter}
-            placeholder="Filter all cells"
-            onChange={(event) => setFilter(event.target.value)}
-          />
-        </label>
-      </div>
 
       {showDownloadStatus ? (
         <div className="max-w-xl space-y-2">
@@ -282,9 +251,7 @@ export function DatasetTable({ dataset }: DatasetTableProps) {
         emptyMessage={
           isLoading
             ? loadMessage
-            : rows.length === 0
-              ? "No people groups found."
-              : "No people groups match your filter."
+            : "No people groups found."
         }
         tableLayout={{
           columnsPinnable: true,
