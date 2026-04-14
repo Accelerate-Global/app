@@ -20,6 +20,7 @@ const listDatasetsMock = vi.mocked(listDatasets);
 const identity = {
   ownerId: "supabase-user",
   email: "admin@example.com",
+  fullName: null,
   isDatasetAdmin: true,
   mode: "supabase" as const,
 };

@@ -20,6 +20,7 @@ const getDatasetRowsMock = vi.mocked(getDatasetRows);
 const identity = {
   ownerId: "viewer-user",
   email: "viewer@example.com",
+  fullName: null,
   isDatasetAdmin: false,
   mode: "supabase" as const,
 };

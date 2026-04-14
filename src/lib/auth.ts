@@ -7,6 +7,7 @@ import { hasSupabaseConfig } from "@/lib/supabase/config";
 export type CurrentIdentity = {
   ownerId: string;
   email: string | null;
+  fullName: string | null;
   isDatasetAdmin: boolean;
   mode: "supabase";
 };
@@ -30,10 +31,16 @@ export async function getCurrentIdentity(): Promise<CurrentIdentity | null> {
 
       if (user) {
         const email = user.email ?? null;
+        const fullName =
+          typeof user.user_metadata?.full_name === "string" &&
+            user.user_metadata.full_name.trim()
+            ? user.user_metadata.full_name.trim()
+            : null;
 
         return {
           ownerId: user.id,
           email,
+          fullName,
           isDatasetAdmin: isDatasetAdminEmail(email),
           mode: "supabase",
         };
