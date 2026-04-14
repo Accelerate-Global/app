@@ -16,6 +16,7 @@ export const datasets = pgTable(
     id: uuid("id").defaultRandom().primaryKey(),
     ownerId: text("owner_id").notNull(),
     fileName: text("file_name").notNull(),
+    sortOrder: integer("sort_order").notNull().default(0),
     blobUrl: text("blob_url").notNull(),
     blobPath: text("blob_path").notNull(),
     status: text("status").$type<DatasetStatus>().notNull().default("processing"),
@@ -32,6 +33,7 @@ export const datasets = pgTable(
   },
   (table) => [
     index("datasets_owner_created_idx").on(table.ownerId, table.createdAt),
+    index("datasets_sort_order_idx").on(table.sortOrder, table.createdAt),
   ],
 );
 

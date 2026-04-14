@@ -37,6 +37,15 @@ export const datasetRenamePatchSchema = z.object({
   fileName: z.string().trim().min(1).max(255),
 });
 
+export const datasetReorderSchema = z.object({
+  datasetIds: z
+    .array(z.string().uuid())
+    .min(1)
+    .refine((datasetIds) => new Set(datasetIds).size === datasetIds.length, {
+      message: "Dataset order must not contain duplicates.",
+    }),
+});
+
 export const datasetPatchSchema = z.union([
   datasetStatusPatchSchema,
   datasetRenamePatchSchema,

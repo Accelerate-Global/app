@@ -8,7 +8,7 @@ import {
   type ColumnDef,
   type SortingState,
 } from "@tanstack/react-table";
-import { Loader2Icon, SearchIcon, Trash2Icon } from "lucide-react";
+import { SearchIcon, Trash2Icon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
@@ -20,6 +20,11 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Progress,
+  ProgressLabel,
+  ProgressValue,
+} from "@/components/ui/progress";
 import type { DatasetRowsResponse, DatasetSummary } from "@/lib/api-types";
 
 const ROW_FETCH_PAGE_SIZE = 1000;
@@ -27,6 +32,7 @@ const ROW_HEIGHT_ESTIMATE = 37;
 const ROW_OVERSCAN = 30;
 
 type DatasetRow = DatasetRowsResponse["rows"][number];
+type RowLoadPhase = "idle" | "starting" | "downloading" | "finished";
 
 type DatasetTableProps = {
   dataset: DatasetSummary;
@@ -75,7 +81,9 @@ export function DatasetTable({ dataset, canDelete }: DatasetTableProps) {
   const router = useRouter();
   const [rows, setRows] = useState<DatasetRow[]>([]);
   const [totalRows, setTotalRows] = useState(dataset.rowCount);
+  const [downloadedRowCount, setDownloadedRowCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadPhase, setLoadPhase] = useState<RowLoadPhase>("starting");
   const [loadMessage, setLoadMessage] = useState("Loading rows");
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState("");
@@ -145,6 +153,13 @@ export function DatasetTable({ dataset, canDelete }: DatasetTableProps) {
   });
 
   const visibleRowCount = table.getFilteredRowModel().rows.length;
+  const downloadProgress =
+    totalRows > 0
+      ? Math.min((downloadedRowCount / totalRows) * 100, 100)
+      : loadPhase === "finished"
+        ? 100
+        : 0;
+  const showDownloadStatus = !error && loadPhase !== "idle";
 
   useEffect(() => {
     const controller = new AbortController();
@@ -156,7 +171,9 @@ export function DatasetTable({ dataset, canDelete }: DatasetTableProps) {
 
       setRows([]);
       setTotalRows(dataset.rowCount);
-      setLoadMessage("Loading rows");
+      setDownloadedRowCount(0);
+      setLoadPhase("starting");
+      setLoadMessage("Starting download...");
       setIsLoading(true);
       setError(null);
 
@@ -176,16 +193,20 @@ export function DatasetTable({ dataset, canDelete }: DatasetTableProps) {
           resolvedTotalRows = payload.totalRows;
 
           setTotalRows(payload.totalRows);
+          setDownloadedRowCount(nextRows.length);
+          setLoadPhase("downloading");
           setLoadMessage(
-            `Preloading ${nextRows.length.toLocaleString()} of ${payload.totalRows.toLocaleString()} rows`,
+            `Downloaded ${nextRows.length.toLocaleString()} of ${payload.totalRows.toLocaleString()} rows`,
           );
         } while (page <= pageCount);
 
         if (!controller.signal.aborted) {
           setRows(nextRows);
           setTotalRows(resolvedTotalRows);
+          setDownloadedRowCount(nextRows.length);
+          setLoadPhase("finished");
           setLoadMessage(
-            `Loaded ${nextRows.length.toLocaleString()} of ${resolvedTotalRows.toLocaleString()} rows`,
+            `Finished downloading ${nextRows.length.toLocaleString()} rows`,
           );
         }
       } catch (fetchError) {
@@ -196,6 +217,7 @@ export function DatasetTable({ dataset, canDelete }: DatasetTableProps) {
           return;
         }
 
+        setLoadPhase("idle");
         setError(
           fetchError instanceof Error
             ? fetchError.message
@@ -271,10 +293,13 @@ export function DatasetTable({ dataset, canDelete }: DatasetTableProps) {
         </label>
       </div>
 
-      {isLoading ? (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2Icon className="size-4 animate-spin" />
-          {loadMessage}
+      {showDownloadStatus ? (
+        <div className="max-w-xl space-y-2">
+          <Progress value={downloadProgress}>
+            <ProgressLabel>Dataset download</ProgressLabel>
+            <ProgressValue />
+          </Progress>
+          <p className="text-sm text-muted-foreground">{loadMessage}</p>
         </div>
       ) : null}
 

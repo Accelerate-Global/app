@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { Button } from "@/components/ui/button";
 import type { CurrentIdentity } from "@/lib/auth";
 
@@ -30,6 +31,9 @@ export function AccountControl({ identity }: AccountControlProps) {
         <p className="truncate text-sm font-semibold text-foreground">
           {identity.email ?? "Supabase user"}
         </p>
+        <div className="mt-2 flex justify-end">
+          <ThemeToggle />
+        </div>
       </div>
       <Button
         type="button"

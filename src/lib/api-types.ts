@@ -8,6 +8,7 @@ export type CsvColumn = {
 
 export type DatasetSummary = {
   id: string;
+  sortOrder: number;
   fileName: string;
   blobUrl: string;
   blobPath: string;
