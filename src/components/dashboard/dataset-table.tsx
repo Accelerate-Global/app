@@ -8,8 +8,7 @@ import {
   type ColumnDef,
   type SortingState,
 } from "@tanstack/react-table";
-import { SearchIcon, Trash2Icon } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { SearchIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { DataGrid, DataGridContainer } from "@/components/reui/data-grid/data-grid";
@@ -17,8 +16,6 @@ import { DataGridColumnHeader } from "@/components/reui/data-grid/data-grid-colu
 import { DataGridScrollArea } from "@/components/reui/data-grid/data-grid-scroll-area";
 import { DataGridTableVirtual } from "@/components/reui/data-grid/data-grid-table-virtual";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Progress,
@@ -36,7 +33,6 @@ type RowLoadPhase = "idle" | "starting" | "downloading" | "finished";
 
 type DatasetTableProps = {
   dataset: DatasetSummary;
-  canDelete: boolean;
 };
 
 function getCellValue(row: DatasetRow, key: string) {
@@ -77,8 +73,7 @@ async function fetchRowsPage(input: {
   return (await response.json()) as DatasetRowsResponse;
 }
 
-export function DatasetTable({ dataset, canDelete }: DatasetTableProps) {
-  const router = useRouter();
+export function DatasetTable({ dataset }: DatasetTableProps) {
   const [rows, setRows] = useState<DatasetRow[]>([]);
   const [totalRows, setTotalRows] = useState(dataset.rowCount);
   const [downloadedRowCount, setDownloadedRowCount] = useState(0);
@@ -196,7 +191,7 @@ export function DatasetTable({ dataset, canDelete }: DatasetTableProps) {
           setDownloadedRowCount(nextRows.length);
           setLoadPhase("downloading");
           setLoadMessage(
-            `Downloaded ${nextRows.length.toLocaleString()} of ${payload.totalRows.toLocaleString()} rows`,
+            `Downloaded ${nextRows.length.toLocaleString()} of ${payload.totalRows.toLocaleString()} people groups`,
           );
         } while (page <= pageCount);
 
@@ -206,7 +201,7 @@ export function DatasetTable({ dataset, canDelete }: DatasetTableProps) {
           setDownloadedRowCount(nextRows.length);
           setLoadPhase("finished");
           setLoadMessage(
-            `Finished downloading ${nextRows.length.toLocaleString()} rows`,
+            `Finished downloading ${nextRows.length.toLocaleString()} people groups`,
           );
         }
       } catch (fetchError) {
@@ -235,43 +230,13 @@ export function DatasetTable({ dataset, canDelete }: DatasetTableProps) {
     return () => controller.abort();
   }, [dataset.id, dataset.rowCount]);
 
-  async function deleteDataset() {
-    const confirmed = window.confirm(
-      `Delete ${dataset.fileName}? This removes the stored file and parsed rows.`,
-    );
-
-    if (!confirmed) return;
-
-    const response = await fetch(`/api/datasets/${dataset.id}`, {
-      method: "DELETE",
-    });
-
-    if (response.ok) {
-      router.push("/dashboard");
-      router.refresh();
-    } else {
-      setError("Dataset could not be deleted.");
-    }
-  }
-
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant={dataset.status === "ready" ? "default" : "secondary"}>
-            {dataset.status}
-          </Badge>
-          <span className="text-sm text-muted-foreground">
-            {visibleRowCount.toLocaleString()} shown ·{" "}
-            {totalRows.toLocaleString()} rows · {dataset.columns.length} columns
-          </span>
-        </div>
-        {canDelete ? (
-          <Button variant="destructive" size="sm" onClick={deleteDataset}>
-            <Trash2Icon />
-            Delete
-          </Button>
-        ) : null}
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-sm text-muted-foreground">
+          {visibleRowCount.toLocaleString()} people groups shown ·{" "}
+          {totalRows.toLocaleString()} people groups
+        </span>
       </div>
 
       {dataset.error ? (
@@ -318,8 +283,8 @@ export function DatasetTable({ dataset, canDelete }: DatasetTableProps) {
           isLoading
             ? loadMessage
             : rows.length === 0
-              ? "No rows found."
-              : "No rows match your filter."
+              ? "No people groups found."
+              : "No people groups match your filter."
         }
         tableLayout={{
           columnsPinnable: true,
