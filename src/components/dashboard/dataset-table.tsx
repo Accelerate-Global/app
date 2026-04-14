@@ -14,19 +14,12 @@ import { DataGridColumnHeader } from "@/components/reui/data-grid/data-grid-colu
 import { DataGridScrollArea } from "@/components/reui/data-grid/data-grid-scroll-area";
 import { DataGridTableVirtual } from "@/components/reui/data-grid/data-grid-table-virtual";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import {
-  Progress,
-  ProgressLabel,
-  ProgressValue,
-} from "@/components/ui/progress";
 import type { DatasetRowsResponse, DatasetSummary } from "@/lib/api-types";
 
-const ROW_FETCH_PAGE_SIZE = 1000;
-const ROW_HEIGHT_ESTIMATE = 37;
-const ROW_OVERSCAN = 30;
+const ROW_HEIGHT_ESTIMATE = 40;
+const ROW_OVERSCAN = 60;
 
 type DatasetRow = DatasetRowsResponse["rows"][number];
-type RowLoadPhase = "idle" | "starting" | "downloading" | "finished";
 
 type DatasetTableProps = {
   dataset: DatasetSummary;
@@ -36,14 +29,12 @@ function getCellValue(row: DatasetRow, key: string) {
   return row.data[key] ?? "";
 }
 
-async function fetchRowsPage(input: {
+async function fetchAllRows(input: {
   datasetId: string;
-  page: number;
   signal: AbortSignal;
 }) {
   const params = new URLSearchParams({
-    page: String(input.page),
-    pageSize: String(ROW_FETCH_PAGE_SIZE),
+    all: "true",
   });
   const response = await fetch(
     `/api/datasets/${input.datasetId}/rows?${params.toString()}`,
@@ -61,13 +52,10 @@ async function fetchRowsPage(input: {
 
 export function DatasetTable({ dataset }: DatasetTableProps) {
   const [rows, setRows] = useState<DatasetRow[]>([]);
-  const [totalRows, setTotalRows] = useState(dataset.rowCount);
-  const [downloadedRowCount, setDownloadedRowCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
-  const [loadPhase, setLoadPhase] = useState<RowLoadPhase>("starting");
-  const [loadMessage, setLoadMessage] = useState("Loading rows");
   const [error, setError] = useState<string | null>(null);
   const [sorting, setSorting] = useState<SortingState>([]);
+  const loadMessage = "Loading people groups...";
 
   const columns = useMemo<ColumnDef<DatasetRow>[]>(
     () => [
@@ -128,63 +116,23 @@ export function DatasetTable({ dataset }: DatasetTableProps) {
   });
 
   const shownPeopleGroupCount = rows.length;
-  const downloadProgress =
-    totalRows > 0
-      ? Math.min((downloadedRowCount / totalRows) * 100, 100)
-      : loadPhase === "finished"
-        ? 100
-        : 0;
-  const showDownloadStatus =
-    !error &&
-    (loadPhase === "starting" || loadPhase === "downloading");
 
   useEffect(() => {
     const controller = new AbortController();
 
     async function loadRows() {
-      const nextRows: DatasetRow[] = [];
-      let page = 1;
-      let pageCount = 1;
-
       setRows([]);
-      setTotalRows(dataset.rowCount);
-      setDownloadedRowCount(0);
-      setLoadPhase("starting");
-      setLoadMessage("Starting download...");
       setIsLoading(true);
       setError(null);
 
       try {
-        let resolvedTotalRows = dataset.rowCount;
-
-        do {
-          const payload = await fetchRowsPage({
-            datasetId: dataset.id,
-            page,
-            signal: controller.signal,
-          });
-
-          nextRows.push(...payload.rows);
-          pageCount = payload.pageCount;
-          page += 1;
-          resolvedTotalRows = payload.totalRows;
-
-          setTotalRows(payload.totalRows);
-          setDownloadedRowCount(nextRows.length);
-          setLoadPhase("downloading");
-          setLoadMessage(
-            `Downloaded ${nextRows.length.toLocaleString()} of ${payload.totalRows.toLocaleString()} people groups`,
-          );
-        } while (page <= pageCount);
+        const payload = await fetchAllRows({
+          datasetId: dataset.id,
+          signal: controller.signal,
+        });
 
         if (!controller.signal.aborted) {
-          setRows(nextRows);
-          setTotalRows(resolvedTotalRows);
-          setDownloadedRowCount(nextRows.length);
-          setLoadPhase("finished");
-          setLoadMessage(
-            `Finished downloading ${nextRows.length.toLocaleString()} people groups`,
-          );
+          setRows(payload.rows);
         }
       } catch (fetchError) {
         if (
@@ -194,7 +142,6 @@ export function DatasetTable({ dataset }: DatasetTableProps) {
           return;
         }
 
-        setLoadPhase("idle");
         setError(
           fetchError instanceof Error
             ? fetchError.message
@@ -227,16 +174,6 @@ export function DatasetTable({ dataset }: DatasetTableProps) {
         </Alert>
       ) : null}
 
-      {showDownloadStatus ? (
-        <div className="max-w-xl space-y-2">
-          <Progress value={downloadProgress}>
-            <ProgressLabel>Dataset download</ProgressLabel>
-            <ProgressValue />
-          </Progress>
-          <p className="text-sm text-muted-foreground">{loadMessage}</p>
-        </div>
-      ) : null}
-
       {error ? (
         <Alert variant="destructive">
           <AlertTitle>Table error</AlertTitle>
@@ -248,6 +185,7 @@ export function DatasetTable({ dataset }: DatasetTableProps) {
         table={table}
         recordCount={rows.length}
         isLoading={isLoading}
+        loadingMessage={loadMessage}
         emptyMessage={
           isLoading
             ? loadMessage
@@ -260,6 +198,7 @@ export function DatasetTable({ dataset }: DatasetTableProps) {
         }}
         tableClassNames={{
           headerSticky: "sticky top-0 z-10 bg-muted/90 backdrop-blur-xs",
+          bodyRow: "[&>td]:h-10 [&>td]:py-0",
         }}
       >
         <DataGridContainer>

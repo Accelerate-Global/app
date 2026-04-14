@@ -53,6 +53,29 @@ export function normalizeDatasetTags(tags: DatasetTag[]) {
     .filter((tag) => tag.id.length > 0 && tag.label.length > 0);
 }
 
+export function getDatasetTagIdentity(
+  tag: Pick<DatasetTag, "label" | "color">,
+) {
+  return `${tag.label.trim().toLowerCase()}::${normalizeDatasetTagColor(tag.color)}`;
+}
+
+export function getReusableDatasetTags(tags: DatasetTag[]) {
+  const seen = new Set<string>();
+
+  return normalizeDatasetTags(tags)
+    .filter((tag) => {
+      const identity = getDatasetTagIdentity(tag);
+
+      if (seen.has(identity)) {
+        return false;
+      }
+
+      seen.add(identity);
+      return true;
+    })
+    .sort((left, right) => left.label.localeCompare(right.label));
+}
+
 function hexToRgb(value: string) {
   const normalized = normalizeDatasetTagColor(value);
 
