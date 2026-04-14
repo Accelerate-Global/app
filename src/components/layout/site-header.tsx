@@ -63,7 +63,7 @@ export function SiteHeader({ identity = null }: SiteHeaderProps) {
             <Link
               key={`${item.href}-${item.label}`}
               href={item.href}
-              className="text-[0.98rem] font-black uppercase tracking-[0.06em] text-foreground transition-opacity hover:opacity-70"
+              className="text-[0.98rem] font-medium uppercase tracking-[0.06em] text-foreground transition-opacity hover:opacity-70"
             >
               {item.label}
             </Link>
