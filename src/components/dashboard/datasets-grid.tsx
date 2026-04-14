@@ -1,8 +1,8 @@
 "use client";
 
-import { FileTextIcon, GripVerticalIcon, SearchIcon } from "lucide-react";
-import Link from "next/link";
-import { useMemo, useState } from "react";
+import { DownloadIcon, FileTextIcon, GripVerticalIcon } from "lucide-react";
+import { useRouter } from "next/navigation";
+import type { KeyboardEvent, MouseEvent } from "react";
 
 import { DatasetTagList } from "@/components/dashboard/dataset-tag-list";
 import {
@@ -12,7 +12,6 @@ import {
 } from "@/components/reui/sortable";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
-import { Input } from "@/components/ui/input";
 import type { DatasetSummary } from "@/lib/api-types";
 
 type DatasetsGridProps = {
@@ -24,19 +23,7 @@ type DatasetsGridProps = {
 };
 
 const DATASET_GRID_TEMPLATE_COLUMNS =
-  "minmax(18rem,1fr) minmax(12rem,0.8fr) minmax(10rem,max-content) 22rem";
-
-function datasetMatchesSearch(dataset: DatasetSummary, value: unknown) {
-  const query = String(value ?? "").trim().toLowerCase();
-
-  if (!query) return true;
-
-  return [
-    dataset.fileName,
-    String(dataset.rowCount),
-    ...dataset.tags.map((tag) => tag.label),
-  ].some((item) => item.toLowerCase().includes(query));
-}
+  "minmax(18rem,1fr) minmax(12rem,0.8fr) minmax(10rem,max-content) 8.5rem";
 
 function DatasetActions({
   dataset,
@@ -52,19 +39,17 @@ function DatasetActions({
   return (
     <div className="flex w-full justify-end text-right">
       <ButtonGroup>
-        <Link
-          data-slot="button"
-          className={buttonVariants({ variant: "outline", size: "sm" })}
-          href={`/dashboard/datasets/${dataset.id}`}
-        >
-          View
-        </Link>
         <a
           data-slot="button"
-          className={buttonVariants({ variant: "outline", size: "sm" })}
+          className={buttonVariants({ variant: "outline", size: "icon-sm" })}
           href={`/api/datasets/${dataset.id}/download`}
+          aria-label={`Download ${dataset.fileName}`}
+          title={`Download ${dataset.fileName}`}
+          onClick={(event) => {
+            event.stopPropagation();
+          }}
         >
-          Download
+          <DownloadIcon />
         </a>
         {canManageDatasets ? (
           <Button
@@ -72,19 +57,13 @@ function DatasetActions({
             variant="outline"
             size="sm"
             disabled={isBusy}
-            onClick={() => onEditDataset?.(dataset.id)}
+            onClick={(event) => {
+              event.stopPropagation();
+              onEditDataset?.(dataset.id);
+            }}
           >
             Edit
           </Button>
-        ) : null}
-        {canManageDatasets ? (
-          <Link
-            data-slot="button"
-            className={buttonVariants({ variant: "outline", size: "sm" })}
-            href={`/dashboard/upload?replace=${dataset.id}`}
-          >
-            Replace
-          </Link>
         ) : null}
       </ButtonGroup>
     </div>
@@ -104,15 +83,39 @@ function DatasetListRow({
   isSortable: boolean;
   onEditDataset?: (datasetId: string) => void;
 }) {
+  const router = useRouter();
+
+  function navigateToDataset() {
+    router.push(`/dashboard/datasets/${dataset.id}`);
+  }
+
+  function handleRowKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      navigateToDataset();
+    }
+  }
+
+  function stopHandlePropagation(event: MouseEvent<HTMLDivElement>) {
+    event.stopPropagation();
+  }
+
   return (
     <div
-      className="grid items-center gap-4 px-5 py-4 transition-colors hover:bg-accent/20"
+      className="grid cursor-pointer items-center gap-4 px-5 py-4 transition-colors hover:bg-accent/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
       style={{ gridTemplateColumns: DATASET_GRID_TEMPLATE_COLUMNS }}
+      role="link"
+      tabIndex={0}
+      onClick={navigateToDataset}
+      onKeyDown={handleRowKeyDown}
     >
       <div className="flex min-w-0 items-center gap-3">
         {canManageDatasets ? (
           isSortable ? (
-            <SortableItemHandle className="text-muted-foreground hover:text-foreground">
+            <SortableItemHandle
+              className="text-muted-foreground hover:text-foreground"
+              onClick={stopHandlePropagation}
+            >
               <GripVerticalIcon className="size-4" />
             </SortableItemHandle>
           ) : (
@@ -164,55 +167,25 @@ export function DatasetsGrid({
   onEditDataset,
   onReorderDatasets,
 }: DatasetsGridProps) {
-  const [filter, setFilter] = useState("");
-  const filteredDatasets = useMemo(
-    () => datasets.filter((dataset) => datasetMatchesSearch(dataset, filter)),
-    [datasets, filter],
-  );
-
   const canReorderDatasets =
     canManageDatasets &&
+    Boolean(onReorderDatasets) &&
     !isBusy &&
-    filter.trim().length === 0 &&
-    datasets.length > 1 &&
-    typeof onReorderDatasets === "function";
+    datasets.length > 1;
 
   return (
-    <section id="datasets" className="space-y-3">
-      <div>
-        <h2 className="text-lg font-medium">Datasets</h2>
-        <p className="text-sm text-muted-foreground">
-          View a saved CSV to filter, sort, and scroll rows.
-        </p>
-      </div>
-
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <label className="relative block sm:w-80">
-            <SearchIcon className="pointer-events-none absolute left-2 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              className="pl-8"
-              value={filter}
-              placeholder="Filter datasets"
-              onChange={(event) => setFilter(event.target.value)}
-            />
-          </label>
-        </div>
-      </div>
-
+    <section id="datasets">
       <div className="overflow-hidden rounded-xl border border-border bg-background">
         <DatasetListHeader />
 
-        {filteredDatasets.length === 0 ? (
+        {datasets.length === 0 ? (
           <div className="px-5 py-10 text-sm text-muted-foreground">
-            {datasets.length === 0
-              ? "No datasets have been added yet."
-              : "No datasets match your filter."}
+            No datasets have been added yet.
           </div>
         ) : canReorderDatasets ? (
           <Sortable
             value={datasets}
-            onValueChange={onReorderDatasets}
+            onValueChange={onReorderDatasets!}
             getItemValue={(dataset) => dataset.id}
             strategy="vertical"
             className="divide-y divide-border"
@@ -231,7 +204,7 @@ export function DatasetsGrid({
           </Sortable>
         ) : (
           <div className="divide-y divide-border">
-            {filteredDatasets.map((dataset) => (
+            {datasets.map((dataset) => (
               <DatasetListRow
                 key={dataset.id}
                 dataset={dataset}

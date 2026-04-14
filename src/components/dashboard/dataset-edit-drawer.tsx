@@ -1,6 +1,7 @@
 "use client";
 
 import { PlusIcon, XIcon } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -232,6 +233,7 @@ export function DatasetEditDrawer({
   onOpenChange,
   onSaveDataset,
 }: DatasetEditDrawerProps) {
+  const router = useRouter();
   const [fileName, setFileName] = useState(dataset.fileName);
   const [isPrimary, setIsPrimary] = useState(dataset.isPrimary);
   const [tags, setTags] = useState(() => normalizeDatasetTags(dataset.tags));
@@ -382,6 +384,11 @@ export function DatasetEditDrawer({
           : "The dataset name could not be updated.",
       );
     }
+  }
+
+  function handleReplaceDataset() {
+    onOpenChange(false);
+    router.push(`/dashboard/upload?replace=${dataset.id}`);
   }
 
   return (
@@ -538,6 +545,14 @@ export function DatasetEditDrawer({
           </div>
 
           <DrawerFooter className="border-t border-border px-6 py-4 sm:flex-row sm:justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isSaving}
+              onClick={handleReplaceDataset}
+            >
+              Replace dataset
+            </Button>
             <DrawerClose asChild>
               <Button type="button" variant="outline">
                 Close

@@ -14,6 +14,8 @@ export const datasetTagSchema = z.object({
   color: z.string().trim().regex(/^#[0-9a-fA-F]{6}$/),
 });
 
+const filterRegionCountrySchema = z.string().trim().min(1).max(255);
+
 export const blobUploadTokenSchema = z.object({
   fileName: z.string().min(1).max(255),
   sizeBytes: z.number().int().positive().max(MAX_CSV_BYTES),
@@ -67,6 +69,25 @@ export const datasetReorderSchema = z.object({
       message: "Dataset order must not contain duplicates.",
     }),
 });
+
+export const filterRegionPayloadSchema = z
+  .object({
+    name: z.string().trim().min(1).max(80),
+    countries: z.array(filterRegionCountrySchema).min(1).max(500),
+  })
+  .superRefine((value, ctx) => {
+    const normalizedCountries = value.countries.map((country) =>
+      country.trim().toLowerCase(),
+    );
+
+    if (new Set(normalizedCountries).size !== normalizedCountries.length) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["countries"],
+        message: "Each country can only be selected once.",
+      });
+    }
+  });
 
 export const datasetPatchSchema = z.union([
   datasetStatusPatchSchema,
