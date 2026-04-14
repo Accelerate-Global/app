@@ -46,7 +46,7 @@ export default async function DatasetPage({ params }: DatasetPageProps) {
             )}
           >
             <ChevronLeftIcon className="size-3.5" />
-            Back to datasets
+            Back to dashboard
           </Link>
           <h1 className="truncate text-4xl font-semibold tracking-[-0.04em] sm:text-[3rem]">
             {dataset.fileName}
