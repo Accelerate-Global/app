@@ -30,7 +30,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Accelerate Global Data",
+  title: "Accelerate Global",
   description: "Access shared people group datasets for Accelerate Global.",
 };
 

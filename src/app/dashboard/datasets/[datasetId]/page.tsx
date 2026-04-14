@@ -1,3 +1,4 @@
+import { ChevronLeftIcon } from "lucide-react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
@@ -37,19 +38,17 @@ export default async function DatasetPage({ params }: DatasetPageProps) {
             href="/dashboard"
             className={cn(
               buttonVariants({ variant: "link", size: "sm" }),
-              "px-0 text-[0.78rem] font-black uppercase tracking-[0.12em] no-underline hover:no-underline",
+              "inline-flex items-center gap-1 px-0 text-[0.78rem] font-black uppercase tracking-[0.12em] no-underline hover:no-underline",
             )}
           >
+            <ChevronLeftIcon className="size-3.5" />
             Back to datasets
           </Link>
           <h1 className="truncate text-4xl font-semibold tracking-[-0.04em] sm:text-[3rem]">
             {dataset.fileName}
           </h1>
         </section>
-        <DatasetTable
-          dataset={dataset}
-          canDelete={identity.isDatasetAdmin}
-        />
+        <DatasetTable dataset={dataset} />
       </div>
     </main>
   );
