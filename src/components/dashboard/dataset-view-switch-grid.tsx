@@ -1,7 +1,7 @@
 "use client";
 
-import { MapIcon, MicroscopeIcon, UserRoundIcon } from "lucide-react";
-import type { ReactNode } from "react";
+import { InfoIcon, MapIcon, MicroscopeIcon, UserRoundIcon } from "lucide-react";
+import { useId, useState, type ReactNode } from "react";
 
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
@@ -10,7 +10,7 @@ type RegionSelector = {
   id: string;
   label: string;
   checked: boolean;
-  countryCount: number;
+  countries: string[];
 };
 
 type DatasetViewSwitchGridProps = {
@@ -81,6 +81,51 @@ function DatasetViewCard({
   );
 }
 
+function RegionCountriesInfo({
+  label,
+  countries,
+}: {
+  label: string;
+  countries: string[];
+}) {
+  const [open, setOpen] = useState(false);
+  const tooltipId = useId();
+
+  return (
+    <div className="relative mt-1 inline-flex items-center">
+      <button
+        type="button"
+        className="inline-flex size-5 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        aria-label={`View countries in ${label}`}
+        aria-describedby={open ? tooltipId : undefined}
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={() => setOpen(false)}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setOpen(false)}
+      >
+        <InfoIcon aria-hidden="true" className="size-3.5" />
+      </button>
+      <div
+        id={tooltipId}
+        role="tooltip"
+        className={cn(
+          "pointer-events-none absolute top-full left-0 z-10 mt-2 w-56 rounded-xl border border-border/80 bg-background/95 p-3 shadow-lg shadow-black/10 transition-opacity",
+          open ? "opacity-100" : "opacity-0",
+        )}
+      >
+        <p className="text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground">
+          {label}
+        </p>
+        <ul className="mt-2 space-y-1 text-sm text-foreground">
+          {countries.map((country) => (
+            <li key={country}>{country}</li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
 export function DatasetViewSwitchGrid({
   regionCard,
   watchlistCard,
@@ -119,9 +164,10 @@ export function DatasetViewSwitchGrid({
                     <p className="truncate text-sm font-medium text-foreground">
                       {selector.label}
                     </p>
-                    <p className="text-xs text-muted-foreground">
-                      {selector.countryCount} countries
-                    </p>
+                    <RegionCountriesInfo
+                      label={selector.label}
+                      countries={selector.countries}
+                    />
                   </div>
                   <Switch
                     size="sm"
