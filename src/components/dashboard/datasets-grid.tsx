@@ -223,7 +223,7 @@ export function DatasetsGrid({
             : "No datasets match your filter."
         }
         tableLayout={{
-          columnsResizable: true,
+          width: "auto",
           headerSticky: true,
         }}
         tableClassNames={{
