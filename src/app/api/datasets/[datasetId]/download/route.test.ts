@@ -37,6 +37,7 @@ const createSupabaseAdminClientMock = vi.mocked(createSupabaseAdminClient);
 const adminIdentity = {
   ownerId: "supabase-user",
   email: "admin@example.com",
+  fullName: null,
   isDatasetAdmin: true,
   mode: "supabase" as const,
 };
@@ -44,6 +45,7 @@ const adminIdentity = {
 const viewerIdentity = {
   ownerId: "viewer-user",
   email: "viewer@example.com",
+  fullName: null,
   isDatasetAdmin: false,
   mode: "supabase" as const,
 };

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { AccountControl } from "@/components/auth/account-control";
 import type { CurrentIdentity } from "@/lib/auth";
 import { buttonVariants } from "@/components/ui/button";
+import { getSiteNavLinks } from "@/lib/site-navigation";
 import { cn } from "@/lib/utils";
 
 type SiteHeaderProps = {
@@ -12,40 +13,12 @@ type SiteHeaderProps = {
   showAuthAction?: boolean;
 };
 
-type NavLink = {
-  href: string;
-  label: string;
-};
-
-function getNavLinks(identity: CurrentIdentity | null): NavLink[] {
-  if (identity) {
-    if (identity.isDatasetAdmin) {
-      return [
-        { href: "/dashboard", label: "Dashboard" },
-        { href: "/dashboard#datasets", label: "Data" },
-        { href: "/dashboard/upload", label: "Upload" },
-      ];
-    }
-
-    return [
-      { href: "/dashboard", label: "Dashboard" },
-      { href: "/dashboard#datasets", label: "Data" },
-    ];
-  }
-
-  return [
-    { href: "/", label: "Home" },
-    { href: "/", label: "Data" },
-    { href: "/sign-up", label: "Access" },
-  ];
-}
-
 export function SiteHeader({
   identity = null,
   showNav = true,
   showAuthAction = true,
 }: SiteHeaderProps) {
-  const navLinks = getNavLinks(identity);
+  const navLinks = getSiteNavLinks(identity);
   const showRightCluster = showNav || showAuthAction;
 
   return (

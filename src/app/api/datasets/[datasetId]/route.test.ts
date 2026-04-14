@@ -48,6 +48,7 @@ const updateDatasetStatusMock = vi.mocked(updateDatasetStatus);
 const identity = {
   ownerId: "supabase-user",
   email: "admin@example.com",
+  fullName: null,
   isDatasetAdmin: true,
   mode: "supabase" as const,
 };
