@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckIcon, ChevronDownIcon, PlusIcon, XIcon } from "lucide-react";
+import { PlusIcon, XIcon } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -15,14 +15,6 @@ import {
   DrawerTitle,
 } from "@/components/ui/drawer";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
   Field,
   FieldContent,
   FieldDescription,
@@ -30,6 +22,13 @@ import {
   FieldTitle,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+} from "@/components/ui/select";
 import type { DatasetSummary, DatasetTag } from "@/lib/api-types";
 import {
   DATASET_TAG_COLOR_OPTIONS,
@@ -80,52 +79,37 @@ function DatasetTagColorMenu({
   return (
     <div className="space-y-2">
       <label className="text-sm font-medium text-foreground">{label}</label>
-      <DropdownMenu>
-        <DropdownMenuTrigger
-          disabled={disabled}
-          render={
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full justify-between"
-            >
-              <span className="flex items-center gap-2">
-                <span
-                  className="size-3 rounded-full border border-border"
-                  style={{ backgroundColor: activeOption.color }}
-                />
-                <span>{activeOption.label}</span>
-              </span>
-              <ChevronDownIcon className="size-4 text-muted-foreground" />
-            </Button>
+      <Select
+        value={activeOption.color}
+        onValueChange={(nextValue) => {
+          if (nextValue) {
+            onChange(nextValue);
           }
-        />
-        <DropdownMenuContent align="start" className="w-56">
-          <DropdownMenuGroup>
-            <DropdownMenuLabel>Tag color</DropdownMenuLabel>
-            {DATASET_TAG_COLOR_OPTIONS.map((option) => {
-              const isSelected = normalizedValue === option.color;
-
-              return (
-                <DropdownMenuItem
-                  key={option.color}
-                  onClick={() => onChange(option.color)}
-                  className="justify-between gap-3"
-                >
-                  <span className="flex items-center gap-2">
-                    <span
-                      className="size-3 rounded-full border border-border"
-                      style={{ backgroundColor: option.color }}
-                    />
-                    <span>{option.label}</span>
-                  </span>
-                  {isSelected ? <CheckIcon className="size-4" /> : null}
-                </DropdownMenuItem>
-              );
-            })}
-          </DropdownMenuGroup>
-        </DropdownMenuContent>
-      </DropdownMenu>
+        }}
+        disabled={disabled}
+      >
+        <SelectTrigger className="w-full justify-between">
+          <span className="flex items-center gap-2">
+            <span
+              className="size-3 rounded-full border border-border"
+              style={{ backgroundColor: activeOption.color }}
+            />
+            <span>{activeOption.label}</span>
+          </span>
+        </SelectTrigger>
+        <SelectContent align="start" className="w-56">
+          <SelectLabel>Tag color</SelectLabel>
+          {DATASET_TAG_COLOR_OPTIONS.map((option) => (
+            <SelectItem key={option.color} value={option.color}>
+              <span
+                className="size-3 rounded-full border border-border"
+                style={{ backgroundColor: option.color }}
+              />
+              <span>{option.label}</span>
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </div>
   );
 }
