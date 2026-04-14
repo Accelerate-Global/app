@@ -6,6 +6,12 @@ export type CsvColumn = {
   sourceIndex: number;
 };
 
+export type DatasetTag = {
+  id: string;
+  label: string;
+  color: string;
+};
+
 export type DatasetSummary = {
   id: string;
   sortOrder: number;
@@ -16,6 +22,7 @@ export type DatasetSummary = {
   rowCount: number;
   sizeBytes: number;
   columns: CsvColumn[];
+  tags: DatasetTag[];
   error: string | null;
   createdAt: string;
   updatedAt: string;

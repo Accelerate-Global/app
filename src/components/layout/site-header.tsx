@@ -44,10 +44,7 @@ export function SiteHeader({ identity = null }: SiteHeaderProps) {
   return (
     <header className="bg-background">
       <div className="mx-auto flex w-full max-w-[1500px] flex-col gap-8 px-4 py-7 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8 lg:py-8">
-        <Link
-          href={identity ? "/dashboard" : "/"}
-          className="shrink-0 self-start transition-opacity hover:opacity-90"
-        >
+        <div className="shrink-0 self-start">
           <Image
             src="/ag-logo.svg"
             alt="Accelerate Global"
@@ -56,7 +53,7 @@ export function SiteHeader({ identity = null }: SiteHeaderProps) {
             priority
             className="block h-auto w-[220px] sm:w-[270px] lg:w-[320px]"
           />
-        </Link>
+        </div>
 
         <nav className="flex flex-1 flex-wrap items-center justify-center gap-x-8 gap-y-3 lg:gap-x-12">
           {navLinks.map((item) => (

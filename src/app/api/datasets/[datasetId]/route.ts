@@ -2,7 +2,7 @@ import { getCurrentIdentity } from "@/lib/auth";
 import {
   deleteDataset,
   getDataset,
-  renameDataset,
+  updateDatasetDetails,
   updateDatasetStatus,
 } from "@/lib/datasets";
 import { jsonError } from "@/lib/http";
@@ -52,15 +52,16 @@ export async function PATCH(request: Request, context: DatasetContext) {
   }
 
   const dataset =
-    "fileName" in parsed.data
-      ? await renameDataset({
-          datasetId,
-          fileName: parsed.data.fileName,
-        })
-      : await updateDatasetStatus({
+    "status" in parsed.data
+      ? await updateDatasetStatus({
           datasetId,
           status: parsed.data.status,
           error: parsed.data.error,
+        })
+      : await updateDatasetDetails({
+          datasetId,
+          fileName: parsed.data.fileName,
+          tags: parsed.data.tags,
         });
 
   if (!dataset) {

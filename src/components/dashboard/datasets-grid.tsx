@@ -4,6 +4,7 @@ import { FileTextIcon, GripVerticalIcon, SearchIcon } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
+import { DatasetTagList } from "@/components/dashboard/dataset-tag-list";
 import {
   Sortable,
   SortableItem,
@@ -30,9 +31,11 @@ function datasetMatchesSearch(dataset: DatasetSummary, value: unknown) {
 
   if (!query) return true;
 
-  return [dataset.fileName, String(dataset.rowCount)].some((item) =>
-    item.toLowerCase().includes(query),
-  );
+  return [
+    dataset.fileName,
+    String(dataset.rowCount),
+    ...dataset.tags.map((tag) => tag.label),
+  ].some((item) => item.toLowerCase().includes(query));
 }
 
 function DatasetActions({
@@ -115,7 +118,10 @@ function DatasetListRow({
           )
         ) : null}
         <FileTextIcon className="size-4 shrink-0 text-muted-foreground" />
-        <span className="truncate font-medium">{dataset.fileName}</span>
+        <div className="min-w-0 space-y-2">
+          <span className="block truncate font-medium">{dataset.fileName}</span>
+          <DatasetTagList tags={dataset.tags} />
+        </div>
       </div>
 
       <span className="justify-self-center text-center tabular-nums">

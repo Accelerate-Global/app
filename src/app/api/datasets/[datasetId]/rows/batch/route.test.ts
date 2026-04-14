@@ -39,6 +39,7 @@ const dataset = {
   rowCount: 2,
   sizeBytes: 100,
   columns: [{ key: "email", label: "Email", sourceIndex: 0 }],
+  tags: [],
   error: null,
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),

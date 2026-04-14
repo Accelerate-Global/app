@@ -5,7 +5,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import {
   deleteDataset,
   getDataset,
-  renameDataset,
+  updateDatasetDetails,
   updateDatasetStatus,
 } from "@/lib/datasets";
 import { DELETE, GET, PATCH } from "./route";
@@ -34,7 +34,7 @@ vi.mock("@/lib/supabase/admin", () => ({
 vi.mock("@/lib/datasets", () => ({
   deleteDataset: vi.fn(),
   getDataset: vi.fn(),
-  renameDataset: vi.fn(),
+  updateDatasetDetails: vi.fn(),
   updateDatasetStatus: vi.fn(),
 }));
 
@@ -42,7 +42,7 @@ const getCurrentIdentityMock = vi.mocked(getCurrentIdentity);
 const createSupabaseAdminClientMock = vi.mocked(createSupabaseAdminClient);
 const deleteDatasetMock = vi.mocked(deleteDataset);
 const getDatasetMock = vi.mocked(getDataset);
-const renameDatasetMock = vi.mocked(renameDataset);
+const updateDatasetDetailsMock = vi.mocked(updateDatasetDetails);
 const updateDatasetStatusMock = vi.mocked(updateDatasetStatus);
 
 const identity = {
@@ -69,6 +69,7 @@ const dataset = {
   rowCount: 10,
   sizeBytes: 100,
   columns: [{ key: "email", label: "Email", sourceIndex: 0 }],
+  tags: [],
   error: null,
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
@@ -129,23 +130,46 @@ describe("/api/datasets/[datasetId]", () => {
   });
 
   it("renames datasets for the configured admin", async () => {
-    renameDatasetMock.mockResolvedValue({
+    updateDatasetDetailsMock.mockResolvedValue({
       ...dataset,
       fileName: "renamed.csv",
+      tags: [
+        {
+          id: "tag-1",
+          label: "Priority",
+          color: "#8f9f6f",
+        },
+      ],
     });
 
     const response = await PATCH(
       new Request("http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001", {
         method: "PATCH",
-        body: JSON.stringify({ fileName: "renamed.csv" }),
+        body: JSON.stringify({
+          fileName: "renamed.csv",
+          tags: [
+            {
+              id: "tag-1",
+              label: "Priority",
+              color: "#8f9f6f",
+            },
+          ],
+        }),
       }),
       context,
     );
 
     expect(response.status).toBe(200);
-    expect(renameDatasetMock).toHaveBeenCalledWith({
+    expect(updateDatasetDetailsMock).toHaveBeenCalledWith({
       datasetId: dataset.id,
       fileName: "renamed.csv",
+      tags: [
+        {
+          id: "tag-1",
+          label: "Priority",
+          color: "#8f9f6f",
+        },
+      ],
     });
     expect(updateDatasetStatusMock).not.toHaveBeenCalled();
   });
