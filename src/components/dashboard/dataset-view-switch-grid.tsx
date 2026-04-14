@@ -51,7 +51,7 @@ export function DatasetViewSwitchGrid() {
   const [viewStates, setViewStates] = useState(INITIAL_VIEW_STATES);
 
   return (
-    <FieldGroup className="grid w-full gap-4 md:grid-cols-2 xl:grid-cols-3">
+    <FieldGroup className="grid w-full items-start gap-4 md:grid-cols-2 xl:grid-cols-3">
       {VIEW_OPTIONS.map((option) => {
         const Icon = option.icon;
 
@@ -59,11 +59,11 @@ export function DatasetViewSwitchGrid() {
           <FieldLabel
             key={option.id}
             htmlFor={`dataset-view-${option.id}`}
-            className="rounded-[1.25rem] border-border/80 bg-card/95 p-0! shadow-sm transition-colors hover:bg-accent/10 has-data-checked:border-foreground/18 has-data-checked:bg-accent/16"
+            className="self-start rounded-[1.25rem] border-border/80 bg-card/95 p-0! shadow-sm transition-colors hover:bg-accent/10 has-data-checked:border-foreground/18 has-data-checked:bg-accent/16"
           >
             <Field
               orientation="horizontal"
-              className="h-full min-h-[10.5rem] items-start justify-between gap-4 px-4 py-4 sm:min-h-[9.5rem]"
+              className="items-start justify-between gap-4 px-4 py-4"
             >
               <FieldContent className="gap-3">
                 <FieldTitle className="items-start gap-3">
