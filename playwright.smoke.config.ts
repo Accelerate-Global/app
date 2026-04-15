@@ -29,6 +29,10 @@ export default defineConfig({
   globalSetup: "./tests/ui/global.setup.ts",
   webServer: {
     command: "pnpm exec next start --port 3100",
+    env: {
+      ...process.env,
+      UI_SMOKE_ENABLED: process.env.UI_SMOKE_ENABLED ?? "1",
+    },
     url: UI_SMOKE_BASE_URL,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

@@ -46,11 +46,15 @@ export async function assertSmokeRoute(page: Page, route: SmokeRouteSpec) {
   await expect(pageMarker).toBeVisible();
 
   if (route.heading) {
-    await expect(page.getByRole("heading", { name: route.heading })).toBeVisible();
+    await expect(pageMarker.getByText(route.heading, { exact: true })).toBeVisible();
   }
 
   if (route.readySelector) {
-    await expect(page.locator(route.readySelector)).toBeVisible();
+    const readyLocator = await findFirstVisible(page.locator(route.readySelector));
+
+    expect(readyLocator, `Expected a visible match for ${route.readySelector}`).not.toBeNull();
+
+    await expect(readyLocator!).toBeVisible();
   }
 
   if (route.assertFixtureCoverage) {
