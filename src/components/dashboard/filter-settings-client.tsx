@@ -176,6 +176,11 @@ function CountrySelector({
               <label
                 key={country}
                 className="flex cursor-pointer items-center gap-3 px-4 py-3 text-sm transition-colors hover:bg-accent/10"
+                {...(smokeSearchMarker
+                  ? {
+                      "data-smoke-region-country-option": `${smokeSearchMarker}:${country}`,
+                    }
+                  : {})}
               >
                 <Checkbox
                   checked={selectedSet.has(country)}

@@ -97,7 +97,9 @@ test("admin can create and update filter settings", async ({ page }, testInfo) =
   await page
     .locator('[data-smoke-region-country-search="create"]')
     .fill("Nepal");
-  await page.getByLabel("Include Nepal").click();
+  await page
+    .locator('[data-smoke-region-country-option="create:Nepal"]')
+    .click();
   await page.locator('[data-smoke-region-create-submit]').click();
   await expect(page.getByText("Created Smoke Region.")).toBeVisible();
 
