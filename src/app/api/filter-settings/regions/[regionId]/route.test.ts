@@ -39,6 +39,8 @@ const context = {
 const region = {
   id: "f0000000-0000-4000-8000-000000000001",
   name: "South Asia",
+  description: "Countries across South East Asia.",
+  sortOrder: 1,
   countries: ["India", "Nepal"],
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
@@ -55,7 +57,12 @@ describe("/api/filter-settings/regions/[regionId]", () => {
     const response = await PATCH(
       new Request("http://localhost/api/filter-settings/regions/1", {
         method: "PATCH",
-        body: JSON.stringify({ name: "South Asia", countries: ["India"] }),
+        body: JSON.stringify({
+          name: "South Asia",
+          description: "",
+          sortOrder: 1,
+          countries: ["India"],
+        }),
       }),
       context,
     );
@@ -70,7 +77,12 @@ describe("/api/filter-settings/regions/[regionId]", () => {
     const response = await PATCH(
       new Request("http://localhost/api/filter-settings/regions/1", {
         method: "PATCH",
-        body: JSON.stringify({ name: "South Asia", countries: ["India", "Nepal"] }),
+        body: JSON.stringify({
+          name: "South Asia",
+          description: "Countries across South East Asia.",
+          sortOrder: 1,
+          countries: ["India", "Nepal"],
+        }),
       }),
       context,
     );
@@ -80,6 +92,8 @@ describe("/api/filter-settings/regions/[regionId]", () => {
     expect(updateFilterRegionMock).toHaveBeenCalledWith({
       regionId: "f0000000-0000-4000-8000-000000000001",
       name: "South Asia",
+      description: "Countries across South East Asia.",
+      sortOrder: 1,
       countries: ["India", "Nepal"],
     });
   });
@@ -91,7 +105,12 @@ describe("/api/filter-settings/regions/[regionId]", () => {
     const response = await PATCH(
       new Request("http://localhost/api/filter-settings/regions/1", {
         method: "PATCH",
-        body: JSON.stringify({ name: "South Asia", countries: ["India"] }),
+        body: JSON.stringify({
+          name: "South Asia",
+          description: "",
+          sortOrder: 1,
+          countries: ["India"],
+        }),
       }),
       context,
     );
@@ -108,7 +127,12 @@ describe("/api/filter-settings/regions/[regionId]", () => {
     const response = await PATCH(
       new Request("http://localhost/api/filter-settings/regions/1", {
         method: "PATCH",
-        body: JSON.stringify({ name: "South Asia", countries: ["India"] }),
+        body: JSON.stringify({
+          name: "South Asia",
+          description: "",
+          sortOrder: 1,
+          countries: ["India"],
+        }),
       }),
       context,
     );

@@ -5,6 +5,16 @@ export const ROW_BATCH_SIZE = 500;
 
 const HEADER_MAX_LENGTH = 96;
 
+function normalizeHeaderFragment(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/\s+/g, "_")
+    .replace(/[^a-z0-9_]/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_|_$/g, "")
+    .slice(0, HEADER_MAX_LENGTH);
+}
+
 export function sanitizeFileName(fileName: string) {
   const cleaned = fileName
     .trim()
@@ -16,15 +26,16 @@ export function sanitizeFileName(fileName: string) {
   return cleaned || "upload.csv";
 }
 
+export function normalizeHeaderIdentity(value: unknown, index = 0) {
+  const raw = String(value ?? "").trim();
+  const normalized = normalizeHeaderFragment(raw);
+
+  return normalized || `column_${index + 1}`;
+}
+
 export function normalizeHeader(value: unknown, index: number) {
   const raw = String(value ?? "").trim();
-  const normalized = raw
-    .toLowerCase()
-    .replace(/\s+/g, "_")
-    .replace(/[^a-z0-9_]/g, "_")
-    .replace(/_+/g, "_")
-    .replace(/^_|_$/g, "")
-    .slice(0, HEADER_MAX_LENGTH);
+  const normalized = normalizeHeaderFragment(raw);
 
   return normalized || `column_${index + 1}`;
 }

@@ -1,5 +1,8 @@
 import type { DatasetRowsResponse, DatasetSummary, FilterRegion } from "@/lib/api-types";
-import { REGION_DATASET_COLUMN_KEY } from "@/lib/dataset-region-constants";
+import {
+  REGION_DATASET_COLUMN_KEY,
+  UUPG_DATASET_COLUMN_KEY,
+} from "@/lib/dataset-region-constants";
 
 type DatasetRow = DatasetRowsResponse["rows"][number];
 
@@ -8,6 +11,11 @@ export type DatasetRegionFilterState = {
   isSupported: boolean;
   hasConfiguredRegions: boolean;
   enabledCountryNames: string[];
+};
+
+export type DatasetUupgFilterState = {
+  enabled: boolean;
+  isSupported: boolean;
 };
 
 function normalizeCountryName(value: string | null | undefined) {
@@ -24,13 +32,20 @@ function normalizeDatasetColumnKey(value: string | null | undefined) {
     .replace(/^_|_$/g, "") ?? "";
 }
 
-function isRegionDatasetColumnKey(value: string | null | undefined) {
-  return normalizeDatasetColumnKey(value) === REGION_DATASET_COLUMN_KEY;
+function normalizeDatasetCellValue(value: string | null | undefined) {
+  return value?.trim().toLowerCase() ?? "";
 }
 
-function getRegionDatasetValue(row: DatasetRow) {
+function isDatasetColumnKey(
+  value: string | null | undefined,
+  expectedKey: string,
+) {
+  return normalizeDatasetColumnKey(value) === expectedKey;
+}
+
+function getDatasetValue(row: DatasetRow, expectedKey: string) {
   for (const [key, value] of Object.entries(row.data)) {
-    if (isRegionDatasetColumnKey(key)) {
+    if (isDatasetColumnKey(key, expectedKey)) {
       return value;
     }
   }
@@ -38,14 +53,35 @@ function getRegionDatasetValue(row: DatasetRow) {
   return "";
 }
 
-export function datasetSupportsRegionFiltering(
+function getRegionDatasetValue(row: DatasetRow) {
+  return getDatasetValue(row, REGION_DATASET_COLUMN_KEY);
+}
+
+function getUupgDatasetValue(row: DatasetRow) {
+  return getDatasetValue(row, UUPG_DATASET_COLUMN_KEY);
+}
+
+function datasetSupportsColumnFiltering(
   dataset: Pick<DatasetSummary, "columns">,
+  expectedKey: string,
 ) {
   return dataset.columns.some(
     (column) =>
-      isRegionDatasetColumnKey(column.key) ||
-      isRegionDatasetColumnKey(column.label),
+      isDatasetColumnKey(column.key, expectedKey) ||
+      isDatasetColumnKey(column.label, expectedKey),
   );
+}
+
+export function datasetSupportsRegionFiltering(
+  dataset: Pick<DatasetSummary, "columns">,
+) {
+  return datasetSupportsColumnFiltering(dataset, REGION_DATASET_COLUMN_KEY);
+}
+
+export function datasetSupportsUupgFiltering(
+  dataset: Pick<DatasetSummary, "columns">,
+) {
+  return datasetSupportsColumnFiltering(dataset, UUPG_DATASET_COLUMN_KEY);
 }
 
 export function getEnabledRegionCountryNames(
@@ -100,4 +136,17 @@ export function filterDatasetRowsByRegion(
 
     return allowedCountryNames.has(countryName);
   });
+}
+
+export function filterDatasetRowsByUupg(
+  rows: DatasetRow[],
+  uupgFilter: DatasetUupgFilterState | null | undefined,
+) {
+  if (!uupgFilter || !uupgFilter.enabled || !uupgFilter.isSupported) {
+    return rows;
+  }
+
+  return rows.filter(
+    (row) => normalizeDatasetCellValue(getUupgDatasetValue(row)) === "false",
+  );
 }

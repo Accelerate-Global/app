@@ -3,7 +3,9 @@ import { describe, expect, it } from "vitest";
 import type { DatasetRowsResponse, DatasetSummary } from "@/lib/api-types";
 import {
   datasetSupportsRegionFiltering,
+  datasetSupportsUupgFiltering,
   filterDatasetRowsByRegion,
+  filterDatasetRowsByUupg,
   getEnabledRegionCountryNames,
 } from "./dataset-region-filtering";
 
@@ -13,6 +15,7 @@ const rows: DatasetRowsResponse["rows"] = [
     rowIndex: 0,
     data: {
       geo_country_name: "India",
+      engage_global_engagement_anywhere: "FALSE",
     },
   },
   {
@@ -20,6 +23,7 @@ const rows: DatasetRowsResponse["rows"] = [
     rowIndex: 1,
     data: {
       geo_country_name: "Nepal",
+      engage_global_engagement_anywhere: "TRUE",
     },
   },
   {
@@ -27,6 +31,7 @@ const rows: DatasetRowsResponse["rows"] = [
     rowIndex: 2,
     data: {
       Geo_Country_Name: "",
+      Engage_Global_Engagement_Anywhere: "",
     },
   },
 ];
@@ -47,6 +52,11 @@ const dataset = {
       label: "Geo_Country_Name",
       sourceIndex: 0,
     },
+    {
+      key: "engage_global_engagement_anywhere",
+      label: "Engage_Global_Engagement_Anywhere",
+      sourceIndex: 1,
+    },
   ],
   tags: [],
   error: null,
@@ -59,12 +69,48 @@ describe("dataset-region-filtering", () => {
     expect(datasetSupportsRegionFiltering(dataset)).toBe(true);
   });
 
+  it("detects UUPG support when the dataset stores normalized column keys", () => {
+    expect(datasetSupportsUupgFiltering(dataset)).toBe(true);
+  });
+
+  it("detects UUPG support when the dataset exposes the raw header as the label", () => {
+    expect(
+      datasetSupportsUupgFiltering({
+        ...dataset,
+        columns: [
+          {
+            key: "engagement_status",
+            label: "Engage_Global_Engagement_Anywhere",
+            sourceIndex: 0,
+          },
+        ],
+      }),
+    ).toBe(true);
+  });
+
+  it("reports UUPG filtering as unsupported when the column is absent", () => {
+    expect(
+      datasetSupportsUupgFiltering({
+        ...dataset,
+        columns: [
+          {
+            key: "geo_country_name",
+            label: "Geo_Country_Name",
+            sourceIndex: 0,
+          },
+        ],
+      }),
+    ).toBe(false);
+  });
+
   it("builds the union of selected region countries", () => {
     const countries = getEnabledRegionCountryNames(
       [
         {
           id: "region-1",
           name: "South Asia",
+          description: "",
+          sortOrder: 1,
           countries: ["India", "Nepal"],
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
@@ -72,6 +118,8 @@ describe("dataset-region-filtering", () => {
         {
           id: "region-2",
           name: "EMENA",
+          description: "",
+          sortOrder: 2,
           countries: ["Turkey", "Jordan"],
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
@@ -92,6 +140,8 @@ describe("dataset-region-filtering", () => {
         {
           id: "region-1",
           name: "South Asia",
+          description: "",
+          sortOrder: 1,
           countries: ["India", "Nepal"],
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
@@ -99,6 +149,8 @@ describe("dataset-region-filtering", () => {
         {
           id: "region-2",
           name: "EMENA",
+          description: "",
+          sortOrder: 2,
           countries: ["Turkey", "Jordan"],
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
@@ -154,6 +206,8 @@ describe("dataset-region-filtering", () => {
         {
           id: "region-1",
           name: "South Asia",
+          description: "",
+          sortOrder: 1,
           countries: ["India", "Nepal"],
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
@@ -184,5 +238,113 @@ describe("dataset-region-filtering", () => {
     });
 
     expect(filteredRows).toHaveLength(3);
+  });
+
+  it("keeps only rows whose UUPG field normalizes to false", () => {
+    const filteredRows = filterDatasetRowsByUupg(
+      [
+        {
+          id: "row-false-uppercase",
+          rowIndex: 0,
+          data: {
+            engage_global_engagement_anywhere: "FALSE",
+          },
+        },
+        {
+          id: "row-false-trimmed",
+          rowIndex: 1,
+          data: {
+            Engage_Global_Engagement_Anywhere: " false ",
+          },
+        },
+        {
+          id: "row-true",
+          rowIndex: 2,
+          data: {
+            engage_global_engagement_anywhere: "TRUE",
+          },
+        },
+        {
+          id: "row-blank",
+          rowIndex: 3,
+          data: {
+            engage_global_engagement_anywhere: "",
+          },
+        },
+        {
+          id: "row-missing",
+          rowIndex: 4,
+          data: {},
+        },
+        {
+          id: "row-other",
+          rowIndex: 5,
+          data: {
+            engage_global_engagement_anywhere: "unknown",
+          },
+        },
+      ],
+      {
+        enabled: true,
+        isSupported: true,
+      },
+    );
+
+    expect(filteredRows.map((row) => row.id)).toEqual([
+      "row-false-uppercase",
+      "row-false-trimmed",
+    ]);
+  });
+
+  it("keeps all rows when UUPG filtering is disabled", () => {
+    const filteredRows = filterDatasetRowsByUupg(rows, {
+      enabled: false,
+      isSupported: true,
+    });
+
+    expect(filteredRows).toHaveLength(3);
+  });
+
+  it("applies region and UUPG filters with AND semantics", () => {
+    const regionFilteredRows = filterDatasetRowsByRegion(
+      [
+        {
+          id: "row-india-false",
+          rowIndex: 0,
+          data: {
+            geo_country_name: "India",
+            engage_global_engagement_anywhere: "FALSE",
+          },
+        },
+        {
+          id: "row-india-true",
+          rowIndex: 1,
+          data: {
+            geo_country_name: "India",
+            engage_global_engagement_anywhere: "TRUE",
+          },
+        },
+        {
+          id: "row-nepal-false",
+          rowIndex: 2,
+          data: {
+            geo_country_name: "Nepal",
+            engage_global_engagement_anywhere: "FALSE",
+          },
+        },
+      ],
+      {
+        enabled: true,
+        isSupported: true,
+        hasConfiguredRegions: true,
+        enabledCountryNames: ["India"],
+      },
+    );
+    const filteredRows = filterDatasetRowsByUupg(regionFilteredRows, {
+      enabled: true,
+      isSupported: true,
+    });
+
+    expect(filteredRows.map((row) => row.id)).toEqual(["row-india-false"]);
   });
 });

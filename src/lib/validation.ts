@@ -73,6 +73,8 @@ export const datasetReorderSchema = z.object({
 export const filterRegionPayloadSchema = z
   .object({
     name: z.string().trim().min(1).max(80),
+    description: z.string().trim().max(300),
+    sortOrder: z.number().int().min(1).max(9999),
     countries: z.array(filterRegionCountrySchema).min(1).max(500),
   })
   .superRefine((value, ctx) => {
@@ -88,6 +90,10 @@ export const filterRegionPayloadSchema = z
       });
     }
   });
+
+export const fieldDefinitionPatchSchema = z.object({
+  definition: z.string().trim().max(1000),
+});
 
 export const datasetPatchSchema = z.union([
   datasetStatusPatchSchema,

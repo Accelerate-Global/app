@@ -12,6 +12,7 @@ type RegionSelector = {
   id: string;
   label: string;
   checked: boolean;
+  description: string;
   countries: string[];
 };
 
@@ -29,6 +30,7 @@ type DatasetViewSwitchGridProps = {
   };
   uupgCard: {
     enabled: boolean;
+    supported: boolean;
     onEnabledChange: (checked: boolean) => void;
   };
 };
@@ -85,11 +87,15 @@ function DatasetViewCard({
 
 function RegionCountriesInfo({
   label,
+  description,
   countries,
 }: {
   label: string;
+  description: string;
   countries: string[];
 }) {
+  const tooltipText = description.trim() || countries.join(", ");
+
   return (
     <Tooltip>
       <TooltipTrigger
@@ -98,7 +104,7 @@ function RegionCountriesInfo({
             variant="ghost"
             size="icon-xs"
             aria-label={`View countries in ${label}`}
-            className="mt-1 text-muted-foreground hover:text-foreground"
+            className="shrink-0 text-muted-foreground hover:text-foreground"
           />
         }
       >
@@ -110,7 +116,7 @@ function RegionCountriesInfo({
       >
         <p className="text-left">
           <span className="font-medium">{label}:</span>{" "}
-          <span>{countries.join(", ")}</span>
+          <span className="whitespace-pre-line">{tooltipText}</span>
         </p>
       </TooltipContent>
     </Tooltip>
@@ -124,6 +130,7 @@ export function DatasetViewSwitchGrid({
 }: DatasetViewSwitchGridProps) {
   const hasRegions = regionCard.selectors.length > 0;
   const regionCardDisabled = !regionCard.supported || !hasRegions;
+  const uupgCardDisabled = !uupgCard.supported;
 
   return (
     <div className="grid w-full auto-rows-fr gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -152,13 +159,16 @@ export function DatasetViewSwitchGrid({
                   className="flex items-center justify-between gap-3 py-2.5"
                 >
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-foreground">
-                      {selector.label}
-                    </p>
-                    <RegionCountriesInfo
-                      label={selector.label}
-                      countries={selector.countries}
-                    />
+                    <div className="flex min-w-0 items-center gap-1.5">
+                      <p className="truncate text-sm font-medium text-foreground">
+                        {selector.label}
+                      </p>
+                      <RegionCountriesInfo
+                        label={selector.label}
+                        description={selector.description}
+                        countries={selector.countries}
+                      />
+                    </div>
                   </div>
                   <Switch
                     size="sm"
@@ -189,8 +199,15 @@ export function DatasetViewSwitchGrid({
         description="People groups who have no record of engagement among them."
         icon={<UserRoundIcon aria-hidden="true" className="size-5" />}
         enabled={uupgCard.enabled}
+        disabled={uupgCardDisabled}
         onEnabledChange={uupgCard.onEnabledChange}
-      />
+      >
+        {!uupgCard.supported ? (
+          <div className="self-end text-sm leading-5 text-muted-foreground">
+            This dataset does not include <code>Engage_Global_Engagement_Anywhere</code>, so UUPG filtering is unavailable.
+          </div>
+        ) : null}
+      </DatasetViewCard>
     </div>
   );
 }
