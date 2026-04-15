@@ -29,6 +29,7 @@ export async function PATCH(request: Request, context: FieldDefinitionContext) {
   const { fieldDefinitionId } = await context.params;
   const fieldDefinition = await updateFieldDefinition({
     fieldDefinitionId,
+    displayLabel: parsed.data.displayLabel,
     definition: parsed.data.definition,
   });
 

@@ -31,6 +31,7 @@ import {
   SelectTrigger,
 } from "@/components/ui/select";
 import type { DatasetSummary, DatasetTag } from "@/lib/api-types";
+import { normalizeDatasetHiddenColumnKeys } from "@/lib/dataset-column-visibility";
 import {
   DATASET_TAG_COLOR_OPTIONS,
   DEFAULT_DATASET_TAG_COLOR,
@@ -51,6 +52,7 @@ type DatasetEditDrawerProps = {
     fileName: string;
     tags: DatasetTag[];
     isPrimary: boolean;
+    hiddenColumnKeys: string[];
   }) => Promise<void>;
 };
 
@@ -237,6 +239,9 @@ export function DatasetEditDrawer({
   const [fileName, setFileName] = useState(dataset.fileName);
   const [isPrimary, setIsPrimary] = useState(dataset.isPrimary);
   const [tags, setTags] = useState(() => normalizeDatasetTags(dataset.tags));
+  const [hiddenColumnKeys, setHiddenColumnKeys] = useState(() =>
+    normalizeDatasetHiddenColumnKeys(dataset.hiddenColumnKeys, dataset.columns),
+  );
   const [newTagLabel, setNewTagLabel] = useState("");
   const [newTagColor, setNewTagColor] = useState(DEFAULT_DATASET_TAG_COLOR);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -244,18 +249,30 @@ export function DatasetEditDrawer({
 
   const trimmedFileName = fileName.trim();
   const normalizedTags = useMemo(() => normalizeDatasetTags(tags), [tags]);
+  const normalizedHiddenColumnKeys = useMemo(
+    () => normalizeDatasetHiddenColumnKeys(hiddenColumnKeys, dataset.columns),
+    [dataset.columns, hiddenColumnKeys],
+  );
   const initialTags = useMemo(
     () => normalizeDatasetTags(dataset.tags),
     [dataset.tags],
   );
+  const initialHiddenColumnKeys = useMemo(
+    () => normalizeDatasetHiddenColumnKeys(dataset.hiddenColumnKeys, dataset.columns),
+    [dataset.columns, dataset.hiddenColumnKeys],
+  );
   const hasTagChanges =
     JSON.stringify(normalizedTags) !== JSON.stringify(initialTags);
+  const hasHiddenColumnChanges =
+    JSON.stringify(normalizedHiddenColumnKeys) !==
+    JSON.stringify(initialHiddenColumnKeys);
   const hasPrimaryChange = isPrimary !== dataset.isPrimary;
   const canSave = Boolean(
     trimmedFileName &&
       !isSaving &&
       (trimmedFileName !== dataset.fileName ||
         hasTagChanges ||
+        hasHiddenColumnChanges ||
         hasPrimaryChange),
   );
   const uploadedAt = useMemo(
@@ -346,6 +363,15 @@ export function DatasetEditDrawer({
     setErrorMessage(null);
   }
 
+  function handleDisplayedFieldChange(columnKey: string, checked: boolean) {
+    setHiddenColumnKeys((current) =>
+      checked
+        ? current.filter((key) => key !== columnKey)
+        : [...current, columnKey],
+    );
+    setErrorMessage(null);
+  }
+
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -357,6 +383,7 @@ export function DatasetEditDrawer({
     if (
       trimmedFileName === dataset.fileName &&
       !hasTagChanges &&
+      !hasHiddenColumnChanges &&
       !hasPrimaryChange
     ) {
       setErrorMessage(null);
@@ -376,6 +403,7 @@ export function DatasetEditDrawer({
         fileName: trimmedFileName,
         tags: normalizedTags,
         isPrimary,
+        hiddenColumnKeys: normalizedHiddenColumnKeys,
       });
     } catch (error) {
       setErrorMessage(
@@ -466,6 +494,52 @@ export function DatasetEditDrawer({
                   />
                 </Field>
               </FieldLabel>
+            </section>
+
+            <section className="space-y-4">
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-foreground">
+                  Displayed fields
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Hide columns from the dataset table without changing the
+                  stored data or the filters that use it.
+                </p>
+              </div>
+
+              <div className="overflow-hidden rounded-2xl border border-border bg-card">
+                <div className="max-h-72 divide-y divide-border overflow-y-auto">
+                  {dataset.columns.map((column) => {
+                    const isVisible = !normalizedHiddenColumnKeys.includes(column.key);
+
+                    return (
+                      <label
+                        key={column.key}
+                        className="flex cursor-pointer items-start justify-between gap-4 px-4 py-3"
+                        htmlFor={`dataset-visible-field-${column.key}`}
+                      >
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-foreground">
+                            {column.label}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {isVisible ? "Shown in the dataset table" : "Hidden from the dataset table"}
+                          </p>
+                        </div>
+                        <Checkbox
+                          id={`dataset-visible-field-${column.key}`}
+                          checked={isVisible}
+                          disabled={isSaving}
+                          aria-label={`Show ${column.label} in the dataset table`}
+                          onCheckedChange={(checked) =>
+                            handleDisplayedFieldChange(column.key, !!checked)
+                          }
+                        />
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
             </section>
 
             <section className="space-y-4">

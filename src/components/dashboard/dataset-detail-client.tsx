@@ -4,7 +4,11 @@ import { useMemo, useState } from "react";
 
 import { DatasetTable } from "@/components/dashboard/dataset-table";
 import { DatasetViewSwitchGrid } from "@/components/dashboard/dataset-view-switch-grid";
-import type { DatasetSummary, FilterRegion } from "@/lib/api-types";
+import type {
+  DatasetSummary,
+  FieldDefinitionPresentation,
+  FilterRegion,
+} from "@/lib/api-types";
 import {
   datasetSupportsRegionFiltering,
   datasetSupportsUupgFiltering,
@@ -14,13 +18,16 @@ import {
 type DatasetDetailClientProps = {
   dataset: DatasetSummary;
   regions: FilterRegion[];
-  fieldDefinitionDescriptionsByColumnKey: Record<string, string>;
+  fieldDefinitionPresentationByColumnKey: Record<
+    string,
+    FieldDefinitionPresentation
+  >;
 };
 
 export function DatasetDetailClient({
   dataset,
   regions,
-  fieldDefinitionDescriptionsByColumnKey,
+  fieldDefinitionPresentationByColumnKey,
 }: DatasetDetailClientProps) {
   const supportsRegionFiltering = datasetSupportsRegionFiltering(dataset);
   const supportsUupgFiltering = datasetSupportsUupgFiltering(dataset);
@@ -77,7 +84,7 @@ export function DatasetDetailClient({
       />
       <DatasetTable
         dataset={dataset}
-        fieldDefinitionDescriptionsByColumnKey={fieldDefinitionDescriptionsByColumnKey}
+        fieldDefinitionPresentationByColumnKey={fieldDefinitionPresentationByColumnKey}
         regionFilter={{
           enabled: regionEnabled,
           isSupported: supportsRegionFiltering,

@@ -58,6 +58,7 @@ const dataset = {
       sourceIndex: 1,
     },
   ],
+  hiddenColumnKeys: [],
   tags: [],
   error: null,
   createdAt: new Date().toISOString(),

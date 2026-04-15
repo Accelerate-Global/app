@@ -1,16 +1,24 @@
 "use client";
 
-import { BookTextIcon, Loader2Icon } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { BookTextIcon, PencilLineIcon } from "lucide-react";
+import { useMemo, useState } from "react";
 
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { FieldDefinitionEditDrawer } from "@/components/dashboard/field-definition-edit-drawer";
 import type {
   FieldDefinition,
   FieldDefinitionResponse,
 } from "@/lib/api-types";
+import { getFieldDefinitionEffectiveLabel } from "@/lib/field-definition-presentation";
 
 type FieldDefinitionsClientProps = {
   initialFieldDefinitions: FieldDefinition[];
@@ -26,11 +34,18 @@ async function getErrorMessage(response: Response, fallback: string) {
   }
 }
 
-async function saveFieldDefinition(fieldDefinitionId: string, definition: string) {
-  const response = await fetch(`/api/field-definitions/${fieldDefinitionId}`, {
+async function saveFieldDefinition(input: {
+  fieldDefinitionId: string;
+  displayLabel: string;
+  definition: string;
+}) {
+  const response = await fetch(`/api/field-definitions/${input.fieldDefinitionId}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ definition }),
+    body: JSON.stringify({
+      displayLabel: input.displayLabel,
+      definition: input.definition,
+    }),
   });
 
   if (!response.ok) {
@@ -44,124 +59,181 @@ async function saveFieldDefinition(fieldDefinitionId: string, definition: string
 
 function sortFieldDefinitions(fieldDefinitions: FieldDefinition[]) {
   return [...fieldDefinitions].sort((left, right) =>
-    left.label.localeCompare(right.label, undefined, {
-      sensitivity: "base",
-    }),
+    getFieldDefinitionEffectiveLabel(left).localeCompare(
+      getFieldDefinitionEffectiveLabel(right),
+      undefined,
+      {
+        sensitivity: "base",
+      },
+    ),
   );
 }
 
-function FieldDefinitionEditorCard({
+function getFieldDefinitionDescription(definition: string) {
+  const trimmedDefinition = definition.trim();
+
+  return trimmedDefinition || "No definition available yet.";
+}
+
+function FieldDefinitionDescriptionCell({
   fieldDefinition,
   canEdit,
-  onSave,
+  onEdit,
 }: {
   fieldDefinition: FieldDefinition;
   canEdit: boolean;
-  onSave: (fieldDefinitionId: string, definition: string) => Promise<void>;
+  onEdit: (fieldDefinition: FieldDefinition) => void;
 }) {
-  const [definition, setDefinition] = useState(fieldDefinition.definition);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
-
-  const hasChanges = definition.trim() !== fieldDefinition.definition;
-  const linkedDatasetCount = fieldDefinition.linkedDatasets.length;
-
-  useEffect(() => {
-    setDefinition(fieldDefinition.definition);
-  }, [fieldDefinition.definition]);
-
-  async function handleSave() {
-    setErrorMessage(null);
-    setSuccessMessage(null);
-    setIsSaving(true);
-
-    try {
-      await onSave(fieldDefinition.id, definition);
-      setSuccessMessage(`Saved ${fieldDefinition.label}.`);
-    } catch (error) {
-      setErrorMessage(
-        error instanceof Error
-          ? error.message
-          : "The field definition could not be updated.",
-      );
-    } finally {
-      setIsSaving(false);
-    }
-  }
+  const description = getFieldDefinitionDescription(fieldDefinition.definition);
+  const effectiveLabel = getFieldDefinitionEffectiveLabel(fieldDefinition);
 
   return (
-    <Card>
-      <CardHeader className="space-y-2">
-        <CardTitle className="text-xl">{fieldDefinition.label}</CardTitle>
-        <CardDescription>
-          {linkedDatasetCount === 0
-            ? "Not currently used by any uploaded dataset."
-            : `Used by ${linkedDatasetCount} dataset${linkedDatasetCount === 1 ? "" : "s"}.`}
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {fieldDefinition.linkedDatasets.length > 0 ? (
-          <div className="flex flex-wrap gap-2">
-            {fieldDefinition.linkedDatasets.map((dataset) => (
-              <Badge key={dataset.id} variant="outline">
-                {dataset.fileName}
-              </Badge>
-            ))}
-          </div>
-        ) : null}
+    <div className="relative min-h-16 pr-0 sm:pr-14">
+      <p
+        className={
+          fieldDefinition.definition.trim()
+            ? "whitespace-pre-line text-foreground"
+            : "whitespace-pre-line text-muted-foreground"
+        }
+      >
+        {description}
+      </p>
+      {canEdit ? (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          className="absolute top-0 right-0 hidden sm:inline-flex"
+          aria-label={`Edit ${effectiveLabel}`}
+          onClick={() => onEdit(fieldDefinition)}
+        >
+          <PencilLineIcon className="size-4" />
+        </Button>
+      ) : null}
+    </div>
+  );
+}
 
-        {errorMessage ? (
-          <Alert variant="destructive">
-            <AlertTitle>Field definition update failed</AlertTitle>
-            <AlertDescription>{errorMessage}</AlertDescription>
-          </Alert>
-        ) : null}
+function FieldDefinitionMobileCard({
+  fieldDefinition,
+  canEdit,
+  onEdit,
+}: {
+  fieldDefinition: FieldDefinition;
+  canEdit: boolean;
+  onEdit: (fieldDefinition: FieldDefinition) => void;
+}) {
+  const effectiveLabel = getFieldDefinitionEffectiveLabel(fieldDefinition);
+  const description = getFieldDefinitionDescription(fieldDefinition.definition);
 
-        {successMessage ? (
-          <Alert>
-            <AlertTitle>Field definition saved</AlertTitle>
-            <AlertDescription>{successMessage}</AlertDescription>
-          </Alert>
-        ) : null}
-
-        {canEdit ? (
-          <div className="space-y-2">
-            <label
-              className="text-sm font-medium text-foreground"
-              htmlFor={`field-definition-${fieldDefinition.id}`}
+  return (
+    <div className="overflow-hidden rounded-2xl border border-border bg-background">
+      <div className="border-b border-border bg-muted/35 px-4 py-3">
+        <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+          Field
+        </p>
+        <p className="mt-1 text-sm font-medium text-foreground">
+          {effectiveLabel}
+        </p>
+      </div>
+      <div className="px-4 py-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 space-y-2">
+            <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+              Description
+            </p>
+            <p
+              className={
+                fieldDefinition.definition.trim()
+                  ? "whitespace-pre-line text-sm leading-6 text-foreground"
+                  : "whitespace-pre-line text-sm leading-6 text-muted-foreground"
+              }
             >
-              Definition
-            </label>
-            <textarea
-              id={`field-definition-${fieldDefinition.id}`}
-              value={definition}
-              disabled={isSaving}
-              placeholder="No definition available yet."
-              className="min-h-28 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm transition-colors outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 dark:bg-input/30 dark:disabled:bg-input/80"
-              onChange={(event) => setDefinition(event.target.value)}
-            />
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-xs text-muted-foreground">
-                This definition appears in the dataset header tooltip for every matching field.
-              </p>
-              <Button
-                type="button"
-                disabled={isSaving || !hasChanges}
-                onClick={handleSave}
+              {description}
+            </p>
+          </div>
+          {canEdit ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              className="shrink-0"
+              aria-label={`Edit ${effectiveLabel}`}
+              onClick={() => onEdit(fieldDefinition)}
+            >
+              <PencilLineIcon className="size-4" />
+            </Button>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FieldDefinitionsTable({
+  fieldDefinitions,
+  canEdit,
+  onEdit,
+}: {
+  fieldDefinitions: FieldDefinition[];
+  canEdit: boolean;
+  onEdit: (fieldDefinition: FieldDefinition) => void;
+}) {
+  return (
+    <>
+      <div className="hidden overflow-hidden rounded-2xl border border-border bg-background sm:block">
+        <Table>
+          <TableHeader className="bg-muted/35">
+            <TableRow className="hover:bg-transparent [&>:not(:last-child)]:border-r [&>:not(:last-child)]:border-border">
+              <TableHead className="h-12 w-[28%] px-5 text-sm font-semibold text-foreground">
+                Field
+              </TableHead>
+              <TableHead className="h-12 px-5 text-sm font-semibold text-foreground">
+                Description
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {fieldDefinitions.map((fieldDefinition) => (
+              <TableRow
+                key={fieldDefinition.id}
+                className="hover:bg-transparent [&>:not(:last-child)]:border-r [&>:not(:last-child)]:border-border"
               >
-                {isSaving ? <Loader2Icon className="animate-spin" /> : null}
-                Save definition
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <div className="rounded-xl border border-border bg-background px-4 py-3 text-sm leading-6 text-foreground">
-            {fieldDefinition.definition.trim() || "No definition available yet."}
-          </div>
-        )}
-      </CardContent>
-    </Card>
+                <TableCell className="bg-muted/20 px-5 py-4 align-top text-sm font-medium whitespace-normal text-foreground">
+                  {getFieldDefinitionEffectiveLabel(fieldDefinition)}
+                </TableCell>
+                <TableCell className="px-5 py-4 align-top text-sm leading-6 whitespace-normal">
+                  <FieldDefinitionDescriptionCell
+                    fieldDefinition={fieldDefinition}
+                    canEdit={canEdit}
+                    onEdit={onEdit}
+                  />
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+
+      <div className="grid gap-3 sm:hidden">
+        {fieldDefinitions.map((fieldDefinition) => (
+          <FieldDefinitionMobileCard
+            key={fieldDefinition.id}
+            fieldDefinition={fieldDefinition}
+            canEdit={canEdit}
+            onEdit={onEdit}
+          />
+        ))}
+      </div>
+    </>
+  );
+}
+
+function FieldDefinitionEmptyState() {
+  return (
+    <div className="rounded-xl border border-dashed border-border px-4 py-8 text-sm text-muted-foreground">
+      No dataset fields have been imported yet.
+    </div>
   );
 }
 
@@ -172,61 +244,89 @@ export function FieldDefinitionsClient({
   const [fieldDefinitions, setFieldDefinitions] = useState(() =>
     sortFieldDefinitions(initialFieldDefinitions),
   );
+  const [editingFieldDefinitionId, setEditingFieldDefinitionId] = useState<string | null>(
+    null,
+  );
+  const [isSaving, setIsSaving] = useState(false);
 
   const hasFieldDefinitions = fieldDefinitions.length > 0;
   const sortedFieldDefinitions = useMemo(
     () => sortFieldDefinitions(fieldDefinitions),
     [fieldDefinitions],
   );
+  const editingFieldDefinition = useMemo(
+    () =>
+      fieldDefinitions.find(
+        (fieldDefinition) => fieldDefinition.id === editingFieldDefinitionId,
+      ) ?? null,
+    [editingFieldDefinitionId, fieldDefinitions],
+  );
 
-  async function handleSaveFieldDefinition(fieldDefinitionId: string, definition: string) {
-    const updatedFieldDefinition = await saveFieldDefinition(
-      fieldDefinitionId,
-      definition,
-    );
+  async function handleSaveFieldDefinition(input: {
+    fieldDefinitionId: string;
+    displayLabel: string;
+    definition: string;
+  }) {
+    setIsSaving(true);
 
-    setFieldDefinitions((current) =>
-      sortFieldDefinitions(
-        current.map((fieldDefinition) =>
-          fieldDefinition.id === updatedFieldDefinition.id
-            ? updatedFieldDefinition
-            : fieldDefinition,
+    try {
+      const updatedFieldDefinition = await saveFieldDefinition(input);
+
+      setFieldDefinitions((current) =>
+        sortFieldDefinitions(
+          current.map((fieldDefinition) =>
+            fieldDefinition.id === updatedFieldDefinition.id
+              ? updatedFieldDefinition
+              : fieldDefinition,
+          ),
         ),
-      ),
-    );
+      );
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   return (
-    <div className="grid gap-6">
-      <Card>
-        <CardHeader className="space-y-2">
-          <CardTitle className="flex items-center gap-2 text-2xl">
-            <BookTextIcon className="size-5 text-muted-foreground" />
-            Field Definitions
-          </CardTitle>
-          <CardDescription>
-            Review the shared tooltip copy used by dataset column headers across every uploaded dataset.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {hasFieldDefinitions ? (
-            <div className="grid gap-4">
-              {sortedFieldDefinitions.map((fieldDefinition) => (
-                <FieldDefinitionEditorCard
-                  key={fieldDefinition.id}
-                  fieldDefinition={fieldDefinition}
-                  canEdit={canEdit}
-                  onSave={handleSaveFieldDefinition}
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="rounded-xl border border-dashed border-border px-4 py-8 text-sm text-muted-foreground">
-              No dataset fields have been imported yet.
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+    <>
+      <div className="grid gap-6">
+        <Card>
+          <CardHeader className="space-y-2">
+            <CardTitle className="flex items-center gap-2 text-2xl">
+              <BookTextIcon className="size-5 text-muted-foreground" />
+              Field Definitions
+            </CardTitle>
+            <CardDescription>
+              These shared definitions explain fields that appear across the
+              datasets in this workspace.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {hasFieldDefinitions ? (
+              <FieldDefinitionsTable
+                fieldDefinitions={sortedFieldDefinitions}
+                canEdit={canEdit}
+                onEdit={(fieldDefinition) =>
+                  setEditingFieldDefinitionId(fieldDefinition.id)
+                }
+              />
+            ) : (
+              <FieldDefinitionEmptyState />
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <FieldDefinitionEditDrawer
+        fieldDefinition={editingFieldDefinition}
+        open={editingFieldDefinition !== null}
+        isSaving={isSaving}
+        onOpenChange={(open) => {
+          if (!open) {
+            setEditingFieldDefinitionId(null);
+          }
+        }}
+        onSaveFieldDefinition={handleSaveFieldDefinition}
+      />
+    </>
   );
 }

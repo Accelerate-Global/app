@@ -34,6 +34,7 @@ const datasetBase = {
   status: "ready",
   rowCount: 2,
   sizeBytes: 512,
+  hiddenColumnKeys: [],
   tags: [],
   error: null,
   createdAt: new Date().toISOString(),
@@ -60,8 +61,12 @@ describe("DatasetDetailClient", () => {
           ],
         }}
         regions={[]}
-        fieldDefinitionDescriptionsByColumnKey={{
-          engage_global_engagement_anywhere: "UUPG definition",
+        fieldDefinitionPresentationByColumnKey={{
+          engage_global_engagement_anywhere: {
+            definition: "UUPG definition",
+            displayLabel: "Watchlist status",
+            effectiveLabel: "Watchlist status",
+          },
         }}
       />,
     );
@@ -70,7 +75,14 @@ describe("DatasetDetailClient", () => {
       uupgCard: { enabled: boolean; supported: boolean };
     };
     const datasetTableProps = datasetTableSpy.mock.calls[0]?.[0] as {
-      fieldDefinitionDescriptionsByColumnKey: Record<string, string>;
+      fieldDefinitionPresentationByColumnKey: Record<
+        string,
+        {
+          definition: string;
+          displayLabel: string;
+          effectiveLabel: string;
+        }
+      >;
       uupgFilter: { enabled: boolean; isSupported: boolean };
     };
 
@@ -82,8 +94,12 @@ describe("DatasetDetailClient", () => {
       enabled: false,
       isSupported: true,
     });
-    expect(datasetTableProps.fieldDefinitionDescriptionsByColumnKey).toEqual({
-      engage_global_engagement_anywhere: "UUPG definition",
+    expect(datasetTableProps.fieldDefinitionPresentationByColumnKey).toEqual({
+      engage_global_engagement_anywhere: {
+        definition: "UUPG definition",
+        displayLabel: "Watchlist status",
+        effectiveLabel: "Watchlist status",
+      },
     });
   });
 });

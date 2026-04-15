@@ -6,8 +6,10 @@ import type {
   CsvColumn,
   FieldDefinition,
   FieldDefinitionLinkedDataset,
+  FieldDefinitionPresentation,
 } from "@/lib/api-types";
 import { normalizeHeaderIdentity } from "@/lib/csv";
+import { getFieldDefinitionEffectiveLabel } from "@/lib/field-definition-presentation";
 
 type FieldDefinitionInsertExecutor = {
   insert: (table: typeof fieldDefinitions) => {
@@ -39,10 +41,22 @@ function toFieldDefinition(
     id: row.id,
     canonicalKey: row.canonicalKey,
     label: row.label,
+    displayLabel: row.displayLabel,
     definition: row.definition,
     linkedDatasets,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
+  };
+}
+
+function toFieldDefinitionPresentation(row: Pick<
+  FieldDefinitionRow,
+  "label" | "displayLabel" | "definition"
+>): FieldDefinitionPresentation {
+  return {
+    definition: row.definition,
+    displayLabel: row.displayLabel,
+    effectiveLabel: getFieldDefinitionEffectiveLabel(row),
   };
 }
 
@@ -187,7 +201,7 @@ export async function listFieldDefinitions() {
   );
 }
 
-export async function listFieldDefinitionDescriptionsByColumnKey(
+export async function listFieldDefinitionPresentationByColumnKey(
   columns: CsvColumn[],
 ) {
   const canonicalKeys = Array.from(
@@ -205,32 +219,43 @@ export async function listFieldDefinitionDescriptionsByColumnKey(
   const rows = await getDb()
     .select({
       canonicalKey: fieldDefinitions.canonicalKey,
+      label: fieldDefinitions.label,
+      displayLabel: fieldDefinitions.displayLabel,
       definition: fieldDefinitions.definition,
     })
     .from(fieldDefinitions)
     .where(inArray(fieldDefinitions.canonicalKey, canonicalKeys));
 
-  const definitionByCanonicalKey = new Map(
-    rows.map((row) => [row.canonicalKey, row.definition]),
+  const presentationByCanonicalKey = new Map(
+    rows.map((row) => [row.canonicalKey, toFieldDefinitionPresentation(row)]),
   );
 
   return Object.fromEntries(
     columns.map((column) => [
       column.key,
-      definitionByCanonicalKey.get(
+      presentationByCanonicalKey.get(
         getFieldDefinitionCanonicalKey(column.label, column.sourceIndex),
-      ) ?? "",
+      ) ?? {
+        definition: "",
+        displayLabel: "",
+        effectiveLabel: normalizeFieldDefinitionLabel(
+          column.label,
+          column.sourceIndex,
+        ),
+      },
     ]),
   );
 }
 
 export async function updateFieldDefinition(input: {
   fieldDefinitionId: string;
+  displayLabel: string;
   definition: string;
 }) {
   const [updatedFieldDefinition] = await getDb()
     .update(fieldDefinitions)
     .set({
+      displayLabel: input.displayLabel.trim(),
       definition: input.definition.trim(),
       updatedAt: new Date(),
     })

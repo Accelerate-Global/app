@@ -1,3 +1,6 @@
+// @vitest-environment jsdom
+
+import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { redirect } from "next/navigation";
@@ -44,7 +47,7 @@ describe("/dashboard/field-definitions", () => {
     expect(redirectMock).toHaveBeenCalledWith("/");
   });
 
-  it("renders for authenticated viewers", async () => {
+  it("renders viewer-facing intro copy for authenticated viewers", async () => {
     getCurrentIdentityMock.mockResolvedValue({
       ownerId: "viewer-1",
       email: "viewer@example.com",
@@ -54,9 +57,13 @@ describe("/dashboard/field-definitions", () => {
     });
     listFieldDefinitionsMock.mockResolvedValue([]);
 
-    const view = await FieldDefinitionsPage();
+    render(await FieldDefinitionsPage());
 
-    expect(view).toBeTruthy();
+    expect(
+      screen.getByText(
+        "Use the info icons in dataset headers to learn what each field means.",
+      ),
+    ).toBeTruthy();
     expect(listFieldDefinitionsMock).toHaveBeenCalledWith();
   });
 

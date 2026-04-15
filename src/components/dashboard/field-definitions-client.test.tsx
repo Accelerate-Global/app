@@ -17,7 +17,7 @@ describe("FieldDefinitionsClient", () => {
     cleanup();
   });
 
-  it("renders linked dataset names for viewers in read-only mode", () => {
+  it("renders audience-facing copy and read-only field rows for viewers", () => {
     render(
       <FieldDefinitionsClient
         canEdit={false}
@@ -25,7 +25,8 @@ describe("FieldDefinitionsClient", () => {
           {
             id: "field-1",
             canonicalKey: "geo_country_name",
-            label: "Geo Country Name",
+            label: "Geo_country_name",
+            displayLabel: "Country Name",
             definition: "",
             linkedDatasets: [
               { id: "dataset-1", fileName: "Global" },
@@ -38,20 +39,27 @@ describe("FieldDefinitionsClient", () => {
       />,
     );
 
-    expect(screen.getByText("Global")).toBeTruthy();
-    expect(screen.getByText("Joshua Project")).toBeTruthy();
-    expect(screen.queryByText("Save definition")).toBeNull();
-    expect(screen.getByText("No definition available yet.")).toBeTruthy();
+    expect(
+      screen.getByText(
+        "These shared definitions explain fields that appear across the datasets in this workspace.",
+      ),
+    ).toBeTruthy();
+    expect(screen.getAllByText("Country Name").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Global")).toBeNull();
+    expect(screen.queryByText("Joshua Project")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Edit Country Name" })).toBeNull();
+    expect(screen.getAllByText("No definition available yet.").length).toBeGreaterThan(0);
   });
 
-  it("lets admins update a field definition", async () => {
+  it("lets admins update the display label and definition from the drawer", async () => {
     fetchMock.mockResolvedValue({
       ok: true,
       json: async () => ({
         fieldDefinition: {
           id: "field-1",
           canonicalKey: "geo_country_name",
-          label: "Geo Country Name",
+          label: "Geo_country_name",
+          displayLabel: "Country Name",
           definition: "The country assigned to the row.",
           linkedDatasets: [{ id: "dataset-1", fileName: "Global" }],
           createdAt: new Date().toISOString(),
@@ -67,7 +75,8 @@ describe("FieldDefinitionsClient", () => {
           {
             id: "field-1",
             canonicalKey: "geo_country_name",
-            label: "Geo Country Name",
+            label: "Geo_country_name",
+            displayLabel: "",
             definition: "",
             linkedDatasets: [{ id: "dataset-1", fileName: "Global" }],
             createdAt: new Date().toISOString(),
@@ -77,20 +86,32 @@ describe("FieldDefinitionsClient", () => {
       />,
     );
 
+    fireEvent.click(
+      screen.getAllByRole("button", { name: "Edit Geo_country_name" })[0],
+    );
+
+    fireEvent.change(screen.getByLabelText("Display label"), {
+      target: { value: "Country Name" },
+    });
     fireEvent.change(screen.getByLabelText("Definition"), {
       target: { value: "The country assigned to the row." },
     });
-    fireEvent.click(screen.getByText("Save definition"));
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith("/api/field-definitions/field-1", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          displayLabel: "Country Name",
           definition: "The country assigned to the row.",
         }),
       });
     });
-    expect(screen.getByText("Saved Geo Country Name.")).toBeTruthy();
+    expect(screen.queryByText("Edit field")).toBeNull();
+    expect(screen.getAllByText("Country Name").length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText("The country assigned to the row.").length,
+    ).toBeGreaterThan(0);
   });
 });
