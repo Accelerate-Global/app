@@ -71,6 +71,7 @@ const dataset = {
   rowCount: 10,
   sizeBytes: 100,
   columns: [{ key: "email", label: "Email", sourceIndex: 0 }],
+  hiddenColumnKeys: [],
   tags: [],
   error: null,
   createdAt: new Date().toISOString(),
@@ -158,6 +159,7 @@ describe("/api/datasets/[datasetId]", () => {
               color: "#8f9f6f",
             },
           ],
+          hiddenColumnKeys: ["email"],
         }),
       }),
       context,
@@ -175,6 +177,7 @@ describe("/api/datasets/[datasetId]", () => {
           color: "#8f9f6f",
         },
       ],
+      hiddenColumnKeys: ["email"],
     });
     expect(updateDatasetStatusMock).not.toHaveBeenCalled();
   });
@@ -199,6 +202,31 @@ describe("/api/datasets/[datasetId]", () => {
       fileName: undefined,
       tags: undefined,
       isPrimary: true,
+      hiddenColumnKeys: undefined,
+    });
+  });
+
+  it("updates hidden dataset fields for the configured admin", async () => {
+    updateDatasetDetailsMock.mockResolvedValue({
+      ...dataset,
+      hiddenColumnKeys: ["email"],
+    });
+
+    const response = await PATCH(
+      new Request("http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001", {
+        method: "PATCH",
+        body: JSON.stringify({ hiddenColumnKeys: ["email"] }),
+      }),
+      context,
+    );
+
+    expect(response.status).toBe(200);
+    expect(updateDatasetDetailsMock).toHaveBeenCalledWith({
+      datasetId: dataset.id,
+      fileName: undefined,
+      tags: undefined,
+      isPrimary: undefined,
+      hiddenColumnKeys: ["email"],
     });
   });
 

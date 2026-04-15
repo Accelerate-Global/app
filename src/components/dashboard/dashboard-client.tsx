@@ -34,6 +34,7 @@ async function updateDatasetRecord(input: {
   fileName: string;
   tags: DatasetTag[];
   isPrimary: boolean;
+  hiddenColumnKeys: string[];
 }) {
   const response = await fetch(`/api/datasets/${input.datasetId}`, {
     method: "PATCH",
@@ -42,6 +43,7 @@ async function updateDatasetRecord(input: {
       fileName: input.fileName,
       tags: input.tags,
       isPrimary: input.isPrimary,
+      hiddenColumnKeys: input.hiddenColumnKeys,
     }),
   });
 
@@ -95,6 +97,7 @@ export function DashboardClient({
     fileName: string;
     tags: DatasetTag[];
     isPrimary: boolean;
+    hiddenColumnKeys: string[];
   }) {
     if (!canManageDatasets || updatingDatasetId !== null) {
       return;
@@ -104,13 +107,16 @@ export function DashboardClient({
     const nextName = input.fileName.trim();
     const nextTags = input.tags;
     const nextIsPrimary = input.isPrimary;
+    const nextHiddenColumnKeys = input.hiddenColumnKeys;
 
     if (
       !dataset ||
       !nextName ||
       (nextName === dataset.fileName &&
         JSON.stringify(nextTags) === JSON.stringify(dataset.tags) &&
-        nextIsPrimary === dataset.isPrimary)
+        nextIsPrimary === dataset.isPrimary &&
+        JSON.stringify(nextHiddenColumnKeys) ===
+          JSON.stringify(dataset.hiddenColumnKeys))
     ) {
       return;
     }
@@ -123,6 +129,7 @@ export function DashboardClient({
         fileName: nextName,
         tags: nextTags,
         isPrimary: nextIsPrimary,
+        hiddenColumnKeys: nextHiddenColumnKeys,
       });
 
       setDatasets((current) =>

@@ -68,6 +68,7 @@ const dataset = {
   rowCount: 10,
   sizeBytes: 100,
   columns: [{ key: "email", label: "Email", sourceIndex: 0 }],
+  hiddenColumnKeys: [],
   tags: [],
   error: null,
   createdAt: new Date().toISOString(),

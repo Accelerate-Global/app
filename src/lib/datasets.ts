@@ -18,6 +18,7 @@ import type {
   DatasetSummary,
   DatasetTag,
 } from "@/lib/api-types";
+import { normalizeDatasetHiddenColumnKeys } from "@/lib/dataset-column-visibility";
 import { getDatasetStorageObjectUrl } from "@/lib/dataset-storage";
 import { syncFieldDefinitionsForColumns } from "@/lib/field-definitions";
 
@@ -33,6 +34,7 @@ function toDatasetSummary(row: typeof datasets.$inferSelect): DatasetSummary {
     rowCount: row.rowCount,
     sizeBytes: row.sizeBytes,
     columns: row.columns,
+    hiddenColumnKeys: row.hiddenColumnKeys,
     tags: row.tags,
     error: row.error,
     createdAt: row.createdAt.toISOString(),
@@ -93,6 +95,7 @@ export async function createDataset(input: {
         blobPath: input.blobPath,
         sizeBytes: input.sizeBytes,
         columns: input.columns,
+        hiddenColumnKeys: [],
         tags: [],
         status: "processing",
         rowCount: 0,
@@ -133,8 +136,19 @@ export async function updateDatasetDetails(input: {
   fileName?: string;
   tags?: DatasetTag[];
   isPrimary?: boolean;
+  hiddenColumnKeys?: string[];
 }) {
   return getDb().transaction(async (tx) => {
+    const [existingDataset] = await tx
+      .select()
+      .from(datasets)
+      .where(eq(datasets.id, input.datasetId))
+      .limit(1);
+
+    if (!existingDataset) {
+      return null;
+    }
+
     const updates: Partial<typeof datasets.$inferInsert> = {
       updatedAt: new Date(),
     };
@@ -145,6 +159,13 @@ export async function updateDatasetDetails(input: {
 
     if (input.tags !== undefined) {
       updates.tags = input.tags;
+    }
+
+    if (input.hiddenColumnKeys !== undefined) {
+      updates.hiddenColumnKeys = normalizeDatasetHiddenColumnKeys(
+        input.hiddenColumnKeys,
+        existingDataset.columns,
+      );
     }
 
     if (input.isPrimary !== undefined) {
@@ -199,6 +220,10 @@ export async function replaceDatasetContents(input: {
         blobPath: input.blobPath,
         sizeBytes: input.sizeBytes,
         columns: input.columns,
+        hiddenColumnKeys: normalizeDatasetHiddenColumnKeys(
+          existing.hiddenColumnKeys,
+          input.columns,
+        ),
         tags: existing.tags,
         status: "processing",
         rowCount: 0,

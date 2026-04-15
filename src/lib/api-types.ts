@@ -33,6 +33,7 @@ export type DatasetSummary = {
   rowCount: number;
   sizeBytes: number;
   columns: CsvColumn[];
+  hiddenColumnKeys: string[];
   tags: DatasetTag[];
   error: string | null;
   createdAt: string;
@@ -79,10 +80,17 @@ export type FieldDefinition = {
   id: string;
   canonicalKey: string;
   label: string;
+  displayLabel: string;
   definition: string;
   linkedDatasets: FieldDefinitionLinkedDataset[];
   createdAt: string;
   updatedAt: string;
+};
+
+export type FieldDefinitionPresentation = {
+  definition: string;
+  displayLabel: string;
+  effectiveLabel: string;
 };
 
 export type FieldDefinitionsResponse = {

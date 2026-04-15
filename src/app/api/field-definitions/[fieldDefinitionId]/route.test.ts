@@ -41,7 +41,10 @@ describe("/api/field-definitions/[fieldDefinitionId]", () => {
     const response = await PATCH(
       new Request("http://localhost/api/field-definitions/field-1", {
         method: "PATCH",
-        body: JSON.stringify({ definition: "Country name" }),
+        body: JSON.stringify({
+          displayLabel: "",
+          definition: "Country name",
+        }),
       }),
       context,
     );
@@ -60,7 +63,10 @@ describe("/api/field-definitions/[fieldDefinitionId]", () => {
     const response = await PATCH(
       new Request("http://localhost/api/field-definitions/field-1", {
         method: "PATCH",
-        body: JSON.stringify({ definition: "Country name" }),
+        body: JSON.stringify({
+          displayLabel: "",
+          definition: "Country name",
+        }),
       }),
       context,
     );
@@ -73,7 +79,10 @@ describe("/api/field-definitions/[fieldDefinitionId]", () => {
     const response = await PATCH(
       new Request("http://localhost/api/field-definitions/field-1", {
         method: "PATCH",
-        body: JSON.stringify({ definition: "x".repeat(1001) }),
+        body: JSON.stringify({
+          displayLabel: "",
+          definition: "x".repeat(1001),
+        }),
       }),
       context,
     );
@@ -88,7 +97,10 @@ describe("/api/field-definitions/[fieldDefinitionId]", () => {
     const response = await PATCH(
       new Request("http://localhost/api/field-definitions/field-1", {
         method: "PATCH",
-        body: JSON.stringify({ definition: "Country name" }),
+        body: JSON.stringify({
+          displayLabel: "",
+          definition: "Country name",
+        }),
       }),
       context,
     );
@@ -101,6 +113,7 @@ describe("/api/field-definitions/[fieldDefinitionId]", () => {
       id: "field-1",
       canonicalKey: "geo_country_name",
       label: "Geo Country Name",
+      displayLabel: "Country Name",
       definition: "Country name",
       linkedDatasets: [{ id: "dataset-1", fileName: "Global" }],
       createdAt: new Date().toISOString(),
@@ -111,7 +124,10 @@ describe("/api/field-definitions/[fieldDefinitionId]", () => {
     const response = await PATCH(
       new Request("http://localhost/api/field-definitions/field-1", {
         method: "PATCH",
-        body: JSON.stringify({ definition: "Country name" }),
+        body: JSON.stringify({
+          displayLabel: "Country Name",
+          definition: "Country name",
+        }),
       }),
       context,
     );
@@ -120,6 +136,7 @@ describe("/api/field-definitions/[fieldDefinitionId]", () => {
     await expect(response.json()).resolves.toEqual({ fieldDefinition });
     expect(updateFieldDefinitionMock).toHaveBeenCalledWith({
       fieldDefinitionId: "field-1",
+      displayLabel: "Country Name",
       definition: "Country name",
     });
   });

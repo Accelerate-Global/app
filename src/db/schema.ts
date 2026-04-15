@@ -27,6 +27,10 @@ export const datasets = pgTable(
     rowCount: integer("row_count").notNull().default(0),
     sizeBytes: integer("size_bytes").notNull(),
     columns: jsonb("columns").$type<CsvColumn[]>().notNull(),
+    hiddenColumnKeys: jsonb("hidden_column_keys")
+      .$type<string[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
     tags: jsonb("tags").$type<DatasetTag[]>().notNull().default(sql`'[]'::jsonb`),
     error: text("error"),
     createdAt: timestamp("created_at", { withTimezone: true })
@@ -113,6 +117,7 @@ export const fieldDefinitions = pgTable(
     id: uuid("id").defaultRandom().primaryKey(),
     canonicalKey: text("canonical_key").notNull(),
     label: text("label").notNull(),
+    displayLabel: text("display_label").notNull().default(""),
     definition: text("definition").notNull().default(""),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()

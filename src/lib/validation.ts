@@ -14,6 +14,8 @@ export const datasetTagSchema = z.object({
   color: z.string().trim().regex(/^#[0-9a-fA-F]{6}$/),
 });
 
+export const datasetHiddenColumnKeySchema = z.string().trim().min(1).max(128);
+
 const filterRegionCountrySchema = z.string().trim().min(1).max(255);
 
 export const blobUploadTokenSchema = z.object({
@@ -50,16 +52,36 @@ export const datasetMetadataPatchSchema = z
     fileName: z.string().trim().min(1).max(255).optional(),
     tags: z.array(datasetTagSchema).max(24).optional(),
     isPrimary: z.boolean().optional(),
+    hiddenColumnKeys: z.array(datasetHiddenColumnKeySchema).max(500).optional(),
   })
-  .refine(
-    (value) =>
-      value.fileName !== undefined ||
-      value.tags !== undefined ||
-      value.isPrimary !== undefined,
-    {
-      message: "A dataset update must include a name, tags, or primary flag.",
-    },
-  );
+  .superRefine((value, ctx) => {
+    if (
+      value.fileName === undefined &&
+      value.tags === undefined &&
+      value.isPrimary === undefined &&
+      value.hiddenColumnKeys === undefined
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          "A dataset update must include a name, tags, primary flag, or visible fields.",
+      });
+    }
+
+    if (value.hiddenColumnKeys) {
+      const normalizedKeys = value.hiddenColumnKeys.map((key) =>
+        key.trim().toLowerCase(),
+      );
+
+      if (new Set(normalizedKeys).size !== normalizedKeys.length) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["hiddenColumnKeys"],
+          message: "Each hidden field can only be selected once.",
+        });
+      }
+    }
+  });
 
 export const datasetReorderSchema = z.object({
   datasetIds: z
@@ -92,6 +114,7 @@ export const filterRegionPayloadSchema = z
   });
 
 export const fieldDefinitionPatchSchema = z.object({
+  displayLabel: z.string().trim().max(256),
   definition: z.string().trim().max(1000),
 });
 

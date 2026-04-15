@@ -15,7 +15,12 @@ import { DataGridScrollArea } from "@/components/reui/data-grid/data-grid-scroll
 import { DataGridTableVirtual } from "@/components/reui/data-grid/data-grid-table-virtual";
 import { FieldDefinitionHeaderInfo } from "@/components/dashboard/field-definition-header-info";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import type { DatasetRowsResponse, DatasetSummary } from "@/lib/api-types";
+import type {
+  DatasetRowsResponse,
+  DatasetSummary,
+  FieldDefinitionPresentation,
+} from "@/lib/api-types";
+import { getVisibleDatasetColumns } from "@/lib/dataset-column-visibility";
 import {
   filterDatasetRowsByRegion,
   filterDatasetRowsByUupg,
@@ -32,7 +37,10 @@ type DatasetTableProps = {
   dataset: DatasetSummary;
   regionFilter?: DatasetRegionFilterState;
   uupgFilter?: DatasetUupgFilterState;
-  fieldDefinitionDescriptionsByColumnKey?: Record<string, string>;
+  fieldDefinitionPresentationByColumnKey?: Record<
+    string,
+    FieldDefinitionPresentation
+  >;
 };
 
 function getCellValue(row: DatasetRow, key: string) {
@@ -64,7 +72,7 @@ export function DatasetTable({
   dataset,
   regionFilter,
   uupgFilter,
-  fieldDefinitionDescriptionsByColumnKey = {},
+  fieldDefinitionPresentationByColumnKey = {},
 }: DatasetTableProps) {
   const [rows, setRows] = useState<DatasetRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -94,34 +102,48 @@ export function DatasetTable({
         enableHiding: false,
         enableSorting: true,
       },
-      ...dataset.columns.map(
-        (column): ColumnDef<DatasetRow> => ({
-          id: column.key,
-          accessorFn: (row) => getCellValue(row, column.key),
-          header: ({ column: tableColumn }) => (
-            <DataGridColumnHeader
-              title={column.label}
-              column={tableColumn}
-              detail={
-                <FieldDefinitionHeaderInfo
-                  label={column.label}
-                  definition={fieldDefinitionDescriptionsByColumnKey[column.key] ?? ""}
-                />
-              }
-            />
-          ),
-          cell: ({ row }) => (
-            <span className="block max-w-[28rem] truncate">
-              {getCellValue(row.original, column.key)}
-            </span>
-          ),
-          meta: { headerTitle: column.label },
-          size: Math.min(Math.max(column.label.length * 12, 160), 280),
-          enableSorting: true,
-        }),
+      ...getVisibleDatasetColumns(
+        dataset.columns,
+        dataset.hiddenColumnKeys,
+      ).map(
+        (column): ColumnDef<DatasetRow> => {
+          const fieldDefinitionPresentation =
+            fieldDefinitionPresentationByColumnKey[column.key];
+          const columnLabel =
+            fieldDefinitionPresentation?.effectiveLabel ?? column.label;
+
+          return {
+            id: column.key,
+            accessorFn: (row) => getCellValue(row, column.key),
+            header: ({ column: tableColumn }) => (
+              <DataGridColumnHeader
+                title={columnLabel}
+                column={tableColumn}
+                detail={
+                  <FieldDefinitionHeaderInfo
+                    label={columnLabel}
+                    definition={fieldDefinitionPresentation?.definition ?? ""}
+                  />
+                }
+              />
+            ),
+            cell: ({ row }) => (
+              <span className="block max-w-[28rem] truncate">
+                {getCellValue(row.original, column.key)}
+              </span>
+            ),
+            meta: { headerTitle: columnLabel },
+            size: Math.min(Math.max(columnLabel.length * 12, 160), 280),
+            enableSorting: true,
+          };
+        },
       ),
     ],
-    [dataset.columns, fieldDefinitionDescriptionsByColumnKey],
+    [
+      dataset.columns,
+      dataset.hiddenColumnKeys,
+      fieldDefinitionPresentationByColumnKey,
+    ],
   );
 
   const table = useReactTable({
