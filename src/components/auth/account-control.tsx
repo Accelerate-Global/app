@@ -3,6 +3,7 @@
 import {
   BookTextIcon,
   ChevronDownIcon,
+  DatabaseIcon,
   SlidersHorizontalIcon,
   LayoutDashboardIcon,
   LogOutIcon,
@@ -115,6 +116,10 @@ export function AccountControl({ identity }: AccountControlProps) {
           </DropdownMenuItem>
           {identity.isDatasetAdmin ? (
             <>
+              <DropdownMenuItem onClick={() => navigateTo("/dashboard/field-sources")}>
+                <DatabaseIcon aria-hidden="true" />
+                Field Sources
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => navigateTo("/dashboard/filter-settings")}>
                 <SlidersHorizontalIcon aria-hidden="true" />
                 Filter Settings

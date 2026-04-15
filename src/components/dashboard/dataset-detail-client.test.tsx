@@ -66,6 +66,7 @@ describe("DatasetDetailClient", () => {
             definition: "UUPG definition",
             displayLabel: "Watchlist status",
             effectiveLabel: "Watchlist status",
+            linkedSources: [],
           },
         }}
       />,
@@ -95,12 +96,13 @@ describe("DatasetDetailClient", () => {
       isSupported: true,
     });
     expect(datasetTableProps.fieldDefinitionPresentationByColumnKey).toEqual({
-      engage_global_engagement_anywhere: {
-        definition: "UUPG definition",
-        displayLabel: "Watchlist status",
-        effectiveLabel: "Watchlist status",
-      },
-    });
+          engage_global_engagement_anywhere: {
+            definition: "UUPG definition",
+            displayLabel: "Watchlist status",
+            effectiveLabel: "Watchlist status",
+            linkedSources: [],
+          },
+        });
   });
 
   it("passes supported watchlist filter state into the card and table", () => {

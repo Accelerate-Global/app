@@ -20,6 +20,7 @@ describe("FieldDefinitionHeaderInfo", () => {
       <FieldDefinitionHeaderInfo
         label="Geo Country Name"
         definition="The country tied to the current row."
+        linkedSources={[]}
       />,
     );
 

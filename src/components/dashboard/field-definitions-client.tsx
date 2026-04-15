@@ -1,8 +1,9 @@
 "use client";
 
-import { BookTextIcon, PencilLineIcon } from "lucide-react";
+import { PencilLineIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 
+import { FieldSourceTagList } from "@/components/dashboard/field-source-tag-list";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -97,6 +98,12 @@ function FieldDefinitionDescriptionCell({
       >
         {description}
       </p>
+      {fieldDefinition.linkedSources.length > 0 ? (
+        <FieldSourceTagList
+          linkedSources={fieldDefinition.linkedSources}
+          className="mt-3"
+        />
+      ) : null}
       {canEdit ? (
         <Button
           type="button"
@@ -150,6 +157,12 @@ function FieldDefinitionMobileCard({
             >
               {description}
             </p>
+            {fieldDefinition.linkedSources.length > 0 ? (
+              <FieldSourceTagList
+                linkedSources={fieldDefinition.linkedSources}
+                className="pt-1"
+              />
+            ) : null}
           </div>
           {canEdit ? (
             <Button

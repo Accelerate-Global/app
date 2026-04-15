@@ -1,6 +1,6 @@
 import type { DatasetTag } from "@/lib/api-types";
 import { getDatasetTagStyle } from "@/lib/dataset-tags";
-import { cn } from "@/lib/utils";
+import { BadgeTagList } from "@/components/dashboard/badge-tag-list";
 
 type DatasetTagListProps = {
   tags: DatasetTag[];
@@ -8,21 +8,16 @@ type DatasetTagListProps = {
 };
 
 export function DatasetTagList({ tags, className }: DatasetTagListProps) {
-  if (tags.length === 0) {
-    return null;
-  }
-
   return (
-    <div className={cn("flex flex-wrap gap-2", className)}>
-      {tags.map((tag) => (
-        <span
-          key={tag.id}
-          className="inline-flex items-center rounded-full border px-2.5 py-1 text-[0.72rem] font-medium leading-none text-[var(--dataset-tag-text-light)] dark:text-[var(--dataset-tag-text-dark)]"
-          style={getDatasetTagStyle(tag.color)}
-        >
-          {tag.label}
-        </span>
-      ))}
-    </div>
+    <BadgeTagList
+      items={tags.map((tag) => ({
+        id: tag.id,
+        label: tag.label,
+        style: getDatasetTagStyle(tag.color),
+        className:
+          "text-[var(--dataset-tag-text-light)] dark:text-[var(--dataset-tag-text-dark)]",
+      }))}
+      className={className}
+    />
   );
 }

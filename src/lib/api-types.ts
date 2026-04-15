@@ -76,6 +76,12 @@ export type FieldDefinitionLinkedDataset = {
   fileName: string;
 };
 
+export type FieldDefinitionLinkedSource = {
+  id: string;
+  key: string;
+  label: string;
+};
+
 export type FieldDefinition = {
   id: string;
   canonicalKey: string;
@@ -83,6 +89,7 @@ export type FieldDefinition = {
   displayLabel: string;
   definition: string;
   linkedDatasets: FieldDefinitionLinkedDataset[];
+  linkedSources: FieldDefinitionLinkedSource[];
   createdAt: string;
   updatedAt: string;
 };
@@ -91,6 +98,33 @@ export type FieldDefinitionPresentation = {
   definition: string;
   displayLabel: string;
   effectiveLabel: string;
+  linkedSources: FieldDefinitionLinkedSource[];
+};
+
+export type FieldSourceType = {
+  id: string;
+  key: string;
+  label: string;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type FieldSourceGridRow = {
+  fieldDefinitionId: string;
+  canonicalKey: string;
+  label: string;
+  displayLabel: string;
+  effectiveLabel: string;
+  definition: string;
+  mappingFieldId: string | null;
+  mappingDataType: string | null;
+  mappingIsActive: boolean | null;
+  sourcePriorityKeys: string[];
+  sourceValues: Record<string, string>;
+  linkedSources: FieldDefinitionLinkedSource[];
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type FieldDefinitionsResponse = {
@@ -99,4 +133,17 @@ export type FieldDefinitionsResponse = {
 
 export type FieldDefinitionResponse = {
   fieldDefinition: FieldDefinition;
+};
+
+export type FieldSourcesResponse = {
+  fieldSourceTypes: FieldSourceType[];
+  fieldSources: FieldSourceGridRow[];
+};
+
+export type FieldSourceResponse = {
+  fieldSource: FieldSourceGridRow;
+};
+
+export type FieldSourceTypeResponse = {
+  fieldSourceType: FieldSourceType;
 };

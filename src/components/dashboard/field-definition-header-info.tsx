@@ -2,8 +2,10 @@
 
 import { InfoIcon } from "lucide-react";
 
+import { FieldSourceTagList } from "@/components/dashboard/field-source-tag-list";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import type { FieldDefinitionLinkedSource } from "@/lib/api-types";
 
 const DEFAULT_FIELD_DEFINITION_TOOLTIP =
   "No definition available yet.";
@@ -17,9 +19,11 @@ export function getFieldDefinitionTooltipText(definition: string) {
 export function FieldDefinitionHeaderInfo({
   label,
   definition,
+  linkedSources,
 }: {
   label: string;
   definition: string;
+  linkedSources: FieldDefinitionLinkedSource[];
 }) {
   const tooltipText = getFieldDefinitionTooltipText(definition);
 
@@ -42,10 +46,20 @@ export function FieldDefinitionHeaderInfo({
         sideOffset={8}
         className="max-w-80 rounded-2xl px-3.5 py-2.5 text-sm leading-5"
       >
-        <p className="text-left">
-          <span className="font-medium">{label}:</span>{" "}
-          <span className="whitespace-pre-line">{tooltipText}</span>
-        </p>
+        <div className="space-y-2 text-left">
+          <p>
+            <span className="font-medium">{label}:</span>{" "}
+            <span className="whitespace-pre-line">{tooltipText}</span>
+          </p>
+          {linkedSources.length > 0 ? (
+            <div className="space-y-1">
+              <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                Sources
+              </p>
+              <FieldSourceTagList linkedSources={linkedSources} />
+            </div>
+          ) : null}
+        </div>
       </TooltipContent>
     </Tooltip>
   );

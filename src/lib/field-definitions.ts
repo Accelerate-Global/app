@@ -10,6 +10,10 @@ import type {
 } from "@/lib/api-types";
 import { normalizeHeaderIdentity } from "@/lib/csv";
 import { getFieldDefinitionEffectiveLabel } from "@/lib/field-definition-presentation";
+import {
+  ensureFieldSourceRegistrySeeded,
+  listLinkedSourcesByFieldDefinitionId,
+} from "@/lib/field-sources";
 
 type FieldDefinitionInsertExecutor = {
   insert: (table: typeof fieldDefinitions) => {
@@ -36,6 +40,7 @@ function normalizeFieldDefinitionLabel(label: string, sourceIndex: number) {
 function toFieldDefinition(
   row: FieldDefinitionRow,
   linkedDatasets: FieldDefinitionLinkedDataset[],
+  linkedSources: FieldDefinition["linkedSources"],
 ): FieldDefinition {
   return {
     id: row.id,
@@ -44,19 +49,9 @@ function toFieldDefinition(
     displayLabel: row.displayLabel,
     definition: row.definition,
     linkedDatasets,
+    linkedSources,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
-  };
-}
-
-function toFieldDefinitionPresentation(row: Pick<
-  FieldDefinitionRow,
-  "label" | "displayLabel" | "definition"
->): FieldDefinitionPresentation {
-  return {
-    definition: row.definition,
-    displayLabel: row.displayLabel,
-    effectiveLabel: getFieldDefinitionEffectiveLabel(row),
   };
 }
 
@@ -183,6 +178,8 @@ export async function syncFieldDefinitionsForColumns(input: {
 }
 
 export async function listFieldDefinitions() {
+  await ensureFieldSourceRegistrySeeded();
+
   const [rows, linkedDatasetsByCanonicalKey] = await Promise.all([
     getDb()
       .select()
@@ -190,6 +187,12 @@ export async function listFieldDefinitions() {
       .orderBy(asc(fieldDefinitions.label), asc(fieldDefinitions.createdAt)),
     listLinkedDatasetsByCanonicalKey(),
   ]);
+  const linkedSourcesByFieldDefinitionId = await listLinkedSourcesByFieldDefinitionId(
+    rows.map((row) => ({
+      id: row.id,
+      sourcePriorityKeys: row.sourcePriorityKeys,
+    })),
+  );
 
   return rows.map((row) =>
     toFieldDefinition(
@@ -197,6 +200,7 @@ export async function listFieldDefinitions() {
       sortLinkedDatasets(
         linkedDatasetsByCanonicalKey.get(row.canonicalKey) ?? [],
       ),
+      linkedSourcesByFieldDefinitionId.get(row.id) ?? [],
     ),
   );
 }
@@ -204,6 +208,8 @@ export async function listFieldDefinitions() {
 export async function listFieldDefinitionPresentationByColumnKey(
   columns: CsvColumn[],
 ) {
+  await ensureFieldSourceRegistrySeeded();
+
   const canonicalKeys = Array.from(
     new Set(
       columns.map((column) =>
@@ -218,16 +224,32 @@ export async function listFieldDefinitionPresentationByColumnKey(
 
   const rows = await getDb()
     .select({
+      id: fieldDefinitions.id,
       canonicalKey: fieldDefinitions.canonicalKey,
       label: fieldDefinitions.label,
       displayLabel: fieldDefinitions.displayLabel,
       definition: fieldDefinitions.definition,
+      sourcePriorityKeys: fieldDefinitions.sourcePriorityKeys,
     })
     .from(fieldDefinitions)
     .where(inArray(fieldDefinitions.canonicalKey, canonicalKeys));
+  const linkedSourcesByFieldDefinitionId = await listLinkedSourcesByFieldDefinitionId(
+    rows.map((row) => ({
+      id: row.id,
+      sourcePriorityKeys: row.sourcePriorityKeys,
+    })),
+  );
 
   const presentationByCanonicalKey = new Map(
-    rows.map((row) => [row.canonicalKey, toFieldDefinitionPresentation(row)]),
+    rows.map((row) => [
+      row.canonicalKey,
+      {
+        definition: row.definition,
+        displayLabel: row.displayLabel,
+        effectiveLabel: getFieldDefinitionEffectiveLabel(row),
+        linkedSources: linkedSourcesByFieldDefinitionId.get(row.id) ?? [],
+      } satisfies FieldDefinitionPresentation,
+    ]),
   );
 
   return Object.fromEntries(
@@ -242,6 +264,7 @@ export async function listFieldDefinitionPresentationByColumnKey(
           column.label,
           column.sourceIndex,
         ),
+        linkedSources: [],
       },
     ]),
   );
@@ -252,6 +275,8 @@ export async function updateFieldDefinition(input: {
   displayLabel: string;
   definition: string;
 }) {
+  await ensureFieldSourceRegistrySeeded();
+
   const [updatedFieldDefinition] = await getDb()
     .update(fieldDefinitions)
     .set({
@@ -269,11 +294,18 @@ export async function updateFieldDefinition(input: {
   const linkedDatasetsByCanonicalKey = await listLinkedDatasetsByCanonicalKey(
     new Set([updatedFieldDefinition.canonicalKey]),
   );
+  const linkedSourcesByFieldDefinitionId = await listLinkedSourcesByFieldDefinitionId([
+    {
+      id: updatedFieldDefinition.id,
+      sourcePriorityKeys: updatedFieldDefinition.sourcePriorityKeys,
+    },
+  ]);
 
   return toFieldDefinition(
     updatedFieldDefinition,
     sortLinkedDatasets(
       linkedDatasetsByCanonicalKey.get(updatedFieldDefinition.canonicalKey) ?? [],
     ),
+    linkedSourcesByFieldDefinitionId.get(updatedFieldDefinition.id) ?? [],
   );
 }
