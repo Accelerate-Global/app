@@ -71,7 +71,9 @@ test("admin can edit a field definition", async ({ page }, testInfo) => {
   await expect(
     page.locator('[data-smoke-surface="field-definition-edit-sheet"]'),
   ).toBeHidden();
-  await expect(page.getByText(nextDisplayLabel)).toBeVisible();
+  await expect(
+    page.getByRole("table").getByText(nextDisplayLabel, { exact: true }),
+  ).toBeVisible();
 
   await page
     .locator(
@@ -82,7 +84,9 @@ test("admin can edit a field definition", async ({ page }, testInfo) => {
   await page.getByLabel("Display label").fill(originalDisplayLabel);
   await page.locator("#field-definition-definition").fill(originalDefinition);
   await page.getByRole("button", { name: "Save changes" }).click();
-  await expect(page.getByText(originalDisplayLabel)).toBeVisible();
+  await expect(
+    page.getByRole("table").getByText(originalDisplayLabel, { exact: true }),
+  ).toBeVisible();
 });
 
 test("admin can create and update filter settings", async ({ page }, testInfo) => {
