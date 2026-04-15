@@ -63,7 +63,7 @@ jobs:
         run: supabase start
 
       - if: steps.changes.outputs.database == 'true' || github.event_name == 'push'
-        run: pnpm run db:security
+        run: pnpm run db:security:started
 
       - if: steps.changes.outputs.database != 'true' && github.event_name != 'push'
         run: echo "No database or security-relevant files changed."
