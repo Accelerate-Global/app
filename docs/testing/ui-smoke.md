@@ -112,7 +112,7 @@ export default defineUiSmokeFixture({
 });
 ```
 
-The hidden route `/__smoke/components` renders the generated fixture manifest from `src/components/ui/smoke-fixtures.generated.ts`.
+The hidden route `/__smoke/components` is implemented in `src/app/%5F_smoke/components/page.tsx` and renders the generated fixture manifest from `src/components/ui/smoke-fixtures.generated.ts`.
 
 Do not hand-edit that manifest. Run:
 

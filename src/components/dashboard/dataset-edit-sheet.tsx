@@ -405,6 +405,7 @@ export function DatasetEditSheet({
         isPrimary,
         hiddenColumnKeys: normalizedHiddenColumnKeys,
       });
+      onOpenChange(false);
     } catch (error) {
       setErrorMessage(
         error instanceof Error

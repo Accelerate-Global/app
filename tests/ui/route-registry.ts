@@ -39,7 +39,7 @@ export const smokeRouteSpecs: SmokeRouteSpec[] = [
   {
     id: "smoke-components-anonymous",
     role: "anonymous",
-    pageFile: "src/app/__smoke/components/page.tsx",
+    pageFile: "src/app/%5F_smoke/components/page.tsx",
     path: "/__smoke/components",
     pageId: "smoke-components",
     assertFixtureCoverage: true,

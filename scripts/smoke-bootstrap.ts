@@ -508,8 +508,8 @@ async function main() {
   const supabaseUrl = requireEnv("NEXT_PUBLIC_SUPABASE_URL");
   const supabasePublishableKey = requireEnv("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY");
   const supabaseServiceRoleKey =
-    process.env.SUPABASE_SECRET_KEY?.trim() ??
-    requireEnv("SUPABASE_SERVICE_ROLE_KEY");
+    process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ??
+    requireEnv("SUPABASE_SECRET_KEY");
   const databaseUrl = requireEnv("DATABASE_URL");
   const storageBucket = process.env.SUPABASE_STORAGE_BUCKET?.trim() || "datasets";
   const supabase = createClient(supabaseUrl, supabaseServiceRoleKey, {
