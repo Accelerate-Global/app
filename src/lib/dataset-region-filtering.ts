@@ -1,6 +1,8 @@
 import type { DatasetRowsResponse, DatasetSummary, FilterRegion } from "@/lib/api-types";
 import {
   REGION_DATASET_COLUMN_KEY,
+  WATCHLIST_FRONTIER_GROUP_DATASET_COLUMN_KEY,
+  WATCHLIST_DATASET_COLUMN_KEY,
   UUPG_DATASET_COLUMN_KEY,
 } from "@/lib/dataset-region-constants";
 
@@ -16,6 +18,13 @@ export type DatasetRegionFilterState = {
 export type DatasetUupgFilterState = {
   enabled: boolean;
   isSupported: boolean;
+};
+
+export type DatasetWatchlistFilterState = {
+  enabled: boolean;
+  isSupported: boolean;
+  threshold: number;
+  frontierGroupRequired: boolean;
 };
 
 function normalizeCountryName(value: string | null | undefined) {
@@ -34,6 +43,17 @@ function normalizeDatasetColumnKey(value: string | null | undefined) {
 
 function normalizeDatasetCellValue(value: string | null | undefined) {
   return value?.trim().toLowerCase() ?? "";
+}
+
+function normalizeDatasetNumericValue(value: string | null | undefined) {
+  const trimmedValue = value?.trim() ?? "";
+
+  if (!trimmedValue) {
+    return null;
+  }
+
+  const parsedValue = Number(trimmedValue);
+  return Number.isFinite(parsedValue) ? parsedValue : null;
 }
 
 function isDatasetColumnKey(
@@ -61,6 +81,14 @@ function getUupgDatasetValue(row: DatasetRow) {
   return getDatasetValue(row, UUPG_DATASET_COLUMN_KEY);
 }
 
+function getWatchlistDatasetValue(row: DatasetRow) {
+  return getDatasetValue(row, WATCHLIST_DATASET_COLUMN_KEY);
+}
+
+function getWatchlistFrontierGroupDatasetValue(row: DatasetRow) {
+  return getDatasetValue(row, WATCHLIST_FRONTIER_GROUP_DATASET_COLUMN_KEY);
+}
+
 function datasetSupportsColumnFiltering(
   dataset: Pick<DatasetSummary, "columns">,
   expectedKey: string,
@@ -82,6 +110,17 @@ export function datasetSupportsUupgFiltering(
   dataset: Pick<DatasetSummary, "columns">,
 ) {
   return datasetSupportsColumnFiltering(dataset, UUPG_DATASET_COLUMN_KEY);
+}
+
+export function datasetSupportsWatchlistFiltering(
+  dataset: Pick<DatasetSummary, "columns">,
+) {
+  return [
+    WATCHLIST_DATASET_COLUMN_KEY,
+    WATCHLIST_FRONTIER_GROUP_DATASET_COLUMN_KEY,
+  ].every((expectedKey) =>
+    datasetSupportsColumnFiltering(dataset, expectedKey),
+  );
 }
 
 export function getEnabledRegionCountryNames(
@@ -149,4 +188,33 @@ export function filterDatasetRowsByUupg(
   return rows.filter(
     (row) => normalizeDatasetCellValue(getUupgDatasetValue(row)) === "false",
   );
+}
+
+export function filterDatasetRowsByWatchlist(
+  rows: DatasetRow[],
+  watchlistFilter: DatasetWatchlistFilterState | null | undefined,
+) {
+  if (
+    !watchlistFilter ||
+    !watchlistFilter.enabled ||
+    !watchlistFilter.isSupported
+  ) {
+    return rows;
+  }
+
+  return rows.filter((row) => {
+    const value = normalizeDatasetNumericValue(getWatchlistDatasetValue(row));
+    const frontierGroupValue = normalizeDatasetCellValue(
+      getWatchlistFrontierGroupDatasetValue(row),
+    );
+
+    if (
+      value === null ||
+      (watchlistFilter.frontierGroupRequired && frontierGroupValue !== "true")
+    ) {
+      return false;
+    }
+
+    return value <= watchlistFilter.threshold;
+  });
 }
