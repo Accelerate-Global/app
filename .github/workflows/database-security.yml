@@ -60,6 +60,9 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - if: steps.changes.outputs.database == 'true' || github.event_name == 'push'
+        run: supabase start
+
+      - if: steps.changes.outputs.database == 'true' || github.event_name == 'push'
         run: pnpm run db:security
 
       - if: steps.changes.outputs.database != 'true' && github.event_name != 'push'
