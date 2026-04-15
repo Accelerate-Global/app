@@ -33,6 +33,8 @@ const adminIdentity = {
 const region = {
   id: "f0000000-0000-4000-8000-000000000001",
   name: "South Asia",
+  description: "Countries across South East Asia.",
+  sortOrder: 1,
   countries: ["India", "Nepal"],
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
@@ -82,6 +84,8 @@ describe("/api/filter-settings/regions", () => {
         method: "POST",
         body: JSON.stringify({
           name: "South Asia",
+          description: "Countries across South East Asia.",
+          sortOrder: 1,
           countries: ["India", "Nepal"],
         }),
       }),
@@ -91,6 +95,8 @@ describe("/api/filter-settings/regions", () => {
     await expect(response.json()).resolves.toEqual({ region });
     expect(createFilterRegionMock).toHaveBeenCalledWith({
       name: "South Asia",
+      description: "Countries across South East Asia.",
+      sortOrder: 1,
       countries: ["India", "Nepal"],
     });
   });
@@ -103,6 +109,8 @@ describe("/api/filter-settings/regions", () => {
         method: "POST",
         body: JSON.stringify({
           name: "",
+          description: "",
+          sortOrder: 0,
           countries: [],
         }),
       }),
@@ -123,6 +131,8 @@ describe("/api/filter-settings/regions", () => {
         method: "POST",
         body: JSON.stringify({
           name: "South Asia",
+          description: "Countries across South East Asia.",
+          sortOrder: 1,
           countries: ["India", "Nepal"],
         }),
       }),

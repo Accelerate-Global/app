@@ -7,19 +7,23 @@ import { DatasetViewSwitchGrid } from "@/components/dashboard/dataset-view-switc
 import type { DatasetSummary, FilterRegion } from "@/lib/api-types";
 import {
   datasetSupportsRegionFiltering,
+  datasetSupportsUupgFiltering,
   getEnabledRegionCountryNames,
 } from "@/lib/dataset-region-filtering";
 
 type DatasetDetailClientProps = {
   dataset: DatasetSummary;
   regions: FilterRegion[];
+  fieldDefinitionDescriptionsByColumnKey: Record<string, string>;
 };
 
 export function DatasetDetailClient({
   dataset,
   regions,
+  fieldDefinitionDescriptionsByColumnKey,
 }: DatasetDetailClientProps) {
   const supportsRegionFiltering = datasetSupportsRegionFiltering(dataset);
+  const supportsUupgFiltering = datasetSupportsUupgFiltering(dataset);
   const canUseRegionFilter = supportsRegionFiltering && regions.length > 0;
   const [regionEnabled, setRegionEnabled] = useState(canUseRegionFilter);
   const [selectedRegionIds, setSelectedRegionIds] = useState<Record<string, boolean>>(
@@ -41,6 +45,7 @@ export function DatasetDetailClient({
         id: region.id,
         label: region.name,
         checked: selectedRegionIds[region.id] ?? false,
+        description: region.description,
         countries: region.countries,
       })),
     [regions, selectedRegionIds],
@@ -66,16 +71,22 @@ export function DatasetDetailClient({
         }}
         uupgCard={{
           enabled: uupgEnabled,
+          supported: supportsUupgFiltering,
           onEnabledChange: setUupgEnabled,
         }}
       />
       <DatasetTable
         dataset={dataset}
+        fieldDefinitionDescriptionsByColumnKey={fieldDefinitionDescriptionsByColumnKey}
         regionFilter={{
           enabled: regionEnabled,
           isSupported: supportsRegionFiltering,
           hasConfiguredRegions: regions.length > 0,
           enabledCountryNames,
+        }}
+        uupgFilter={{
+          enabled: uupgEnabled,
+          isSupported: supportsUupgFiltering,
         }}
       />
     </>

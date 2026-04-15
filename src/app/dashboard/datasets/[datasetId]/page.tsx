@@ -7,6 +7,7 @@ import { SiteHeader } from "@/components/layout/site-header";
 import { buttonVariants } from "@/components/ui/button";
 import { getCurrentIdentity } from "@/lib/auth";
 import { getDataset } from "@/lib/datasets";
+import { listFieldDefinitionDescriptionsByColumnKey } from "@/lib/field-definitions";
 import { getDatasetViewOption } from "@/lib/dataset-view-options";
 import { listFilterRegions } from "@/lib/filter-settings";
 import { cn } from "@/lib/utils";
@@ -31,9 +32,10 @@ export default async function DatasetPage({ params }: DatasetPageProps) {
     notFound();
   }
 
-  const [regions, headerDescription] = await Promise.all([
+  const [regions, headerDescription, fieldDefinitionDescriptionsByColumnKey] = await Promise.all([
     listFilterRegions(),
     Promise.resolve(getDatasetViewOption(dataset.fileName)?.description),
+    listFieldDefinitionDescriptionsByColumnKey(dataset.columns),
   ]);
 
   return (
@@ -60,7 +62,11 @@ export default async function DatasetPage({ params }: DatasetPageProps) {
             </p>
           ) : null}
         </section>
-        <DatasetDetailClient dataset={dataset} regions={regions} />
+        <DatasetDetailClient
+          dataset={dataset}
+          regions={regions}
+          fieldDefinitionDescriptionsByColumnKey={fieldDefinitionDescriptionsByColumnKey}
+        />
       </div>
     </main>
   );

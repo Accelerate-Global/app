@@ -20,11 +20,29 @@ type FilterSettingsClientProps = {
 
 type RegionMutationInput = {
   name: string;
+  description: string;
+  sortOrder: number;
   countries: string[];
 };
 
 function sortRegions(regions: FilterRegion[]) {
-  return [...regions].sort((left, right) => left.name.localeCompare(right.name));
+  return [...regions].sort(
+    (left, right) =>
+      left.sortOrder - right.sortOrder || left.name.localeCompare(right.name),
+  );
+}
+
+function getNextSortOrder(regions: FilterRegion[]) {
+  if (regions.length === 0) {
+    return 1;
+  }
+
+  return Math.max(...regions.map((region) => region.sortOrder)) + 1;
+}
+
+function parseSortOrder(value: string) {
+  const parsed = Number.parseInt(value, 10);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
 async function getErrorMessage(response: Response, fallback: string) {
@@ -184,6 +202,8 @@ function RegionEditorCard({
   onDelete: (regionId: string) => Promise<void>;
 }) {
   const [name, setName] = useState(region.name);
+  const [description, setDescription] = useState(region.description);
+  const [sortOrder, setSortOrder] = useState(String(region.sortOrder));
   const [selectedCountries, setSelectedCountries] = useState(region.countries);
   const [searchValue, setSearchValue] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -191,12 +211,17 @@ function RegionEditorCard({
   const [isDeleting, setIsDeleting] = useState(false);
 
   const trimmedName = name.trim();
+  const trimmedDescription = description.trim();
+  const parsedSortOrder = parseSortOrder(sortOrder);
   const canSave =
     !isSaving &&
     !isDeleting &&
     Boolean(trimmedName) &&
+    parsedSortOrder !== null &&
     selectedCountries.length > 0 &&
     (trimmedName !== region.name ||
+      trimmedDescription !== region.description ||
+      parsedSortOrder !== region.sortOrder ||
       JSON.stringify(selectedCountries) !== JSON.stringify(region.countries));
 
   function setCountrySelection(country: string, checked: boolean) {
@@ -239,12 +264,19 @@ function RegionEditorCard({
       return;
     }
 
+    if (parsedSortOrder === null) {
+      setErrorMessage("Enter a card order greater than zero.");
+      return;
+    }
+
     setErrorMessage(null);
     setIsSaving(true);
 
     try {
       await onSave(region.id, {
         name: trimmedName,
+        description: trimmedDescription,
+        sortOrder: parsedSortOrder,
         countries: selectedCountries,
       });
     } catch (error) {
@@ -279,7 +311,7 @@ function RegionEditorCard({
       <CardHeader className="space-y-2">
         <CardTitle className="text-xl">{region.name}</CardTitle>
         <CardDescription>
-          Define which countries belong to this region on dataset pages.
+          Define this region&apos;s tooltip copy, display order, and country membership on dataset pages.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -290,16 +322,51 @@ function RegionEditorCard({
           </Alert>
         ) : null}
 
+        <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_12rem]">
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground" htmlFor={`region-name-${region.id}`}>
+              Region name
+            </label>
+            <Input
+              id={`region-name-${region.id}`}
+              value={name}
+              disabled={isSaving || isDeleting}
+              onChange={(event) => setName(event.target.value)}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground" htmlFor={`region-order-${region.id}`}>
+              Card order
+            </label>
+            <Input
+              id={`region-order-${region.id}`}
+              type="number"
+              min={1}
+              inputMode="numeric"
+              value={sortOrder}
+              disabled={isSaving || isDeleting}
+              onChange={(event) => setSortOrder(event.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">Smaller numbers appear first.</p>
+          </div>
+        </div>
+
         <div className="space-y-2">
-          <label className="text-sm font-medium text-foreground" htmlFor={`region-name-${region.id}`}>
-            Region name
+          <label className="text-sm font-medium text-foreground" htmlFor={`region-description-${region.id}`}>
+            Tooltip description
           </label>
-          <Input
-            id={`region-name-${region.id}`}
-            value={name}
+          <textarea
+            id={`region-description-${region.id}`}
+            value={description}
             disabled={isSaving || isDeleting}
-            onChange={(event) => setName(event.target.value)}
+            placeholder="Leave blank to show the region's country list."
+            className="min-h-24 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm transition-colors outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 dark:bg-input/30 dark:disabled:bg-input/80"
+            onChange={(event) => setDescription(event.target.value)}
           />
+          <p className="text-xs text-muted-foreground">
+            Leave blank to use the country list as the default tooltip content.
+          </p>
         </div>
 
         <div className="space-y-2">
@@ -348,14 +415,22 @@ export function FilterSettingsClient({
 }: FilterSettingsClientProps) {
   const [regions, setRegions] = useState(() => sortRegions(initialRegions));
   const [newName, setNewName] = useState("");
+  const [newDescription, setNewDescription] = useState("");
+  const [newSortOrder, setNewSortOrder] = useState(() =>
+    String(getNextSortOrder(initialRegions)),
+  );
   const [newSelectedCountries, setNewSelectedCountries] = useState<string[]>([]);
   const [newSearchValue, setNewSearchValue] = useState("");
   const [createError, setCreateError] = useState<string | null>(null);
   const [createSuccess, setCreateSuccess] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const parsedNewSortOrder = parseSortOrder(newSortOrder);
 
   const canCreate =
-    !isCreating && Boolean(newName.trim()) && newSelectedCountries.length > 0;
+    !isCreating &&
+    Boolean(newName.trim()) &&
+    parsedNewSortOrder !== null &&
+    newSelectedCountries.length > 0;
 
   function setNewCountrySelection(country: string, checked: boolean) {
     setNewSelectedCountries((current) => {
@@ -397,6 +472,11 @@ export function FilterSettingsClient({
       return;
     }
 
+    if (parsedNewSortOrder === null) {
+      setCreateError("Enter a card order greater than zero.");
+      return;
+    }
+
     setCreateError(null);
     setCreateSuccess(null);
     setIsCreating(true);
@@ -404,11 +484,16 @@ export function FilterSettingsClient({
     try {
       const region = await createRegion({
         name: newName.trim(),
+        description: newDescription.trim(),
+        sortOrder: parsedNewSortOrder,
         countries: newSelectedCountries,
       });
 
-      setRegions((current) => sortRegions([...current, region]));
+      const nextRegions = sortRegions([...regions, region]);
+      setRegions(nextRegions);
       setNewName("");
+      setNewDescription("");
+      setNewSortOrder(String(getNextSortOrder(nextRegions)));
       setNewSelectedCountries([]);
       setNewSearchValue("");
       setCreateSuccess(`Created ${region.name}.`);
@@ -424,18 +509,24 @@ export function FilterSettingsClient({
   async function handleSaveRegion(regionId: string, input: RegionMutationInput) {
     const updatedRegion = await updateRegion(regionId, input);
 
-    setRegions((current) =>
-      sortRegions(
+    setRegions((current) => {
+      const nextRegions = sortRegions(
         current.map((region) =>
           region.id === updatedRegion.id ? updatedRegion : region,
         ),
-      ),
-    );
+      );
+      setNewSortOrder(String(getNextSortOrder(nextRegions)));
+      return nextRegions;
+    });
   }
 
   async function handleDeleteRegion(regionId: string) {
     await removeRegion(regionId);
-    setRegions((current) => current.filter((region) => region.id !== regionId));
+    setRegions((current) => {
+      const nextRegions = current.filter((region) => region.id !== regionId);
+      setNewSortOrder(String(getNextSortOrder(nextRegions)));
+      return nextRegions;
+    });
   }
 
   return (
@@ -465,16 +556,53 @@ export function FilterSettingsClient({
           ) : null}
 
           <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground" htmlFor="new-region-name">
-              Region name
+            <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_12rem]">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground" htmlFor="new-region-name">
+                  Region name
+                </label>
+                <Input
+                  id="new-region-name"
+                  value={newName}
+                  disabled={isCreating}
+                  placeholder="South Asia"
+                  onChange={(event) => setNewName(event.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground" htmlFor="new-region-order">
+                  Card order
+                </label>
+                <Input
+                  id="new-region-order"
+                  type="number"
+                  min={1}
+                  inputMode="numeric"
+                  value={newSortOrder}
+                  disabled={isCreating}
+                  onChange={(event) => setNewSortOrder(event.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">Smaller numbers appear first.</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground" htmlFor="new-region-description">
+              Tooltip description
             </label>
-            <Input
-              id="new-region-name"
-              value={newName}
+            <textarea
+              id="new-region-description"
+              value={newDescription}
               disabled={isCreating}
-              placeholder="South Asia"
-              onChange={(event) => setNewName(event.target.value)}
+              placeholder="Leave blank to show the region's country list."
+              className="min-h-24 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm transition-colors outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 dark:bg-input/30 dark:disabled:bg-input/80"
+              onChange={(event) => setNewDescription(event.target.value)}
             />
+            <p className="text-xs text-muted-foreground">
+              Leave blank to use the country list as the default tooltip content.
+            </p>
           </div>
 
           <div className="space-y-2">

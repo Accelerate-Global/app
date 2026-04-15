@@ -19,6 +19,7 @@ import type {
   DatasetTag,
 } from "@/lib/api-types";
 import { getDatasetStorageObjectUrl } from "@/lib/dataset-storage";
+import { syncFieldDefinitionsForColumns } from "@/lib/field-definitions";
 
 function toDatasetSummary(row: typeof datasets.$inferSelect): DatasetSummary {
   return {
@@ -97,6 +98,11 @@ export async function createDataset(input: {
         rowCount: 0,
       })
       .returning();
+
+    await syncFieldDefinitionsForColumns({
+      columns: input.columns,
+      executor: tx,
+    });
 
     return created;
   });
@@ -201,6 +207,11 @@ export async function replaceDatasetContents(input: {
       })
       .where(eq(datasets.id, input.datasetId))
       .returning();
+
+    await syncFieldDefinitionsForColumns({
+      columns: input.columns,
+      executor: tx,
+    });
 
     return {
       dataset: toDatasetSummary(updated),

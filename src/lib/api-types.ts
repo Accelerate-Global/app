@@ -15,6 +15,8 @@ export type DatasetTag = {
 export type FilterRegion = {
   id: string;
   name: string;
+  description: string;
+  sortOrder: number;
   countries: string[];
   createdAt: string;
   updatedAt: string;
@@ -66,4 +68,27 @@ export type FilterRegionResponse = {
 
 export type FilterRegionCountryOptionsResponse = {
   countries: string[];
+};
+
+export type FieldDefinitionLinkedDataset = {
+  id: string;
+  fileName: string;
+};
+
+export type FieldDefinition = {
+  id: string;
+  canonicalKey: string;
+  label: string;
+  definition: string;
+  linkedDatasets: FieldDefinitionLinkedDataset[];
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type FieldDefinitionsResponse = {
+  fieldDefinitions: FieldDefinition[];
+};
+
+export type FieldDefinitionResponse = {
+  fieldDefinition: FieldDefinition;
 };

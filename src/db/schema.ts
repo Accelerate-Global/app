@@ -69,6 +69,8 @@ export const filterRegions = pgTable(
   {
     id: uuid("id").defaultRandom().primaryKey(),
     name: text("name").notNull(),
+    description: text("description").notNull().default(""),
+    sortOrder: integer("sort_order").notNull().default(1),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -80,6 +82,7 @@ export const filterRegions = pgTable(
     uniqueIndex("filter_regions_name_lower_idx").on(
       sql`lower(btrim(${table.name}))`,
     ),
+    index("filter_regions_sort_order_idx").on(table.sortOrder, table.createdAt),
   ],
 );
 
@@ -100,6 +103,29 @@ export const filterRegionCountries = pgTable(
     uniqueIndex("filter_region_countries_region_country_lower_idx").on(
       table.regionId,
       sql`lower(btrim(${table.countryName}))`,
+    ),
+  ],
+);
+
+export const fieldDefinitions = pgTable(
+  "field_definitions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    canonicalKey: text("canonical_key").notNull(),
+    label: text("label").notNull(),
+    definition: text("definition").notNull().default(""),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("field_definitions_canonical_key_idx").on(table.canonicalKey),
+    index("field_definitions_label_lower_idx").on(
+      sql`lower(btrim(${table.label}))`,
+      table.createdAt,
     ),
   ],
 );

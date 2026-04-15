@@ -9,6 +9,10 @@ function normalizeRegionName(name: string) {
   return name.trim();
 }
 
+function normalizeRegionDescription(description: string) {
+  return description.trim();
+}
+
 function normalizeCountryName(country: string) {
   return country.trim();
 }
@@ -16,6 +20,8 @@ function normalizeCountryName(country: string) {
 function toFilterRegion(input: {
   id: string;
   name: string;
+  description: string;
+  sortOrder: number;
   countries: string[];
   createdAt: Date;
   updatedAt: Date;
@@ -23,6 +29,8 @@ function toFilterRegion(input: {
   return {
     id: input.id,
     name: input.name,
+    description: input.description,
+    sortOrder: input.sortOrder,
     countries: [...input.countries].sort((left, right) =>
       left.localeCompare(right),
     ),
@@ -64,6 +72,8 @@ export async function listFilterRegions() {
     .select({
       id: filterRegions.id,
       name: filterRegions.name,
+      description: filterRegions.description,
+      sortOrder: filterRegions.sortOrder,
       createdAt: filterRegions.createdAt,
       updatedAt: filterRegions.updatedAt,
       countryName: filterRegionCountries.countryName,
@@ -73,13 +83,19 @@ export async function listFilterRegions() {
       filterRegionCountries,
       eq(filterRegionCountries.regionId, filterRegions.id),
     )
-    .orderBy(asc(filterRegions.name), asc(filterRegionCountries.countryName));
+    .orderBy(
+      asc(filterRegions.sortOrder),
+      asc(filterRegions.name),
+      asc(filterRegionCountries.countryName),
+    );
 
   const regions = new Map<
     string,
     {
       id: string;
       name: string;
+      description: string;
+      sortOrder: number;
       countries: string[];
       createdAt: Date;
       updatedAt: Date;
@@ -92,6 +108,8 @@ export async function listFilterRegions() {
       {
         id: row.id,
         name: row.name,
+        description: row.description,
+        sortOrder: row.sortOrder,
         countries: [],
         createdAt: row.createdAt,
         updatedAt: row.updatedAt,
@@ -109,9 +127,12 @@ export async function listFilterRegions() {
 
 export async function createFilterRegion(input: {
   name: string;
+  description: string;
+  sortOrder: number;
   countries: string[];
 }) {
   const normalizedName = normalizeRegionName(input.name);
+  const normalizedDescription = normalizeRegionDescription(input.description);
   const normalizedCountries = input.countries.map(normalizeCountryName);
 
   const existingRegion = await findExistingRegionByName({ name: normalizedName });
@@ -125,6 +146,8 @@ export async function createFilterRegion(input: {
       .insert(filterRegions)
       .values({
         name: normalizedName,
+        description: normalizedDescription,
+        sortOrder: input.sortOrder,
       })
       .returning();
 
@@ -138,6 +161,8 @@ export async function createFilterRegion(input: {
     return toFilterRegion({
       id: createdRegion.id,
       name: createdRegion.name,
+      description: createdRegion.description,
+      sortOrder: createdRegion.sortOrder,
       countries: normalizedCountries,
       createdAt: createdRegion.createdAt,
       updatedAt: createdRegion.updatedAt,
@@ -148,9 +173,12 @@ export async function createFilterRegion(input: {
 export async function updateFilterRegion(input: {
   regionId: string;
   name: string;
+  description: string;
+  sortOrder: number;
   countries: string[];
 }) {
   const normalizedName = normalizeRegionName(input.name);
+  const normalizedDescription = normalizeRegionDescription(input.description);
   const normalizedCountries = input.countries.map(normalizeCountryName);
   const existingRegion = await findExistingRegionByName({
     name: normalizedName,
@@ -166,6 +194,8 @@ export async function updateFilterRegion(input: {
       .update(filterRegions)
       .set({
         name: normalizedName,
+        description: normalizedDescription,
+        sortOrder: input.sortOrder,
         updatedAt: new Date(),
       })
       .where(eq(filterRegions.id, input.regionId))
@@ -189,6 +219,8 @@ export async function updateFilterRegion(input: {
     return toFilterRegion({
       id: updatedRegion.id,
       name: updatedRegion.name,
+      description: updatedRegion.description,
+      sortOrder: updatedRegion.sortOrder,
       countries: normalizedCountries,
       createdAt: updatedRegion.createdAt,
       updatedAt: updatedRegion.updatedAt,

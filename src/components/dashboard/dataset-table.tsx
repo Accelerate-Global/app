@@ -13,11 +13,14 @@ import { DataGrid, DataGridContainer } from "@/components/reui/data-grid/data-gr
 import { DataGridColumnHeader } from "@/components/reui/data-grid/data-grid-column-header";
 import { DataGridScrollArea } from "@/components/reui/data-grid/data-grid-scroll-area";
 import { DataGridTableVirtual } from "@/components/reui/data-grid/data-grid-table-virtual";
+import { FieldDefinitionHeaderInfo } from "@/components/dashboard/field-definition-header-info";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import type { DatasetRowsResponse, DatasetSummary } from "@/lib/api-types";
 import {
   filterDatasetRowsByRegion,
+  filterDatasetRowsByUupg,
   type DatasetRegionFilterState,
+  type DatasetUupgFilterState,
 } from "@/lib/dataset-region-filtering";
 
 const ROW_HEIGHT_ESTIMATE = 40;
@@ -28,6 +31,8 @@ type DatasetRow = DatasetRowsResponse["rows"][number];
 type DatasetTableProps = {
   dataset: DatasetSummary;
   regionFilter?: DatasetRegionFilterState;
+  uupgFilter?: DatasetUupgFilterState;
+  fieldDefinitionDescriptionsByColumnKey?: Record<string, string>;
 };
 
 function getCellValue(row: DatasetRow, key: string) {
@@ -55,15 +60,20 @@ async function fetchAllRows(input: {
   return (await response.json()) as DatasetRowsResponse;
 }
 
-export function DatasetTable({ dataset, regionFilter }: DatasetTableProps) {
+export function DatasetTable({
+  dataset,
+  regionFilter,
+  uupgFilter,
+  fieldDefinitionDescriptionsByColumnKey = {},
+}: DatasetTableProps) {
   const [rows, setRows] = useState<DatasetRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sorting, setSorting] = useState<SortingState>([]);
   const loadMessage = "Loading people groups...";
   const filteredRows = useMemo(
-    () => filterDatasetRowsByRegion(rows, regionFilter),
-    [rows, regionFilter],
+    () => filterDatasetRowsByUupg(filterDatasetRowsByRegion(rows, regionFilter), uupgFilter),
+    [rows, regionFilter, uupgFilter],
   );
 
   const columns = useMemo<ColumnDef<DatasetRow>[]>(
@@ -89,7 +99,16 @@ export function DatasetTable({ dataset, regionFilter }: DatasetTableProps) {
           id: column.key,
           accessorFn: (row) => getCellValue(row, column.key),
           header: ({ column: tableColumn }) => (
-            <DataGridColumnHeader title={column.label} column={tableColumn} />
+            <DataGridColumnHeader
+              title={column.label}
+              column={tableColumn}
+              detail={
+                <FieldDefinitionHeaderInfo
+                  label={column.label}
+                  definition={fieldDefinitionDescriptionsByColumnKey[column.key] ?? ""}
+                />
+              }
+            />
           ),
           cell: ({ row }) => (
             <span className="block max-w-[28rem] truncate">
@@ -102,7 +121,7 @@ export function DatasetTable({ dataset, regionFilter }: DatasetTableProps) {
         }),
       ),
     ],
-    [dataset.columns],
+    [dataset.columns, fieldDefinitionDescriptionsByColumnKey],
   );
 
   const table = useReactTable({

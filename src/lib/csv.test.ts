@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   chunkRows,
   normalizeHeader,
+  normalizeHeaderIdentity,
   normalizeHeaders,
   rowArrayToRecord,
   sanitizeFileName,
@@ -13,6 +14,12 @@ describe("csv utilities", () => {
     expect(normalizeHeader(" First Name ", 0)).toBe("first_name");
     expect(normalizeHeader("Total ($)", 1)).toBe("total");
     expect(normalizeHeader("", 2)).toBe("column_3");
+  });
+
+  it("normalizes field-definition identities without preserving duplicate key suffixes", () => {
+    expect(normalizeHeaderIdentity(" First Name ", 0)).toBe("first_name");
+    expect(normalizeHeaderIdentity("first-name", 7)).toBe("first_name");
+    expect(normalizeHeaderIdentity("", 2)).toBe("column_3");
   });
 
   it("deduplicates headers without changing labels", () => {

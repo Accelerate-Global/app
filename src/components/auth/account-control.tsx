@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  BookTextIcon,
   ChevronDownIcon,
   SlidersHorizontalIcon,
   LayoutDashboardIcon,
@@ -107,6 +108,10 @@ export function AccountControl({ identity }: AccountControlProps) {
           <DropdownMenuItem onClick={() => navigateTo("/dashboard")}>
             <LayoutDashboardIcon aria-hidden="true" />
             Dashboard
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => navigateTo("/dashboard/field-definitions")}>
+            <BookTextIcon aria-hidden="true" />
+            Field Definitions
           </DropdownMenuItem>
           {identity.isDatasetAdmin ? (
             <>

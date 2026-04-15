@@ -32,6 +32,7 @@ interface DataGridColumnHeaderProps<
   /** When omitted, uses `column.columnDef.meta.headerTitle`, then a string `columnDef.header`, then `column.id`. */
   title?: string
   icon?: ReactNode
+  detail?: ReactNode
   pinnable?: boolean
   filter?: ReactNode
   visibility?: boolean
@@ -41,6 +42,7 @@ function DataGridColumnHeaderInner<TData, TValue>({
   column,
   title,
   icon,
+  detail,
   className,
   filter,
   visibility = false,
@@ -297,6 +299,7 @@ function DataGridColumnHeaderInner<TData, TValue>({
             {menuItems}
           </DropdownMenuContent>
         </DropdownMenu>
+        {detail ? <div className="shrink-0">{detail}</div> : null}
         {props.tableLayout?.columnsPinnable && canPin && isPinned && (
           <Button
             size="icon-sm"
@@ -315,7 +318,7 @@ function DataGridColumnHeaderInner<TData, TValue>({
 
   if (canSort || (props.tableLayout?.columnsResizable && canResize)) {
     return (
-      <div className="flex h-full items-center">
+      <div className="flex h-full items-center gap-1.5">
         <Button
           variant="ghost"
           className={headerButtonClassName}
@@ -326,6 +329,7 @@ function DataGridColumnHeaderInner<TData, TValue>({
           {resolvedTitle}
           {sortIcon}
         </Button>
+        {detail ? <div className="shrink-0">{detail}</div> : null}
       </div>
     )
   }
@@ -334,6 +338,7 @@ function DataGridColumnHeaderInner<TData, TValue>({
     <div className={headerLabelClassName}>
       {icon && icon}
       {resolvedTitle}
+      {detail ? <span className="shrink-0">{detail}</span> : null}
     </div>
   )
 }
