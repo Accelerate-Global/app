@@ -25,6 +25,12 @@ Run the fast contract checker:
 pnpm run smoke:check
 ```
 
+Plan the current worktree and required verification commands:
+
+```bash
+pnpm run verify:change
+```
+
 Run the full smoke suite:
 
 ```bash
@@ -61,10 +67,17 @@ Every `src/app/**/page.tsx` must have at least one explicit entry in `tests/ui/r
 Rendered pages must expose:
 
 ```tsx
-<main data-smoke-page="route-id">...</main>
+<main
+  data-smoke-page="route-id"
+  data-smoke-page-ready="route-id"
+>
+  ...
+</main>
 ```
 
 Redirect-only pages do not need `data-smoke-page`, but they still need a route registry entry with `redirectTo`.
+
+Generic route sweeps assert only the page identity contract and the page-ready contract. They do not assert headings, copy, or incidental text.
 
 ### Surface Contract
 
@@ -127,22 +140,25 @@ Bootstrap metadata is written to `.tmp/ui-smoke/bootstrap.json` and consumed by 
 
 When you add a new route:
 
-1. add `data-smoke-page="..."` to the rendered page root
+1. add `data-smoke-page="..."` and `data-smoke-page-ready="..."` to the rendered page root
 2. add an entry to `tests/ui/route-registry.ts`
 3. if the route needs deterministic data, extend `scripts/smoke-bootstrap.ts`
-4. run `pnpm run smoke:check`
+4. run `pnpm run verify:change`
+5. run `pnpm run smoke:check`
 
 When you add a new sheet, dialog, popover, menu, or tooltip:
 
 1. add the `data-smoke-trigger` / `data-smoke-surface` / `data-smoke-ready` contract
 2. add `data-smoke-close` if Escape is not the intended close path
-3. extend or add a Playwright journey only when the generic route sweep is not enough
+3. run `pnpm run verify:change`
+4. extend or add a Playwright journey only when the generic route sweep is not enough
 
 When you add a new shared primitive under `src/components/ui`:
 
 1. create `src/components/ui/<name>.smoke.tsx`
 2. keep the fixture deterministic and free of app data dependencies
-3. run `pnpm run smoke:check` to regenerate the fixture manifest
+3. run `pnpm run verify:change`
+4. run `pnpm run smoke:check` to regenerate the fixture manifest
 
 ## CI
 

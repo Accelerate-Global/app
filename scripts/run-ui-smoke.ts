@@ -119,6 +119,8 @@ function buildSmokeEnv(statusEnv: Record<string, string>) {
     statusEnv.ANON_KEY ??
     statusEnv.PUBLISHABLE_KEY;
   const serviceRoleKey =
+    statusEnv.SUPABASE_SECRET_KEY ??
+    statusEnv.SECRET_KEY ??
     statusEnv.SUPABASE_SERVICE_ROLE_KEY ?? statusEnv.SERVICE_ROLE_KEY;
   const databaseUrl = statusEnv.DATABASE_URL ?? statusEnv.DB_URL;
 
@@ -135,6 +137,7 @@ function buildSmokeEnv(statusEnv: Record<string, string>) {
     NEXT_PUBLIC_SUPABASE_URL: supabaseUrl,
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: publishableKey,
     NEXT_PUBLIC_SUPABASE_ANON_KEY: publishableKey,
+    SUPABASE_SECRET_KEY: serviceRoleKey,
     SUPABASE_SERVICE_ROLE_KEY: serviceRoleKey,
     DATABASE_URL: databaseUrl,
     DATASET_ADMIN_EMAIL: UI_SMOKE_USERS.admin.email,

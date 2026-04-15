@@ -21,7 +21,11 @@ export default async function FieldDefinitionsPage() {
   });
 
   return (
-    <main data-smoke-page="field-definitions" className="min-h-svh bg-background">
+    <main
+      data-smoke-page="field-definitions"
+      data-smoke-page-ready="field-definitions"
+      className="min-h-svh bg-background"
+    >
       <SiteHeader identity={identity} />
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-10 sm:px-6 lg:px-8">
         <section className="space-y-2">

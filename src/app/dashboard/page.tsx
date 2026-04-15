@@ -15,7 +15,11 @@ export default async function DashboardPage() {
   const datasets = await listDatasets();
 
   return (
-    <main data-smoke-page="dashboard" className="min-h-svh bg-background">
+    <main
+      data-smoke-page="dashboard"
+      data-smoke-page-ready="dashboard"
+      className="min-h-svh bg-background"
+    >
       <SiteHeader identity={identity} />
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-10 sm:px-6 lg:px-8">
         <section className="space-y-2">

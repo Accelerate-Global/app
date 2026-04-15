@@ -16,7 +16,11 @@ export default async function ProfilePage() {
   }
 
   return (
-    <main data-smoke-page="profile" className="min-h-svh bg-background">
+    <main
+      data-smoke-page="profile"
+      data-smoke-page-ready="profile"
+      className="min-h-svh bg-background"
+    >
       <SiteHeader identity={identity} />
       <div className="mx-auto flex w-full max-w-4xl flex-col gap-8 px-4 py-10 sm:px-6 lg:px-8">
         <section className="space-y-2">

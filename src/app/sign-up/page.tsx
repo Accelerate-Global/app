@@ -12,7 +12,11 @@ export default async function SignUpPage() {
   }
 
   return (
-    <main data-smoke-page="sign-up" className="min-h-svh bg-background">
+    <main
+      data-smoke-page="sign-up"
+      data-smoke-page-ready="sign-up"
+      className="min-h-svh bg-background"
+    >
       <SiteHeader showNav={false} showAuthAction={false} />
       <div className="mx-auto flex min-h-[calc(100svh-140px)] w-full max-w-6xl items-center justify-center px-4 py-12 sm:px-6 lg:px-8">
         <AuthForm mode="sign-up" />

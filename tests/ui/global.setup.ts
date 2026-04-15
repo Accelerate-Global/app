@@ -41,6 +41,9 @@ async function createSignedInStorageState(input: {
   try {
     await page.goto(input.baseUrl);
     await expect(page.locator('[data-smoke-page="home-sign-in"]')).toBeVisible();
+    await expect(
+      page.locator('[data-smoke-page-ready="home-sign-in"]'),
+    ).toBeVisible();
     await page.getByLabel("Email").fill(input.email);
     await page.getByLabel("Password").fill(input.password);
     await Promise.all([
@@ -48,6 +51,7 @@ async function createSignedInStorageState(input: {
       page.getByRole("button", { name: "Sign in" }).click(),
     ]);
     await expect(page.locator('[data-smoke-page="dashboard"]')).toBeVisible();
+    await expect(page.locator('[data-smoke-page-ready="dashboard"]')).toBeVisible();
     await page.context().storageState({ path: input.storageStatePath });
   } finally {
     await browser.close();

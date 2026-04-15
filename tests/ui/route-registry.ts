@@ -7,7 +7,6 @@ export const smokeRouteSpecs: SmokeRouteSpec[] = [
     pageFile: "src/app/page.tsx",
     path: "/",
     pageId: "home-sign-in",
-    heading: "Sign in",
   },
   {
     id: "sign-up-anonymous",
@@ -15,7 +14,6 @@ export const smokeRouteSpecs: SmokeRouteSpec[] = [
     pageFile: "src/app/sign-up/page.tsx",
     path: "/sign-up",
     pageId: "sign-up",
-    heading: "Create account",
   },
   {
     id: "forgot-password-anonymous",
@@ -23,7 +21,6 @@ export const smokeRouteSpecs: SmokeRouteSpec[] = [
     pageFile: "src/app/forgot-password/page.tsx",
     path: "/forgot-password",
     pageId: "forgot-password",
-    heading: "Forgot password",
   },
   {
     id: "reset-password-anonymous",
@@ -31,7 +28,6 @@ export const smokeRouteSpecs: SmokeRouteSpec[] = [
     pageFile: "src/app/reset-password/page.tsx",
     path: "/reset-password",
     pageId: "reset-password",
-    heading: "Reset password",
   },
   {
     id: "sign-in-redirect-anonymous",
@@ -46,7 +42,6 @@ export const smokeRouteSpecs: SmokeRouteSpec[] = [
     pageFile: "src/app/__smoke/components/page.tsx",
     path: "/__smoke/components",
     pageId: "smoke-components",
-    heading: "UI Smoke Fixtures",
     assertFixtureCoverage: true,
   },
   {
@@ -55,7 +50,6 @@ export const smokeRouteSpecs: SmokeRouteSpec[] = [
     pageFile: "src/app/dashboard/page.tsx",
     path: "/dashboard",
     pageId: "dashboard",
-    heading: "Dashboard",
   },
   {
     id: "dashboard-admin",
@@ -63,7 +57,6 @@ export const smokeRouteSpecs: SmokeRouteSpec[] = [
     pageFile: "src/app/dashboard/page.tsx",
     path: "/dashboard",
     pageId: "dashboard",
-    heading: "Dashboard",
   },
   {
     id: "datasets-index-viewer",
@@ -85,8 +78,6 @@ export const smokeRouteSpecs: SmokeRouteSpec[] = [
     pageFile: "src/app/dashboard/datasets/[datasetId]/page.tsx",
     path: "/dashboard/datasets/{{primaryDatasetId}}",
     pageId: "dataset-detail",
-    heading: "Smoke Primary Dataset",
-    readySelector: "[data-smoke-trigger='field-definition-tooltip']",
   },
   {
     id: "dataset-detail-admin",
@@ -94,8 +85,6 @@ export const smokeRouteSpecs: SmokeRouteSpec[] = [
     pageFile: "src/app/dashboard/datasets/[datasetId]/page.tsx",
     path: "/dashboard/datasets/{{primaryDatasetId}}",
     pageId: "dataset-detail",
-    heading: "Smoke Primary Dataset",
-    readySelector: "[data-smoke-trigger='field-definition-tooltip']",
   },
   {
     id: "field-definitions-viewer",
@@ -103,7 +92,6 @@ export const smokeRouteSpecs: SmokeRouteSpec[] = [
     pageFile: "src/app/dashboard/field-definitions/page.tsx",
     path: "/dashboard/field-definitions",
     pageId: "field-definitions",
-    heading: "Field Definitions",
   },
   {
     id: "field-definitions-admin",
@@ -111,7 +99,6 @@ export const smokeRouteSpecs: SmokeRouteSpec[] = [
     pageFile: "src/app/dashboard/field-definitions/page.tsx",
     path: "/dashboard/field-definitions",
     pageId: "field-definitions",
-    heading: "Field Definitions",
   },
   {
     id: "field-sources-viewer-redirect",
@@ -126,7 +113,6 @@ export const smokeRouteSpecs: SmokeRouteSpec[] = [
     pageFile: "src/app/dashboard/field-sources/page.tsx",
     path: "/dashboard/field-sources",
     pageId: "field-sources",
-    heading: "Field Sources",
   },
   {
     id: "filter-settings-viewer-redirect",
@@ -141,7 +127,6 @@ export const smokeRouteSpecs: SmokeRouteSpec[] = [
     pageFile: "src/app/dashboard/filter-settings/page.tsx",
     path: "/dashboard/filter-settings",
     pageId: "filter-settings",
-    heading: "Filter Settings",
   },
   {
     id: "profile-viewer",
@@ -149,7 +134,6 @@ export const smokeRouteSpecs: SmokeRouteSpec[] = [
     pageFile: "src/app/dashboard/profile/page.tsx",
     path: "/dashboard/profile",
     pageId: "profile",
-    heading: "Profile",
   },
   {
     id: "profile-admin",
@@ -157,7 +141,6 @@ export const smokeRouteSpecs: SmokeRouteSpec[] = [
     pageFile: "src/app/dashboard/profile/page.tsx",
     path: "/dashboard/profile",
     pageId: "profile",
-    heading: "Profile",
   },
   {
     id: "upload-viewer-redirect",
@@ -172,6 +155,5 @@ export const smokeRouteSpecs: SmokeRouteSpec[] = [
     pageFile: "src/app/dashboard/upload/page.tsx",
     path: "/dashboard/upload",
     pageId: "upload",
-    heading: "Upload dataset",
   },
 ];

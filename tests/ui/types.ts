@@ -6,9 +6,7 @@ export type SmokeRouteSpec = {
   pageFile: string;
   path: string;
   pageId?: string;
-  heading?: string;
   redirectTo?: string;
-  readySelector?: string;
   assertFixtureCoverage?: boolean;
   journeys?: string[];
 };

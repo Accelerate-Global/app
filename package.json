@@ -13,6 +13,7 @@
     "test:ui:smoke:headed": "node --import tsx scripts/run-ui-smoke.ts --headed",
     "smoke:bootstrap": "node --import tsx scripts/smoke-bootstrap.ts",
     "smoke:check": "node --import tsx scripts/check-ui-smoke.ts",
+    "verify:change": "node --import tsx scripts/verify-change.ts",
     "verify:app": "node --import tsx scripts/verify-app.ts",
     "verify:release": "pnpm run typecheck && pnpm run verify:app && pnpm run db:security",
     "db:generate": "drizzle-kit generate",

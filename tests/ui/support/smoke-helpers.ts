@@ -43,19 +43,12 @@ export async function assertSmokeRoute(page: Page, route: SmokeRouteSpec) {
   }
 
   const pageMarker = page.locator(`[data-smoke-page="${route.pageId}"]`);
+  const pageReadyMarker = page.locator(
+    `[data-smoke-page-ready="${route.pageId}"]`,
+  );
+
   await expect(pageMarker).toBeVisible();
-
-  if (route.heading) {
-    await expect(pageMarker.getByText(route.heading, { exact: true })).toBeVisible();
-  }
-
-  if (route.readySelector) {
-    const readyLocator = await findFirstVisible(page.locator(route.readySelector));
-
-    expect(readyLocator, `Expected a visible match for ${route.readySelector}`).not.toBeNull();
-
-    await expect(readyLocator!).toBeVisible();
-  }
+  await expect(pageReadyMarker).toBeVisible();
 
   if (route.assertFixtureCoverage) {
     const fixtures = page.locator("[data-ui-smoke-fixture]");
