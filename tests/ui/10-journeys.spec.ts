@@ -30,7 +30,9 @@ test("admin can edit dataset details", async ({ page }, testInfo) => {
   await expect(
     page.locator('[data-smoke-surface="dataset-edit-sheet"]'),
   ).toBeHidden();
-  await expect(page.getByText(nextDatasetName)).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: `${nextDatasetName} Priority` }),
+  ).toBeVisible();
 
   await page
     .locator(
@@ -39,7 +41,9 @@ test("admin can edit dataset details", async ({ page }, testInfo) => {
     .click();
   await page.getByLabel("Dataset name").fill(originalDatasetName);
   await page.getByRole("button", { name: "Save changes" }).click();
-  await expect(page.getByText(originalDatasetName)).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: `${originalDatasetName} Priority` }),
+  ).toBeVisible();
 });
 
 test("admin can edit a field definition", async ({ page }, testInfo) => {

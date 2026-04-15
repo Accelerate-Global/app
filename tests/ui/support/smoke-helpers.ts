@@ -106,11 +106,20 @@ async function exerciseSmokeSurface(page: Page, triggerId: string) {
   await trigger.scrollIntoViewIfNeeded();
 
   try {
-    await trigger.click();
+    await trigger.click({ timeout: 5_000 });
     await expect(surface).toBeVisible({ timeout: 1_500 });
   } catch {
-    await trigger.hover();
-    await expect(surface).toBeVisible({ timeout: 3_000 });
+    await page.keyboard.press("Escape").catch(() => undefined);
+
+    try {
+      await trigger.focus();
+      await page.keyboard.press("Enter");
+      await expect(surface).toBeVisible({ timeout: 1_500 });
+    } catch {
+      await page.keyboard.press("Escape").catch(() => undefined);
+      await trigger.hover({ timeout: 5_000 });
+      await expect(surface).toBeVisible({ timeout: 3_000 });
+    }
   }
 
   await expect(readyMarker).toBeVisible();
