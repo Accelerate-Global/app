@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import { DatasetEditDrawer } from "@/components/dashboard/dataset-edit-drawer";
+import { DatasetEditSheet } from "@/components/dashboard/dataset-edit-sheet";
 import { DatasetsGrid } from "@/components/dashboard/datasets-grid";
 import type { DatasetSummary, DatasetTag } from "@/lib/api-types";
 import { getReusableDatasetTags } from "@/lib/dataset-tags";
@@ -193,7 +193,7 @@ export function DashboardClient({
         onReorderDatasets={handleReorderDatasets}
       />
       {canManageDatasets && editingDataset ? (
-        <DatasetEditDrawer
+        <DatasetEditSheet
           key={`${editingDataset.id}:${editingDataset.updatedAt}`}
           dataset={editingDataset}
           availableTags={availableTags}

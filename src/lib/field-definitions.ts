@@ -11,7 +11,6 @@ import type {
 import { normalizeHeaderIdentity } from "@/lib/csv";
 import { getFieldDefinitionEffectiveLabel } from "@/lib/field-definition-presentation";
 import {
-  ensureFieldSourceRegistrySeeded,
   listLinkedSourcesByFieldDefinitionId,
 } from "@/lib/field-sources";
 
@@ -48,6 +47,7 @@ function toFieldDefinition(
     label: row.label,
     displayLabel: row.displayLabel,
     definition: row.definition,
+    hideFromViewerFieldDefinitions: row.hideFromViewerFieldDefinitions,
     linkedDatasets,
     linkedSources,
     createdAt: row.createdAt.toISOString(),
@@ -177,24 +177,27 @@ export async function syncFieldDefinitionsForColumns(input: {
     });
 }
 
-export async function listFieldDefinitions() {
-  await ensureFieldSourceRegistrySeeded();
-
-  const [rows, linkedDatasetsByCanonicalKey] = await Promise.all([
-    getDb()
-      .select()
-      .from(fieldDefinitions)
-      .orderBy(asc(fieldDefinitions.label), asc(fieldDefinitions.createdAt)),
-    listLinkedDatasetsByCanonicalKey(),
-  ]);
+export async function listFieldDefinitions(options?: {
+  includeHidden?: boolean;
+}) {
+  const rows = await getDb()
+    .select()
+    .from(fieldDefinitions)
+    .orderBy(asc(fieldDefinitions.label), asc(fieldDefinitions.createdAt));
+  const visibleRows = options?.includeHidden
+    ? rows
+    : rows.filter((row) => !row.hideFromViewerFieldDefinitions);
+  const linkedDatasetsByCanonicalKey = await listLinkedDatasetsByCanonicalKey(
+    new Set(visibleRows.map((row) => row.canonicalKey)),
+  );
   const linkedSourcesByFieldDefinitionId = await listLinkedSourcesByFieldDefinitionId(
-    rows.map((row) => ({
+    visibleRows.map((row) => ({
       id: row.id,
       sourcePriorityKeys: row.sourcePriorityKeys,
     })),
   );
 
-  return rows.map((row) =>
+  return visibleRows.map((row) =>
     toFieldDefinition(
       row,
       sortLinkedDatasets(
@@ -208,8 +211,6 @@ export async function listFieldDefinitions() {
 export async function listFieldDefinitionPresentationByColumnKey(
   columns: CsvColumn[],
 ) {
-  await ensureFieldSourceRegistrySeeded();
-
   const canonicalKeys = Array.from(
     new Set(
       columns.map((column) =>
@@ -274,14 +275,14 @@ export async function updateFieldDefinition(input: {
   fieldDefinitionId: string;
   displayLabel: string;
   definition: string;
+  hideFromViewerFieldDefinitions: boolean;
 }) {
-  await ensureFieldSourceRegistrySeeded();
-
   const [updatedFieldDefinition] = await getDb()
     .update(fieldDefinitions)
     .set({
       displayLabel: input.displayLabel.trim(),
       definition: input.definition.trim(),
+      hideFromViewerFieldDefinitions: input.hideFromViewerFieldDefinitions,
       updatedAt: new Date(),
     })
     .where(eq(fieldDefinitions.id, input.fieldDefinitionId))

@@ -1,0 +1,79 @@
+name: UI Smoke
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: ui-smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  ui-smoke:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          filters: |
+            ui_smoke:
+              - '.github/workflows/ui-smoke.yml'
+              - 'AGENTS.md'
+              - 'README.md'
+              - 'docs/testing/ui-smoke.md'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'playwright.smoke.config.ts'
+              - 'scripts/check-ui-smoke.ts'
+              - 'scripts/run-ui-smoke.ts'
+              - 'scripts/smoke-bootstrap.ts'
+              - 'src/app/**'
+              - 'src/components/**'
+              - 'src/lib/**'
+              - 'supabase/**'
+              - 'tests/ui/**'
+
+      - uses: pnpm/action-setup@v4
+        if: steps.changes.outputs.ui_smoke == 'true' || github.event_name == 'push'
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        if: steps.changes.outputs.ui_smoke == 'true' || github.event_name == 'push'
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - uses: supabase/setup-cli@v1
+        if: steps.changes.outputs.ui_smoke == 'true' || github.event_name == 'push'
+        with:
+          version: latest
+
+      - if: steps.changes.outputs.ui_smoke == 'true' || github.event_name == 'push'
+        run: pnpm install --frozen-lockfile
+
+      - if: steps.changes.outputs.ui_smoke == 'true' || github.event_name == 'push'
+        run: pnpm exec playwright install --with-deps chromium
+
+      - if: steps.changes.outputs.ui_smoke == 'true' || github.event_name == 'push'
+        run: pnpm run test:ui:smoke
+
+      - if: always() && (steps.changes.outputs.ui_smoke == 'true' || github.event_name == 'push')
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-smoke-report
+          path: |
+            output/playwright/ui-smoke
+            test-results/ui-smoke
+
+      - if: steps.changes.outputs.ui_smoke != 'true' && github.event_name != 'push'
+        run: echo "No UI smoke-relevant files changed."

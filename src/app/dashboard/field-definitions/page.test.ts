@@ -64,7 +64,9 @@ describe("/dashboard/field-definitions", () => {
         "These shared definitions explain fields that appear across the datasets in this workspace.",
       ),
     ).toBeTruthy();
-    expect(listFieldDefinitionsMock).toHaveBeenCalledWith();
+    expect(listFieldDefinitionsMock).toHaveBeenCalledWith({
+      includeHidden: false,
+    });
   });
 
   it("renders for admins", async () => {
@@ -80,6 +82,8 @@ describe("/dashboard/field-definitions", () => {
     const view = await FieldDefinitionsPage();
 
     expect(view).toBeTruthy();
-    expect(listFieldDefinitionsMock).toHaveBeenCalledWith();
+    expect(listFieldDefinitionsMock).toHaveBeenCalledWith({
+      includeHidden: true,
+    });
   });
 });

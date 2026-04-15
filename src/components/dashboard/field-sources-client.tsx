@@ -161,6 +161,7 @@ function FieldSourceValueCell({
         disabled={isSaving}
         placeholder="Not tracked"
         className="pr-8"
+        data-smoke-field-source-input={`${fieldDefinitionId}:${sourceTypeId}`}
         onChange={(event) => setDraftValue(event.target.value)}
         onBlur={() => {
           void commit();
@@ -458,6 +459,7 @@ export function FieldSourcesClient({
             disabled={isCreatingSourceType}
             placeholder="Source name"
             className="sm:max-w-sm"
+            data-smoke-field-source-add-input
             onChange={(event) => setNewSourceLabel(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === "Enter") {
@@ -469,6 +471,7 @@ export function FieldSourcesClient({
           <Button
             type="button"
             disabled={isCreatingSourceType || !newSourceLabel.trim()}
+            data-smoke-field-source-add-submit
             onClick={() => {
               void handleCreateSourceType();
             }}

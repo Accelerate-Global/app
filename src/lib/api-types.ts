@@ -88,6 +88,7 @@ export type FieldDefinition = {
   label: string;
   displayLabel: string;
   definition: string;
+  hideFromViewerFieldDefinitions: boolean;
   linkedDatasets: FieldDefinitionLinkedDataset[];
   linkedSources: FieldDefinitionLinkedSource[];
   createdAt: string;

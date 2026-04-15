@@ -125,6 +125,8 @@ function RegionCountriesInfo({
             variant="ghost"
             size="icon-xs"
             aria-label={`View countries in ${label}`}
+            data-smoke-trigger="region-tooltip"
+            data-smoke-write="safe"
             className="shrink-0 text-muted-foreground hover:text-foreground"
           />
         }
@@ -134,6 +136,8 @@ function RegionCountriesInfo({
       <TooltipContent
         sideOffset={8}
         className="max-w-80 rounded-2xl px-3.5 py-2.5 text-sm leading-5"
+        data-smoke-surface="region-tooltip"
+        data-smoke-ready="region-tooltip"
       >
         <p className="text-left">
           <span className="font-medium">{label}:</span>{" "}

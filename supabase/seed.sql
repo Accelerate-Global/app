@@ -1,0 +1,2 @@
+-- Local smoke tests seed application data through scripts/smoke-bootstrap.ts.
+-- This file remains intentionally empty so `supabase db reset` has a tracked seed target.

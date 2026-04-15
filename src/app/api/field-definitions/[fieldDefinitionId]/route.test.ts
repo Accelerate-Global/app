@@ -44,6 +44,7 @@ describe("/api/field-definitions/[fieldDefinitionId]", () => {
         body: JSON.stringify({
           displayLabel: "",
           definition: "Country name",
+          hideFromViewerFieldDefinitions: false,
         }),
       }),
       context,
@@ -66,6 +67,7 @@ describe("/api/field-definitions/[fieldDefinitionId]", () => {
         body: JSON.stringify({
           displayLabel: "",
           definition: "Country name",
+          hideFromViewerFieldDefinitions: false,
         }),
       }),
       context,
@@ -82,6 +84,7 @@ describe("/api/field-definitions/[fieldDefinitionId]", () => {
         body: JSON.stringify({
           displayLabel: "",
           definition: "x".repeat(1001),
+          hideFromViewerFieldDefinitions: false,
         }),
       }),
       context,
@@ -100,6 +103,7 @@ describe("/api/field-definitions/[fieldDefinitionId]", () => {
         body: JSON.stringify({
           displayLabel: "",
           definition: "Country name",
+          hideFromViewerFieldDefinitions: false,
         }),
       }),
       context,
@@ -115,6 +119,7 @@ describe("/api/field-definitions/[fieldDefinitionId]", () => {
       label: "Geo Country Name",
       displayLabel: "Country Name",
       definition: "Country name",
+      hideFromViewerFieldDefinitions: true,
       linkedDatasets: [{ id: "dataset-1", fileName: "Global" }],
       linkedSources: [],
       createdAt: new Date().toISOString(),
@@ -128,6 +133,7 @@ describe("/api/field-definitions/[fieldDefinitionId]", () => {
         body: JSON.stringify({
           displayLabel: "Country Name",
           definition: "Country name",
+          hideFromViewerFieldDefinitions: true,
         }),
       }),
       context,
@@ -139,6 +145,7 @@ describe("/api/field-definitions/[fieldDefinitionId]", () => {
       fieldDefinitionId: "field-1",
       displayLabel: "Country Name",
       definition: "Country name",
+      hideFromViewerFieldDefinitions: true,
     });
   });
 });

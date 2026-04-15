@@ -116,6 +116,7 @@ export const filterRegionPayloadSchema = z
 export const fieldDefinitionPatchSchema = z.object({
   displayLabel: z.string().trim().max(256),
   definition: z.string().trim().max(1000),
+  hideFromViewerFieldDefinitions: z.boolean(),
 });
 
 export const fieldSourcePatchSchema = z.object({

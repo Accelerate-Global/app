@@ -7,18 +7,19 @@ import { FieldSourceTagList } from "@/components/dashboard/field-source-tag-list
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
-  Drawer,
-  DrawerClose,
-  DrawerContent,
-  DrawerDescription,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerTitle,
-} from "@/components/ui/drawer";
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import type { FieldDefinition } from "@/lib/api-types";
 
-type FieldDefinitionEditDrawerProps = {
+type FieldDefinitionEditSheetProps = {
   fieldDefinition: FieldDefinition | null;
   open: boolean;
   isSaving: boolean;
@@ -27,54 +28,64 @@ type FieldDefinitionEditDrawerProps = {
     fieldDefinitionId: string;
     displayLabel: string;
     definition: string;
+    hideFromViewerFieldDefinitions: boolean;
   }) => Promise<void>;
 };
 
-export function FieldDefinitionEditDrawer({
+export function FieldDefinitionEditSheet({
   fieldDefinition,
   open,
   isSaving,
   onOpenChange,
   onSaveFieldDefinition,
-}: FieldDefinitionEditDrawerProps) {
+}: FieldDefinitionEditSheetProps) {
   if (!fieldDefinition) {
     return null;
   }
 
   return (
-    <Drawer direction="right" open={open} onOpenChange={onOpenChange}>
-      <DrawerContent className="w-full sm:max-w-lg">
-        <FieldDefinitionEditDrawerForm
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        side="right"
+        className="w-full gap-0 sm:max-w-lg"
+        data-smoke-surface="field-definition-edit-sheet"
+        data-smoke-ready="field-definition-edit-sheet"
+      >
+        <FieldDefinitionEditSheetForm
           key={fieldDefinition.id}
           fieldDefinition={fieldDefinition}
           isSaving={isSaving}
           onOpenChange={onOpenChange}
           onSaveFieldDefinition={onSaveFieldDefinition}
         />
-      </DrawerContent>
-    </Drawer>
+      </SheetContent>
+    </Sheet>
   );
 }
 
-function FieldDefinitionEditDrawerForm({
+function FieldDefinitionEditSheetForm({
   fieldDefinition,
   isSaving,
   onOpenChange,
   onSaveFieldDefinition,
-}: Omit<FieldDefinitionEditDrawerProps, "open"> & {
+}: Omit<FieldDefinitionEditSheetProps, "open"> & {
   fieldDefinition: FieldDefinition;
 }) {
   const [displayLabel, setDisplayLabel] = useState(
     () => fieldDefinition.displayLabel,
   );
   const [definition, setDefinition] = useState(() => fieldDefinition.definition);
+  const [hideFromViewerFieldDefinitions, setHideFromViewerFieldDefinitions] =
+    useState(() => fieldDefinition.hideFromViewerFieldDefinitions);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const trimmedDisplayLabel = displayLabel.trim();
   const trimmedDefinition = definition.trim();
   const hasChanges =
     trimmedDisplayLabel !== fieldDefinition.displayLabel ||
-    trimmedDefinition !== fieldDefinition.definition;
+    trimmedDefinition !== fieldDefinition.definition ||
+    hideFromViewerFieldDefinitions !==
+      fieldDefinition.hideFromViewerFieldDefinitions;
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -91,6 +102,7 @@ function FieldDefinitionEditDrawerForm({
         fieldDefinitionId: fieldDefinition.id,
         displayLabel,
         definition,
+        hideFromViewerFieldDefinitions,
       });
       onOpenChange(false);
     } catch (error) {
@@ -104,14 +116,14 @@ function FieldDefinitionEditDrawerForm({
 
   return (
     <form className="flex h-full flex-col" onSubmit={handleSubmit}>
-      <DrawerHeader className="border-b border-border px-6 py-5">
-        <DrawerTitle>Edit field</DrawerTitle>
-        <DrawerDescription>
-          Update the field name and tooltip text shown to viewers.
-        </DrawerDescription>
-      </DrawerHeader>
+      <SheetHeader className="border-b border-border px-6 py-5">
+        <SheetTitle>Edit field</SheetTitle>
+        <SheetDescription>
+          Update the field name, tooltip text, and viewer visibility settings.
+        </SheetDescription>
+      </SheetHeader>
 
-      <div className="flex-1 space-y-6 overflow-y-auto px-6 py-5">
+      <div className="flex-1 space-y-6 overflow-y-auto overscroll-contain px-6 py-5">
         <section className="space-y-2">
           <p className="text-sm font-medium text-foreground">
             Original field name
@@ -164,6 +176,30 @@ function FieldDefinitionEditDrawerForm({
           </p>
         </section>
 
+        <section className="space-y-3 rounded-2xl border border-border bg-card px-4 py-4">
+          <div className="flex items-start justify-between gap-4">
+            <div className="space-y-1">
+              <label
+                className="text-sm font-medium text-foreground"
+                htmlFor="field-definition-hide-from-viewers"
+              >
+                Hide from viewer Field Definitions page
+              </label>
+              <p className="text-sm text-muted-foreground">
+                Non-admin viewers will not see this field on the Field Definitions
+                page. Dataset tables and field tooltips stay unchanged.
+              </p>
+            </div>
+            <Switch
+              id="field-definition-hide-from-viewers"
+              checked={hideFromViewerFieldDefinitions}
+              disabled={isSaving}
+              aria-label="Hide from viewer Field Definitions page"
+              onCheckedChange={setHideFromViewerFieldDefinitions}
+            />
+          </div>
+        </section>
+
         <section className="space-y-3">
           <div className="space-y-1">
             <p className="text-sm font-medium text-foreground">Sources</p>
@@ -195,16 +231,23 @@ function FieldDefinitionEditDrawerForm({
         ) : null}
       </div>
 
-      <DrawerFooter className="border-t border-border px-6 py-4 sm:flex-row sm:justify-end">
+      <SheetFooter className="border-t border-border px-6 py-4 sm:flex-row sm:justify-end">
         <Button type="submit" disabled={isSaving || !hasChanges}>
           Save changes
         </Button>
-        <DrawerClose asChild>
-          <Button type="button" variant="outline" disabled={isSaving}>
-            Cancel
-          </Button>
-        </DrawerClose>
-      </DrawerFooter>
+        <SheetClose
+          render={
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isSaving}
+              data-smoke-close="field-definition-edit-sheet"
+            />
+          }
+        >
+          Cancel
+        </SheetClose>
+      </SheetFooter>
     </form>
   );
 }

@@ -6,6 +6,14 @@ on:
     branches:
       - main
 
+concurrency:
+  group: database-security-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: read
+
 jobs:
   database-security:
     runs-on: ubuntu-latest
@@ -13,21 +21,49 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          filters: |
+            database:
+              - '.github/workflows/database-security.yml'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'scripts/check-public-rls.mjs'
+              - 'scripts/run-remote-db-tests.mjs'
+              - 'src/db/**'
+              - 'src/lib/auth.ts'
+              - 'src/lib/dataset-access.ts'
+              - 'src/lib/field-definitions.ts'
+              - 'src/lib/field-sources.ts'
+              - 'src/lib/signup-allowlist.ts'
+              - 'src/lib/supabase/**'
+              - 'supabase/**'
+
       - uses: pnpm/action-setup@v4
+        if: steps.changes.outputs.database == 'true' || github.event_name == 'push'
         with:
           version: 10
 
       - uses: actions/setup-node@v4
+        if: steps.changes.outputs.database == 'true' || github.event_name == 'push'
         with:
           node-version: 22
           cache: pnpm
 
       - uses: supabase/setup-cli@v1
+        if: steps.changes.outputs.database == 'true' || github.event_name == 'push'
         with:
           version: latest
 
-      - run: pnpm install --frozen-lockfile
+      - if: steps.changes.outputs.database == 'true' || github.event_name == 'push'
+        run: pnpm install --frozen-lockfile
 
-      - run: supabase start
+      - if: steps.changes.outputs.database == 'true' || github.event_name == 'push'
+        run: supabase start
 
-      - run: pnpm db:security
+      - if: steps.changes.outputs.database == 'true' || github.event_name == 'push'
+        run: pnpm run db:security:started
+
+      - if: steps.changes.outputs.database != 'true' && github.event_name != 'push'
+        run: echo "No database or security-relevant files changed."

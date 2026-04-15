@@ -101,6 +101,7 @@ function CountrySelector({
   onToggleCountry,
   onSelectVisible,
   onClearVisible,
+  smokeSearchMarker,
 }: {
   allCountries: string[];
   selectedCountries: string[];
@@ -110,6 +111,7 @@ function CountrySelector({
   onToggleCountry: (country: string, checked: boolean) => void;
   onSelectVisible: (countries: string[]) => void;
   onClearVisible: (countries: string[]) => void;
+  smokeSearchMarker?: string;
 }) {
   const normalizedSearch = searchValue.trim().toLowerCase();
   const visibleCountries = useMemo(
@@ -136,6 +138,7 @@ function CountrySelector({
             disabled={disabled}
             placeholder="Search countries"
             className="pl-9"
+            data-smoke-region-country-search={smokeSearchMarker}
             onChange={(event) => onSearchChange(event.target.value)}
           />
         </div>
@@ -173,6 +176,11 @@ function CountrySelector({
               <label
                 key={country}
                 className="flex cursor-pointer items-center gap-3 px-4 py-3 text-sm transition-colors hover:bg-accent/10"
+                {...(smokeSearchMarker
+                  ? {
+                      "data-smoke-region-country-option": `${smokeSearchMarker}:${country}`,
+                    }
+                  : {})}
               >
                 <Checkbox
                   checked={selectedSet.has(country)}
@@ -307,7 +315,7 @@ function RegionEditorCard({
   }
 
   return (
-    <Card>
+    <Card data-smoke-region-card={region.name}>
       <CardHeader className="space-y-2">
         <CardTitle className="text-xl">{region.name}</CardTitle>
         <CardDescription>
@@ -331,6 +339,7 @@ function RegionEditorCard({
               id={`region-name-${region.id}`}
               value={name}
               disabled={isSaving || isDeleting}
+              data-smoke-region-name={region.id}
               onChange={(event) => setName(event.target.value)}
             />
           </div>
@@ -360,6 +369,7 @@ function RegionEditorCard({
             id={`region-description-${region.id}`}
             value={description}
             disabled={isSaving || isDeleting}
+            data-smoke-region-description={region.id}
             placeholder="Leave blank to show the region's country list."
             className="min-h-24 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm transition-colors outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 dark:bg-input/30 dark:disabled:bg-input/80"
             onChange={(event) => setDescription(event.target.value)}
@@ -386,11 +396,17 @@ function RegionEditorCard({
             onToggleCountry={setCountrySelection}
             onSelectVisible={selectVisibleCountries}
             onClearVisible={clearVisibleCountries}
+            smokeSearchMarker={region.id}
           />
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          <Button type="button" disabled={!canSave} onClick={handleSave}>
+          <Button
+            type="button"
+            disabled={!canSave}
+            data-smoke-region-save={region.id}
+            onClick={handleSave}
+          >
             {isSaving ? <Loader2Icon className="animate-spin" /> : null}
             Save region
           </Button>
@@ -566,6 +582,7 @@ export function FilterSettingsClient({
                   value={newName}
                   disabled={isCreating}
                   placeholder="South Asia"
+                  data-smoke-region-create-name
                   onChange={(event) => setNewName(event.target.value)}
                 />
               </div>
@@ -581,6 +598,7 @@ export function FilterSettingsClient({
                   inputMode="numeric"
                   value={newSortOrder}
                   disabled={isCreating}
+                  data-smoke-region-create-sort-order
                   onChange={(event) => setNewSortOrder(event.target.value)}
                 />
                 <p className="text-xs text-muted-foreground">Smaller numbers appear first.</p>
@@ -621,10 +639,16 @@ export function FilterSettingsClient({
               onToggleCountry={setNewCountrySelection}
               onSelectVisible={selectVisibleCountries}
               onClearVisible={clearVisibleCountries}
+              smokeSearchMarker="create"
             />
           </div>
 
-          <Button type="button" disabled={!canCreate} onClick={handleCreateRegion}>
+          <Button
+            type="button"
+            disabled={!canCreate}
+            data-smoke-region-create-submit
+            onClick={handleCreateRegion}
+          >
             {isCreating ? <Loader2Icon className="animate-spin" /> : <PlusIcon />}
             Create region
           </Button>

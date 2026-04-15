@@ -1,0 +1,612 @@
+import { mkdir, writeFile } from "node:fs/promises";
+
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import postgres from "postgres";
+
+import {
+  UI_SMOKE_BASE_URL,
+  UI_SMOKE_BOOTSTRAP_FILE,
+  UI_SMOKE_TMP_DIR,
+  UI_SMOKE_USERS,
+  type UiSmokeBootstrap,
+} from "../tests/ui/support/smoke-data";
+
+const PRIMARY_DATASET_ID = "11111111-1111-4111-8111-111111111111";
+const SECONDARY_DATASET_ID = "22222222-2222-4222-8222-222222222222";
+const SOUTH_ASIA_REGION_ID = "33333333-3333-4333-8333-333333333333";
+const LATIN_AMERICA_REGION_ID = "44444444-4444-4444-8444-444444444444";
+const JOSHUA_PROJECT_SOURCE_TYPE_ID = "55555555-5555-4555-8555-555555555555";
+const ACCELERATE_SOURCE_TYPE_ID = "66666666-6666-4666-8666-666666666666";
+
+const FIELD_DEFINITION_IDS = {
+  pgPeopleId1: "77777777-7777-4777-8777-777777777771",
+  peopleName: "77777777-7777-4777-8777-777777777772",
+  geoCountryName: "77777777-7777-4777-8777-777777777773",
+  christianityGsec: "77777777-7777-4777-8777-777777777774",
+  christianityFrontierGroup: "77777777-7777-4777-8777-777777777775",
+  engagementAnywhere: "77777777-7777-4777-8777-777777777776",
+} as const;
+
+type SmokeUserDefinition = {
+  email: string;
+  password: string;
+  fullName: string;
+};
+
+type SmokeAuthUser = {
+  id: string;
+  email: string;
+  fullName: string;
+};
+
+type SmokeColumn = {
+  key: string;
+  label: string;
+  sourceIndex: number;
+};
+
+type SmokeDatasetRow = Record<string, string>;
+
+function requireEnv(name: string) {
+  const value = process.env[name]?.trim();
+
+  if (!value) {
+    throw new Error(`${name} is required for UI smoke bootstrap.`);
+  }
+
+  return value;
+}
+
+function normalizeHeaderIdentity(value: string, index = 0) {
+  const normalized = value
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "_")
+    .replace(/[^a-z0-9_]/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_|_$/g, "")
+    .slice(0, 96);
+
+  return normalized || `column_${index + 1}`;
+}
+
+function buildBlobUrl(supabaseUrl: string, bucket: string, blobPath: string) {
+  return new URL(`/storage/v1/object/${bucket}/${blobPath}`, supabaseUrl).toString();
+}
+
+async function recreateUser(
+  supabase: SupabaseClient,
+  user: SmokeUserDefinition,
+) {
+  const existingUsers = await supabase.auth.admin.listUsers({
+    page: 1,
+    perPage: 200,
+  });
+
+  if (existingUsers.error) {
+    throw existingUsers.error;
+  }
+
+  const existingUser = existingUsers.data.users.find(
+    (candidate: { email?: string | null }) =>
+      candidate.email?.trim().toLowerCase() === user.email.trim().toLowerCase(),
+  );
+
+  if (existingUser) {
+    const deletedUser = await supabase.auth.admin.deleteUser(existingUser.id);
+
+    if (deletedUser.error) {
+      throw deletedUser.error;
+    }
+  }
+
+  const createdUser = await supabase.auth.admin.createUser({
+    email: user.email,
+    password: user.password,
+    email_confirm: true,
+    user_metadata: {
+      full_name: user.fullName,
+    },
+  });
+
+  if (createdUser.error || !createdUser.data.user) {
+    throw createdUser.error ?? new Error(`Could not create ${user.email}`);
+  }
+
+  return {
+    id: createdUser.data.user.id,
+    email: user.email,
+    fullName: user.fullName,
+  } satisfies SmokeAuthUser;
+}
+
+async function ensureBucket(
+  supabase: SupabaseClient,
+  bucketName: string,
+) {
+  const buckets = await supabase.storage.listBuckets();
+
+  if (buckets.error) {
+    throw buckets.error;
+  }
+
+  if (buckets.data.some((bucket: { name: string }) => bucket.name === bucketName)) {
+    return;
+  }
+
+  const createdBucket = await supabase.storage.createBucket(bucketName, {
+    public: false,
+  });
+
+  if (createdBucket.error) {
+    throw createdBucket.error;
+  }
+}
+
+async function resetSmokeData(sql: postgres.Sql) {
+  await sql`delete from public.dataset_rows`;
+  await sql`delete from public.datasets`;
+  await sql`delete from public.filter_region_countries`;
+  await sql`delete from public.filter_regions`;
+  await sql`delete from public.field_definition_sources`;
+  await sql`delete from public.field_source_types`;
+  await sql`delete from public.field_definitions`;
+  await sql`delete from public.signup_email_allowlist where email in (${UI_SMOKE_USERS.admin.email}, ${UI_SMOKE_USERS.viewer.email})`;
+}
+
+async function insertAllowlist(sql: postgres.Sql) {
+  await sql`
+    insert into public.signup_email_allowlist (email, note)
+    values
+      (${UI_SMOKE_USERS.admin.email}, ${"UI smoke admin"}),
+      (${UI_SMOKE_USERS.viewer.email}, ${"UI smoke viewer"})
+    on conflict (email) do update
+    set note = excluded.note, updated_at = now()
+  `;
+}
+
+async function insertFieldSourceTypes(sql: postgres.Sql) {
+  await sql`
+    insert into public.field_source_types (id, key, label, sort_order)
+    values
+      (${JOSHUA_PROJECT_SOURCE_TYPE_ID}, ${normalizeHeaderIdentity("Joshua Project")}, ${"Joshua Project"}, ${1}),
+      (${ACCELERATE_SOURCE_TYPE_ID}, ${normalizeHeaderIdentity("Accelerate")}, ${"Accelerate"}, ${2})
+    on conflict (key) do update
+    set label = excluded.label, sort_order = excluded.sort_order, updated_at = now()
+  `;
+}
+
+async function insertFilterRegions(sql: postgres.Sql) {
+  await sql`
+    insert into public.filter_regions (id, name, description, sort_order)
+    values
+      (${SOUTH_ASIA_REGION_ID}, ${"South Asia"}, ${"India and Nepal"}, ${1}),
+      (${LATIN_AMERICA_REGION_ID}, ${"Latin America"}, ${"Brazil and Colombia"}, ${2})
+    on conflict (id) do update
+    set name = excluded.name, description = excluded.description, sort_order = excluded.sort_order, updated_at = now()
+  `;
+
+  await sql`
+    insert into public.filter_region_countries (region_id, country_name)
+    values
+      (${SOUTH_ASIA_REGION_ID}, ${"India"}),
+      (${SOUTH_ASIA_REGION_ID}, ${"Nepal"}),
+      (${LATIN_AMERICA_REGION_ID}, ${"Brazil"}),
+      (${LATIN_AMERICA_REGION_ID}, ${"Colombia"})
+    on conflict do nothing
+  `;
+}
+
+async function insertDatasets(input: {
+  sql: postgres.Sql;
+  ownerId: string;
+  supabaseUrl: string;
+  bucket: string;
+}) {
+  const primaryColumns: SmokeColumn[] = [
+    { key: "pg_peopleid1", label: "PG_PeopleID1", sourceIndex: 0 },
+    { key: "people_name", label: "People Name", sourceIndex: 1 },
+    { key: "geo_country_name", label: "Geo_Country_Name", sourceIndex: 2 },
+    { key: "christianity_gsec", label: "Christianity_GSEC", sourceIndex: 3 },
+    {
+      key: "christianity_frontier_group",
+      label: "Christianity_Frontier_Group",
+      sourceIndex: 4,
+    },
+    {
+      key: "engage_global_engagement_anywhere",
+      label: "Engage_Global_Engagement_Anywhere",
+      sourceIndex: 5,
+    },
+  ];
+  const primaryRows: SmokeDatasetRow[] = [
+    {
+      pg_peopleid1: "PG-1001",
+      people_name: "Rana Tharu",
+      geo_country_name: "India",
+      christianity_gsec: "1",
+      christianity_frontier_group: "true",
+      engage_global_engagement_anywhere: "false",
+    },
+    {
+      pg_peopleid1: "PG-1002",
+      people_name: "Tamang",
+      geo_country_name: "Nepal",
+      christianity_gsec: "3",
+      christianity_frontier_group: "false",
+      engage_global_engagement_anywhere: "true",
+    },
+    {
+      pg_peopleid1: "PG-1003",
+      people_name: "Ribeirinho",
+      geo_country_name: "Brazil",
+      christianity_gsec: "2",
+      christianity_frontier_group: "true",
+      engage_global_engagement_anywhere: "false",
+    },
+  ];
+  const secondaryColumns: SmokeColumn[] = [
+    { key: "pg_peopleid1", label: "PG_PeopleID1", sourceIndex: 0 },
+    { key: "people_name", label: "People Name", sourceIndex: 1 },
+    { key: "geo_country_name", label: "Geo_Country_Name", sourceIndex: 2 },
+    {
+      key: "engage_global_engagement_anywhere",
+      label: "Engage_Global_Engagement_Anywhere",
+      sourceIndex: 3,
+    },
+  ];
+  const secondaryRows: SmokeDatasetRow[] = [
+    {
+      pg_peopleid1: "PG-2001",
+      people_name: "Makushi",
+      geo_country_name: "Colombia",
+      engage_global_engagement_anywhere: "true",
+    },
+    {
+      pg_peopleid1: "PG-2002",
+      people_name: "Wayuu",
+      geo_country_name: "Brazil",
+      engage_global_engagement_anywhere: "false",
+    },
+  ];
+  const primaryBlobPath = "datasets/csv/smoke-primary-dataset.csv";
+  const secondaryBlobPath = "datasets/csv/smoke-secondary-dataset.csv";
+
+  await input.sql`
+    insert into public.datasets ${input.sql(
+      [
+        {
+          id: PRIMARY_DATASET_ID,
+          owner_id: input.ownerId,
+          file_name: "Smoke Primary Dataset",
+          sort_order: 0,
+          blob_url: buildBlobUrl(input.supabaseUrl, input.bucket, primaryBlobPath),
+          blob_path: primaryBlobPath,
+          is_primary: true,
+          status: "ready",
+          row_count: primaryRows.length,
+          size_bytes: 1536,
+          columns: primaryColumns,
+          hidden_column_keys: ["christianity_frontier_group"],
+          tags: [
+            {
+              id: "tag-smoke-primary",
+              label: "Priority",
+              color: "#d97706",
+            },
+          ],
+          error: null,
+        },
+        {
+          id: SECONDARY_DATASET_ID,
+          owner_id: input.ownerId,
+          file_name: "Smoke Secondary Dataset",
+          sort_order: 1,
+          blob_url: buildBlobUrl(input.supabaseUrl, input.bucket, secondaryBlobPath),
+          blob_path: secondaryBlobPath,
+          is_primary: false,
+          status: "ready",
+          row_count: secondaryRows.length,
+          size_bytes: 1024,
+          columns: secondaryColumns,
+          hidden_column_keys: [],
+          tags: [
+            {
+              id: "tag-smoke-secondary",
+              label: "Archive",
+              color: "#2563eb",
+            },
+          ],
+          error: null,
+        },
+      ],
+      "id",
+      "owner_id",
+      "file_name",
+      "sort_order",
+      "blob_url",
+      "blob_path",
+      "is_primary",
+      "status",
+      "row_count",
+      "size_bytes",
+      "columns",
+      "hidden_column_keys",
+      "tags",
+      "error",
+    )}
+    on conflict (id) do update
+    set
+      owner_id = excluded.owner_id,
+      file_name = excluded.file_name,
+      sort_order = excluded.sort_order,
+      blob_url = excluded.blob_url,
+      blob_path = excluded.blob_path,
+      is_primary = excluded.is_primary,
+      status = excluded.status,
+      row_count = excluded.row_count,
+      size_bytes = excluded.size_bytes,
+      columns = excluded.columns,
+      hidden_column_keys = excluded.hidden_column_keys,
+      tags = excluded.tags,
+      error = excluded.error,
+      updated_at = now()
+  `;
+
+  await input.sql`
+    insert into public.dataset_rows ${input.sql(
+      primaryRows.map((row, index) => ({
+        dataset_id: PRIMARY_DATASET_ID,
+        row_index: index,
+        data: row,
+      })),
+      "dataset_id",
+      "row_index",
+      "data",
+    )}
+  `;
+  await input.sql`
+    insert into public.dataset_rows ${input.sql(
+      secondaryRows.map((row, index) => ({
+        dataset_id: SECONDARY_DATASET_ID,
+        row_index: index,
+        data: row,
+      })),
+      "dataset_id",
+      "row_index",
+      "data",
+    )}
+  `;
+}
+
+async function insertFieldDefinitions(sql: postgres.Sql) {
+  const rows = [
+    {
+      id: FIELD_DEFINITION_IDS.pgPeopleId1,
+      canonicalKey: normalizeHeaderIdentity("PG_PeopleID1", 0),
+      label: "PG_PeopleID1",
+      displayLabel: "People ID",
+      definition: "Unique people group identifier used across the workspace.",
+      mappingFieldId: "FIELD-1001",
+      mappingDataType: "text",
+      mappingIsActive: true,
+      sourcePriorityKeys: [
+        normalizeHeaderIdentity("Joshua Project"),
+        normalizeHeaderIdentity("Accelerate"),
+      ],
+    },
+    {
+      id: FIELD_DEFINITION_IDS.peopleName,
+      canonicalKey: normalizeHeaderIdentity("People Name", 1),
+      label: "People Name",
+      displayLabel: "",
+      definition: "The common display name for the people group.",
+      mappingFieldId: "FIELD-1002",
+      mappingDataType: "text",
+      mappingIsActive: true,
+      sourcePriorityKeys: [normalizeHeaderIdentity("Joshua Project")],
+    },
+    {
+      id: FIELD_DEFINITION_IDS.geoCountryName,
+      canonicalKey: normalizeHeaderIdentity("Geo_Country_Name", 2),
+      label: "Geo_Country_Name",
+      displayLabel: "Country",
+      definition: "Country used by the region filter cards on dataset detail pages.",
+      mappingFieldId: "FIELD-1003",
+      mappingDataType: "text",
+      mappingIsActive: true,
+      sourcePriorityKeys: [],
+    },
+    {
+      id: FIELD_DEFINITION_IDS.christianityGsec,
+      canonicalKey: normalizeHeaderIdentity("Christianity_GSEC", 3),
+      label: "Christianity_GSEC",
+      displayLabel: "",
+      definition: "Global status estimate used by the Watchlist controls.",
+      mappingFieldId: "FIELD-1004",
+      mappingDataType: "number",
+      mappingIsActive: true,
+      sourcePriorityKeys: [],
+    },
+    {
+      id: FIELD_DEFINITION_IDS.christianityFrontierGroup,
+      canonicalKey: normalizeHeaderIdentity("Christianity_Frontier_Group", 4),
+      label: "Christianity_Frontier_Group",
+      displayLabel: "",
+      definition: "Frontier group flag paired with Christianity_GSEC.",
+      mappingFieldId: "FIELD-1005",
+      mappingDataType: "boolean",
+      mappingIsActive: true,
+      sourcePriorityKeys: [],
+    },
+    {
+      id: FIELD_DEFINITION_IDS.engagementAnywhere,
+      canonicalKey: normalizeHeaderIdentity("Engage_Global_Engagement_Anywhere", 5),
+      label: "Engage_Global_Engagement_Anywhere",
+      displayLabel: "Engaged Anywhere",
+      definition: "Engagement flag used by the UUPG dataset control.",
+      mappingFieldId: "FIELD-1006",
+      mappingDataType: "boolean",
+      mappingIsActive: true,
+      sourcePriorityKeys: [],
+    },
+  ];
+
+  await sql`
+    insert into public.field_definitions ${sql(
+      rows.map((row) => ({
+        id: row.id,
+        canonical_key: row.canonicalKey,
+        label: row.label,
+        display_label: row.displayLabel,
+        definition: row.definition,
+        mapping_field_id: row.mappingFieldId,
+        mapping_data_type: row.mappingDataType,
+        mapping_is_active: row.mappingIsActive,
+        source_priority_keys: row.sourcePriorityKeys,
+      })),
+      "id",
+      "canonical_key",
+      "label",
+      "display_label",
+      "definition",
+      "mapping_field_id",
+      "mapping_data_type",
+      "mapping_is_active",
+      "source_priority_keys",
+    )}
+    on conflict (canonical_key) do update
+    set
+      label = excluded.label,
+      display_label = excluded.display_label,
+      definition = excluded.definition,
+      mapping_field_id = excluded.mapping_field_id,
+      mapping_data_type = excluded.mapping_data_type,
+      mapping_is_active = excluded.mapping_is_active,
+      source_priority_keys = excluded.source_priority_keys,
+      updated_at = now()
+  `;
+}
+
+async function insertFieldDefinitionSources(sql: postgres.Sql) {
+  await sql`
+    insert into public.field_definition_sources (
+      field_definition_id,
+      source_type_id,
+      source_field_name
+    )
+    values
+      (${FIELD_DEFINITION_IDS.pgPeopleId1}, ${JOSHUA_PROJECT_SOURCE_TYPE_ID}, ${"people_id"}),
+      (${FIELD_DEFINITION_IDS.pgPeopleId1}, ${ACCELERATE_SOURCE_TYPE_ID}, ${"accelerate_people_id"}),
+      (${FIELD_DEFINITION_IDS.peopleName}, ${JOSHUA_PROJECT_SOURCE_TYPE_ID}, ${"people_name"})
+    on conflict (field_definition_id, source_type_id) do update
+    set source_field_name = excluded.source_field_name, updated_at = now()
+  `;
+}
+
+async function main() {
+  const supabaseUrl = requireEnv("NEXT_PUBLIC_SUPABASE_URL");
+  const supabasePublishableKey = requireEnv("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY");
+  const supabaseServiceRoleKey =
+    process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ??
+    requireEnv("SUPABASE_SECRET_KEY");
+  const databaseUrl = requireEnv("DATABASE_URL");
+  const storageBucket = process.env.SUPABASE_STORAGE_BUCKET?.trim() || "datasets";
+  const supabase = createClient(supabaseUrl, supabaseServiceRoleKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  });
+  const sql = postgres(databaseUrl, {
+    max: 1,
+    prepare: false,
+  });
+
+  try {
+    await mkdir(UI_SMOKE_TMP_DIR, { recursive: true });
+    await ensureBucket(supabase, storageBucket);
+    await resetSmokeData(sql);
+    await insertAllowlist(sql);
+
+    const adminUser = await recreateUser(supabase, UI_SMOKE_USERS.admin);
+    const viewerUser = await recreateUser(supabase, UI_SMOKE_USERS.viewer);
+
+    await insertFieldSourceTypes(sql);
+    await insertFilterRegions(sql);
+    await insertDatasets({
+      sql,
+      ownerId: adminUser.id,
+      supabaseUrl,
+      bucket: storageBucket,
+    });
+    await insertFieldDefinitions(sql);
+    await insertFieldDefinitionSources(sql);
+
+    const payload: UiSmokeBootstrap = {
+      generatedAt: new Date().toISOString(),
+      baseUrl: UI_SMOKE_BASE_URL,
+      aliases: {
+        primaryDatasetId: PRIMARY_DATASET_ID,
+        secondaryDatasetId: SECONDARY_DATASET_ID,
+        editableFieldDefinitionId: FIELD_DEFINITION_IDS.pgPeopleId1,
+        editableFieldSourceTypeId: JOSHUA_PROJECT_SOURCE_TYPE_ID,
+        southAsiaRegionId: SOUTH_ASIA_REGION_ID,
+        latinAmericaRegionId: LATIN_AMERICA_REGION_ID,
+      },
+      users: {
+        admin: adminUser,
+        viewer: viewerUser,
+      },
+      datasets: {
+        primary: {
+          id: PRIMARY_DATASET_ID,
+          fileName: "Smoke Primary Dataset",
+        },
+        secondary: {
+          id: SECONDARY_DATASET_ID,
+          fileName: "Smoke Secondary Dataset",
+        },
+      },
+      fieldDefinitions: {
+        editable: {
+          id: FIELD_DEFINITION_IDS.pgPeopleId1,
+          canonicalKey: normalizeHeaderIdentity("PG_PeopleID1", 0),
+          label: "PG_PeopleID1",
+        },
+      },
+      fieldSourceTypes: {
+        editable: {
+          id: JOSHUA_PROJECT_SOURCE_TYPE_ID,
+          key: normalizeHeaderIdentity("Joshua Project"),
+          label: "Joshua Project",
+        },
+      },
+      filterRegions: {
+        southAsia: {
+          id: SOUTH_ASIA_REGION_ID,
+          name: "South Asia",
+        },
+        latinAmerica: {
+          id: LATIN_AMERICA_REGION_ID,
+          name: "Latin America",
+        },
+      },
+    };
+
+    await writeFile(UI_SMOKE_BOOTSTRAP_FILE, JSON.stringify(payload, null, 2), "utf8");
+    console.log(
+      `Bootstrapped UI smoke data for ${viewerUser.email} and ${adminUser.email}.`,
+    );
+    console.log(
+      `Using anon key length ${supabasePublishableKey.length} against ${supabaseUrl}.`,
+    );
+  } finally {
+    await sql.end({ timeout: 5 });
+  }
+}
+
+void main().catch((error) => {
+  console.error(error instanceof Error ? error.message : error);
+  process.exitCode = 1;
+});

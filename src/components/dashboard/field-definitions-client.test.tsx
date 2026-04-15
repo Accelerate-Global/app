@@ -1,6 +1,13 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { FieldDefinitionsClient } from "./field-definitions-client";
@@ -28,6 +35,7 @@ describe("FieldDefinitionsClient", () => {
             label: "Geo_country_name",
             displayLabel: "Country Name",
             definition: "",
+            hideFromViewerFieldDefinitions: false,
             linkedDatasets: [
               { id: "dataset-1", fileName: "Global" },
               { id: "dataset-2", fileName: "Joshua Project" },
@@ -61,7 +69,7 @@ describe("FieldDefinitionsClient", () => {
     expect(screen.getAllByText("No definition available yet.").length).toBeGreaterThan(0);
   });
 
-  it("lets admins update the display label and definition from the drawer", async () => {
+  it("lets admins update the display label and definition from the sheet", async () => {
     fetchMock.mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -71,6 +79,7 @@ describe("FieldDefinitionsClient", () => {
           label: "Geo_country_name",
           displayLabel: "Country Name",
           definition: "The country assigned to the row.",
+          hideFromViewerFieldDefinitions: true,
           linkedDatasets: [{ id: "dataset-1", fileName: "Global" }],
           linkedSources: [
             {
@@ -95,6 +104,7 @@ describe("FieldDefinitionsClient", () => {
             label: "Geo_country_name",
             displayLabel: "",
             definition: "",
+            hideFromViewerFieldDefinitions: false,
             linkedDatasets: [{ id: "dataset-1", fileName: "Global" }],
             linkedSources: [
               {
@@ -114,15 +124,24 @@ describe("FieldDefinitionsClient", () => {
       screen.getAllByRole("button", { name: "Edit Geo_country_name" })[0],
     );
 
-    fireEvent.change(screen.getByLabelText("Display label"), {
+    const dialog = await screen.findByRole("dialog", { name: "Edit field" });
+
+    fireEvent.change(within(dialog).getByLabelText("Display label"), {
       target: { value: "Country Name" },
     });
-    fireEvent.change(screen.getByLabelText("Definition"), {
+    fireEvent.change(within(dialog).getByLabelText("Definition"), {
       target: { value: "The country assigned to the row." },
     });
-    expect(screen.getByText("Sources")).toBeTruthy();
-    expect(screen.getAllByText("Joshua Project").length).toBeGreaterThan(0);
-    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    fireEvent.click(
+      within(dialog).getByRole("switch", {
+        name: "Hide from viewer Field Definitions page",
+      }),
+    );
+    expect(within(dialog).getByText("Sources")).toBeTruthy();
+    expect(within(dialog).getAllByText("Joshua Project").length).toBeGreaterThan(
+      0,
+    );
+    fireEvent.click(within(dialog).getByRole("button", { name: "Save changes" }));
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith("/api/field-definitions/field-1", {
@@ -131,11 +150,13 @@ describe("FieldDefinitionsClient", () => {
         body: JSON.stringify({
           displayLabel: "Country Name",
           definition: "The country assigned to the row.",
+          hideFromViewerFieldDefinitions: true,
         }),
       });
     });
-    expect(screen.queryByText("Edit field")).toBeNull();
+    expect(screen.queryByRole("dialog", { name: "Edit field" })).toBeNull();
     expect(screen.getAllByText("Country Name").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Hidden from viewers").length).toBeGreaterThan(0);
     expect(
       screen.getAllByText("The country assigned to the row.").length,
     ).toBeGreaterThan(0);
