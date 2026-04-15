@@ -308,7 +308,7 @@ describe("dataset-region-filtering", () => {
       enabled: true,
       isSupported: true,
       threshold: 2,
-      frontierGroupRequired: true,
+      frontierGroupValue: true,
     });
 
     expect(filteredRows.map((row) => row.id)).toEqual(["row-1"]);
@@ -330,7 +330,7 @@ describe("dataset-region-filtering", () => {
         enabled: true,
         isSupported: true,
         threshold: 2,
-        frontierGroupRequired: true,
+        frontierGroupValue: true,
       },
     );
 
@@ -377,11 +377,50 @@ describe("dataset-region-filtering", () => {
         enabled: true,
         isSupported: true,
         threshold: 2,
-        frontierGroupRequired: true,
+        frontierGroupValue: true,
       },
     );
 
     expect(filteredRows.map((row) => row.id)).toEqual(["row-match"]);
+  });
+
+  it("keeps only rows whose frontier group value matches false", () => {
+    const filteredRows = filterDatasetRowsByWatchlist(
+      [
+        {
+          id: "row-true",
+          rowIndex: 0,
+          data: {
+            christianity_gsec: "1",
+            christianity_frontier_group: "TRUE",
+          },
+        },
+        {
+          id: "row-false",
+          rowIndex: 1,
+          data: {
+            christianity_gsec: "2",
+            christianity_frontier_group: "FALSE",
+          },
+        },
+        {
+          id: "row-false-threshold-miss",
+          rowIndex: 2,
+          data: {
+            christianity_gsec: "3",
+            christianity_frontier_group: "FALSE",
+          },
+        },
+      ],
+      {
+        enabled: true,
+        isSupported: true,
+        threshold: 2,
+        frontierGroupValue: false,
+      },
+    );
+
+    expect(filteredRows.map((row) => row.id)).toEqual(["row-false"]);
   });
 
   it("keeps all rows when watchlist filtering is disabled", () => {
@@ -389,7 +428,7 @@ describe("dataset-region-filtering", () => {
       enabled: false,
       isSupported: true,
       threshold: 2,
-      frontierGroupRequired: true,
+      frontierGroupValue: true,
     });
 
     expect(filteredRows).toHaveLength(3);
@@ -525,7 +564,7 @@ describe("dataset-region-filtering", () => {
       enabled: true,
       isSupported: true,
       threshold: 2,
-      frontierGroupRequired: true,
+      frontierGroupValue: true,
     });
     const filteredRows = filterDatasetRowsByUupg(watchlistFilteredRows, {
       enabled: true,

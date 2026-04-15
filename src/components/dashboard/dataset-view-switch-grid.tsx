@@ -11,6 +11,13 @@ import {
   NumberFieldInput,
 } from "@/components/reui/number-field";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
@@ -37,8 +44,10 @@ type DatasetViewSwitchGridProps = {
     threshold: number;
     minThreshold: number;
     maxThreshold: number;
+    frontierGroupValue: boolean;
     onEnabledChange: (checked: boolean) => void;
     onThresholdChange: (value: number) => void;
+    onFrontierGroupValueChange: (value: boolean) => void;
   };
   uupgCard: {
     enabled: boolean;
@@ -214,7 +223,7 @@ export function DatasetViewSwitchGrid({
           </div>
         ) : (
           <div className="mt-auto w-full self-end">
-            <div className="space-y-3 rounded-2xl border border-border/70 bg-background/60 p-3">
+            <div className="space-y-3">
               <div className="flex flex-wrap items-center gap-2 text-sm">
                 <code className="rounded-md bg-muted px-2 py-1 text-xs font-medium text-foreground">
                   Christianity_GSEC
@@ -222,8 +231,6 @@ export function DatasetViewSwitchGrid({
                 <span className="rounded-md border border-border bg-background px-2 py-1 text-xs font-medium text-muted-foreground">
                   {"<="}
                 </span>
-              </div>
-              <div className="w-full max-w-44">
                 <NumberField
                   value={watchlistCard.threshold}
                   min={watchlistCard.minThreshold}
@@ -236,6 +243,7 @@ export function DatasetViewSwitchGrid({
                   onValueChange={(value) =>
                     watchlistCard.onThresholdChange(value ?? watchlistCard.minThreshold)
                   }
+                  className="w-28"
                 >
                   <NumberFieldGroup>
                     <NumberFieldInput
@@ -257,9 +265,29 @@ export function DatasetViewSwitchGrid({
                 <span className="rounded-md border border-border bg-background px-2 py-1 text-xs font-medium text-muted-foreground">
                   =
                 </span>
-                <span className="rounded-md bg-emerald-500/12 px-2 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-300">
-                  TRUE
-                </span>
+                <Select
+                  value={watchlistCard.frontierGroupValue ? "true" : "false"}
+                  disabled={!watchlistCard.enabled}
+                  onValueChange={(value) =>
+                    watchlistCard.onFrontierGroupValueChange(value === "true")
+                  }
+                >
+                  <SelectTrigger
+                    aria-label="Watchlist Christianity_Frontier_Group value"
+                    className={cn(
+                      "min-w-24 rounded-md border-0 px-2 py-1 text-xs font-medium uppercase",
+                      watchlistCard.frontierGroupValue
+                        ? "bg-emerald-500/12 text-emerald-700 dark:text-emerald-300"
+                        : "bg-amber-500/12 text-amber-700 dark:text-amber-300",
+                    )}
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="true">TRUE</SelectItem>
+                    <SelectItem value="false">FALSE</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           </div>

@@ -37,7 +37,8 @@ export default async function FieldDefinitionsPage() {
             Field Definitions
           </h1>
           <p className="max-w-3xl text-base leading-7 text-muted-foreground sm:text-lg">
-            Use the info icons in dataset headers to learn what each field means.
+            These shared definitions explain fields that appear across the
+            datasets in this workspace.
           </p>
         </section>
         <FieldDefinitionsClient
