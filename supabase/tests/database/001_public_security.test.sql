@@ -148,6 +148,16 @@ select ok(
   'signup_email_allowlist has supabase auth admin read policy'
 );
 
+insert into public.signup_email_allowlist (email, note)
+select
+  'admin@example.com',
+  'pgTAP admin fixture'
+where not exists (
+  select 1
+  from public.signup_email_allowlist
+  where email = 'admin@example.com'
+);
+
 insert into auth.users (
   id,
   aud,
