@@ -102,4 +102,60 @@ describe("DatasetDetailClient", () => {
       },
     });
   });
+
+  it("passes supported watchlist filter state into the card and table", () => {
+    render(
+      <DatasetDetailClient
+        dataset={{
+          ...datasetBase,
+          columns: [
+            {
+              key: "christianity_gsec",
+              label: "Christianity_GSEC",
+              sourceIndex: 0,
+            },
+            {
+              key: "christianity_frontier_group",
+              label: "Christianity_Frontier_Group",
+              sourceIndex: 1,
+            },
+          ],
+        }}
+        regions={[]}
+        fieldDefinitionPresentationByColumnKey={{}}
+      />,
+    );
+
+    const viewSwitchGridProps = viewSwitchGridSpy.mock.calls[0]?.[0] as {
+      watchlistCard: {
+        enabled: boolean;
+        supported: boolean;
+        threshold: number;
+        minThreshold: number;
+        maxThreshold: number;
+      };
+    };
+    const datasetTableProps = datasetTableSpy.mock.calls[0]?.[0] as {
+      watchlistFilter: {
+        enabled: boolean;
+        isSupported: boolean;
+        threshold: number;
+        frontierGroupRequired: boolean;
+      };
+    };
+
+    expect(viewSwitchGridProps.watchlistCard).toMatchObject({
+      enabled: false,
+      supported: true,
+      threshold: 2,
+      minThreshold: 0,
+      maxThreshold: 6,
+    });
+    expect(datasetTableProps.watchlistFilter).toEqual({
+      enabled: false,
+      isSupported: true,
+      threshold: 2,
+      frontierGroupRequired: true,
+    });
+  });
 });

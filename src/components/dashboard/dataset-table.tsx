@@ -23,8 +23,10 @@ import type {
 import { getVisibleDatasetColumns } from "@/lib/dataset-column-visibility";
 import {
   filterDatasetRowsByRegion,
+  filterDatasetRowsByWatchlist,
   filterDatasetRowsByUupg,
   type DatasetRegionFilterState,
+  type DatasetWatchlistFilterState,
   type DatasetUupgFilterState,
 } from "@/lib/dataset-region-filtering";
 
@@ -36,6 +38,7 @@ type DatasetRow = DatasetRowsResponse["rows"][number];
 type DatasetTableProps = {
   dataset: DatasetSummary;
   regionFilter?: DatasetRegionFilterState;
+  watchlistFilter?: DatasetWatchlistFilterState;
   uupgFilter?: DatasetUupgFilterState;
   fieldDefinitionPresentationByColumnKey?: Record<
     string,
@@ -71,6 +74,7 @@ async function fetchAllRows(input: {
 export function DatasetTable({
   dataset,
   regionFilter,
+  watchlistFilter,
   uupgFilter,
   fieldDefinitionPresentationByColumnKey = {},
 }: DatasetTableProps) {
@@ -80,8 +84,15 @@ export function DatasetTable({
   const [sorting, setSorting] = useState<SortingState>([]);
   const loadMessage = "Loading people groups...";
   const filteredRows = useMemo(
-    () => filterDatasetRowsByUupg(filterDatasetRowsByRegion(rows, regionFilter), uupgFilter),
-    [rows, regionFilter, uupgFilter],
+    () =>
+      filterDatasetRowsByUupg(
+        filterDatasetRowsByWatchlist(
+          filterDatasetRowsByRegion(rows, regionFilter),
+          watchlistFilter,
+        ),
+        uupgFilter,
+      ),
+    [rows, regionFilter, watchlistFilter, uupgFilter],
   );
 
   const columns = useMemo<ColumnDef<DatasetRow>[]>(

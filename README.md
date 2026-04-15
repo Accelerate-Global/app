@@ -39,7 +39,13 @@ Raw CSV files are stored in Supabase Storage. Uploads require a server-side
 create, update, or delete datasets. All signed-in users can browse shared
 datasets and rows.
 
-Apply the database schema:
+Start the local Supabase stack:
+
+```bash
+pnpm db:start
+```
+
+Apply the tracked Supabase migrations to the local database:
 
 ```bash
 pnpm db:push
@@ -52,6 +58,11 @@ pnpm dev
 ```
 
 Open `http://localhost:3000`.
+
+Do not use `drizzle-kit push` against this project database. It creates tables
+and columns, but it does not create the Supabase RLS policies required for
+tables in `public`. Schema changes must be committed as SQL migrations under
+`supabase/migrations`.
 
 ## Vercel Setup
 
@@ -88,8 +99,33 @@ order by email;
 ## Verification
 
 ```bash
+pnpm db:check-rls
+pnpm db:security
 pnpm lint
 pnpm typecheck
 pnpm test
 pnpm build
+```
+
+## Database Security Tests
+
+Database security tests live under `supabase/tests/database` and run with
+`supabase test db` using pgTAP. The full local security gate is:
+
+```bash
+pnpm db:start
+pnpm db:security
+```
+
+This checks three things:
+
+- all `public` tables have RLS enabled
+- the local database passes `supabase db lint`
+- pgTAP security tests pass against the real local Postgres policies
+
+If Docker is unavailable but you still have direct database access, run the
+remote gate instead:
+
+```bash
+pnpm db:security:remote
 ```

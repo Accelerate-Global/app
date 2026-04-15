@@ -11,6 +11,7 @@ import type {
 } from "@/lib/api-types";
 import {
   datasetSupportsRegionFiltering,
+  datasetSupportsWatchlistFiltering,
   datasetSupportsUupgFiltering,
   getEnabledRegionCountryNames,
 } from "@/lib/dataset-region-filtering";
@@ -24,12 +25,25 @@ type DatasetDetailClientProps = {
   >;
 };
 
+const WATCHLIST_THRESHOLD_DEFAULT = 2;
+const WATCHLIST_THRESHOLD_MIN = 0;
+const WATCHLIST_THRESHOLD_MAX = 6;
+const WATCHLIST_FRONTIER_GROUP_DEFAULT = true;
+
+function clampWatchlistThreshold(value: number) {
+  return Math.min(
+    WATCHLIST_THRESHOLD_MAX,
+    Math.max(WATCHLIST_THRESHOLD_MIN, Math.round(value)),
+  );
+}
+
 export function DatasetDetailClient({
   dataset,
   regions,
   fieldDefinitionPresentationByColumnKey,
 }: DatasetDetailClientProps) {
   const supportsRegionFiltering = datasetSupportsRegionFiltering(dataset);
+  const supportsWatchlistFiltering = datasetSupportsWatchlistFiltering(dataset);
   const supportsUupgFiltering = datasetSupportsUupgFiltering(dataset);
   const canUseRegionFilter = supportsRegionFiltering && regions.length > 0;
   const [regionEnabled, setRegionEnabled] = useState(canUseRegionFilter);
@@ -40,6 +54,9 @@ export function DatasetDetailClient({
       ),
   );
   const [watchlistEnabled, setWatchlistEnabled] = useState(false);
+  const [watchlistThreshold, setWatchlistThreshold] = useState(
+    WATCHLIST_THRESHOLD_DEFAULT,
+  );
   const [uupgEnabled, setUupgEnabled] = useState(false);
 
   const enabledCountryNames = useMemo(
@@ -74,7 +91,13 @@ export function DatasetDetailClient({
         }}
         watchlistCard={{
           enabled: watchlistEnabled,
+          supported: supportsWatchlistFiltering,
+          threshold: watchlistThreshold,
+          minThreshold: WATCHLIST_THRESHOLD_MIN,
+          maxThreshold: WATCHLIST_THRESHOLD_MAX,
           onEnabledChange: setWatchlistEnabled,
+          onThresholdChange: (value) =>
+            setWatchlistThreshold(clampWatchlistThreshold(value)),
         }}
         uupgCard={{
           enabled: uupgEnabled,
@@ -90,6 +113,12 @@ export function DatasetDetailClient({
           isSupported: supportsRegionFiltering,
           hasConfiguredRegions: regions.length > 0,
           enabledCountryNames,
+        }}
+        watchlistFilter={{
+          enabled: watchlistEnabled,
+          isSupported: supportsWatchlistFiltering,
+          threshold: watchlistThreshold,
+          frontierGroupRequired: WATCHLIST_FRONTIER_GROUP_DEFAULT,
         }}
         uupgFilter={{
           enabled: uupgEnabled,

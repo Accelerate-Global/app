@@ -3,8 +3,10 @@ import { describe, expect, it } from "vitest";
 import type { DatasetRowsResponse, DatasetSummary } from "@/lib/api-types";
 import {
   datasetSupportsRegionFiltering,
+  datasetSupportsWatchlistFiltering,
   datasetSupportsUupgFiltering,
   filterDatasetRowsByRegion,
+  filterDatasetRowsByWatchlist,
   filterDatasetRowsByUupg,
   getEnabledRegionCountryNames,
 } from "./dataset-region-filtering";
@@ -15,6 +17,8 @@ const rows: DatasetRowsResponse["rows"] = [
     rowIndex: 0,
     data: {
       geo_country_name: "India",
+      christianity_gsec: "2",
+      christianity_frontier_group: "TRUE",
       engage_global_engagement_anywhere: "FALSE",
     },
   },
@@ -23,6 +27,8 @@ const rows: DatasetRowsResponse["rows"] = [
     rowIndex: 1,
     data: {
       geo_country_name: "Nepal",
+      christianity_gsec: "3",
+      christianity_frontier_group: "TRUE",
       engage_global_engagement_anywhere: "TRUE",
     },
   },
@@ -31,6 +37,8 @@ const rows: DatasetRowsResponse["rows"] = [
     rowIndex: 2,
     data: {
       Geo_Country_Name: "",
+      Christianity_GSEC: "",
+      Christianity_Frontier_Group: "",
       Engage_Global_Engagement_Anywhere: "",
     },
   },
@@ -53,9 +61,19 @@ const dataset = {
       sourceIndex: 0,
     },
     {
+      key: "christianity_gsec",
+      label: "Christianity_GSEC",
+      sourceIndex: 1,
+    },
+    {
+      key: "christianity_frontier_group",
+      label: "Christianity_Frontier_Group",
+      sourceIndex: 2,
+    },
+    {
       key: "engage_global_engagement_anywhere",
       label: "Engage_Global_Engagement_Anywhere",
-      sourceIndex: 1,
+      sourceIndex: 3,
     },
   ],
   hiddenColumnKeys: [],
@@ -72,6 +90,10 @@ describe("dataset-region-filtering", () => {
 
   it("detects UUPG support when the dataset stores normalized column keys", () => {
     expect(datasetSupportsUupgFiltering(dataset)).toBe(true);
+  });
+
+  it("detects watchlist support when the dataset stores normalized column keys", () => {
+    expect(datasetSupportsWatchlistFiltering(dataset)).toBe(true);
   });
 
   it("detects UUPG support when the dataset exposes the raw header as the label", () => {
@@ -98,6 +120,46 @@ describe("dataset-region-filtering", () => {
             key: "geo_country_name",
             label: "Geo_Country_Name",
             sourceIndex: 0,
+          },
+        ],
+      }),
+    ).toBe(false);
+  });
+
+  it("detects watchlist support when the dataset exposes the raw header as the label", () => {
+    expect(
+      datasetSupportsWatchlistFiltering({
+        ...dataset,
+        columns: [
+          {
+            key: "watchlist_status",
+            label: "Christianity_GSEC",
+            sourceIndex: 0,
+          },
+          {
+            key: "watchlist_frontier",
+            label: "Christianity_Frontier_Group",
+            sourceIndex: 1,
+          },
+        ],
+      }),
+    ).toBe(true);
+  });
+
+  it("reports watchlist filtering as unsupported when the column is absent", () => {
+    expect(
+      datasetSupportsWatchlistFiltering({
+        ...dataset,
+        columns: [
+          {
+            key: "geo_country_name",
+            label: "Geo_Country_Name",
+            sourceIndex: 0,
+          },
+          {
+            key: "christianity_gsec",
+            label: "Christianity_GSEC",
+            sourceIndex: 1,
           },
         ],
       }),
@@ -241,6 +303,98 @@ describe("dataset-region-filtering", () => {
     expect(filteredRows).toHaveLength(3);
   });
 
+  it("keeps only rows whose watchlist field is less than or equal to the threshold", () => {
+    const filteredRows = filterDatasetRowsByWatchlist(rows, {
+      enabled: true,
+      isSupported: true,
+      threshold: 2,
+      frontierGroupRequired: true,
+    });
+
+    expect(filteredRows.map((row) => row.id)).toEqual(["row-1"]);
+  });
+
+  it("still reads legacy row keys that use the raw watchlist header casing", () => {
+    const filteredRows = filterDatasetRowsByWatchlist(
+      [
+        {
+          id: "row-legacy",
+          rowIndex: 0,
+          data: {
+            Christianity_GSEC: "1",
+            Christianity_Frontier_Group: "TRUE",
+          },
+        },
+      ],
+      {
+        enabled: true,
+        isSupported: true,
+        threshold: 2,
+        frontierGroupRequired: true,
+      },
+    );
+
+    expect(filteredRows).toHaveLength(1);
+    expect(filteredRows[0]?.id).toBe("row-legacy");
+  });
+
+  it("excludes blank and non-numeric watchlist values when filtering is enabled", () => {
+    const filteredRows = filterDatasetRowsByWatchlist(
+      [
+        {
+          id: "row-blank",
+          rowIndex: 0,
+          data: {
+            christianity_gsec: "",
+          },
+        },
+        {
+          id: "row-nonnumeric",
+          rowIndex: 1,
+          data: {
+            christianity_gsec: "unknown",
+            christianity_frontier_group: "TRUE",
+          },
+        },
+        {
+          id: "row-match",
+          rowIndex: 2,
+          data: {
+            christianity_gsec: "2",
+            christianity_frontier_group: "TRUE",
+          },
+        },
+        {
+          id: "row-frontier-false",
+          rowIndex: 3,
+          data: {
+            christianity_gsec: "1",
+            christianity_frontier_group: "FALSE",
+          },
+        },
+      ],
+      {
+        enabled: true,
+        isSupported: true,
+        threshold: 2,
+        frontierGroupRequired: true,
+      },
+    );
+
+    expect(filteredRows.map((row) => row.id)).toEqual(["row-match"]);
+  });
+
+  it("keeps all rows when watchlist filtering is disabled", () => {
+    const filteredRows = filterDatasetRowsByWatchlist(rows, {
+      enabled: false,
+      isSupported: true,
+      threshold: 2,
+      frontierGroupRequired: true,
+    });
+
+    expect(filteredRows).toHaveLength(3);
+  });
+
   it("keeps only rows whose UUPG field normalizes to false", () => {
     const filteredRows = filterDatasetRowsByUupg(
       [
@@ -306,7 +460,7 @@ describe("dataset-region-filtering", () => {
     expect(filteredRows).toHaveLength(3);
   });
 
-  it("applies region and UUPG filters with AND semantics", () => {
+  it("applies region, watchlist, and UUPG filters with AND semantics", () => {
     const regionFilteredRows = filterDatasetRowsByRegion(
       [
         {
@@ -314,6 +468,8 @@ describe("dataset-region-filtering", () => {
           rowIndex: 0,
           data: {
             geo_country_name: "India",
+            christianity_gsec: "2",
+            christianity_frontier_group: "TRUE",
             engage_global_engagement_anywhere: "FALSE",
           },
         },
@@ -322,6 +478,8 @@ describe("dataset-region-filtering", () => {
           rowIndex: 1,
           data: {
             geo_country_name: "India",
+            christianity_gsec: "2",
+            christianity_frontier_group: "TRUE",
             engage_global_engagement_anywhere: "TRUE",
           },
         },
@@ -330,6 +488,28 @@ describe("dataset-region-filtering", () => {
           rowIndex: 2,
           data: {
             geo_country_name: "Nepal",
+            christianity_gsec: "2",
+            christianity_frontier_group: "TRUE",
+            engage_global_engagement_anywhere: "FALSE",
+          },
+        },
+        {
+          id: "row-india-threshold-miss",
+          rowIndex: 3,
+          data: {
+            geo_country_name: "India",
+            christianity_gsec: "3",
+            christianity_frontier_group: "TRUE",
+            engage_global_engagement_anywhere: "FALSE",
+          },
+        },
+        {
+          id: "row-india-frontier-false",
+          rowIndex: 4,
+          data: {
+            geo_country_name: "India",
+            christianity_gsec: "1",
+            christianity_frontier_group: "FALSE",
             engage_global_engagement_anywhere: "FALSE",
           },
         },
@@ -341,7 +521,13 @@ describe("dataset-region-filtering", () => {
         enabledCountryNames: ["India"],
       },
     );
-    const filteredRows = filterDatasetRowsByUupg(regionFilteredRows, {
+    const watchlistFilteredRows = filterDatasetRowsByWatchlist(regionFilteredRows, {
+      enabled: true,
+      isSupported: true,
+      threshold: 2,
+      frontierGroupRequired: true,
+    });
+    const filteredRows = filterDatasetRowsByUupg(watchlistFilteredRows, {
       enabled: true,
       isSupported: true,
     });

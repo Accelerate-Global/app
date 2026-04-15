@@ -10,7 +10,17 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "db:generate": "drizzle-kit generate",
-    "db:push": "dotenv -e .env.local -- drizzle-kit push"
+    "db:start": "supabase start",
+    "db:push": "supabase db push --local",
+    "db:reset": "supabase db reset --local --no-seed",
+    "db:check-rls": "dotenv -e .env.local -- node scripts/check-public-rls.mjs",
+    "db:check-rls:local": "DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres node scripts/check-public-rls.mjs",
+    "db:lint": "supabase db lint --local --level error",
+    "db:lint:remote": "supabase db lint --linked --level error",
+    "db:test": "supabase test db",
+    "db:test:remote": "dotenv -e .env.local -- node scripts/run-remote-db-tests.mjs",
+    "db:security": "pnpm db:check-rls:local && pnpm db:lint && pnpm db:test",
+    "db:security:remote": "pnpm db:check-rls && pnpm db:lint:remote && pnpm db:test:remote"
   },
   "dependencies": {
     "@base-ui/react": "^1.3.0",
