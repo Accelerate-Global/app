@@ -32,6 +32,18 @@ describe("FieldDefinitionsClient", () => {
               { id: "dataset-1", fileName: "Global" },
               { id: "dataset-2", fileName: "Joshua Project" },
             ],
+            linkedSources: [
+              {
+                id: "source-1",
+                key: "joshua_project",
+                label: "Joshua Project",
+              },
+              {
+                id: "source-2",
+                key: "imb_people_groups",
+                label: "IMB (People Groups)",
+              },
+            ],
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
           },
@@ -41,7 +53,10 @@ describe("FieldDefinitionsClient", () => {
 
     expect(screen.getAllByText("Country Name").length).toBeGreaterThan(0);
     expect(screen.queryByText("Global")).toBeNull();
-    expect(screen.queryByText("Joshua Project")).toBeNull();
+    expect(screen.getAllByText("Joshua Project").length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText("IMB (People Groups)").length,
+    ).toBeGreaterThan(0);
     expect(screen.queryByRole("button", { name: "Edit Country Name" })).toBeNull();
     expect(screen.getAllByText("No definition available yet.").length).toBeGreaterThan(0);
   });
@@ -57,6 +72,13 @@ describe("FieldDefinitionsClient", () => {
           displayLabel: "Country Name",
           definition: "The country assigned to the row.",
           linkedDatasets: [{ id: "dataset-1", fileName: "Global" }],
+          linkedSources: [
+            {
+              id: "source-1",
+              key: "joshua_project",
+              label: "Joshua Project",
+            },
+          ],
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         },
@@ -74,6 +96,13 @@ describe("FieldDefinitionsClient", () => {
             displayLabel: "",
             definition: "",
             linkedDatasets: [{ id: "dataset-1", fileName: "Global" }],
+            linkedSources: [
+              {
+                id: "source-1",
+                key: "joshua_project",
+                label: "Joshua Project",
+              },
+            ],
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
           },
@@ -91,6 +120,8 @@ describe("FieldDefinitionsClient", () => {
     fireEvent.change(screen.getByLabelText("Definition"), {
       target: { value: "The country assigned to the row." },
     });
+    expect(screen.getByText("Sources")).toBeTruthy();
+    expect(screen.getAllByText("Joshua Project").length).toBeGreaterThan(0);
     fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
 
     await waitFor(() => {

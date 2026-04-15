@@ -116,6 +116,7 @@ describe("/api/field-definitions/[fieldDefinitionId]", () => {
       displayLabel: "Country Name",
       definition: "Country name",
       linkedDatasets: [{ id: "dataset-1", fileName: "Global" }],
+      linkedSources: [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };

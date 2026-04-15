@@ -134,6 +134,7 @@ export function DatasetTable({
                   <FieldDefinitionHeaderInfo
                     label={columnLabel}
                     definition={fieldDefinitionPresentation?.definition ?? ""}
+                    linkedSources={fieldDefinitionPresentation?.linkedSources ?? []}
                   />
                 }
               />

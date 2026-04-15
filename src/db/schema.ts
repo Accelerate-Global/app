@@ -119,6 +119,13 @@ export const fieldDefinitions = pgTable(
     label: text("label").notNull(),
     displayLabel: text("display_label").notNull().default(""),
     definition: text("definition").notNull().default(""),
+    mappingFieldId: text("mapping_field_id"),
+    mappingDataType: text("mapping_data_type"),
+    mappingIsActive: boolean("mapping_is_active"),
+    sourcePriorityKeys: jsonb("source_priority_keys")
+      .$type<string[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -132,6 +139,56 @@ export const fieldDefinitions = pgTable(
       sql`lower(btrim(${table.label}))`,
       table.createdAt,
     ),
+  ],
+);
+
+export const fieldSourceTypes = pgTable(
+  "field_source_types",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    key: text("key").notNull(),
+    label: text("label").notNull(),
+    sortOrder: integer("sort_order").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("field_source_types_key_idx").on(table.key),
+    uniqueIndex("field_source_types_label_lower_idx").on(
+      sql`lower(btrim(${table.label}))`,
+    ),
+    index("field_source_types_sort_order_idx").on(table.sortOrder, table.createdAt),
+  ],
+);
+
+export const fieldDefinitionSources = pgTable(
+  "field_definition_sources",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    fieldDefinitionId: uuid("field_definition_id")
+      .notNull()
+      .references(() => fieldDefinitions.id, { onDelete: "cascade" }),
+    sourceTypeId: uuid("source_type_id")
+      .notNull()
+      .references(() => fieldSourceTypes.id, { onDelete: "cascade" }),
+    sourceFieldName: text("source_field_name").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("field_definition_sources_field_source_idx").on(
+      table.fieldDefinitionId,
+      table.sourceTypeId,
+    ),
+    index("field_definition_sources_source_type_idx").on(table.sourceTypeId),
   ],
 );
 

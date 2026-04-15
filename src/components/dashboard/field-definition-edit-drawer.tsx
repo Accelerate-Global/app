@@ -1,7 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 
+import { FieldSourceTagList } from "@/components/dashboard/field-source-tag-list";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -160,6 +162,29 @@ function FieldDefinitionEditDrawerForm({
             This text appears when someone opens the field info tooltip in a
             dataset header.
           </p>
+        </section>
+
+        <section className="space-y-3">
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-foreground">Sources</p>
+            <p className="text-sm text-muted-foreground">
+              These database links are managed from{" "}
+              <Link
+                href="/dashboard/field-sources"
+                className="font-medium text-foreground underline underline-offset-4"
+              >
+                Field Sources
+              </Link>
+              .
+            </p>
+          </div>
+          {fieldDefinition.linkedSources.length > 0 ? (
+            <FieldSourceTagList linkedSources={fieldDefinition.linkedSources} />
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              No linked source databases yet.
+            </p>
+          )}
         </section>
 
         {errorMessage ? (

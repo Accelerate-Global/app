@@ -30,7 +30,7 @@ describe("AccountControl", () => {
     cleanup();
   });
 
-  it("shows the full name when present and includes dashboard, field definitions, filter settings, and upload links", () => {
+  it("shows the full name when present and includes dashboard, field definitions, field sources, filter settings, and upload links", () => {
     render(
       <AccountControl
         identity={{
@@ -49,6 +49,7 @@ describe("AccountControl", () => {
     expect(screen.getByText("admin@example.com")).toBeTruthy();
     expect(screen.getByText("Dashboard")).toBeTruthy();
     expect(screen.getByText("Field Definitions")).toBeTruthy();
+    expect(screen.getByText("Field Sources")).toBeTruthy();
     expect(screen.getByText("Filter Settings")).toBeTruthy();
     expect(screen.getByText("Upload")).toBeTruthy();
   });
@@ -70,6 +71,7 @@ describe("AccountControl", () => {
     fireEvent.click(screen.getByRole("button"));
     expect(screen.getByText("viewer@example.com")).toBeTruthy();
     expect(screen.getByText("Field Definitions")).toBeTruthy();
+    expect(screen.queryByText("Field Sources")).toBeNull();
     expect(screen.queryByText("Filter Settings")).toBeNull();
     expect(screen.queryByText("Upload")).toBeNull();
   });
