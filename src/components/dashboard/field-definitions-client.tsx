@@ -4,7 +4,6 @@ import { BookTextIcon, PencilLineIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -181,9 +180,9 @@ function FieldDefinitionsTable({
 }) {
   return (
     <>
-      <div className="hidden overflow-hidden rounded-2xl border border-border bg-background sm:block">
+      <div className="hidden sm:block">
         <Table>
-          <TableHeader className="bg-muted/35">
+          <TableHeader>
             <TableRow className="hover:bg-transparent [&>:not(:last-child)]:border-r [&>:not(:last-child)]:border-border">
               <TableHead className="h-12 w-[28%] px-5 text-sm font-semibold text-foreground">
                 Field
@@ -199,7 +198,7 @@ function FieldDefinitionsTable({
                 key={fieldDefinition.id}
                 className="hover:bg-transparent [&>:not(:last-child)]:border-r [&>:not(:last-child)]:border-border"
               >
-                <TableCell className="bg-muted/20 px-5 py-4 align-top text-sm font-medium whitespace-normal text-foreground">
+                <TableCell className="px-5 py-4 align-top text-sm font-medium whitespace-normal text-foreground">
                   {getFieldDefinitionEffectiveLabel(fieldDefinition)}
                 </TableCell>
                 <TableCell className="px-5 py-4 align-top text-sm leading-6 whitespace-normal">
@@ -289,31 +288,17 @@ export function FieldDefinitionsClient({
   return (
     <>
       <div className="grid gap-6">
-        <Card>
-          <CardHeader className="space-y-2">
-            <CardTitle className="flex items-center gap-2 text-2xl">
-              <BookTextIcon className="size-5 text-muted-foreground" />
-              Field Definitions
-            </CardTitle>
-            <CardDescription>
-              These shared definitions explain fields that appear across the
-              datasets in this workspace.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {hasFieldDefinitions ? (
-              <FieldDefinitionsTable
-                fieldDefinitions={sortedFieldDefinitions}
-                canEdit={canEdit}
-                onEdit={(fieldDefinition) =>
-                  setEditingFieldDefinitionId(fieldDefinition.id)
-                }
-              />
-            ) : (
-              <FieldDefinitionEmptyState />
-            )}
-          </CardContent>
-        </Card>
+        {hasFieldDefinitions ? (
+          <FieldDefinitionsTable
+            fieldDefinitions={sortedFieldDefinitions}
+            canEdit={canEdit}
+            onEdit={(fieldDefinition) =>
+              setEditingFieldDefinitionId(fieldDefinition.id)
+            }
+          />
+        ) : (
+          <FieldDefinitionEmptyState />
+        )}
       </div>
 
       <FieldDefinitionEditDrawer

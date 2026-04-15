@@ -24,7 +24,7 @@ export type DatasetWatchlistFilterState = {
   enabled: boolean;
   isSupported: boolean;
   threshold: number;
-  frontierGroupRequired: boolean;
+  frontierGroupValue: boolean;
 };
 
 function normalizeCountryName(value: string | null | undefined) {
@@ -207,11 +207,11 @@ export function filterDatasetRowsByWatchlist(
     const frontierGroupValue = normalizeDatasetCellValue(
       getWatchlistFrontierGroupDatasetValue(row),
     );
+    const expectedFrontierGroupValue = watchlistFilter.frontierGroupValue
+      ? "true"
+      : "false";
 
-    if (
-      value === null ||
-      (watchlistFilter.frontierGroupRequired && frontierGroupValue !== "true")
-    ) {
+    if (value === null || frontierGroupValue !== expectedFrontierGroupValue) {
       return false;
     }
 

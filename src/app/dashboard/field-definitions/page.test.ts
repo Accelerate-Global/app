@@ -61,7 +61,7 @@ describe("/dashboard/field-definitions", () => {
 
     expect(
       screen.getByText(
-        "Use the info icons in dataset headers to learn what each field means.",
+        "These shared definitions explain fields that appear across the datasets in this workspace.",
       ),
     ).toBeTruthy();
     expect(listFieldDefinitionsMock).toHaveBeenCalledWith();

@@ -133,6 +133,7 @@ describe("DatasetDetailClient", () => {
         threshold: number;
         minThreshold: number;
         maxThreshold: number;
+        frontierGroupValue: boolean;
       };
     };
     const datasetTableProps = datasetTableSpy.mock.calls[0]?.[0] as {
@@ -140,7 +141,7 @@ describe("DatasetDetailClient", () => {
         enabled: boolean;
         isSupported: boolean;
         threshold: number;
-        frontierGroupRequired: boolean;
+        frontierGroupValue: boolean;
       };
     };
 
@@ -150,12 +151,13 @@ describe("DatasetDetailClient", () => {
       threshold: 2,
       minThreshold: 0,
       maxThreshold: 6,
+      frontierGroupValue: true,
     });
     expect(datasetTableProps.watchlistFilter).toEqual({
       enabled: false,
       isSupported: true,
       threshold: 2,
-      frontierGroupRequired: true,
+      frontierGroupValue: true,
     });
   });
 });

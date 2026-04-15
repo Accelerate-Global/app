@@ -22,8 +22,10 @@ describe("DatasetViewSwitchGrid", () => {
           threshold: 2,
           minThreshold: 0,
           maxThreshold: 6,
+          frontierGroupValue: true,
           onEnabledChange: vi.fn(),
           onThresholdChange: vi.fn(),
+          onFrontierGroupValueChange: vi.fn(),
         }}
         uupgCard={{
           enabled: false,
@@ -57,8 +59,10 @@ describe("DatasetViewSwitchGrid", () => {
           threshold: 2,
           minThreshold: 0,
           maxThreshold: 6,
+          frontierGroupValue: true,
           onEnabledChange: vi.fn(),
           onThresholdChange: vi.fn(),
+          onFrontierGroupValueChange: vi.fn(),
         }}
         uupgCard={{
           enabled: false,
@@ -91,8 +95,10 @@ describe("DatasetViewSwitchGrid", () => {
           threshold: 2,
           minThreshold: 0,
           maxThreshold: 6,
+          frontierGroupValue: true,
           onEnabledChange: vi.fn(),
           onThresholdChange: vi.fn(),
+          onFrontierGroupValueChange: vi.fn(),
         }}
         uupgCard={{
           enabled: false,
@@ -105,10 +111,51 @@ describe("DatasetViewSwitchGrid", () => {
     const thresholdInput = screen.getByLabelText(
       "Watchlist Christianity_GSEC threshold",
     ) as HTMLInputElement;
+    const frontierGroupInput = screen.getByRole("combobox", {
+      name: "Watchlist Christianity_Frontier_Group value",
+    });
 
     expect(thresholdInput.value).toBe("2");
     expect(thresholdInput.disabled).toBe(true);
     expect(screen.getByText("Christianity_Frontier_Group")).toBeTruthy();
-    expect(screen.getByText("TRUE")).toBeTruthy();
+    expect(frontierGroupInput.textContent?.toLowerCase()).toContain("true");
+  });
+
+  it("renders the watchlist frontier group boolean selector when watchlist is enabled", () => {
+    render(
+      <DatasetViewSwitchGrid
+        regionCard={{
+          enabled: false,
+          supported: true,
+          selectors: [],
+          onEnabledChange: vi.fn(),
+          onSelectorChange: vi.fn(),
+        }}
+        watchlistCard={{
+          enabled: true,
+          supported: true,
+          threshold: 2,
+          minThreshold: 0,
+          maxThreshold: 6,
+          frontierGroupValue: true,
+          onEnabledChange: vi.fn(),
+          onThresholdChange: vi.fn(),
+          onFrontierGroupValueChange: vi.fn(),
+        }}
+        uupgCard={{
+          enabled: false,
+          supported: true,
+          onEnabledChange: vi.fn(),
+        }}
+      />,
+    );
+
+    const frontierGroupInput = screen.getByRole("combobox", {
+      name: "Watchlist Christianity_Frontier_Group value",
+    });
+
+    expect(frontierGroupInput).toBeTruthy();
+    expect(frontierGroupInput.getAttribute("aria-expanded")).toBe("false");
+    expect(frontierGroupInput.textContent?.toLowerCase()).toContain("true");
   });
 });

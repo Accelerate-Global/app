@@ -28,7 +28,7 @@ type DatasetDetailClientProps = {
 const WATCHLIST_THRESHOLD_DEFAULT = 2;
 const WATCHLIST_THRESHOLD_MIN = 0;
 const WATCHLIST_THRESHOLD_MAX = 6;
-const WATCHLIST_FRONTIER_GROUP_DEFAULT = true;
+const WATCHLIST_FRONTIER_GROUP_VALUE_DEFAULT = true;
 
 function clampWatchlistThreshold(value: number) {
   return Math.min(
@@ -56,6 +56,9 @@ export function DatasetDetailClient({
   const [watchlistEnabled, setWatchlistEnabled] = useState(false);
   const [watchlistThreshold, setWatchlistThreshold] = useState(
     WATCHLIST_THRESHOLD_DEFAULT,
+  );
+  const [watchlistFrontierGroupValue, setWatchlistFrontierGroupValue] = useState(
+    WATCHLIST_FRONTIER_GROUP_VALUE_DEFAULT,
   );
   const [uupgEnabled, setUupgEnabled] = useState(false);
 
@@ -95,9 +98,11 @@ export function DatasetDetailClient({
           threshold: watchlistThreshold,
           minThreshold: WATCHLIST_THRESHOLD_MIN,
           maxThreshold: WATCHLIST_THRESHOLD_MAX,
+          frontierGroupValue: watchlistFrontierGroupValue,
           onEnabledChange: setWatchlistEnabled,
           onThresholdChange: (value) =>
             setWatchlistThreshold(clampWatchlistThreshold(value)),
+          onFrontierGroupValueChange: setWatchlistFrontierGroupValue,
         }}
         uupgCard={{
           enabled: uupgEnabled,
@@ -118,7 +123,7 @@ export function DatasetDetailClient({
           enabled: watchlistEnabled,
           isSupported: supportsWatchlistFiltering,
           threshold: watchlistThreshold,
-          frontierGroupRequired: WATCHLIST_FRONTIER_GROUP_DEFAULT,
+          frontierGroupValue: watchlistFrontierGroupValue,
         }}
         uupgFilter={{
           enabled: uupgEnabled,

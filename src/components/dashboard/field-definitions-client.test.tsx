@@ -39,11 +39,6 @@ describe("FieldDefinitionsClient", () => {
       />,
     );
 
-    expect(
-      screen.getByText(
-        "These shared definitions explain fields that appear across the datasets in this workspace.",
-      ),
-    ).toBeTruthy();
     expect(screen.getAllByText("Country Name").length).toBeGreaterThan(0);
     expect(screen.queryByText("Global")).toBeNull();
     expect(screen.queryByText("Joshua Project")).toBeNull();
