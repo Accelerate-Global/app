@@ -114,6 +114,8 @@ export default defineUiSmokeFixture({
 
 The hidden route `/__smoke/components` is implemented in `src/app/%5F_smoke/components/page.tsx` and renders the generated fixture manifest from `src/components/ui/smoke-fixtures.generated.ts`.
 
+The fixture route verifies shared primitive render coverage only. Generic surface crawling still happens on real app routes, where menus, sheets, popovers, tooltips, and dialogs are exercised in product context.
+
 Do not hand-edit that manifest. Run:
 
 ```bash

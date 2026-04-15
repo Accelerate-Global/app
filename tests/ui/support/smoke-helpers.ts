@@ -60,6 +60,8 @@ export async function assertSmokeRoute(page: Page, route: SmokeRouteSpec) {
       await fixtures.nth(index).scrollIntoViewIfNeeded();
       await expect(fixtures.nth(index)).toBeVisible();
     }
+
+    return;
   }
 
   await crawlSmokeSurfaces(page);

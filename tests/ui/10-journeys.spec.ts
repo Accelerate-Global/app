@@ -66,7 +66,7 @@ test("admin can edit a field definition", async ({ page }, testInfo) => {
     page.locator('[data-smoke-ready="field-definition-edit-sheet"]'),
   ).toBeVisible();
   await page.getByLabel("Display label").fill(nextDisplayLabel);
-  await page.getByLabel("Definition").fill(nextDefinition);
+  await page.locator("#field-definition-definition").fill(nextDefinition);
   await page.getByRole("button", { name: "Save changes" }).click();
   await expect(
     page.locator('[data-smoke-surface="field-definition-edit-sheet"]'),
@@ -80,7 +80,7 @@ test("admin can edit a field definition", async ({ page }, testInfo) => {
     .first()
     .click();
   await page.getByLabel("Display label").fill(originalDisplayLabel);
-  await page.getByLabel("Definition").fill(originalDefinition);
+  await page.locator("#field-definition-definition").fill(originalDefinition);
   await page.getByRole("button", { name: "Save changes" }).click();
   await expect(page.getByText(originalDisplayLabel)).toBeVisible();
 });
