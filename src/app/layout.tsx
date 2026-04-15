@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 import { Geist_Mono, Lexend } from "next/font/google";
+
+import { TooltipProvider } from "@/components/ui/tooltip";
+
 import "./globals.css";
 
 const themeScript = `
@@ -49,7 +52,9 @@ export default function RootLayout({
         <link rel="stylesheet" href="https://use.typekit.net/nyp5ner.css" />
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
-      <body className="flex min-h-full flex-col">{children}</body>
+      <body className="flex min-h-full flex-col">
+        <TooltipProvider>{children}</TooltipProvider>
+      </body>
     </html>
   );
 }
