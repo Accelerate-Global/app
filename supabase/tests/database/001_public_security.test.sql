@@ -148,6 +148,35 @@ select ok(
   'signup_email_allowlist has supabase auth admin read policy'
 );
 
+insert into auth.users (
+  id,
+  aud,
+  role,
+  email,
+  encrypted_password,
+  email_confirmed_at,
+  raw_app_meta_data,
+  raw_user_meta_data,
+  created_at,
+  updated_at
+)
+select
+  '737ef850-1337-403d-beb5-b7c44a1be131',
+  'authenticated',
+  'authenticated',
+  'admin@example.com',
+  '',
+  now(),
+  '{"provider":"email","providers":["email"]}'::jsonb,
+  '{}'::jsonb,
+  now(),
+  now()
+where not exists (
+  select 1
+  from auth.users
+  where lower(email) = 'admin@example.com'
+);
+
 select ok(
   exists(
     select 1
