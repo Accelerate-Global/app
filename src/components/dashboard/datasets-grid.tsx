@@ -57,6 +57,9 @@ function DatasetActions({
             variant="outline"
             size="sm"
             disabled={isBusy}
+            data-smoke-trigger="dataset-edit-sheet"
+            data-smoke-write="safe"
+            data-smoke-dataset-id={dataset.id}
             onClick={(event) => {
               event.stopPropagation();
               onEditDataset?.(dataset.id);

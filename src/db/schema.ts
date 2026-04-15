@@ -119,6 +119,9 @@ export const fieldDefinitions = pgTable(
     label: text("label").notNull(),
     displayLabel: text("display_label").notNull().default(""),
     definition: text("definition").notNull().default(""),
+    hideFromViewerFieldDefinitions: boolean("hide_from_viewer_field_definitions")
+      .notNull()
+      .default(false),
     mappingFieldId: text("mapping_field_id"),
     mappingDataType: text("mapping_data_type"),
     mappingIsActive: boolean("mapping_is_active"),

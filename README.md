@@ -51,6 +51,10 @@ Apply the tracked Supabase migrations to the local database:
 pnpm db:push
 ```
 
+That command now also seeds the local field-source registry from the checked-in
+Aggregate 1 mapping CSV, so `/dashboard/field-sources` and field source tags are
+ready without any first-request bootstrap writes.
+
 Start the app:
 
 ```bash
@@ -99,13 +103,31 @@ order by email;
 ## Verification
 
 ```bash
-pnpm db:check-rls
+pnpm verify:app
 pnpm db:security
-pnpm lint
 pnpm typecheck
-pnpm test
-pnpm build
 ```
+
+For the full local release gate:
+
+```bash
+pnpm verify:release
+```
+
+## UI Smoke Verification
+
+The browser smoke gate uses the real local Supabase stack, deterministic smoke
+seed data, a production build, and Playwright in Chromium.
+
+```bash
+pnpm exec playwright install chromium
+pnpm run smoke:check
+pnpm run test:ui:smoke
+```
+
+Use `pnpm run test:ui:smoke:headed` for a local visual pass. The canonical
+contract for new routes, surfaces, and shared UI fixtures lives in
+`docs/testing/ui-smoke.md`.
 
 ## Database Security Tests
 
@@ -113,11 +135,20 @@ Database security tests live under `supabase/tests/database` and run with
 `supabase test db` using pgTAP. The full local security gate is:
 
 ```bash
-pnpm db:start
 pnpm db:security
 ```
 
-This checks three things:
+`pnpm db:security` is now self-contained. It resets the local database to the
+tracked migrations before running the security suite, so it does not require a
+separate manual `supabase start`.
+
+The lower-level command that assumes a running local stack is:
+
+```bash
+pnpm db:security:started
+```
+
+The full self-contained gate checks three things:
 
 - all `public` tables have RLS enabled
 - the local database passes `supabase db lint`
@@ -129,3 +160,7 @@ remote gate instead:
 ```bash
 pnpm db:security:remote
 ```
+
+## Release
+
+Use the runbook in `docs/release.md` for the standard merge-and-ship flow.

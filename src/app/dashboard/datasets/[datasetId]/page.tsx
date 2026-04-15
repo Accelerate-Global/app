@@ -39,7 +39,7 @@ export default async function DatasetPage({ params }: DatasetPageProps) {
   ]);
 
   return (
-    <main className="min-h-svh bg-background">
+    <main data-smoke-page="dataset-detail" className="min-h-svh bg-background">
       <SiteHeader identity={identity} />
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-10 sm:px-6 lg:px-8">
         <section className="min-w-0 space-y-2">

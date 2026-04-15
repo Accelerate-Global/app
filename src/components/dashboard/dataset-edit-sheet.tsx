@@ -7,14 +7,14 @@ import { useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-  Drawer,
-  DrawerClose,
-  DrawerContent,
-  DrawerDescription,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerTitle,
-} from "@/components/ui/drawer";
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import {
   Field,
   FieldContent,
@@ -41,7 +41,7 @@ import {
   normalizeDatasetTags,
 } from "@/lib/dataset-tags";
 
-type DatasetEditDrawerProps = {
+type DatasetEditSheetProps = {
   dataset: DatasetSummary;
   availableTags: DatasetTag[];
   open: boolean;
@@ -227,14 +227,14 @@ function NewTagComposer({
   );
 }
 
-export function DatasetEditDrawer({
+export function DatasetEditSheet({
   dataset,
   availableTags,
   open,
   isSaving,
   onOpenChange,
   onSaveDataset,
-}: DatasetEditDrawerProps) {
+}: DatasetEditSheetProps) {
   const router = useRouter();
   const [fileName, setFileName] = useState(dataset.fileName);
   const [isPrimary, setIsPrimary] = useState(dataset.isPrimary);
@@ -420,17 +420,22 @@ export function DatasetEditDrawer({
   }
 
   return (
-    <Drawer direction="right" open={open} onOpenChange={onOpenChange}>
-      <DrawerContent className="w-full sm:max-w-lg">
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        side="right"
+        className="w-full gap-0 sm:max-w-lg"
+        data-smoke-surface="dataset-edit-sheet"
+        data-smoke-ready="dataset-edit-sheet"
+      >
         <form className="flex h-full flex-col" onSubmit={handleSubmit}>
-          <DrawerHeader className="border-b border-border px-6 py-5">
-            <DrawerTitle>Edit dataset</DrawerTitle>
-            <DrawerDescription>
+          <SheetHeader className="border-b border-border px-6 py-5">
+            <SheetTitle>Edit dataset</SheetTitle>
+            <SheetDescription>
               Configure the dataset details for everyone who can view it.
-            </DrawerDescription>
-          </DrawerHeader>
+            </SheetDescription>
+          </SheetHeader>
 
-          <div className="flex-1 space-y-6 overflow-y-auto px-6 py-5">
+          <div className="flex-1 space-y-6 overflow-y-auto overscroll-contain px-6 py-5">
             <section className="space-y-2">
               <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
                 Current dataset
@@ -618,7 +623,7 @@ export function DatasetEditDrawer({
             ) : null}
           </div>
 
-          <DrawerFooter className="border-t border-border px-6 py-4 sm:flex-row sm:justify-end">
+          <SheetFooter className="border-t border-border px-6 py-4 sm:flex-row sm:justify-end">
             <Button
               type="button"
               variant="outline"
@@ -627,17 +632,24 @@ export function DatasetEditDrawer({
             >
               Replace dataset
             </Button>
-            <DrawerClose asChild>
-              <Button type="button" variant="outline">
-                Close
-              </Button>
-            </DrawerClose>
+            <SheetClose
+              render={
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={isSaving}
+                  data-smoke-close="dataset-edit-sheet"
+                />
+              }
+            >
+              Close
+            </SheetClose>
             <Button type="submit" disabled={!canSave}>
               {isSaving ? "Saving..." : "Save changes"}
             </Button>
-          </DrawerFooter>
+          </SheetFooter>
         </form>
-      </DrawerContent>
-    </Drawer>
+      </SheetContent>
+    </Sheet>
   );
 }

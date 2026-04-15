@@ -1,0 +1,23 @@
+import AlertFixture from "@/components/ui/alert.smoke";
+import AvatarFixture from "@/components/ui/avatar.smoke";
+import BadgeFixture from "@/components/ui/badge.smoke";
+import ButtonFixture from "@/components/ui/button.smoke";
+import ButtonGroupFixture from "@/components/ui/button-group.smoke";
+import CardFixture from "@/components/ui/card.smoke";
+import CheckboxFixture from "@/components/ui/checkbox.smoke";
+import DropdownMenuFixture from "@/components/ui/dropdown-menu.smoke";
+import FieldFixture from "@/components/ui/field.smoke";
+import InputFixture from "@/components/ui/input.smoke";
+import LabelFixture from "@/components/ui/label.smoke";
+import PopoverFixture from "@/components/ui/popover.smoke";
+import ProgressFixture from "@/components/ui/progress.smoke";
+import SelectFixture from "@/components/ui/select.smoke";
+import SeparatorFixture from "@/components/ui/separator.smoke";
+import SheetFixture from "@/components/ui/sheet.smoke";
+import SkeletonFixture from "@/components/ui/skeleton.smoke";
+import SpinnerFixture from "@/components/ui/spinner.smoke";
+import SwitchFixture from "@/components/ui/switch.smoke";
+import TableFixture from "@/components/ui/table.smoke";
+import TooltipFixture from "@/components/ui/tooltip.smoke";
+
+export const uiSmokeFixtures = [AlertFixture, AvatarFixture, BadgeFixture, ButtonFixture, ButtonGroupFixture, CardFixture, CheckboxFixture, DropdownMenuFixture, FieldFixture, InputFixture, LabelFixture, PopoverFixture, ProgressFixture, SelectFixture, SeparatorFixture, SheetFixture, SkeletonFixture, SpinnerFixture, SwitchFixture, TableFixture, TooltipFixture] as const;

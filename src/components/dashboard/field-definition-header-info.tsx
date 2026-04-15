@@ -36,6 +36,8 @@ export function FieldDefinitionHeaderInfo({
             variant="ghost"
             size="icon-xs"
             aria-label={`View definition for ${label}`}
+            data-smoke-trigger="field-definition-tooltip"
+            data-smoke-write="safe"
             className="size-5 shrink-0 rounded-md text-muted-foreground hover:text-foreground"
           />
         }
@@ -45,6 +47,8 @@ export function FieldDefinitionHeaderInfo({
       <TooltipContent
         sideOffset={8}
         className="max-w-80 rounded-2xl px-3.5 py-2.5 text-sm leading-5"
+        data-smoke-surface="field-definition-tooltip"
+        data-smoke-ready="field-definition-tooltip"
       >
         <div className="space-y-2 text-left">
           <p>

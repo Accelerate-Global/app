@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 
 import Papa from "papaparse";
-import { asc, count, eq, inArray, sql } from "drizzle-orm";
+import { asc, eq, inArray, sql } from "drizzle-orm";
 
 import { getDb } from "@/db";
 import {
@@ -89,8 +89,6 @@ export class FieldSourceTypeConflictError extends Error {
     this.name = "FieldSourceTypeConflictError";
   }
 }
-
-let seedPromise: Promise<void> | null = null;
 
 function normalizeSourceFieldName(value: string | null | undefined) {
   return (value ?? "").trim();
@@ -421,21 +419,11 @@ async function listFieldSourceTypeRows() {
     .orderBy(asc(fieldSourceTypes.sortOrder), asc(fieldSourceTypes.label));
 }
 
-async function seedFieldSourceRegistryIfNeeded() {
-  const [{ totalFieldSourceTypes }] = await getDb()
-    .select({
-      totalFieldSourceTypes: count(),
-    })
-    .from(fieldSourceTypes);
-
-  if (totalFieldSourceTypes > 0) {
-    return;
-  }
-
+export async function seedFieldSourceRegistryIfNeeded() {
   const seedRows = await loadFieldSourceSeedRows();
 
   if (seedRows.length === 0) {
-    return;
+    return { seeded: false };
   }
 
   await getDb().transaction(async (tx) => {
@@ -448,8 +436,12 @@ async function seedFieldSourceRegistryIfNeeded() {
           sortOrder: index + 1,
         })),
       )
-      .onConflictDoNothing({
+      .onConflictDoUpdate({
         target: fieldSourceTypes.key,
+        set: {
+          label: sql`excluded.label`,
+          sortOrder: sql`excluded.sort_order`,
+        },
       });
 
     await tx
@@ -539,17 +531,7 @@ async function seedFieldSourceRegistryIfNeeded() {
         ],
       });
   });
-}
-
-export async function ensureFieldSourceRegistrySeeded() {
-  if (!seedPromise) {
-    seedPromise = seedFieldSourceRegistryIfNeeded().catch((error) => {
-      seedPromise = null;
-      throw error;
-    });
-  }
-
-  return seedPromise;
+  return { seeded: true };
 }
 
 export async function listLinkedSourcesByFieldDefinitionId(
@@ -558,8 +540,6 @@ export async function listLinkedSourcesByFieldDefinitionId(
     sourcePriorityKeys: string[];
   }>,
 ) {
-  await ensureFieldSourceRegistrySeeded();
-
   if (rows.length === 0) {
     return new Map<string, FieldDefinitionLinkedSource[]>();
   }
@@ -575,8 +555,6 @@ export async function listLinkedSourcesByFieldDefinitionId(
 }
 
 export async function listFieldSourceGridData() {
-  await ensureFieldSourceRegistrySeeded();
-
   const [fieldDefinitionRows, fieldSourceTypeRows, joinedSourceRows] = await Promise.all([
     listFieldDefinitionRows(),
     listFieldSourceTypeRows(),
@@ -614,8 +592,6 @@ export async function listFieldSourceGridData() {
 }
 
 export async function getFieldSourceGridRow(fieldDefinitionId: string) {
-  await ensureFieldSourceRegistrySeeded();
-
   const [fieldDefinitionRow] = await getDb()
     .select()
     .from(fieldDefinitions)
@@ -648,8 +624,6 @@ export async function getFieldSourceGridRow(fieldDefinitionId: string) {
 }
 
 export async function createFieldSourceType(input: { label: string }) {
-  await ensureFieldSourceRegistrySeeded();
-
   const label = normalizeFieldSourceTypeLabel(input.label);
   const key = getFieldSourceTypeKey(label);
   const existingFieldSourceType = await findExistingFieldSourceTypeByLabelOrKey({
@@ -685,8 +659,6 @@ export async function updateFieldSourceValue(input: {
   sourceTypeId: string;
   sourceFieldName: string;
 }) {
-  await ensureFieldSourceRegistrySeeded();
-
   const [fieldDefinitionRow, fieldSourceTypeRow] = await Promise.all([
     getDb()
       .select({ id: fieldDefinitions.id })

@@ -31,6 +31,7 @@ export async function PATCH(request: Request, context: FieldDefinitionContext) {
     fieldDefinitionId,
     displayLabel: parsed.data.displayLabel,
     definition: parsed.data.definition,
+    hideFromViewerFieldDefinitions: parsed.data.hideFromViewerFieldDefinitions,
   });
 
   if (!fieldDefinition) {

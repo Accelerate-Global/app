@@ -470,6 +470,7 @@ export function DatasetUploadClient({
               className="sr-only"
               type="file"
               accept=".csv,text/csv"
+              data-smoke-upload-input="dataset-upload"
               onChange={(event) => {
                 const file = event.target.files?.[0];
                 if (file) void handleFile(file);

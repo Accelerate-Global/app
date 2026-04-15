@@ -72,6 +72,7 @@ export function AccountControl({ identity }: AccountControlProps) {
         render={
           <button
             type="button"
+            data-smoke-trigger="account-menu"
             className="inline-flex h-14 w-fit max-w-full items-center gap-3 rounded-[1.25rem] border border-border bg-background px-4 text-left shadow-none transition-colors hover:bg-accent/35"
           />
         }
@@ -84,7 +85,13 @@ export function AccountControl({ identity }: AccountControlProps) {
         </span>
         <ChevronDownIcon className="size-4 text-foreground/60" aria-hidden="true" />
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" sideOffset={10} className="w-72 rounded-2xl p-2">
+      <DropdownMenuContent
+        align="end"
+        sideOffset={10}
+        className="w-72 rounded-2xl p-2"
+        data-smoke-surface="account-menu"
+        data-smoke-ready="account-menu"
+      >
         <DropdownMenuGroup>
           <DropdownMenuLabel className="px-2 py-2 text-foreground">
             <div className="flex items-center gap-3">

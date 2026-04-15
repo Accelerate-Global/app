@@ -4,6 +4,7 @@ import { PencilLineIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { FieldSourceTagList } from "@/components/dashboard/field-source-tag-list";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -13,7 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { FieldDefinitionEditDrawer } from "@/components/dashboard/field-definition-edit-drawer";
+import { FieldDefinitionEditSheet } from "@/components/dashboard/field-definition-edit-sheet";
 import type {
   FieldDefinition,
   FieldDefinitionResponse,
@@ -38,6 +39,7 @@ async function saveFieldDefinition(input: {
   fieldDefinitionId: string;
   displayLabel: string;
   definition: string;
+  hideFromViewerFieldDefinitions: boolean;
 }) {
   const response = await fetch(`/api/field-definitions/${input.fieldDefinitionId}`, {
     method: "PATCH",
@@ -45,6 +47,7 @@ async function saveFieldDefinition(input: {
     body: JSON.stringify({
       displayLabel: input.displayLabel,
       definition: input.definition,
+      hideFromViewerFieldDefinitions: input.hideFromViewerFieldDefinitions,
     }),
   });
 
@@ -73,6 +76,27 @@ function getFieldDefinitionDescription(definition: string) {
   const trimmedDefinition = definition.trim();
 
   return trimmedDefinition || "No definition available yet.";
+}
+
+function FieldDefinitionName({
+  fieldDefinition,
+  showHiddenMarker,
+}: {
+  fieldDefinition: FieldDefinition;
+  showHiddenMarker: boolean;
+}) {
+  const effectiveLabel = getFieldDefinitionEffectiveLabel(fieldDefinition);
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <span>{effectiveLabel}</span>
+      {showHiddenMarker && fieldDefinition.hideFromViewerFieldDefinitions ? (
+        <Badge variant="outline" className="rounded-full px-2.5 text-[0.7rem]">
+          Hidden from viewers
+        </Badge>
+      ) : null}
+    </div>
+  );
 }
 
 function FieldDefinitionDescriptionCell({
@@ -111,6 +135,9 @@ function FieldDefinitionDescriptionCell({
           size="icon-sm"
           className="absolute top-0 right-0 hidden sm:inline-flex"
           aria-label={`Edit ${effectiveLabel}`}
+          data-smoke-trigger="field-definition-edit-sheet"
+          data-smoke-write="safe"
+          data-smoke-field-definition-id={fieldDefinition.id}
           onClick={() => onEdit(fieldDefinition)}
         >
           <PencilLineIcon className="size-4" />
@@ -138,9 +165,12 @@ function FieldDefinitionMobileCard({
         <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
           Field
         </p>
-        <p className="mt-1 text-sm font-medium text-foreground">
-          {effectiveLabel}
-        </p>
+        <div className="mt-1 text-sm font-medium text-foreground">
+          <FieldDefinitionName
+            fieldDefinition={fieldDefinition}
+            showHiddenMarker={canEdit}
+          />
+        </div>
       </div>
       <div className="px-4 py-4">
         <div className="flex items-start justify-between gap-3">
@@ -171,6 +201,9 @@ function FieldDefinitionMobileCard({
               size="icon-sm"
               className="shrink-0"
               aria-label={`Edit ${effectiveLabel}`}
+              data-smoke-trigger="field-definition-edit-sheet"
+              data-smoke-write="safe"
+              data-smoke-field-definition-id={fieldDefinition.id}
               onClick={() => onEdit(fieldDefinition)}
             >
               <PencilLineIcon className="size-4" />
@@ -212,7 +245,10 @@ function FieldDefinitionsTable({
                 className="hover:bg-transparent [&>:not(:last-child)]:border-r [&>:not(:last-child)]:border-border"
               >
                 <TableCell className="px-5 py-4 align-top text-sm font-medium whitespace-normal text-foreground">
-                  {getFieldDefinitionEffectiveLabel(fieldDefinition)}
+                  <FieldDefinitionName
+                    fieldDefinition={fieldDefinition}
+                    showHiddenMarker={canEdit}
+                  />
                 </TableCell>
                 <TableCell className="px-5 py-4 align-top text-sm leading-6 whitespace-normal">
                   <FieldDefinitionDescriptionCell
@@ -278,6 +314,7 @@ export function FieldDefinitionsClient({
     fieldDefinitionId: string;
     displayLabel: string;
     definition: string;
+    hideFromViewerFieldDefinitions: boolean;
   }) {
     setIsSaving(true);
 
@@ -314,7 +351,7 @@ export function FieldDefinitionsClient({
         )}
       </div>
 
-      <FieldDefinitionEditDrawer
+      <FieldDefinitionEditSheet
         fieldDefinition={editingFieldDefinition}
         open={editingFieldDefinition !== null}
         isSaving={isSaving}
