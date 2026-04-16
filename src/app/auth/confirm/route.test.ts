@@ -211,4 +211,58 @@ describe("/auth/confirm", () => {
 
     expect(response.cookies.get("sb-recovery")?.value).toBe("session-token");
   });
+
+  it("propagates Supabase cache-control headers when auth cookies are set", async () => {
+    const exchangeCodeForSession = vi.fn().mockImplementation(async () => {
+      const cookies = createServerClientMock.mock.calls[0]?.[2]?.cookies as
+        | {
+            setAll: (
+              cookiesToSet: Array<{
+                name: string;
+                value: string;
+                options?: Record<string, unknown>;
+              }>,
+              headers: Record<string, string>,
+            ) => void;
+          }
+        | undefined;
+
+      expect(cookies).toBeDefined();
+
+      cookies?.setAll(
+        [
+          {
+            name: "sb-access-token",
+            value: "fresh-session",
+            options: { httpOnly: true, path: "/" },
+          },
+        ],
+        {
+          "Cache-Control":
+            "private, no-cache, no-store, must-revalidate, max-age=0",
+          Expires: "0",
+          Pragma: "no-cache",
+        },
+      );
+
+      return { error: null };
+    });
+
+    createServerClientMock.mockReturnValue({
+      auth: { exchangeCodeForSession, verifyOtp: vi.fn() },
+    } as never);
+
+    const response = await GET(
+      new NextRequest(
+        "http://localhost/auth/confirm?code=auth-code&next=/dashboard",
+      ),
+    );
+
+    expect(response.cookies.get("sb-access-token")?.value).toBe("fresh-session");
+    expect(response.headers.get("cache-control")).toBe(
+      "private, no-cache, no-store, must-revalidate, max-age=0",
+    );
+    expect(response.headers.get("expires")).toBe("0");
+    expect(response.headers.get("pragma")).toBe("no-cache");
+  });
 });

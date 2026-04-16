@@ -33,13 +33,21 @@ describe("/auth/sign-out", () => {
     signOutMock.mockResolvedValue({ error: null });
 
     createServerClientMock.mockImplementation((_url, _key, options) => {
-      options.cookies.setAll([
+      options.cookies.setAll(
+        [
+          {
+            name: "sb-auth-token",
+            value: "",
+            options: { path: "/", maxAge: 0 },
+          },
+        ],
         {
-          name: "sb-auth-token",
-          value: "",
-          options: { path: "/", maxAge: 0 },
+          "Cache-Control":
+            "private, no-cache, no-store, must-revalidate, max-age=0",
+          Expires: "0",
+          Pragma: "no-cache",
         },
-      ]);
+      );
 
       return {
         auth: {
@@ -61,6 +69,11 @@ describe("/auth/sign-out", () => {
     expect(signOutMock).toHaveBeenCalled();
     expect(response.headers.get("set-cookie")).toContain("sb-auth-token=");
     expect(response.headers.get("set-cookie")).toContain("Max-Age=0");
+    expect(response.headers.get("cache-control")).toBe(
+      "private, no-cache, no-store, must-revalidate, max-age=0",
+    );
+    expect(response.headers.get("expires")).toBe("0");
+    expect(response.headers.get("pragma")).toBe("no-cache");
     await expect(response.json()).resolves.toEqual({ ok: true });
   });
 
