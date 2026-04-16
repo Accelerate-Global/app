@@ -8,10 +8,12 @@ import {
   resolveUiSmokeSelection,
   type UiSmokeSelection,
 } from "./ui-smoke-selection";
+import type { TestDeltaReport } from "./test-impact";
 
 export type VerifyChangeReport = ChangeImpactResult & {
   contractIssues: UiSmokeContractIssue[];
   targetedSmoke: UiSmokeSelection;
+  testDelta: TestDeltaReport;
   exitCode: 0 | 1;
 };
 
@@ -30,6 +32,7 @@ function filterContractIssues(
 export function createVerifyChangeReport(input: {
   changedFiles: string[];
   contractIssues: UiSmokeContractIssue[];
+  testDelta: TestDeltaReport;
 }): VerifyChangeReport {
   const impact = resolveChangeImpact(input.changedFiles);
   const contractIssues = filterContractIssues(
@@ -41,6 +44,7 @@ export function createVerifyChangeReport(input: {
     ...impact,
     contractIssues,
     targetedSmoke: resolveUiSmokeSelection(input.changedFiles),
-    exitCode: contractIssues.length > 0 ? 1 : 0,
+    testDelta: input.testDelta,
+    exitCode: contractIssues.length > 0 || input.testDelta.exitCode !== 0 ? 1 : 0,
   };
 }

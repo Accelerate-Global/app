@@ -7,13 +7,19 @@ describe("change-impact", () => {
     const impact = resolveChangeImpact(["src/components/ui/button.tsx"]);
 
     expect(impact.requiredCommands).toContain("smoke:check");
-    expect(impact.recommendedCommands).toContain("test:ui:smoke:targeted");
+    expect(impact.requiredCommands).toContain("test:ui:smoke:targeted");
   });
 
   it("requires the full smoke suite for harness changes", () => {
     const impact = resolveChangeImpact(["tests/ui/support/smoke-helpers.ts"]);
 
     expect(impact.requiredCommands).toContain("test:ui:smoke");
+  });
+
+  it("requires verify:test-delta for directly tested repo code domains", () => {
+    const impact = resolveChangeImpact(["src/lib/field-sources.ts"]);
+
+    expect(impact.requiredCommands).toContain("verify:test-delta");
   });
 
   it("requires database security and drift checks for migration changes", () => {

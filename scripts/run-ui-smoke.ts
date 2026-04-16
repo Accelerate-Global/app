@@ -13,6 +13,7 @@ import {
 } from "./lib/ui-smoke-env";
 import {
   buildUiSmokeGrepPattern,
+  formatUiSmokeZeroMatchMessage,
   resolveUiSmokeSelection,
 } from "./lib/ui-smoke-selection";
 
@@ -128,6 +129,40 @@ function printSelectionSummary(lines: string[]) {
   }
 }
 
+async function validateTargetedSelection(input: {
+  grepPattern: string;
+  projectNames: string[];
+  targetedSelection: NonNullable<ReturnType<typeof resolveUiSmokeSelection>>;
+}) {
+  const playwrightArgs = [
+    "exec",
+    "playwright",
+    "test",
+    "-c",
+    "playwright.smoke.config.ts",
+    "--list",
+    "--grep",
+    input.grepPattern,
+  ];
+
+  for (const projectName of input.projectNames) {
+    playwrightArgs.push("--project", projectName);
+  }
+
+  try {
+    await runCommand("pnpm", playwrightArgs, { captureOutput: true });
+  } catch (error) {
+    throw createPipelineError(
+      "contract",
+      formatUiSmokeZeroMatchMessage({
+        grepPattern: input.grepPattern,
+        selection: input.targetedSelection,
+      }),
+      error,
+    );
+  }
+}
+
 async function main() {
   const headed = process.argv.includes("--headed");
   const targeted = process.argv.includes("--targeted");
@@ -151,6 +186,19 @@ async function main() {
 
   if (targetedSelection) {
     printSelectionSummary(targetedSelection.summary);
+  }
+
+  const grepPattern =
+    targetedSelection?.mode === "targeted"
+      ? buildUiSmokeGrepPattern(targetedSelection)
+      : null;
+
+  if (targetedSelection?.mode === "targeted" && grepPattern) {
+    await validateTargetedSelection({
+      grepPattern,
+      projectNames: targetedSelection.projectNames,
+      targetedSelection,
+    });
   }
 
   await mkdir(UI_SMOKE_TMP_DIR, { recursive: true });
@@ -217,10 +265,6 @@ async function main() {
     "-c",
     "playwright.smoke.config.ts",
   ];
-  const grepPattern =
-    targetedSelection?.mode === "targeted"
-      ? buildUiSmokeGrepPattern(targetedSelection)
-      : null;
 
   if (grepPattern) {
     playwrightArgs.push("--grep", grepPattern);

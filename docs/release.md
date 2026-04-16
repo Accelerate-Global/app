@@ -6,27 +6,33 @@ Vercel production deploys for emergency recovery only.
 
 ## Standard Flow
 
-1. Verify the app and local database gate:
+1. Confirm the PR already passed the diff-aware local gate before review or ship:
+
+   ```bash
+   pnpm run verify:change:run
+   ```
+
+2. Verify the app and local database gate:
 
    ```bash
    pnpm verify:release
    ```
 
-2. If the release includes tracked Supabase migrations, apply them to the linked
+3. If the release includes tracked Supabase migrations, apply them to the linked
    remote project explicitly before merge:
 
    ```bash
    pnpm db:push:remote
    ```
 
-3. Ensure the remote field-source registry is seeded from the checked-in
+4. Ensure the remote field-source registry is seeded from the checked-in
    Aggregate 1 mapping CSV:
 
    ```bash
    pnpm field-sources:seed:remote
    ```
 
-4. Ship the reviewed PR:
+5. Ship the reviewed PR:
 
    ```bash
    pnpm ship --pr <number>
@@ -36,11 +42,11 @@ Vercel production deploys for emergency recovery only.
 
 - refuses to run with a dirty worktree
 - fails early if the linked remote database is missing tracked migrations
-- waits for the PR `App Quality` and `Database Security` checks
+- waits for the PR `App Quality`, `UI Smoke`, and `Database Security` checks
 - merges the PR to `main`
 - switches the local checkout back to `main`, pulls `--ff-only`, deletes the
   merged branch locally when safe, and prunes remote refs
-- waits for the `main` branch `App Quality` and `Database Security` checks
+- waits for the `main` branch `App Quality`, `UI Smoke`, and `Database Security` checks
 - waits for the GitHub-backed Vercel production deployment
 - verifies that [data.accelerateglobal.org](https://data.accelerateglobal.org)
   points at the same Vercel deployment as the git-based production deploy
@@ -69,7 +75,8 @@ git config user.email "116130409+II-ricky-bobby-II@users.noreply.github.com"
 
 ## Required Checks
 
-The repo now publishes `App Quality`, `Database Security`, and `Release Health`
-workflow signals. GitHub branch-protection/ruleset enforcement is not available
-for this private repository on the current plan, so `pnpm ship` serves as the
-practical merge gate until repository-level required checks can be enabled.
+The repo now publishes `App Quality`, `UI Smoke`, `Database Security`, and
+`Release Health` workflow signals. GitHub branch-protection/ruleset enforcement
+is not available for this private repository on the current plan, so `pnpm ship`
+serves as the practical merge gate until repository-level required checks can be
+enabled.

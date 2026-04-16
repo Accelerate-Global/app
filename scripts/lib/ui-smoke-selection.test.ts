@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { resolveUiSmokeSelection } from "./ui-smoke-selection";
+import {
+  buildUiSmokeGrepPattern,
+  formatUiSmokeZeroMatchMessage,
+  resolveUiSmokeSelection,
+} from "./ui-smoke-selection";
 
 describe("ui-smoke-selection", () => {
   it("targets dataset routes and admin journey for dataset UI changes", () => {
@@ -43,5 +47,53 @@ describe("ui-smoke-selection", () => {
     expect(selection.mode).toBe("full");
     expect(selection.command).toBe("pnpm run test:ui:smoke");
     expect(selection.summary[0]).toContain("Full suite required");
+  });
+
+  it("targets field sources routes and journey for field source changes", () => {
+    const selection = resolveUiSmokeSelection([
+      "src/components/dashboard/field-sources-client.tsx",
+    ]);
+
+    expect(selection.mode).toBe("targeted");
+    expect(selection.routeIds).toContain("field-sources-admin");
+    expect(selection.journeyTitles).toContain(
+      "admin can create a source column and update a field source value",
+    );
+  });
+
+  it("builds a grep pattern that matches Playwright full titles", () => {
+    const selection = resolveUiSmokeSelection([
+      "src/components/dashboard/field-sources-client.tsx",
+    ]);
+    const grepPattern = buildUiSmokeGrepPattern(selection);
+
+    expect(grepPattern).toBeTruthy();
+
+    const matcher = new RegExp(grepPattern ?? "");
+    expect(
+      matcher.test("tests/ui/00-route-sweep.spec.ts field-sources-admin"),
+    ).toBe(true);
+    expect(
+      matcher.test(
+        "tests/ui/10-journeys.spec.ts admin can create a source column and update a field source value",
+      ),
+    ).toBe(true);
+  });
+
+  it("formats a blocking zero-match validation error for targeted smoke", () => {
+    const selection = resolveUiSmokeSelection([
+      "src/components/dashboard/field-sources-client.tsx",
+    ]);
+    const grepPattern = buildUiSmokeGrepPattern(selection);
+    const message = formatUiSmokeZeroMatchMessage({
+      selection,
+      grepPattern: grepPattern ?? "",
+    });
+
+    expect(message).toContain("matched zero Playwright tests");
+    expect(message).toContain("field-sources-admin");
+    expect(message).toContain(
+      "admin can create a source column and update a field source value",
+    );
   });
 });

@@ -19,6 +19,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: pnpm/action-setup@v4
         with:
@@ -30,6 +32,8 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
-      - run: pnpm run lint
-      - run: pnpm run test
-      - run: pnpm run build
+      - run: pnpm run verify:test-delta
+        env:
+          VERIFY_TEST_DELTA_BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+          VERIFY_TEST_DELTA_HEAD_SHA: ${{ github.sha }}
+      - run: pnpm run verify:app
