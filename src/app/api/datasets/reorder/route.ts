@@ -1,5 +1,5 @@
 import { getCurrentIdentity } from "@/lib/auth";
-import { jsonError } from "@/lib/http";
+import { jsonAdminOnlyError, jsonError } from "@/lib/http";
 import { reorderDatasets } from "@/lib/datasets";
 import { datasetReorderSchema } from "@/lib/validation";
 
@@ -11,7 +11,7 @@ export async function POST(request: Request) {
   }
 
   if (!identity.isDatasetAdmin) {
-    return jsonError("Only admin@example.com can reorder datasets.", 403);
+    return jsonAdminOnlyError("reorder datasets");
   }
 
   const parsed = datasetReorderSchema.safeParse(await request.json());

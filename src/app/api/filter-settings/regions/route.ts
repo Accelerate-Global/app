@@ -4,7 +4,7 @@ import {
   FilterRegionConflictError,
   listFilterRegions,
 } from "@/lib/filter-settings";
-import { jsonError } from "@/lib/http";
+import { jsonAdminOnlyError, jsonError } from "@/lib/http";
 import { filterRegionPayloadSchema } from "@/lib/validation";
 
 export async function GET() {
@@ -15,7 +15,7 @@ export async function GET() {
   }
 
   if (!identity.isDatasetAdmin) {
-    return jsonError("Only admin@example.com can manage filter settings.", 403);
+    return jsonAdminOnlyError("manage filter settings");
   }
 
   const regions = await listFilterRegions();
@@ -30,7 +30,7 @@ export async function POST(request: Request) {
   }
 
   if (!identity.isDatasetAdmin) {
-    return jsonError("Only admin@example.com can manage filter settings.", 403);
+    return jsonAdminOnlyError("manage filter settings");
   }
 
   const parsed = filterRegionPayloadSchema.safeParse(await request.json());

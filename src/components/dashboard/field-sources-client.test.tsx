@@ -69,8 +69,20 @@ describe("FieldSourcesClient", () => {
     expect(
       screen.queryByRole("columnheader", { name: "Active" }),
     ).toBeNull();
+    expect(
+      screen.queryByRole("columnheader", { name: "Internal field" }),
+    ).toBeNull();
+    expect(
+      screen.queryByRole("columnheader", { name: "Data type" }),
+    ).toBeNull();
+    expect(
+      screen.queryByRole("columnheader", { name: "Priority order" }),
+    ).toBeNull();
     expect(screen.queryByText(/Display label overrides/i)).toBeNull();
     expect(screen.getByText("Country Name")).toBeTruthy();
+    expect(
+      screen.getByRole("columnheader", { name: "Joshua Project" }),
+    ).toBeTruthy();
 
     const scrollArea = container.querySelector(
       '[data-slot="data-grid-scroll-area"]',

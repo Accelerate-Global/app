@@ -1,7 +1,4 @@
-import {
-  UI_SMOKE_BASE_URL,
-  UI_SMOKE_USERS,
-} from "../../tests/ui/support/smoke-data";
+import { UI_SMOKE_BASE_URL } from "../../tests/ui/support/smoke-data";
 
 export type UiSmokeEnv = {
   supabaseUrl: string;
@@ -9,7 +6,6 @@ export type UiSmokeEnv = {
   supabaseSecretKey: string | null;
   supabaseServiceRoleKey: string | null;
   databaseUrl: string;
-  datasetAdminEmail: string;
   storageBucket: string;
 };
 
@@ -84,7 +80,6 @@ export function buildUiSmokeCommandEnv(statusEnv: Record<string, string>) {
     ...(secretKey ? { SUPABASE_SECRET_KEY: secretKey } : {}),
     ...(serviceRoleKey ? { SUPABASE_SERVICE_ROLE_KEY: serviceRoleKey } : {}),
     DATABASE_URL: databaseUrl,
-    DATASET_ADMIN_EMAIL: UI_SMOKE_USERS.admin.email,
     SUPABASE_STORAGE_BUCKET: "datasets",
   };
 }
@@ -121,8 +116,6 @@ export function getUiSmokeEnv(environment: NodeJS.ProcessEnv = process.env): UiS
     supabaseSecretKey: environment.SUPABASE_SECRET_KEY?.trim() ?? null,
     supabaseServiceRoleKey: environment.SUPABASE_SERVICE_ROLE_KEY?.trim() ?? null,
     databaseUrl,
-    datasetAdminEmail:
-      environment.DATASET_ADMIN_EMAIL?.trim() ?? UI_SMOKE_USERS.admin.email,
     storageBucket: environment.SUPABASE_STORAGE_BUCKET?.trim() || "datasets",
   };
 }

@@ -4,7 +4,7 @@ import {
   getDatasetStorageBucket,
   isDatasetStoragePath,
 } from "@/lib/dataset-storage";
-import { jsonError } from "@/lib/http";
+import { jsonAdminOnlyError, jsonError } from "@/lib/http";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createDatasetSchema } from "@/lib/validation";
 
@@ -22,7 +22,7 @@ export async function POST(request: Request, context: DatasetContext) {
   }
 
   if (!identity.isDatasetAdmin) {
-    return jsonError("Only admin@example.com can replace datasets.", 403);
+    return jsonAdminOnlyError("replace datasets");
   }
 
   const parsed = createDatasetSchema.safeParse(await request.json());

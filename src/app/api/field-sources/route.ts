@@ -1,6 +1,6 @@
 import { getCurrentIdentity } from "@/lib/auth";
 import { listFieldSourceGridData } from "@/lib/field-sources";
-import { jsonError } from "@/lib/http";
+import { jsonAdminOnlyError, jsonError } from "@/lib/http";
 
 export async function GET() {
   const identity = await getCurrentIdentity();
@@ -10,7 +10,7 @@ export async function GET() {
   }
 
   if (!identity.isDatasetAdmin) {
-    return jsonError("Only admin@example.com can manage field sources.", 403);
+    return jsonAdminOnlyError("manage field sources");
   }
 
   const fieldSources = await listFieldSourceGridData();

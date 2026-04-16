@@ -4,7 +4,7 @@ import {
   FilterRegionConflictError,
   updateFilterRegion,
 } from "@/lib/filter-settings";
-import { jsonError } from "@/lib/http";
+import { jsonAdminOnlyError, jsonError } from "@/lib/http";
 import { filterRegionPayloadSchema } from "@/lib/validation";
 
 type FilterRegionContext = {
@@ -21,7 +21,7 @@ export async function PATCH(request: Request, context: FilterRegionContext) {
   }
 
   if (!identity.isDatasetAdmin) {
-    return jsonError("Only admin@example.com can manage filter settings.", 403);
+    return jsonAdminOnlyError("manage filter settings");
   }
 
   const parsed = filterRegionPayloadSchema.safeParse(await request.json());
@@ -60,7 +60,7 @@ export async function DELETE(_request: Request, context: FilterRegionContext) {
   }
 
   if (!identity.isDatasetAdmin) {
-    return jsonError("Only admin@example.com can manage filter settings.", 403);
+    return jsonAdminOnlyError("manage filter settings");
   }
 
   const { regionId } = await context.params;

@@ -14,12 +14,10 @@ import { DataGrid, DataGridContainer } from "@/components/reui/data-grid/data-gr
 import { DataGridColumnHeader } from "@/components/reui/data-grid/data-grid-column-header";
 import { DataGridScrollArea } from "@/components/reui/data-grid/data-grid-scroll-area";
 import { DataGridTable } from "@/components/reui/data-grid/data-grid-table";
-import { FieldSourceTagList } from "@/components/dashboard/field-source-tag-list";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type {
-  FieldDefinitionLinkedSource,
   FieldSourceGridRow,
   FieldSourceResponse,
   FieldSourceType,
@@ -87,25 +85,8 @@ function sortFieldSources(fieldSources: FieldSourceGridRow[]) {
   );
 }
 
-function getPriorityLinkedSources(input: {
-  fieldSource: FieldSourceGridRow;
-  fieldSourceTypeByKey: Map<string, FieldSourceType>;
-}) {
-  return input.fieldSource.sourcePriorityKeys.flatMap((sourceKey) => {
-    const fieldSourceType = input.fieldSourceTypeByKey.get(sourceKey);
-
-    if (!fieldSourceType) {
-      return [];
-    }
-
-    return [
-      {
-        id: fieldSourceType.id,
-        key: fieldSourceType.key,
-        label: fieldSourceType.label,
-      } satisfies FieldDefinitionLinkedSource,
-    ];
-  });
+function getSourceColumnWidth(label: string) {
+  return Math.min(Math.max(label.length * 12, 160), 280);
 }
 
 function FieldSourceValueCell({
@@ -213,11 +194,6 @@ export function FieldSourcesClient({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isCreatingSourceType, setIsCreatingSourceType] = useState(false);
 
-  const fieldSourceTypeByKey = useMemo(
-    () => new Map(fieldSourceTypes.map((fieldSourceType) => [fieldSourceType.key, fieldSourceType])),
-    [fieldSourceTypes],
-  );
-
   async function handleCommitSourceValue(input: {
     fieldDefinitionId: string;
     sourceTypeId: string;
@@ -302,56 +278,6 @@ export function FieldSourcesClient({
         enableSorting: true,
         enableHiding: false,
       },
-      {
-        id: "internalLabel",
-        accessorFn: (row) => row.label,
-        header: ({ column }) => (
-          <DataGridColumnHeader title="Internal field" column={column} />
-        ),
-        cell: ({ row }) => (
-          <code className="text-[0.8rem] text-foreground">{row.original.label}</code>
-        ),
-        meta: { headerTitle: "Internal field" },
-        size: 220,
-        enableSorting: true,
-      },
-      {
-        id: "mappingDataType",
-        accessorFn: (row) => row.mappingDataType ?? "",
-        header: ({ column }) => (
-          <DataGridColumnHeader title="Data type" column={column} />
-        ),
-        cell: ({ row }) => (
-          <span className="text-sm text-foreground">
-            {row.original.mappingDataType ?? "—"}
-          </span>
-        ),
-        meta: { headerTitle: "Data type" },
-        size: 120,
-        enableSorting: true,
-      },
-      {
-        id: "sourcePriorityKeys",
-        accessorFn: (row) => row.sourcePriorityKeys.join(","),
-        header: ({ column }) => (
-          <DataGridColumnHeader title="Priority order" column={column} />
-        ),
-        cell: ({ row }) => {
-          const priorityLinkedSources = getPriorityLinkedSources({
-            fieldSource: row.original,
-            fieldSourceTypeByKey,
-          });
-
-          return priorityLinkedSources.length > 0 ? (
-            <FieldSourceTagList linkedSources={priorityLinkedSources} />
-          ) : (
-            <span className="text-sm text-muted-foreground">No priority order</span>
-          );
-        },
-        meta: { headerTitle: "Priority order" },
-        size: 260,
-        enableSorting: false,
-      },
       ...fieldSourceTypes.map(
         (fieldSourceType): ColumnDef<FieldSourceGridRow> => ({
           id: `source:${fieldSourceType.id}`,
@@ -370,12 +296,12 @@ export function FieldSourcesClient({
             />
           ),
           meta: { headerTitle: fieldSourceType.label },
-          size: 180,
+          size: getSourceColumnWidth(fieldSourceType.label),
           enableSorting: false,
         }),
       ),
     ],
-    [fieldSourceTypeByKey, fieldSourceTypes],
+    [fieldSourceTypes],
   );
 
   const table = useReactTable({
@@ -387,12 +313,7 @@ export function FieldSourcesClient({
     },
     initialState: {
       columnPinning: {
-        left: [
-          "effectiveLabel",
-          "internalLabel",
-          "mappingDataType",
-          "sourcePriorityKeys",
-        ],
+        left: ["effectiveLabel"],
       },
     },
     columnResizeMode: "onChange",

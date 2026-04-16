@@ -185,10 +185,10 @@ function FieldDefinitionEditSheetForm({
                 className="text-sm font-medium text-foreground"
                 htmlFor="field-definition-hide-from-viewers"
               >
-                Hide from viewer Field Definitions page
+                Hide from viewer Definitions page
               </label>
               <p className="text-sm text-muted-foreground">
-                Non-admin viewers will not see this field on the Field Definitions
+                Non-admin viewers will not see this field on the Definitions
                 page. Dataset tables and field tooltips stay unchanged.
               </p>
             </div>
@@ -196,7 +196,7 @@ function FieldDefinitionEditSheetForm({
               id="field-definition-hide-from-viewers"
               checked={hideFromViewerFieldDefinitions}
               disabled={isSaving}
-              aria-label="Hide from viewer Field Definitions page"
+              aria-label="Hide from viewer Definitions page"
               onCheckedChange={setHideFromViewerFieldDefinitions}
             />
           </div>

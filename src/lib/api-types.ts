@@ -1,3 +1,5 @@
+import type { WorkspaceRole } from "@/lib/workspace-role";
+
 export type DatasetStatus = "processing" | "ready" | "failed";
 
 export type CsvColumn = {
@@ -147,4 +149,42 @@ export type FieldSourceResponse = {
 
 export type FieldSourceTypeResponse = {
   fieldSourceType: FieldSourceType;
+};
+
+export type WorkspaceUserAccountStatus =
+  | "active"
+  | "pending_invite"
+  | "pending_confirmation"
+  | "disabled";
+
+export type WorkspaceUserIdentity = {
+  id: string;
+  provider: string;
+  createdAt: string | null;
+  lastLoginAt: string | null;
+};
+
+export type WorkspaceUser = {
+  id: string;
+  email: string | null;
+  fullName: string | null;
+  workspaceRole: WorkspaceRole;
+  accountStatus: WorkspaceUserAccountStatus;
+  providers: string[];
+  identities: WorkspaceUserIdentity[];
+  createdAt: string;
+  updatedAt: string | null;
+  invitedAt: string | null;
+  confirmedAt: string | null;
+  emailConfirmedAt: string | null;
+  lastLoginAt: string | null;
+  bannedUntil: string | null;
+};
+
+export type WorkspaceUsersResponse = {
+  users: WorkspaceUser[];
+};
+
+export type WorkspaceUserResponse = {
+  user: WorkspaceUser;
 };

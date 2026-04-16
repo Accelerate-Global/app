@@ -40,7 +40,7 @@ export default async function FieldDefinitionsPage() {
             Back to dashboard
           </Link>
           <h1 className="text-4xl font-semibold tracking-[-0.04em] sm:text-[3.1rem]">
-            Field Definitions
+            Definitions
           </h1>
           <p className="max-w-3xl text-base leading-7 text-muted-foreground sm:text-lg">
             These shared definitions explain fields that appear across the

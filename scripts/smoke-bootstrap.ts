@@ -43,6 +43,8 @@ type SmokeAuthUser = {
   fullName: string;
 };
 
+type SmokeWorkspaceRole = "admin" | "viewer";
+
 type SmokeColumn = {
   key: string;
   label: string;
@@ -114,6 +116,23 @@ async function recreateUser(input: {
     email: input.user.email,
     fullName: input.user.fullName,
   } satisfies SmokeAuthUser;
+}
+
+async function setWorkspaceRole(input: {
+  sql: postgres.Sql;
+  userId: string;
+  workspaceRole: SmokeWorkspaceRole;
+}) {
+  await input.sql`
+    update auth.users
+    set raw_app_meta_data = jsonb_set(
+      coalesce(raw_app_meta_data, '{}'::jsonb),
+      '{workspace_role}',
+      to_jsonb(${input.workspaceRole}::text),
+      true
+    )
+    where id = ${input.userId}
+  `;
 }
 
 async function ensureBucket(
@@ -538,6 +557,16 @@ async function main() {
       supabaseUrl: smokeEnv.supabaseUrl,
       supabasePublishableKey: smokeEnv.supabasePublishableKey,
       user: UI_SMOKE_USERS.viewer,
+    });
+    await setWorkspaceRole({
+      sql,
+      userId: adminUser.id,
+      workspaceRole: "admin",
+    });
+    await setWorkspaceRole({
+      sql,
+      userId: viewerUser.id,
+      workspaceRole: "viewer",
     });
 
     await insertFieldSourceTypes(sql);

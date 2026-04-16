@@ -5,7 +5,7 @@ import {
   updateDatasetDetails,
   updateDatasetStatus,
 } from "@/lib/datasets";
-import { jsonError } from "@/lib/http";
+import { jsonAdminOnlyError, jsonError } from "@/lib/http";
 import { getDatasetStorageBucket } from "@/lib/dataset-storage";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { datasetPatchSchema } from "@/lib/validation";
@@ -41,7 +41,7 @@ export async function PATCH(request: Request, context: DatasetContext) {
   }
 
   if (!identity.isDatasetAdmin) {
-    return jsonError("Only admin@example.com can modify datasets.", 403);
+    return jsonAdminOnlyError("modify datasets");
   }
 
   const { datasetId } = await context.params;
@@ -81,7 +81,7 @@ export async function DELETE(_request: Request, context: DatasetContext) {
   }
 
   if (!identity.isDatasetAdmin) {
-    return jsonError("Only admin@example.com can delete datasets.", 403);
+    return jsonAdminOnlyError("delete datasets");
   }
 
   const { datasetId } = await context.params;

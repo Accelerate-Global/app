@@ -1,7 +1,7 @@
 import { getCurrentIdentity } from "@/lib/auth";
 import { createDataset, listDatasets } from "@/lib/datasets";
 import { isDatasetStoragePath } from "@/lib/dataset-storage";
-import { jsonError } from "@/lib/http";
+import { jsonAdminOnlyError, jsonError } from "@/lib/http";
 import { createDatasetSchema } from "@/lib/validation";
 
 export async function GET() {
@@ -23,7 +23,7 @@ export async function POST(request: Request) {
   }
 
   if (!identity.isDatasetAdmin) {
-    return jsonError("Only admin@example.com can upload CSV files.", 403);
+    return jsonAdminOnlyError("upload CSV files");
   }
 
   const parsed = createDatasetSchema.safeParse(await request.json());

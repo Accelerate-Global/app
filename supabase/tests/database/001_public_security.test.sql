@@ -109,7 +109,7 @@ select
   'admin@example.com',
   '',
   now(),
-  '{"provider":"email","providers":["email"]}'::jsonb,
+  '{"provider":"email","providers":["email"],"workspace_role":"admin"}'::jsonb,
   '{}'::jsonb,
   now(),
   now()
@@ -138,7 +138,7 @@ select
   'viewer@example.com',
   '',
   now(),
-  '{"provider":"email","providers":["email"]}'::jsonb,
+  '{"provider":"email","providers":["email"],"workspace_role":"viewer"}'::jsonb,
   '{}'::jsonb,
   now(),
   now()
