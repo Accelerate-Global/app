@@ -1,8 +1,8 @@
 import { cookies } from "next/headers";
 
-import { isDatasetAdminEmail } from "@/lib/dataset-access";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
+import { isWorkspaceAdmin } from "@/lib/workspace-role";
 
 export type CurrentIdentity = {
   ownerId: string;
@@ -41,7 +41,7 @@ export async function getCurrentIdentity(): Promise<CurrentIdentity | null> {
           ownerId: user.id,
           email,
           fullName,
-          isDatasetAdmin: isDatasetAdminEmail(email),
+          isDatasetAdmin: isWorkspaceAdmin(user.app_metadata?.workspace_role),
           mode: "supabase",
         };
       }

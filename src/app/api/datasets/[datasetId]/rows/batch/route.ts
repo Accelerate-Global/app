@@ -1,6 +1,6 @@
 import { getCurrentIdentity } from "@/lib/auth";
 import { insertDatasetRowBatch } from "@/lib/datasets";
-import { jsonError } from "@/lib/http";
+import { jsonAdminOnlyError, jsonError } from "@/lib/http";
 import { rowBatchSchema } from "@/lib/validation";
 
 type RowBatchContext = {
@@ -17,7 +17,7 @@ export async function POST(request: Request, context: RowBatchContext) {
   }
 
   if (!identity.isDatasetAdmin) {
-    return jsonError("Only admin@example.com can upload CSV data.", 403);
+    return jsonAdminOnlyError("upload CSV data");
   }
 
   const { datasetId } = await context.params;

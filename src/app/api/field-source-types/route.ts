@@ -3,7 +3,7 @@ import {
   createFieldSourceType,
   FieldSourceTypeConflictError,
 } from "@/lib/field-sources";
-import { jsonError } from "@/lib/http";
+import { jsonAdminOnlyError, jsonError } from "@/lib/http";
 import { fieldSourceTypeCreateSchema } from "@/lib/validation";
 
 export async function POST(request: Request) {
@@ -14,7 +14,7 @@ export async function POST(request: Request) {
   }
 
   if (!identity.isDatasetAdmin) {
-    return jsonError("Only admin@example.com can manage field sources.", 403);
+    return jsonAdminOnlyError("manage field sources");
   }
 
   const parsed = fieldSourceTypeCreateSchema.safeParse(await request.json());

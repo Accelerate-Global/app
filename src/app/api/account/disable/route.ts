@@ -1,41 +1,49 @@
 import { NextResponse } from "next/server";
 
 import { getCurrentIdentity } from "@/lib/auth";
+import { jsonError } from "@/lib/http";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-
-const ACCOUNT_DISABLE_DURATION = "876000h";
+import {
+  getActiveWorkspaceAdminCount,
+  listWorkspaceUsers,
+  setWorkspaceUserDisabled,
+} from "@/lib/user-management";
 
 export async function POST() {
   if (!hasSupabaseConfig()) {
-    return NextResponse.json(
-      { error: "Supabase is not configured for account management." },
-      { status: 503 },
-    );
+    return jsonError("Supabase is not configured for account management.", 503);
   }
 
   const identity = await getCurrentIdentity();
 
   if (!identity) {
-    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+    return jsonError("Unauthorized.", 401);
   }
 
   try {
+    if (identity.isDatasetAdmin) {
+      const users = await listWorkspaceUsers();
+      const activeAdminCount = getActiveWorkspaceAdminCount(users);
+      const currentUser = users.find((user) => user.id === identity.ownerId);
+
+      if (
+        currentUser?.workspaceRole === "admin" &&
+        currentUser.accountStatus !== "disabled" &&
+        activeAdminCount <= 1
+      ) {
+        return jsonError("The last active admin cannot disable their own account.", 409);
+      }
+    }
+
     const supabase = await createSupabaseServerClient();
     const {
       data: { session },
     } = await supabase.auth.getSession();
 
     const admin = createSupabaseAdminClient();
-    const { error: updateError } = await admin.auth.admin.updateUserById(
-      identity.ownerId,
-      { ban_duration: ACCOUNT_DISABLE_DURATION },
-    );
-
-    if (updateError) {
-      throw updateError;
-    }
+    await setWorkspaceUserDisabled(identity.ownerId, true);
 
     if (session?.access_token) {
       const { error: signOutError } = await admin.auth.admin.signOut(
@@ -57,9 +65,6 @@ export async function POST() {
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error("Failed to disable account", error);
-    return NextResponse.json(
-      { error: "Could not disable the current account." },
-      { status: 500 },
-    );
+    return jsonError("Could not disable the current account.", 500);
   }
 }

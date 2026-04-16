@@ -5,8 +5,8 @@ import { getSupabaseConfig } from "@/lib/supabase/config";
 function getSupabaseAdminConfig() {
   const { supabaseUrl } = getSupabaseConfig();
   const serviceRoleKey =
-    process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ??
-    process.env.SUPABASE_SECRET_KEY?.trim();
+    process.env.SUPABASE_SECRET_KEY?.trim() ??
+    process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
 
   if (!serviceRoleKey) {
     throw new Error(

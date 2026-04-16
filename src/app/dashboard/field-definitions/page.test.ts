@@ -60,6 +60,9 @@ describe("/dashboard/field-definitions", () => {
     render(await FieldDefinitionsPage());
 
     expect(
+      screen.getByRole("heading", { name: "Definitions", level: 1 }),
+    ).toBeTruthy();
+    expect(
       screen.getByText(
         "These shared definitions explain fields that appear across the datasets in this workspace.",
       ),

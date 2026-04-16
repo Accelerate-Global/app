@@ -1,5 +1,5 @@
 import { getCurrentIdentity } from "@/lib/auth";
-import { jsonError } from "@/lib/http";
+import { jsonAdminOnlyError, jsonError } from "@/lib/http";
 import { listRegionCountryOptions } from "@/lib/filter-settings";
 
 export async function GET() {
@@ -10,7 +10,7 @@ export async function GET() {
   }
 
   if (!identity.isDatasetAdmin) {
-    return jsonError("Only admin@example.com can manage filter settings.", 403);
+    return jsonAdminOnlyError("manage filter settings");
   }
 
   const countries = await listRegionCountryOptions();

@@ -1,6 +1,6 @@
 import { getCurrentIdentity } from "@/lib/auth";
 import { updateFieldSourceValue } from "@/lib/field-sources";
-import { jsonError } from "@/lib/http";
+import { jsonAdminOnlyError, jsonError } from "@/lib/http";
 import { fieldSourcePatchSchema } from "@/lib/validation";
 
 type FieldSourceContext = {
@@ -17,7 +17,7 @@ export async function PATCH(request: Request, context: FieldSourceContext) {
   }
 
   if (!identity.isDatasetAdmin) {
-    return jsonError("Only admin@example.com can manage field sources.", 403);
+    return jsonAdminOnlyError("manage field sources");
   }
 
   const parsed = fieldSourcePatchSchema.safeParse(await request.json());

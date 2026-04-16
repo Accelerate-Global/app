@@ -1,5 +1,5 @@
 import { getCurrentIdentity } from "@/lib/auth";
-import { jsonError } from "@/lib/http";
+import { jsonAdminOnlyError, jsonError } from "@/lib/http";
 import { updateFieldDefinition } from "@/lib/field-definitions";
 import { fieldDefinitionPatchSchema } from "@/lib/validation";
 
@@ -17,7 +17,7 @@ export async function PATCH(request: Request, context: FieldDefinitionContext) {
   }
 
   if (!identity.isDatasetAdmin) {
-    return jsonError("Only admin@example.com can manage field definitions.", 403);
+    return jsonAdminOnlyError("manage field definitions");
   }
 
   const parsed = fieldDefinitionPatchSchema.safeParse(await request.json());

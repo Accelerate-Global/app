@@ -134,7 +134,7 @@ describe("FieldDefinitionsClient", () => {
     });
     fireEvent.click(
       within(dialog).getByRole("switch", {
-        name: "Hide from viewer Field Definitions page",
+        name: "Hide from viewer Definitions page",
       }),
     );
     expect(within(dialog).getByText("Sources")).toBeTruthy();

@@ -11,6 +11,7 @@ import {
   UploadIcon,
   SunIcon,
   UserIcon,
+  UsersIcon,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
@@ -119,7 +120,7 @@ export function AccountControl({ identity }: AccountControlProps) {
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => navigateTo("/dashboard/field-definitions")}>
             <BookTextIcon aria-hidden="true" />
-            Field Definitions
+            Definitions
           </DropdownMenuItem>
           <DropdownMenuItem onClick={toggleTheme}>
             {theme === "dark" ? (
@@ -139,6 +140,10 @@ export function AccountControl({ identity }: AccountControlProps) {
               <DropdownMenuItem onClick={() => navigateTo("/dashboard/filter-settings")}>
                 <SlidersHorizontalIcon aria-hidden="true" />
                 Filter Settings
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigateTo("/dashboard/user-management")}>
+                <UsersIcon aria-hidden="true" />
+                User Management
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => navigateTo("/dashboard/upload")}>
                 <UploadIcon aria-hidden="true" />

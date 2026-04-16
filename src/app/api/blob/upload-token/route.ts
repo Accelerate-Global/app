@@ -4,7 +4,7 @@ import {
   getDatasetStorageBucket,
 } from "@/lib/dataset-storage";
 import { MAX_CSV_BYTES, sanitizeFileName } from "@/lib/csv";
-import { jsonError } from "@/lib/http";
+import { jsonAdminOnlyError, jsonError } from "@/lib/http";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { blobUploadTokenSchema } from "@/lib/validation";
 
@@ -16,7 +16,7 @@ export async function POST(request: Request) {
   }
 
   if (!identity.isDatasetAdmin) {
-    return jsonError("Only admin@example.com can upload CSV files.", 403);
+    return jsonAdminOnlyError("upload CSV files");
   }
 
   const parsed = blobUploadTokenSchema.safeParse(await request.json());

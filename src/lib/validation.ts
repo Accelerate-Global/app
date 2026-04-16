@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { MAX_CSV_BYTES, ROW_BATCH_SIZE } from "@/lib/csv";
+import { WORKSPACE_ROLES } from "@/lib/workspace-role";
 
 export const csvColumnSchema = z.object({
   key: z.string().min(1).max(128),
@@ -132,3 +133,26 @@ export const datasetPatchSchema = z.union([
   datasetStatusPatchSchema,
   datasetMetadataPatchSchema,
 ]);
+
+export const workspaceUserInviteSchema = z.object({
+  email: z.string().trim().min(1).email().max(255),
+  fullName: z.string().trim().max(120).optional(),
+  workspaceRole: z.enum(WORKSPACE_ROLES),
+});
+
+export const workspaceUserPatchSchema = z
+  .object({
+    workspaceRole: z.enum(WORKSPACE_ROLES).optional(),
+    disabled: z.boolean().optional(),
+  })
+  .superRefine((value, ctx) => {
+    if (
+      value.workspaceRole === undefined &&
+      value.disabled === undefined
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "A user update must include a role change or a status change.",
+      });
+    }
+  });
