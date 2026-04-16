@@ -1,0 +1,194 @@
+Field ID,User Interface,Description,Active,Data Type
+F_2,Christianity: Frontier Group Y/N,<.1% Christian Adherents and no confirmed sustained movement.,TRUE,Boolean
+F_3,Christianity: JP’s Gospel Progress Scale,"A 5 tier red to green scale ranging from Unreached - Minimally Reached, Superficially Reached, Partially Reached, and Significantly Reached. This is based on the % evangelicals and % total Christian Adherents.",TRUE,Integer
+F_4,Christianity: GSEC,"Global Status of Evangelical Christianity.
+
+[scale runs 0-6] Higher = more reached
+
+The Global Status of Evangelical Christianity (GSEC) is a model that describes the progress of the gospel among the peoples of the world by considering:
+
+1. The extent to which a people group is Evangelical.
+2. Accessibility to the gospel.
+3. Church-planting activity, whether localized or widespread, within the past two years.
+
+ The model establishes the criteria for identifying those people groups described as ""Unreached People Groups"".",FALSE,Integer
+F_5,Christianity: JP’s Least Reached Y/N,<5% Christian Adherents & <2% Evangelical,TRUE,Boolean
+F_6,Christianity: Non-Evangelical Christian % of Pop.,"Does the people group in question have more than 10% of the population adhering to a non-evangelical form of Christian faith? Exclusions: do not count Christian cults. List estimated percent, eg: “7.5%”",TRUE,Double
+F_7,Christianity: % Christian (All Types),"All Christian Adherents including nominal, historical, and most Christian cults, as well as evangelical.",TRUE,Double
+F_8,Christianity: % Christian (Evangelical),All Evangelical Christian Adherents in a people group.,TRUE,Double
+F_9,Engage: 8 Phases of Engagement,"An 8 point scale (0-7) that estimates relative progress in engagement.
+0) No prior known engagement.  
+1) Restart Needed
+2) Gospel Proclamation →Churches
+3) Believers Disciples Baptism
+4) Indigenous Local Church
+5) Churches 2 Gen
+6) Churches Multiplying 4 Gen
+7) Sustained Gospel presence 10%+",TRUE,String
+F_10,Engage: Binary (Engaged / Unengaged),A binary assessment if the people group is “engaged” or “unengaged.”,TRUE,Boolean
+F_11,Engage: Engagement Code: SPI (IMB),"Connects to the column SPI.
+0=Unengaged and Unreached.
+1=Engaged yet Unreached
+2=No Longer Unreached",TRUE,Integer
+F_12,Engage: Engagement Level SPI (IMB),"A single digit, three-number scale to show how the IMB categorizes them in terms of strategic importance.
+[scale: 0, 1, 2] 
+0=Unengaged and Unreached.
+1=Engaged yet Unreached
+2=No Longer Unreached",TRUE,String
+F_13,Engage: Engagement Sufficiency Scale,"A 4 point scale which measures # gospel workers meeting definition of engaged by population.
+1) Unengaged
+2) Barely Engaged
+3) Moderately Engaged
+4) Sufficiently Engaged.",TRUE,String
+F_14,Engage: Current Estimated # Gospel Workers,"Estimated # of gospel workers involved in evanglism, discipleship, & church planting.",TRUE,Integer
+F_15,Engage: First Touch Index (1-3x),"Has this PG ever been engaged with the gospel previously at any time as far as we know? Scale: 
+1. No known engagement ever.
+2. Confirmed engagement in the past.
+3. Potential past engagement, but no records exist.
+
+Christianized people groups who were later islamicized mark with “x” after number. Example: 1X, or 2X, or 3X.",TRUE,String
+F_16,Engage: Global Engagement Anywhere? (Y/N),A 'yes' value for those PGs with no known engagement anywhere. Null values blank. Is this same People Group engaged with the gospel anywhere?,TRUE,Boolean
+F_17,Engagement Movement Oriented? (Y/N),Is this engagement known to be a movement oriented engagement? Yes / No,TRUE,Boolean
+F_18,Engage: Timestamp of Changes,Last time the engagement section was updated.,,
+F_19,Engage: Verification Level (1-4),"Levels of Verification: 
+Have reports of engagement among this PG been independently verified by someone outside of the ministry responsible for the engagement?
+V1 Observed / Reported by someone within network.
+V2 Mapped, church or progress can be visualized by a gen map or equivalent.
+V3 Internal Audit - someone from within the network but outside the reported stream has physically verified progress.
+V4 External Audit. Someone outside the network has physically verified the progress.",TRUE,Integer
+F_20,Family Tree: 1 Level Down (all names at that level),The name(s) of smaller people groups or clans associated with this group. List as many names as needed for just one level down on the family tree.,TRUE,String
+F_21,Family Tree: 1 Level Up (name),"The name of the larger group that this PG is a part of? 
+Name of the group immediately higher on the family tree scale. (list one name)",TRUE,String
+F_22,Family Tree: Sisters (All names of sister PGs),"The names of other people groups, or clans associated with this people group. List as many names as needed for these types of groups.",TRUE,String
+F_23,Geo: Country Code: PG in 10-40Window Y/N,"People Group is located w/in the 10/40 window, yes or no.",TRUE,Boolean
+F_24,Geo: Continent Name,Continent the people group is found on.,TRUE,String
+F_25,Geo: JP’s Count of Countries,Number of countries that the people group is found in according to JP.,TRUE,Integer
+F_26,Geo: Country Code FIPS,HIS Registry of Geography (ROG) country code. Two letter country code. Example: AF = Afghanistan.,FALSE,String
+F_27,Geo: Country Code GENC,A three digit country code.,FALSE,String
+F_28,Geo: Country Name,Main country name where this people live. (English country name),TRUE,String
+F_29,Geo: Country Code ISO3 (3 string),ISO3 (alpha) = a 3-character alpha digit country code according to the ISO-3166-3 standards.,TRUE,String
+F_30,Geo: Latitude,"The angular distance north or south of the earth's equator, measured in degrees along a meridian, as on a map or globe.
+",TRUE,Double
+F_31,Geo: Longitude,"The arc or portion of the equator intersected between the meridian of a given place and the meridian of some other place from which longitude is reckoned, as from Greenwich, England, or sometimes from the capital of a country, as from Washington or Paris. The longitude of a place is expressed either in degrees or in time.",TRUE,Double
+F_32,Geo: JP’s Region Code,"Region code for this people group [1 - South Pacific, 2 - Southeast Asia, 3 - Northeast Asia, 4 - South Asia, 5 - Central Asia, 6 - Middle East and North Africa, 7 - East and Southern Africa, 8 - West and Central Africa, 9 - Eastern Europe and Eurasia, 10 - Western Europe, 11 - Central and South America, 12 - North America and Caribbean]",TRUE,Integer
+F_33,Geo: JP’s Region Name,"The name of the region that corresponds to the ""Region Code.""",TRUE,String
+F_34,Geo: Region / Continent Code: 3 string ROG2,"Regions or Continent Code 1) AFR-Africa, 2) ASI-Asia, 3) AUS-Australia, 4) EUR-Europe, 5) LAM-South America, 6) NAR-North America, 7) SOP-Oceania",TRUE,String
+F_35,Geo: Country Code (2 string ROG3),"HIS Registry of Geography (ROG) country code, similar to 2 letter ISO country code.",TRUE,String
+F_36,Geo: Sub-Continent,Name of Sub-Continent.,TRUE,String
+F_37,Govt: Freedom Index IMB,"Freedom Scale:
+[Free, Partly Free, Not Free]",FALSE,String
+F_38,Govt: Government Restrictions Index IMB,"Indicator as to how restrictive the government country in question is to gospel workers.
+[Scale: Low, Moderate, High, Very High]",FALSE,String
+F_39,Govt: Social Hostilities Index IMB,"Indicator as to how hostile the community is to the gospel.
+[Scale: Low, Moderate, High, Very High]",FALSE,String
+F_40,Govt: Threat Level IMB,"Scale of perceived threat to gospel workers.
+[Scale: 1) Level 1: Exercise Normal Precautions, 2) Level 2: Exercise Increased Caution, 3) Level 3: Reconsider Travel, 4) Level 4: Do Not Travel",FALSE,String
+F_41,Indigenous Code: Y/N,"If a People Group is indigenous to the particular country they are listed in, yes or no.",TRUE,Boolean
+F_42,Indigenous: Country Code FIPS of Origin,A two digit country code suggesting the country of origin of a PG.,FALSE,String
+F_43,Indigenous: Country of Origin,Country of origin (listed only in some cases).,FALSE,String
+F_44,Indigenous: Dispersed (Y/N),"An indication if this people has been dispersed to other countries or not, yes or no.",FALSE,Boolean
+F_45,Indigenous: Nomadic (Y/N),If the people group is considered nomadic or not. Negative values not listed. Positive values = Yes.,FALSE,Boolean
+F_46,Indigenous: Nomadic Code,"Type of Nomad 1-2 digit scale
+[6 classifications used at IMB]
+1) Agro-Pastoralists, 2) Service or Trade, 3) Hunter-Gatherers, 12) Agro-Pastoralists, Service or Trade, 13) Agro-Pastoralists, Hunter-Gatherers, 23) Service or Trade, Hunter-Gatherers",FALSE,String
+F_47,Indigenous: Nomadic Description,"Nomadic people: Clan allegiance is primary, have a
+mobile lifestyle worldview, clan autonomy, distinct from
+non-nomadic clans.",FALSE,String
+F_48,Language: Name,"The main name of the language. Language as reported by the people (if surveyed), or as reported by a referring organization.",TRUE,String
+F_49,Language: 3 string Code ROL,"3 letter Language Code from HIS / Ethnologue
+3 letter Language Code [5014 used in IMB]
+Each three-letter code uniquely identifies one of the more than 7,000 living languages documented in the Ethnologue. 
+Definition is based on a criterion of shared literature. If varieties of speech are similar enough to use the same literature, they are considered the same language; if they would need different literatures, they are considered different languages.",TRUE,String
+F_50,Needs: Workers Needed,Estimate of # missional workers needed for this people group.,TRUE,Integer
+F_51,Other: Local Research Code,"If this PG was due to local research, list the code corresponding with the research team.
+1) Independent Researcher (Local)
+2) Independent Researcher (International)
+3) Local ministry or mission
+4) International ministry or mission
+5) Other",TRUE,Integer
+F_52,Other: Physical Exertion Scale IMB,"An indicator as to how much physical exertion is required to engage this people with the gospel. 
+[Scale: Low-Little-Medium-Strenuous-Extreme]",FALSE,String
+F_53,Other: Researcher Human Data,Name & contact for key researcher.,TRUE,String
+F_54,Other: Researcher Org Data,Name of organization / ministry responsible for research,TRUE,String
+F_55,People Group: Affinity (IMB),"Affinity Groups bring together people groups that share a commonality of language, culture, and ethnicity regardless of their geographical locations.",TRUE,String
+F_56,People Group: Affinity Bloc Name,Affinity Block Name from ROP1 (HIS Registry).,TRUE,String
+F_57,People Group: AX’s unique PG ID# (PGAC),"AX Numbering System
+
+Example: 01-JP-045983 = a PGAC number
+
+Component Parts: 
+AX (numeric) = Taken from the last two digits of the ROP1 code and used to broadly ID a PG.
+
+SS (alpha)  = Source of PGAC #: Joshua Project (JP), IMB (IM), Etnopedia (ET) Accelerate Local (AX).
+
+PGAC (numeric) = 
+·       Joshua Project: The 5-digit PGID3 code used by Joshua Project. (Add a zero to make 6-digits)
+·       IMB: 6-digit ROP25 
+·       Etnopedia: 6-digit ROP25
+·       AX: 6-digit sequential #  “XX1234”",FALSE,String
+F_58,People Group: AX’s unique PG ID# (PGIC),"AX Numbering System
+
+Example: 01-JP-045983-USA = A PGIC number
+
+Component Parts: 
+AX (numeric) = Taken from the last two digits of the ROP1 code and used to broadly ID a PG.
+
+SS (alpha)  = Source of PGAC #: Joshua Project (JP), IMB (IM), Etnopedia (ET) Accelerate Local (AX).
+
+PGAC (numeric) = 
+·       Joshua Project: The 5-digit PGID3 code used by Joshua Project. (Add a zero to make 6-digits)
+·       IMB: 6-digit ROP25 
+·       Etnopedia: 6-digit ROP25
+·       AX: 6-digit sequential #  “XX1234”
+
+ISO3 (alpha) = “ABC” is PGIC indicator a 3-character alpha digit country code (ISO 3166-1 alpha-3 standard)",FALSE,String
+F_59,PG Clusters Name,"Name of People Clusters (from code).
+",TRUE,String
+F_60,People Group: Name (Alt),Alternate names this people group has. [Note: sometimes alt names are really names of other people groups.],TRUE,String
+F_61,People Group: Name (Main),The general name of the people group as known most widely/globally.,TRUE,String
+F_62,People Group: IMB’s Unique PG ID# PEID / PGID (PGIC),"IMB’s unique PG code (PGIC) Stands for: P: People, I: Identification, E: Encounter, D: Database.
+
+PEID is a numeric code incrementally assigned to people
+groups in the Church Planting Progress Indicators (CPPI)
+database.",TRUE,Integer
+F_63,People Group: Affinity Bloc JP’s Scale (PeopleID1),"The code for Affinity Blocs (PeopleID1), which are the top level of the Ethnic Peoples Tree. Each Affinity Bloc is assigned a unique code, such as 11 for the Arab World, 12 for the East Asians, and so on.",TRUE,Integer
+F_64,PG Clusters Code: JP’s PeopleID2,People cluster code (PeopleID2) [example: 137],TRUE,Integer
+F_65,People Group: JP’s Unique PG ID# (PGAC),JP: 5 digit code used to ID PGs across all countries (PGAC),TRUE,Integer
+F_66,People Group: Population,"Estimated population of the people group.
+",TRUE,Integer
+F_67,People Group: Population Range Layer (IMB),"A population size indicator
+<10,000
+10,000+
+50,000+
+100,000+
+1,000,000+
+10,000,000+",TRUE,String
+F_68,People Group: Affinity Bloc Code,"ROP1 = Affinity Blocs code from HIS. A001-Arab World, A002-East Asian Peoples, A003-Eurasian Peoples, A004-Horn of Africa Peoples, A005-Persian-Median, A006-Jewish, A007-Latin-Caribbean Americans, A008-Malay Peoples, A009-North American Peoples, A010-Pacific Islanders, A011-Southeast Asian Peoples, A012-South Asian Peoples, A013-Sub-Saharan Peoples, A014-Tibetan-Himalayan Peoples, A015-Turkic Peoples, A017-Deaf",TRUE,String
+F_69,PG Clusters Code: ROP2,People Clusters Code (Example: C0216),TRUE,String
+F_70,People Group: 6dig Code ROP25 (PGIC),Unique numeric code for a Kinship Group. 6 digit people code. ,TRUE,Integer
+F_71,People Group: 6dig Code ROP3 (PGIC),"Unique HIS Registry code for a people.
+
+ROP3 codes are the primary codes within ROP. ROP3 Codes are 6-digit, numeric fields that provide a unique identifier for each people. Each code is perpetual; it will not be used more than once, even if the people it identifies is removed from the database.",TRUE,Integer
+F_72,People Group: Specific (Notes),"Notes regarding specific people group, clans and tribe names.",TRUE,String
+F_73,Religion: Name,Name of the primary religion of the PG.,TRUE,String
+F_74,Religion: JP’s Scale RLG3,"Religious Linguistic Group Scale w/each number referring to a religion. 1-Christianity, 2- Buddhism, 3… 4-Ethnic Religions, 5-Hinduism, 6-Islam, 7-Non-Religious, 8-Other / Small, 9-Unknown",TRUE,Integer
+F_75,Resources: Audio Scripture (Y/N),A Yes/No indicator to show if Gospel Audio are present in language.,TRUE,Boolean
+F_76,Resources: Gospel Films (Y/N),A Yes/No indicator to show if Gospel Films are present in language.,FALSE,Boolean
+F_77,Resources: Gospel Recordings (Y/N),A Yes/No indicator to show if Gospel Recordings are present in language.,TRUE,Boolean
+F_78,Resources: Jesus Film (Y/N),A Yes/No indicator to show if Jesus Film is present in language.,TRUE,Boolean
+F_79,Resources: Radio Broadcast (Y/N),A Yes/No indicator to show If Christian Radio is present in language.,TRUE,Boolean
+F_80,Resources: Scripture Translation 5 Point Scale,"5 tier scale - The current Bible status:
+0 = Unspecified
+1 = Translation needed
+2 = Translation started
+3 = Portions
+4 = New Testament
+5 = Complete Bible
+",TRUE,Integer
+F_81,Resources:The Hope (Y/N),A Yes/No indicator to show if “The Hope” are present in language.,FALSE,Boolean
+F_82,Resources: Written Scripture (Y/N),Binary Yes / No scale indicating if written scripture is available in the language of the people group.,TRUE,Boolean
+F_83,Data Source,,TRUE,String
+F_84,Dataset ID,,TRUE,String
+F_85,Dataset Row ID,,TRUE,String
+F_86,Dataset Row Key,,TRUE,String
+F_87,Percent Evangelical PGAC,,TRUE,String

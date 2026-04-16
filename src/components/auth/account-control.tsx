@@ -121,6 +121,15 @@ export function AccountControl({ identity }: AccountControlProps) {
             <BookTextIcon aria-hidden="true" />
             Field Definitions
           </DropdownMenuItem>
+          <DropdownMenuItem onClick={toggleTheme}>
+            {theme === "dark" ? (
+              <SunIcon aria-hidden="true" />
+            ) : (
+              <MoonIcon aria-hidden="true" />
+            )}
+            {theme === "dark" ? "Light mode" : "Dark mode"}
+          </DropdownMenuItem>
+          {identity.isDatasetAdmin ? <DropdownMenuSeparator /> : null}
           {identity.isDatasetAdmin ? (
             <>
               <DropdownMenuItem onClick={() => navigateTo("/dashboard/field-sources")}>
@@ -137,14 +146,6 @@ export function AccountControl({ identity }: AccountControlProps) {
               </DropdownMenuItem>
             </>
           ) : null}
-          <DropdownMenuItem onClick={toggleTheme}>
-            {theme === "dark" ? (
-              <SunIcon aria-hidden="true" />
-            ) : (
-              <MoonIcon aria-hidden="true" />
-            )}
-            {theme === "dark" ? "Light mode" : "Dark mode"}
-          </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem

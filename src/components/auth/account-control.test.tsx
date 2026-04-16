@@ -16,10 +16,29 @@ vi.mock("next/navigation", () => ({
   }),
 }));
 
+function openMenu() {
+  fireEvent.click(screen.getByRole("button"));
+  const menu = document.querySelector('[data-smoke-surface="account-menu"]');
+  expect(menu).toBeTruthy();
+  return menu as HTMLElement;
+}
+
+function getMenuStructure(menu: HTMLElement) {
+  return Array.from(
+    menu.querySelectorAll('[data-slot="dropdown-menu-item"], [data-slot="dropdown-menu-separator"]'),
+  ).map((node) =>
+    node.getAttribute("data-slot") === "dropdown-menu-separator"
+      ? "separator"
+      : node.textContent?.replace(/\s+/g, " ").trim(),
+  );
+}
+
 describe("AccountControl", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     global.fetch = fetchMock as typeof fetch;
+    document.documentElement.classList.remove("dark");
+    document.documentElement.style.colorScheme = "";
     fetchMock.mockResolvedValue({
       ok: true,
       json: async () => ({ ok: true }),
@@ -30,7 +49,7 @@ describe("AccountControl", () => {
     cleanup();
   });
 
-  it("shows the full name when present and includes dashboard, field definitions, field sources, filter settings, and upload links", () => {
+  it("renders standard and admin rows in separate sections for dataset admins", () => {
     render(
       <AccountControl
         identity={{
@@ -43,18 +62,26 @@ describe("AccountControl", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button"));
+    const menu = openMenu();
 
     expect(screen.getAllByText("Blake Lewis").length).toBeGreaterThan(0);
     expect(screen.getByText("admin@example.com")).toBeTruthy();
-    expect(screen.getByText("Dashboard")).toBeTruthy();
-    expect(screen.getByText("Field Definitions")).toBeTruthy();
-    expect(screen.getByText("Field Sources")).toBeTruthy();
-    expect(screen.getByText("Filter Settings")).toBeTruthy();
-    expect(screen.getByText("Upload")).toBeTruthy();
+    expect(getMenuStructure(menu)).toEqual([
+      "separator",
+      "Profile",
+      "Dashboard",
+      "Field Definitions",
+      "Dark mode",
+      "separator",
+      "Field Sources",
+      "Filter Settings",
+      "Upload",
+      "separator",
+      "Sign out",
+    ]);
   });
 
-  it("falls back to the email prefix when there is no full name", () => {
+  it("omits the admin section and extra divider for non-admin users", () => {
     render(
       <AccountControl
         identity={{
@@ -68,12 +95,20 @@ describe("AccountControl", () => {
     );
 
     expect(screen.getByRole("button").textContent).toContain("viewer");
-    fireEvent.click(screen.getByRole("button"));
+    const menu = openMenu();
     expect(screen.getByText("viewer@example.com")).toBeTruthy();
-    expect(screen.getByText("Field Definitions")).toBeTruthy();
     expect(screen.queryByText("Field Sources")).toBeNull();
     expect(screen.queryByText("Filter Settings")).toBeNull();
     expect(screen.queryByText("Upload")).toBeNull();
+    expect(getMenuStructure(menu)).toEqual([
+      "separator",
+      "Profile",
+      "Dashboard",
+      "Field Definitions",
+      "Dark mode",
+      "separator",
+      "Sign out",
+    ]);
   });
 
   it("signs out through the existing auth route", async () => {

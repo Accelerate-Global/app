@@ -22,13 +22,23 @@ const FIELD_SOURCE_MAPPING_CSV_PATH = path.join(
   process.cwd(),
   "src/data/field-sources/aggregate-1-field-mapping.csv",
 );
+const FIELD_DESCRIPTION_CSV_PATH = path.join(
+  process.cwd(),
+  "src/data/field-sources/field-description-seed.csv",
+);
 
-const DEFAULT_FIELD_SOURCE_TYPE_LABELS = [
+const CSV_FIELD_SOURCE_TYPE_LABELS = [
   "Joshua Project",
   "IMB (People Groups)",
   "Etnopedia",
   "Accelerate",
   "Add-on Fields",
+] as const;
+const DEFAULT_FIELD_SOURCE_TYPE_LABELS = [
+  "Joshua Project",
+  "IMB (People Groups)",
+  "Etnopedia",
+  "Accelerate",
 ] as const;
 
 const PRIORITY_CODE_TO_SOURCE_LABEL = {
@@ -61,9 +71,19 @@ type FieldSourceMappingCsvRow = {
   "Priority #4"?: string;
 };
 
+type FieldDescriptionCsvRow = {
+  "Field ID"?: string;
+  "User Interface"?: string;
+  Description?: string;
+  Active?: string;
+  "Data Type"?: string;
+};
+
 type FieldSourceSeedRow = {
   canonicalKey: string;
   label: string;
+  displayLabel: string;
+  definition: string;
   mappingFieldId: string | null;
   mappingDataType: string | null;
   mappingIsActive: boolean | null;
@@ -94,8 +114,24 @@ function normalizeSourceFieldName(value: string | null | undefined) {
   return (value ?? "").trim();
 }
 
+function normalizeFieldDescription(value: string | null | undefined) {
+  return (value ?? "").trim();
+}
+
+function normalizeFieldDisplayLabel(value: string | null | undefined) {
+  return (value ?? "").trim();
+}
+
+function normalizeFieldId(value: string | null | undefined) {
+  return (value ?? "").trim();
+}
+
 function normalizeFieldSourceTypeLabel(label: string) {
   return label.trim();
+}
+
+function normalizeSeedSourceLabel(label: string) {
+  return label === "Add-on Fields" ? "Accelerate" : label;
 }
 
 function normalizePriorityCode(value: string | null | undefined) {
@@ -242,11 +278,44 @@ async function readFieldSourceSeedCsvFile() {
   return readFile(FIELD_SOURCE_MAPPING_CSV_PATH, "utf8");
 }
 
+async function readFieldDescriptionSeedCsvFile() {
+  return readFile(FIELD_DESCRIPTION_CSV_PATH, "utf8");
+}
+
 export function getFieldSourceTypeKey(label: string) {
   return normalizeHeaderIdentity(normalizeFieldSourceTypeLabel(label), 0);
 }
 
-export function parseFieldSourceMappingCsv(content: string) {
+export function parseFieldDescriptionCsv(content: string) {
+  const parsed = Papa.parse<FieldDescriptionCsvRow>(content, {
+    header: true,
+    skipEmptyLines: true,
+  });
+
+  if (parsed.errors.length > 0) {
+    throw new Error(parsed.errors[0]?.message ?? "Field description CSV is invalid.");
+  }
+
+  const descriptionsByFieldId = new Map<string, string>();
+
+  for (const row of parsed.data) {
+    const fieldId = normalizeFieldId(row["Field ID"]);
+    const description = normalizeFieldDescription(row.Description);
+
+    if (!fieldId || !description) {
+      continue;
+    }
+
+    descriptionsByFieldId.set(fieldId, description);
+  }
+
+  return descriptionsByFieldId;
+}
+
+export function parseFieldSourceMappingCsv(
+  content: string,
+  descriptionsByFieldId = new Map<string, string>(),
+) {
   const parsed = Papa.parse<FieldSourceMappingCsvRow>(content, {
     header: true,
     skipEmptyLines: true,
@@ -263,16 +332,27 @@ export function parseFieldSourceMappingCsv(content: string) {
       return [];
     }
 
-    const sourceValues = DEFAULT_FIELD_SOURCE_TYPE_LABELS.flatMap((sourceLabel) => {
+    const seenSourceKeys = new Set<string>();
+    const sourceValues = CSV_FIELD_SOURCE_TYPE_LABELS.flatMap((sourceLabel) => {
       const sourceFieldName = normalizeSourceFieldName(row[sourceLabel]);
 
       if (!sourceFieldName) {
         return [];
       }
 
+      const sourceKey = getFieldSourceTypeKey(
+        normalizeSeedSourceLabel(sourceLabel),
+      );
+
+      if (seenSourceKeys.has(sourceKey)) {
+        return [];
+      }
+
+      seenSourceKeys.add(sourceKey);
+
       return [
         {
-          sourceKey: getFieldSourceTypeKey(sourceLabel),
+          sourceKey,
           sourceFieldName,
         },
       ];
@@ -282,6 +362,10 @@ export function parseFieldSourceMappingCsv(content: string) {
       {
         canonicalKey: normalizeHeaderIdentity(label, 0),
         label,
+        displayLabel: normalizeFieldDisplayLabel(row["User Interface"]),
+        definition: descriptionsByFieldId.get(
+          normalizeFieldId(row["Field ID"]),
+        ) ?? "",
         mappingFieldId: normalizeSourceFieldName(row["Field ID"]) || null,
         mappingDataType: normalizeSourceFieldName(row["Data Type"]) || null,
         mappingIsActive: parseMappingIsActive(row.Active),
@@ -293,8 +377,15 @@ export function parseFieldSourceMappingCsv(content: string) {
 }
 
 async function loadFieldSourceSeedRows() {
-  const content = await readFieldSourceSeedCsvFile();
-  return parseFieldSourceMappingCsv(content);
+  const [mappingContent, descriptionContent] = await Promise.all([
+    readFieldSourceSeedCsvFile(),
+    readFieldDescriptionSeedCsvFile(),
+  ]);
+
+  return parseFieldSourceMappingCsv(
+    mappingContent,
+    parseFieldDescriptionCsv(descriptionContent),
+  );
 }
 
 function buildLinkedSourceMaps(input: {
@@ -421,6 +512,7 @@ async function listFieldSourceTypeRows() {
 
 export async function seedFieldSourceRegistryIfNeeded() {
   const seedRows = await loadFieldSourceSeedRows();
+  const addOnFieldsSourceKey = getFieldSourceTypeKey("Add-on Fields");
 
   if (seedRows.length === 0) {
     return { seeded: false };
@@ -450,6 +542,8 @@ export async function seedFieldSourceRegistryIfNeeded() {
         seedRows.map((row) => ({
           canonicalKey: row.canonicalKey,
           label: row.label,
+          displayLabel: row.displayLabel,
+          definition: row.definition,
           mappingFieldId: row.mappingFieldId,
           mappingDataType: row.mappingDataType,
           mappingIsActive: row.mappingIsActive,
@@ -459,6 +553,17 @@ export async function seedFieldSourceRegistryIfNeeded() {
       .onConflictDoUpdate({
         target: fieldDefinitions.canonicalKey,
         set: {
+          displayLabel: sql`case
+            when btrim(coalesce(excluded.display_label, '')) <> ''
+            then excluded.display_label
+            else ${fieldDefinitions.displayLabel}
+          end`,
+          definition: sql`case
+            when btrim(coalesce(${fieldDefinitions.definition}, '')) = ''
+              and btrim(coalesce(excluded.definition, '')) <> ''
+            then excluded.definition
+            else ${fieldDefinitions.definition}
+          end`,
           mappingFieldId: sql`excluded.mapping_field_id`,
           mappingDataType: sql`excluded.mapping_data_type`,
           mappingIsActive: sql`excluded.mapping_is_active`,
@@ -498,6 +603,7 @@ export async function seedFieldSourceRegistryIfNeeded() {
     const fieldDefinitionIdByCanonicalKey = new Map(
       fieldDefinitionRows.map((row) => [row.canonicalKey, row.id]),
     );
+    const matchedFieldDefinitionIds = fieldDefinitionRows.map((row) => row.id);
     const fieldDefinitionSourceRows = seedRows.flatMap((row) =>
       row.sourceValues.flatMap((sourceValue) => {
         const fieldDefinitionId = fieldDefinitionIdByCanonicalKey.get(row.canonicalKey);
@@ -517,19 +623,43 @@ export async function seedFieldSourceRegistryIfNeeded() {
       }),
     );
 
-    if (fieldDefinitionSourceRows.length === 0) {
+    if (matchedFieldDefinitionIds.length > 0) {
+      await tx
+        .delete(fieldDefinitionSources)
+        .where(inArray(fieldDefinitionSources.fieldDefinitionId, matchedFieldDefinitionIds));
+    }
+
+    if (fieldDefinitionSourceRows.length > 0) {
+      await tx
+        .insert(fieldDefinitionSources)
+        .values(fieldDefinitionSourceRows)
+        .onConflictDoNothing({
+          target: [
+            fieldDefinitionSources.fieldDefinitionId,
+            fieldDefinitionSources.sourceTypeId,
+          ],
+        });
+    }
+
+    const [addOnFieldsSourceType] = await tx
+      .select({ id: fieldSourceTypes.id })
+      .from(fieldSourceTypes)
+      .where(eq(fieldSourceTypes.key, addOnFieldsSourceKey));
+
+    if (!addOnFieldsSourceType) {
       return;
     }
 
-    await tx
-      .insert(fieldDefinitionSources)
-      .values(fieldDefinitionSourceRows)
-      .onConflictDoNothing({
-        target: [
-          fieldDefinitionSources.fieldDefinitionId,
-          fieldDefinitionSources.sourceTypeId,
-        ],
-      });
+    const remainingAddOnFieldsSources = await tx
+      .select({ id: fieldDefinitionSources.id })
+      .from(fieldDefinitionSources)
+      .where(eq(fieldDefinitionSources.sourceTypeId, addOnFieldsSourceType.id));
+
+    if (remainingAddOnFieldsSources.length === 0) {
+      await tx
+        .delete(fieldSourceTypes)
+        .where(eq(fieldSourceTypes.id, addOnFieldsSourceType.id));
+    }
   });
   return { seeded: true };
 }

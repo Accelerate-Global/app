@@ -4,9 +4,14 @@ import {
   type ContractRequirementId,
 } from "../../config/change-impact";
 import type { UiSmokeContractIssue } from "./ui-smoke-contract";
+import {
+  resolveUiSmokeSelection,
+  type UiSmokeSelection,
+} from "./ui-smoke-selection";
 
 export type VerifyChangeReport = ChangeImpactResult & {
   contractIssues: UiSmokeContractIssue[];
+  targetedSmoke: UiSmokeSelection;
   exitCode: 0 | 1;
 };
 
@@ -35,6 +40,7 @@ export function createVerifyChangeReport(input: {
   return {
     ...impact,
     contractIssues,
+    targetedSmoke: resolveUiSmokeSelection(input.changedFiles),
     exitCode: contractIssues.length > 0 ? 1 : 0,
   };
 }

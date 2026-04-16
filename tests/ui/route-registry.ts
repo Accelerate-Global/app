@@ -57,6 +57,7 @@ export const smokeRouteSpecs: SmokeRouteSpec[] = [
     pageFile: "src/app/dashboard/page.tsx",
     path: "/dashboard",
     pageId: "dashboard",
+    journeys: ["admin can edit dataset details"],
   },
   {
     id: "datasets-index-viewer",
@@ -99,6 +100,7 @@ export const smokeRouteSpecs: SmokeRouteSpec[] = [
     pageFile: "src/app/dashboard/field-definitions/page.tsx",
     path: "/dashboard/field-definitions",
     pageId: "field-definitions",
+    journeys: ["admin can edit a field definition"],
   },
   {
     id: "field-sources-viewer-redirect",
@@ -113,6 +115,7 @@ export const smokeRouteSpecs: SmokeRouteSpec[] = [
     pageFile: "src/app/dashboard/field-sources/page.tsx",
     path: "/dashboard/field-sources",
     pageId: "field-sources",
+    journeys: ["admin can create a source column and update a field source value"],
   },
   {
     id: "filter-settings-viewer-redirect",
@@ -127,6 +130,7 @@ export const smokeRouteSpecs: SmokeRouteSpec[] = [
     pageFile: "src/app/dashboard/filter-settings/page.tsx",
     path: "/dashboard/filter-settings",
     pageId: "filter-settings",
+    journeys: ["admin can create and update filter settings"],
   },
   {
     id: "profile-viewer",
@@ -155,5 +159,6 @@ export const smokeRouteSpecs: SmokeRouteSpec[] = [
     pageFile: "src/app/dashboard/upload/page.tsx",
     path: "/dashboard/upload",
     pageId: "upload",
+    journeys: ["admin can replace a dataset through the real upload flow"],
   },
 ];

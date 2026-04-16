@@ -62,4 +62,17 @@ describe("verify-change", () => {
 
     expect(report.exitCode).toBe(1);
   });
+
+  it("includes the targeted smoke recommendation for dataset UI changes", () => {
+    const report = createVerifyChangeReport({
+      changedFiles: ["src/components/dashboard/dataset-edit-sheet.tsx"],
+      contractIssues: [],
+    });
+
+    expect(report.targetedSmoke.mode).toBe("targeted");
+    expect(report.targetedSmoke.command).toBe("pnpm run test:ui:smoke:targeted");
+    expect(report.targetedSmoke.journeyTitles).toContain(
+      "admin can edit dataset details",
+    );
+  });
 });

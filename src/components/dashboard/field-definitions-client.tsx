@@ -80,15 +80,20 @@ function getFieldDefinitionDescription(definition: string) {
 
 function FieldDefinitionName({
   fieldDefinition,
+  fieldDefinitionId,
   showHiddenMarker,
 }: {
   fieldDefinition: FieldDefinition;
+  fieldDefinitionId: string;
   showHiddenMarker: boolean;
 }) {
   const effectiveLabel = getFieldDefinitionEffectiveLabel(fieldDefinition);
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div
+      className="flex flex-wrap items-center gap-2"
+      data-smoke-field-definition-name={fieldDefinitionId}
+    >
       <span>{effectiveLabel}</span>
       {showHiddenMarker && fieldDefinition.hideFromViewerFieldDefinitions ? (
         <Badge variant="outline" className="rounded-full px-2.5 text-[0.7rem]">
@@ -114,6 +119,7 @@ function FieldDefinitionDescriptionCell({
   return (
     <div className="relative min-h-16 pr-0 sm:pr-14">
       <p
+        data-smoke-field-definition-description={fieldDefinition.id}
         className={
           fieldDefinition.definition.trim()
             ? "whitespace-pre-line text-foreground"
@@ -160,7 +166,10 @@ function FieldDefinitionMobileCard({
   const description = getFieldDefinitionDescription(fieldDefinition.definition);
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-border bg-background">
+    <div
+      className="overflow-hidden rounded-2xl border border-border bg-background"
+      data-smoke-field-definition-row={fieldDefinition.id}
+    >
       <div className="border-b border-border bg-muted/35 px-4 py-3">
         <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
           Field
@@ -168,6 +177,7 @@ function FieldDefinitionMobileCard({
         <div className="mt-1 text-sm font-medium text-foreground">
           <FieldDefinitionName
             fieldDefinition={fieldDefinition}
+            fieldDefinitionId={fieldDefinition.id}
             showHiddenMarker={canEdit}
           />
         </div>
@@ -179,6 +189,7 @@ function FieldDefinitionMobileCard({
               Description
             </p>
             <p
+              data-smoke-field-definition-description={fieldDefinition.id}
               className={
                 fieldDefinition.definition.trim()
                   ? "whitespace-pre-line text-sm leading-6 text-foreground"
@@ -242,11 +253,13 @@ function FieldDefinitionsTable({
             {fieldDefinitions.map((fieldDefinition) => (
               <TableRow
                 key={fieldDefinition.id}
+                data-smoke-field-definition-row={fieldDefinition.id}
                 className="hover:bg-transparent [&>:not(:last-child)]:border-r [&>:not(:last-child)]:border-border"
               >
                 <TableCell className="px-5 py-4 align-top text-sm font-medium whitespace-normal text-foreground">
                   <FieldDefinitionName
                     fieldDefinition={fieldDefinition}
+                    fieldDefinitionId={fieldDefinition.id}
                     showHiddenMarker={canEdit}
                   />
                 </TableCell>

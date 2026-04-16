@@ -1,12 +1,20 @@
 import { mkdir } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import net from "node:net";
+import path from "node:path";
 
 import {
-  UI_SMOKE_BASE_URL,
   UI_SMOKE_TMP_DIR,
-  UI_SMOKE_USERS,
 } from "../tests/ui/support/smoke-data";
+import { parseGitStatusPorcelain } from "./lib/git-status";
+import {
+  buildUiSmokeCommandEnv,
+  parseSupabaseEnvOutput,
+} from "./lib/ui-smoke-env";
+import {
+  buildUiSmokeGrepPattern,
+  resolveUiSmokeSelection,
+} from "./lib/ui-smoke-selection";
 
 function runCommand(
   command: string,
@@ -52,30 +60,13 @@ function runCommand(
   });
 }
 
-function parseEnvOutput(output: string) {
-  const entries: Record<string, string> = {};
-
-  for (const line of output.split(/\r?\n/u)) {
-    const match = line.match(/^(?:export\s+)?([A-Z0-9_]+)=(.+)$/u);
-
-    if (!match) {
-      continue;
-    }
-
-    const [, key, rawValue] = match;
-    let value = rawValue.trim();
-
-    if (
-      (value.startsWith('"') && value.endsWith('"')) ||
-      (value.startsWith("'") && value.endsWith("'"))
-    ) {
-      value = value.slice(1, -1);
-    }
-
-    entries[key] = value;
-  }
-
-  return entries;
+function createPipelineError(
+  classification: "bootstrap" | "contract" | "product",
+  message: string,
+  error: unknown,
+) {
+  const detail = error instanceof Error ? error.message : String(error);
+  return new Error(`[${classification}] ${message}\n${detail}`);
 }
 
 async function canListenOnPort(port: number) {
@@ -109,72 +100,151 @@ async function assertSupabasePortsAvailable() {
   }
 }
 
-function buildSmokeEnv(statusEnv: Record<string, string>) {
-  const supabaseUrl =
-    statusEnv.NEXT_PUBLIC_SUPABASE_URL ??
-    statusEnv.API_URL ??
-    statusEnv.SUPABASE_URL;
-  const publishableKey =
-    statusEnv.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
-    statusEnv.ANON_KEY ??
-    statusEnv.PUBLISHABLE_KEY;
-  const serviceRoleKey =
-    statusEnv.SUPABASE_SERVICE_ROLE_KEY ?? statusEnv.SERVICE_ROLE_KEY;
-  const secretKey =
-    statusEnv.SUPABASE_SECRET_KEY ?? statusEnv.SECRET_KEY;
-  const databaseUrl = statusEnv.DATABASE_URL ?? statusEnv.DB_URL;
+async function runStage(
+  classification: "bootstrap" | "contract" | "product",
+  message: string,
+  command: string,
+  args: string[],
+  options: {
+    env?: NodeJS.ProcessEnv;
+    captureOutput?: boolean;
+  } = {},
+) {
+  try {
+    return await runCommand(command, args, options);
+  } catch (error) {
+    throw createPipelineError(classification, message, error);
+  }
+}
 
-  if (!supabaseUrl || !publishableKey || (!serviceRoleKey && !secretKey) || !databaseUrl) {
-    throw new Error(
-      "Could not derive local Supabase env values from `supabase status -o env`.",
-    );
+function printSelectionSummary(lines: string[]) {
+  if (lines.length === 0) {
+    return;
   }
 
-  return {
-    ...process.env,
-    UI_SMOKE_ENABLED: "1",
-    UI_SMOKE_BASE_URL,
-    NEXT_PUBLIC_SUPABASE_URL: supabaseUrl,
-    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: publishableKey,
-    NEXT_PUBLIC_SUPABASE_ANON_KEY: publishableKey,
-    ...(secretKey ? { SUPABASE_SECRET_KEY: secretKey } : {}),
-    ...(serviceRoleKey ? { SUPABASE_SERVICE_ROLE_KEY: serviceRoleKey } : {}),
-    DATABASE_URL: databaseUrl,
-    DATASET_ADMIN_EMAIL: UI_SMOKE_USERS.admin.email,
-    SUPABASE_STORAGE_BUCKET: "datasets",
-  };
+  console.log("Targeted smoke selection:");
+  for (const line of lines) {
+    console.log(`- ${line}`);
+  }
 }
 
 async function main() {
   const headed = process.argv.includes("--headed");
+  const targeted = process.argv.includes("--targeted");
+  const changedFiles = targeted
+    ? parseGitStatusPorcelain(
+        await runCommand(
+          "git",
+          ["status", "--porcelain=v1", "--untracked-files=all", "-z"],
+          { captureOutput: true },
+        ),
+      ).map((file) => file.path)
+    : [];
+  const targetedSelection = targeted
+    ? resolveUiSmokeSelection(changedFiles)
+    : null;
+
+  if (targetedSelection?.mode === "none") {
+    console.log("No targeted UI smoke routes or journeys matched the current worktree.");
+    return;
+  }
+
+  if (targetedSelection) {
+    printSelectionSummary(targetedSelection.summary);
+  }
 
   await mkdir(UI_SMOKE_TMP_DIR, { recursive: true });
-  await assertSupabasePortsAvailable();
-  await runCommand("supabase", ["start"]);
-  await runCommand("supabase", ["db", "reset", "--local", "--yes"]);
-
-  const statusOutput = await runCommand(
+  try {
+    await assertSupabasePortsAvailable();
+  } catch (error) {
+    throw createPipelineError(
+      "bootstrap",
+      "Local Supabase ports are unavailable.",
+      error,
+    );
+  }
+  await runStage("bootstrap", "supabase start failed.", "supabase", ["start"]);
+  await runStage(
+    "bootstrap",
+    "supabase db reset failed.",
+    "supabase",
+    ["db", "reset", "--local", "--yes"],
+  );
+  const statusOutput = await runStage(
+    "bootstrap",
+    "supabase status failed.",
     "supabase",
     ["status", "-o", "env"],
     { captureOutput: true },
   );
-  const smokeEnv = buildSmokeEnv(parseEnvOutput(statusOutput));
+  const playwrightTmpDir = path.join(UI_SMOKE_TMP_DIR, "playwright-tmp");
 
-  await runCommand("pnpm", ["run", "smoke:bootstrap"], { env: smokeEnv });
-  await runCommand("pnpm", ["run", "smoke:check"], { env: smokeEnv });
-  await runCommand("pnpm", ["build"], { env: smokeEnv });
-  await runCommand(
+  await mkdir(playwrightTmpDir, { recursive: true });
+  const smokeEnv = {
+    ...buildUiSmokeCommandEnv(parseSupabaseEnvOutput(statusOutput)),
+    TMPDIR: playwrightTmpDir,
+  };
+
+  await runStage(
+    "bootstrap",
+    "UI smoke preflight failed.",
     "pnpm",
-    [
-      "exec",
-      "playwright",
-      "test",
-      "-c",
-      "playwright.smoke.config.ts",
-      ...(headed ? ["--headed"] : []),
-    ],
+    ["run", "smoke:preflight"],
     { env: smokeEnv },
   );
+  await runStage(
+    "bootstrap",
+    "UI smoke bootstrap failed.",
+    "pnpm",
+    ["run", "smoke:bootstrap"],
+    { env: smokeEnv },
+  );
+  await runStage(
+    "contract",
+    "UI smoke contract validation failed.",
+    "pnpm",
+    ["run", "smoke:check"],
+    { env: smokeEnv },
+  );
+  await runStage("product", "Next build failed before browser smoke.", "pnpm", ["build"], {
+    env: smokeEnv,
+  });
+
+  const playwrightArgs = [
+    "exec",
+    "playwright",
+    "test",
+    "-c",
+    "playwright.smoke.config.ts",
+  ];
+  const grepPattern =
+    targetedSelection?.mode === "targeted"
+      ? buildUiSmokeGrepPattern(targetedSelection)
+      : null;
+
+  if (grepPattern) {
+    playwrightArgs.push("--grep", grepPattern);
+  }
+
+  for (const projectName of targetedSelection?.mode === "targeted"
+    ? targetedSelection.projectNames
+    : []) {
+    playwrightArgs.push("--project", projectName);
+  }
+
+  if (headed) {
+    playwrightArgs.push("--headed");
+  }
+
+  try {
+    await runCommand("pnpm", playwrightArgs, { env: smokeEnv });
+  } catch (error) {
+    throw createPipelineError(
+      "product",
+      "Playwright UI smoke suite failed. Review the classified failures above.",
+      error,
+    );
+  }
 }
 
 void main().catch((error) => {

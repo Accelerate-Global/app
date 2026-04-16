@@ -147,6 +147,7 @@ function FieldDefinitionEditSheetForm({
             value={displayLabel}
             disabled={isSaving}
             placeholder={fieldDefinition.label}
+            data-smoke-field-definition-display-label
             onChange={(event) => setDisplayLabel(event.target.value)}
           />
           <p className="text-sm text-muted-foreground">
@@ -167,6 +168,7 @@ function FieldDefinitionEditSheetForm({
             value={definition}
             disabled={isSaving}
             placeholder="No definition available yet."
+            data-smoke-field-definition-definition
             className="min-h-32 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm transition-colors outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 dark:bg-input/30 dark:disabled:bg-input/80"
             onChange={(event) => setDefinition(event.target.value)}
           />
@@ -232,7 +234,11 @@ function FieldDefinitionEditSheetForm({
       </div>
 
       <SheetFooter className="border-t border-border px-6 py-4 sm:flex-row sm:justify-end">
-        <Button type="submit" disabled={isSaving || !hasChanges}>
+        <Button
+          type="submit"
+          disabled={isSaving || !hasChanges}
+          data-smoke-field-definition-save
+        >
           Save changes
         </Button>
         <SheetClose
