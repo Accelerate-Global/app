@@ -61,6 +61,10 @@ async function waitForPullRequestChecks(headSha: string) {
     commitSha: headSha,
   });
   await waitForWorkflowRun({
+    workflowName: "UI Smoke",
+    commitSha: headSha,
+  });
+  await waitForWorkflowRun({
     workflowName: "Database Security",
     commitSha: headSha,
   });
@@ -140,6 +144,10 @@ async function main() {
   console.log(`Waiting for main branch checks on ${mergeSha}...`);
   await waitForWorkflowRun({
     workflowName: "App Quality",
+    commitSha: mergeSha,
+  });
+  await waitForWorkflowRun({
+    workflowName: "UI Smoke",
     commitSha: mergeSha,
   });
   await waitForWorkflowRun({

@@ -65,7 +65,31 @@ export function buildUiSmokeGrepPattern(selection: UiSmokeSelection) {
     return null;
   }
 
-  return `^(?:${titles.map(escapePlaywrightGrepPattern).join("|")})$`;
+  return `(?:${titles.map(escapePlaywrightGrepPattern).join("|")})`;
+}
+
+export function formatUiSmokeZeroMatchMessage(input: {
+  grepPattern: string;
+  selection: UiSmokeSelection;
+}) {
+  const details = [
+    "Targeted UI smoke selection matched zero Playwright tests.",
+    `Grep pattern: ${input.grepPattern}`,
+  ];
+
+  if (input.selection.routeIds.length > 0) {
+    details.push(`Routes: ${input.selection.routeIds.join(", ")}`);
+  }
+
+  if (input.selection.journeyTitles.length > 0) {
+    details.push(`Journeys: ${input.selection.journeyTitles.join(", ")}`);
+  }
+
+  if (input.selection.projectNames.length > 0) {
+    details.push(`Projects: ${input.selection.projectNames.join(", ")}`);
+  }
+
+  return details.join("\n");
 }
 
 export function resolveUiSmokeSelection(changedFiles: string[]): UiSmokeSelection {
