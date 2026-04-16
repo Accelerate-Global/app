@@ -41,9 +41,11 @@ type DatasetViewSwitchGridProps = {
   watchlistCard: {
     enabled: boolean;
     supported: boolean;
+    thresholdLabel: string;
     threshold: number;
     minThreshold: number;
     maxThreshold: number;
+    frontierGroupLabel: string;
     frontierGroupValue: boolean;
     onEnabledChange: (checked: boolean) => void;
     onThresholdChange: (value: number) => void;
@@ -222,15 +224,16 @@ export function DatasetViewSwitchGrid({
       >
         {!watchlistCard.supported ? (
           <div className="self-end text-sm leading-5 text-muted-foreground">
-            This dataset does not include <code>Christianity_GSEC</code> and{" "}
-            <code>Christianity_Frontier_Group</code>, so Watchlist filtering is unavailable.
+            This dataset does not include <code>{watchlistCard.thresholdLabel}</code>{" "}
+            and <code>{watchlistCard.frontierGroupLabel}</code>, so Watchlist
+            filtering is unavailable.
           </div>
         ) : (
           <div className="mt-auto w-full self-end">
             <div className="space-y-3">
               <div className="flex flex-wrap items-center gap-2 text-sm">
                 <code className="rounded-md bg-muted px-2 py-1 text-xs font-medium text-foreground">
-                  Christianity_GSEC
+                  {watchlistCard.thresholdLabel}
                 </code>
                 <span className="rounded-md border border-border bg-background px-2 py-1 text-xs font-medium text-muted-foreground">
                   {"<="}
@@ -252,19 +255,21 @@ export function DatasetViewSwitchGrid({
                   <NumberFieldGroup>
                     <NumberFieldInput
                       className="text-left"
-                      aria-label="Watchlist Christianity_GSEC threshold"
+                      aria-label={`Watchlist ${watchlistCard.thresholdLabel} threshold`}
                     />
                     <NumberFieldDecrement
                       className="rounded-none!"
-                      aria-label="Decrease Christianity_GSEC threshold"
+                      aria-label={`Decrease ${watchlistCard.thresholdLabel} threshold`}
                     />
-                    <NumberFieldIncrement aria-label="Increase Christianity_GSEC threshold" />
+                    <NumberFieldIncrement
+                      aria-label={`Increase ${watchlistCard.thresholdLabel} threshold`}
+                    />
                   </NumberFieldGroup>
                 </NumberField>
               </div>
               <div className="flex flex-wrap items-center gap-2 text-sm">
                 <code className="rounded-md bg-muted px-2 py-1 text-xs font-medium text-foreground">
-                  Christianity_Frontier_Group
+                  {watchlistCard.frontierGroupLabel}
                 </code>
                 <span className="rounded-md border border-border bg-background px-2 py-1 text-xs font-medium text-muted-foreground">
                   =
@@ -277,7 +282,7 @@ export function DatasetViewSwitchGrid({
                   }
                 >
                   <SelectTrigger
-                    aria-label="Watchlist Christianity_Frontier_Group value"
+                    aria-label={`Watchlist ${watchlistCard.frontierGroupLabel} value`}
                     className={cn(
                       "min-w-24 rounded-md border-0 px-2 py-1 text-xs font-medium uppercase",
                       watchlistCard.frontierGroupValue

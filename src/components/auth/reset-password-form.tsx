@@ -3,7 +3,7 @@
 import { Loader2Icon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -18,17 +18,134 @@ import { Label } from "@/components/ui/label";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 type ResetPasswordFormProps = {
-  canReset: boolean;
+  initialCanReset: boolean;
 };
 
-export function ResetPasswordForm({ canReset }: ResetPasswordFormProps) {
+function hasRecoveryHash() {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  return window.location.hash.includes("type=recovery");
+}
+
+function getRecoveryCodeFromQuery() {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  return new URL(window.location.href).searchParams.get("code");
+}
+
+function hasRecoveryCallbackParams() {
+  return hasRecoveryHash() || Boolean(getRecoveryCodeFromQuery());
+}
+
+function getRecoverySessionFromHash() {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const hashParams = new URLSearchParams(window.location.hash.slice(1));
+  const accessToken = hashParams.get("access_token");
+  const refreshToken = hashParams.get("refresh_token");
+
+  if (!accessToken || !refreshToken) {
+    return null;
+  }
+
+  return {
+    access_token: accessToken,
+    refresh_token: refreshToken,
+  };
+}
+
+export function ResetPasswordForm({
+  initialCanReset,
+}: ResetPasswordFormProps) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [canReset, setCanReset] = useState(initialCanReset);
+  const [isResolvingRecovery, setIsResolvingRecovery] = useState(
+    () => !initialCanReset && hasRecoveryCallbackParams(),
+  );
 
   const passwordsMatch = password.length > 0 && password === confirmPassword;
+
+  useEffect(() => {
+    if (initialCanReset || !hasRecoveryCallbackParams()) {
+      return;
+    }
+
+    const supabase = createSupabaseBrowserClient();
+    const recoveryResolutionTimeout = window.setTimeout(() => {
+      setIsResolvingRecovery(false);
+    }, 3_000);
+
+    void (async () => {
+      const recoveryCode = getRecoveryCodeFromQuery();
+
+      if (recoveryCode) {
+        const { error } = await supabase.auth.exchangeCodeForSession(recoveryCode);
+
+        if (!error) {
+          setCanReset(true);
+          setIsResolvingRecovery(false);
+          window.clearTimeout(recoveryResolutionTimeout);
+          return;
+        }
+      }
+
+      const recoverySession = getRecoverySessionFromHash();
+
+      if (recoverySession) {
+        const { error } = await supabase.auth.setSession(recoverySession);
+
+        if (!error) {
+          setCanReset(true);
+          setIsResolvingRecovery(false);
+          window.clearTimeout(recoveryResolutionTimeout);
+          window.history.replaceState({}, document.title, window.location.pathname);
+          return;
+        }
+      }
+
+      const { data } = await supabase.auth.getSession();
+
+      if (data.session) {
+        setCanReset(true);
+        setIsResolvingRecovery(false);
+        window.clearTimeout(recoveryResolutionTimeout);
+      }
+    })()
+      .catch(() => {
+        setIsResolvingRecovery(false);
+        window.clearTimeout(recoveryResolutionTimeout);
+      });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (
+        session &&
+        (event === "INITIAL_SESSION" ||
+          event === "PASSWORD_RECOVERY" ||
+          event === "SIGNED_IN")
+      ) {
+        setCanReset(true);
+        setIsResolvingRecovery(false);
+        window.clearTimeout(recoveryResolutionTimeout);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+      window.clearTimeout(recoveryResolutionTimeout);
+    };
+  }, [initialCanReset]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -76,12 +193,21 @@ export function ResetPasswordForm({ canReset }: ResetPasswordFormProps) {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {!canReset ? (
+        {!canReset && !isResolvingRecovery ? (
           <Alert variant="destructive">
             <AlertTitle>Recovery link issue</AlertTitle>
             <AlertDescription>
               This recovery link is invalid or has expired. Request a new one to
               continue.
+            </AlertDescription>
+          </Alert>
+        ) : null}
+
+        {!canReset && isResolvingRecovery ? (
+          <Alert>
+            <AlertTitle>Validating recovery link</AlertTitle>
+            <AlertDescription>
+              One moment while the password reset session is restored.
             </AlertDescription>
           </Alert>
         ) : null}

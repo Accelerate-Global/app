@@ -46,10 +46,8 @@ async function createSignedInStorageState(input: {
     ).toBeVisible();
     await page.getByLabel("Email").fill(input.email);
     await page.getByLabel("Password").fill(input.password);
-    await Promise.all([
-      page.waitForURL("**/dashboard"),
-      page.getByRole("button", { name: "Sign in" }).click(),
-    ]);
+    await page.getByRole("button", { name: "Sign in" }).click();
+    await page.waitForURL((url) => url.pathname === "/dashboard");
     await expect(page.locator('[data-smoke-page="dashboard"]')).toBeVisible();
     await expect(page.locator('[data-smoke-page-ready="dashboard"]')).toBeVisible();
     await page.context().storageState({ path: input.storageStatePath });

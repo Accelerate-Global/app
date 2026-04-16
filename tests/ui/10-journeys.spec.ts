@@ -1,7 +1,8 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 import { readUiSmokeBootstrap } from "./support/bootstrap";
 import { getSmokeProjectContext } from "./support/project-context";
+import { UI_SMOKE_USERS } from "./support/smoke-data";
 import {
   getDatasetNameLocator,
   getDatasetReplacementFixturePath,
@@ -12,10 +13,286 @@ import {
 
 test.describe.configure({ mode: "serial" });
 
+const MAILPIT_BASE_URL =
+  process.env.UI_SMOKE_MAILPIT_URL?.trim() || "http://127.0.0.1:54324";
+
+type MailpitMessageSummary = {
+  ID: string;
+  Created: string;
+};
+
+type MailpitSearchResponse = {
+  messages: MailpitMessageSummary[];
+};
+
+type MailpitMessageDetail = {
+  HTML?: string | null;
+  Text?: string | null;
+};
+
 function skipUnlessDesktopAdmin(projectName: string) {
   const project = getSmokeProjectContext(projectName);
   return project.role !== "admin" || project.viewport !== "desktop";
 }
+
+function skipUnlessDesktopAnonymous(projectName: string) {
+  const project = getSmokeProjectContext(projectName);
+  return project.role !== "anonymous" || project.viewport !== "desktop";
+}
+
+async function signInWithPassword(page: Page, input: {
+  email: string;
+  password: string;
+}) {
+  await page.goto("/");
+  await expect(page.locator('[data-smoke-page="home-sign-in"]')).toBeVisible();
+  await page.getByLabel("Email").fill(input.email);
+  await page.getByLabel("Password").fill(input.password);
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.waitForURL((url) => url.pathname === "/dashboard");
+  await expect(page.locator('[data-smoke-page="dashboard"]')).toBeVisible();
+}
+
+async function requestPasswordReset(page: Page, email: string) {
+  const requestedAt = Date.now();
+
+  await page.goto("/forgot-password");
+  await page.getByLabel("Email").fill(email);
+  await page.getByRole("button", { name: "Send reset link" }).click();
+  await expect(
+    page.getByText(
+      "If an account exists for that email, a password reset link is on its way.",
+    ),
+  ).toBeVisible();
+
+  return requestedAt;
+}
+
+function extractRecoveryLink(detail: MailpitMessageDetail) {
+  const candidates = [detail.Text, detail.HTML].filter(
+    (value): value is string => Boolean(value),
+  );
+
+  for (const candidate of candidates) {
+    const match = candidate.match(
+      /https?:\/\/[^\s"'<>)]*\/auth\/v1\/verify\?[^\s"'<>)]*/u,
+    );
+
+    if (match) {
+      return match[0].replaceAll("&amp;", "&");
+    }
+  }
+
+  return null;
+}
+
+async function pollForRecoveryLink(input: {
+  email: string;
+  requestedAt: number;
+}) {
+  const startedAt = Date.now();
+
+  while (Date.now() - startedAt < 30_000) {
+    const searchResponse = await fetch(
+      `${MAILPIT_BASE_URL}/api/v1/search?kind=to&query=${encodeURIComponent(input.email)}`,
+    );
+
+    if (!searchResponse.ok) {
+      throw new Error(
+        `Mailpit search failed for ${input.email}: ${searchResponse.status}`,
+      );
+    }
+
+    const searchPayload = await searchResponse.json() as MailpitSearchResponse;
+    const newestMatch = searchPayload.messages
+      .filter(
+        (message) =>
+          Date.parse(message.Created) >= input.requestedAt - 1_000,
+      )
+      .sort((left, right) => Date.parse(right.Created) - Date.parse(left.Created))[0];
+
+    if (newestMatch) {
+      const detailResponse = await fetch(
+        `${MAILPIT_BASE_URL}/api/v1/message/${newestMatch.ID}`,
+      );
+
+      if (!detailResponse.ok) {
+        throw new Error(
+          `Mailpit message fetch failed for ${input.email}: ${detailResponse.status}`,
+        );
+      }
+
+      const detail = await detailResponse.json() as MailpitMessageDetail;
+      const actionLink = extractRecoveryLink(detail);
+
+      if (actionLink) {
+        return actionLink;
+      }
+    }
+
+    await pageWait(1_000);
+  }
+
+  throw new Error(`Timed out waiting for recovery email for ${input.email}.`);
+}
+
+function pageWait(milliseconds: number) {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+async function waitForResetPasswordPath(page: Page) {
+  await page.waitForURL((url) => url.pathname === "/reset-password");
+}
+
+async function waitForHomePath(page: Page) {
+  await page.waitForURL((url) => url.pathname === "/");
+}
+
+async function waitForDashboardPath(page: Page) {
+  await page.waitForURL((url) => url.pathname === "/dashboard");
+}
+
+test("allowlisted user can sign up", async ({ page }, testInfo) => {
+  test.skip(skipUnlessDesktopAnonymous(testInfo.project.name));
+
+  await runSmokeJourney("allowlisted user can sign up", async () => {
+    const bootstrap = await readUiSmokeBootstrap();
+
+    await page.goto("/sign-up");
+    await page.getByLabel("Email").fill(bootstrap.authFlows.allowlistedSignup.email);
+    await page.getByLabel("Password").fill(bootstrap.authFlows.allowlistedSignup.password);
+    await page.getByRole("button", { name: "Create account" }).click();
+    await waitForDashboardPath(page);
+    await expect(page.locator('[data-smoke-page="dashboard"]')).toBeVisible();
+  });
+});
+
+test("blocked user cannot sign up", async ({ page }, testInfo) => {
+  test.skip(skipUnlessDesktopAnonymous(testInfo.project.name));
+
+  await runSmokeJourney("blocked user cannot sign up", async () => {
+    await page.goto("/sign-up");
+    await page.getByLabel("Email").fill("blocked@example.com");
+    await page.getByLabel("Password").fill("SmokePass123!");
+    await page.getByRole("button", { name: "Create account" }).click();
+
+    await expect(
+      page.getByText(
+        "This email address has not been granted access yet. Ask an administrator to add it to the signup allowlist first.",
+      ),
+    ).toBeVisible();
+    await expect(page).toHaveURL(/\/sign-up$/);
+  });
+});
+
+test("forgot-password request succeeds", async ({ page }, testInfo) => {
+  test.skip(skipUnlessDesktopAnonymous(testInfo.project.name));
+
+  await runSmokeJourney("forgot-password request succeeds", async () => {
+    const bootstrap = await readUiSmokeBootstrap();
+
+    await requestPasswordReset(page, bootstrap.users.forgotPassword.email);
+  });
+});
+
+test("recovery link lands on reset-password", async ({ page }, testInfo) => {
+  test.skip(skipUnlessDesktopAnonymous(testInfo.project.name));
+
+  await runSmokeJourney("recovery link lands on reset-password", async () => {
+    const bootstrap = await readUiSmokeBootstrap();
+    const requestedAt = await requestPasswordReset(
+      page,
+      bootstrap.users.recovery.email,
+    );
+    const actionLink = await pollForRecoveryLink({
+      email: bootstrap.users.recovery.email,
+      requestedAt,
+    });
+
+    await page.goto(actionLink);
+    await waitForResetPasswordPath(page);
+    await expect(page.locator('[data-smoke-page="reset-password"]')).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Save new password" }),
+    ).toBeVisible();
+  });
+});
+
+test("password reset completes", async ({ page }, testInfo) => {
+  test.skip(skipUnlessDesktopAnonymous(testInfo.project.name));
+
+  await runSmokeJourney("password reset completes", async () => {
+    const bootstrap = await readUiSmokeBootstrap();
+    const requestedAt = await requestPasswordReset(
+      page,
+      bootstrap.users.reset.email,
+    );
+    const actionLink = await pollForRecoveryLink({
+      email: bootstrap.users.reset.email,
+      requestedAt,
+    });
+
+    await page.goto(actionLink);
+    await waitForResetPasswordPath(page);
+    await page.getByLabel("New password").fill(
+      bootstrap.authFlows.passwordReset.nextPassword,
+    );
+    await page.getByLabel("Confirm password").fill(
+      bootstrap.authFlows.passwordReset.nextPassword,
+    );
+    await page.getByRole("button", { name: "Save new password" }).click();
+    await page.waitForURL(/\/\?message=Password/);
+    await expect(page.locator('[data-smoke-page="home-sign-in"]')).toBeVisible();
+
+    await signInWithPassword(page, {
+      email: bootstrap.users.reset.email,
+      password: bootstrap.authFlows.passwordReset.nextPassword,
+    });
+  });
+});
+
+test("signed-in user can sign out", async ({ page }, testInfo) => {
+  test.skip(skipUnlessDesktopAnonymous(testInfo.project.name));
+
+  await runSmokeJourney("signed-in user can sign out", async () => {
+    const bootstrap = await readUiSmokeBootstrap();
+
+    await signInWithPassword(page, {
+      email: bootstrap.users.signOut.email,
+      password: UI_SMOKE_USERS.signOut.password,
+    });
+    await page.goto("/dashboard");
+    await page.locator('[data-smoke-trigger="account-menu"]').click();
+    await expect(page.locator('[data-smoke-surface="account-menu"]')).toBeVisible();
+    await page.getByRole("menuitem", { name: "Sign out" }).click();
+    await waitForHomePath(page);
+    await expect(page.locator('[data-smoke-page="home-sign-in"]')).toBeVisible();
+  });
+});
+
+test("disabled user cannot sign back in", async ({ page }, testInfo) => {
+  test.skip(skipUnlessDesktopAnonymous(testInfo.project.name));
+
+  await runSmokeJourney("disabled user cannot sign back in", async () => {
+    const bootstrap = await readUiSmokeBootstrap();
+
+    await signInWithPassword(page, {
+      email: bootstrap.users.disable.email,
+      password: "SmokePass123!",
+    });
+    await page.goto("/dashboard/profile");
+    await page.getByRole("button", { name: "Disable account" }).click();
+    await waitForHomePath(page);
+    await expect(page.locator('[data-smoke-page="home-sign-in"]')).toBeVisible();
+
+    await page.getByLabel("Email").fill(bootstrap.users.disable.email);
+    await page.getByLabel("Password").fill("SmokePass123!");
+    await page.getByRole("button", { name: "Sign in" }).click();
+
+    await expect(page.getByText("Authentication error")).toBeVisible();
+    await expect(page).toHaveURL(/\/$/);
+  });
+});
 
 test("admin can edit dataset details", async ({ page }, testInfo) => {
   test.skip(skipUnlessDesktopAdmin(testInfo.project.name));

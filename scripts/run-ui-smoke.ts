@@ -23,6 +23,7 @@ function runCommand(
   options: {
     env?: NodeJS.ProcessEnv;
     captureOutput?: boolean;
+    timeoutMs?: number;
   } = {},
 ) {
   return new Promise<string>((resolve, reject) => {
@@ -33,6 +34,29 @@ function runCommand(
     });
     let stdout = "";
     let stderr = "";
+    let settled = false;
+
+    const timeoutId = options.timeoutMs
+      ? setTimeout(() => {
+          if (settled) {
+            return;
+          }
+
+          settled = true;
+          child.kill("SIGTERM");
+          reject(
+            new Error(
+              `${command} ${args.join(" ")} timed out after ${options.timeoutMs}ms`,
+            ),
+          );
+        }, options.timeoutMs)
+      : null;
+
+    function clearTimeoutIfNeeded() {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    }
 
     if (options.captureOutput) {
       child.stdout?.on("data", (chunk) => {
@@ -44,21 +68,43 @@ function runCommand(
     }
 
     child.on("exit", (code) => {
+      if (settled) {
+        clearTimeoutIfNeeded();
+        return;
+      }
+
+      settled = true;
+      clearTimeoutIfNeeded();
+
       if (code === 0) {
         resolve(stdout);
         return;
       }
 
+      const capturedOutput = [stderr, stdout].filter(Boolean).join("\n");
       reject(
         new Error(
           `${command} ${args.join(" ")} exited with code ${code ?? "unknown"}${
-            stderr ? `\n${stderr}` : ""
+            capturedOutput ? `\n${capturedOutput}` : ""
           }`,
         ),
       );
     });
-    child.on("error", reject);
+    child.on("error", (error) => {
+      if (settled) {
+        clearTimeoutIfNeeded();
+        return;
+      }
+
+      settled = true;
+      clearTimeoutIfNeeded();
+      reject(error);
+    });
   });
+}
+
+function sleep(milliseconds: number) {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
 function createPipelineError(
@@ -101,6 +147,92 @@ async function assertSupabasePortsAvailable() {
   }
 }
 
+async function waitForSupabasePortsAvailable(options?: {
+  maxAttempts?: number;
+  retryDelayMs?: number;
+}) {
+  let lastError: unknown = null;
+  const maxAttempts = options?.maxAttempts ?? 15;
+  const retryDelayMs = options?.retryDelayMs ?? 2_000;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      await assertSupabasePortsAvailable();
+      return;
+    } catch (error) {
+      lastError = error;
+
+      if (attempt === maxAttempts) {
+        throw error;
+      }
+
+      console.warn(
+        `Local Supabase ports are still being released. Retrying in ${retryDelayMs}ms (${attempt}/${maxAttempts - 1}).`,
+      );
+      await sleep(retryDelayMs);
+    }
+  }
+
+  throw lastError;
+}
+
+function isDockerPruneInProgressError(error: unknown) {
+  return (
+    error instanceof Error &&
+    error.message.includes("a prune operation is already running")
+  );
+}
+
+function isSupabaseStartupRaceError(error: unknown) {
+  return (
+    error instanceof Error &&
+    (
+      error.message.includes("container is not ready: starting") ||
+      error.message.includes("error running container: exit 143") ||
+      error.message.includes("timed out") ||
+      error.message.includes("failed to inspect container health") ||
+      error.message.includes("failed to read docker logs") ||
+      error.message.includes("No such container") ||
+      error.message.includes("failed to dial native") ||
+      error.message.includes("connect: connection refused")
+    )
+  );
+}
+
+function isSupabaseStartRetryableError(error: unknown) {
+  return (
+    error instanceof Error &&
+    (
+      error.message.includes("ports are not available") ||
+      error.message.includes("container name") ||
+      isSupabaseStartupRaceError(error)
+    )
+  );
+}
+
+function isSupabaseDbResetRetryableError(error: unknown) {
+  return (
+    error instanceof Error &&
+    (
+      isSupabaseStartupRaceError(error) ||
+      error.message.includes("supabase start is not running") ||
+      error.message.includes("open supabase/.temp/profile")
+    )
+  );
+}
+
+function isLocalStackNotReadyError(error: unknown) {
+  return (
+    error instanceof Error &&
+    (
+      error.message.includes("relation \"public.signup_email_allowlist\" does not exist") ||
+      error.message.includes("ECONNREFUSED") ||
+      error.message.includes("the database system is starting up") ||
+      error.message.includes("connection refused")
+    )
+  );
+}
+
 async function runStage(
   classification: "bootstrap" | "contract" | "product",
   message: string,
@@ -109,6 +241,7 @@ async function runStage(
   options: {
     env?: NodeJS.ProcessEnv;
     captureOutput?: boolean;
+    timeoutMs?: number;
   } = {},
 ) {
   try {
@@ -116,6 +249,109 @@ async function runStage(
   } catch (error) {
     throw createPipelineError(classification, message, error);
   }
+}
+
+async function runStageWithRetry(input: {
+  classification: "bootstrap" | "contract" | "product";
+  message: string;
+  command: string;
+  args: string[];
+  env?: NodeJS.ProcessEnv;
+  captureOutput?: boolean;
+  timeoutMs?: number;
+  attempts: number;
+  retryDelayMs: number;
+  shouldRetry: (error: unknown) => boolean;
+  beforeRetry?: (error: unknown, attempt: number) => Promise<void>;
+}) {
+  let lastError: unknown = null;
+
+  for (let attempt = 1; attempt <= input.attempts; attempt += 1) {
+    try {
+      return await runStage(
+        input.classification,
+        input.message,
+        input.command,
+        input.args,
+        {
+          env: input.env,
+          captureOutput: input.captureOutput,
+          timeoutMs: input.timeoutMs,
+        },
+      );
+    } catch (error) {
+      lastError = error;
+
+      if (attempt === input.attempts || !input.shouldRetry(error)) {
+        throw error;
+      }
+
+      if (input.beforeRetry) {
+        await input.beforeRetry(error, attempt);
+      }
+
+      console.warn(
+        `${input.message} Retrying in ${input.retryDelayMs}ms (${attempt}/${input.attempts - 1}).`,
+      );
+      await sleep(input.retryDelayMs);
+    }
+  }
+
+  throw lastError;
+}
+
+async function resetSupabaseAfterStartupFailure() {
+  let stopTriggeredPrune = false;
+
+  try {
+    await runCommand("supabase", ["stop"], {
+      captureOutput: true,
+      timeoutMs: 120_000,
+    });
+  } catch (error) {
+    stopTriggeredPrune = isDockerPruneInProgressError(error);
+    console.warn(
+      `Could not stop local Supabase stack before retry: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
+  }
+
+  if (!stopTriggeredPrune) {
+    try {
+      await runCommand("docker", ["container", "prune", "-f"], {
+        captureOutput: true,
+        timeoutMs: 120_000,
+      });
+    } catch (error) {
+      console.warn(
+        `Could not prune stopped Docker containers before retry: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
+  }
+
+  await waitForSupabasePortsAvailable({ maxAttempts: 30, retryDelayMs: 2_000 });
+  await sleep(3_000);
+}
+
+async function startLocalSupabaseStack() {
+  await runStageWithRetry({
+    classification: "bootstrap",
+    message: "supabase start failed.",
+    command: "supabase",
+    args: ["start"],
+    captureOutput: true,
+    attempts: 3,
+    retryDelayMs: 3_000,
+    timeoutMs: 120_000,
+    shouldRetry: isSupabaseStartRetryableError,
+    beforeRetry: async () => {
+      await resetSupabaseAfterStartupFailure();
+    },
+  });
+  await sleep(3_000);
 }
 
 function printSelectionSummary(lines: string[]) {
@@ -203,7 +439,7 @@ async function main() {
 
   await mkdir(UI_SMOKE_TMP_DIR, { recursive: true });
   try {
-    await assertSupabasePortsAvailable();
+    await waitForSupabasePortsAvailable();
   } catch (error) {
     throw createPipelineError(
       "bootstrap",
@@ -211,13 +447,23 @@ async function main() {
       error,
     );
   }
-  await runStage("bootstrap", "supabase start failed.", "supabase", ["start"]);
-  await runStage(
-    "bootstrap",
-    "supabase db reset failed.",
-    "supabase",
-    ["db", "reset", "--local", "--yes"],
-  );
+  await sleep(3_000);
+  await startLocalSupabaseStack();
+  await runStageWithRetry({
+    classification: "bootstrap",
+    message: "supabase db reset failed.",
+    command: "supabase",
+    args: ["db", "reset", "--local", "--yes"],
+    captureOutput: true,
+    attempts: 3,
+    retryDelayMs: 2_000,
+    timeoutMs: 120_000,
+    shouldRetry: isSupabaseDbResetRetryableError,
+    beforeRetry: async () => {
+      await resetSupabaseAfterStartupFailure();
+      await startLocalSupabaseStack();
+    },
+  });
   const statusOutput = await runStage(
     "bootstrap",
     "supabase status failed.",
@@ -233,20 +479,26 @@ async function main() {
     TMPDIR: playwrightTmpDir,
   };
 
-  await runStage(
-    "bootstrap",
-    "UI smoke preflight failed.",
-    "pnpm",
-    ["run", "smoke:preflight"],
-    { env: smokeEnv },
-  );
-  await runStage(
-    "bootstrap",
-    "UI smoke bootstrap failed.",
-    "pnpm",
-    ["run", "smoke:bootstrap"],
-    { env: smokeEnv },
-  );
+  await runStageWithRetry({
+    classification: "bootstrap",
+    message: "UI smoke preflight failed.",
+    command: "pnpm",
+    args: ["run", "smoke:preflight"],
+    env: smokeEnv,
+    attempts: 5,
+    retryDelayMs: 2_000,
+    shouldRetry: isLocalStackNotReadyError,
+  });
+  await runStageWithRetry({
+    classification: "bootstrap",
+    message: "UI smoke bootstrap failed.",
+    command: "pnpm",
+    args: ["run", "smoke:bootstrap"],
+    env: smokeEnv,
+    attempts: 5,
+    retryDelayMs: 2_000,
+    shouldRetry: isLocalStackNotReadyError,
+  });
   await runStage(
     "contract",
     "UI smoke contract validation failed.",

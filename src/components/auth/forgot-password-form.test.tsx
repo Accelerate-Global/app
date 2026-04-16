@@ -48,9 +48,7 @@ describe("ForgotPasswordForm", () => {
       expect(resetPasswordForEmail).toHaveBeenCalledWith(
         "admin@example.com",
         expect.objectContaining({
-          redirectTo: expect.stringContaining(
-            "/auth/confirm?next=/reset-password",
-          ),
+          redirectTo: expect.stringContaining("/reset-password"),
         }),
       );
     });

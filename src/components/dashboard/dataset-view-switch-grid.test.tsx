@@ -19,9 +19,11 @@ describe("DatasetViewSwitchGrid", () => {
         watchlistCard={{
           enabled: false,
           supported: true,
+          thresholdLabel: "Christianity_GSEC",
           threshold: 2,
           minThreshold: 0,
           maxThreshold: 6,
+          frontierGroupLabel: "Christianity_Frontier_Group",
           frontierGroupValue: true,
           onEnabledChange: vi.fn(),
           onThresholdChange: vi.fn(),
@@ -56,9 +58,11 @@ describe("DatasetViewSwitchGrid", () => {
         watchlistCard={{
           enabled: false,
           supported: false,
+          thresholdLabel: "Christianity: GSEC",
           threshold: 2,
           minThreshold: 0,
           maxThreshold: 6,
+          frontierGroupLabel: "Christianity: Frontier Group Y/N",
           frontierGroupValue: true,
           onEnabledChange: vi.fn(),
           onThresholdChange: vi.fn(),
@@ -75,11 +79,11 @@ describe("DatasetViewSwitchGrid", () => {
     expect(
       screen.getByText(/This dataset does not include/i),
     ).toBeTruthy();
-    expect(screen.getByText(/Christianity_GSEC/)).toBeTruthy();
-    expect(screen.getByText(/Christianity_Frontier_Group/)).toBeTruthy();
+    expect(screen.getByText(/Christianity: GSEC/)).toBeTruthy();
+    expect(screen.getByText(/Christianity: Frontier Group Y\/N/)).toBeTruthy();
   });
 
-  it("renders the watchlist threshold control and disables it when watchlist is off", () => {
+  it("renders watchlist controls with the supplied display labels and disables them when watchlist is off", () => {
     render(
       <DatasetViewSwitchGrid
         regionCard={{
@@ -92,9 +96,11 @@ describe("DatasetViewSwitchGrid", () => {
         watchlistCard={{
           enabled: false,
           supported: true,
+          thresholdLabel: "Christianity: GSEC",
           threshold: 2,
           minThreshold: 0,
           maxThreshold: 6,
+          frontierGroupLabel: "Christianity: Frontier Group Y/N",
           frontierGroupValue: true,
           onEnabledChange: vi.fn(),
           onThresholdChange: vi.fn(),
@@ -109,15 +115,15 @@ describe("DatasetViewSwitchGrid", () => {
     );
 
     const thresholdInput = screen.getByLabelText(
-      "Watchlist Christianity_GSEC threshold",
+      "Watchlist Christianity: GSEC threshold",
     ) as HTMLInputElement;
     const frontierGroupInput = screen.getByRole("combobox", {
-      name: "Watchlist Christianity_Frontier_Group value",
+      name: "Watchlist Christianity: Frontier Group Y/N value",
     });
 
     expect(thresholdInput.value).toBe("2");
     expect(thresholdInput.disabled).toBe(true);
-    expect(screen.getByText("Christianity_Frontier_Group")).toBeTruthy();
+    expect(screen.getByText("Christianity: Frontier Group Y/N")).toBeTruthy();
     expect(frontierGroupInput.textContent?.toLowerCase()).toContain("true");
   });
 
@@ -134,9 +140,11 @@ describe("DatasetViewSwitchGrid", () => {
         watchlistCard={{
           enabled: true,
           supported: true,
+          thresholdLabel: "Christianity: GSEC",
           threshold: 2,
           minThreshold: 0,
           maxThreshold: 6,
+          frontierGroupLabel: "Christianity: Frontier Group Y/N",
           frontierGroupValue: true,
           onEnabledChange: vi.fn(),
           onThresholdChange: vi.fn(),
@@ -151,7 +159,7 @@ describe("DatasetViewSwitchGrid", () => {
     );
 
     const frontierGroupInput = screen.getByRole("combobox", {
-      name: "Watchlist Christianity_Frontier_Group value",
+      name: "Watchlist Christianity: Frontier Group Y/N value",
     });
 
     expect(frontierGroupInput).toBeTruthy();

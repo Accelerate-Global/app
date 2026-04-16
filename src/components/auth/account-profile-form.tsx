@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { CurrentIdentity } from "@/lib/auth";
+import { buildAuthConfirmUrl } from "@/lib/auth-redirect";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 type AccountProfileFormProps = {
@@ -88,7 +89,10 @@ export function AccountProfileForm({ identity }: AccountProfileFormProps) {
       const { error } = await supabase.auth.updateUser(
         { email: normalizedEmail },
         {
-          emailRedirectTo: `${window.location.origin}/auth/confirm?next=/dashboard/profile`,
+          emailRedirectTo: buildAuthConfirmUrl(
+            window.location.origin,
+            "/dashboard/profile",
+          ),
         },
       );
 

@@ -8,6 +8,7 @@ import { AccountControl } from "./account-control";
 const pushMock = vi.fn();
 const refreshMock = vi.fn();
 const fetchMock = vi.fn();
+const assignMock = vi.fn();
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
@@ -37,6 +38,13 @@ describe("AccountControl", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     global.fetch = fetchMock as typeof fetch;
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      value: {
+        ...window.location,
+        assign: assignMock,
+      },
+    });
     document.documentElement.classList.remove("dark");
     document.documentElement.style.colorScheme = "";
     fetchMock.mockResolvedValue({
@@ -131,7 +139,8 @@ describe("AccountControl", () => {
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith("/auth/sign-out", { method: "POST" });
     });
-    expect(pushMock).toHaveBeenCalledWith("/");
-    expect(refreshMock).toHaveBeenCalled();
+    expect(assignMock).toHaveBeenCalledWith("/");
+    expect(pushMock).not.toHaveBeenCalled();
+    expect(refreshMock).not.toHaveBeenCalled();
   });
 });

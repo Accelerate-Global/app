@@ -75,6 +75,20 @@ async function reorderDatasetRecords(datasetIds: string[]) {
   return ((await response.json()) as DatasetsResponse).datasets;
 }
 
+async function deleteDatasetRecord(datasetId: string) {
+  const response = await fetch(`/api/datasets/${datasetId}`, {
+    method: "DELETE",
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      await getErrorMessage(response, "The dataset could not be deleted."),
+    );
+  }
+
+  return ((await response.json()) as DatasetResponse).dataset;
+}
+
 export function DashboardClient({
   initialDatasets,
   canManageDatasets,
@@ -82,6 +96,7 @@ export function DashboardClient({
   const [datasets, setDatasets] = useState(initialDatasets);
   const [editingDatasetId, setEditingDatasetId] = useState<string | null>(null);
   const [updatingDatasetId, setUpdatingDatasetId] = useState<string | null>(null);
+  const [deletingDatasetId, setDeletingDatasetId] = useState<string | null>(null);
   const [isReordering, setIsReordering] = useState(false);
 
   const editingDataset =
@@ -153,7 +168,12 @@ export function DashboardClient({
   }
 
   async function handleReorderDatasets(nextDatasets: DatasetSummary[]) {
-    if (!canManageDatasets || updatingDatasetId !== null || isReordering) {
+    if (
+      !canManageDatasets ||
+      updatingDatasetId !== null ||
+      deletingDatasetId !== null ||
+      isReordering
+    ) {
       return;
     }
 
@@ -183,12 +203,48 @@ export function DashboardClient({
     }
   }
 
+  async function handleDeleteDataset(datasetId: string) {
+    if (
+      !canManageDatasets ||
+      updatingDatasetId !== null ||
+      deletingDatasetId !== null ||
+      isReordering
+    ) {
+      return;
+    }
+
+    setDeletingDatasetId(datasetId);
+
+    try {
+      const deletedDataset = await deleteDatasetRecord(datasetId);
+
+      setDatasets((current) =>
+        current.filter((item) => item.id !== deletedDataset.id),
+      );
+      setEditingDatasetId((current) =>
+        current === deletedDataset.id ? null : current,
+      );
+    } catch (error) {
+      throw new Error(
+        error instanceof Error
+          ? error.message
+          : "The dataset could not be deleted.",
+      );
+    } finally {
+      setDeletingDatasetId(null);
+    }
+  }
+
   return (
     <>
       <DatasetsGrid
         datasets={datasets}
         canManageDatasets={canManageDatasets}
-        isBusy={updatingDatasetId !== null || isReordering}
+        isBusy={
+          updatingDatasetId !== null ||
+          deletingDatasetId !== null ||
+          isReordering
+        }
         onEditDataset={setEditingDatasetId}
         onReorderDatasets={handleReorderDatasets}
       />
@@ -198,6 +254,7 @@ export function DashboardClient({
           dataset={editingDataset}
           availableTags={availableTags}
           isSaving={editingDataset?.id === updatingDatasetId}
+          isDeleting={editingDataset.id === deletingDatasetId}
           open
           onOpenChange={(nextOpen) => {
             if (!nextOpen) {
@@ -205,6 +262,7 @@ export function DashboardClient({
             }
           }}
           onSaveDataset={handleSaveDataset}
+          onDeleteDataset={handleDeleteDataset}
         />
       ) : null}
     </>

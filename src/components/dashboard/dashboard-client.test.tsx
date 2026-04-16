@@ -6,6 +6,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DashboardClient } from "./dashboard-client";
 
 const pushMock = vi.fn();
+const fetchMock = vi.fn();
+const confirmMock = vi.fn();
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
@@ -53,9 +55,13 @@ function createDataset() {
 describe("DashboardClient", () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    vi.stubGlobal("fetch", fetchMock);
+    vi.stubGlobal("confirm", confirmMock);
+    confirmMock.mockReturnValue(true);
   });
 
   afterEach(() => {
+    vi.unstubAllGlobals();
     cleanup();
   });
 
@@ -95,5 +101,63 @@ describe("DashboardClient", () => {
     await waitFor(() => {
       expect(screen.queryByRole("dialog", { name: "Edit dataset" })).toBeNull();
     });
+  });
+
+  it("deletes datasets for admins from the edit sheet", async () => {
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ dataset: createDataset() }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    render(
+      <DashboardClient initialDatasets={[createDataset()]} canManageDatasets />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+
+    const dialog = await screen.findByRole("dialog", { name: "Edit dataset" });
+
+    fireEvent.click(within(dialog).getByRole("button", { name: "Delete dataset" }));
+
+    expect(confirmMock).toHaveBeenCalledWith('Delete the dataset "Global.csv"?');
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith("/api/datasets/dataset-1", {
+        method: "DELETE",
+      });
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog", { name: "Edit dataset" })).toBeNull();
+    });
+
+    expect(screen.queryByText("Global.csv")).toBeNull();
+    expect(screen.getByText("No datasets have been added yet.")).toBeTruthy();
+  });
+
+  it("shows dataset delete failures inline in the edit sheet", async () => {
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ error: "The dataset is locked." }), {
+        status: 409,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    render(
+      <DashboardClient initialDatasets={[createDataset()]} canManageDatasets />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+
+    const dialog = await screen.findByRole("dialog", { name: "Edit dataset" });
+
+    fireEvent.click(within(dialog).getByRole("button", { name: "Delete dataset" }));
+
+    expect(confirmMock).toHaveBeenCalledWith('Delete the dataset "Global.csv"?');
+
+    expect(await within(dialog).findByText("The dataset is locked.")).toBeTruthy();
+    expect(screen.getAllByText("Global.csv")).toHaveLength(2);
   });
 });

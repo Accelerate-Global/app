@@ -91,7 +91,7 @@ describe("AccountProfileForm", () => {
         { email: "updated@example.com" },
         expect.objectContaining({
           emailRedirectTo: expect.stringContaining(
-            "/auth/confirm?next=/dashboard/profile",
+            "/auth/confirm?next=%2Fdashboard%2Fprofile",
           ),
         }),
       );

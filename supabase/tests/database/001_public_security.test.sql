@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(61);
+select plan(63);
 
 select results_eq(
   $$
@@ -69,6 +69,38 @@ select ok(exists(select 1 from pg_policies where schemaname = 'public' and table
 select ok(exists(select 1 from pg_policies where schemaname = 'public' and tablename = 'field_definition_sources' and policyname = 'dataset admin can delete field definition sources' and cmd = 'DELETE'), 'field_definition_sources has admin delete policy');
 
 select ok(exists(select 1 from pg_policies where schemaname = 'public' and tablename = 'signup_email_allowlist' and policyname = 'supabase auth admin can read signup allowlist' and cmd = 'SELECT'), 'signup_email_allowlist has supabase auth admin read policy');
+
+select throws_ok(
+  $$
+    insert into auth.users (
+      id,
+      aud,
+      role,
+      email,
+      encrypted_password,
+      email_confirmed_at,
+      raw_app_meta_data,
+      raw_user_meta_data,
+      created_at,
+      updated_at
+    )
+    values (
+      'bbbbbbbb-1337-403d-beb5-b7c44a1be131',
+      'authenticated',
+      'authenticated',
+      'blocked@example.com',
+      '',
+      now(),
+      '{"provider":"email","providers":["email"],"workspace_role":"viewer"}'::jsonb,
+      '{}'::jsonb,
+      now(),
+      now()
+    )
+  $$,
+  'P0001',
+  'This email is not approved for access.',
+  'non-allowlisted auth.users inserts are rejected by the signup trigger'
+);
 
 insert into public.signup_email_allowlist (email, note)
 select
@@ -139,7 +171,7 @@ select
   '',
   now(),
   '{"provider":"email","providers":["email"],"workspace_role":"viewer"}'::jsonb,
-  '{}'::jsonb,
+  '{"workspace_role":"admin"}'::jsonb,
   now(),
   now()
 where not exists (
@@ -270,6 +302,7 @@ select results_eq($$ select count(*)::bigint from public.field_definitions where
 select results_eq($$ select count(*)::bigint from public.field_source_types where id = '41000000-0000-4000-8000-000000000001' $$, array[1::bigint], 'authenticated users can read field_source_types');
 select results_eq($$ select count(*)::bigint from public.field_definition_sources where id = '42000000-0000-4000-8000-000000000001' $$, array[1::bigint], 'authenticated users can read field_definition_sources');
 select results_eq($$ select count(*)::bigint from public.signup_email_allowlist where email = 'security-test@example.com' $$, array[0::bigint], 'authenticated users cannot read signup_email_allowlist');
+select is(private.is_dataset_admin(), false, 'raw_user_meta_data workspace_role does not grant dataset admin access');
 
 select throws_ok(
   $$

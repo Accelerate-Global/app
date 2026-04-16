@@ -10,6 +10,10 @@ import type {
   FilterRegion,
 } from "@/lib/api-types";
 import {
+  WATCHLIST_DATASET_COLUMN_KEY,
+  WATCHLIST_FRONTIER_GROUP_DATASET_COLUMN_KEY,
+} from "@/lib/dataset-region-constants";
+import {
   datasetSupportsRegionFiltering,
   datasetSupportsWatchlistFiltering,
   datasetSupportsUupgFiltering,
@@ -42,6 +46,13 @@ export function DatasetDetailClient({
   regions,
   fieldDefinitionPresentationByColumnKey,
 }: DatasetDetailClientProps) {
+  const watchlistThresholdLabel =
+    fieldDefinitionPresentationByColumnKey[WATCHLIST_DATASET_COLUMN_KEY]
+      ?.effectiveLabel ?? "Christianity_GSEC";
+  const watchlistFrontierGroupLabel =
+    fieldDefinitionPresentationByColumnKey[
+      WATCHLIST_FRONTIER_GROUP_DATASET_COLUMN_KEY
+    ]?.effectiveLabel ?? "Christianity_Frontier_Group";
   const supportsRegionFiltering = datasetSupportsRegionFiltering(dataset);
   const supportsWatchlistFiltering = datasetSupportsWatchlistFiltering(dataset);
   const supportsUupgFiltering = datasetSupportsUupgFiltering(dataset);
@@ -95,9 +106,11 @@ export function DatasetDetailClient({
         watchlistCard={{
           enabled: watchlistEnabled,
           supported: supportsWatchlistFiltering,
+          thresholdLabel: watchlistThresholdLabel,
           threshold: watchlistThreshold,
           minThreshold: WATCHLIST_THRESHOLD_MIN,
           maxThreshold: WATCHLIST_THRESHOLD_MAX,
+          frontierGroupLabel: watchlistFrontierGroupLabel,
           frontierGroupValue: watchlistFrontierGroupValue,
           onEnabledChange: setWatchlistEnabled,
           onThresholdChange: (value) =>
