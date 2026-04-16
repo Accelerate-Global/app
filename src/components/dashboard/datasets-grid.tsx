@@ -105,6 +105,7 @@ function DatasetListRow({
 
   return (
     <div
+      data-smoke-dataset-row={dataset.id}
       className="grid cursor-pointer items-center gap-4 px-5 py-4 transition-colors hover:bg-accent/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
       style={{ gridTemplateColumns: DATASET_GRID_TEMPLATE_COLUMNS }}
       role="link"
@@ -128,7 +129,12 @@ function DatasetListRow({
           )
         ) : null}
         <FileTextIcon className="size-4 shrink-0 text-muted-foreground" />
-        <span className="block truncate font-medium">{dataset.fileName}</span>
+        <span
+          className="block truncate font-medium"
+          data-smoke-dataset-name={dataset.id}
+        >
+          {dataset.fileName}
+        </span>
       </div>
 
       <div className="flex min-w-0 w-full justify-center text-center">

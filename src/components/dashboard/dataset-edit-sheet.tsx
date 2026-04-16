@@ -457,6 +457,7 @@ export function DatasetEditSheet({
                 id="dataset-file-name"
                 value={fileName}
                 disabled={isSaving}
+                data-smoke-dataset-name-input
                 onChange={(event) => setFileName(event.target.value)}
               />
               <p className="text-sm text-muted-foreground">
@@ -629,6 +630,7 @@ export function DatasetEditSheet({
               type="button"
               variant="outline"
               disabled={isSaving}
+              data-smoke-dataset-replace
               onClick={handleReplaceDataset}
             >
               Replace dataset
@@ -645,7 +647,7 @@ export function DatasetEditSheet({
             >
               Close
             </SheetClose>
-            <Button type="submit" disabled={!canSave}>
+            <Button type="submit" disabled={!canSave} data-smoke-dataset-save>
               {isSaving ? "Saving..." : "Save changes"}
             </Button>
           </SheetFooter>

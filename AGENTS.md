@@ -44,7 +44,13 @@ Full rules and examples live in [/Users/blake/Documents/accelerate-global/online
 Treat `pnpm run verify:change` as the local planning gate for repo-tracked edits.
 
 - After initial exploration, run `pnpm run verify:change` before writing code.
+- For UI, DB, or migration tasks, state a short verification intent before coding:
+  - changed area
+  - required commands from `pnpm run verify:change`
+  - targeted smoke subset from `pnpm run verify:change`
 - If you add or edit a page, shared UI primitive, smoke surface, Supabase migration, or DB-affecting code path, satisfy the listed repo contracts during implementation, not at the end.
+- Use `pnpm run test:ui:smoke:targeted` as the first browser gate for impacted routes and journeys.
 - Before finalizing or attempting `ship` / release work, rerun `pnpm run verify:change` and complete every command listed under “Required commands”.
+- Keep `pnpm run test:ui:smoke` as the final merge or release gate after the targeted subset is green.
 - Use [/Users/blake/Documents/accelerate-global/online/config/change-impact.ts](/Users/blake/Documents/accelerate-global/online/config/change-impact.ts) as the canonical rule set for impacted domains and verification commands.
 - Use [/Users/blake/Documents/accelerate-global/online/docs/testing/ui-smoke.md](/Users/blake/Documents/accelerate-global/online/docs/testing/ui-smoke.md) for the detailed smoke contract and examples.

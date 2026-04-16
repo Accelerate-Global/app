@@ -7,6 +7,7 @@ describe("change-impact", () => {
     const impact = resolveChangeImpact(["src/components/ui/button.tsx"]);
 
     expect(impact.requiredCommands).toContain("smoke:check");
+    expect(impact.recommendedCommands).toContain("test:ui:smoke:targeted");
   });
 
   it("requires the full smoke suite for harness changes", () => {

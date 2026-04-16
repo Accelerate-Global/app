@@ -9,7 +9,7 @@ async function main() {
 
   if (result.seeded) {
     console.log(
-      "Field source registry seed pass completed from the Aggregate 1 mapping CSV.",
+      "Field source registry seed pass completed from the mapping and description CSV files.",
     );
     return;
   }

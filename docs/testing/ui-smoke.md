@@ -4,10 +4,11 @@
 
 1. `supabase start`
 2. `supabase db reset`
-3. deterministic smoke bootstrap data and auth users
-4. `pnpm build`
-5. `pnpm start`
-6. Playwright desktop and mobile sweeps in Chromium
+3. `pnpm run smoke:preflight`
+4. deterministic smoke bootstrap data and auth users
+5. `pnpm build`
+6. `pnpm start`
+7. Playwright desktop and mobile sweeps in Chromium
 
 Use `agent-browser` for ad hoc manual investigation, not as the default regression gate.
 
@@ -29,6 +30,18 @@ Plan the current worktree and required verification commands:
 
 ```bash
 pnpm run verify:change
+```
+
+Run the local smoke environment preflight:
+
+```bash
+pnpm run smoke:preflight
+```
+
+Run the current-worktree targeted smoke subset:
+
+```bash
+pnpm run test:ui:smoke:targeted
 ```
 
 Run the full smoke suite:
@@ -56,7 +69,24 @@ pnpm run test:ui:smoke:headed
   - edit field definition text
   - create and update a filter region
   - create a source column and update a field source value
-  - replace a seeded dataset through the real upload flow
+- replace a seeded dataset through the real upload flow
+
+## Stages And Failure Classes
+
+Use the smoke pipeline in this order:
+
+1. `pnpm run verify:change`
+2. `pnpm run smoke:check`
+3. `pnpm run test:ui:smoke:targeted`
+4. `pnpm run test:ui:smoke`
+
+Failure prefixes are intentional:
+
+- `[contract]`: missing route registry entries, page markers, page-ready markers, or other static smoke contracts
+- `[selector]`: strict-mode locator collisions or ambiguous selectors
+- `[harness]`: generic smoke helpers could not open, ready, or close a contract surface
+- `[bootstrap]`: local Supabase, auth, storage, or bootstrap preflight problems
+- `[product]`: app behavior, build, or runtime regressions
 
 ## Required Contracts
 
@@ -95,6 +125,7 @@ Notes:
 - `data-smoke-close` is optional when `Escape` is a safe close path.
 - `data-smoke-write="safe"` can be added to indicate the trigger is safe for generic opening during route sweeps.
 - Use literal strings, not computed expressions, so `pnpm run smoke:check` can statically validate the contract.
+- Prefer literal `data-smoke-*` selectors over `getByText()` and broad `getByLabel()` queries in repeated UI. If a journey needs a stable selector, add one.
 
 ### Shared UI Fixture Contract
 
@@ -147,6 +178,7 @@ When you add a new route:
 3. if the route needs deterministic data, extend `scripts/smoke-bootstrap.ts`
 4. run `pnpm run verify:change`
 5. run `pnpm run smoke:check`
+6. run `pnpm run test:ui:smoke:targeted`
 
 When you add a new sheet, dialog, popover, menu, or tooltip:
 
@@ -154,6 +186,7 @@ When you add a new sheet, dialog, popover, menu, or tooltip:
 2. add `data-smoke-close` if Escape is not the intended close path
 3. run `pnpm run verify:change`
 4. extend or add a Playwright journey only when the generic route sweep is not enough
+5. if the surface sits in repeated UI, add a stable literal `data-smoke-*` selector for the journey before relying on text
 
 When you add a new shared primitive under `src/components/ui`:
 
@@ -161,6 +194,17 @@ When you add a new shared primitive under `src/components/ui`:
 2. keep the fixture deterministic and free of app data dependencies
 3. run `pnpm run verify:change`
 4. run `pnpm run smoke:check` to regenerate the fixture manifest
+5. run `pnpm run test:ui:smoke:targeted`
+
+## Verification Intent
+
+At the start of any UI, DB, or migration task, write a short verification intent before coding:
+
+- changed area
+- required commands from `pnpm run verify:change`
+- targeted smoke subset from `pnpm run verify:change`
+
+Use the full suite only as the final merge or release gate after the targeted subset is green.
 
 ## CI
 

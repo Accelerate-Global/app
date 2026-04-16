@@ -293,14 +293,9 @@ export function FieldSourcesClient({
           <DataGridColumnHeader title="Field" column={column} />
         ),
         cell: ({ row }) => (
-          <div className="min-w-[14rem]">
-            <p className="font-medium text-foreground">{row.original.effectiveLabel}</p>
-            {row.original.displayLabel.trim() ? (
-              <p className="text-xs text-muted-foreground">
-                Display label overrides {row.original.label}
-              </p>
-            ) : null}
-          </div>
+          <p className="min-w-[14rem] font-medium text-foreground">
+            {row.original.effectiveLabel}
+          </p>
         ),
         meta: { headerTitle: "Field" },
         size: 220,
@@ -318,41 +313,6 @@ export function FieldSourcesClient({
         ),
         meta: { headerTitle: "Internal field" },
         size: 220,
-        enableSorting: true,
-      },
-      {
-        id: "mappingFieldId",
-        accessorFn: (row) => row.mappingFieldId ?? "",
-        header: ({ column }) => (
-          <DataGridColumnHeader title="Field ID" column={column} />
-        ),
-        cell: ({ row }) => (
-          <span className="text-sm text-foreground">
-            {row.original.mappingFieldId ?? "—"}
-          </span>
-        ),
-        meta: { headerTitle: "Field ID" },
-        size: 120,
-        enableSorting: true,
-      },
-      {
-        id: "mappingIsActive",
-        accessorFn: (row) =>
-          row.mappingIsActive === null ? "" : row.mappingIsActive ? "Active" : "Inactive",
-        header: ({ column }) => (
-          <DataGridColumnHeader title="Active" column={column} />
-        ),
-        cell: ({ row }) => (
-          <span className="text-sm text-foreground">
-            {row.original.mappingIsActive === null
-              ? "—"
-              : row.original.mappingIsActive
-                ? "True"
-                : "False"}
-          </span>
-        ),
-        meta: { headerTitle: "Active" },
-        size: 96,
         enableSorting: true,
       },
       {
@@ -397,7 +357,9 @@ export function FieldSourcesClient({
           id: `source:${fieldSourceType.id}`,
           accessorFn: (row) => row.sourceValues[fieldSourceType.id] ?? "",
           header: ({ column }) => (
-            <DataGridColumnHeader title={fieldSourceType.label} column={column} />
+            <div data-smoke-field-source-column={fieldSourceType.label}>
+              <DataGridColumnHeader title={fieldSourceType.label} column={column} />
+            </div>
           ),
           cell: ({ row }) => (
             <FieldSourceValueCell
@@ -428,8 +390,6 @@ export function FieldSourcesClient({
         left: [
           "effectiveLabel",
           "internalLabel",
-          "mappingFieldId",
-          "mappingIsActive",
           "mappingDataType",
           "sourcePriorityKeys",
         ],
@@ -508,7 +468,7 @@ export function FieldSourcesClient({
           }}
         >
           <DataGridContainer>
-            <DataGridScrollArea className="max-h-[70vh]">
+            <DataGridScrollArea className="h-[560px]">
               <DataGridTable />
             </DataGridScrollArea>
           </DataGridContainer>

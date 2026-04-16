@@ -10,6 +10,10 @@ import {
   UI_SMOKE_USERS,
   type UiSmokeBootstrap,
 } from "../tests/ui/support/smoke-data";
+import {
+  getUiSmokeEnv,
+  getUiSmokeStorageAdminKey,
+} from "./lib/ui-smoke-env";
 
 const PRIMARY_DATASET_ID = "11111111-1111-4111-8111-111111111111";
 const SECONDARY_DATASET_ID = "22222222-2222-4222-8222-222222222222";
@@ -47,16 +51,6 @@ type SmokeColumn = {
 
 type SmokeDatasetRow = Record<string, string>;
 
-function requireEnv(name: string) {
-  const value = process.env[name]?.trim();
-
-  if (!value) {
-    throw new Error(`${name} is required for UI smoke bootstrap.`);
-  }
-
-  return value;
-}
-
 function normalizeHeaderIdentity(value: string, index = 0) {
   const normalized = value
     .trim()
@@ -74,49 +68,51 @@ function buildBlobUrl(supabaseUrl: string, bucket: string, blobPath: string) {
   return new URL(`/storage/v1/object/${bucket}/${blobPath}`, supabaseUrl).toString();
 }
 
-async function recreateUser(
-  supabase: SupabaseClient,
-  user: SmokeUserDefinition,
-) {
-  const existingUsers = await supabase.auth.admin.listUsers({
-    page: 1,
-    perPage: 200,
-  });
+async function recreateUser(input: {
+  sql: postgres.Sql;
+  supabaseUrl: string;
+  supabasePublishableKey: string;
+  user: SmokeUserDefinition;
+}) {
+  await input.sql`delete from auth.users where email = ${input.user.email}`;
 
-  if (existingUsers.error) {
-    throw existingUsers.error;
-  }
-
-  const existingUser = existingUsers.data.users.find(
-    (candidate: { email?: string | null }) =>
-      candidate.email?.trim().toLowerCase() === user.email.trim().toLowerCase(),
+  const authClient = createClient(
+    input.supabaseUrl,
+    input.supabasePublishableKey,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    },
   );
-
-  if (existingUser) {
-    const deletedUser = await supabase.auth.admin.deleteUser(existingUser.id);
-
-    if (deletedUser.error) {
-      throw deletedUser.error;
-    }
-  }
-
-  const createdUser = await supabase.auth.admin.createUser({
-    email: user.email,
-    password: user.password,
-    email_confirm: true,
-    user_metadata: {
-      full_name: user.fullName,
+  const signUp = await authClient.auth.signUp({
+    email: input.user.email,
+    password: input.user.password,
+    options: {
+      data: {
+        full_name: input.user.fullName,
+      },
     },
   });
 
-  if (createdUser.error || !createdUser.data.user) {
-    throw createdUser.error ?? new Error(`Could not create ${user.email}`);
+  if (signUp.error || !signUp.data.user) {
+    throw signUp.error ?? new Error(`Could not create ${input.user.email}`);
+  }
+
+  const signIn = await authClient.auth.signInWithPassword({
+    email: input.user.email,
+    password: input.user.password,
+  });
+
+  if (signIn.error || !signIn.data.user) {
+    throw signIn.error ?? new Error(`Could not sign in ${input.user.email}`);
   }
 
   return {
-    id: createdUser.data.user.id,
-    email: user.email,
-    fullName: user.fullName,
+    id: signIn.data.user.id,
+    email: input.user.email,
+    fullName: input.user.fullName,
   } satisfies SmokeAuthUser;
 }
 
@@ -144,6 +140,10 @@ async function ensureBucket(
 }
 
 async function resetSmokeData(sql: postgres.Sql) {
+  await sql`
+    delete from auth.users
+    where email in (${UI_SMOKE_USERS.admin.email}, ${UI_SMOKE_USERS.viewer.email})
+  `;
   await sql`delete from public.dataset_rows`;
   await sql`delete from public.datasets`;
   await sql`delete from public.filter_region_countries`;
@@ -505,40 +505,48 @@ async function insertFieldDefinitionSources(sql: postgres.Sql) {
 }
 
 async function main() {
-  const supabaseUrl = requireEnv("NEXT_PUBLIC_SUPABASE_URL");
-  const supabasePublishableKey = requireEnv("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY");
-  const supabaseServiceRoleKey =
-    process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ??
-    requireEnv("SUPABASE_SECRET_KEY");
-  const databaseUrl = requireEnv("DATABASE_URL");
-  const storageBucket = process.env.SUPABASE_STORAGE_BUCKET?.trim() || "datasets";
-  const supabase = createClient(supabaseUrl, supabaseServiceRoleKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
+  const smokeEnv = getUiSmokeEnv();
+  const supabase = createClient(
+    smokeEnv.supabaseUrl,
+    getUiSmokeStorageAdminKey(smokeEnv),
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
     },
-  });
-  const sql = postgres(databaseUrl, {
+  );
+  const sql = postgres(smokeEnv.databaseUrl, {
     max: 1,
     prepare: false,
   });
 
   try {
     await mkdir(UI_SMOKE_TMP_DIR, { recursive: true });
-    await ensureBucket(supabase, storageBucket);
+    await ensureBucket(supabase, smokeEnv.storageBucket);
     await resetSmokeData(sql);
     await insertAllowlist(sql);
 
-    const adminUser = await recreateUser(supabase, UI_SMOKE_USERS.admin);
-    const viewerUser = await recreateUser(supabase, UI_SMOKE_USERS.viewer);
+    const adminUser = await recreateUser({
+      sql,
+      supabaseUrl: smokeEnv.supabaseUrl,
+      supabasePublishableKey: smokeEnv.supabasePublishableKey,
+      user: UI_SMOKE_USERS.admin,
+    });
+    const viewerUser = await recreateUser({
+      sql,
+      supabaseUrl: smokeEnv.supabaseUrl,
+      supabasePublishableKey: smokeEnv.supabasePublishableKey,
+      user: UI_SMOKE_USERS.viewer,
+    });
 
     await insertFieldSourceTypes(sql);
     await insertFilterRegions(sql);
     await insertDatasets({
       sql,
       ownerId: adminUser.id,
-      supabaseUrl,
-      bucket: storageBucket,
+      supabaseUrl: smokeEnv.supabaseUrl,
+      bucket: smokeEnv.storageBucket,
     });
     await insertFieldDefinitions(sql);
     await insertFieldDefinitionSources(sql);
@@ -599,7 +607,7 @@ async function main() {
       `Bootstrapped UI smoke data for ${viewerUser.email} and ${adminUser.email}.`,
     );
     console.log(
-      `Using anon key length ${supabasePublishableKey.length} against ${supabaseUrl}.`,
+      `Using publishable key length ${smokeEnv.supabasePublishableKey.length} against ${smokeEnv.supabaseUrl}.`,
     );
   } finally {
     await sql.end({ timeout: 5 });
@@ -607,6 +615,7 @@ async function main() {
 }
 
 void main().catch((error) => {
-  console.error(error instanceof Error ? error.message : error);
+  const message = error instanceof Error ? error.message : String(error);
+  console.error(`[bootstrap] ${message}`);
   process.exitCode = 1;
 });
