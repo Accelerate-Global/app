@@ -6,6 +6,7 @@ import postgres from "postgres";
 import {
   UI_SMOKE_BASE_URL,
   UI_SMOKE_BOOTSTRAP_FILE,
+  UI_SMOKE_PASSWORD_RESET,
   UI_SMOKE_TMP_DIR,
   UI_SMOKE_USERS,
   type UiSmokeBootstrap,
@@ -159,9 +160,11 @@ async function ensureBucket(
 }
 
 async function resetSmokeData(sql: postgres.Sql) {
+  const smokeEmails = Object.values(UI_SMOKE_USERS).map((user) => user.email);
+
   await sql`
     delete from auth.users
-    where email in (${UI_SMOKE_USERS.admin.email}, ${UI_SMOKE_USERS.viewer.email})
+    where email = any(${smokeEmails})
   `;
   await sql`delete from public.dataset_rows`;
   await sql`delete from public.datasets`;
@@ -170,15 +173,24 @@ async function resetSmokeData(sql: postgres.Sql) {
   await sql`delete from public.field_definition_sources`;
   await sql`delete from public.field_source_types`;
   await sql`delete from public.field_definitions`;
-  await sql`delete from public.signup_email_allowlist where email in (${UI_SMOKE_USERS.admin.email}, ${UI_SMOKE_USERS.viewer.email})`;
+  await sql`
+    delete from public.signup_email_allowlist
+    where email = any(${smokeEmails})
+  `;
 }
 
 async function insertAllowlist(sql: postgres.Sql) {
+  const allowlistEntries = Object.values(UI_SMOKE_USERS).map((user) => ({
+    email: user.email,
+    note: `UI smoke ${user.fullName}`,
+  }));
+
   await sql`
-    insert into public.signup_email_allowlist (email, note)
-    values
-      (${UI_SMOKE_USERS.admin.email}, ${"UI smoke admin"}),
-      (${UI_SMOKE_USERS.viewer.email}, ${"UI smoke viewer"})
+    insert into public.signup_email_allowlist ${sql(
+      allowlistEntries,
+      "email",
+      "note",
+    )}
     on conflict (email) do update
     set note = excluded.note, updated_at = now()
   `;
@@ -525,7 +537,7 @@ async function insertFieldDefinitionSources(sql: postgres.Sql) {
 
 async function main() {
   const smokeEnv = getUiSmokeEnv();
-  const supabase = createClient(
+  const storageAdmin = createClient(
     smokeEnv.supabaseUrl,
     getUiSmokeStorageAdminKey(smokeEnv),
     {
@@ -542,7 +554,7 @@ async function main() {
 
   try {
     await mkdir(UI_SMOKE_TMP_DIR, { recursive: true });
-    await ensureBucket(supabase, smokeEnv.storageBucket);
+    await ensureBucket(storageAdmin, smokeEnv.storageBucket);
     await resetSmokeData(sql);
     await insertAllowlist(sql);
 
@@ -558,6 +570,36 @@ async function main() {
       supabasePublishableKey: smokeEnv.supabasePublishableKey,
       user: UI_SMOKE_USERS.viewer,
     });
+    const recoveryUser = await recreateUser({
+      sql,
+      supabaseUrl: smokeEnv.supabaseUrl,
+      supabasePublishableKey: smokeEnv.supabasePublishableKey,
+      user: UI_SMOKE_USERS.recovery,
+    });
+    const forgotPasswordUser = await recreateUser({
+      sql,
+      supabaseUrl: smokeEnv.supabaseUrl,
+      supabasePublishableKey: smokeEnv.supabasePublishableKey,
+      user: UI_SMOKE_USERS.forgotPassword,
+    });
+    const resetUser = await recreateUser({
+      sql,
+      supabaseUrl: smokeEnv.supabaseUrl,
+      supabasePublishableKey: smokeEnv.supabasePublishableKey,
+      user: UI_SMOKE_USERS.reset,
+    });
+    const signOutUser = await recreateUser({
+      sql,
+      supabaseUrl: smokeEnv.supabaseUrl,
+      supabasePublishableKey: smokeEnv.supabasePublishableKey,
+      user: UI_SMOKE_USERS.signOut,
+    });
+    const disableUser = await recreateUser({
+      sql,
+      supabaseUrl: smokeEnv.supabaseUrl,
+      supabasePublishableKey: smokeEnv.supabasePublishableKey,
+      user: UI_SMOKE_USERS.disable,
+    });
     await setWorkspaceRole({
       sql,
       userId: adminUser.id,
@@ -566,6 +608,31 @@ async function main() {
     await setWorkspaceRole({
       sql,
       userId: viewerUser.id,
+      workspaceRole: "viewer",
+    });
+    await setWorkspaceRole({
+      sql,
+      userId: recoveryUser.id,
+      workspaceRole: "viewer",
+    });
+    await setWorkspaceRole({
+      sql,
+      userId: forgotPasswordUser.id,
+      workspaceRole: "viewer",
+    });
+    await setWorkspaceRole({
+      sql,
+      userId: resetUser.id,
+      workspaceRole: "viewer",
+    });
+    await setWorkspaceRole({
+      sql,
+      userId: signOutUser.id,
+      workspaceRole: "viewer",
+    });
+    await setWorkspaceRole({
+      sql,
+      userId: disableUser.id,
       workspaceRole: "viewer",
     });
 
@@ -594,6 +661,21 @@ async function main() {
       users: {
         admin: adminUser,
         viewer: viewerUser,
+        recovery: recoveryUser,
+        forgotPassword: forgotPasswordUser,
+        reset: resetUser,
+        signOut: signOutUser,
+        disable: disableUser,
+      },
+      authFlows: {
+        allowlistedSignup: {
+          email: UI_SMOKE_USERS.allowlistedSignup.email,
+          password: UI_SMOKE_USERS.allowlistedSignup.password,
+          fullName: UI_SMOKE_USERS.allowlistedSignup.fullName,
+        },
+        passwordReset: {
+          nextPassword: UI_SMOKE_PASSWORD_RESET,
+        },
       },
       datasets: {
         primary: {
@@ -633,7 +715,7 @@ async function main() {
 
     await writeFile(UI_SMOKE_BOOTSTRAP_FILE, JSON.stringify(payload, null, 2), "utf8");
     console.log(
-      `Bootstrapped UI smoke data for ${viewerUser.email} and ${adminUser.email}.`,
+      `Bootstrapped UI smoke data for ${viewerUser.email}, ${adminUser.email}, ${recoveryUser.email}, ${forgotPasswordUser.email}, ${resetUser.email}, ${signOutUser.email}, and ${disableUser.email}.`,
     );
     console.log(
       `Using publishable key length ${smokeEnv.supabasePublishableKey.length} against ${smokeEnv.supabaseUrl}.`,

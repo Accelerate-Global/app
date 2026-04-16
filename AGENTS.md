@@ -7,6 +7,8 @@ When working in this repo, agents must treat Docker state as temporary unless th
 - Prefer repo-scoped shutdown commands:
   - `docker compose down --remove-orphans`
   - or `supabase stop`
+- If required verification is blocked by this repo's existing local Supabase stack or occupied local Supabase ports, the agent must take initiative to stop that repo-local stack and continue the verification flow.
+- When the blocked verification expects a clean local database state, the agent may reset or restart the repo-local Supabase stack as part of the repo's normal verification commands without waiting for extra user confirmation.
 - After shutdown, agents should reclaim transient Docker cache with:
   - `docker builder prune -af`
 - Agents may run:
@@ -64,5 +66,6 @@ Treat `pnpm run verify:change` as the local planning gate for repo-tracked edits
 - Use `pnpm run test:ui:smoke:targeted` as the first browser gate for impacted routes and journeys.
 - Before finalizing or attempting `ship` / release work, rerun `pnpm run verify:change` and complete every command listed under “Required commands”.
 - Keep `pnpm run test:ui:smoke` as the final merge or release gate after the targeted subset is green.
+- If `pnpm run test:ui:smoke`, `pnpm run db:security`, or `pnpm run verify:change:run` is blocked by an already-running repo-local Supabase stack, stop or reset that stack first and then continue the required command instead of stopping to ask.
 - Use [/Users/blake/Documents/accelerate-global/online/config/change-impact.ts](/Users/blake/Documents/accelerate-global/online/config/change-impact.ts) as the canonical rule set for impacted domains and verification commands.
 - Use [/Users/blake/Documents/accelerate-global/online/docs/testing/ui-smoke.md](/Users/blake/Documents/accelerate-global/online/docs/testing/ui-smoke.md) for the detailed smoke contract and examples.

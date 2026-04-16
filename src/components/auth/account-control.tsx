@@ -53,6 +53,12 @@ export function AccountControl({ identity }: AccountControlProps) {
   async function signOut() {
     setIsSigningOut(true);
     await fetch("/auth/sign-out", { method: "POST" });
+
+    if (typeof window !== "undefined") {
+      window.location.assign("/");
+      return;
+    }
+
     router.push("/");
     router.refresh();
   }

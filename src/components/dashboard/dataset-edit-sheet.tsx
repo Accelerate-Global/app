@@ -1,6 +1,6 @@
 "use client";
 
-import { PlusIcon, XIcon } from "lucide-react";
+import { PlusIcon, Trash2Icon, XIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState } from "react";
 
@@ -15,20 +15,15 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldLabel,
-  FieldTitle,
-} from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectLabel,
   SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import type { DatasetSummary, DatasetTag } from "@/lib/api-types";
 import { normalizeDatasetHiddenColumnKeys } from "@/lib/dataset-column-visibility";
@@ -46,6 +41,7 @@ type DatasetEditSheetProps = {
   availableTags: DatasetTag[];
   open: boolean;
   isSaving: boolean;
+  isDeleting: boolean;
   onOpenChange: (open: boolean) => void;
   onSaveDataset: (input: {
     datasetId: string;
@@ -54,6 +50,7 @@ type DatasetEditSheetProps = {
     isPrimary: boolean;
     hiddenColumnKeys: string[];
   }) => Promise<void>;
+  onDeleteDataset: (datasetId: string) => Promise<void>;
 };
 
 function formatUploadedAt(value: string) {
@@ -61,6 +58,15 @@ function formatUploadedAt(value: string) {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(value));
+}
+
+function getDatasetTagColorOption(value: string | undefined) {
+  const normalizedValue = normalizeDatasetTagColor(value);
+
+  return (
+    DATASET_TAG_COLOR_OPTIONS.find((option) => option.color === normalizedValue) ??
+    DATASET_TAG_COLOR_OPTIONS[0]
+  );
 }
 
 function DatasetTagColorMenu({
@@ -74,10 +80,7 @@ function DatasetTagColorMenu({
   disabled: boolean;
   onChange: (value: string) => void;
 }) {
-  const normalizedValue = normalizeDatasetTagColor(value);
-  const activeOption =
-    DATASET_TAG_COLOR_OPTIONS.find((option) => option.color === normalizedValue) ??
-    DATASET_TAG_COLOR_OPTIONS[0];
+  const activeOption = getDatasetTagColorOption(value);
 
   return (
     <div className="space-y-2">
@@ -92,25 +95,37 @@ function DatasetTagColorMenu({
         disabled={disabled}
       >
         <SelectTrigger className="w-full justify-between">
-          <span className="flex items-center gap-2">
-            <span
-              className="size-3 rounded-full border border-border"
-              style={{ backgroundColor: activeOption.color }}
-            />
-            <span>{activeOption.label}</span>
-          </span>
+          <SelectValue>
+            {(selectedValue) => {
+              const selectedOption = getDatasetTagColorOption(
+                typeof selectedValue === "string" ? selectedValue : undefined,
+              );
+
+              return (
+                <span className="flex items-center gap-2">
+                  <span
+                    className="size-3 rounded-full border border-border"
+                    style={{ backgroundColor: selectedOption.color }}
+                  />
+                  <span>{selectedOption.label}</span>
+                </span>
+              );
+            }}
+          </SelectValue>
         </SelectTrigger>
         <SelectContent align="start" className="w-56">
-          <SelectLabel>Tag color</SelectLabel>
-          {DATASET_TAG_COLOR_OPTIONS.map((option) => (
-            <SelectItem key={option.color} value={option.color}>
-              <span
-                className="size-3 rounded-full border border-border"
-                style={{ backgroundColor: option.color }}
-              />
-              <span>{option.label}</span>
-            </SelectItem>
-          ))}
+          <SelectGroup>
+            <SelectLabel>Tag color</SelectLabel>
+            {DATASET_TAG_COLOR_OPTIONS.map((option) => (
+              <SelectItem key={option.color} value={option.color}>
+                <span
+                  className="size-3 rounded-full border border-border"
+                  style={{ backgroundColor: option.color }}
+                />
+                <span>{option.label}</span>
+              </SelectItem>
+            ))}
+          </SelectGroup>
         </SelectContent>
       </Select>
     </div>
@@ -232,8 +247,10 @@ export function DatasetEditSheet({
   availableTags,
   open,
   isSaving,
+  isDeleting,
   onOpenChange,
   onSaveDataset,
+  onDeleteDataset,
 }: DatasetEditSheetProps) {
   const router = useRouter();
   const [fileName, setFileName] = useState(dataset.fileName);
@@ -267,9 +284,10 @@ export function DatasetEditSheet({
     JSON.stringify(normalizedHiddenColumnKeys) !==
     JSON.stringify(initialHiddenColumnKeys);
   const hasPrimaryChange = isPrimary !== dataset.isPrimary;
+  const isWorking = isSaving || isDeleting;
   const canSave = Boolean(
     trimmedFileName &&
-      !isSaving &&
+      !isWorking &&
       (trimmedFileName !== dataset.fileName ||
         hasTagChanges ||
         hasHiddenColumnChanges ||
@@ -415,6 +433,25 @@ export function DatasetEditSheet({
     }
   }
 
+  async function handleDeleteDataset() {
+    if (!window.confirm(`Delete the dataset "${dataset.fileName}"?`)) {
+      return;
+    }
+
+    setErrorMessage(null);
+
+    try {
+      await onDeleteDataset(dataset.id);
+      onOpenChange(false);
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "The dataset could not be deleted.",
+      );
+    }
+  }
+
   function handleReplaceDataset() {
     onOpenChange(false);
     router.push(`/dashboard/upload?replace=${dataset.id}`);
@@ -456,7 +493,7 @@ export function DatasetEditSheet({
               <Input
                 id="dataset-file-name"
                 value={fileName}
-                disabled={isSaving}
+                disabled={isWorking}
                 data-smoke-dataset-name-input
                 onChange={(event) => setFileName(event.target.value)}
               />
@@ -465,7 +502,7 @@ export function DatasetEditSheet({
               </p>
             </section>
 
-            <section className="space-y-3">
+            <section className="flex items-start justify-between gap-4">
               <div className="space-y-1">
                 <p className="text-sm font-medium text-foreground">
                   Primary dataset
@@ -473,34 +510,19 @@ export function DatasetEditSheet({
                 <p className="text-sm text-muted-foreground">
                   Show this dataset by default when someone opens Data.
                 </p>
+                <p className="text-sm leading-5 text-muted-foreground">
+                  Only one dataset can be primary at a time. Selecting this
+                  clears the primary flag from any other dataset.
+                </p>
               </div>
 
-              <FieldLabel
-                htmlFor="dataset-is-primary"
-                className="rounded-2xl border border-border bg-card p-0!"
-              >
-                <Field
-                  orientation="horizontal"
-                  className="items-start justify-between gap-4 px-4 py-4"
-                >
-                  <FieldContent className="gap-1.5">
-                    <FieldTitle className="text-sm font-medium">
-                      Use as the default Data view
-                    </FieldTitle>
-                    <FieldDescription className="text-sm leading-5">
-                      Only one dataset can be primary at a time. Selecting this
-                      clears the primary flag from any other dataset.
-                    </FieldDescription>
-                  </FieldContent>
-                  <Checkbox
-                    id="dataset-is-primary"
-                    checked={isPrimary}
-                    disabled={isSaving}
-                    onCheckedChange={(checked) => setIsPrimary(!!checked)}
-                    aria-label="Set dataset as primary"
-                  />
-                </Field>
-              </FieldLabel>
+              <Checkbox
+                id="dataset-is-primary"
+                checked={isPrimary}
+                disabled={isWorking}
+                onCheckedChange={(checked) => setIsPrimary(!!checked)}
+                aria-label="Set dataset as primary"
+              />
             </section>
 
             <section className="space-y-4">
@@ -536,7 +558,7 @@ export function DatasetEditSheet({
                         <Checkbox
                           id={`dataset-visible-field-${column.key}`}
                           checked={isVisible}
-                          disabled={isSaving}
+                          disabled={isWorking}
                           aria-label={`Show ${column.label} in the dataset table`}
                           onCheckedChange={(checked) =>
                             handleDisplayedFieldChange(column.key, !!checked)
@@ -560,7 +582,7 @@ export function DatasetEditSheet({
               <NewTagComposer
                 label={newTagLabel}
                 color={newTagColor}
-                disabled={isSaving}
+                disabled={isWorking}
                 onLabelChange={setNewTagLabel}
                 onColorChange={setNewTagColor}
                 onAdd={handleAddTag}
@@ -581,7 +603,7 @@ export function DatasetEditSheet({
                       <button
                         key={getDatasetTagIdentity(tag)}
                         type="button"
-                        disabled={isSaving}
+                        disabled={isWorking}
                         className="inline-flex items-center rounded-full border px-2.5 py-1 text-[0.72rem] font-medium leading-none text-[var(--dataset-tag-text-light)] transition-opacity hover:opacity-75 disabled:cursor-not-allowed disabled:opacity-45 dark:text-[var(--dataset-tag-text-dark)]"
                         style={getDatasetTagStyle(tag.color)}
                         onClick={() => handleAddExistingTag(tag)}
@@ -599,7 +621,7 @@ export function DatasetEditSheet({
                     <DatasetTagEditor
                       key={tag.id}
                       tag={tag}
-                      disabled={isSaving}
+                      disabled={isWorking}
                       onChange={handleTagChange}
                       onRemove={handleRemoveTag}
                     />
@@ -615,9 +637,9 @@ export function DatasetEditSheet({
 
             <section className="space-y-2">
               <p className="text-sm font-medium text-foreground">Uploaded</p>
-              <div className="rounded-2xl border border-border bg-card px-4 py-3 text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground">
                 {uploadedAt}
-              </div>
+              </p>
             </section>
 
             {errorMessage ? (
@@ -629,18 +651,29 @@ export function DatasetEditSheet({
             <Button
               type="button"
               variant="outline"
-              disabled={isSaving}
+              disabled={isWorking}
               data-smoke-dataset-replace
               onClick={handleReplaceDataset}
             >
               Replace dataset
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              className="sm:mr-auto"
+              disabled={isWorking}
+              data-smoke-dataset-delete
+              onClick={handleDeleteDataset}
+            >
+              <Trash2Icon />
+              {isDeleting ? "Deleting..." : "Delete dataset"}
             </Button>
             <SheetClose
               render={
                 <Button
                   type="button"
                   variant="outline"
-                  disabled={isSaving}
+                  disabled={isWorking}
                   data-smoke-close="dataset-edit-sheet"
                 />
               }

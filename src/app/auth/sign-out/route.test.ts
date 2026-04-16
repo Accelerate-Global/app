@@ -1,14 +1,74 @@
 import { describe, expect, it, vi } from "vitest";
+import { NextRequest } from "next/server";
 
 import { POST } from "./route";
 
+const {
+  signOutMock,
+  createServerClientMock,
+  hasSupabaseConfigMock,
+  getSupabaseConfigMock,
+} = vi.hoisted(() => ({
+  signOutMock: vi.fn(),
+  createServerClientMock: vi.fn(),
+  hasSupabaseConfigMock: vi.fn(() => false),
+  getSupabaseConfigMock: vi.fn(() => ({
+    supabaseUrl: "https://supabase.example",
+    supabasePublishableKey: "publishable-key",
+  })),
+}));
+
+vi.mock("@supabase/ssr", () => ({
+  createServerClient: createServerClientMock,
+}));
+
 vi.mock("@/lib/supabase/config", () => ({
-  hasSupabaseConfig: () => false,
+  hasSupabaseConfig: hasSupabaseConfigMock,
+  getSupabaseConfig: getSupabaseConfigMock,
 }));
 
 describe("/auth/sign-out", () => {
+  it("preserves Supabase sign-out cookies on the response", async () => {
+    hasSupabaseConfigMock.mockReturnValue(true);
+    signOutMock.mockResolvedValue({ error: null });
+
+    createServerClientMock.mockImplementation((_url, _key, options) => {
+      options.cookies.setAll([
+        {
+          name: "sb-auth-token",
+          value: "",
+          options: { path: "/", maxAge: 0 },
+        },
+      ]);
+
+      return {
+        auth: {
+          signOut: signOutMock,
+        },
+      };
+    });
+
+    const request = new NextRequest("http://localhost/auth/sign-out", {
+      method: "POST",
+      headers: {
+        cookie: "sb-auth-token=active-session",
+      },
+    });
+
+    const response = await POST(request);
+
+    expect(createServerClientMock).toHaveBeenCalled();
+    expect(signOutMock).toHaveBeenCalled();
+    expect(response.headers.get("set-cookie")).toContain("sb-auth-token=");
+    expect(response.headers.get("set-cookie")).toContain("Max-Age=0");
+    await expect(response.json()).resolves.toEqual({ ok: true });
+  });
+
   it("returns ok when Supabase config is disabled", async () => {
-    const response = await POST();
+    hasSupabaseConfigMock.mockReturnValue(false);
+    const response = await POST(
+      new NextRequest("http://localhost/auth/sign-out", { method: "POST" }),
+    );
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({ ok: true });

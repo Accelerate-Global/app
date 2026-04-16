@@ -124,7 +124,20 @@ describe("DatasetDetailClient", () => {
           ],
         }}
         regions={[]}
-        fieldDefinitionPresentationByColumnKey={{}}
+        fieldDefinitionPresentationByColumnKey={{
+          christianity_gsec: {
+            definition: "Watchlist status definition",
+            displayLabel: "Christianity: GSEC",
+            effectiveLabel: "Christianity: GSEC",
+            linkedSources: [],
+          },
+          christianity_frontier_group: {
+            definition: "Frontier group definition",
+            displayLabel: "Christianity: Frontier Group Y/N",
+            effectiveLabel: "Christianity: Frontier Group Y/N",
+            linkedSources: [],
+          },
+        }}
       />,
     );
 
@@ -132,9 +145,11 @@ describe("DatasetDetailClient", () => {
       watchlistCard: {
         enabled: boolean;
         supported: boolean;
+        thresholdLabel: string;
         threshold: number;
         minThreshold: number;
         maxThreshold: number;
+        frontierGroupLabel: string;
         frontierGroupValue: boolean;
       };
     };
@@ -150,9 +165,11 @@ describe("DatasetDetailClient", () => {
     expect(viewSwitchGridProps.watchlistCard).toMatchObject({
       enabled: false,
       supported: true,
+      thresholdLabel: "Christianity: GSEC",
       threshold: 2,
       minThreshold: 0,
       maxThreshold: 6,
+      frontierGroupLabel: "Christianity: Frontier Group Y/N",
       frontierGroupValue: true,
     });
     expect(datasetTableProps.watchlistFilter).toEqual({

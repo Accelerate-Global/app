@@ -100,18 +100,16 @@ export function DatasetTable({
       {
         id: "rowIndex",
         accessorFn: (row) => row.rowIndex + 1,
-        header: ({ column }) => (
-          <DataGridColumnHeader title="#" column={column} />
-        ),
+        header: () => <span className="sr-only">Row number</span>,
         cell: ({ row }) => (
           <span className="text-muted-foreground tabular-nums">
             {row.original.rowIndex + 1}
           </span>
         ),
-        meta: { headerTitle: "#" },
+        meta: { headerTitle: "Row number" },
         size: 72,
         enableHiding: false,
-        enableSorting: true,
+        enableSorting: false,
       },
       ...getVisibleDatasetColumns(
         dataset.columns,

@@ -14,6 +14,10 @@ export const smokeRouteSpecs: SmokeRouteSpec[] = [
     pageFile: "src/app/sign-up/page.tsx",
     path: "/sign-up",
     pageId: "sign-up",
+    journeys: [
+      "allowlisted user can sign up",
+      "blocked user cannot sign up",
+    ],
   },
   {
     id: "forgot-password-anonymous",
@@ -21,6 +25,7 @@ export const smokeRouteSpecs: SmokeRouteSpec[] = [
     pageFile: "src/app/forgot-password/page.tsx",
     path: "/forgot-password",
     pageId: "forgot-password",
+    journeys: ["forgot-password request succeeds"],
   },
   {
     id: "reset-password-anonymous",
@@ -28,6 +33,10 @@ export const smokeRouteSpecs: SmokeRouteSpec[] = [
     pageFile: "src/app/reset-password/page.tsx",
     path: "/reset-password",
     pageId: "reset-password",
+    journeys: [
+      "recovery link lands on reset-password",
+      "password reset completes",
+    ],
   },
   {
     id: "sign-in-redirect-anonymous",
@@ -138,6 +147,10 @@ export const smokeRouteSpecs: SmokeRouteSpec[] = [
     pageFile: "src/app/dashboard/profile/page.tsx",
     path: "/dashboard/profile",
     pageId: "profile",
+    journeys: [
+      "signed-in user can sign out",
+      "disabled user cannot sign back in",
+    ],
   },
   {
     id: "profile-admin",

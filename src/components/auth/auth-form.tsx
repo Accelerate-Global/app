@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { buildAuthConfirmUrl } from "@/lib/auth-redirect";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 type AuthFormProps = {
@@ -65,7 +66,9 @@ export function AuthForm({ mode, message }: AuthFormProps) {
               email,
               password,
               options: {
-                emailRedirectTo: `${window.location.origin}/auth/confirm`,
+                emailRedirectTo: buildAuthConfirmUrl(
+                  window.location.origin,
+                ),
               },
             });
 

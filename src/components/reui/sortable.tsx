@@ -12,6 +12,7 @@ import {
   ReactNode,
   useCallback,
   useContext,
+  useId,
   useLayoutEffect,
   useMemo,
   useState,
@@ -89,6 +90,7 @@ export interface SortableRootProps<T> extends Omit<
   useRender.ComponentProps<"div">,
   "onDragStart" | "onDragEnd" | "children"
 > {
+  id?: string
   value: T[]
   onValueChange: (value: T[]) => void
   getItemValue: (item: T) => string
@@ -105,6 +107,7 @@ export interface SortableRootProps<T> extends Omit<
 }
 
 function Sortable<T>({
+  id,
   value,
   onValueChange,
   getItemValue,
@@ -118,8 +121,11 @@ function Sortable<T>({
   children,
   ...props
 }: SortableRootProps<T>) {
+  const reactId = useId()
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null)
   const [mounted, setMounted] = useState(false)
+
+  const sortableId = id ?? `sortable-${reactId.replaceAll(":", "")}`
 
   useLayoutEffect(() => setMounted(true), [])
 
@@ -224,6 +230,7 @@ function Sortable<T>({
   return (
     <SortableInternalContext.Provider value={contextValue}>
       <DndContext
+        id={sortableId}
         sensors={sensors}
         modifiers={modifiers}
         measuring={{
@@ -235,7 +242,7 @@ function Sortable<T>({
         onDragEnd={handleDragEnd}
         onDragCancel={handleDragCancel}
       >
-        <SortableContext items={itemIds} strategy={getStrategy()}>
+        <SortableContext id={sortableId} items={itemIds} strategy={getStrategy()}>
           {useRender({
             defaultTagName: "div",
             render,

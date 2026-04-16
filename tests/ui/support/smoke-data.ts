@@ -17,6 +17,7 @@ export const UI_SMOKE_STORAGE_STATES = {
 } as const;
 
 export const UI_SMOKE_PASSWORD = "SmokePass123!";
+export const UI_SMOKE_PASSWORD_RESET = "SmokePass456!";
 
 export const UI_SMOKE_USERS = {
   viewer: {
@@ -28,6 +29,36 @@ export const UI_SMOKE_USERS = {
     email: "smoke-admin@accelerate-global.test",
     password: UI_SMOKE_PASSWORD,
     fullName: "Smoke Admin",
+  },
+  recovery: {
+    email: "smoke-recovery@accelerate-global.test",
+    password: UI_SMOKE_PASSWORD,
+    fullName: "Smoke Recovery",
+  },
+  forgotPassword: {
+    email: "smoke-forgot-password@accelerate-global.test",
+    password: UI_SMOKE_PASSWORD,
+    fullName: "Smoke Forgot Password",
+  },
+  reset: {
+    email: "smoke-reset@accelerate-global.test",
+    password: UI_SMOKE_PASSWORD,
+    fullName: "Smoke Reset",
+  },
+  signOut: {
+    email: "smoke-sign-out@accelerate-global.test",
+    password: UI_SMOKE_PASSWORD,
+    fullName: "Smoke Sign Out",
+  },
+  disable: {
+    email: "smoke-disable@accelerate-global.test",
+    password: UI_SMOKE_PASSWORD,
+    fullName: "Smoke Disable",
+  },
+  allowlistedSignup: {
+    email: "smoke-sign-up@accelerate-global.test",
+    password: UI_SMOKE_PASSWORD,
+    fullName: "Smoke Sign Up",
   },
 } as const;
 
@@ -52,6 +83,41 @@ export type UiSmokeBootstrap = {
       id: string;
       email: string;
       fullName: string;
+    };
+    recovery: {
+      id: string;
+      email: string;
+      fullName: string;
+    };
+    forgotPassword: {
+      id: string;
+      email: string;
+      fullName: string;
+    };
+    reset: {
+      id: string;
+      email: string;
+      fullName: string;
+    };
+    signOut: {
+      id: string;
+      email: string;
+      fullName: string;
+    };
+    disable: {
+      id: string;
+      email: string;
+      fullName: string;
+    };
+  };
+  authFlows: {
+    allowlistedSignup: {
+      email: string;
+      password: string;
+      fullName: string;
+    };
+    passwordReset: {
+      nextPassword: string;
     };
   };
   datasets: {
