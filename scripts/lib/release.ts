@@ -2,6 +2,9 @@ import { parseDeploymentMarkup } from "@/lib/release-process";
 
 import { delay, runCommand } from "./command";
 
+const GH_COMMAND_TIMEOUT_MS = 30_000;
+const FETCH_TIMEOUT_MS = 30_000;
+
 type GitHubWorkflowRun = {
   databaseId: number;
   name: string;
@@ -54,8 +57,70 @@ type SmokeCheckOptions = {
   pollMs?: number;
 };
 
+function logObservedState(lastState: string | null, nextState: string) {
+  if (lastState !== nextState) {
+    console.log(`[release] ${nextState}`);
+    return nextState;
+  }
+
+  return lastState;
+}
+
+function describeLastObservedState(lastState: string | null) {
+  return lastState ?? "No remote state was observed.";
+}
+
+function formatRequiredCheckState(input: {
+  prNumber: string;
+  requiredChecks: Array<{
+    workflowName: string;
+    check: GitHubPullRequestCheck | undefined;
+  }>;
+}) {
+  const summary = input.requiredChecks
+    .map(({ workflowName, check }) => `${workflowName}=${check?.bucket ?? "missing"}`)
+    .join(", ");
+
+  return `PR #${input.prNumber} checks: ${summary}`;
+}
+
+function formatWorkflowState(input: {
+  workflowName: string;
+  commitSha: string;
+  run: GitHubWorkflowRun | null;
+}) {
+  if (!input.run) {
+    return `${input.workflowName} for ${input.commitSha}: awaiting workflow run`;
+  }
+
+  return `${input.workflowName} for ${input.commitSha}: ${input.run.status}/${input.run.conclusion ?? "pending"} (${input.run.url})`;
+}
+
+function formatDeploymentState(input: {
+  commitSha: string;
+  deployment: GitHubDeployment | null;
+  status: GitHubDeploymentStatus | null;
+}) {
+  if (!input.deployment) {
+    return `Production deployment for ${input.commitSha}: awaiting deployment record`;
+  }
+
+  const deploymentUrl = input.status?.target_url ?? input.status?.environment_url ?? "pending";
+
+  return [
+    `Production deployment for ${input.commitSha}:`,
+    `id=${input.deployment.id}`,
+    `state=${input.status?.state ?? "pending"}`,
+    `url=${deploymentUrl}`,
+  ].join(" ");
+}
+
 async function ghApi<T>(path: string) {
-  const { stdout } = await runCommand("gh", ["api", path], { quiet: true });
+  const { stdout } = await runCommand("gh", ["api", path], {
+    quiet: true,
+    stdinMode: "ignore",
+    timeoutMs: GH_COMMAND_TIMEOUT_MS,
+  });
   return JSON.parse(stdout) as T;
 }
 
@@ -74,7 +139,11 @@ async function ghRunList(workflowName: string, commitSha: string) {
       "--limit",
       "10",
     ],
-    { quiet: true },
+    {
+      quiet: true,
+      stdinMode: "ignore",
+      timeoutMs: GH_COMMAND_TIMEOUT_MS,
+    },
   );
 
   return JSON.parse(stdout) as GitHubWorkflowRun[];
@@ -93,6 +162,8 @@ async function ghPullRequestChecks(prNumber: string) {
     {
       quiet: true,
       allowFailure: true,
+      stdinMode: "ignore",
+      timeoutMs: GH_COMMAND_TIMEOUT_MS,
     },
   );
 
@@ -132,6 +203,7 @@ async function fetchMarkupInfo(url: string) {
     headers: {
       "user-agent": "accelerate-global-release-health",
     },
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   });
 
   if (!response.ok) {
@@ -146,17 +218,23 @@ export async function waitForWorkflowRun(options: WaitForWorkflowOptions) {
   const timeoutMs = options.timeoutMs ?? 15 * 60 * 1000;
   const pollMs = options.pollMs ?? 5000;
   const startedAt = Date.now();
+  let lastObservedState: string | null = null;
 
   for (;;) {
-    const run = getLatestRun(
-      await ghRunList(options.workflowName, options.commitSha),
-    );
+    const run = getLatestRun(await ghRunList(options.workflowName, options.commitSha));
+    const observedState = formatWorkflowState({
+      workflowName: options.workflowName,
+      commitSha: options.commitSha,
+      run,
+    });
+
+    lastObservedState = logObservedState(lastObservedState, observedState);
 
     if (run) {
       if (run.status === "completed") {
         if (run.conclusion !== "success") {
           throw new Error(
-            `${options.workflowName} failed for ${options.commitSha}: ${run.conclusion} (${run.url})`,
+            `${options.workflowName} failed for ${options.commitSha}. ${describeLastObservedState(lastObservedState)}`,
           );
         }
 
@@ -166,7 +244,7 @@ export async function waitForWorkflowRun(options: WaitForWorkflowOptions) {
 
     if (Date.now() - startedAt > timeoutMs) {
       throw new Error(
-        `Timed out waiting for ${options.workflowName} on ${options.commitSha}.`,
+        `Timed out waiting for ${options.workflowName} on ${options.commitSha}. ${describeLastObservedState(lastObservedState)}`,
       );
     }
 
@@ -183,6 +261,7 @@ export async function waitForPullRequestChecks(options: {
   const timeoutMs = options.timeoutMs ?? 15 * 60 * 1000;
   const pollMs = options.pollMs ?? 5000;
   const startedAt = Date.now();
+  let lastObservedState: string | null = null;
 
   for (;;) {
     const checks = await ghPullRequestChecks(options.prNumber);
@@ -190,13 +269,19 @@ export async function waitForPullRequestChecks(options: {
       workflowName,
       check: checks.find((check) => check.workflow === workflowName),
     }));
+    const observedState = formatRequiredCheckState({
+      prNumber: options.prNumber,
+      requiredChecks,
+    });
+
+    lastObservedState = logObservedState(lastObservedState, observedState);
     const failedCheck = requiredChecks.find(
       ({ check }) => check && ["fail", "cancel"].includes(check.bucket),
     );
 
     if (failedCheck?.check) {
       throw new Error(
-        `${failedCheck.workflowName} failed for PR #${options.prNumber}: ${failedCheck.check.link}`,
+        `${failedCheck.workflowName} failed for PR #${options.prNumber}. ${describeLastObservedState(lastObservedState)} (${failedCheck.check.link})`,
       );
     }
 
@@ -213,7 +298,7 @@ export async function waitForPullRequestChecks(options: {
       throw new Error(
         `Timed out waiting for PR #${options.prNumber} checks: ${pendingChecks
           .map(({ workflowName }) => workflowName)
-          .join(", ")}.`,
+          .join(", ")}. ${describeLastObservedState(lastObservedState)}`,
       );
     }
 
@@ -225,19 +310,29 @@ export async function waitForGitHubDeployment(options: WaitForDeploymentOptions)
   const timeoutMs = options.timeoutMs ?? 15 * 60 * 1000;
   const pollMs = options.pollMs ?? 5000;
   const startedAt = Date.now();
+  let lastObservedState: string | null = null;
 
   for (;;) {
     const deployments = await ghApi<GitHubDeployment[]>(
       `repos/Accelerate-Global/online/deployments?sha=${options.commitSha}`,
     );
     const deployment = getLatestDeployment(deployments);
+    const status = deployment
+      ? getLatestDeploymentStatus(
+          await ghApi<GitHubDeploymentStatus[]>(
+            `repos/Accelerate-Global/online/deployments/${deployment.id}/statuses`,
+          ),
+        )
+      : null;
+    const observedState = formatDeploymentState({
+      commitSha: options.commitSha,
+      deployment,
+      status,
+    });
+
+    lastObservedState = logObservedState(lastObservedState, observedState);
 
     if (deployment) {
-      const statuses = await ghApi<GitHubDeploymentStatus[]>(
-        `repos/Accelerate-Global/online/deployments/${deployment.id}/statuses`,
-      );
-      const status = getLatestDeploymentStatus(statuses);
-
       if (status?.state === "success" && status.environment_url) {
         return {
           deployment,
@@ -248,13 +343,15 @@ export async function waitForGitHubDeployment(options: WaitForDeploymentOptions)
 
       if (status && ["error", "failure", "inactive"].includes(status.state)) {
         throw new Error(
-          `GitHub deployment for ${options.commitSha} failed with status "${status.state}".`,
+          `GitHub deployment for ${options.commitSha} failed. ${describeLastObservedState(lastObservedState)}`,
         );
       }
     }
 
     if (Date.now() - startedAt > timeoutMs) {
-      throw new Error(`Timed out waiting for a production deployment for ${options.commitSha}.`);
+      throw new Error(
+        `Timed out waiting for a production deployment for ${options.commitSha}. ${describeLastObservedState(lastObservedState)}`,
+      );
     }
 
     await delay(pollMs);

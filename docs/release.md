@@ -19,6 +19,8 @@ Vercel production deploys for emergency recovery only.
    ```
 
    `pnpm verify:release` remains as a temporary deprecated alias.
+   Run this from a clean, already-committed PR branch. `pnpm ship` is not a
+   substitute for branch creation, staging, or commit authoring.
 
 3. If the release includes tracked Supabase migrations, apply them to the linked
    remote project explicitly before merge:
@@ -45,6 +47,8 @@ Vercel production deploys for emergency recovery only.
 - refuses to run with a dirty worktree
 - fails early if the linked remote database is missing tracked migrations
 - waits for the PR `App Quality`, `UI Smoke`, and `Database Security` checks
+- emits progress updates while waiting on remote checks, merge state, release
+  health, and production deployment state
 - merges the PR to `main`
 - switches the local checkout back to `main`, pulls `--ff-only`, deletes the
   merged branch locally when safe, and prunes remote refs
@@ -52,6 +56,8 @@ Vercel production deploys for emergency recovery only.
 - waits for the GitHub-backed Vercel production deployment
 - verifies that [data.accelerateglobal.org](https://data.accelerateglobal.org)
   points at the same Vercel deployment as the git-based production deploy
+- fails fast if a `gh`, `git`, or release-critical `pnpm` step stops making
+  progress because it is waiting on interactive input
 
 ## Fallbacks
 
@@ -59,6 +65,10 @@ Vercel production deploys for emergency recovery only.
   the local DB security gate.
 - If GitHub CLI authentication is missing, complete `gh auth login` before
   running `pnpm ship`.
+- If `pnpm ship` is interrupted or a remote wait fails mid-run, re-run
+  `pnpm ship --pr <number>` first. The command is expected to resume from the
+  current PR state and continue the post-merge checks when the PR is already
+  merged.
 - If the linked Supabase migration check fails, run `pnpm db:push:remote`
   explicitly and then re-run `pnpm ship`.
 - If the production alias is unhealthy after merge, inspect the `Release Health`
