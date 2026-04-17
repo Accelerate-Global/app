@@ -6,6 +6,7 @@ import type {
   SavedDatasetFilterState,
   SavedDatasetTable,
 } from "@/lib/api-types";
+import { normalizeSavedDatasetFilterState } from "@/lib/saved-dataset-filters";
 
 function stripCsvExtension(value: string) {
   return value.trim().replace(/\.csv$/iu, "");
@@ -32,7 +33,7 @@ function toSavedDatasetTable(row: {
     datasetFileName: row.datasetFileName,
     name: row.name,
     details: row.details,
-    filters: row.filters,
+    filters: normalizeSavedDatasetFilterState(row.filters),
     savedRowCount: row.savedRowCount,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),

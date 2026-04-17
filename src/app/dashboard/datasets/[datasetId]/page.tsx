@@ -7,20 +7,30 @@ import { SiteHeader } from "@/components/layout/site-header";
 import { buttonVariants } from "@/components/ui/button";
 import { getCurrentIdentity } from "@/lib/auth";
 import { getDataset } from "@/lib/datasets";
+import { getDatasetOpenPresetTag } from "@/lib/dataset-tags";
 import { listFieldDefinitionPresentationByColumnKey } from "@/lib/field-definitions";
 import { getDatasetViewOption } from "@/lib/dataset-view-options";
 import { listFilterRegions } from "@/lib/filter-settings";
+import { buildDatasetOpenPreset } from "@/lib/saved-dataset-filters";
+import { getSavedDatasetTable } from "@/lib/saved-dataset-tables";
 import { cn } from "@/lib/utils";
 
 type DatasetPageProps = {
   params: Promise<{
     datasetId: string;
   }>;
+  searchParams: Promise<{
+    savedTableId?: string;
+  }>;
 };
 
-export default async function DatasetPage({ params }: DatasetPageProps) {
+export default async function DatasetPage({
+  params,
+  searchParams,
+}: DatasetPageProps) {
   const identity = await getCurrentIdentity();
   const { datasetId } = await params;
+  const { savedTableId } = await searchParams;
 
   if (!identity) {
     redirect("/");
@@ -31,6 +41,25 @@ export default async function DatasetPage({ params }: DatasetPageProps) {
   if (!dataset) {
     notFound();
   }
+
+  const openPresetTag = getDatasetOpenPresetTag(dataset.tags);
+  const savedTable = savedTableId
+    ? await getSavedDatasetTable({
+        ownerId: identity.ownerId,
+        savedTableId,
+      })
+    : null;
+  const matchingSavedTable =
+    savedTable && savedTable.datasetId === dataset.id ? savedTable : null;
+  const initialFilters =
+    (matchingSavedTable
+      ? buildDatasetOpenPreset(matchingSavedTable.filters)
+      : openPresetTag?.openPreset) ?? null;
+  const detailKey = [
+    dataset.id,
+    matchingSavedTable?.id ?? null,
+    openPresetTag?.id ?? null,
+  ].join(":");
 
   const [regions, headerDescription, fieldDefinitionPresentationByColumnKey] = await Promise.all([
     listFilterRegions(),
@@ -67,9 +96,13 @@ export default async function DatasetPage({ params }: DatasetPageProps) {
           ) : null}
         </section>
         <DatasetDetailClient
+          key={detailKey}
           dataset={dataset}
           regions={regions}
           fieldDefinitionPresentationByColumnKey={fieldDefinitionPresentationByColumnKey}
+          initialFilters={initialFilters}
+          initialSorting={matchingSavedTable?.filters.sorting}
+          canManageOpenPresets={identity.isDatasetAdmin}
         />
       </div>
     </main>

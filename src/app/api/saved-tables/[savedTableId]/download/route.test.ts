@@ -87,6 +87,10 @@ const savedTable = {
       selectedRegionNames: ["North Africa"],
       enabledCountryNames: ["Egypt"],
     },
+    country: {
+      enabled: false,
+      selectedCountryNames: [],
+    },
     watchlist: {
       enabled: false,
       threshold: 2,
@@ -124,6 +128,7 @@ describe("/api/saved-tables/[savedTableId]/download", () => {
           data: {
             pg_rop3: "100011.0",
             geo_country_name: "Egypt",
+            alternate_countries: "",
           },
         },
         {
@@ -132,6 +137,7 @@ describe("/api/saved-tables/[savedTableId]/download", () => {
           data: {
             pg_rop3: "100018.0",
             geo_country_name: "Turkey",
+            alternate_countries: "Egypt",
           },
         },
         {
@@ -140,6 +146,7 @@ describe("/api/saved-tables/[savedTableId]/download", () => {
           data: {
             pg_rop3: "100021.0",
             geo_country_name: "Egypt",
+            alternate_countries: "",
           },
         },
       ],
@@ -189,9 +196,39 @@ describe("/api/saved-tables/[savedTableId]/download", () => {
     );
     const csv = await response.text();
 
-    expect(csv).toContain("Row number,Country,ROP3");
-    expect(csv).toContain("3,Egypt,100021.0");
+    expect(csv).toContain("Row number,ROP3,Country");
+    expect(csv).toContain("3,100021.0,Egypt");
     expect(csv).not.toContain("Turkey");
+  });
+
+  it("includes rows that match the selected country through alternate countries", async () => {
+    getSavedDatasetTableMock.mockResolvedValue({
+      ...savedTable,
+      filters: {
+        ...savedTable.filters,
+        region: {
+          ...savedTable.filters.region,
+          enabled: false,
+          selectedRegionIds: [],
+          selectedRegionNames: [],
+          enabledCountryNames: [],
+        },
+        country: {
+          enabled: true,
+          selectedCountryNames: ["Egypt"],
+        },
+      },
+    });
+
+    const response = await GET(
+      new Request("http://localhost/api/saved-tables/c0000000-0000-4000-8000-000000000001/download"),
+      context,
+    );
+
+    expect(response.status).toBe(200);
+    const csv = await response.text();
+
+    expect(csv).toContain("2,100018.0,Turkey");
   });
 
   it("returns not found when the saved table does not exist", async () => {

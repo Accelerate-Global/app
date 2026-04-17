@@ -1,17 +1,18 @@
 "use client";
 
-import { Loader2Icon, MapIcon, PlusIcon, SearchIcon, Trash2Icon } from "lucide-react";
-import { useMemo, useState } from "react";
+import { Loader2Icon, MapIcon, PlusIcon, Trash2Icon } from "lucide-react";
+import { useState } from "react";
 
+import { CountrySearchSelector } from "@/components/dashboard/country-search-selector";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import type {
   FilterRegion,
   FilterRegionResponse,
 } from "@/lib/api-types";
+import { normalizeRegionDisplayName } from "@/lib/region-display";
 
 type FilterSettingsClientProps = {
   initialRegions: FilterRegion[];
@@ -90,112 +91,6 @@ async function removeRegion(regionId: string) {
   if (!response.ok) {
     throw new Error(await getErrorMessage(response, "The region could not be deleted."));
   }
-}
-
-function CountrySelector({
-  allCountries,
-  selectedCountries,
-  searchValue,
-  disabled,
-  onSearchChange,
-  onToggleCountry,
-  onSelectVisible,
-  onClearVisible,
-  smokeSearchMarker,
-}: {
-  allCountries: string[];
-  selectedCountries: string[];
-  searchValue: string;
-  disabled: boolean;
-  onSearchChange: (value: string) => void;
-  onToggleCountry: (country: string, checked: boolean) => void;
-  onSelectVisible: (countries: string[]) => void;
-  onClearVisible: (countries: string[]) => void;
-  smokeSearchMarker?: string;
-}) {
-  const normalizedSearch = searchValue.trim().toLowerCase();
-  const visibleCountries = useMemo(
-    () =>
-      normalizedSearch
-        ? allCountries.filter((country) =>
-            country.toLowerCase().includes(normalizedSearch),
-          )
-        : allCountries,
-    [allCountries, normalizedSearch],
-  );
-  const selectedSet = useMemo(
-    () => new Set(selectedCountries),
-    [selectedCountries],
-  );
-
-  return (
-    <div className="space-y-3">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative min-w-0 flex-1">
-          <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={searchValue}
-            disabled={disabled}
-            placeholder="Search countries"
-            className="pl-9"
-            data-smoke-region-country-search={smokeSearchMarker}
-            onChange={(event) => onSearchChange(event.target.value)}
-          />
-        </div>
-        <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-muted-foreground">
-          <span>{selectedCountries.length} selected</span>
-          <Button
-            type="button"
-            size="xs"
-            variant="ghost"
-            disabled={disabled || visibleCountries.length === 0}
-            onClick={() => onSelectVisible(visibleCountries)}
-          >
-            Select visible
-          </Button>
-          <Button
-            type="button"
-            size="xs"
-            variant="ghost"
-            disabled={disabled || visibleCountries.length === 0}
-            onClick={() => onClearVisible(visibleCountries)}
-          >
-            Clear visible
-          </Button>
-        </div>
-      </div>
-
-      <div className="max-h-64 overflow-y-auto rounded-xl border border-border bg-background">
-        {visibleCountries.length === 0 ? (
-          <div className="px-4 py-6 text-sm text-muted-foreground">
-            No countries match this search.
-          </div>
-        ) : (
-          <div className="divide-y divide-border">
-            {visibleCountries.map((country) => (
-              <label
-                key={country}
-                className="flex cursor-pointer items-center gap-3 px-4 py-3 text-sm transition-colors hover:bg-accent/10"
-                {...(smokeSearchMarker
-                  ? {
-                      "data-smoke-region-country-option": `${smokeSearchMarker}:${country}`,
-                    }
-                  : {})}
-              >
-                <Checkbox
-                  checked={selectedSet.has(country)}
-                  disabled={disabled}
-                  onCheckedChange={(checked) => onToggleCountry(country, !!checked)}
-                  aria-label={`Include ${country}`}
-                />
-                <span className="min-w-0 flex-1 truncate">{country}</span>
-              </label>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  );
 }
 
 function RegionEditorCard({
@@ -297,7 +192,11 @@ function RegionEditorCard({
   }
 
   async function handleDelete() {
-    if (!window.confirm(`Delete the region "${region.name}"?`)) {
+    if (
+      !window.confirm(
+        `Delete the region "${normalizeRegionDisplayName(region.name)}"?`,
+      )
+    ) {
       return;
     }
 
@@ -317,7 +216,9 @@ function RegionEditorCard({
   return (
     <Card data-smoke-region-card={region.name}>
       <CardHeader className="space-y-2">
-        <CardTitle className="text-xl">{region.name}</CardTitle>
+        <CardTitle className="text-xl">
+          {normalizeRegionDisplayName(region.name)}
+        </CardTitle>
         <CardDescription>
           Define this region&apos;s tooltip copy, display order, and country membership on dataset pages.
         </CardDescription>
@@ -387,7 +288,7 @@ function RegionEditorCard({
             </p>
           </div>
 
-          <CountrySelector
+          <CountrySearchSelector
             allCountries={countryOptions}
             selectedCountries={selectedCountries}
             searchValue={searchValue}
@@ -512,7 +413,7 @@ export function FilterSettingsClient({
       setNewSortOrder(String(getNextSortOrder(nextRegions)));
       setNewSelectedCountries([]);
       setNewSearchValue("");
-      setCreateSuccess(`Created ${region.name}.`);
+      setCreateSuccess(`Created ${normalizeRegionDisplayName(region.name)}.`);
     } catch (error) {
       setCreateError(
         error instanceof Error ? error.message : "The region could not be created.",
@@ -630,7 +531,7 @@ export function FilterSettingsClient({
                 Choose from the shared country master list used to build Region selectors across dataset pages.
               </p>
             </div>
-            <CountrySelector
+            <CountrySearchSelector
               allCountries={countryOptions}
               selectedCountries={newSelectedCountries}
               searchValue={newSearchValue}

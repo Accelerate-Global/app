@@ -14,11 +14,14 @@ import {
 } from "@/components/ui/sheet";
 import { useDatasetTableState } from "@/components/dashboard/use-dataset-table-state";
 import type {
+  DatasetOpenPreset,
   DatasetSummary,
+  DatasetTag,
   FieldDefinitionPresentation,
   FilterRegion,
   SavedDatasetSort,
 } from "@/lib/api-types";
+import { getDatasetOpenPresetTag, normalizeDatasetTags } from "@/lib/dataset-tags";
 import {
   UUPG_DATASET_COLUMN_KEY,
   WATCHLIST_DATASET_COLUMN_KEY,
@@ -28,12 +31,18 @@ import {
   WATCHLIST_POPULATION_DATASET_COLUMN_KEY,
 } from "@/lib/dataset-region-constants";
 import {
+  datasetSupportsCountryFiltering,
   datasetSupportsRegionFiltering,
   datasetSupportsWatchlistFiltering,
   datasetSupportsUupgFiltering,
   getEnabledRegionCountryNames,
 } from "@/lib/dataset-region-filtering";
-import { buildSavedDatasetFilterState } from "@/lib/saved-dataset-filters";
+import { isGlobeRegionName } from "@/lib/region-display";
+import {
+  buildDatasetOpenPreset,
+  buildSavedDatasetFilterState,
+  getInitialDatasetDetailState,
+} from "@/lib/saved-dataset-filters";
 
 type DatasetDetailClientProps = {
   dataset: DatasetSummary;
@@ -42,23 +51,21 @@ type DatasetDetailClientProps = {
     string,
     FieldDefinitionPresentation
   >;
+  initialFilters?: DatasetOpenPreset | null;
+  initialSorting?: SavedDatasetSort[] | null;
+  canManageOpenPresets?: boolean;
 };
 
-const WATCHLIST_THRESHOLD_DEFAULT = 2;
 const WATCHLIST_THRESHOLD_MIN = 0;
 const WATCHLIST_THRESHOLD_MAX = 6;
-const WATCHLIST_ENGAGEMENT_PHASE_DEFAULT = 6;
 const WATCHLIST_ENGAGEMENT_PHASE_MIN = 0;
 const WATCHLIST_ENGAGEMENT_PHASE_MAX = 7;
-const WATCHLIST_EVANGELICAL_BELIEVERS_LABEL = "Evangelical Believers";
-const WATCHLIST_EVANGELICAL_BELIEVERS_DEFAULT = 1000;
-const WATCHLIST_EVANGELICAL_BELIEVERS_MIN = 0;
+const WATCHLIST_EVANGELICAL_BELIEVERS_LABEL = "Min. # of Evangelical Believers";
+const WATCHLIST_EVANGELICAL_BELIEVERS_MIN = 50;
 const WATCHLIST_EVANGELICAL_BELIEVERS_MAX = 1_000_000_000;
-const WATCHLIST_EVANGELICAL_PERCENT_LABEL = "Evangelical %";
-const WATCHLIST_EVANGELICAL_PERCENT_DEFAULT = 0.05;
+const WATCHLIST_EVANGELICAL_PERCENT_LABEL = "Min. Evangelical %";
 const WATCHLIST_EVANGELICAL_PERCENT_MIN = 0;
 const WATCHLIST_EVANGELICAL_PERCENT_MAX = 100;
-const WATCHLIST_FRONTIER_GROUP_VALUE_DEFAULT = true;
 
 function clampWatchlistThreshold(value: number) {
   return Math.min(
@@ -90,10 +97,28 @@ function clampWatchlistEvangelicalPercentThreshold(value: number) {
   return Math.round(clampedValue * 100) / 100;
 }
 
+function dedupeCountryNames(values: string[]) {
+  return Array.from(
+    new Set(values.map((value) => value.trim()).filter(Boolean)),
+  ).sort((left, right) => left.localeCompare(right));
+}
+
+async function getErrorMessage(response: Response, fallback: string) {
+  try {
+    const payload = (await response.json()) as { error?: string };
+    return payload.error || fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 export function DatasetDetailClient({
   dataset,
   regions,
   fieldDefinitionPresentationByColumnKey,
+  initialFilters = null,
+  initialSorting = null,
+  canManageOpenPresets = false,
 }: DatasetDetailClientProps) {
   const watchlistThresholdLabel =
     fieldDefinitionPresentationByColumnKey[WATCHLIST_DATASET_COLUMN_KEY]
@@ -135,64 +160,117 @@ export function DatasetDetailClient({
   const uupgFieldDefinition =
     fieldDefinitionPresentationByColumnKey[UUPG_DATASET_COLUMN_KEY]
       ?.definition ?? "";
+  const supportsCountryFiltering = datasetSupportsCountryFiltering(dataset);
   const supportsRegionFiltering = datasetSupportsRegionFiltering(dataset);
   const supportsWatchlistFiltering = datasetSupportsWatchlistFiltering(dataset);
   const supportsUupgFiltering = datasetSupportsUupgFiltering(dataset);
-  const canUseRegionFilter = supportsRegionFiltering && regions.length > 0;
-  const regionEnabled = canUseRegionFilter;
-  const [selectedRegionIds, setSelectedRegionIds] = useState<Record<string, boolean>>(
+  const visibleRegions = useMemo(
+    () => regions.filter((region) => !isGlobeRegionName(region.name)),
+    [regions],
+  );
+  const initialState = useMemo(
     () =>
-      Object.fromEntries(
-        regions.map((region) => [region.id, canUseRegionFilter]),
-      ),
+      getInitialDatasetDetailState({
+        dataset,
+        regions: visibleRegions,
+        initialFilters,
+        initialSorting: initialSorting ?? undefined,
+      }),
+    [dataset, initialFilters, initialSorting, visibleRegions],
   );
-  const [watchlistEnabled, setWatchlistEnabled] = useState(false);
-  const [watchlistThreshold, setWatchlistThreshold] = useState(
-    WATCHLIST_THRESHOLD_DEFAULT,
+  const normalizedInitialDatasetTags = useMemo(
+    () => normalizeDatasetTags(dataset.tags),
+    [dataset.tags],
   );
+  const initialPresetTag = useMemo(
+    () => getDatasetOpenPresetTag(normalizedInitialDatasetTags),
+    [normalizedInitialDatasetTags],
+  );
+  const [datasetTags, setDatasetTags] = useState<DatasetTag[]>(
+    () => normalizedInitialDatasetTags,
+  );
+  const [selectedOpenPresetTagId, setSelectedOpenPresetTagId] = useState<
+    string | null
+  >(() => initialPresetTag?.id ?? normalizedInitialDatasetTags[0]?.id ?? null);
+  const [isSavingOpenPreset, setIsSavingOpenPreset] = useState(false);
+  const [regionEnabled, setRegionEnabled] = useState(initialState.regionEnabled);
+  const [selectedRegionIds, setSelectedRegionIds] = useState<Record<string, boolean>>(
+    () => initialState.selectedRegionIds,
+  );
+  const [countryEnabled, setCountryEnabled] = useState(initialState.countryEnabled);
+  const [selectedCountryNames, setSelectedCountryNames] = useState<string[]>(
+    () => initialState.selectedCountryNames,
+  );
+  const [countrySearchValue, setCountrySearchValue] = useState("");
+  const [watchlistEnabled, setWatchlistEnabled] = useState(
+    initialState.watchlistEnabled,
+  );
+  const [watchlistThresholdEnabled, setWatchlistThresholdEnabled] = useState(
+    initialState.watchlistThresholdEnabled,
+  );
+  const [watchlistFrontierGroupEnabled, setWatchlistFrontierGroupEnabled] =
+    useState(initialState.watchlistFrontierGroupEnabled);
+  const [watchlistEvangelicalBelieversEnabled, setWatchlistEvangelicalBelieversEnabled] =
+    useState(initialState.watchlistEvangelicalBelieversEnabled);
+  const [watchlistEvangelicalPercentEnabled, setWatchlistEvangelicalPercentEnabled] =
+    useState(initialState.watchlistEvangelicalPercentEnabled);
+  const [watchlistEngagementPhaseEnabled, setWatchlistEngagementPhaseEnabled] =
+    useState(initialState.watchlistEngagementPhaseEnabled);
+  const [watchlistThreshold, setWatchlistThreshold] = useState(initialState.watchlistThreshold);
   const [watchlistEngagementPhaseThreshold, setWatchlistEngagementPhaseThreshold] =
-    useState(WATCHLIST_ENGAGEMENT_PHASE_DEFAULT);
+    useState(initialState.watchlistEngagementPhaseThreshold);
   const [watchlistEvangelicalBelieversThreshold, setWatchlistEvangelicalBelieversThreshold] =
-    useState(WATCHLIST_EVANGELICAL_BELIEVERS_DEFAULT);
+    useState(initialState.watchlistEvangelicalBelieversThreshold);
   const [watchlistEvangelicalPercentThreshold, setWatchlistEvangelicalPercentThreshold] =
-    useState(WATCHLIST_EVANGELICAL_PERCENT_DEFAULT);
+    useState(initialState.watchlistEvangelicalPercentThreshold);
   const [watchlistFrontierGroupValue, setWatchlistFrontierGroupValue] = useState(
-    WATCHLIST_FRONTIER_GROUP_VALUE_DEFAULT,
+    initialState.watchlistFrontierGroupValue,
   );
-  const [uupgEnabled, setUupgEnabled] = useState(false);
+  const [uupgEnabled, setUupgEnabled] = useState(initialState.uupgEnabled);
   const [isFiltersSheetOpen, setIsFiltersSheetOpen] = useState(false);
 
   const enabledCountryNames = useMemo(
-    () => getEnabledRegionCountryNames(regions, selectedRegionIds),
-    [regions, selectedRegionIds],
+    () => getEnabledRegionCountryNames(visibleRegions, selectedRegionIds),
+    [visibleRegions, selectedRegionIds],
   );
   const regionSelectors = useMemo(
     () =>
-      regions.map((region) => ({
+      visibleRegions.map((region) => ({
         id: region.id,
         label: region.name,
         checked: selectedRegionIds[region.id] ?? false,
         description: region.description,
         countries: region.countries,
       })),
-    [regions, selectedRegionIds],
+    [visibleRegions, selectedRegionIds],
   );
   const datasetTable = useDatasetTableState({
     dataset,
+    initialSorting: initialState.sorting,
     fieldDefinitionPresentationByColumnKey,
     regionFilter: {
       enabled: regionEnabled,
       isSupported: supportsRegionFiltering,
-      hasConfiguredRegions: regions.length > 0,
+      hasConfiguredRegions: visibleRegions.length > 0,
       enabledCountryNames,
+    },
+    countryFilter: {
+      enabled: countryEnabled,
+      isSupported: supportsCountryFiltering,
+      selectedCountryNames,
     },
     watchlistFilter: {
       enabled: watchlistEnabled,
       isSupported: supportsWatchlistFiltering,
+      thresholdEnabled: watchlistThresholdEnabled,
       threshold: watchlistThreshold,
+      engagementPhaseEnabled: watchlistEngagementPhaseEnabled,
       engagementPhaseThreshold: watchlistEngagementPhaseThreshold,
+      evangelicalBelieversEnabled: watchlistEvangelicalBelieversEnabled,
       evangelicalBelieversThreshold: watchlistEvangelicalBelieversThreshold,
+      evangelicalPercentEnabled: watchlistEvangelicalPercentEnabled,
       evangelicalPercentThreshold: watchlistEvangelicalPercentThreshold,
+      frontierGroupEnabled: watchlistFrontierGroupEnabled,
       frontierGroupValue: watchlistFrontierGroupValue,
     },
     uupgFilter: {
@@ -203,25 +281,39 @@ export function DatasetDetailClient({
   const savedFilters = useMemo(
     () =>
       buildSavedDatasetFilterState({
-        regions,
+        regions: visibleRegions,
         selectedRegionIds,
         regionEnabled,
+        countryEnabled,
+        selectedCountryNames,
         watchlistEnabled,
+        watchlistThresholdEnabled,
         watchlistThreshold,
+        watchlistEngagementPhaseEnabled,
         watchlistEngagementPhaseThreshold,
+        watchlistEvangelicalBelieversEnabled,
         watchlistEvangelicalBelieversThreshold,
+        watchlistEvangelicalPercentEnabled,
         watchlistEvangelicalPercentThreshold,
+        watchlistFrontierGroupEnabled,
         watchlistFrontierGroupValue,
         uupgEnabled,
         sorting: datasetTable.sorting as SavedDatasetSort[],
       }),
     [
       datasetTable.sorting,
+      countryEnabled,
       regionEnabled,
-      regions,
+      selectedCountryNames,
+      visibleRegions,
       selectedRegionIds,
       uupgEnabled,
+      watchlistEngagementPhaseEnabled,
       watchlistEnabled,
+      watchlistEvangelicalBelieversEnabled,
+      watchlistEvangelicalPercentEnabled,
+      watchlistFrontierGroupEnabled,
+      watchlistThresholdEnabled,
       watchlistEngagementPhaseThreshold,
       watchlistEvangelicalBelieversThreshold,
       watchlistEvangelicalPercentThreshold,
@@ -229,33 +321,148 @@ export function DatasetDetailClient({
       watchlistThreshold,
     ],
   );
+
+  async function updateDatasetTags(nextTags: DatasetTag[]) {
+    const response = await fetch(`/api/datasets/${dataset.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        tags: nextTags,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(
+        await getErrorMessage(
+          response,
+          "The dataset open preset could not be updated.",
+        ),
+      );
+    }
+
+    const payload = (await response.json()) as {
+      dataset: DatasetSummary;
+    };
+
+    const nextNormalizedTags = normalizeDatasetTags(payload.dataset.tags);
+    setDatasetTags(nextNormalizedTags);
+
+    if (!nextNormalizedTags.some((tag) => tag.id === selectedOpenPresetTagId)) {
+      setSelectedOpenPresetTagId(nextNormalizedTags[0]?.id ?? null);
+    }
+  }
+
+  async function handleSaveOpenPreset() {
+    if (!selectedOpenPresetTagId) {
+      throw new Error("Select a tag before saving the open preset.");
+    }
+
+    setIsSavingOpenPreset(true);
+
+    try {
+      const nextOpenPreset = buildDatasetOpenPreset(savedFilters);
+      const nextTags = datasetTags.map((tag) =>
+        tag.id === selectedOpenPresetTagId
+          ? {
+              ...tag,
+              openPreset: nextOpenPreset,
+            }
+          : tag.openPreset
+            ? {
+                ...tag,
+                openPreset: undefined,
+              }
+            : tag,
+      );
+
+      await updateDatasetTags(nextTags);
+    } finally {
+      setIsSavingOpenPreset(false);
+    }
+  }
+
+  async function handleClearOpenPreset() {
+    const hasPreset = datasetTags.some((tag) => tag.openPreset !== undefined);
+
+    if (!hasPreset) {
+      return;
+    }
+
+    setIsSavingOpenPreset(true);
+
+    try {
+      await updateDatasetTags(
+        datasetTags.map((tag) =>
+          tag.openPreset !== undefined
+            ? {
+                ...tag,
+                openPreset: undefined,
+              }
+            : tag,
+        ),
+      );
+    } finally {
+      setIsSavingOpenPreset(false);
+    }
+  }
   const filterPanelProps = {
     regionCard: {
       enabled: regionEnabled,
       supported: supportsRegionFiltering,
       selectors: regionSelectors,
+      onEnabledChange: setRegionEnabled,
       onSelectorChange: (regionId: string, checked: boolean) =>
         setSelectedRegionIds((current) => ({
           ...current,
           [regionId]: checked,
         })),
     },
+    countryCard: {
+      enabled: countryEnabled,
+      supported: supportsCountryFiltering,
+      searchValue: countrySearchValue,
+      availableCountries: datasetTable.availableCountryNames,
+      selectedCountries: selectedCountryNames,
+      onEnabledChange: setCountryEnabled,
+      onSearchChange: setCountrySearchValue,
+      onToggleCountry: (countryName: string, checked: boolean) =>
+        setSelectedCountryNames((current) => {
+          if (checked) {
+            return dedupeCountryNames([...current, countryName]);
+          }
+
+          return current.filter((value) => value !== countryName);
+        }),
+      onSelectVisible: (countryNames: string[]) =>
+        setSelectedCountryNames((current) =>
+          dedupeCountryNames([...current, ...countryNames]),
+        ),
+      onClearVisible: (countryNames: string[]) => {
+        const countryNamesToClear = new Set(countryNames);
+        setSelectedCountryNames((current) =>
+          current.filter((countryName) => !countryNamesToClear.has(countryName)),
+        );
+      },
+    },
     watchlistCard: {
       enabled: watchlistEnabled,
       supported: supportsWatchlistFiltering,
       thresholdLabel: watchlistThresholdLabel,
       thresholdDefinition: watchlistThresholdDefinition,
+      thresholdEnabled: watchlistThresholdEnabled,
       threshold: watchlistThreshold,
       minThreshold: WATCHLIST_THRESHOLD_MIN,
       maxThreshold: WATCHLIST_THRESHOLD_MAX,
       engagementPhaseLabel: watchlistEngagementPhaseLabel,
       engagementPhaseDefinition: watchlistEngagementPhaseDefinition,
+      engagementPhaseEnabled: watchlistEngagementPhaseEnabled,
       engagementPhaseThreshold: watchlistEngagementPhaseThreshold,
       minEngagementPhaseThreshold: WATCHLIST_ENGAGEMENT_PHASE_MIN,
       maxEngagementPhaseThreshold: WATCHLIST_ENGAGEMENT_PHASE_MAX,
       evangelicalBelieversLabel: WATCHLIST_EVANGELICAL_BELIEVERS_LABEL,
       evangelicalBelieversDefinition:
         watchlistEvangelicalBelieversDefinition,
+      evangelicalBelieversEnabled: watchlistEvangelicalBelieversEnabled,
       evangelicalBelieversThreshold: watchlistEvangelicalBelieversThreshold,
       minEvangelicalBelieversThreshold:
         WATCHLIST_EVANGELICAL_BELIEVERS_MIN,
@@ -263,27 +470,35 @@ export function DatasetDetailClient({
         WATCHLIST_EVANGELICAL_BELIEVERS_MAX,
       evangelicalPercentLabel: WATCHLIST_EVANGELICAL_PERCENT_LABEL,
       evangelicalPercentDefinition: watchlistPercentEvangelicalDefinition,
+      evangelicalPercentEnabled: watchlistEvangelicalPercentEnabled,
       evangelicalPercentThreshold: watchlistEvangelicalPercentThreshold,
       minEvangelicalPercentThreshold: WATCHLIST_EVANGELICAL_PERCENT_MIN,
       maxEvangelicalPercentThreshold: WATCHLIST_EVANGELICAL_PERCENT_MAX,
       frontierGroupLabel: watchlistFrontierGroupLabel,
       frontierGroupDefinition: watchlistFrontierGroupDefinition,
+      frontierGroupEnabled: watchlistFrontierGroupEnabled,
       frontierGroupValue: watchlistFrontierGroupValue,
       onEnabledChange: setWatchlistEnabled,
+      onThresholdEnabledChange: setWatchlistThresholdEnabled,
       onThresholdChange: (value: number) =>
         setWatchlistThreshold(clampWatchlistThreshold(value)),
+      onEngagementPhaseEnabledChange: setWatchlistEngagementPhaseEnabled,
       onEngagementPhaseThresholdChange: (value: number) =>
         setWatchlistEngagementPhaseThreshold(
           clampWatchlistEngagementPhaseThreshold(value),
         ),
+      onEvangelicalBelieversEnabledChange:
+        setWatchlistEvangelicalBelieversEnabled,
       onEvangelicalBelieversThresholdChange: (value: number) =>
         setWatchlistEvangelicalBelieversThreshold(
           clampWatchlistEvangelicalBelieversThreshold(value),
         ),
+      onEvangelicalPercentEnabledChange: setWatchlistEvangelicalPercentEnabled,
       onEvangelicalPercentThresholdChange: (value: number) =>
         setWatchlistEvangelicalPercentThreshold(
           clampWatchlistEvangelicalPercentThreshold(value),
         ),
+      onFrontierGroupEnabledChange: setWatchlistFrontierGroupEnabled,
       onFrontierGroupValueChange: setWatchlistFrontierGroupValue,
     },
     uupgCard: {
@@ -314,6 +529,18 @@ export function DatasetDetailClient({
             hasError={Boolean(dataset.error || datasetTable.error)}
             fieldDefinitionPresentationByColumnKey={fieldDefinitionPresentationByColumnKey}
             onOpenFilters={() => setIsFiltersSheetOpen(true)}
+            openPresetControls={
+              canManageOpenPresets
+                ? {
+                    tags: datasetTags,
+                    selectedTagId: selectedOpenPresetTagId,
+                    isSaving: isSavingOpenPreset,
+                    onSelectedTagIdChange: setSelectedOpenPresetTagId,
+                    onSave: handleSaveOpenPreset,
+                    onClear: handleClearOpenPreset,
+                  }
+                : undefined
+            }
           />
           <DatasetTable
             table={datasetTable.table}

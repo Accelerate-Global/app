@@ -41,6 +41,10 @@ const savedTable = {
       selectedRegionNames: ["Globe"],
       enabledCountryNames: ["Egypt", "Turkey"],
     },
+    country: {
+      enabled: false,
+      selectedCountryNames: [],
+    },
     watchlist: {
       enabled: true,
       threshold: 2,
@@ -109,7 +113,17 @@ describe("/api/saved-tables", () => {
       ownerId: "supabase-user",
       datasetId: savedTable.datasetId,
       savedRowCount: 12,
-      filters: savedTable.filters,
+      filters: {
+        ...savedTable.filters,
+        watchlist: {
+          ...savedTable.filters.watchlist,
+          thresholdEnabled: true,
+          engagementPhaseEnabled: true,
+          evangelicalBelieversEnabled: true,
+          evangelicalPercentEnabled: true,
+          frontierGroupEnabled: true,
+        },
+      },
     });
   });
 

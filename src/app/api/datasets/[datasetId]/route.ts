@@ -1,5 +1,6 @@
 import { getCurrentIdentity } from "@/lib/auth";
 import {
+  DatasetOpenPresetCompatibilityError,
   deleteDataset,
   getDataset,
   updateDatasetDetails,
@@ -51,20 +52,30 @@ export async function PATCH(request: Request, context: DatasetContext) {
     return jsonError("Dataset update payload is invalid.");
   }
 
-  const dataset =
-    "status" in parsed.data
-      ? await updateDatasetStatus({
-          datasetId,
-          status: parsed.data.status,
-          error: parsed.data.error,
-        })
-      : await updateDatasetDetails({
-          datasetId,
-          fileName: parsed.data.fileName,
-          tags: parsed.data.tags,
-          isPrimary: parsed.data.isPrimary,
-          hiddenColumnKeys: parsed.data.hiddenColumnKeys,
-        });
+  let dataset;
+
+  try {
+    dataset =
+      "status" in parsed.data
+        ? await updateDatasetStatus({
+            datasetId,
+            status: parsed.data.status,
+            error: parsed.data.error,
+          })
+        : await updateDatasetDetails({
+            datasetId,
+            fileName: parsed.data.fileName,
+            tags: parsed.data.tags,
+            isPrimary: parsed.data.isPrimary,
+            hiddenColumnKeys: parsed.data.hiddenColumnKeys,
+          });
+  } catch (error) {
+    if (error instanceof DatasetOpenPresetCompatibilityError) {
+      return jsonError(error.message, error.status);
+    }
+
+    throw error;
+  }
 
   if (!dataset) {
     return jsonError("Dataset not found.", 404);
