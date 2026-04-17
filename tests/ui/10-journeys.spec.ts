@@ -309,27 +309,23 @@ test("admin can edit dataset details", async ({ page }, testInfo) => {
 
     await page.goto("/dashboard");
     await page
-      .locator(
-        `[data-smoke-dataset-id="${bootstrap.datasets.primary.id}"][data-smoke-trigger="dataset-edit-sheet"]`,
-      )
+      .locator(`[data-smoke-dataset-id="${bootstrap.datasets.primary.id}"]`)
       .click();
-    await expect(page.locator('[data-smoke-ready="dataset-edit-sheet"]')).toBeVisible();
+    await expect(page.locator('[data-smoke-page="dataset-edit"]')).toBeVisible();
     await page.locator("[data-smoke-dataset-name-input]").fill(nextDatasetName);
     await page.locator("[data-smoke-dataset-save]").click();
-    await expect(
-      page.locator('[data-smoke-surface="dataset-edit-sheet"]'),
-    ).toBeHidden();
+    await expect(page.locator('[data-smoke-page="dashboard"]')).toBeVisible();
     await expect(
       getDatasetNameLocator(page, bootstrap.datasets.primary.id),
     ).toHaveText(nextDatasetName);
 
     await page
-      .locator(
-        `[data-smoke-dataset-id="${bootstrap.datasets.primary.id}"][data-smoke-trigger="dataset-edit-sheet"]`,
-      )
+      .locator(`[data-smoke-dataset-id="${bootstrap.datasets.primary.id}"]`)
       .click();
+    await expect(page.locator('[data-smoke-page="dataset-edit"]')).toBeVisible();
     await page.locator("[data-smoke-dataset-name-input]").fill(originalDatasetName);
     await page.locator("[data-smoke-dataset-save]").click();
+    await expect(page.locator('[data-smoke-page="dashboard"]')).toBeVisible();
     await expect(
       getDatasetNameLocator(page, bootstrap.datasets.primary.id),
     ).toHaveText(originalDatasetName);
@@ -481,11 +477,9 @@ test("admin can replace a dataset through the real upload flow", async ({ page }
     await expect(page.locator('[data-smoke-page="dashboard"]')).toBeVisible();
 
     await page
-      .locator(
-        `[data-smoke-dataset-id="${bootstrap.datasets.secondary.id}"][data-smoke-trigger="dataset-edit-sheet"]`,
-      )
+      .locator(`[data-smoke-dataset-id="${bootstrap.datasets.secondary.id}"]`)
       .click();
-    await expect(page.locator('[data-smoke-ready="dataset-edit-sheet"]')).toBeVisible();
+    await expect(page.locator('[data-smoke-page="dataset-edit"]')).toBeVisible();
     await expect(page.locator("[data-smoke-dataset-version-revert]")).toHaveCount(1);
 
     page.once("dialog", (dialog) => void dialog.accept());

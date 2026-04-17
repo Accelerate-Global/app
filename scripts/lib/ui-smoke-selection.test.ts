@@ -9,7 +9,7 @@ import {
 describe("ui-smoke-selection", () => {
   it("targets dataset routes and admin journey for dataset UI changes", () => {
     const selection = resolveUiSmokeSelection([
-      "src/components/dashboard/dataset-edit-sheet.tsx",
+      "src/components/dashboard/dataset-edit-page-client.tsx",
     ]);
 
     expect(selection.mode).toBe("targeted");
@@ -19,6 +19,8 @@ describe("ui-smoke-selection", () => {
         "dashboard-admin",
         "dataset-detail-viewer",
         "dataset-detail-admin",
+        "dataset-edit-viewer-redirect",
+        "dataset-edit-admin",
       ]),
     );
     expect(selection.journeyTitles).toContain("admin can edit dataset details");

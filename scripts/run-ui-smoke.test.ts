@@ -9,7 +9,7 @@ import {
 describe("run-ui-smoke", () => {
   it("builds a targeted-only run plan when requested", () => {
     const plan = buildUiSmokeRunPlan({
-      changedFiles: ["src/components/dashboard/dataset-edit-sheet.tsx"],
+      changedFiles: ["src/components/dashboard/dataset-edit-page-client.tsx"],
       targeted: true,
       fullAfterTargeted: false,
     });
@@ -42,7 +42,7 @@ describe("run-ui-smoke", () => {
 
   it("builds a targeted-and-full plan that reuses the same setup", () => {
     const plan = buildUiSmokeRunPlan({
-      changedFiles: ["src/components/dashboard/dataset-edit-sheet.tsx"],
+      changedFiles: ["src/components/dashboard/dataset-edit-page-client.tsx"],
       targeted: true,
       fullAfterTargeted: true,
     });
