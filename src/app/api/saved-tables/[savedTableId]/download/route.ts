@@ -1,5 +1,6 @@
 import { getCurrentIdentity } from "@/lib/auth";
 import {
+  filterDatasetRowsByCountry,
   filterDatasetRowsByRegion,
   filterDatasetRowsByUupg,
   filterDatasetRowsByWatchlist,
@@ -15,6 +16,7 @@ import {
 import { listFieldDefinitionPresentationByColumnKey } from "@/lib/field-definitions";
 import { jsonError } from "@/lib/http";
 import {
+  getDatasetCountryFilterStateFromSavedView,
   getDatasetRegionFilterStateFromSavedView,
   getDatasetUupgFilterStateFromSavedView,
   getDatasetWatchlistFilterStateFromSavedView,
@@ -71,9 +73,12 @@ export async function GET(
   });
   const filteredRows = filterDatasetRowsByUupg(
     filterDatasetRowsByWatchlist(
-      filterDatasetRowsByRegion(
-        rowsResponse.rows,
-        getDatasetRegionFilterStateFromSavedView(dataset, savedTable.filters),
+      filterDatasetRowsByCountry(
+        filterDatasetRowsByRegion(
+          rowsResponse.rows,
+          getDatasetRegionFilterStateFromSavedView(dataset, savedTable.filters),
+        ),
+        getDatasetCountryFilterStateFromSavedView(dataset, savedTable.filters),
       ),
       getDatasetWatchlistFilterStateFromSavedView(dataset, savedTable.filters),
     ),

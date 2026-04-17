@@ -50,6 +50,10 @@ const savedTable = {
       selectedRegionNames: ["Globe"],
       enabledCountryNames: ["Egypt", "Turkey"],
     },
+    country: {
+      enabled: false,
+      selectedCountryNames: [],
+    },
     watchlist: {
       enabled: true,
       threshold: 2,

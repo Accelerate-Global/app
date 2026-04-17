@@ -15,6 +15,7 @@ import type {
   DatasetRowsResponse,
   DatasetSummary,
   FieldDefinitionPresentation,
+  SavedDatasetSort,
 } from "@/lib/api-types";
 import {
   getDatasetCellValue,
@@ -22,9 +23,12 @@ import {
   getSortedVisibleDatasetColumns,
 } from "@/lib/dataset-table-columns";
 import {
+  filterDatasetRowsByCountry,
   filterDatasetRowsByRegion,
   filterDatasetRowsByUupg,
   filterDatasetRowsByWatchlist,
+  getAvailableDatasetCountryNames,
+  type DatasetCountryFilterState,
   type DatasetRegionFilterState,
   type DatasetUupgFilterState,
   type DatasetWatchlistFilterState,
@@ -55,7 +59,9 @@ async function fetchAllRows(input: {
 
 export function useDatasetTableState(input: {
   dataset: DatasetSummary;
+  initialSorting?: SavedDatasetSort[] | null;
   regionFilter?: DatasetRegionFilterState;
+  countryFilter?: DatasetCountryFilterState;
   watchlistFilter?: DatasetWatchlistFilterState;
   uupgFilter?: DatasetUupgFilterState;
   fieldDefinitionPresentationByColumnKey?: Record<
@@ -66,7 +72,9 @@ export function useDatasetTableState(input: {
   const [rows, setRows] = useState<DatasetRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [sorting, setSorting] = useState<SortingState>([]);
+  const [sorting, setSorting] = useState<SortingState>(
+    () => input.initialSorting ?? [],
+  );
   const fieldDefinitionPresentationByColumnKey = useMemo(
     () => input.fieldDefinitionPresentationByColumnKey ?? {},
     [input.fieldDefinitionPresentationByColumnKey],
@@ -76,12 +84,25 @@ export function useDatasetTableState(input: {
     () =>
       filterDatasetRowsByUupg(
         filterDatasetRowsByWatchlist(
-          filterDatasetRowsByRegion(rows, input.regionFilter),
+          filterDatasetRowsByCountry(
+            filterDatasetRowsByRegion(rows, input.regionFilter),
+            input.countryFilter,
+          ),
           input.watchlistFilter,
         ),
         input.uupgFilter,
       ),
-    [rows, input.regionFilter, input.uupgFilter, input.watchlistFilter],
+    [
+      rows,
+      input.countryFilter,
+      input.regionFilter,
+      input.uupgFilter,
+      input.watchlistFilter,
+    ],
+  );
+  const availableCountryNames = useMemo(
+    () => getAvailableDatasetCountryNames(rows),
+    [rows],
   );
   const visibleColumns = useMemo(
     () =>
@@ -218,6 +239,7 @@ export function useDatasetTableState(input: {
     table,
     sorting,
     visibleColumns,
+    availableCountryNames,
     sortedRows: table.getRowModel().rows.map((row) => row.original),
     recordCount: table.getRowModel().rows.length,
     isLoading,

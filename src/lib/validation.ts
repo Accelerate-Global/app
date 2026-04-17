@@ -9,12 +9,6 @@ export const csvColumnSchema = z.object({
   sourceIndex: z.number().int().nonnegative(),
 });
 
-export const datasetTagSchema = z.object({
-  id: z.string().trim().min(1).max(64),
-  label: z.string().trim().min(1).max(40),
-  color: z.string().trim().regex(/^#[0-9a-fA-F]{6}$/),
-});
-
 export const datasetHiddenColumnKeySchema = z.string().trim().min(1).max(128);
 
 const filterRegionCountrySchema = z.string().trim().min(1).max(255);
@@ -68,16 +62,59 @@ const savedDatasetRegionFilterStateSchema = z
     }
   });
 
+const savedDatasetCountryFilterStateSchema = z
+  .object({
+    enabled: z.boolean(),
+    selectedCountryNames: z.array(filterRegionCountrySchema).max(500),
+  })
+  .superRefine((value, ctx) => {
+    const normalizedCountryNames = value.selectedCountryNames.map((countryName) =>
+      countryName.trim().toLowerCase(),
+    );
+
+    if (new Set(normalizedCountryNames).size !== normalizedCountryNames.length) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["selectedCountryNames"],
+        message: "Each selected country can only be included once.",
+      });
+    }
+  });
+
+const savedDatasetWatchlistFilterStateSchema = z.object({
+  enabled: z.boolean(),
+  thresholdEnabled: z.boolean().optional().default(true),
+  threshold: z.number().int().min(0).max(6),
+  engagementPhaseEnabled: z.boolean().optional().default(true),
+  engagementPhaseThreshold: z.number().int().min(0).max(7),
+  evangelicalBelieversEnabled: z.boolean().optional().default(true),
+  evangelicalBelieversThreshold: z.number().int().min(0).max(1_000_000_000),
+  evangelicalPercentEnabled: z.boolean().optional().default(true),
+  evangelicalPercentThreshold: z.number().min(0).max(100),
+  frontierGroupEnabled: z.boolean().optional().default(true),
+  frontierGroupValue: z.boolean(),
+});
+
+export const datasetOpenPresetSchema = z.object({
+  region: savedDatasetRegionFilterStateSchema,
+  country: savedDatasetCountryFilterStateSchema,
+  watchlist: savedDatasetWatchlistFilterStateSchema,
+  uupg: z.object({
+    enabled: z.boolean(),
+  }),
+});
+
+export const datasetTagSchema = z.object({
+  id: z.string().trim().min(1).max(64),
+  label: z.string().trim().min(1).max(40),
+  color: z.string().trim().regex(/^#[0-9a-fA-F]{6}$/),
+  openPreset: datasetOpenPresetSchema.optional(),
+});
+
 export const savedDatasetFilterStateSchema = z.object({
   region: savedDatasetRegionFilterStateSchema,
-  watchlist: z.object({
-    enabled: z.boolean(),
-    threshold: z.number().int().min(0).max(6),
-    engagementPhaseThreshold: z.number().int().min(0).max(7),
-    evangelicalBelieversThreshold: z.number().int().min(0).max(1_000_000_000),
-    evangelicalPercentThreshold: z.number().min(0).max(100),
-    frontierGroupValue: z.boolean(),
-  }),
+  country: savedDatasetCountryFilterStateSchema,
+  watchlist: savedDatasetWatchlistFilterStateSchema,
   uupg: z.object({
     enabled: z.boolean(),
   }),
@@ -148,6 +185,20 @@ export const datasetMetadataPatchSchema = z
           code: z.ZodIssueCode.custom,
           path: ["hiddenColumnKeys"],
           message: "Each hidden field can only be selected once.",
+        });
+      }
+    }
+
+    if (value.tags) {
+      const presetTagCount = value.tags.filter(
+        (tag) => tag.openPreset !== undefined,
+      ).length;
+
+      if (presetTagCount > 1) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["tags"],
+          message: "Only one dataset tag can store an open preset.",
         });
       }
     }

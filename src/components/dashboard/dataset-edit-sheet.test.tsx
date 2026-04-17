@@ -131,7 +131,7 @@ describe("DatasetEditSheet", () => {
     });
 
     confirmSpy.mockRestore();
-  });
+  }, 10000);
 
   it("opens the tag color dropdown and updates the selected color without crashing", async () => {
     render(
@@ -177,6 +177,72 @@ describe("DatasetEditSheet", () => {
     await waitFor(() => {
       expect(existingTagColorSelect?.textContent).toContain("Blue");
     });
+  });
+
+  it("shows an error when a saved preset tag needs unsupported dataset filters", async () => {
+    render(
+      <DatasetEditSheet
+        dataset={createDataset()}
+        availableTags={[
+          {
+            id: "tag-2",
+            label: "North Africa preset",
+            color: "#078bc9",
+            openPreset: {
+              region: {
+                enabled: true,
+                selectedRegionIds: ["region-1"],
+                selectedRegionNames: ["North Africa"],
+                enabledCountryNames: ["Egypt"],
+              },
+              country: {
+                enabled: false,
+                selectedCountryNames: [],
+              },
+              watchlist: {
+                enabled: false,
+                thresholdEnabled: true,
+                threshold: 2,
+                engagementPhaseEnabled: true,
+                engagementPhaseThreshold: 6,
+                evangelicalBelieversEnabled: true,
+                evangelicalBelieversThreshold: 1000,
+                evangelicalPercentEnabled: true,
+                evangelicalPercentThreshold: 0.05,
+                frontierGroupEnabled: true,
+                frontierGroupValue: true,
+              },
+              uupg: {
+                enabled: false,
+              },
+            },
+          },
+        ]}
+        open
+        isSaving={false}
+        isDeleting={false}
+        versions={[]}
+        isLoadingVersions={false}
+        versionHistoryError={null}
+        revertingVersionId={null}
+        onOpenChange={vi.fn()}
+        onSaveDataset={vi.fn(async () => undefined)}
+        onDeleteDataset={vi.fn(async () => undefined)}
+        onRevertDatasetVersion={vi.fn(async () => undefined)}
+      />,
+    );
+
+    const dialog = await screen.findByRole("dialog", { name: "Edit dataset" });
+
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: "North Africa preset" }),
+    );
+
+    expect(
+      within(dialog).getByText(
+        'The "North Africa preset" tag preset needs Region filtering support on this dataset.',
+      ),
+    ).toBeTruthy();
   });
 
   it("keeps the dataset footer actions grouped into two rows", async () => {

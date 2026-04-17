@@ -39,7 +39,7 @@ const context = {
 const region = {
   id: "f0000000-0000-4000-8000-000000000001",
   name: "South Asia",
-  description: "Countries across South East Asia.",
+  description: "Countries across South Asia.",
   sortOrder: 1,
   countries: ["India", "Nepal"],
   createdAt: new Date().toISOString(),
@@ -79,7 +79,7 @@ describe("/api/filter-settings/regions/[regionId]", () => {
         method: "PATCH",
         body: JSON.stringify({
           name: "South Asia",
-          description: "Countries across South East Asia.",
+          description: "Countries across South Asia.",
           sortOrder: 1,
           countries: ["India", "Nepal"],
         }),
@@ -92,7 +92,7 @@ describe("/api/filter-settings/regions/[regionId]", () => {
     expect(updateFilterRegionMock).toHaveBeenCalledWith({
       regionId: "f0000000-0000-4000-8000-000000000001",
       name: "South Asia",
-      description: "Countries across South East Asia.",
+      description: "Countries across South Asia.",
       sortOrder: 1,
       countries: ["India", "Nepal"],
     });

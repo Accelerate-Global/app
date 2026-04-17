@@ -26,7 +26,9 @@ import type {
 } from "@/lib/api-types";
 import { normalizeDatasetHiddenColumnKeys } from "@/lib/dataset-column-visibility";
 import { getDatasetStorageObjectUrl } from "@/lib/dataset-storage";
+import { getDatasetOpenPresetTag, normalizeDatasetTags } from "@/lib/dataset-tags";
 import { syncFieldDefinitionsForColumns } from "@/lib/field-definitions";
+import { getUnsupportedDatasetOpenPresetSections } from "@/lib/saved-dataset-filters";
 
 type DbExecutor = Parameters<Parameters<ReturnType<typeof getDb>["transaction"]>[0]>[0];
 type DatasetRecord = typeof datasets.$inferSelect;
@@ -94,6 +96,15 @@ export class DatasetVersionRevertConflictError extends Error {
   constructor(message = "Only ready dataset versions can be reverted.") {
     super(message);
     this.name = "DatasetVersionRevertConflictError";
+  }
+}
+
+export class DatasetOpenPresetCompatibilityError extends Error {
+  readonly status = 400;
+
+  constructor(message = "The dataset open preset is not supported by this dataset.") {
+    super(message);
+    this.name = "DatasetOpenPresetCompatibilityError";
   }
 }
 
@@ -299,7 +310,23 @@ export async function updateDatasetDetails(input: {
     }
 
     if (input.tags !== undefined) {
-      updates.tags = input.tags;
+      const normalizedTags = normalizeDatasetTags(input.tags);
+      const presetTag = getDatasetOpenPresetTag(normalizedTags);
+
+      if (presetTag?.openPreset) {
+        const unsupportedSections = getUnsupportedDatasetOpenPresetSections(
+          existingDataset,
+          presetTag.openPreset,
+        );
+
+        if (unsupportedSections.length > 0) {
+          throw new DatasetOpenPresetCompatibilityError(
+            `The "${presetTag.label}" preset requires ${unsupportedSections.join(", ")} filtering support on this dataset.`,
+          );
+        }
+      }
+
+      updates.tags = normalizedTags;
     }
 
     if (input.hiddenColumnKeys !== undefined) {

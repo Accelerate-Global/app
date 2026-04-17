@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import type { DatasetSummary, SavedDatasetFilterState } from "@/lib/api-types";
@@ -31,6 +31,10 @@ const filters: SavedDatasetFilterState = {
     selectedRegionIds: [],
     selectedRegionNames: [],
     enabledCountryNames: [],
+  },
+  country: {
+    enabled: false,
+    selectedCountryNames: [],
   },
   watchlist: {
     enabled: false,
@@ -95,5 +99,45 @@ describe("DatasetTableActionBar", () => {
     fireEvent.click(filterButton);
 
     expect(onOpenFilters).toHaveBeenCalledTimes(1);
+  });
+
+  it("lets admins save the current filters to a dataset tag preset", async () => {
+    const onSave = vi.fn(async () => undefined);
+
+    render(
+      <DatasetTableActionBar
+        dataset={dataset}
+        filters={filters}
+        recordCount={12507}
+        sortedRows={[]}
+        visibleColumns={[]}
+        isLoading={false}
+        hasError={false}
+        fieldDefinitionPresentationByColumnKey={{}}
+        openPresetControls={{
+          tags: [
+            {
+              id: "tag-1",
+              label: "Watchlist",
+              color: "#262531",
+            },
+          ],
+          selectedTagId: "tag-1",
+          isSaving: false,
+          onSelectedTagIdChange: vi.fn(),
+          onSave,
+          onClear: vi.fn(async () => undefined),
+        }}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Save open preset" }));
+
+    await waitFor(() => {
+      expect(onSave).toHaveBeenCalledTimes(1);
+    });
+    expect(
+      await screen.findByText('Saved open preset to "Watchlist".'),
+    ).toBeTruthy();
   });
 });

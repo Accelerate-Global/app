@@ -4,11 +4,13 @@ import {
   ChevronDownIcon,
   InfoIcon,
   MapIcon,
+  MapPinnedIcon,
   MicroscopeIcon,
   UserRoundIcon,
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
+import { CountrySearchSelector } from "@/components/dashboard/country-search-selector";
 import {
   NumberField,
   NumberFieldDecrement,
@@ -20,6 +22,11 @@ import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  isGlobeRegionName,
+  normalizeRegionDisplayName,
+  normalizeRegionDisplayText,
+} from "@/lib/region-display";
 import { cn } from "@/lib/utils";
 
 type RegionSelector = {
@@ -36,39 +43,62 @@ type DatasetViewSwitchGridProps = {
     enabled: boolean;
     supported: boolean;
     selectors: RegionSelector[];
+    onEnabledChange: (checked: boolean) => void;
     onSelectorChange: (regionId: string, checked: boolean) => void;
+  };
+  countryCard: {
+    enabled: boolean;
+    supported: boolean;
+    searchValue: string;
+    availableCountries: string[];
+    selectedCountries: string[];
+    onEnabledChange: (checked: boolean) => void;
+    onSearchChange: (value: string) => void;
+    onToggleCountry: (country: string, checked: boolean) => void;
+    onSelectVisible: (countries: string[]) => void;
+    onClearVisible: (countries: string[]) => void;
   };
   watchlistCard: {
     enabled: boolean;
     supported: boolean;
     thresholdLabel: string;
     thresholdDefinition: string;
+    thresholdEnabled: boolean;
     threshold: number;
     minThreshold: number;
     maxThreshold: number;
     engagementPhaseLabel: string;
     engagementPhaseDefinition: string;
+    engagementPhaseEnabled: boolean;
     engagementPhaseThreshold: number;
     minEngagementPhaseThreshold: number;
     maxEngagementPhaseThreshold: number;
     evangelicalBelieversLabel: string;
     evangelicalBelieversDefinition: string;
+    evangelicalBelieversEnabled: boolean;
     evangelicalBelieversThreshold: number;
     minEvangelicalBelieversThreshold: number;
     maxEvangelicalBelieversThreshold: number;
     evangelicalPercentLabel: string;
     evangelicalPercentDefinition: string;
+    evangelicalPercentEnabled: boolean;
     evangelicalPercentThreshold: number;
     minEvangelicalPercentThreshold: number;
     maxEvangelicalPercentThreshold: number;
     frontierGroupLabel: string;
     frontierGroupDefinition: string;
+    frontierGroupEnabled: boolean;
     frontierGroupValue: boolean;
     onEnabledChange: (checked: boolean) => void;
+    onThresholdEnabledChange: (checked: boolean) => void;
     onThresholdChange: (value: number) => void;
+    onEngagementPhaseEnabledChange: (checked: boolean) => void;
     onEngagementPhaseThresholdChange: (value: number) => void;
+    onEvangelicalBelieversEnabledChange: (checked: boolean) => void;
     onEvangelicalBelieversThresholdChange: (value: number) => void;
+    onEvangelicalPercentEnabledChange: (checked: boolean) => void;
     onEvangelicalPercentThresholdChange: (value: number) => void;
+    onFrontierGroupEnabledChange: (checked: boolean) => void;
     onFrontierGroupValueChange: (value: boolean) => void;
   };
   uupgCard: {
@@ -80,10 +110,12 @@ type DatasetViewSwitchGridProps = {
   };
 };
 
-type FilterSectionId = "region" | "watchlist" | "uupg";
+type FilterSectionId = "region" | "country" | "watchlist" | "uupg";
 
 const FILTER_PANEL_DESCRIPTIONS = {
   region: "A grouping of people groups based on geography.",
+  country:
+    "Filter people groups by country, including matches found in alternate-country fields.",
   watchlist:
     "People groups unengaged or would be unengaged if the current mission work stopped today.",
   uupg: "People groups who have no record of engagement among them.",
@@ -101,6 +133,7 @@ function RegionCountriesInfo({
   description: string;
   countries: string[];
 }) {
+  const displayLabel = normalizeRegionDisplayName(label);
   const tooltipText = getRegionTooltipText(label, description, countries);
 
   return (
@@ -110,7 +143,7 @@ function RegionCountriesInfo({
           <Button
             variant="ghost"
             size="icon-xs"
-            aria-label={`View countries in ${label}`}
+            aria-label={`View countries in ${displayLabel}`}
             data-smoke-trigger="region-tooltip"
             data-smoke-write="safe"
             className="shrink-0 text-muted-foreground hover:text-foreground"
@@ -127,7 +160,7 @@ function RegionCountriesInfo({
       >
         <div className="space-y-1.5 text-left">
           <p className="font-medium tracking-[-0.01em] text-popover-foreground">
-            {label}
+            {displayLabel}
           </p>
           <p className="whitespace-pre-line text-popover-foreground">
             {tooltipText}
@@ -146,14 +179,22 @@ export function getRegionTooltipText(
   const trimmedDescription = description.trim();
 
   if (trimmedDescription) {
-    return trimmedDescription;
+    return normalizeRegionDisplayText(trimmedDescription);
   }
 
-  if (label.trim().toLowerCase() === "globe") {
+  if (isGlobeRegionName(label)) {
     return "All countries.";
   }
 
   return countries.join(", ");
+}
+
+function getVisibleRegionSelectors(
+  regionCard: DatasetViewSwitchGridProps["regionCard"],
+) {
+  return regionCard.selectors.filter(
+    (selector) => !isGlobeRegionName(selector.label),
+  );
 }
 
 function FieldDefinitionInfo({
@@ -213,19 +254,24 @@ function DatasetFilterRow({
   definition,
   children,
   controlClassName,
+  toggleControl,
 }: {
   label: string;
   definition: string;
   children?: ReactNode;
   controlClassName?: string;
+  toggleControl?: ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between">
-      <div className="min-w-0 sm:flex-1 sm:pr-3">
-        <FilterExpressionLabel label={label} definition={definition} />
+    <div className="space-y-3 py-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <FilterExpressionLabel label={label} definition={definition} />
+        </div>
+        {toggleControl ? <div className="shrink-0 pt-0.5">{toggleControl}</div> : null}
       </div>
       {children ? (
-        <div className={cn("w-full sm:w-auto sm:shrink-0", controlClassName)}>
+        <div className={cn("w-full", controlClassName)}>
           {children}
         </div>
       ) : null}
@@ -377,13 +423,19 @@ function getRegionSummary(regionCard: DatasetViewSwitchGridProps["regionCard"]) 
     return ["Unavailable"];
   }
 
-  if (regionCard.selectors.length === 0) {
+  const visibleSelectors = getVisibleRegionSelectors(regionCard);
+
+  if (visibleSelectors.length === 0) {
     return ["No regions configured"];
   }
 
-  const selectedCount = regionCard.selectors.filter((selector) => selector.checked).length;
+  if (!regionCard.enabled) {
+    return ["Off"];
+  }
 
-  if (selectedCount === 0 || selectedCount === regionCard.selectors.length) {
+  const selectedCount = visibleSelectors.filter((selector) => selector.checked).length;
+
+  if (selectedCount === 0 || selectedCount === visibleSelectors.length) {
     return ["All regions"];
   }
 
@@ -401,15 +453,55 @@ function getWatchlistSummary(
     return ["Off"];
   }
 
-  return [
-    `${watchlistCard.thresholdLabel} <= ${watchlistCard.threshold}`,
-    `${watchlistCard.engagementPhaseLabel} >= ${watchlistCard.engagementPhaseThreshold}`,
-    `${watchlistCard.evangelicalPercentLabel} >= ${watchlistCard.evangelicalPercentThreshold}`,
-    `${watchlistCard.evangelicalBelieversLabel} <= ${watchlistCard.evangelicalBelieversThreshold}`,
-    `${watchlistCard.frontierGroupLabel}: ${
-      watchlistCard.frontierGroupValue ? "True" : "False"
-    }`,
-  ];
+  const summary: string[] = [];
+
+  if (watchlistCard.thresholdEnabled) {
+    summary.push(`${watchlistCard.thresholdLabel} <= ${watchlistCard.threshold}`);
+  }
+
+  if (watchlistCard.frontierGroupEnabled) {
+    summary.push(
+      `${watchlistCard.frontierGroupLabel}: ${
+        watchlistCard.frontierGroupValue ? "True" : "False"
+      }`,
+    );
+  }
+
+  if (watchlistCard.evangelicalBelieversEnabled) {
+    summary.push(
+      `${watchlistCard.evangelicalBelieversLabel} <= ${watchlistCard.evangelicalBelieversThreshold}`,
+    );
+  }
+
+  if (watchlistCard.evangelicalPercentEnabled) {
+    summary.push(
+      `${watchlistCard.evangelicalPercentLabel} >= ${watchlistCard.evangelicalPercentThreshold}`,
+    );
+  }
+
+  if (watchlistCard.engagementPhaseEnabled) {
+    summary.push(
+      `${watchlistCard.engagementPhaseLabel} >= ${watchlistCard.engagementPhaseThreshold}`,
+    );
+  }
+
+  return summary.length > 0 ? summary : ["No criteria selected"];
+}
+
+function getCountrySummary(countryCard: DatasetViewSwitchGridProps["countryCard"]) {
+  if (!countryCard.supported) {
+    return ["Unavailable"];
+  }
+
+  if (!countryCard.enabled) {
+    return ["Off"];
+  }
+
+  if (countryCard.selectedCountries.length === 0) {
+    return ["All countries"];
+  }
+
+  return [`${countryCard.selectedCountries.length} selected`];
 }
 
 function getUupgSummary(uupgCard: DatasetViewSwitchGridProps["uupgCard"]) {
@@ -423,14 +515,17 @@ function getUupgSummary(uupgCard: DatasetViewSwitchGridProps["uupgCard"]) {
 export function DatasetViewSwitchGrid({
   className,
   regionCard,
+  countryCard,
   watchlistCard,
   uupgCard,
 }: DatasetViewSwitchGridProps) {
-  const hasRegions = regionCard.selectors.length > 0;
+  const visibleRegionSelectors = getVisibleRegionSelectors(regionCard);
+  const hasRegions = visibleRegionSelectors.length > 0;
   const [expandedSections, setExpandedSections] = useState<
     Record<FilterSectionId, boolean>
   >({
     region: false,
+    country: false,
     watchlist: false,
     uupg: false,
   });
@@ -464,9 +559,10 @@ export function DatasetViewSwitchGrid({
           toggleControl={
             <Switch
               size="sm"
-              checked={regionCard.enabled && hasRegions}
-              disabled
-              aria-label="Region status"
+              checked={regionCard.enabled}
+              disabled={!regionCard.supported || !hasRegions}
+              onCheckedChange={regionCard.onEnabledChange}
+              aria-label="Toggle Region"
             />
           }
         >
@@ -481,34 +577,83 @@ export function DatasetViewSwitchGrid({
             </p>
           ) : (
             <div className="divide-y divide-border/70 px-3">
-              {regionCard.selectors.map((selector) => (
-                <div
-                  key={selector.id}
-                  className="flex items-center justify-between gap-3 py-2.5"
-                >
-                  <div className="min-w-0">
-                    <div className="flex min-w-0 items-center gap-1.5">
-                      <p className="truncate text-sm font-medium text-foreground">
-                        {selector.label}
-                      </p>
-                      <RegionCountriesInfo
-                        label={selector.label}
-                        description={selector.description}
-                        countries={selector.countries}
-                      />
+              {visibleRegionSelectors.map((selector) => {
+                const displayLabel = normalizeRegionDisplayName(selector.label);
+
+                return (
+                  <div
+                    key={selector.id}
+                    className="flex items-center justify-between gap-3 py-2.5"
+                  >
+                    <div className="min-w-0">
+                      <div className="flex min-w-0 items-center gap-1.5">
+                        <p className="truncate text-sm font-medium text-foreground">
+                          {displayLabel}
+                        </p>
+                        <RegionCountriesInfo
+                          label={selector.label}
+                          description={selector.description}
+                          countries={selector.countries}
+                        />
+                      </div>
                     </div>
+                    <Switch
+                      size="sm"
+                      checked={selector.checked}
+                      disabled={!regionCard.enabled}
+                      onCheckedChange={(checked) =>
+                        regionCard.onSelectorChange(selector.id, checked)
+                      }
+                      aria-label={`Toggle ${displayLabel}`}
+                    />
                   </div>
-                  <Switch
-                    size="sm"
-                    checked={selector.checked}
-                    disabled={!regionCard.enabled}
-                    onCheckedChange={(checked) =>
-                      regionCard.onSelectorChange(selector.id, checked)
-                    }
-                    aria-label={`Toggle ${selector.label}`}
-                  />
-                </div>
-              ))}
+                );
+              })}
+            </div>
+          )}
+        </FilterSection>
+
+        <FilterSection
+          id="country"
+          title="Country"
+          icon={<MapPinnedIcon aria-hidden="true" className="size-5" />}
+          summary={getCountrySummary(countryCard)}
+          description={FILTER_PANEL_DESCRIPTIONS.country}
+          expanded={expandedSections.country}
+          onExpandedChange={(expanded) =>
+            setExpandedSections((current) => ({ ...current, country: expanded }))
+          }
+          toggleControl={
+            <Switch
+              size="sm"
+              checked={countryCard.enabled}
+              disabled={!countryCard.supported}
+              onCheckedChange={countryCard.onEnabledChange}
+              aria-label="Toggle Country"
+            />
+          }
+        >
+          {!countryCard.supported ? (
+            <p className="text-sm leading-5 text-muted-foreground">
+              This dataset does not include <code>Geo_Country_Name</code>, so country
+              filtering is unavailable.
+            </p>
+          ) : countryCard.availableCountries.length === 0 ? (
+            <p className="text-sm leading-5 text-muted-foreground">
+              No countries are available in this dataset.
+            </p>
+          ) : (
+            <div className="px-3">
+              <CountrySearchSelector
+                allCountries={countryCard.availableCountries}
+                selectedCountries={countryCard.selectedCountries}
+                searchValue={countryCard.searchValue}
+                disabled={!countryCard.enabled}
+                onSearchChange={countryCard.onSearchChange}
+                onToggleCountry={countryCard.onToggleCountry}
+                onSelectVisible={countryCard.onSelectVisible}
+                onClearVisible={countryCard.onClearVisible}
+              />
             </div>
           )}
         </FilterSection>
@@ -543,7 +688,16 @@ export function DatasetViewSwitchGrid({
               <DatasetFilterRow
                 label={watchlistCard.thresholdLabel}
                 definition={watchlistCard.thresholdDefinition}
-                controlClassName="sm:w-[10rem]"
+                controlClassName="max-w-[10rem]"
+                toggleControl={
+                  <Switch
+                    size="sm"
+                    checked={watchlistCard.thresholdEnabled}
+                    disabled={!watchlistCard.enabled}
+                    onCheckedChange={watchlistCard.onThresholdEnabledChange}
+                    aria-label={`Toggle Watchlist ${watchlistCard.thresholdLabel}`}
+                  />
+                }
               >
                 <WatchlistNumberControl
                   label={watchlistCard.thresholdLabel}
@@ -551,62 +705,23 @@ export function DatasetViewSwitchGrid({
                   min={watchlistCard.minThreshold}
                   max={watchlistCard.maxThreshold}
                   operator="<="
-                  disabled={!watchlistCard.enabled}
+                  disabled={!watchlistCard.enabled || !watchlistCard.thresholdEnabled}
                   onValueChange={watchlistCard.onThresholdChange}
-                />
-              </DatasetFilterRow>
-              <DatasetFilterRow
-                label={watchlistCard.engagementPhaseLabel}
-                definition={watchlistCard.engagementPhaseDefinition}
-                controlClassName="sm:w-[10rem]"
-              >
-                <WatchlistNumberControl
-                  label={watchlistCard.engagementPhaseLabel}
-                  value={watchlistCard.engagementPhaseThreshold}
-                  min={watchlistCard.minEngagementPhaseThreshold}
-                  max={watchlistCard.maxEngagementPhaseThreshold}
-                  operator=">="
-                  disabled={!watchlistCard.enabled}
-                  onValueChange={watchlistCard.onEngagementPhaseThresholdChange}
-                />
-              </DatasetFilterRow>
-              <DatasetFilterRow
-                label={watchlistCard.evangelicalPercentLabel}
-                definition={watchlistCard.evangelicalPercentDefinition}
-                controlClassName="sm:w-[10rem]"
-              >
-                <WatchlistNumberControl
-                  label={watchlistCard.evangelicalPercentLabel}
-                  value={watchlistCard.evangelicalPercentThreshold}
-                  min={watchlistCard.minEvangelicalPercentThreshold}
-                  max={watchlistCard.maxEvangelicalPercentThreshold}
-                  operator=">="
-                  disabled={!watchlistCard.enabled}
-                  onValueChange={watchlistCard.onEvangelicalPercentThresholdChange}
-                  step={0.01}
-                  smallStep={0.01}
-                  largeStep={0.05}
-                />
-              </DatasetFilterRow>
-              <DatasetFilterRow
-                label={watchlistCard.evangelicalBelieversLabel}
-                definition={watchlistCard.evangelicalBelieversDefinition}
-                controlClassName="sm:w-[10rem]"
-              >
-                <WatchlistNumberControl
-                  label={watchlistCard.evangelicalBelieversLabel}
-                  value={watchlistCard.evangelicalBelieversThreshold}
-                  min={watchlistCard.minEvangelicalBelieversThreshold}
-                  max={watchlistCard.maxEvangelicalBelieversThreshold}
-                  operator="<="
-                  disabled={!watchlistCard.enabled}
-                  onValueChange={watchlistCard.onEvangelicalBelieversThresholdChange}
                 />
               </DatasetFilterRow>
               <DatasetFilterRow
                 label={watchlistCard.frontierGroupLabel}
                 definition={watchlistCard.frontierGroupDefinition}
-                controlClassName="sm:w-[8.75rem]"
+                controlClassName="max-w-[8.75rem]"
+                toggleControl={
+                  <Switch
+                    size="sm"
+                    checked={watchlistCard.frontierGroupEnabled}
+                    disabled={!watchlistCard.enabled}
+                    onCheckedChange={watchlistCard.onFrontierGroupEnabledChange}
+                    aria-label={`Toggle Watchlist ${watchlistCard.frontierGroupLabel}`}
+                  />
+                }
               >
                 <ButtonGroup
                   aria-label={`Watchlist ${watchlistCard.frontierGroupLabel} value`}
@@ -625,7 +740,9 @@ export function DatasetViewSwitchGrid({
                         type="button"
                         variant="ghost"
                         size="sm"
-                        disabled={!watchlistCard.enabled}
+                        disabled={
+                          !watchlistCard.enabled || !watchlistCard.frontierGroupEnabled
+                        }
                         aria-pressed={isActive}
                         aria-label={`Set Watchlist ${watchlistCard.frontierGroupLabel} value to ${option.label}`}
                         className={cn(
@@ -643,6 +760,92 @@ export function DatasetViewSwitchGrid({
                     );
                   })}
                 </ButtonGroup>
+              </DatasetFilterRow>
+              <DatasetFilterRow
+                label={watchlistCard.evangelicalBelieversLabel}
+                definition={watchlistCard.evangelicalBelieversDefinition}
+                controlClassName="max-w-[10rem]"
+                toggleControl={
+                  <Switch
+                    size="sm"
+                    checked={watchlistCard.evangelicalBelieversEnabled}
+                    disabled={!watchlistCard.enabled}
+                    onCheckedChange={
+                      watchlistCard.onEvangelicalBelieversEnabledChange
+                    }
+                    aria-label={`Toggle Watchlist ${watchlistCard.evangelicalBelieversLabel}`}
+                  />
+                }
+              >
+                <WatchlistNumberControl
+                  label={watchlistCard.evangelicalBelieversLabel}
+                  value={watchlistCard.evangelicalBelieversThreshold}
+                  min={watchlistCard.minEvangelicalBelieversThreshold}
+                  max={watchlistCard.maxEvangelicalBelieversThreshold}
+                  operator="<="
+                  disabled={
+                    !watchlistCard.enabled ||
+                    !watchlistCard.evangelicalBelieversEnabled
+                  }
+                  onValueChange={watchlistCard.onEvangelicalBelieversThresholdChange}
+                />
+              </DatasetFilterRow>
+              <DatasetFilterRow
+                label={watchlistCard.evangelicalPercentLabel}
+                definition={watchlistCard.evangelicalPercentDefinition}
+                controlClassName="max-w-[10rem]"
+                toggleControl={
+                  <Switch
+                    size="sm"
+                    checked={watchlistCard.evangelicalPercentEnabled}
+                    disabled={!watchlistCard.enabled}
+                    onCheckedChange={
+                      watchlistCard.onEvangelicalPercentEnabledChange
+                    }
+                    aria-label={`Toggle Watchlist ${watchlistCard.evangelicalPercentLabel}`}
+                  />
+                }
+              >
+                <WatchlistNumberControl
+                  label={watchlistCard.evangelicalPercentLabel}
+                  value={watchlistCard.evangelicalPercentThreshold}
+                  min={watchlistCard.minEvangelicalPercentThreshold}
+                  max={watchlistCard.maxEvangelicalPercentThreshold}
+                  operator=">="
+                  disabled={
+                    !watchlistCard.enabled || !watchlistCard.evangelicalPercentEnabled
+                  }
+                  onValueChange={watchlistCard.onEvangelicalPercentThresholdChange}
+                  step={0.01}
+                  smallStep={0.01}
+                  largeStep={0.05}
+                />
+              </DatasetFilterRow>
+              <DatasetFilterRow
+                label={watchlistCard.engagementPhaseLabel}
+                definition={watchlistCard.engagementPhaseDefinition}
+                controlClassName="max-w-[10rem]"
+                toggleControl={
+                  <Switch
+                    size="sm"
+                    checked={watchlistCard.engagementPhaseEnabled}
+                    disabled={!watchlistCard.enabled}
+                    onCheckedChange={watchlistCard.onEngagementPhaseEnabledChange}
+                    aria-label={`Toggle Watchlist ${watchlistCard.engagementPhaseLabel}`}
+                  />
+                }
+              >
+                <WatchlistNumberControl
+                  label={watchlistCard.engagementPhaseLabel}
+                  value={watchlistCard.engagementPhaseThreshold}
+                  min={watchlistCard.minEngagementPhaseThreshold}
+                  max={watchlistCard.maxEngagementPhaseThreshold}
+                  operator=">="
+                  disabled={
+                    !watchlistCard.enabled || !watchlistCard.engagementPhaseEnabled
+                  }
+                  onValueChange={watchlistCard.onEngagementPhaseThresholdChange}
+                />
               </DatasetFilterRow>
             </div>
           )}

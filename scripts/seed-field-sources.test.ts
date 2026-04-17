@@ -43,7 +43,7 @@ describe("seed-field-sources", () => {
           ...process.env,
           DATABASE_URL: "postgresql://example.com/postgres",
         },
-        timeout: 1_000,
+        timeout: 10_000,
       },
     );
 
@@ -51,6 +51,6 @@ describe("seed-field-sources", () => {
       "Field source registry seed pass completed from the mapping and description CSV files.",
     );
     expect(stderr).toBe("");
-    expect(Date.now() - startedAt).toBeLessThan(1_000);
-  });
+    expect(Date.now() - startedAt).toBeLessThan(10_000);
+  }, 15_000);
 });

@@ -1,6 +1,8 @@
 "use client";
 
 import { DownloadIcon, PanelRightOpenIcon } from "lucide-react";
+import { useRouter } from "next/navigation";
+import type { KeyboardEvent } from "react";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import type { SavedDatasetTable } from "@/lib/api-types";
@@ -47,7 +49,10 @@ function SavedTableActions({
           data-smoke-trigger="saved-table-detail-sheet"
           data-smoke-write="safe"
           data-smoke-saved-table-id={savedTable.id}
-          onClick={() => onOpenDetails(savedTable.id)}
+          onClick={(event) => {
+            event.stopPropagation();
+            onOpenDetails(savedTable.id);
+          }}
         >
           <PanelRightOpenIcon />
           Details
@@ -78,13 +83,31 @@ function SavedTableListRow({
   savedTable: SavedDatasetTable;
   onOpenDetails: (savedTableId: string) => void;
 }) {
+  const router = useRouter();
   const hasDetails = savedTable.details.trim().length > 0;
+
+  function navigateToSavedTable() {
+    router.push(
+      `/dashboard/datasets/${savedTable.datasetId}?savedTableId=${savedTable.id}`,
+    );
+  }
+
+  function handleRowKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      navigateToSavedTable();
+    }
+  }
 
   return (
     <div
-      className="grid items-center gap-4 px-5 py-4"
+      className="grid cursor-pointer items-center gap-4 px-5 py-4 transition-colors hover:bg-accent/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
       style={{ gridTemplateColumns: SAVED_TABLE_GRID_TEMPLATE_COLUMNS }}
       data-smoke-saved-table-row={savedTable.id}
+      role="link"
+      tabIndex={0}
+      onClick={navigateToSavedTable}
+      onKeyDown={handleRowKeyDown}
     >
       <div className="min-w-0">
         <p className="truncate font-medium text-foreground">{savedTable.name}</p>

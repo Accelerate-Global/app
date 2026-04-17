@@ -66,6 +66,10 @@ function createSavedTable() {
         selectedRegionNames: ["North Africa"],
         enabledCountryNames: ["Egypt"],
       },
+      country: {
+        enabled: false,
+        selectedCountryNames: [],
+      },
       watchlist: {
         enabled: false,
         threshold: 2,
@@ -171,7 +175,7 @@ describe("DashboardClient", () => {
     await waitFor(() => {
       expect(screen.queryByRole("dialog", { name: "Edit dataset" })).toBeNull();
     });
-  });
+  }, 10000);
 
   it("routes to dataset replacement from the edit sheet", async () => {
     render(

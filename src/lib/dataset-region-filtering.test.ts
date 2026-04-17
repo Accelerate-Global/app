@@ -2,12 +2,15 @@ import { describe, expect, it } from "vitest";
 
 import type { DatasetRowsResponse, DatasetSummary } from "@/lib/api-types";
 import {
+  datasetSupportsCountryFiltering,
   datasetSupportsRegionFiltering,
   datasetSupportsWatchlistFiltering,
   datasetSupportsUupgFiltering,
+  filterDatasetRowsByCountry,
   filterDatasetRowsByRegion,
   filterDatasetRowsByWatchlist,
   filterDatasetRowsByUupg,
+  getAvailableDatasetCountryNames,
   getEnabledRegionCountryNames,
 } from "./dataset-region-filtering";
 
@@ -17,6 +20,7 @@ const rows: DatasetRowsResponse["rows"] = [
     rowIndex: 0,
     data: {
       geo_country_name: "India",
+      alternate_countries: "Bhutan; Nepal",
       christianity_gsec: "2",
       engage_8_phases_of_engagement: "6",
       christianity_frontier_group: "TRUE",
@@ -30,6 +34,7 @@ const rows: DatasetRowsResponse["rows"] = [
     rowIndex: 1,
     data: {
       geo_country_name: "Nepal",
+      alternate_countries: "India ; Tibet",
       christianity_gsec: "3",
       engage_8_phases_of_engagement: "6",
       christianity_frontier_group: "TRUE",
@@ -75,29 +80,34 @@ const dataset = {
       sourceIndex: 1,
     },
     {
+      key: "alternate_countries",
+      label: "Alternate Countries",
+      sourceIndex: 2,
+    },
+    {
       key: "christianity_frontier_group",
       label: "Christianity_Frontier_Group",
-      sourceIndex: 2,
+      sourceIndex: 3,
     },
     {
       key: "engage_8_phases_of_engagement",
       label: "Engage_8_Phases_of_Engagement",
-      sourceIndex: 3,
+      sourceIndex: 4,
     },
     {
       key: "pg_population",
       label: "PG_Population",
-      sourceIndex: 4,
+      sourceIndex: 5,
     },
     {
       key: "percent_evangelical_pgac",
       label: "Percent_Evangelical_PGAC",
-      sourceIndex: 5,
+      sourceIndex: 6,
     },
     {
       key: "engage_global_engagement_anywhere",
       label: "Engage_Global_Engagement_Anywhere",
-      sourceIndex: 6,
+      sourceIndex: 7,
     },
   ],
   hiddenColumnKeys: [],
@@ -110,6 +120,10 @@ const dataset = {
 describe("dataset-region-filtering", () => {
   it("detects support when the dataset stores normalized column keys", () => {
     expect(datasetSupportsRegionFiltering(dataset)).toBe(true);
+  });
+
+  it("detects country support when the dataset stores normalized column keys", () => {
+    expect(datasetSupportsCountryFiltering(dataset)).toBe(true);
   });
 
   it("detects UUPG support when the dataset stores normalized column keys", () => {
@@ -277,6 +291,51 @@ describe("dataset-region-filtering", () => {
 
     expect(filteredRows).toHaveLength(1);
     expect(filteredRows[0]?.id).toBe("row-2");
+  });
+
+  it("builds country options from primary and alternate country fields", () => {
+    expect(getAvailableDatasetCountryNames(rows)).toEqual([
+      "Bhutan",
+      "India",
+      "Nepal",
+      "Tibet",
+    ]);
+  });
+
+  it("filters rows by primary or alternate country matches", () => {
+    const filteredRows = filterDatasetRowsByCountry(rows, {
+      enabled: true,
+      isSupported: true,
+      selectedCountryNames: ["Bhutan"],
+    });
+
+    expect(filteredRows.map((row) => row.id)).toEqual(["row-1"]);
+  });
+
+  it("keeps all rows when country filtering is enabled without selected countries", () => {
+    const filteredRows = filterDatasetRowsByCountry(rows, {
+      enabled: true,
+      isSupported: true,
+      selectedCountryNames: [],
+    });
+
+    expect(filteredRows).toHaveLength(3);
+  });
+
+  it("combines region and country filters as an intersection", () => {
+    const regionFilteredRows = filterDatasetRowsByRegion(rows, {
+      enabled: true,
+      isSupported: true,
+      hasConfiguredRegions: true,
+      enabledCountryNames: ["India"],
+    });
+    const countryFilteredRows = filterDatasetRowsByCountry(regionFilteredRows, {
+      enabled: true,
+      isSupported: true,
+      selectedCountryNames: ["Tibet"],
+    });
+
+    expect(countryFilteredRows).toEqual([]);
   });
 
   it("still reads legacy row keys that use the raw header casing", () => {

@@ -14,6 +14,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import type { DatasetSummary, SavedDatasetTable } from "@/lib/api-types";
+import { normalizeRegionDisplayName } from "@/lib/region-display";
 
 type SavedTableDetailSheetProps = {
   savedTable: SavedDatasetTable;
@@ -46,7 +47,9 @@ function getRegionSummary(savedTable: SavedDatasetTable) {
     return "All configured regions";
   }
 
-  return savedTable.filters.region.selectedRegionNames.join(", ");
+  return savedTable.filters.region.selectedRegionNames
+    .map((regionName) => normalizeRegionDisplayName(regionName))
+    .join(", ");
 }
 
 function getWatchlistSummary(savedTable: SavedDatasetTable) {
@@ -54,9 +57,51 @@ function getWatchlistSummary(savedTable: SavedDatasetTable) {
     return "Off";
   }
 
-  return `Threshold <= ${savedTable.filters.watchlist.threshold}; 8 Phases >= ${savedTable.filters.watchlist.engagementPhaseThreshold}; Evangelical % >= ${savedTable.filters.watchlist.evangelicalPercentThreshold}; Evangelical Believers <= ${savedTable.filters.watchlist.evangelicalBelieversThreshold}; Frontier Group = ${
-    savedTable.filters.watchlist.frontierGroupValue ? "True" : "False"
-  }`;
+  const summary: string[] = [];
+
+  if (savedTable.filters.watchlist.thresholdEnabled ?? true) {
+    summary.push(`Christianity: GSEC <= ${savedTable.filters.watchlist.threshold}`);
+  }
+
+  if (savedTable.filters.watchlist.frontierGroupEnabled ?? true) {
+    summary.push(
+      `Frontier Group = ${
+        savedTable.filters.watchlist.frontierGroupValue ? "True" : "False"
+      }`,
+    );
+  }
+
+  if (savedTable.filters.watchlist.evangelicalBelieversEnabled ?? true) {
+    summary.push(
+      `Min. # of Evangelical Believers <= ${savedTable.filters.watchlist.evangelicalBelieversThreshold}`,
+    );
+  }
+
+  if (savedTable.filters.watchlist.evangelicalPercentEnabled ?? true) {
+    summary.push(
+      `Min. Evangelical % >= ${savedTable.filters.watchlist.evangelicalPercentThreshold}`,
+    );
+  }
+
+  if (savedTable.filters.watchlist.engagementPhaseEnabled ?? true) {
+    summary.push(
+      `Engage: 8 Phases >= ${savedTable.filters.watchlist.engagementPhaseThreshold}`,
+    );
+  }
+
+  return summary.length > 0 ? summary.join("; ") : "No criteria selected";
+}
+
+function getCountrySummary(savedTable: SavedDatasetTable) {
+  if (!savedTable.filters.country.enabled) {
+    return "Off";
+  }
+
+  if (savedTable.filters.country.selectedCountryNames.length === 0) {
+    return "All countries";
+  }
+
+  return savedTable.filters.country.selectedCountryNames.join(", ");
 }
 
 function getSortingSummary(savedTable: SavedDatasetTable, dataset: DatasetSummary | null) {
@@ -227,6 +272,12 @@ export function SavedTableDetailSheet({
                   <dt className="text-sm font-medium text-foreground">Region</dt>
                   <dd className="text-sm text-muted-foreground">
                     {getRegionSummary(savedTable)}
+                  </dd>
+                </div>
+                <div className="space-y-1">
+                  <dt className="text-sm font-medium text-foreground">Country</dt>
+                  <dd className="text-sm text-muted-foreground">
+                    {getCountrySummary(savedTable)}
                   </dd>
                 </div>
                 <div className="space-y-1">

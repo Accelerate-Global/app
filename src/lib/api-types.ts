@@ -13,6 +13,7 @@ export type DatasetTag = {
   id: string;
   label: string;
   color: string;
+  openPreset?: DatasetOpenPreset;
 };
 
 export type FilterRegion = {
@@ -87,12 +88,21 @@ export type SavedDatasetFilterState = {
     selectedRegionNames: string[];
     enabledCountryNames: string[];
   };
+  country: {
+    enabled: boolean;
+    selectedCountryNames: string[];
+  };
   watchlist: {
     enabled: boolean;
+    thresholdEnabled?: boolean;
     threshold: number;
+    engagementPhaseEnabled?: boolean;
     engagementPhaseThreshold: number;
+    evangelicalBelieversEnabled?: boolean;
     evangelicalBelieversThreshold: number;
+    evangelicalPercentEnabled?: boolean;
     evangelicalPercentThreshold: number;
+    frontierGroupEnabled?: boolean;
     frontierGroupValue: boolean;
   };
   uupg: {
@@ -100,6 +110,8 @@ export type SavedDatasetFilterState = {
   };
   sorting: SavedDatasetSort[];
 };
+
+export type DatasetOpenPreset = Omit<SavedDatasetFilterState, "sorting">;
 
 export type SavedDatasetTable = {
   id: string;

@@ -1,5 +1,6 @@
 import type { DatasetRowsResponse, DatasetSummary, FilterRegion } from "@/lib/api-types";
 import {
+  COUNTRY_ALTERNATE_DATASET_COLUMN_KEY,
   REGION_DATASET_COLUMN_KEY,
   WATCHLIST_ENGAGEMENT_PHASES_DATASET_COLUMN_KEY,
   WATCHLIST_PERCENT_EVANGELICAL_DATASET_COLUMN_KEY,
@@ -18,6 +19,12 @@ export type DatasetRegionFilterState = {
   enabledCountryNames: string[];
 };
 
+export type DatasetCountryFilterState = {
+  enabled: boolean;
+  isSupported: boolean;
+  selectedCountryNames: string[];
+};
+
 export type DatasetUupgFilterState = {
   enabled: boolean;
   isSupported: boolean;
@@ -26,10 +33,15 @@ export type DatasetUupgFilterState = {
 export type DatasetWatchlistFilterState = {
   enabled: boolean;
   isSupported: boolean;
+  thresholdEnabled?: boolean;
   threshold: number;
+  engagementPhaseEnabled?: boolean;
   engagementPhaseThreshold: number;
+  evangelicalBelieversEnabled?: boolean;
   evangelicalBelieversThreshold: number;
+  evangelicalPercentEnabled?: boolean;
   evangelicalPercentThreshold: number;
+  frontierGroupEnabled?: boolean;
   frontierGroupValue: boolean;
 };
 
@@ -83,6 +95,10 @@ function getRegionDatasetValue(row: DatasetRow) {
   return getDatasetValue(row, REGION_DATASET_COLUMN_KEY);
 }
 
+function getAlternateCountryDatasetValue(row: DatasetRow) {
+  return getDatasetValue(row, COUNTRY_ALTERNATE_DATASET_COLUMN_KEY);
+}
+
 function getUupgDatasetValue(row: DatasetRow) {
   return getDatasetValue(row, UUPG_DATASET_COLUMN_KEY);
 }
@@ -119,6 +135,12 @@ function datasetSupportsColumnFiltering(
 }
 
 export function datasetSupportsRegionFiltering(
+  dataset: Pick<DatasetSummary, "columns">,
+) {
+  return datasetSupportsColumnFiltering(dataset, REGION_DATASET_COLUMN_KEY);
+}
+
+export function datasetSupportsCountryFiltering(
   dataset: Pick<DatasetSummary, "columns">,
 ) {
   return datasetSupportsColumnFiltering(dataset, REGION_DATASET_COLUMN_KEY);
@@ -168,6 +190,44 @@ export function getEnabledRegionCountryNames(
   return Array.from(countryNames);
 }
 
+function parseAlternateCountryNames(value: string | null | undefined) {
+  return value
+    ?.split(";")
+    .map((countryName) => normalizeCountryName(countryName))
+    .filter(Boolean) ?? [];
+}
+
+function dedupeCountryNames(values: string[]) {
+  const displayNameByNormalizedKey = new Map<string, string>();
+
+  for (const value of values) {
+    const displayName = normalizeCountryName(value);
+
+    if (!displayName) {
+      continue;
+    }
+
+    const normalizedKey = displayName.toLowerCase();
+
+    if (!displayNameByNormalizedKey.has(normalizedKey)) {
+      displayNameByNormalizedKey.set(normalizedKey, displayName);
+    }
+  }
+
+  return Array.from(displayNameByNormalizedKey.values()).sort((left, right) =>
+    left.localeCompare(right),
+  );
+}
+
+export function getAvailableDatasetCountryNames(rows: DatasetRow[]) {
+  return dedupeCountryNames(
+    rows.flatMap((row) => [
+      normalizeCountryName(getRegionDatasetValue(row)),
+      ...parseAlternateCountryNames(getAlternateCountryDatasetValue(row)),
+    ]),
+  );
+}
+
 export function filterDatasetRowsByRegion(
   rows: DatasetRow[],
   regionFilter: DatasetRegionFilterState | null | undefined,
@@ -198,6 +258,38 @@ export function filterDatasetRowsByRegion(
   });
 }
 
+export function filterDatasetRowsByCountry(
+  rows: DatasetRow[],
+  countryFilter: DatasetCountryFilterState | null | undefined,
+) {
+  if (
+    !countryFilter ||
+    !countryFilter.enabled ||
+    !countryFilter.isSupported ||
+    countryFilter.selectedCountryNames.length === 0
+  ) {
+    return rows;
+  }
+
+  const allowedCountryNames = new Set(
+    countryFilter.selectedCountryNames
+      .map((countryName) => normalizeCountryName(countryName).toLowerCase())
+      .filter(Boolean),
+  );
+
+  return rows.filter((row) => {
+    const primaryCountryName = normalizeCountryName(getRegionDatasetValue(row)).toLowerCase();
+
+    if (primaryCountryName && allowedCountryNames.has(primaryCountryName)) {
+      return true;
+    }
+
+    return parseAlternateCountryNames(getAlternateCountryDatasetValue(row)).some(
+      (countryName) => allowedCountryNames.has(countryName.toLowerCase()),
+    );
+  });
+}
+
 export function filterDatasetRowsByUupg(
   rows: DatasetRow[],
   uupgFilter: DatasetUupgFilterState | null | undefined,
@@ -223,41 +315,97 @@ export function filterDatasetRowsByWatchlist(
     return rows;
   }
 
-  return rows.filter((row) => {
-    const value = normalizeDatasetNumericValue(getWatchlistDatasetValue(row));
-    const engagementPhase = normalizeDatasetNumericValue(
-      getWatchlistEngagementPhasesDatasetValue(row),
-    );
-    const population = normalizeDatasetNumericValue(
-      getWatchlistPopulationDatasetValue(row),
-    );
-    const percentEvangelical = normalizeDatasetNumericValue(
-      getWatchlistPercentEvangelicalDatasetValue(row),
-    );
-    const frontierGroupValue = normalizeDatasetCellValue(
-      getWatchlistFrontierGroupDatasetValue(row),
-    );
-    const expectedFrontierGroupValue = watchlistFilter.frontierGroupValue
-      ? "true"
-      : "false";
+  const thresholdEnabled = watchlistFilter.thresholdEnabled ?? true;
+  const engagementPhaseEnabled = watchlistFilter.engagementPhaseEnabled ?? true;
+  const evangelicalBelieversEnabled =
+    watchlistFilter.evangelicalBelieversEnabled ?? true;
+  const evangelicalPercentEnabled =
+    watchlistFilter.evangelicalPercentEnabled ?? true;
+  const frontierGroupEnabled = watchlistFilter.frontierGroupEnabled ?? true;
+  const hasEnabledCriteria =
+    thresholdEnabled ||
+    engagementPhaseEnabled ||
+    evangelicalBelieversEnabled ||
+    evangelicalPercentEnabled ||
+    frontierGroupEnabled;
 
-    if (
-      value === null ||
-      engagementPhase === null ||
-      population === null ||
-      percentEvangelical === null ||
-      frontierGroupValue !== expectedFrontierGroupValue
-    ) {
-      return false;
+  if (!hasEnabledCriteria) {
+    return rows;
+  }
+
+  return rows.filter((row) => {
+    if (thresholdEnabled) {
+      const value = normalizeDatasetNumericValue(getWatchlistDatasetValue(row));
+
+      if (value === null || value > watchlistFilter.threshold) {
+        return false;
+      }
     }
 
-    const evangelicalBelievers = population * (percentEvangelical / 100);
+    if (engagementPhaseEnabled) {
+      const engagementPhase = normalizeDatasetNumericValue(
+        getWatchlistEngagementPhasesDatasetValue(row),
+      );
 
-    return (
-      value <= watchlistFilter.threshold &&
-      engagementPhase >= watchlistFilter.engagementPhaseThreshold &&
-      percentEvangelical >= watchlistFilter.evangelicalPercentThreshold &&
-      evangelicalBelievers <= watchlistFilter.evangelicalBelieversThreshold
-    );
+      if (
+        engagementPhase === null ||
+        engagementPhase < watchlistFilter.engagementPhaseThreshold
+      ) {
+        return false;
+      }
+    }
+
+    if (frontierGroupEnabled) {
+      const frontierGroupValue = normalizeDatasetCellValue(
+        getWatchlistFrontierGroupDatasetValue(row),
+      );
+      const expectedFrontierGroupValue = watchlistFilter.frontierGroupValue
+        ? "true"
+        : "false";
+
+      if (frontierGroupValue !== expectedFrontierGroupValue) {
+        return false;
+      }
+    }
+
+    if (
+      evangelicalPercentEnabled ||
+      evangelicalBelieversEnabled
+    ) {
+      const percentEvangelical = normalizeDatasetNumericValue(
+        getWatchlistPercentEvangelicalDatasetValue(row),
+      );
+
+      if (percentEvangelical === null) {
+        return false;
+      }
+
+      if (
+        evangelicalPercentEnabled &&
+        percentEvangelical < watchlistFilter.evangelicalPercentThreshold
+      ) {
+        return false;
+      }
+
+      if (evangelicalBelieversEnabled) {
+        const population = normalizeDatasetNumericValue(
+          getWatchlistPopulationDatasetValue(row),
+        );
+
+        if (population === null) {
+          return false;
+        }
+
+        const evangelicalBelievers = population * (percentEvangelical / 100);
+
+        if (
+          evangelicalBelievers > watchlistFilter.evangelicalBelieversThreshold
+        ) {
+          return false;
+        }
+      }
+    }
+
+    return true;
   });
 }
