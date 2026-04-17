@@ -50,6 +50,42 @@ function getCellValue(row: DatasetRow, key: string) {
   return row.data[key] ?? "";
 }
 
+function getDatasetColumnDisplayLabel(
+  column: DatasetSummary["columns"][number],
+  fieldDefinitionPresentationByColumnKey: Record<string, FieldDefinitionPresentation>,
+) {
+  return fieldDefinitionPresentationByColumnKey[column.key]?.effectiveLabel ?? column.label;
+}
+
+function getSortedVisibleDatasetColumns(input: {
+  columns: DatasetSummary["columns"];
+  hiddenColumnKeys: DatasetSummary["hiddenColumnKeys"];
+  fieldDefinitionPresentationByColumnKey: Record<string, FieldDefinitionPresentation>;
+}) {
+  return [...getVisibleDatasetColumns(input.columns, input.hiddenColumnKeys)].sort(
+    (left, right) => {
+      const leftLabel = getDatasetColumnDisplayLabel(
+        left,
+        input.fieldDefinitionPresentationByColumnKey,
+      );
+      const rightLabel = getDatasetColumnDisplayLabel(
+        right,
+        input.fieldDefinitionPresentationByColumnKey,
+      );
+      const labelComparison = leftLabel.localeCompare(rightLabel, undefined, {
+        sensitivity: "base",
+        numeric: true,
+      });
+
+      if (labelComparison !== 0) {
+        return labelComparison;
+      }
+
+      return left.sourceIndex - right.sourceIndex;
+    },
+  );
+}
+
 async function fetchAllRows(input: {
   datasetId: string;
   signal: AbortSignal;
@@ -94,6 +130,19 @@ export function DatasetTable({
       ),
     [rows, regionFilter, watchlistFilter, uupgFilter],
   );
+  const visibleColumns = useMemo(
+    () =>
+      getSortedVisibleDatasetColumns({
+        columns: dataset.columns,
+        hiddenColumnKeys: dataset.hiddenColumnKeys,
+        fieldDefinitionPresentationByColumnKey,
+      }),
+    [
+      dataset.columns,
+      dataset.hiddenColumnKeys,
+      fieldDefinitionPresentationByColumnKey,
+    ],
+  );
 
   const columns = useMemo<ColumnDef<DatasetRow>[]>(
     () => [
@@ -111,15 +160,14 @@ export function DatasetTable({
         enableHiding: false,
         enableSorting: false,
       },
-      ...getVisibleDatasetColumns(
-        dataset.columns,
-        dataset.hiddenColumnKeys,
-      ).map(
+      ...visibleColumns.map(
         (column): ColumnDef<DatasetRow> => {
           const fieldDefinitionPresentation =
             fieldDefinitionPresentationByColumnKey[column.key];
-          const columnLabel =
-            fieldDefinitionPresentation?.effectiveLabel ?? column.label;
+          const columnLabel = getDatasetColumnDisplayLabel(
+            column,
+            fieldDefinitionPresentationByColumnKey,
+          );
 
           return {
             id: column.key,
@@ -150,9 +198,8 @@ export function DatasetTable({
       ),
     ],
     [
-      dataset.columns,
-      dataset.hiddenColumnKeys,
       fieldDefinitionPresentationByColumnKey,
+      visibleColumns,
     ],
   );
 

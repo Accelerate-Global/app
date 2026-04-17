@@ -121,7 +121,7 @@ function RegionCountriesInfo({
   description: string;
   countries: string[];
 }) {
-  const tooltipText = description.trim() || countries.join(", ");
+  const tooltipText = getRegionTooltipText(label, description, countries);
 
   return (
     <Tooltip>
@@ -156,6 +156,24 @@ function RegionCountriesInfo({
       </TooltipContent>
     </Tooltip>
   );
+}
+
+export function getRegionTooltipText(
+  label: string,
+  description: string,
+  countries: string[],
+) {
+  const trimmedDescription = description.trim();
+
+  if (trimmedDescription) {
+    return trimmedDescription;
+  }
+
+  if (label.trim().toLowerCase() === "globe") {
+    return "All countries.";
+  }
+
+  return countries.join(", ");
 }
 
 function WatchlistFieldInfo({
