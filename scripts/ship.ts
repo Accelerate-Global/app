@@ -8,6 +8,11 @@ import {
 } from "./lib/release";
 import { runCommand } from "./lib/command";
 
+const GIT_COMMAND_TIMEOUT_MS = 30_000;
+const GH_COMMAND_TIMEOUT_MS = 30_000;
+const DRIFT_CHECK_TIMEOUT_MS = 2 * 60_000;
+const REMOTE_SEED_TIMEOUT_MS = 5 * 60_000;
+
 type PullRequestView = {
   baseRefName: string;
   headRefName: string;
@@ -20,6 +25,10 @@ type PullRequestView = {
   title: string;
   url: string;
 };
+
+function logStage(message: string) {
+  console.log(`[ship] ${message}`);
+}
 
 function readFlag(name: string) {
   const index = process.argv.indexOf(name);
@@ -41,15 +50,22 @@ async function getPullRequest(prNumber: string) {
       "--json",
       "baseRefName,headRefName,headRefOid,mergeCommit,number,state,title,url",
     ],
-    { quiet: true },
+    {
+      quiet: true,
+      stdinMode: "ignore",
+      timeoutMs: GH_COMMAND_TIMEOUT_MS,
+    },
   );
 
   return JSON.parse(stdout) as PullRequestView;
 }
 
 async function ensureCleanWorktree() {
+  logStage("Checking for a clean git worktree...");
   const { stdout } = await runCommand("git", ["status", "--porcelain"], {
     quiet: true,
+    stdinMode: "ignore",
+    timeoutMs: GIT_COMMAND_TIMEOUT_MS,
   });
 
   if (stdout.trim()) {
@@ -85,22 +101,31 @@ export async function shipPullRequest(input: { prNumber: string }) {
 
   await ensureCleanWorktree();
 
-  console.log("Checking linked Supabase migration drift...");
-  await runCommand("pnpm", ["run", "db:check-migration-drift"]);
+  logStage("Checking linked Supabase migration drift...");
+  await runCommand("pnpm", ["run", "db:check-migration-drift"], {
+    stdinMode: "ignore",
+    timeoutMs: DRIFT_CHECK_TIMEOUT_MS,
+  });
 
-  console.log("Ensuring the remote field-source registry is seeded...");
-  await runCommand("pnpm", ["run", "field-sources:seed:remote"]);
+  logStage("Ensuring the remote field-source registry is seeded...");
+  await runCommand("pnpm", ["run", "field-sources:seed:remote"], {
+    stdinMode: "ignore",
+    timeoutMs: REMOTE_SEED_TIMEOUT_MS,
+  });
 
+  logStage(`Looking up PR #${prNumber}...`);
   let pullRequest = await getPullRequest(prNumber);
 
   if (pullRequest.baseRefName !== "main") {
     throw new Error(`Ship only supports PRs targeting main. Received ${pullRequest.baseRefName}.`);
   }
 
-  console.log(`Preparing to ship PR #${pullRequest.number}: ${pullRequest.title}`);
+  logStage(
+    `Preparing to ship PR #${pullRequest.number}: ${pullRequest.title} (${pullRequest.state}, ${pullRequest.headRefName}@${pullRequest.headRefOid})`,
+  );
 
   if (pullRequest.state !== "MERGED") {
-    console.log(`Waiting for PR checks on #${pullRequest.number}...`);
+    logStage(`Waiting for PR checks on #${pullRequest.number}...`);
     await waitForPullRequestChecks({
       prNumber,
       workflowNames: [
@@ -109,6 +134,9 @@ export async function shipPullRequest(input: { prNumber: string }) {
         "Database Security",
       ],
     });
+    logStage(
+      `Merging PR #${pullRequest.number} with head commit ${pullRequest.headRefOid}...`,
+    );
     await runCommand("gh", [
       "pr",
       "merge",
@@ -117,8 +145,16 @@ export async function shipPullRequest(input: { prNumber: string }) {
       "--delete-branch",
       "--match-head-commit",
       pullRequest.headRefOid,
-    ]);
+    ], {
+      stdinMode: "ignore",
+      timeoutMs: GH_COMMAND_TIMEOUT_MS,
+    });
+    logStage(`Waiting for GitHub to report the merge commit for PR #${pullRequest.number}...`);
     pullRequest = await waitForMerge(prNumber);
+  } else {
+    logStage(
+      `PR #${pullRequest.number} is already merged at ${pullRequest.mergeCommit?.oid ?? "unknown"}. Resuming post-merge release checks.`,
+    );
   }
 
   const mergeSha = pullRequest.mergeCommit?.oid;
@@ -127,35 +163,47 @@ export async function shipPullRequest(input: { prNumber: string }) {
     throw new Error("Merged PR is missing a merge commit SHA.");
   }
 
-  console.log(`Syncing local main to ${mergeSha}...`);
-  await runCommand("git", ["switch", "main"]);
-  await runCommand("git", ["pull", "--ff-only"]);
+  logStage(`Syncing local main to ${mergeSha}...`);
+  await runCommand("git", ["switch", "main"], {
+    stdinMode: "ignore",
+    timeoutMs: GIT_COMMAND_TIMEOUT_MS,
+  });
+  await runCommand("git", ["pull", "--ff-only"], {
+    stdinMode: "ignore",
+    timeoutMs: GIT_COMMAND_TIMEOUT_MS,
+  });
   await runCommand("git", ["branch", "-d", pullRequest.headRefName], {
     allowFailure: true,
+    stdinMode: "ignore",
+    timeoutMs: GIT_COMMAND_TIMEOUT_MS,
   });
-  await runCommand("git", ["remote", "prune", "origin"]);
+  await runCommand("git", ["remote", "prune", "origin"], {
+    stdinMode: "ignore",
+    timeoutMs: GIT_COMMAND_TIMEOUT_MS,
+  });
 
-  console.log(`Waiting for Release Health on ${mergeSha}...`);
+  logStage(`Waiting for Release Health on ${mergeSha}...`);
   await waitForWorkflowRun({
     workflowName: "Release Health",
     commitSha: mergeSha,
   });
 
-  console.log(`Waiting for the git-based production deployment for ${mergeSha}...`);
+  logStage(`Waiting for the git-based production deployment for ${mergeSha}...`);
   const deployment = await waitForGitHubDeployment({
     commitSha: mergeSha,
   });
+  logStage(`Verifying the production alias for ${mergeSha}...`);
   const smokeCheck = await smokeCheckDeployment({
     productionUrl: "https://data.accelerateglobal.org",
     expectedTitle: "Accelerate Global",
   });
 
-  console.log(`PR #${pullRequest.number} shipped successfully.`);
-  console.log(`PR URL: ${pullRequest.url}`);
-  console.log(`Merge SHA: ${mergeSha}`);
-  console.log(`Production deployment: ${deployment.deploymentUrl}`);
-  console.log(`Production alias: ${smokeCheck.productionUrl}`);
-  console.log(`Vercel deployment id: ${smokeCheck.deploymentId}`);
+  logStage(`PR #${pullRequest.number} shipped successfully.`);
+  logStage(`PR URL: ${pullRequest.url}`);
+  logStage(`Merge SHA: ${mergeSha}`);
+  logStage(`Production deployment: ${deployment.deploymentUrl}`);
+  logStage(`Production alias: ${smokeCheck.productionUrl}`);
+  logStage(`Vercel deployment id: ${smokeCheck.deploymentId}`);
 }
 
 async function main() {

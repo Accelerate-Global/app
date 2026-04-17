@@ -86,3 +86,27 @@ verified. The remaining gaps were operational rather than code-level:
   executed in this session.
 - Repo-local git identity was documented but intentionally left for manual
   configuration.
+
+## April 17 Validation Addendum
+
+Date: 2026-04-17
+
+The release path was exercised again against PR `#48`.
+
+Validated in this run:
+- `pnpm run verify:ship:local` completed successfully, including the combined
+  targeted/full UI smoke path and repo-local Supabase lifecycle cleanup.
+- `pnpm ship --pr 48` had enough underlying checks and release signals in place
+  to merge the PR and confirm the production deployment outcome.
+- The repo-local GitHub identity is now configured correctly on this machine:
+  `II-ricky-bobby-II <116130409+II-ricky-bobby-II@users.noreply.github.com>`.
+
+Newly confirmed remaining gap:
+- Ship orchestration reliability and observability still need hardening. During
+  the April 17 run, the scripted ship flow stalled without producing enough
+  state to distinguish an active wait from a blocked CLI call, even though the
+  GitHub checks later completed successfully.
+
+Next step:
+- Add explicit non-interactive command timeouts, state-change logging, richer
+  timeout/failure messages, and orchestration tests around `pnpm ship`.

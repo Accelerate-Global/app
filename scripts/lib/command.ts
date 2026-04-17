@@ -6,21 +6,81 @@ type RunCommandOptions = {
   env?: NodeJS.ProcessEnv;
   quiet?: boolean;
   allowFailure?: boolean;
+  stdinMode?: "inherit" | "ignore";
+  timeoutMs?: number;
 };
+
+const KILL_GRACE_PERIOD_MS = 5_000;
+
+function summarizeOutput(label: string, text: string) {
+  const normalized = text.replace(/\s+/g, " ").trim();
+
+  if (!normalized) {
+    return null;
+  }
+
+  const maxLength = 280;
+  const summary =
+    normalized.length > maxLength
+      ? `${normalized.slice(0, maxLength - 1)}…`
+      : normalized;
+
+  return `${label}: ${summary}`;
+}
+
+function formatCommand(command: string, args: string[]) {
+  return [command, ...args]
+    .map((part) => (/[\s"]/u.test(part) ? JSON.stringify(part) : part))
+    .join(" ");
+}
+
+function formatCommandError(input: {
+  command: string;
+  args: string[];
+  exitCode: number;
+  signal: NodeJS.Signals | null;
+  stdout: string;
+  stderr: string;
+  timeoutMs?: number;
+  timedOut: boolean;
+}) {
+  const details = [
+    summarizeOutput("stderr", input.stderr),
+    summarizeOutput("stdout", input.stdout),
+  ].filter(Boolean);
+  const signalSuffix = input.signal ? `, signal=${input.signal}` : "";
+
+  if (input.timedOut) {
+    return [
+      `Command timed out after ${input.timeoutMs}ms: ${formatCommand(input.command, input.args)} (exit code=${input.exitCode}${signalSuffix})`,
+      ...details,
+    ].join("\n");
+  }
+
+  return [
+    `Command failed (${input.exitCode}${signalSuffix}): ${formatCommand(input.command, input.args)}`,
+    ...details,
+  ].join("\n");
+}
 
 export async function runCommand(
   command: string,
   args: string[],
   options: RunCommandOptions = {},
 ) {
+  const stdinMode = options.stdinMode ?? "inherit";
   const child = spawn(command, args, {
     cwd: options.cwd,
     env: options.env,
-    stdio: ["inherit", "pipe", "pipe"],
+    stdio: [stdinMode, "pipe", "pipe"],
   });
 
   let stdout = "";
   let stderr = "";
+  let completed = false;
+  let timedOut = false;
+  let timeoutHandle: NodeJS.Timeout | undefined;
+  let killHandle: NodeJS.Timeout | undefined;
 
   child.stdout.on("data", (chunk) => {
     const text = chunk.toString();
@@ -40,14 +100,68 @@ export async function runCommand(
     }
   });
 
-  const exitCode = await new Promise<number>((resolve, reject) => {
-    child.on("error", reject);
-    child.on("close", (code) => resolve(code ?? 1));
-  });
+  if (options.timeoutMs) {
+    timeoutHandle = setTimeout(() => {
+      timedOut = true;
+      child.kill("SIGTERM");
+      killHandle = setTimeout(() => {
+        if (!completed) {
+          child.kill("SIGKILL");
+        }
+      }, KILL_GRACE_PERIOD_MS);
+    }, options.timeoutMs);
+  }
+
+  let code: number | null;
+  let signal: NodeJS.Signals | null;
+
+  try {
+    ({ code, signal } = await new Promise<{
+      code: number | null;
+      signal: NodeJS.Signals | null;
+    }>((resolve, reject) => {
+      child.on("error", reject);
+      child.on("close", (nextCode, nextSignal) => {
+        completed = true;
+        resolve({
+          code: nextCode,
+          signal: nextSignal,
+        });
+      });
+    }));
+  } finally {
+    clearTimeout(timeoutHandle);
+    clearTimeout(killHandle);
+  }
+
+  const exitCode = code ?? 1;
+
+  if (timedOut) {
+    throw new Error(
+      formatCommandError({
+        command,
+        args,
+        exitCode,
+        signal,
+        stdout,
+        stderr,
+        timeoutMs: options.timeoutMs,
+        timedOut: true,
+      }),
+    );
+  }
 
   if (exitCode !== 0 && !options.allowFailure) {
     throw new Error(
-      `Command failed (${exitCode}): ${command} ${args.join(" ")}\n${stderr.trim()}`,
+      formatCommandError({
+        command,
+        args,
+        exitCode,
+        signal,
+        stdout,
+        stderr,
+        timedOut: false,
+      }),
     );
   }
 
