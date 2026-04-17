@@ -12,11 +12,13 @@ Vercel production deploys for emergency recovery only.
    pnpm run verify:change:run
    ```
 
-2. Verify the app and local database gate:
+2. Run the single pre-ship local gate:
 
    ```bash
-   pnpm verify:release
+   pnpm run verify:ship:local
    ```
+
+   `pnpm verify:release` remains as a temporary deprecated alias.
 
 3. If the release includes tracked Supabase migrations, apply them to the linked
    remote project explicitly before merge:
@@ -46,7 +48,7 @@ Vercel production deploys for emergency recovery only.
 - merges the PR to `main`
 - switches the local checkout back to `main`, pulls `--ff-only`, deletes the
   merged branch locally when safe, and prunes remote refs
-- waits for the `main` branch `App Quality`, `UI Smoke`, and `Database Security` checks
+- waits for the `main` branch `Release Health` workflow
 - waits for the GitHub-backed Vercel production deployment
 - verifies that [data.accelerateglobal.org](https://data.accelerateglobal.org)
   points at the same Vercel deployment as the git-based production deploy

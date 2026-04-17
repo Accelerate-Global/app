@@ -1,8 +1,8 @@
 # Auth Email Branding Runbook
 
-This project uses Supabase Auth for sign-in, password recovery, and email-change
-links. The password reset UI lives in the app, but sender branding and link-host
-branding are controlled by hosted Supabase Auth.
+This project uses Supabase Auth for invites, sign-in, password recovery, and
+email-change links. The app owns the browser flows, but sender branding,
+template content, and auth-link branding are controlled by hosted Supabase Auth.
 
 ## Current state
 
@@ -73,11 +73,28 @@ before activation.
   the signed recovery link; once the custom domain is active, that URL will use the
   branded host automatically
 
+## Invite email template
+
+- The canonical local template for invites lives at
+  `supabase/templates/invite.html`
+- In hosted Supabase, copy that HTML into Authentication -> Email Templates -> Invite
+- Use the subject:
+  `You have been invited to Accelerate Global Data`
+- The invite body intentionally does not render `{{ .SiteURL }}` anywhere. This
+  avoids email clients auto-linking the site URL and pulling attention away from
+  the real CTA:
+  `Accept the invite`
+
 ## Verification checklist
 
-1. Submit a forgot-password request from `https://data.accelerateglobal.org/forgot-password`
-2. Confirm the sender shows `Accelerate Global Data <noreply@accelerateglobal.org>`
-3. Confirm the reset CTA host is `auth.data.accelerateglobal.org`
-4. Complete the flow and verify it lands on
+1. Send a fresh invite from the user-management flow and confirm the email only has one
+   obvious action link:
+   `Accept the invite`
+2. Confirm the invite body does not render `data.accelerateglobal.org` as a clickable
+   link outside the CTA.
+3. Submit a forgot-password request from `https://data.accelerateglobal.org/forgot-password`
+4. Confirm the sender shows `Accelerate Global Data <noreply@accelerateglobal.org>`
+5. Confirm the reset CTA host is `auth.data.accelerateglobal.org`
+6. Complete the flow and verify it lands on
    `https://data.accelerateglobal.org/reset-password`
-5. Set a new password and sign in successfully
+7. Set a new password and sign in successfully

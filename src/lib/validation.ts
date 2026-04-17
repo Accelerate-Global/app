@@ -18,6 +18,68 @@ export const datasetTagSchema = z.object({
 export const datasetHiddenColumnKeySchema = z.string().trim().min(1).max(128);
 
 const filterRegionCountrySchema = z.string().trim().min(1).max(255);
+const savedDatasetRegionNameSchema = z.string().trim().min(1).max(80);
+
+const savedDatasetSortSchema = z.object({
+  id: datasetHiddenColumnKeySchema,
+  desc: z.boolean(),
+});
+
+const savedDatasetRegionFilterStateSchema = z
+  .object({
+    enabled: z.boolean(),
+    selectedRegionIds: z.array(z.string().uuid()).max(500),
+    selectedRegionNames: z.array(savedDatasetRegionNameSchema).max(500),
+    enabledCountryNames: z.array(filterRegionCountrySchema).max(500),
+  })
+  .superRefine((value, ctx) => {
+    const normalizedRegionIds = value.selectedRegionIds.map((regionId) =>
+      regionId.trim().toLowerCase(),
+    );
+    const normalizedRegionNames = value.selectedRegionNames.map((regionName) =>
+      regionName.trim().toLowerCase(),
+    );
+    const normalizedCountryNames = value.enabledCountryNames.map((countryName) =>
+      countryName.trim().toLowerCase(),
+    );
+
+    if (new Set(normalizedRegionIds).size !== normalizedRegionIds.length) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["selectedRegionIds"],
+        message: "Each selected region can only be included once.",
+      });
+    }
+
+    if (new Set(normalizedRegionNames).size !== normalizedRegionNames.length) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["selectedRegionNames"],
+        message: "Each selected region name can only be included once.",
+      });
+    }
+
+    if (new Set(normalizedCountryNames).size !== normalizedCountryNames.length) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["enabledCountryNames"],
+        message: "Each enabled country can only be included once.",
+      });
+    }
+  });
+
+export const savedDatasetFilterStateSchema = z.object({
+  region: savedDatasetRegionFilterStateSchema,
+  watchlist: z.object({
+    enabled: z.boolean(),
+    threshold: z.number().int().min(0).max(6),
+    frontierGroupValue: z.boolean(),
+  }),
+  uupg: z.object({
+    enabled: z.boolean(),
+  }),
+  sorting: z.array(savedDatasetSortSchema).max(8),
+});
 
 export const blobUploadTokenSchema = z.object({
   fileName: z.string().min(1).max(255),
@@ -92,6 +154,26 @@ export const datasetReorderSchema = z.object({
       message: "Dataset order must not contain duplicates.",
     }),
 });
+
+export const savedDatasetTableCreateSchema = z.object({
+  datasetId: z.string().uuid(),
+  savedRowCount: z.number().int().nonnegative(),
+  filters: savedDatasetFilterStateSchema,
+});
+
+export const savedDatasetTableUpdateSchema = z
+  .object({
+    name: z.string().trim().min(1).max(255).optional(),
+    details: z.string().trim().max(1000).optional(),
+  })
+  .superRefine((value, ctx) => {
+    if (value.name === undefined && value.details === undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "A saved table update must include a name or details.",
+      });
+    }
+  });
 
 export const filterRegionPayloadSchema = z
   .object({

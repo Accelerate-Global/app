@@ -2,12 +2,15 @@
 
 import { useMemo, useState } from "react";
 
+import { DatasetTableActionBar } from "@/components/dashboard/dataset-table-action-bar";
 import { DatasetTable } from "@/components/dashboard/dataset-table";
 import { DatasetViewSwitchGrid } from "@/components/dashboard/dataset-view-switch-grid";
+import { useDatasetTableState } from "@/components/dashboard/use-dataset-table-state";
 import type {
   DatasetSummary,
   FieldDefinitionPresentation,
   FilterRegion,
+  SavedDatasetSort,
 } from "@/lib/api-types";
 import {
   WATCHLIST_DATASET_COLUMN_KEY,
@@ -19,6 +22,7 @@ import {
   datasetSupportsUupgFiltering,
   getEnabledRegionCountryNames,
 } from "@/lib/dataset-region-filtering";
+import { buildSavedDatasetFilterState } from "@/lib/saved-dataset-filters";
 
 type DatasetDetailClientProps = {
   dataset: DatasetSummary;
@@ -95,6 +99,49 @@ export function DatasetDetailClient({
       })),
     [regions, selectedRegionIds],
   );
+  const datasetTable = useDatasetTableState({
+    dataset,
+    fieldDefinitionPresentationByColumnKey,
+    regionFilter: {
+      enabled: regionEnabled,
+      isSupported: supportsRegionFiltering,
+      hasConfiguredRegions: regions.length > 0,
+      enabledCountryNames,
+    },
+    watchlistFilter: {
+      enabled: watchlistEnabled,
+      isSupported: supportsWatchlistFiltering,
+      threshold: watchlistThreshold,
+      frontierGroupValue: watchlistFrontierGroupValue,
+    },
+    uupgFilter: {
+      enabled: uupgEnabled,
+      isSupported: supportsUupgFiltering,
+    },
+  });
+  const savedFilters = useMemo(
+    () =>
+      buildSavedDatasetFilterState({
+        regions,
+        selectedRegionIds,
+        regionEnabled,
+        watchlistEnabled,
+        watchlistThreshold,
+        watchlistFrontierGroupValue,
+        uupgEnabled,
+        sorting: datasetTable.sorting as SavedDatasetSort[],
+      }),
+    [
+      datasetTable.sorting,
+      regionEnabled,
+      regions,
+      selectedRegionIds,
+      uupgEnabled,
+      watchlistEnabled,
+      watchlistFrontierGroupValue,
+      watchlistThreshold,
+    ],
+  );
 
   return (
     <>
@@ -132,25 +179,22 @@ export function DatasetDetailClient({
           onEnabledChange: setUupgEnabled,
         }}
       />
-      <DatasetTable
+      <DatasetTableActionBar
         dataset={dataset}
+        filters={savedFilters}
+        recordCount={datasetTable.recordCount}
+        sortedRows={datasetTable.sortedRows}
+        visibleColumns={datasetTable.visibleColumns}
+        isLoading={datasetTable.isLoading}
+        hasError={Boolean(dataset.error || datasetTable.error)}
         fieldDefinitionPresentationByColumnKey={fieldDefinitionPresentationByColumnKey}
-        regionFilter={{
-          enabled: regionEnabled,
-          isSupported: supportsRegionFiltering,
-          hasConfiguredRegions: regions.length > 0,
-          enabledCountryNames,
-        }}
-        watchlistFilter={{
-          enabled: watchlistEnabled,
-          isSupported: supportsWatchlistFiltering,
-          threshold: watchlistThreshold,
-          frontierGroupValue: watchlistFrontierGroupValue,
-        }}
-        uupgFilter={{
-          enabled: uupgEnabled,
-          isSupported: supportsUupgFiltering,
-        }}
+      />
+      <DatasetTable
+        table={datasetTable.table}
+        recordCount={datasetTable.recordCount}
+        isLoading={datasetTable.isLoading}
+        datasetError={dataset.error}
+        error={datasetTable.error}
       />
     </>
   );

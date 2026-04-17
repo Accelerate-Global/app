@@ -1,6 +1,9 @@
+import { pathToFileURL } from "node:url";
+
 import {
   smokeCheckDeployment,
   waitForGitHubDeployment,
+  waitForPullRequestChecks,
   waitForWorkflowRun,
 } from "./lib/release";
 import { runCommand } from "./lib/command";
@@ -54,22 +57,6 @@ async function ensureCleanWorktree() {
   }
 }
 
-async function waitForPullRequestChecks(headSha: string) {
-  console.log(`Waiting for PR checks on ${headSha}...`);
-  await waitForWorkflowRun({
-    workflowName: "App Quality",
-    commitSha: headSha,
-  });
-  await waitForWorkflowRun({
-    workflowName: "UI Smoke",
-    commitSha: headSha,
-  });
-  await waitForWorkflowRun({
-    workflowName: "Database Security",
-    commitSha: headSha,
-  });
-}
-
 async function waitForMerge(prNumber: string) {
   const startedAt = Date.now();
 
@@ -90,9 +77,8 @@ async function waitForMerge(prNumber: string) {
   }
 }
 
-async function main() {
-  const prNumber = readFlag("--pr");
-
+export async function shipPullRequest(input: { prNumber: string }) {
+  const prNumber = input.prNumber;
   if (!prNumber) {
     throw new Error("Usage: pnpm ship --pr <number>");
   }
@@ -114,7 +100,15 @@ async function main() {
   console.log(`Preparing to ship PR #${pullRequest.number}: ${pullRequest.title}`);
 
   if (pullRequest.state !== "MERGED") {
-    await waitForPullRequestChecks(pullRequest.headRefOid);
+    console.log(`Waiting for PR checks on #${pullRequest.number}...`);
+    await waitForPullRequestChecks({
+      prNumber,
+      workflowNames: [
+        "App Quality",
+        "UI Smoke",
+        "Database Security",
+      ],
+    });
     await runCommand("gh", [
       "pr",
       "merge",
@@ -141,17 +135,9 @@ async function main() {
   });
   await runCommand("git", ["remote", "prune", "origin"]);
 
-  console.log(`Waiting for main branch checks on ${mergeSha}...`);
+  console.log(`Waiting for Release Health on ${mergeSha}...`);
   await waitForWorkflowRun({
-    workflowName: "App Quality",
-    commitSha: mergeSha,
-  });
-  await waitForWorkflowRun({
-    workflowName: "UI Smoke",
-    commitSha: mergeSha,
-  });
-  await waitForWorkflowRun({
-    workflowName: "Database Security",
+    workflowName: "Release Health",
     commitSha: mergeSha,
   });
 
@@ -172,7 +158,23 @@ async function main() {
   console.log(`Vercel deployment id: ${smokeCheck.deploymentId}`);
 }
 
-main().catch((error) => {
-  console.error(error instanceof Error ? error.message : error);
-  process.exit(1);
-});
+async function main() {
+  const prNumber = readFlag("--pr");
+
+  if (!prNumber) {
+    throw new Error("Usage: pnpm ship --pr <number>");
+  }
+
+  await shipPullRequest({ prNumber });
+}
+
+function isMainModule(metaUrl: string) {
+  return Boolean(process.argv[1]) && pathToFileURL(process.argv[1]).href === metaUrl;
+}
+
+if (isMainModule(import.meta.url)) {
+  main().catch((error) => {
+    console.error(error instanceof Error ? error.message : error);
+    process.exit(1);
+  });
+}

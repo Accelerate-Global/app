@@ -63,9 +63,9 @@ Treat `pnpm run verify:change` as the local planning gate for repo-tracked edits
   - targeted smoke subset from `pnpm run verify:change`
 - Run `pnpm run verify:change:run` before finalizing when repo-tracked code, scripts, config, or tests changed.
 - If you add or edit a page, shared UI primitive, smoke surface, Supabase migration, or DB-affecting code path, satisfy the listed repo contracts during implementation, not at the end.
-- Use `pnpm run test:ui:smoke:targeted` as the first browser gate for impacted routes and journeys.
 - Before finalizing or attempting `ship` / release work, rerun `pnpm run verify:change` and complete every command listed under “Required commands”.
-- Keep `pnpm run test:ui:smoke` as the final merge or release gate after the targeted subset is green.
+- Use `pnpm run verify:ship:local` as the single pre-ship local gate. It reuses prior passes on the same tracked tree and runs any remaining release-only smoke work before `pnpm ship --pr <number>`.
+- Use standalone `pnpm run test:ui:smoke:targeted` and `pnpm run test:ui:smoke` only for focused debugging, ad hoc verification, or when `pnpm run verify:change` explicitly requires them.
 - If `pnpm run test:ui:smoke`, `pnpm run db:security`, or `pnpm run verify:change:run` is blocked by an already-running repo-local Supabase stack, stop or reset that stack first and then continue the required command instead of stopping to ask.
 - Use [/Users/blake/Documents/accelerate-global/online/config/change-impact.ts](/Users/blake/Documents/accelerate-global/online/config/change-impact.ts) as the canonical rule set for impacted domains and verification commands.
 - Use [/Users/blake/Documents/accelerate-global/online/docs/testing/ui-smoke.md](/Users/blake/Documents/accelerate-global/online/docs/testing/ui-smoke.md) for the detailed smoke contract and examples.

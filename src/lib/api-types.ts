@@ -54,6 +54,49 @@ export type DatasetRowsResponse = {
   pageCount: number;
 };
 
+export type SavedDatasetSort = {
+  id: string;
+  desc: boolean;
+};
+
+export type SavedDatasetFilterState = {
+  region: {
+    enabled: boolean;
+    selectedRegionIds: string[];
+    selectedRegionNames: string[];
+    enabledCountryNames: string[];
+  };
+  watchlist: {
+    enabled: boolean;
+    threshold: number;
+    frontierGroupValue: boolean;
+  };
+  uupg: {
+    enabled: boolean;
+  };
+  sorting: SavedDatasetSort[];
+};
+
+export type SavedDatasetTable = {
+  id: string;
+  datasetId: string;
+  datasetFileName: string;
+  name: string;
+  details: string;
+  filters: SavedDatasetFilterState;
+  savedRowCount: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type SavedDatasetTablesResponse = {
+  savedTables: SavedDatasetTable[];
+};
+
+export type SavedDatasetTableResponse = {
+  savedTable: SavedDatasetTable;
+};
+
 export type DatasetUploadAuthorizationResponse = {
   mode: "supabase-storage";
   bucket: string;

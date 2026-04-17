@@ -2,9 +2,6 @@ name: Database Security
 
 on:
   pull_request:
-  push:
-    branches:
-      - main
 
 concurrency:
   group: database-security-${{ github.ref }}
@@ -41,29 +38,29 @@ jobs:
               - 'supabase/**'
 
       - uses: pnpm/action-setup@v4
-        if: steps.changes.outputs.database == 'true' || github.event_name == 'push'
+        if: steps.changes.outputs.database == 'true'
         with:
           version: 10
 
       - uses: actions/setup-node@v4
-        if: steps.changes.outputs.database == 'true' || github.event_name == 'push'
+        if: steps.changes.outputs.database == 'true'
         with:
           node-version: 22
           cache: pnpm
 
       - uses: supabase/setup-cli@v1
-        if: steps.changes.outputs.database == 'true' || github.event_name == 'push'
+        if: steps.changes.outputs.database == 'true'
         with:
           version: latest
 
-      - if: steps.changes.outputs.database == 'true' || github.event_name == 'push'
+      - if: steps.changes.outputs.database == 'true'
         run: pnpm install --frozen-lockfile
 
-      - if: steps.changes.outputs.database == 'true' || github.event_name == 'push'
+      - if: steps.changes.outputs.database == 'true'
         run: supabase start
 
-      - if: steps.changes.outputs.database == 'true' || github.event_name == 'push'
+      - if: steps.changes.outputs.database == 'true'
         run: pnpm run db:security:started
 
-      - if: steps.changes.outputs.database != 'true' && github.event_name != 'push'
+      - if: steps.changes.outputs.database != 'true'
         run: echo "No database or security-relevant files changed."

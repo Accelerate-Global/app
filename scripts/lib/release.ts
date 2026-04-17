@@ -11,6 +11,14 @@ type GitHubWorkflowRun = {
   workflowName: string;
 };
 
+type GitHubPullRequestCheck = {
+  bucket: "pass" | "fail" | "pending" | "skipping" | "cancel";
+  link: string;
+  name: string;
+  state: string;
+  workflow?: string;
+};
+
 type GitHubDeployment = {
   id: number;
   environment: string;
@@ -70,6 +78,29 @@ async function ghRunList(workflowName: string, commitSha: string) {
   );
 
   return JSON.parse(stdout) as GitHubWorkflowRun[];
+}
+
+async function ghPullRequestChecks(prNumber: string) {
+  const result = await runCommand(
+    "gh",
+    [
+      "pr",
+      "checks",
+      prNumber,
+      "--json",
+      "name,workflow,bucket,state,link",
+    ],
+    {
+      quiet: true,
+      allowFailure: true,
+    },
+  );
+
+  if (![0, 8].includes(result.exitCode)) {
+    throw new Error(result.stderr.trim() || `gh pr checks failed for PR #${prNumber}.`);
+  }
+
+  return JSON.parse(result.stdout) as GitHubPullRequestCheck[];
 }
 
 function getLatestRun(runs: GitHubWorkflowRun[]) {
@@ -136,6 +167,53 @@ export async function waitForWorkflowRun(options: WaitForWorkflowOptions) {
     if (Date.now() - startedAt > timeoutMs) {
       throw new Error(
         `Timed out waiting for ${options.workflowName} on ${options.commitSha}.`,
+      );
+    }
+
+    await delay(pollMs);
+  }
+}
+
+export async function waitForPullRequestChecks(options: {
+  prNumber: string;
+  workflowNames: string[];
+  timeoutMs?: number;
+  pollMs?: number;
+}) {
+  const timeoutMs = options.timeoutMs ?? 15 * 60 * 1000;
+  const pollMs = options.pollMs ?? 5000;
+  const startedAt = Date.now();
+
+  for (;;) {
+    const checks = await ghPullRequestChecks(options.prNumber);
+    const requiredChecks = options.workflowNames.map((workflowName) => ({
+      workflowName,
+      check: checks.find((check) => check.workflow === workflowName),
+    }));
+    const failedCheck = requiredChecks.find(
+      ({ check }) => check && ["fail", "cancel"].includes(check.bucket),
+    );
+
+    if (failedCheck?.check) {
+      throw new Error(
+        `${failedCheck.workflowName} failed for PR #${options.prNumber}: ${failedCheck.check.link}`,
+      );
+    }
+
+    const pendingChecks = requiredChecks.filter(
+      ({ check }) =>
+        !check || !["pass", "skipping"].includes(check.bucket),
+    );
+
+    if (pendingChecks.length === 0) {
+      return checks;
+    }
+
+    if (Date.now() - startedAt > timeoutMs) {
+      throw new Error(
+        `Timed out waiting for PR #${options.prNumber} checks: ${pendingChecks
+          .map(({ workflowName }) => workflowName)
+          .join(", ")}.`,
       );
     }
 
