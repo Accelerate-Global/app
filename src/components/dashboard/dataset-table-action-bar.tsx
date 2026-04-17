@@ -1,6 +1,6 @@
 "use client";
 
-import { DownloadIcon, SaveIcon } from "lucide-react";
+import { DownloadIcon, SaveIcon, SlidersHorizontalIcon } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,7 @@ type DatasetTableActionBarProps = {
     string,
     FieldDefinitionPresentation
   >;
+  onOpenFilters?: () => void;
 };
 
 function downloadCsvFile(input: {
@@ -58,6 +59,7 @@ export function DatasetTableActionBar({
   isLoading,
   hasError,
   fieldDefinitionPresentationByColumnKey,
+  onOpenFilters,
 }: DatasetTableActionBarProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -127,26 +129,39 @@ export function DatasetTableActionBar({
   }
 
   return (
-    <section className="rounded-2xl border border-border bg-card px-5 py-4">
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div className="space-y-1">
+    <section className="rounded-2xl border border-border bg-card px-4 py-3">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="min-w-0 space-y-1">
           <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
             Current filtered table
           </p>
-          <div className="flex items-end gap-3">
+          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
             <p
               className="text-3xl font-semibold tracking-[-0.04em] text-foreground"
               data-smoke-filtered-table-count
             >
               {isLoading ? "..." : recordCount.toLocaleString()}
             </p>
-            <p className="pb-1 text-sm text-muted-foreground">
-              people groups in the current list
+            <p className="text-3xl font-semibold tracking-[-0.04em] text-foreground">
+              People Groups
             </p>
           </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {onOpenFilters ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="xl:hidden"
+              data-smoke-trigger="dataset-filters-sheet"
+              data-smoke-write="safe"
+              onClick={onOpenFilters}
+            >
+              <SlidersHorizontalIcon />
+              Filters
+            </Button>
+          ) : null}
           <Button
             type="button"
             variant="outline"

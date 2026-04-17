@@ -90,6 +90,9 @@ export type SavedDatasetFilterState = {
   watchlist: {
     enabled: boolean;
     threshold: number;
+    engagementPhaseThreshold: number;
+    evangelicalBelieversThreshold: number;
+    evangelicalPercentThreshold: number;
     frontierGroupValue: boolean;
   };
   uupg: {

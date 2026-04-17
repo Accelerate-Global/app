@@ -1,6 +1,9 @@
 import type { DatasetRowsResponse, DatasetSummary, FilterRegion } from "@/lib/api-types";
 import {
   REGION_DATASET_COLUMN_KEY,
+  WATCHLIST_ENGAGEMENT_PHASES_DATASET_COLUMN_KEY,
+  WATCHLIST_PERCENT_EVANGELICAL_DATASET_COLUMN_KEY,
+  WATCHLIST_POPULATION_DATASET_COLUMN_KEY,
   WATCHLIST_FRONTIER_GROUP_DATASET_COLUMN_KEY,
   WATCHLIST_DATASET_COLUMN_KEY,
   UUPG_DATASET_COLUMN_KEY,
@@ -24,6 +27,9 @@ export type DatasetWatchlistFilterState = {
   enabled: boolean;
   isSupported: boolean;
   threshold: number;
+  engagementPhaseThreshold: number;
+  evangelicalBelieversThreshold: number;
+  evangelicalPercentThreshold: number;
   frontierGroupValue: boolean;
 };
 
@@ -89,6 +95,18 @@ function getWatchlistFrontierGroupDatasetValue(row: DatasetRow) {
   return getDatasetValue(row, WATCHLIST_FRONTIER_GROUP_DATASET_COLUMN_KEY);
 }
 
+function getWatchlistPopulationDatasetValue(row: DatasetRow) {
+  return getDatasetValue(row, WATCHLIST_POPULATION_DATASET_COLUMN_KEY);
+}
+
+function getWatchlistPercentEvangelicalDatasetValue(row: DatasetRow) {
+  return getDatasetValue(row, WATCHLIST_PERCENT_EVANGELICAL_DATASET_COLUMN_KEY);
+}
+
+function getWatchlistEngagementPhasesDatasetValue(row: DatasetRow) {
+  return getDatasetValue(row, WATCHLIST_ENGAGEMENT_PHASES_DATASET_COLUMN_KEY);
+}
+
 function datasetSupportsColumnFiltering(
   dataset: Pick<DatasetSummary, "columns">,
   expectedKey: string,
@@ -118,6 +136,9 @@ export function datasetSupportsWatchlistFiltering(
   return [
     WATCHLIST_DATASET_COLUMN_KEY,
     WATCHLIST_FRONTIER_GROUP_DATASET_COLUMN_KEY,
+    WATCHLIST_POPULATION_DATASET_COLUMN_KEY,
+    WATCHLIST_PERCENT_EVANGELICAL_DATASET_COLUMN_KEY,
+    WATCHLIST_ENGAGEMENT_PHASES_DATASET_COLUMN_KEY,
   ].every((expectedKey) =>
     datasetSupportsColumnFiltering(dataset, expectedKey),
   );
@@ -204,6 +225,15 @@ export function filterDatasetRowsByWatchlist(
 
   return rows.filter((row) => {
     const value = normalizeDatasetNumericValue(getWatchlistDatasetValue(row));
+    const engagementPhase = normalizeDatasetNumericValue(
+      getWatchlistEngagementPhasesDatasetValue(row),
+    );
+    const population = normalizeDatasetNumericValue(
+      getWatchlistPopulationDatasetValue(row),
+    );
+    const percentEvangelical = normalizeDatasetNumericValue(
+      getWatchlistPercentEvangelicalDatasetValue(row),
+    );
     const frontierGroupValue = normalizeDatasetCellValue(
       getWatchlistFrontierGroupDatasetValue(row),
     );
@@ -211,10 +241,23 @@ export function filterDatasetRowsByWatchlist(
       ? "true"
       : "false";
 
-    if (value === null || frontierGroupValue !== expectedFrontierGroupValue) {
+    if (
+      value === null ||
+      engagementPhase === null ||
+      population === null ||
+      percentEvangelical === null ||
+      frontierGroupValue !== expectedFrontierGroupValue
+    ) {
       return false;
     }
 
-    return value <= watchlistFilter.threshold;
+    const evangelicalBelievers = population * (percentEvangelical / 100);
+
+    return (
+      value <= watchlistFilter.threshold &&
+      engagementPhase >= watchlistFilter.engagementPhaseThreshold &&
+      percentEvangelical >= watchlistFilter.evangelicalPercentThreshold &&
+      evangelicalBelievers <= watchlistFilter.evangelicalBelieversThreshold
+    );
   });
 }

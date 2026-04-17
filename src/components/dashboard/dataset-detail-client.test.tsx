@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { render } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { DatasetSummary } from "@/lib/api-types";
@@ -15,21 +15,21 @@ const viewSwitchGridSpy = vi.fn();
 vi.mock("@/components/dashboard/dataset-table-action-bar", () => ({
   DatasetTableActionBar: (props: unknown) => {
     actionBarSpy(props);
-    return null;
+    return <div data-testid="dataset-table-action-bar" />;
   },
 }));
 
 vi.mock("@/components/dashboard/dataset-table", () => ({
   DatasetTable: (props: unknown) => {
     datasetTableSpy(props);
-    return null;
+    return <div data-testid="dataset-table" />;
   },
 }));
 
 vi.mock("@/components/dashboard/dataset-view-switch-grid", () => ({
   DatasetViewSwitchGrid: (props: unknown) => {
     viewSwitchGridSpy(props);
-    return null;
+    return <div data-testid="dataset-view-switch-grid" />;
   },
 }));
 
@@ -69,6 +69,43 @@ describe("DatasetDetailClient", () => {
       isLoading: false,
       error: null,
     });
+  });
+
+  it("renders a sticky desktop filter rail and a main content column above the table", () => {
+    render(
+      <DatasetDetailClient
+        dataset={{
+          ...datasetBase,
+          columns: [
+            {
+              key: "geo_country_name",
+              label: "Geo_Country_Name",
+              sourceIndex: 0,
+            },
+          ],
+        }}
+        regions={[]}
+        fieldDefinitionPresentationByColumnKey={{}}
+      />,
+    );
+
+    const filterGrid = screen.getByTestId("dataset-view-switch-grid");
+    const actionBar = screen.getByTestId("dataset-table-action-bar");
+    const stickyRail = filterGrid.parentElement;
+    const desktopRail = stickyRail?.parentElement;
+    const layout = desktopRail?.parentElement;
+    const mainColumn = actionBar.parentElement;
+    const actionBarProps = actionBarSpy.mock.calls[0]?.[0] as {
+      onOpenFilters?: () => void;
+    };
+
+    expect(layout).toBeTruthy();
+    expect(layout?.className).toContain("xl:grid-cols-[22rem_minmax(0,1fr)]");
+    expect(desktopRail?.className).toContain("hidden");
+    expect(desktopRail?.className).toContain("xl:block");
+    expect(stickyRail?.className).toContain("sticky");
+    expect(mainColumn).toBe(screen.getByTestId("dataset-table").parentElement);
+    expect(actionBarProps.onOpenFilters).toEqual(expect.any(Function));
   });
 
   it("passes supported UUPG filter state into the card, shared table state, and action bar", () => {
@@ -252,6 +289,21 @@ describe("DatasetDetailClient", () => {
               label: "Christianity_Frontier_Group",
               sourceIndex: 1,
             },
+            {
+              key: "engage_8_phases_of_engagement",
+              label: "Engage_8_Phases_of_Engagement",
+              sourceIndex: 2,
+            },
+            {
+              key: "pg_population",
+              label: "PG_Population",
+              sourceIndex: 3,
+            },
+            {
+              key: "percent_evangelical_pgac",
+              label: "Percent_Evangelical_PGAC",
+              sourceIndex: 4,
+            },
           ],
         }}
         regions={[]}
@@ -268,6 +320,24 @@ describe("DatasetDetailClient", () => {
             effectiveLabel: "Christianity: Frontier Group Y/N",
             linkedSources: [],
           },
+          engage_8_phases_of_engagement: {
+            definition: "Engagement phase definition",
+            displayLabel: "Engage: 8 Phases of Engagement",
+            effectiveLabel: "Engage: 8 Phases of Engagement",
+            linkedSources: [],
+          },
+          pg_population: {
+            definition: "Population definition",
+            displayLabel: "People Group: Population",
+            effectiveLabel: "People Group: Population",
+            linkedSources: [],
+          },
+          percent_evangelical_pgac: {
+            definition: "Percent evangelical definition",
+            displayLabel: "Percent Evangelical PGAC",
+            effectiveLabel: "Percent Evangelical PGAC",
+            linkedSources: [],
+          },
         }}
       />,
     );
@@ -281,6 +351,15 @@ describe("DatasetDetailClient", () => {
         threshold: number;
         minThreshold: number;
         maxThreshold: number;
+        engagementPhaseLabel: string;
+        engagementPhaseDefinition: string;
+        engagementPhaseThreshold: number;
+        evangelicalBelieversLabel: string;
+        evangelicalBelieversDefinition: string;
+        evangelicalBelieversThreshold: number;
+        evangelicalPercentLabel: string;
+        evangelicalPercentDefinition: string;
+        evangelicalPercentThreshold: number;
         frontierGroupLabel: string;
         frontierGroupDefinition: string;
         frontierGroupValue: boolean;
@@ -291,6 +370,9 @@ describe("DatasetDetailClient", () => {
         enabled: boolean;
         isSupported: boolean;
         threshold: number;
+        engagementPhaseThreshold: number;
+        evangelicalBelieversThreshold: number;
+        evangelicalPercentThreshold: number;
         frontierGroupValue: boolean;
       };
     };
@@ -299,6 +381,9 @@ describe("DatasetDetailClient", () => {
         watchlist: {
           enabled: boolean;
           threshold: number;
+          engagementPhaseThreshold: number;
+          evangelicalBelieversThreshold: number;
+          evangelicalPercentThreshold: number;
           frontierGroupValue: boolean;
         };
         sorting: Array<{ id: string; desc: boolean }>;
@@ -314,6 +399,16 @@ describe("DatasetDetailClient", () => {
       threshold: 2,
       minThreshold: 0,
       maxThreshold: 6,
+      engagementPhaseLabel: "Engage: 8 Phases of Engagement",
+      engagementPhaseDefinition: "Engagement phase definition",
+      engagementPhaseThreshold: 6,
+      evangelicalBelieversLabel: "Evangelical Believers",
+      evangelicalBelieversDefinition:
+        "Calculated as People Group: Population * (Percent Evangelical PGAC / 100).",
+      evangelicalBelieversThreshold: 1000,
+      evangelicalPercentLabel: "Evangelical %",
+      evangelicalPercentDefinition: "Percent evangelical definition",
+      evangelicalPercentThreshold: 0.05,
       frontierGroupLabel: "Christianity: Frontier Group Y/N",
       frontierGroupDefinition: "Frontier group definition",
       frontierGroupValue: true,
@@ -322,11 +417,17 @@ describe("DatasetDetailClient", () => {
       enabled: false,
       isSupported: true,
       threshold: 2,
+      engagementPhaseThreshold: 6,
+      evangelicalBelieversThreshold: 1000,
+      evangelicalPercentThreshold: 0.05,
       frontierGroupValue: true,
     });
     expect(actionBarProps.filters.watchlist).toEqual({
       enabled: false,
       threshold: 2,
+      engagementPhaseThreshold: 6,
+      evangelicalBelieversThreshold: 1000,
+      evangelicalPercentThreshold: 0.05,
       frontierGroupValue: true,
     });
     expect(actionBarProps.filters.sorting).toEqual([

@@ -54,7 +54,7 @@ function getWatchlistSummary(savedTable: SavedDatasetTable) {
     return "Off";
   }
 
-  return `Threshold <= ${savedTable.filters.watchlist.threshold}; Frontier Group = ${
+  return `Threshold <= ${savedTable.filters.watchlist.threshold}; 8 Phases >= ${savedTable.filters.watchlist.engagementPhaseThreshold}; Evangelical % >= ${savedTable.filters.watchlist.evangelicalPercentThreshold}; Evangelical Believers <= ${savedTable.filters.watchlist.evangelicalBelieversThreshold}; Frontier Group = ${
     savedTable.filters.watchlist.frontierGroupValue ? "True" : "False"
   }`;
 }

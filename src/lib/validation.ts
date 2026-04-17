@@ -73,6 +73,9 @@ export const savedDatasetFilterStateSchema = z.object({
   watchlist: z.object({
     enabled: z.boolean(),
     threshold: z.number().int().min(0).max(6),
+    engagementPhaseThreshold: z.number().int().min(0).max(7),
+    evangelicalBelieversThreshold: z.number().int().min(0).max(1_000_000_000),
+    evangelicalPercentThreshold: z.number().min(0).max(100),
     frontierGroupValue: z.boolean(),
   }),
   uupg: z.object({

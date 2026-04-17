@@ -26,6 +26,9 @@ export function buildSavedDatasetFilterState(input: {
   regionEnabled: boolean;
   watchlistEnabled: boolean;
   watchlistThreshold: number;
+  watchlistEngagementPhaseThreshold: number;
+  watchlistEvangelicalBelieversThreshold: number;
+  watchlistEvangelicalPercentThreshold: number;
   watchlistFrontierGroupValue: boolean;
   uupgEnabled: boolean;
   sorting: SavedDatasetSort[];
@@ -47,6 +50,10 @@ export function buildSavedDatasetFilterState(input: {
     watchlist: {
       enabled: input.watchlistEnabled,
       threshold: input.watchlistThreshold,
+      engagementPhaseThreshold: input.watchlistEngagementPhaseThreshold,
+      evangelicalBelieversThreshold:
+        input.watchlistEvangelicalBelieversThreshold,
+      evangelicalPercentThreshold: input.watchlistEvangelicalPercentThreshold,
       frontierGroupValue: input.watchlistFrontierGroupValue,
     },
     uupg: {
@@ -79,6 +86,10 @@ export function getDatasetWatchlistFilterStateFromSavedView(
     enabled: filters.watchlist.enabled,
     isSupported: datasetSupportsWatchlistFiltering(dataset),
     threshold: filters.watchlist.threshold,
+    engagementPhaseThreshold: filters.watchlist.engagementPhaseThreshold,
+    evangelicalBelieversThreshold:
+      filters.watchlist.evangelicalBelieversThreshold,
+    evangelicalPercentThreshold: filters.watchlist.evangelicalPercentThreshold,
     frontierGroupValue: filters.watchlist.frontierGroupValue,
   };
 }

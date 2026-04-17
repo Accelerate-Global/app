@@ -11,7 +11,6 @@ import {
   SortableItemHandle,
 } from "@/components/reui/sortable";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { ButtonGroup } from "@/components/ui/button-group";
 import type { DatasetSummary } from "@/lib/api-types";
 
 type DatasetsGridProps = {
@@ -23,7 +22,7 @@ type DatasetsGridProps = {
 };
 
 const DATASET_GRID_TEMPLATE_COLUMNS =
-  "minmax(18rem,1fr) minmax(12rem,0.8fr) minmax(10rem,max-content) 8.5rem";
+  "minmax(16rem,1.8fr) minmax(12rem,1.15fr) minmax(8rem,0.7fr) max-content";
 
 function DatasetActions({
   dataset,
@@ -38,10 +37,14 @@ function DatasetActions({
 }) {
   return (
     <div className="flex w-full justify-end text-right">
-      <ButtonGroup>
+      <div className="flex shrink-0 items-center justify-end gap-2">
         <a
           data-slot="button"
-          className={buttonVariants({ variant: "outline", size: "icon-sm" })}
+          className={buttonVariants({
+            variant: "outline",
+            size: "icon-sm",
+            className: "shrink-0",
+          })}
           href={`/api/datasets/${dataset.id}/download`}
           aria-label={`Download ${dataset.fileName}`}
           title={`Download ${dataset.fileName}`}
@@ -56,6 +59,7 @@ function DatasetActions({
             type="button"
             variant="outline"
             size="sm"
+            className="shrink-0"
             disabled={isBusy}
             data-smoke-trigger="dataset-edit-sheet"
             data-smoke-write="safe"
@@ -68,7 +72,7 @@ function DatasetActions({
             Edit
           </Button>
         ) : null}
-      </ButtonGroup>
+      </div>
     </div>
   );
 }
@@ -184,47 +188,49 @@ export function DatasetsGrid({
 
   return (
     <section id="datasets">
-      <div className="overflow-hidden rounded-xl border border-border bg-background">
-        <DatasetListHeader />
+      <div className="overflow-x-auto rounded-xl border border-border bg-background">
+        <div className="min-w-[54rem]">
+          <DatasetListHeader />
 
-        {datasets.length === 0 ? (
-          <div className="px-5 py-10 text-sm text-muted-foreground">
-            No datasets have been added yet.
-          </div>
-        ) : canReorderDatasets ? (
-          <Sortable
-            value={datasets}
-            onValueChange={onReorderDatasets!}
-            getItemValue={(dataset) => dataset.id}
-            strategy="vertical"
-            className="divide-y divide-border"
-          >
-            {datasets.map((dataset) => (
-              <SortableItem key={dataset.id} value={dataset.id}>
+          {datasets.length === 0 ? (
+            <div className="px-5 py-10 text-sm text-muted-foreground">
+              No datasets have been added yet.
+            </div>
+          ) : canReorderDatasets ? (
+            <Sortable
+              value={datasets}
+              onValueChange={onReorderDatasets!}
+              getItemValue={(dataset) => dataset.id}
+              strategy="vertical"
+              className="divide-y divide-border"
+            >
+              {datasets.map((dataset) => (
+                <SortableItem key={dataset.id} value={dataset.id}>
+                  <DatasetListRow
+                    dataset={dataset}
+                    canManageDatasets={canManageDatasets}
+                    isBusy={isBusy}
+                    isSortable
+                    onEditDataset={onEditDataset}
+                  />
+                </SortableItem>
+              ))}
+            </Sortable>
+          ) : (
+            <div className="divide-y divide-border">
+              {datasets.map((dataset) => (
                 <DatasetListRow
+                  key={dataset.id}
                   dataset={dataset}
                   canManageDatasets={canManageDatasets}
                   isBusy={isBusy}
-                  isSortable
+                  isSortable={false}
                   onEditDataset={onEditDataset}
                 />
-              </SortableItem>
-            ))}
-          </Sortable>
-        ) : (
-          <div className="divide-y divide-border">
-            {datasets.map((dataset) => (
-              <DatasetListRow
-                key={dataset.id}
-                dataset={dataset}
-                canManageDatasets={canManageDatasets}
-                isBusy={isBusy}
-                isSortable={false}
-                onEditDataset={onEditDataset}
-              />
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </section>
   );

@@ -9,7 +9,7 @@ import {
 } from "./dataset-view-switch-grid";
 
 const baseRegionCard = {
-  enabled: false,
+  enabled: true,
   supported: true,
   selectors: [],
   onSelectorChange: vi.fn(),
@@ -23,11 +23,30 @@ const baseWatchlistCard = {
   threshold: 2,
   minThreshold: 0,
   maxThreshold: 6,
+  engagementPhaseLabel: "Engage: 8 Phases of Engagement",
+  engagementPhaseDefinition: "Engagement phase definition",
+  engagementPhaseThreshold: 6,
+  minEngagementPhaseThreshold: 0,
+  maxEngagementPhaseThreshold: 7,
+  evangelicalBelieversLabel: "Evangelical Believers",
+  evangelicalBelieversDefinition:
+    "Calculated as PG_Population * (Percent_Evangelical_PGAC / 100).",
+  evangelicalBelieversThreshold: 1000,
+  minEvangelicalBelieversThreshold: 0,
+  maxEvangelicalBelieversThreshold: 1_000_000_000,
+  evangelicalPercentLabel: "Evangelical %",
+  evangelicalPercentDefinition: "Percent evangelical definition",
+  evangelicalPercentThreshold: 0.05,
+  minEvangelicalPercentThreshold: 0,
+  maxEvangelicalPercentThreshold: 100,
   frontierGroupLabel: "Christianity: Frontier Group Y/N",
   frontierGroupDefinition: "Frontier group definition",
   frontierGroupValue: true,
   onEnabledChange: vi.fn(),
   onThresholdChange: vi.fn(),
+  onEngagementPhaseThresholdChange: vi.fn(),
+  onEvangelicalBelieversThresholdChange: vi.fn(),
+  onEvangelicalPercentThresholdChange: vi.fn(),
   onFrontierGroupValueChange: vi.fn(),
 };
 
@@ -52,45 +71,47 @@ describe("DatasetViewSwitchGrid", () => {
     ).toBe("Thailand, Vietnam");
   });
 
-  it("shows an unavailable message when UUPG filtering is not supported", () => {
+  it("renders collapsed filter sections with compact summaries", () => {
     render(
       <DatasetViewSwitchGrid
         regionCard={baseRegionCard}
-        watchlistCard={{
-          ...baseWatchlistCard,
-          thresholdLabel: "Christianity_GSEC",
-          frontierGroupLabel: "Christianity_Frontier_Group",
-        }}
-        uupgCard={{
-          ...baseUupgCard,
-          supported: false,
-        }}
-      />,
-    );
-
-    expect(screen.getByText(/This dataset does not include/i)).toBeTruthy();
-    expect(screen.getByText(/Global Engagement Anywhere/)).toBeTruthy();
-    expect(screen.queryByLabelText("Toggle UUPG")).toBeNull();
-  });
-
-  it("shows an unavailable message when Watchlist filtering is not supported", () => {
-    render(
-      <DatasetViewSwitchGrid
-        regionCard={baseRegionCard}
-        watchlistCard={{
-          ...baseWatchlistCard,
-          supported: false,
-        }}
+        watchlistCard={baseWatchlistCard}
         uupgCard={baseUupgCard}
       />,
     );
 
-    expect(screen.getByText(/This dataset does not include/i)).toBeTruthy();
-    expect(screen.getByText(/Christianity: GSEC/)).toBeTruthy();
-    expect(screen.getByText(/Christianity: Frontier Group Y\/N/)).toBeTruthy();
+    expect(screen.getByText("Filters")).toBeTruthy();
+    expect(screen.getByText("No regions configured")).toBeTruthy();
+    expect(screen.getAllByText("Off")).toHaveLength(2);
+    expect(
+      screen.queryByText("A grouping of people groups based on geography."),
+    ).toBeNull();
+    expect(
+      screen.queryByText(
+        "People groups unengaged or would be unengaged if the current mission work stopped today.",
+      ),
+    ).toBeNull();
   });
 
-  it("renders region selectors without a card-level toggle", () => {
+  it("renders enabled watchlist summaries as separate lines", () => {
+    render(
+      <DatasetViewSwitchGrid
+        regionCard={baseRegionCard}
+        watchlistCard={{ ...baseWatchlistCard, enabled: true }}
+        uupgCard={baseUupgCard}
+      />,
+    );
+
+    expect(screen.getByText("Christianity: GSEC <= 2")).toBeTruthy();
+    expect(screen.getByText("Engage: 8 Phases of Engagement >= 6")).toBeTruthy();
+    expect(screen.getByText("Evangelical % >= 0.05")).toBeTruthy();
+    expect(screen.getByText("Evangelical Believers <= 1000")).toBeTruthy();
+    expect(
+      screen.getByText("Christianity: Frontier Group Y/N: True"),
+    ).toBeTruthy();
+  });
+
+  it("expands the region section and keeps selector toggles working", () => {
     const onSelectorChange = vi.fn();
 
     render(
@@ -114,14 +135,18 @@ describe("DatasetViewSwitchGrid", () => {
       />,
     );
 
-    expect(screen.queryByLabelText("Toggle Region")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Region filters" }));
+
+    expect(
+      screen.getByText("A grouping of people groups based on geography."),
+    ).toBeTruthy();
 
     fireEvent.click(screen.getByLabelText("Toggle Globe"));
 
     expect(onSelectorChange).toHaveBeenCalledWith("globe", false);
   });
 
-  it("renders watchlist controls with the supplied display labels and disables them when watchlist is off", () => {
+  it("reveals watchlist descriptions and controls only when expanded", () => {
     render(
       <DatasetViewSwitchGrid
         regionCard={baseRegionCard}
@@ -135,34 +160,67 @@ describe("DatasetViewSwitchGrid", () => {
       />,
     );
 
+    expect(
+      screen.queryByLabelText("Watchlist Christianity: GSEC threshold"),
+    ).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Watchlist filters" }));
+
     const thresholdInput = screen.getByLabelText(
       "Watchlist Christianity: GSEC threshold",
     ) as HTMLInputElement;
-    const selectedBooleanButton = screen.getByRole("button", {
-      name: "Set Watchlist Christianity: Frontier Group Y/N value to TRUE",
-    });
-    const unselectedBooleanButton = screen.getByRole("button", {
-      name: "Set Watchlist Christianity: Frontier Group Y/N value to FALSE",
-    });
+    const thresholdLabel = screen.getByText("Christianity: GSEC");
+    const thresholdInfo = screen.getByLabelText(
+      "View definition for Christianity: GSEC",
+    );
+    const thresholdControl = thresholdInput.closest(
+      "[data-slot='number-field-group']",
+    );
+    const thresholdOperator = thresholdControl?.querySelector(
+      "[data-slot='number-field-operator']",
+    ) as HTMLElement | null;
+    const thresholdDecrement = screen.getByLabelText(
+      "Decrease Christianity: GSEC threshold",
+    );
 
-    expect(thresholdInput.value).toBe("2");
-    expect(thresholdInput.disabled).toBe(true);
-    expect(screen.getByText("Christianity: Frontier Group Y/N")).toBeTruthy();
     expect(
-      screen.getByLabelText("View definition for Christianity: GSEC"),
-    ).toBeTruthy();
-    expect(
-      screen.getByLabelText(
-        "View definition for Christianity: Frontier Group Y/N",
+      screen.getByText(
+        "People groups unengaged or would be unengaged if the current mission work stopped today.",
       ),
     ).toBeTruthy();
-    expect(selectedBooleanButton.getAttribute("aria-pressed")).toBe("true");
-    expect(unselectedBooleanButton.getAttribute("aria-pressed")).toBe("false");
-    expect((selectedBooleanButton as HTMLButtonElement).disabled).toBe(true);
-    expect((unselectedBooleanButton as HTMLButtonElement).disabled).toBe(true);
+    expect(thresholdInput.value).toBe("2");
+    expect(thresholdInput.disabled).toBe(true);
+    expect(
+      thresholdLabel.compareDocumentPosition(thresholdInfo) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      thresholdOperator?.textContent,
+    ).toBe("<=");
+    expect(thresholdOperator).toBeTruthy();
+    if (!thresholdOperator) {
+      throw new Error("Expected threshold operator to render inside the control");
+    }
+    expect(
+      thresholdOperator.compareDocumentPosition(thresholdDecrement) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      thresholdDecrement.compareDocumentPosition(thresholdInput) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      screen.getByLabelText("Watchlist Evangelical Believers threshold"),
+    ).toBeTruthy();
+    expect(
+      screen.getByLabelText("Watchlist Evangelical % threshold"),
+    ).toBeTruthy();
+    expect(
+      screen.getByLabelText("Watchlist Engage: 8 Phases of Engagement threshold"),
+    ).toBeTruthy();
   });
 
-  it("renders the watchlist frontier group boolean selector as segmented buttons when watchlist is enabled", () => {
+  it("keeps the watchlist segmented control interactive when the section is expanded", () => {
     const onFrontierGroupValueChange = vi.fn();
 
     render(
@@ -177,27 +235,28 @@ describe("DatasetViewSwitchGrid", () => {
       />,
     );
 
-    const trueButton = screen.getByRole("button", {
-      name: "Set Watchlist Christianity: Frontier Group Y/N value to TRUE",
-    });
+    fireEvent.click(screen.getByRole("button", { name: "Watchlist filters" }));
+
+    const frontierLabel = screen.getByText("Christianity: Frontier Group Y/N");
+    const frontierInfo = screen.getByLabelText(
+      "View definition for Christianity: Frontier Group Y/N",
+    );
     const falseButton = screen.getByRole("button", {
       name: "Set Watchlist Christianity: Frontier Group Y/N value to FALSE",
     });
 
     expect(
-      screen.getByRole("group", {
-        name: "Watchlist Christianity: Frontier Group Y/N value",
-      }),
+      frontierLabel.compareDocumentPosition(frontierInfo) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
-    expect(trueButton.getAttribute("aria-pressed")).toBe("true");
-    expect(falseButton.getAttribute("aria-pressed")).toBe("false");
+    expect(screen.queryByText("=")).toBeNull();
 
     fireEvent.click(falseButton);
 
     expect(onFrontierGroupValueChange).toHaveBeenCalledWith(false);
   });
 
-  it("renders the UUPG field as the only toggle inside the card", () => {
+  it("reveals the UUPG field metadata when expanded while keeping the toggle in the section header", () => {
     render(
       <DatasetViewSwitchGrid
         regionCard={baseRegionCard}
@@ -205,16 +264,58 @@ describe("DatasetViewSwitchGrid", () => {
         uupgCard={{
           ...baseUupgCard,
           enabled: true,
+          fieldLabel: "Engage: Global Engagement Anywhere? (Y/N)",
           fieldDefinition: "Tracks whether engagement exists anywhere.",
         }}
       />,
     );
 
-    expect(screen.queryByLabelText("Toggle UUPG")).toBeNull();
-    expect(screen.getByText("Global Engagement Anywhere")).toBeTruthy();
+    expect(screen.getByText("On")).toBeTruthy();
+    expect(screen.getByLabelText("Toggle UUPG")).toBeTruthy();
     expect(
-      screen.getByLabelText("View definition for Global Engagement Anywhere"),
+      screen.queryByLabelText(
+        "View definition for Engage: Global Engagement Anywhere? (Y/N)",
+      ),
+    ).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "UUPG filters" }));
+
+    expect(
+      screen.getByText("Engage: Global Engagement Anywhere? (Y/N)"),
     ).toBeTruthy();
-    expect(screen.getByLabelText("Toggle Global Engagement Anywhere")).toBeTruthy();
+    expect(
+      screen.getByLabelText(
+        "View definition for Engage: Global Engagement Anywhere? (Y/N)",
+      ),
+    ).toBeTruthy();
+  });
+
+  it("shows unavailable summaries for unsupported filters", () => {
+    render(
+      <DatasetViewSwitchGrid
+        regionCard={{ ...baseRegionCard, supported: false }}
+        watchlistCard={{ ...baseWatchlistCard, supported: false }}
+        uupgCard={{ ...baseUupgCard, supported: false }}
+      />,
+    );
+
+    expect(screen.getAllByText("Unavailable")).toHaveLength(3);
+  });
+
+  it("applies custom classes to the root panel", () => {
+    const { container } = render(
+      <DatasetViewSwitchGrid
+        className="border-0 shadow-none"
+        regionCard={baseRegionCard}
+        watchlistCard={baseWatchlistCard}
+        uupgCard={baseUupgCard}
+      />,
+    );
+
+    const root = container.firstElementChild as HTMLDivElement | null;
+
+    expect(root).toBeTruthy();
+    expect(root?.className).toContain("border-0");
+    expect(root?.className).toContain("shadow-none");
   });
 });

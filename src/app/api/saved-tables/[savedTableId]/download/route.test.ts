@@ -90,6 +90,9 @@ const savedTable = {
     watchlist: {
       enabled: false,
       threshold: 2,
+      engagementPhaseThreshold: 6,
+      evangelicalBelieversThreshold: 1000,
+      evangelicalPercentThreshold: 0.05,
       frontierGroupValue: true,
     },
     uupg: {
