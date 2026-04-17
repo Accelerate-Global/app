@@ -25,7 +25,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { DatasetSummary, DatasetTag } from "@/lib/api-types";
+import type {
+  DatasetSummary,
+  DatasetTag,
+  DatasetVersionSummary,
+} from "@/lib/api-types";
 import { normalizeDatasetHiddenColumnKeys } from "@/lib/dataset-column-visibility";
 import {
   DATASET_TAG_COLOR_OPTIONS,
@@ -39,9 +43,13 @@ import {
 type DatasetEditSheetProps = {
   dataset: DatasetSummary;
   availableTags: DatasetTag[];
+  versions: DatasetVersionSummary[];
   open: boolean;
   isSaving: boolean;
   isDeleting: boolean;
+  isLoadingVersions: boolean;
+  versionHistoryError: string | null;
+  revertingVersionId: string | null;
   onOpenChange: (open: boolean) => void;
   onSaveDataset: (input: {
     datasetId: string;
@@ -51,6 +59,7 @@ type DatasetEditSheetProps = {
     hiddenColumnKeys: string[];
   }) => Promise<void>;
   onDeleteDataset: (datasetId: string) => Promise<void>;
+  onRevertDatasetVersion: (versionId: string) => Promise<void>;
 };
 
 function formatUploadedAt(value: string) {
@@ -58,6 +67,18 @@ function formatUploadedAt(value: string) {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(value));
+}
+
+function formatVersionActionLabel(action: DatasetVersionSummary["action"]) {
+  if (action === "replace") {
+    return "Replace";
+  }
+
+  if (action === "revert") {
+    return "Revert";
+  }
+
+  return "Upload";
 }
 
 function getDatasetTagColorOption(value: string | undefined) {
@@ -245,12 +266,17 @@ function NewTagComposer({
 export function DatasetEditSheet({
   dataset,
   availableTags,
+  versions,
   open,
   isSaving,
   isDeleting,
+  isLoadingVersions,
+  versionHistoryError,
+  revertingVersionId,
   onOpenChange,
   onSaveDataset,
   onDeleteDataset,
+  onRevertDatasetVersion,
 }: DatasetEditSheetProps) {
   const router = useRouter();
   const [fileName, setFileName] = useState(dataset.fileName);
@@ -284,7 +310,7 @@ export function DatasetEditSheet({
     JSON.stringify(normalizedHiddenColumnKeys) !==
     JSON.stringify(initialHiddenColumnKeys);
   const hasPrimaryChange = isPrimary !== dataset.isPrimary;
-  const isWorking = isSaving || isDeleting;
+  const isWorking = isSaving || isDeleting || revertingVersionId !== null;
   const canSave = Boolean(
     trimmedFileName &&
       !isWorking &&
@@ -455,6 +481,32 @@ export function DatasetEditSheet({
   function handleReplaceDataset() {
     onOpenChange(false);
     router.push(`/dashboard/upload?replace=${dataset.id}`);
+  }
+
+  async function handleRevertVersion(version: DatasetVersionSummary) {
+    if (version.isCurrent || version.status !== "ready") {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Revert to ${version.fileName} from ${formatUploadedAt(version.versionCreatedAt)}?`,
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setErrorMessage(null);
+
+    try {
+      await onRevertDatasetVersion(version.id);
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "The dataset version could not be reverted.",
+      );
+    }
   }
 
   return (
@@ -642,47 +694,155 @@ export function DatasetEditSheet({
               </p>
             </section>
 
+            <section className="space-y-4">
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-foreground">Upload history</p>
+                <p className="text-sm text-muted-foreground">
+                  Review prior uploads and revert this dataset if needed.
+                </p>
+              </div>
+
+              {isLoadingVersions ? (
+                <div className="rounded-2xl border border-border bg-card px-4 py-4 text-sm text-muted-foreground">
+                  Loading upload history...
+                </div>
+              ) : versions.length > 0 ? (
+                <div className="space-y-3">
+                  {versions.map((version) => {
+                    const actorLabel = version.actorEmail ?? version.actorOwnerId;
+                    const isRevertDisabled =
+                      isWorking || version.isCurrent || version.status !== "ready";
+
+                    return (
+                      <div
+                        key={version.id}
+                        className="space-y-3 rounded-2xl border border-border bg-card px-4 py-4"
+                        data-smoke-dataset-version-row={version.id}
+                      >
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div className="space-y-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <p className="font-medium text-foreground">{version.fileName}</p>
+                              <span className="rounded-full border border-border px-2 py-0.5 text-[0.7rem] font-medium uppercase tracking-[0.08em] text-muted-foreground">
+                                {version.isCurrent ? "Current" : formatVersionActionLabel(version.action)}
+                              </span>
+                            </div>
+                            <p className="text-sm text-muted-foreground">
+                              {version.rowCount.toLocaleString()} rows · {version.columnCount.toLocaleString()} columns
+                            </p>
+                          </div>
+
+                          {!version.isCurrent ? (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              disabled={isRevertDisabled}
+                              data-smoke-dataset-version-revert={version.id}
+                              onClick={() => void handleRevertVersion(version)}
+                            >
+                              {revertingVersionId === version.id ? "Reverting..." : "Revert"}
+                            </Button>
+                          ) : null}
+                        </div>
+
+                        <div className="space-y-1 text-sm text-muted-foreground">
+                          <p>
+                            {version.isCurrent ? "Current since" : "Version from"}{" "}
+                            <span className="font-medium text-foreground">
+                              {formatUploadedAt(version.versionCreatedAt)}
+                            </span>
+                          </p>
+                          <p>
+                            By{" "}
+                            <span className="font-medium text-foreground">{actorLabel}</span>
+                          </p>
+                          {version.archivedAt ? (
+                            <p>
+                              Archived{" "}
+                              <span className="font-medium text-foreground">
+                                {formatUploadedAt(version.archivedAt)}
+                              </span>
+                            </p>
+                          ) : null}
+                          {version.status !== "ready" ? (
+                            <p>
+                              Status{" "}
+                              <span className="font-medium text-foreground">
+                                {version.status}
+                              </span>
+                            </p>
+                          ) : null}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-dashed border-border px-4 py-4 text-sm text-muted-foreground">
+                  No upload history yet.
+                </div>
+              )}
+
+              {versionHistoryError ? (
+                <p className="text-sm text-destructive">{versionHistoryError}</p>
+              ) : null}
+            </section>
+
             {errorMessage ? (
               <p className="text-sm text-destructive">{errorMessage}</p>
             ) : null}
           </div>
 
-          <SheetFooter className="border-t border-border px-6 py-4 sm:flex-row sm:justify-end">
-            <Button
-              type="button"
-              variant="outline"
-              disabled={isWorking}
-              data-smoke-dataset-replace
-              onClick={handleReplaceDataset}
-            >
-              Replace dataset
-            </Button>
-            <Button
-              type="button"
-              variant="destructive"
-              className="sm:mr-auto"
-              disabled={isWorking}
-              data-smoke-dataset-delete
-              onClick={handleDeleteDataset}
-            >
-              <Trash2Icon />
-              {isDeleting ? "Deleting..." : "Delete dataset"}
-            </Button>
-            <SheetClose
-              render={
+          <SheetFooter className="border-t border-border px-6 py-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full sm:w-auto"
+                disabled={isWorking}
+                data-smoke-dataset-replace
+                onClick={handleReplaceDataset}
+              >
+                Replace dataset
+              </Button>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+                <SheetClose
+                  render={
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full sm:w-auto"
+                      disabled={isWorking}
+                      data-smoke-close="dataset-edit-sheet"
+                    />
+                  }
+                >
+                  Close
+                </SheetClose>
                 <Button
-                  type="button"
-                  variant="outline"
-                  disabled={isWorking}
-                  data-smoke-close="dataset-edit-sheet"
-                />
-              }
-            >
-              Close
-            </SheetClose>
-            <Button type="submit" disabled={!canSave} data-smoke-dataset-save>
-              {isSaving ? "Saving..." : "Save changes"}
-            </Button>
+                  type="submit"
+                  className="w-full sm:w-auto"
+                  disabled={!canSave}
+                  data-smoke-dataset-save
+                >
+                  {isSaving ? "Saving..." : "Save changes"}
+                </Button>
+              </div>
+            </div>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-start">
+              <Button
+                type="button"
+                variant="destructive"
+                className="w-full sm:w-auto"
+                disabled={isWorking}
+                data-smoke-dataset-delete
+                onClick={handleDeleteDataset}
+              >
+                <Trash2Icon />
+                {isDeleting ? "Deleting..." : "Delete dataset"}
+              </Button>
+            </div>
           </SheetFooter>
         </form>
       </SheetContent>

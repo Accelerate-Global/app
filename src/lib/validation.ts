@@ -94,6 +94,10 @@ export const createDatasetSchema = z.object({
   columns: z.array(csvColumnSchema).min(1).max(500),
 });
 
+export const replaceDatasetSchema = createDatasetSchema.omit({
+  fileName: true,
+});
+
 export const rowBatchSchema = z.object({
   startIndex: z.number().int().nonnegative(),
   rows: z.array(z.record(z.string(), z.string())).max(ROW_BATCH_SIZE),

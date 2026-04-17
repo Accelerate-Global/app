@@ -5,6 +5,7 @@ const smokeCheckDeploymentMock = vi.fn();
 const waitForGitHubDeploymentMock = vi.fn();
 const waitForPullRequestChecksMock = vi.fn();
 const waitForWorkflowRunMock = vi.fn();
+let consoleLogMock: ReturnType<typeof vi.spyOn>;
 
 vi.mock("./lib/command", () => ({
   runCommand: runCommandMock,
@@ -38,7 +39,7 @@ describe("ship", () => {
     waitForGitHubDeploymentMock.mockReset();
     waitForPullRequestChecksMock.mockReset();
     waitForWorkflowRunMock.mockReset();
-    vi.spyOn(console, "log").mockImplementation(() => {});
+    consoleLogMock = vi.spyOn(console, "log").mockImplementation(() => {});
   });
 
   afterEach(() => {
@@ -136,6 +137,15 @@ describe("ship", () => {
     expect(waitForGitHubDeploymentMock).toHaveBeenCalledWith({
       commitSha: "merge-sha",
     });
+    const stageMessages = consoleLogMock.mock.calls.map(
+      (call: [unknown, ...unknown[]]) => String(call[0]),
+    );
+    const remoteSeedStageIndex = stageMessages.indexOf(
+      "[ship] Ensuring the remote field-source registry is seeded...",
+    );
+
+    expect(remoteSeedStageIndex).toBeGreaterThanOrEqual(0);
+    expect(stageMessages[remoteSeedStageIndex + 1]).toBe("[ship] Looking up PR #46...");
   });
 
   it("resumes post-merge verification when the PR is already merged", async () => {

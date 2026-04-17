@@ -50,6 +50,25 @@ function createDataset() {
   };
 }
 
+function createVersion(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "dataset-version-1",
+    datasetId: "dataset-1",
+    isCurrent: true,
+    fileName: "Global.csv",
+    action: "upload" as const,
+    actorOwnerId: "supabase-user",
+    actorEmail: "admin@example.com",
+    status: "ready" as const,
+    rowCount: 128,
+    sizeBytes: 4096,
+    columnCount: 2,
+    versionCreatedAt: new Date("2026-04-15T16:00:00.000Z").toISOString(),
+    archivedAt: null,
+    ...overrides,
+  };
+}
+
 describe("DatasetEditSheet", () => {
   beforeEach(() => {
     vi.resetAllMocks();
@@ -57,6 +76,61 @@ describe("DatasetEditSheet", () => {
 
   afterEach(() => {
     cleanup();
+  });
+
+  it("renders upload history and reverts a historical version", async () => {
+    const onRevertDatasetVersion = vi.fn(async () => undefined);
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+
+    render(
+      <DatasetEditSheet
+        dataset={createDataset()}
+        availableTags={[]}
+        versions={[
+          createVersion(),
+          createVersion({
+            id: "dataset-version-0",
+            isCurrent: false,
+            fileName: "Global-upload.csv",
+            action: "replace",
+            actorEmail: "editor@example.com",
+            rowCount: 120,
+            versionCreatedAt: new Date("2026-04-14T12:00:00.000Z").toISOString(),
+            archivedAt: new Date("2026-04-15T16:00:00.000Z").toISOString(),
+          }),
+        ]}
+        open
+        isSaving={false}
+        isDeleting={false}
+        isLoadingVersions={false}
+        versionHistoryError={null}
+        revertingVersionId={null}
+        onOpenChange={vi.fn()}
+        onSaveDataset={vi.fn(async () => undefined)}
+        onDeleteDataset={vi.fn(async () => undefined)}
+        onRevertDatasetVersion={onRevertDatasetVersion}
+      />,
+    );
+
+    const dialog = await screen.findByRole("dialog", { name: "Edit dataset" });
+
+    expect(within(dialog).getByText("Upload history")).toBeTruthy();
+    expect(within(dialog).getByText("Global-upload.csv")).toBeTruthy();
+
+    fireEvent.click(
+      within(
+        dialog.querySelector('[data-smoke-dataset-version-row="dataset-version-0"]') as HTMLElement,
+      ).getByRole("button", { name: "Revert" }),
+    );
+
+    expect(confirmSpy).toHaveBeenCalledWith(
+      expect.stringContaining("Revert to Global-upload.csv"),
+    );
+    await waitFor(() => {
+      expect(onRevertDatasetVersion).toHaveBeenCalledWith("dataset-version-0");
+    });
+
+    confirmSpy.mockRestore();
   });
 
   it("opens the tag color dropdown and updates the selected color without crashing", async () => {
@@ -67,9 +141,14 @@ describe("DatasetEditSheet", () => {
         open
         isSaving={false}
         isDeleting={false}
+        versions={[]}
+        isLoadingVersions={false}
+        versionHistoryError={null}
+        revertingVersionId={null}
         onOpenChange={vi.fn()}
         onSaveDataset={vi.fn(async () => undefined)}
         onDeleteDataset={vi.fn(async () => undefined)}
+        onRevertDatasetVersion={vi.fn(async () => undefined)}
       />,
     );
 
@@ -98,5 +177,48 @@ describe("DatasetEditSheet", () => {
     await waitFor(() => {
       expect(existingTagColorSelect?.textContent).toContain("Blue");
     });
+  });
+
+  it("keeps the dataset footer actions grouped into two rows", async () => {
+    render(
+      <DatasetEditSheet
+        dataset={createDataset()}
+        availableTags={[]}
+        open
+        isSaving={false}
+        isDeleting={false}
+        versions={[]}
+        isLoadingVersions={false}
+        versionHistoryError={null}
+        revertingVersionId={null}
+        onOpenChange={vi.fn()}
+        onSaveDataset={vi.fn(async () => undefined)}
+        onDeleteDataset={vi.fn(async () => undefined)}
+        onRevertDatasetVersion={vi.fn(async () => undefined)}
+      />,
+    );
+
+    const dialog = await screen.findByRole("dialog", { name: "Edit dataset" });
+    const footer = dialog.querySelector('[data-slot="sheet-footer"]');
+
+    expect(footer).toBeTruthy();
+
+    const footerRows = Array.from(footer?.children ?? []);
+    expect(footerRows).toHaveLength(2);
+
+    const [topRow, bottomRow] = footerRows;
+
+    expect(
+      within(topRow as HTMLElement).getByRole("button", { name: "Replace dataset" }),
+    ).toBeTruthy();
+    expect(
+      within(topRow as HTMLElement).getByRole("button", { name: "Close" }),
+    ).toBeTruthy();
+    expect(
+      within(topRow as HTMLElement).getByRole("button", { name: "Save changes" }),
+    ).toBeTruthy();
+    expect(
+      within(bottomRow as HTMLElement).getByRole("button", { name: "Delete dataset" }),
+    ).toBeTruthy();
   });
 });

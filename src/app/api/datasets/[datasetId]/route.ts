@@ -85,9 +85,9 @@ export async function DELETE(_request: Request, context: DatasetContext) {
   }
 
   const { datasetId } = await context.params;
-  const dataset = await deleteDataset(datasetId);
+  const deleted = await deleteDataset(datasetId);
 
-  if (!dataset) {
+  if (!deleted) {
     return jsonError("Dataset not found.", 404);
   }
 
@@ -95,7 +95,7 @@ export async function DELETE(_request: Request, context: DatasetContext) {
     const supabase = createSupabaseAdminClient();
     const deletion = await supabase.storage
       .from(getDatasetStorageBucket())
-      .remove([dataset.blobPath]);
+      .remove(deleted.blobPaths);
 
     if (deletion.error) {
       console.error("Failed to delete dataset file from Supabase Storage", deletion.error);
@@ -104,5 +104,5 @@ export async function DELETE(_request: Request, context: DatasetContext) {
     console.error("Failed to delete dataset file from Supabase Storage", error);
   }
 
-  return Response.json({ dataset });
+  return Response.json({ dataset: deleted.dataset });
 }

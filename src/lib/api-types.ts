@@ -1,6 +1,7 @@
 import type { WorkspaceRole } from "@/lib/workspace-role";
 
 export type DatasetStatus = "processing" | "ready" | "failed";
+export type DatasetVersionAction = "upload" | "replace" | "revert";
 
 export type CsvColumn = {
   key: string;
@@ -40,6 +41,26 @@ export type DatasetSummary = {
   error: string | null;
   createdAt: string;
   updatedAt: string;
+};
+
+export type DatasetVersionSummary = {
+  id: string;
+  datasetId: string;
+  isCurrent: boolean;
+  fileName: string;
+  action: DatasetVersionAction;
+  actorOwnerId: string;
+  actorEmail: string | null;
+  status: DatasetStatus;
+  rowCount: number;
+  sizeBytes: number;
+  columnCount: number;
+  versionCreatedAt: string;
+  archivedAt: string | null;
+};
+
+export type DatasetVersionsResponse = {
+  versions: DatasetVersionSummary[];
 };
 
 export type DatasetRowsResponse = {

@@ -23,11 +23,42 @@ When working in this repo, agents must treat Docker state as temporary unless th
 - Do not delete Docker data outside the current repo’s scope unless explicitly instructed.
 
 ### End-of-task check
-Before finishing, the agent must state:
+Before finishing, if the run involved repo-local Docker or Supabase activity, the agent must state:
 - whether it started Docker or Supabase services
 - whether those services were stopped
 - whether cleanup commands were run
 - whether any local persistent data was preserved
+
+### Final response footer
+Before finishing, the agent should use short footer sections instead of a prose-style operational summary, but only include sections that are relevant to the work performed in that run.
+
+Use this footer structure:
+
+#### Verification
+- Use short status bullets only.
+- Format each bullet like `check-name: passed`, `check-name: failed`, or `check-name: not run`.
+- Include only the relevant verification commands or checks for the work that was performed.
+- Separate `failed` from `not run`; do not collapse them together.
+- Omit this section if no meaningful verification was run or discussed.
+
+#### Open Items
+- Include only unresolved blockers, failed checks, or intentionally unfinished work.
+- Keep each bullet brief and outcome-focused.
+- Omit this section entirely if there is nothing unresolved.
+
+#### Next Step
+- Optional.
+- Include only when there is one obvious immediate follow-up for the user.
+- Keep it to a single short bullet.
+
+#### Docker / Supabase
+- Keep this section last.
+- Include this section only when the run involved repo-local Docker or Supabase services, cleanup, or related blockers.
+- Use short bullets for:
+  - `Started: yes` or `Started: no`
+  - `Stopped: yes` or `Stopped: no`
+  - `Cleanup: yes` or `Cleanup: no`
+  - `Persistent data: preserved` or `Persistent data: not preserved`
 
 # UI Smoke Contract
 

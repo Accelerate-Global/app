@@ -3,7 +3,7 @@ import postgres from "postgres";
 
 import * as schema from "@/db/schema";
 
-function createDb() {
+function createDbState() {
   const databaseUrl = process.env.DATABASE_URL;
 
   if (!databaseUrl) {
@@ -14,12 +14,30 @@ function createDb() {
     max: 1,
     prepare: false,
   });
-  return drizzle(sql, { schema });
+
+  return {
+    sql,
+    db: drizzle(sql, { schema }),
+  };
 }
 
-let db: ReturnType<typeof createDb> | null = null;
+let dbState: ReturnType<typeof createDbState> | null = null;
 
 export function getDb() {
-  db ??= createDb();
-  return db;
+  dbState ??= createDbState();
+  return dbState.db;
+}
+
+export async function closeDb() {
+  if (!dbState) {
+    return;
+  }
+
+  const { sql } = dbState;
+  dbState = null;
+  await sql.end({ timeout: 5 });
+}
+
+export function resetDbForTests() {
+  dbState = null;
 }

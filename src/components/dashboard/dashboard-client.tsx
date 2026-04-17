@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { DatasetEditSheet } from "@/components/dashboard/dataset-edit-sheet";
 import { DatasetsGrid } from "@/components/dashboard/datasets-grid";
@@ -9,6 +9,7 @@ import { SavedTablesGrid } from "@/components/dashboard/saved-tables-grid";
 import type {
   DatasetSummary,
   DatasetTag,
+  DatasetVersionSummary,
   SavedDatasetTable,
 } from "@/lib/api-types";
 import { getReusableDatasetTags } from "@/lib/dataset-tags";
@@ -25,6 +26,10 @@ type DatasetResponse = {
 
 type SavedDatasetTableResponse = {
   savedTable: SavedDatasetTable;
+};
+
+type DatasetVersionsResponse = {
+  versions: DatasetVersionSummary[];
 };
 
 type DatasetsResponse = {
@@ -100,6 +105,38 @@ async function deleteDatasetRecord(datasetId: string) {
   return ((await response.json()) as DatasetResponse).dataset;
 }
 
+async function listDatasetVersionRecords(datasetId: string) {
+  const response = await fetch(`/api/datasets/${datasetId}/versions`);
+
+  if (!response.ok) {
+    throw new Error(
+      await getErrorMessage(response, "The dataset upload history could not be loaded."),
+    );
+  }
+
+  return ((await response.json()) as DatasetVersionsResponse).versions;
+}
+
+async function revertDatasetVersionRecord(input: {
+  datasetId: string;
+  versionId: string;
+}) {
+  const response = await fetch(
+    `/api/datasets/${input.datasetId}/versions/${input.versionId}/revert`,
+    {
+      method: "POST",
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await getErrorMessage(response, "The dataset version could not be reverted."),
+    );
+  }
+
+  return ((await response.json()) as DatasetResponse).dataset;
+}
+
 async function updateSavedTableRecord(input: {
   savedTableId: string;
   name: string;
@@ -148,6 +185,12 @@ export function DashboardClient({
   const [activeSavedTableId, setActiveSavedTableId] = useState<string | null>(null);
   const [updatingDatasetId, setUpdatingDatasetId] = useState<string | null>(null);
   const [deletingDatasetId, setDeletingDatasetId] = useState<string | null>(null);
+  const [datasetVersions, setDatasetVersions] = useState<DatasetVersionSummary[]>([]);
+  const [isLoadingDatasetVersions, setIsLoadingDatasetVersions] = useState(false);
+  const [datasetVersionsError, setDatasetVersionsError] = useState<string | null>(null);
+  const [revertingDatasetVersionId, setRevertingDatasetVersionId] = useState<string | null>(
+    null,
+  );
   const [updatingSavedTableId, setUpdatingSavedTableId] = useState<string | null>(null);
   const [deletingSavedTableId, setDeletingSavedTableId] = useState<string | null>(null);
   const [isReordering, setIsReordering] = useState(false);
@@ -167,6 +210,49 @@ export function DashboardClient({
   const availableTags = getReusableDatasetTags(
     datasets.flatMap((dataset) => dataset.tags),
   );
+
+  useEffect(() => {
+    if (!canManageDatasets || editingDatasetId === null) {
+      setDatasetVersions([]);
+      setDatasetVersionsError(null);
+      setIsLoadingDatasetVersions(false);
+      return;
+    }
+
+    let active = true;
+    setIsLoadingDatasetVersions(true);
+    setDatasetVersionsError(null);
+
+    void listDatasetVersionRecords(editingDatasetId)
+      .then((versions) => {
+        if (!active) {
+          return;
+        }
+
+        setDatasetVersions(versions);
+      })
+      .catch((error) => {
+        if (!active) {
+          return;
+        }
+
+        setDatasetVersions([]);
+        setDatasetVersionsError(
+          error instanceof Error
+            ? error.message
+            : "The dataset upload history could not be loaded.",
+        );
+      })
+      .finally(() => {
+        if (active) {
+          setIsLoadingDatasetVersions(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [canManageDatasets, editingDatasetId]);
 
   async function handleSaveDataset(input: {
     datasetId: string;
@@ -302,6 +388,46 @@ export function DashboardClient({
     }
   }
 
+  async function handleRevertDatasetVersion(versionId: string) {
+    if (
+      !canManageDatasets ||
+      editingDataset === null ||
+      updatingDatasetId !== null ||
+      deletingDatasetId !== null ||
+      revertingDatasetVersionId !== null ||
+      isReordering
+    ) {
+      return;
+    }
+
+    setRevertingDatasetVersionId(versionId);
+
+    try {
+      const revertedDataset = await revertDatasetVersionRecord({
+        datasetId: editingDataset.id,
+        versionId,
+      });
+
+      setDatasets((current) =>
+        current.map((dataset) =>
+          dataset.id === revertedDataset.id ? revertedDataset : dataset,
+        ),
+      );
+
+      const nextVersions = await listDatasetVersionRecords(revertedDataset.id);
+      setDatasetVersions(nextVersions);
+      setDatasetVersionsError(null);
+    } catch (error) {
+      throw new Error(
+        error instanceof Error
+          ? error.message
+          : "The dataset version could not be reverted.",
+      );
+    } finally {
+      setRevertingDatasetVersionId(null);
+    }
+  }
+
   return (
     <>
       <SavedTablesGrid
@@ -388,8 +514,13 @@ export function DashboardClient({
               setEditingDatasetId(null);
             }
           }}
+          versions={datasetVersions}
+          isLoadingVersions={isLoadingDatasetVersions}
+          versionHistoryError={datasetVersionsError}
+          revertingVersionId={revertingDatasetVersionId}
           onSaveDataset={handleSaveDataset}
           onDeleteDataset={handleDeleteDataset}
+          onRevertDatasetVersion={handleRevertDatasetVersion}
         />
       ) : null}
     </>

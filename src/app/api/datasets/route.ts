@@ -38,6 +38,7 @@ export async function POST(request: Request) {
 
   const dataset = await createDataset({
     ownerId: identity.ownerId,
+    actorEmail: identity.email,
     ...parsed.data,
   });
 

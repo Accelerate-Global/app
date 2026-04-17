@@ -88,6 +88,7 @@ describe("/api/datasets", () => {
     await expect(response.json()).resolves.toEqual({ dataset });
     expect(createDatasetMock).toHaveBeenCalledWith({
       ownerId: "supabase-user",
+      actorEmail: "admin@example.com",
       fileName: "customers.csv",
       blobPath: "datasets/csv/customers.csv",
       sizeBytes: 100,

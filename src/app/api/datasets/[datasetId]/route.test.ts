@@ -249,8 +249,11 @@ describe("/api/datasets/[datasetId]", () => {
     expect(updateDatasetStatusMock).not.toHaveBeenCalled();
   });
 
-  it("deletes database rows and the Supabase storage object for the admin", async () => {
-    deleteDatasetMock.mockResolvedValue(dataset);
+  it("deletes database rows and all related Supabase storage objects for the admin", async () => {
+    deleteDatasetMock.mockResolvedValue({
+      dataset,
+      blobPaths: [dataset.blobPath, "datasets/csv/customers-previous.csv"],
+    });
 
     const response = await DELETE(
       new Request("http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001"),
@@ -261,7 +264,11 @@ describe("/api/datasets/[datasetId]", () => {
     expect(deleteDatasetMock).toHaveBeenCalledWith(dataset.id);
     expect(createSupabaseAdminClientMock).toHaveBeenCalledWith();
     expect(fromMock).toHaveBeenCalledWith("datasets");
-    expect(removeMock).toHaveBeenCalledWith([dataset.blobPath]);
+    expect(removeMock).toHaveBeenCalledWith([
+      dataset.blobPath,
+      "datasets/csv/customers-previous.csv",
+    ]);
+    await expect(response.json()).resolves.toEqual({ dataset });
   });
 
   it("rejects deletes for non-admin users", async () => {
