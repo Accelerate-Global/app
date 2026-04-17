@@ -2,9 +2,6 @@ name: UI Smoke
 
 on:
   pull_request:
-  push:
-    branches:
-      - main
 
 concurrency:
   group: ui-smoke-${{ github.ref }}
@@ -43,31 +40,31 @@ jobs:
               - 'tests/ui/**'
 
       - uses: pnpm/action-setup@v4
-        if: steps.changes.outputs.ui_smoke == 'true' || github.event_name == 'push'
+        if: steps.changes.outputs.ui_smoke == 'true'
         with:
           version: 10
 
       - uses: actions/setup-node@v4
-        if: steps.changes.outputs.ui_smoke == 'true' || github.event_name == 'push'
+        if: steps.changes.outputs.ui_smoke == 'true'
         with:
           node-version: 22
           cache: pnpm
 
       - uses: supabase/setup-cli@v1
-        if: steps.changes.outputs.ui_smoke == 'true' || github.event_name == 'push'
+        if: steps.changes.outputs.ui_smoke == 'true'
         with:
           version: latest
 
-      - if: steps.changes.outputs.ui_smoke == 'true' || github.event_name == 'push'
+      - if: steps.changes.outputs.ui_smoke == 'true'
         run: pnpm install --frozen-lockfile
 
-      - if: steps.changes.outputs.ui_smoke == 'true' || github.event_name == 'push'
+      - if: steps.changes.outputs.ui_smoke == 'true'
         run: pnpm exec playwright install --with-deps chromium
 
-      - if: steps.changes.outputs.ui_smoke == 'true' || github.event_name == 'push'
+      - if: steps.changes.outputs.ui_smoke == 'true'
         run: pnpm run test:ui:smoke
 
-      - if: always() && (steps.changes.outputs.ui_smoke == 'true' || github.event_name == 'push')
+      - if: always() && steps.changes.outputs.ui_smoke == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: ui-smoke-report
@@ -75,5 +72,5 @@ jobs:
             output/playwright/ui-smoke
             test-results/ui-smoke
 
-      - if: steps.changes.outputs.ui_smoke != 'true' && github.event_name != 'push'
+      - if: steps.changes.outputs.ui_smoke != 'true'
         run: echo "No UI smoke-relevant files changed."

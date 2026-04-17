@@ -40,6 +40,11 @@ function skipUnlessDesktopAnonymous(projectName: string) {
   return project.role !== "anonymous" || project.viewport !== "desktop";
 }
 
+function skipUnlessDesktopViewer(projectName: string) {
+  const project = getSmokeProjectContext(projectName);
+  return project.role !== "viewer" || project.viewport !== "desktop";
+}
+
 async function signInWithPassword(page: Page, input: {
   email: string;
   password: string;
@@ -328,6 +333,35 @@ test("admin can edit dataset details", async ({ page }, testInfo) => {
     await expect(
       getDatasetNameLocator(page, bootstrap.datasets.primary.id),
     ).toHaveText(originalDatasetName);
+  });
+});
+
+test("authenticated user can save a filtered table", async ({ page }, testInfo) => {
+  test.skip(skipUnlessDesktopViewer(testInfo.project.name));
+
+  await runSmokeJourney("authenticated user can save a filtered table", async () => {
+    const bootstrap = await readUiSmokeBootstrap();
+
+    await page.goto(`/dashboard/datasets/${bootstrap.datasets.primary.id}`);
+    await expect(page.locator('[data-smoke-page="dataset-detail"]')).toBeVisible();
+    await page.locator("[data-smoke-save-filtered-table]").click();
+    await expect(page.getByText(/Saved to dashboard as/)).toBeVisible();
+
+    await page.goto("/dashboard");
+    const savedTableRow = page.locator("[data-smoke-saved-table-row]").first();
+
+    await expect(savedTableRow).toBeVisible();
+    await savedTableRow
+      .locator('[data-smoke-trigger="saved-table-detail-sheet"]')
+      .click();
+    await expect(
+      page.locator('[data-smoke-ready="saved-table-detail-sheet"]'),
+    ).toBeVisible();
+
+    await page.keyboard.press("Escape");
+    await expect(
+      page.locator('[data-smoke-surface="saved-table-detail-sheet"]'),
+    ).toBeHidden();
   });
 });
 

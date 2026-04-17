@@ -7,8 +7,17 @@ import type { DatasetSummary } from "@/lib/api-types";
 
 import { DatasetDetailClient } from "./dataset-detail-client";
 
+const actionBarSpy = vi.fn();
 const datasetTableSpy = vi.fn();
+const useDatasetTableStateMock = vi.fn();
 const viewSwitchGridSpy = vi.fn();
+
+vi.mock("@/components/dashboard/dataset-table-action-bar", () => ({
+  DatasetTableActionBar: (props: unknown) => {
+    actionBarSpy(props);
+    return null;
+  },
+}));
 
 vi.mock("@/components/dashboard/dataset-table", () => ({
   DatasetTable: (props: unknown) => {
@@ -22,6 +31,10 @@ vi.mock("@/components/dashboard/dataset-view-switch-grid", () => ({
     viewSwitchGridSpy(props);
     return null;
   },
+}));
+
+vi.mock("@/components/dashboard/use-dataset-table-state", () => ({
+  useDatasetTableState: (props: unknown) => useDatasetTableStateMock(props),
 }));
 
 const datasetBase = {
@@ -43,11 +56,22 @@ const datasetBase = {
 
 describe("DatasetDetailClient", () => {
   beforeEach(() => {
+    actionBarSpy.mockReset();
     datasetTableSpy.mockReset();
+    useDatasetTableStateMock.mockReset();
     viewSwitchGridSpy.mockReset();
+    useDatasetTableStateMock.mockReturnValue({
+      table: {} as never,
+      sorting: [],
+      visibleColumns: [],
+      sortedRows: [],
+      recordCount: 2,
+      isLoading: false,
+      error: null,
+    });
   });
 
-  it("passes supported UUPG filter state into the card and table", () => {
+  it("passes supported UUPG filter state into the card, shared table state, and action bar", () => {
     render(
       <DatasetDetailClient
         dataset={{
@@ -75,37 +99,41 @@ describe("DatasetDetailClient", () => {
     const viewSwitchGridProps = viewSwitchGridSpy.mock.calls[0]?.[0] as {
       uupgCard: { enabled: boolean; supported: boolean };
     };
-    const datasetTableProps = datasetTableSpy.mock.calls[0]?.[0] as {
-      fieldDefinitionPresentationByColumnKey: Record<
-        string,
-        {
-          definition: string;
-          displayLabel: string;
-          effectiveLabel: string;
-        }
-      >;
+    const datasetTableStateProps = useDatasetTableStateMock.mock.calls[0]?.[0] as {
       uupgFilter: { enabled: boolean; isSupported: boolean };
+    };
+    const actionBarProps = actionBarSpy.mock.calls[0]?.[0] as {
+      filters: {
+        uupg: { enabled: boolean };
+      };
+      recordCount: number;
     };
 
     expect(viewSwitchGridProps.uupgCard).toMatchObject({
       enabled: false,
       supported: true,
     });
-    expect(datasetTableProps.uupgFilter).toEqual({
+    expect(datasetTableStateProps.uupgFilter).toEqual({
       enabled: false,
       isSupported: true,
     });
-    expect(datasetTableProps.fieldDefinitionPresentationByColumnKey).toEqual({
-          engage_global_engagement_anywhere: {
-            definition: "UUPG definition",
-            displayLabel: "Watchlist status",
-            effectiveLabel: "Watchlist status",
-            linkedSources: [],
-          },
-        });
+    expect(actionBarProps.filters.uupg).toEqual({
+      enabled: false,
+    });
+    expect(actionBarProps.recordCount).toBe(2);
   });
 
-  it("passes supported watchlist filter state into the card and table", () => {
+  it("passes supported watchlist filter state into the card, shared table state, and action bar", () => {
+    useDatasetTableStateMock.mockReturnValue({
+      table: {} as never,
+      sorting: [{ id: "christianity_gsec", desc: false }],
+      visibleColumns: [],
+      sortedRows: [],
+      recordCount: 5,
+      isLoading: false,
+      error: null,
+    });
+
     render(
       <DatasetDetailClient
         dataset={{
@@ -155,13 +183,24 @@ describe("DatasetDetailClient", () => {
         frontierGroupValue: boolean;
       };
     };
-    const datasetTableProps = datasetTableSpy.mock.calls[0]?.[0] as {
+    const datasetTableStateProps = useDatasetTableStateMock.mock.calls[0]?.[0] as {
       watchlistFilter: {
         enabled: boolean;
         isSupported: boolean;
         threshold: number;
         frontierGroupValue: boolean;
       };
+    };
+    const actionBarProps = actionBarSpy.mock.calls[0]?.[0] as {
+      filters: {
+        watchlist: {
+          enabled: boolean;
+          threshold: number;
+          frontierGroupValue: boolean;
+        };
+        sorting: Array<{ id: string; desc: boolean }>;
+      };
+      recordCount: number;
     };
 
     expect(viewSwitchGridProps.watchlistCard).toMatchObject({
@@ -176,11 +215,23 @@ describe("DatasetDetailClient", () => {
       frontierGroupDefinition: "Frontier group definition",
       frontierGroupValue: true,
     });
-    expect(datasetTableProps.watchlistFilter).toEqual({
+    expect(datasetTableStateProps.watchlistFilter).toEqual({
       enabled: false,
       isSupported: true,
       threshold: 2,
       frontierGroupValue: true,
     });
+    expect(actionBarProps.filters.watchlist).toEqual({
+      enabled: false,
+      threshold: 2,
+      frontierGroupValue: true,
+    });
+    expect(actionBarProps.filters.sorting).toEqual([
+      {
+        id: "christianity_gsec",
+        desc: false,
+      },
+    ]);
+    expect(actionBarProps.recordCount).toBe(5);
   });
 });

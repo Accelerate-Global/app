@@ -4,16 +4,27 @@ import { useState } from "react";
 
 import { DatasetEditSheet } from "@/components/dashboard/dataset-edit-sheet";
 import { DatasetsGrid } from "@/components/dashboard/datasets-grid";
-import type { DatasetSummary, DatasetTag } from "@/lib/api-types";
+import { SavedTableDetailSheet } from "@/components/dashboard/saved-table-detail-sheet";
+import { SavedTablesGrid } from "@/components/dashboard/saved-tables-grid";
+import type {
+  DatasetSummary,
+  DatasetTag,
+  SavedDatasetTable,
+} from "@/lib/api-types";
 import { getReusableDatasetTags } from "@/lib/dataset-tags";
 
 type DashboardClientProps = {
   initialDatasets: DatasetSummary[];
+  initialSavedTables: SavedDatasetTable[];
   canManageDatasets: boolean;
 };
 
 type DatasetResponse = {
   dataset: DatasetSummary;
+};
+
+type SavedDatasetTableResponse = {
+  savedTable: SavedDatasetTable;
 };
 
 type DatasetsResponse = {
@@ -89,20 +100,70 @@ async function deleteDatasetRecord(datasetId: string) {
   return ((await response.json()) as DatasetResponse).dataset;
 }
 
+async function updateSavedTableRecord(input: {
+  savedTableId: string;
+  name: string;
+  details: string;
+}) {
+  const response = await fetch(`/api/saved-tables/${input.savedTableId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      name: input.name,
+      details: input.details,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      await getErrorMessage(response, "The saved table could not be updated."),
+    );
+  }
+
+  return ((await response.json()) as SavedDatasetTableResponse).savedTable;
+}
+
+async function deleteSavedTableRecord(savedTableId: string) {
+  const response = await fetch(`/api/saved-tables/${savedTableId}`, {
+    method: "DELETE",
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      await getErrorMessage(response, "The saved table could not be deleted."),
+    );
+  }
+
+  return ((await response.json()) as SavedDatasetTableResponse).savedTable;
+}
+
 export function DashboardClient({
   initialDatasets,
+  initialSavedTables,
   canManageDatasets,
 }: DashboardClientProps) {
   const [datasets, setDatasets] = useState(initialDatasets);
+  const [savedTables, setSavedTables] = useState(initialSavedTables);
   const [editingDatasetId, setEditingDatasetId] = useState<string | null>(null);
+  const [activeSavedTableId, setActiveSavedTableId] = useState<string | null>(null);
   const [updatingDatasetId, setUpdatingDatasetId] = useState<string | null>(null);
   const [deletingDatasetId, setDeletingDatasetId] = useState<string | null>(null);
+  const [updatingSavedTableId, setUpdatingSavedTableId] = useState<string | null>(null);
+  const [deletingSavedTableId, setDeletingSavedTableId] = useState<string | null>(null);
   const [isReordering, setIsReordering] = useState(false);
 
   const editingDataset =
     editingDatasetId === null
       ? null
       : datasets.find((dataset) => dataset.id === editingDatasetId) ?? null;
+  const activeSavedTable =
+    activeSavedTableId === null
+      ? null
+      : savedTables.find((savedTable) => savedTable.id === activeSavedTableId) ?? null;
+  const activeSavedTableDataset =
+    activeSavedTable === null
+      ? null
+      : datasets.find((dataset) => dataset.id === activeSavedTable.datasetId) ?? null;
   const availableTags = getReusableDatasetTags(
     datasets.flatMap((dataset) => dataset.tags),
   );
@@ -221,9 +282,15 @@ export function DashboardClient({
       setDatasets((current) =>
         current.filter((item) => item.id !== deletedDataset.id),
       );
+      setSavedTables((current) =>
+        current.filter((savedTable) => savedTable.datasetId !== deletedDataset.id),
+      );
       setEditingDatasetId((current) =>
         current === deletedDataset.id ? null : current,
       );
+      if (activeSavedTable?.datasetId === deletedDataset.id) {
+        setActiveSavedTableId(null);
+      }
     } catch (error) {
       throw new Error(
         error instanceof Error
@@ -237,6 +304,10 @@ export function DashboardClient({
 
   return (
     <>
+      <SavedTablesGrid
+        savedTables={savedTables}
+        onOpenDetails={setActiveSavedTableId}
+      />
       <DatasetsGrid
         datasets={datasets}
         canManageDatasets={canManageDatasets}
@@ -248,6 +319,62 @@ export function DashboardClient({
         onEditDataset={setEditingDatasetId}
         onReorderDatasets={handleReorderDatasets}
       />
+      {activeSavedTable ? (
+        <SavedTableDetailSheet
+          key={`${activeSavedTable.id}:${activeSavedTable.updatedAt}`}
+          savedTable={activeSavedTable}
+          dataset={activeSavedTableDataset}
+          isSaving={activeSavedTable.id === updatingSavedTableId}
+          isDeleting={activeSavedTable.id === deletingSavedTableId}
+          open
+          onOpenChange={(nextOpen) => {
+            if (!nextOpen) {
+              setActiveSavedTableId(null);
+            }
+          }}
+          onSaveSavedTable={async (input) => {
+            if (updatingSavedTableId !== null || deletingSavedTableId !== null) {
+              return;
+            }
+
+            setUpdatingSavedTableId(input.savedTableId);
+
+            try {
+              const updatedSavedTable = await updateSavedTableRecord(input);
+
+              setSavedTables((current) =>
+                current.map((savedTable) =>
+                  savedTable.id === updatedSavedTable.id
+                    ? updatedSavedTable
+                    : savedTable,
+                ),
+              );
+            } finally {
+              setUpdatingSavedTableId(null);
+            }
+          }}
+          onDeleteSavedTable={async (savedTableId) => {
+            if (updatingSavedTableId !== null || deletingSavedTableId !== null) {
+              return;
+            }
+
+            setDeletingSavedTableId(savedTableId);
+
+            try {
+              const deletedSavedTable = await deleteSavedTableRecord(savedTableId);
+
+              setSavedTables((current) =>
+                current.filter((savedTable) => savedTable.id !== deletedSavedTable.id),
+              );
+              setActiveSavedTableId((current) =>
+                current === deletedSavedTable.id ? null : current,
+              );
+            } finally {
+              setDeletingSavedTableId(null);
+            }
+          }}
+        />
+      ) : null}
       {canManageDatasets && editingDataset ? (
         <DatasetEditSheet
           key={`${editingDataset.id}:${editingDataset.updatedAt}`}

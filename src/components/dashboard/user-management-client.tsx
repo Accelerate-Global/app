@@ -158,6 +158,18 @@ async function updateUserRecord(input: {
   return ((await response.json()) as WorkspaceUserResponse).user;
 }
 
+async function sendUserPasswordResetEmail(userId: string) {
+  const response = await fetch(`/api/admin/users/${userId}/password-reset`, {
+    method: "POST",
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      await getErrorMessage(response, "The password reset email could not be sent."),
+    );
+  }
+}
+
 function replaceUser(users: WorkspaceUser[], nextUser: WorkspaceUser) {
   const hasUser = users.some((user) => user.id === nextUser.id);
   return sortUsers(
@@ -348,6 +360,29 @@ export function UserManagementClient({
     }
   }
 
+  async function handleSendPasswordResetEmail() {
+    if (!selectedUser?.email) {
+      return;
+    }
+
+    setErrorMessage(null);
+    setSuccessMessage(null);
+    setIsUpdatingUserId(selectedUser.id);
+
+    try {
+      await sendUserPasswordResetEmail(selectedUser.id);
+      setSuccessMessage(`Password reset email sent to ${selectedUser.email}.`);
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "The password reset email could not be sent.",
+      );
+    } finally {
+      setIsUpdatingUserId(null);
+    }
+  }
+
   const isCurrentUserSelected = selectedUser?.id === currentUserId;
   const removesLastActiveAdmin =
     selectedUser?.workspaceRole === "admin" &&
@@ -371,6 +406,11 @@ export function UserManagementClient({
     !isCurrentUserSelected &&
     !isSelectedUserBusy &&
     selectedUser.accountStatus === "disabled";
+  const canSendSelectedUserPasswordReset =
+    Boolean(selectedUser) &&
+    !isSelectedUserBusy &&
+    Boolean(selectedUser.email) &&
+    selectedUser.accountStatus !== "disabled";
 
   return (
     <div className="grid gap-6">
@@ -756,6 +796,18 @@ export function UserManagementClient({
                   <div className="grid gap-2">
                     <Button
                       type="button"
+                      variant="outline"
+                      className="w-full"
+                      disabled={!canSendSelectedUserPasswordReset}
+                      onClick={() => {
+                        void handleSendPasswordResetEmail();
+                      }}
+                    >
+                      {isSelectedUserBusy ? <Loader2Icon className="animate-spin" /> : null}
+                      Send password reset email
+                    </Button>
+                    <Button
+                      type="button"
                       variant="destructive"
                       className="w-full"
                       disabled={!canDisableSelectedUser}
@@ -779,6 +831,19 @@ export function UserManagementClient({
                       Re-enable account
                     </Button>
                   </div>
+
+                  {!selectedUser.email ? (
+                    <p className="text-sm text-muted-foreground">
+                      This account cannot receive a password reset email because no email address
+                      is stored.
+                    </p>
+                  ) : null}
+
+                  {selectedUser.accountStatus === "disabled" ? (
+                    <p className="text-sm text-muted-foreground">
+                      Re-enable the account before sending a password reset email.
+                    </p>
+                  ) : null}
 
                   {isCurrentUserSelected ? (
                     <p className="text-sm text-muted-foreground">

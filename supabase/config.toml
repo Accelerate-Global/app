@@ -226,6 +226,12 @@ otp_expiry = 3600
 
 # Customize the password recovery email during local development. Copy the same
 # HTML into the hosted project's Recovery template in the Dashboard.
+[auth.email.template.invite]
+subject = "You have been invited to Accelerate Global Data"
+content_path = "./supabase/templates/invite.html"
+
+# Customize the password recovery email during local development. Copy the same
+# HTML into the hosted project's Recovery template in the Dashboard.
 [auth.email.template.recovery]
 subject = "Reset your Accelerate Global Data password"
 content_path = "./supabase/templates/recovery.html"

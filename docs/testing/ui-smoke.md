@@ -49,6 +49,12 @@ Run the current-worktree verification bundle, including required test deltas and
 pnpm run verify:change:run
 ```
 
+Run the single pre-ship local gate:
+
+```bash
+pnpm run verify:ship:local
+```
+
 Run the local smoke environment preflight:
 
 ```bash
@@ -94,7 +100,7 @@ Use the smoke pipeline in this order:
 
 1. `pnpm run verify:change`
 2. `pnpm run verify:change:run`
-3. `pnpm run test:ui:smoke`
+3. `pnpm run verify:ship:local`
 
 Failure prefixes are intentional:
 
@@ -226,7 +232,7 @@ At the start of any UI, DB, or migration task, write a short verification intent
 - required commands from `pnpm run verify:change`
 - targeted smoke subset from `pnpm run verify:change`
 
-Use the full suite only as the final merge or release gate after the targeted subset is green. Do not finalize work if `verify:change` reports missing required test updates or if targeted smoke cannot select any real Playwright tests.
+Use `pnpm run verify:ship:local` as the final local merge or release gate. It reuses prior local receipts on the same tracked tree and, when both targeted and full browser smoke are still needed, runs them against one Supabase/bootstrap/build session. Do not finalize work if `verify:change` reports missing required test updates or if targeted smoke cannot select any real Playwright tests.
 
 ## CI
 

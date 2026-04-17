@@ -52,6 +52,36 @@ function createDataset() {
   };
 }
 
+function createSavedTable() {
+  return {
+    id: "saved-table-1",
+    datasetId: "dataset-1",
+    datasetFileName: "Global.csv",
+    name: "North Africa focus",
+    details: "",
+    filters: {
+      region: {
+        enabled: true,
+        selectedRegionIds: ["region-1"],
+        selectedRegionNames: ["North Africa"],
+        enabledCountryNames: ["Egypt"],
+      },
+      watchlist: {
+        enabled: false,
+        threshold: 2,
+        frontierGroupValue: true,
+      },
+      uupg: {
+        enabled: false,
+      },
+      sorting: [],
+    },
+    savedRowCount: 28,
+    createdAt: new Date("2026-04-15T16:00:00.000Z").toISOString(),
+    updatedAt: new Date("2026-04-15T16:00:00.000Z").toISOString(),
+  };
+}
+
 describe("DashboardClient", () => {
   beforeEach(() => {
     vi.resetAllMocks();
@@ -67,7 +97,11 @@ describe("DashboardClient", () => {
 
   it("opens and closes the dataset edit sheet while keeping the existing footer actions", async () => {
     render(
-      <DashboardClient initialDatasets={[createDataset()]} canManageDatasets />,
+      <DashboardClient
+        initialDatasets={[createDataset()]}
+        initialSavedTables={[]}
+        canManageDatasets
+      />,
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Edit" }));
@@ -88,7 +122,11 @@ describe("DashboardClient", () => {
 
   it("routes to dataset replacement from the edit sheet", async () => {
     render(
-      <DashboardClient initialDatasets={[createDataset()]} canManageDatasets />,
+      <DashboardClient
+        initialDatasets={[createDataset()]}
+        initialSavedTables={[]}
+        canManageDatasets
+      />,
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Edit" }));
@@ -112,7 +150,11 @@ describe("DashboardClient", () => {
     );
 
     render(
-      <DashboardClient initialDatasets={[createDataset()]} canManageDatasets />,
+      <DashboardClient
+        initialDatasets={[createDataset()]}
+        initialSavedTables={[]}
+        canManageDatasets
+      />,
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Edit" }));
@@ -146,7 +188,11 @@ describe("DashboardClient", () => {
     );
 
     render(
-      <DashboardClient initialDatasets={[createDataset()]} canManageDatasets />,
+      <DashboardClient
+        initialDatasets={[createDataset()]}
+        initialSavedTables={[]}
+        canManageDatasets
+      />,
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Edit" }));
@@ -159,5 +205,72 @@ describe("DashboardClient", () => {
 
     expect(await within(dialog).findByText("The dataset is locked.")).toBeTruthy();
     expect(screen.getAllByText("Global.csv")).toHaveLength(2);
+  });
+
+  it("opens the saved table details sheet and persists saved table edits", async () => {
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          savedTable: {
+            ...createSavedTable(),
+            name: "North Africa saved",
+            details: "Saved from dataset detail page.",
+            updatedAt: new Date("2026-04-16T02:00:00.000Z").toISOString(),
+          },
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
+    );
+
+    render(
+      <DashboardClient
+        initialDatasets={[createDataset()]}
+        initialSavedTables={[createSavedTable()]}
+        canManageDatasets={false}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Details" }));
+
+    const dialog = await screen.findByRole("dialog", {
+      name: "Saved table details",
+    });
+
+    fireEvent.change(
+      within(dialog).getByLabelText("Saved table name"),
+      {
+        target: { value: "North Africa saved" },
+      },
+    );
+    fireEvent.change(
+      within(dialog).getByLabelText("Details"),
+      {
+        target: { value: "Saved from dataset detail page." },
+      },
+    );
+    fireEvent.click(within(dialog).getByRole("button", { name: "Save changes" }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith("/api/saved-tables/saved-table-1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: "North Africa saved",
+          details: "Saved from dataset detail page.",
+        }),
+      });
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole("dialog", { name: "Saved table details" }),
+      ).toBeNull();
+    });
+
+    expect(screen.getByText("North Africa saved")).toBeTruthy();
+    expect(screen.getByText("Saved from dataset detail page.")).toBeTruthy();
   });
 });

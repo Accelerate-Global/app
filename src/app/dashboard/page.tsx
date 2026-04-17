@@ -4,6 +4,7 @@ import { DashboardClient } from "@/components/dashboard/dashboard-client";
 import { SiteHeader } from "@/components/layout/site-header";
 import { getCurrentIdentity } from "@/lib/auth";
 import { listDatasets } from "@/lib/datasets";
+import { listSavedDatasetTables } from "@/lib/saved-dataset-tables";
 
 export default async function DashboardPage() {
   const identity = await getCurrentIdentity();
@@ -12,7 +13,10 @@ export default async function DashboardPage() {
     redirect("/");
   }
 
-  const datasets = await listDatasets();
+  const [datasets, savedTables] = await Promise.all([
+    listDatasets(),
+    listSavedDatasetTables(identity.ownerId),
+  ]);
 
   return (
     <main
@@ -32,6 +36,7 @@ export default async function DashboardPage() {
         </section>
         <DashboardClient
           initialDatasets={datasets}
+          initialSavedTables={savedTables}
           canManageDatasets={identity.isDatasetAdmin}
         />
       </div>

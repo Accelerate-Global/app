@@ -5,10 +5,12 @@ import type { User as AuthUser } from "@supabase/supabase-js";
 import type { WorkspaceUser } from "@/lib/api-types";
 import {
   assertWorkspaceUserMutationAllowed,
+  assertWorkspaceUserPasswordResetAllowed,
   getActiveWorkspaceAdminCount,
   getWorkspaceUserAccountStatus,
   mapAuthUserToWorkspaceUser,
   mergeWorkspaceRoleIntoAppMetadata,
+  WorkspaceUserActionError,
   WorkspaceUserPermissionError,
 } from "@/lib/user-management";
 
@@ -256,6 +258,39 @@ describe("user-management", () => {
         ],
         workspaceRole: "viewer",
       }),
+    ).not.toThrow();
+  });
+
+  it("rejects password reset emails for users without an email address", () => {
+    expect(() =>
+      assertWorkspaceUserPasswordResetAllowed(
+        createWorkspaceUser({
+          email: null,
+        }),
+      ),
+    ).toThrowError(
+      new WorkspaceUserActionError("This account does not have an email address.", 400),
+    );
+  });
+
+  it("rejects password reset emails for disabled accounts", () => {
+    expect(() =>
+      assertWorkspaceUserPasswordResetAllowed(
+        createWorkspaceUser({
+          accountStatus: "disabled",
+        }),
+      ),
+    ).toThrowError(
+      new WorkspaceUserActionError(
+        "Re-enable the account before sending a password reset email.",
+        409,
+      ),
+    );
+  });
+
+  it("allows password reset emails for active users", () => {
+    expect(() =>
+      assertWorkspaceUserPasswordResetAllowed(createWorkspaceUser()),
     ).not.toThrow();
   });
 });

@@ -3,7 +3,7 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { fieldDefinitions } from "./schema";
+import { fieldDefinitions, savedDatasetTables } from "./schema";
 
 describe("fieldDefinitions schema", () => {
   it("declares the viewer visibility column", () => {
@@ -20,6 +20,28 @@ describe("fieldDefinitions schema", () => {
 
     await expect(readFile(migrationPath, "utf8")).resolves.toContain(
       'add column "hide_from_viewer_field_definitions" boolean not null default false',
+    );
+  });
+});
+
+describe("savedDatasetTables schema", () => {
+  it("declares the saved dataset table filters and row count columns", () => {
+    expect(savedDatasetTables.filters.name).toBe("filters");
+    expect(savedDatasetTables.savedRowCount.name).toBe("saved_row_count");
+  });
+
+  it("creates the saved dataset tables migration", async () => {
+    const migrationPath = path.join(
+      process.cwd(),
+      "supabase/migrations/20260417052141_add_saved_dataset_tables.sql",
+    );
+
+    const migration = await readFile(migrationPath, "utf8");
+
+    expect(migration).toContain("create table if not exists public.saved_dataset_tables");
+    expect(migration).toContain("enable row level security");
+    expect(migration).toContain(
+      'create policy "users can read own saved dataset tables"',
     );
   });
 });

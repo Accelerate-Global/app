@@ -88,6 +88,7 @@ export const smokeRouteSpecs: SmokeRouteSpec[] = [
     pageFile: "src/app/dashboard/datasets/[datasetId]/page.tsx",
     path: "/dashboard/datasets/{{primaryDatasetId}}",
     pageId: "dataset-detail",
+    journeys: ["authenticated user can save a filtered table"],
   },
   {
     id: "dataset-detail-admin",

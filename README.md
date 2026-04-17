@@ -111,8 +111,11 @@ pnpm typecheck
 For the full local release gate:
 
 ```bash
-pnpm verify:release
+pnpm run verify:ship:local
 ```
+
+`pnpm verify:release` remains available as a temporary deprecated alias to the
+new ship-local gate.
 
 ## UI Smoke Verification
 
@@ -127,7 +130,9 @@ pnpm run test:ui:smoke
 
 Use `pnpm run test:ui:smoke:headed` for a local visual pass. The canonical
 contract for new routes, surfaces, and shared UI fixtures lives in
-`docs/testing/ui-smoke.md`.
+`docs/testing/ui-smoke.md`. For the normal ship path, prefer
+`pnpm run verify:ship:local`; it reuses prior local verification receipts and
+runs any remaining release-only smoke work in one pass.
 
 ## Database Security Tests
 

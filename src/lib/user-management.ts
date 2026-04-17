@@ -53,6 +53,16 @@ export class WorkspaceUserPermissionError extends Error {
   }
 }
 
+export class WorkspaceUserActionError extends Error {
+  constructor(
+    message: string,
+    readonly status = 400,
+  ) {
+    super(message);
+    this.name = "WorkspaceUserActionError";
+  }
+}
+
 function normalizeFullName(value: string | null | undefined) {
   const normalized = value?.trim() ?? "";
   return normalized || null;
@@ -425,6 +435,24 @@ export function assertWorkspaceUserMutationAllowed(input: {
   }
 }
 
+export function assertWorkspaceUserPasswordResetAllowed(
+  targetUser: Pick<WorkspaceUser, "email" | "accountStatus">,
+): asserts targetUser is Pick<WorkspaceUser, "accountStatus"> & { email: string } {
+  if (!targetUser.email) {
+    throw new WorkspaceUserActionError(
+      "This account does not have an email address.",
+      400,
+    );
+  }
+
+  if (targetUser.accountStatus === "disabled") {
+    throw new WorkspaceUserActionError(
+      "Re-enable the account before sending a password reset email.",
+      409,
+    );
+  }
+}
+
 export async function inviteWorkspaceUser(input: {
   email: string;
   fullName?: string;
@@ -525,4 +553,23 @@ export async function updateWorkspaceUser(input: {
   return mapWorkspaceUserRecordToWorkspaceUser(
     await getWorkspaceUserRecordByIdOrThrow(input.userId),
   );
+}
+
+export async function sendWorkspaceUserPasswordResetEmail(input: {
+  userId: string;
+  redirectTo: string;
+}) {
+  const userRecord = await getWorkspaceUserRecordByIdOrThrow(input.userId);
+  const targetUser = mapWorkspaceUserRecordToWorkspaceUser(userRecord);
+
+  assertWorkspaceUserPasswordResetAllowed(targetUser);
+
+  const admin = createSupabaseAdminClient();
+  const resetResult = await admin.auth.resetPasswordForEmail(targetUser.email, {
+    redirectTo: input.redirectTo,
+  });
+
+  if (resetResult.error) {
+    throw resetResult.error;
+  }
 }

@@ -84,6 +84,15 @@ export function buildUiSmokeCommandEnv(statusEnv: Record<string, string>) {
   };
 }
 
+export function hasUsableSupabaseStatusOutput(output: string) {
+  try {
+    buildUiSmokeCommandEnv(parseSupabaseEnvOutput(output));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function getUiSmokeEnv(environment: NodeJS.ProcessEnv = process.env): UiSmokeEnv {
   const supabaseUrl =
     environment.NEXT_PUBLIC_SUPABASE_URL?.trim() ??

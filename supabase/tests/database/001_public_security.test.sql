@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(63);
+select plan(68);
 
 select results_eq(
   $$
@@ -19,6 +19,7 @@ select results_eq(
     'field_source_types'::name,
     'filter_region_countries'::name,
     'filter_regions'::name,
+    'saved_dataset_tables'::name,
     'signup_email_allowlist'::name
   ],
   'all app-owned public tables are explicitly covered by the security suite'
@@ -31,6 +32,7 @@ select ok((select relrowsecurity from pg_class join pg_namespace on pg_namespace
 select ok((select relrowsecurity from pg_class join pg_namespace on pg_namespace.oid = pg_class.relnamespace where pg_namespace.nspname = 'public' and pg_class.relname = 'field_definitions' and pg_class.relkind = 'r'), 'field_definitions has row level security enabled');
 select ok((select relrowsecurity from pg_class join pg_namespace on pg_namespace.oid = pg_class.relnamespace where pg_namespace.nspname = 'public' and pg_class.relname = 'field_source_types' and pg_class.relkind = 'r'), 'field_source_types has row level security enabled');
 select ok((select relrowsecurity from pg_class join pg_namespace on pg_namespace.oid = pg_class.relnamespace where pg_namespace.nspname = 'public' and pg_class.relname = 'field_definition_sources' and pg_class.relkind = 'r'), 'field_definition_sources has row level security enabled');
+select ok((select relrowsecurity from pg_class join pg_namespace on pg_namespace.oid = pg_class.relnamespace where pg_namespace.nspname = 'public' and pg_class.relname = 'saved_dataset_tables' and pg_class.relkind = 'r'), 'saved_dataset_tables has row level security enabled');
 select ok((select relrowsecurity from pg_class join pg_namespace on pg_namespace.oid = pg_class.relnamespace where pg_namespace.nspname = 'public' and pg_class.relname = 'signup_email_allowlist' and pg_class.relkind = 'r'), 'signup_email_allowlist has row level security enabled');
 
 select ok(exists(select 1 from pg_policies where schemaname = 'public' and tablename = 'datasets' and policyname = 'authenticated users can read shared datasets' and cmd = 'SELECT'), 'datasets has authenticated read policy');
@@ -67,6 +69,11 @@ select ok(exists(select 1 from pg_policies where schemaname = 'public' and table
 select ok(exists(select 1 from pg_policies where schemaname = 'public' and tablename = 'field_definition_sources' and policyname = 'dataset admin can insert field definition sources' and cmd = 'INSERT'), 'field_definition_sources has admin insert policy');
 select ok(exists(select 1 from pg_policies where schemaname = 'public' and tablename = 'field_definition_sources' and policyname = 'dataset admin can update field definition sources' and cmd = 'UPDATE'), 'field_definition_sources has admin update policy');
 select ok(exists(select 1 from pg_policies where schemaname = 'public' and tablename = 'field_definition_sources' and policyname = 'dataset admin can delete field definition sources' and cmd = 'DELETE'), 'field_definition_sources has admin delete policy');
+
+select ok(exists(select 1 from pg_policies where schemaname = 'public' and tablename = 'saved_dataset_tables' and policyname = 'users can read own saved dataset tables' and cmd = 'SELECT'), 'saved_dataset_tables has owner read policy');
+select ok(exists(select 1 from pg_policies where schemaname = 'public' and tablename = 'saved_dataset_tables' and policyname = 'users can insert own saved dataset tables' and cmd = 'INSERT'), 'saved_dataset_tables has owner insert policy');
+select ok(exists(select 1 from pg_policies where schemaname = 'public' and tablename = 'saved_dataset_tables' and policyname = 'users can update own saved dataset tables' and cmd = 'UPDATE'), 'saved_dataset_tables has owner update policy');
+select ok(exists(select 1 from pg_policies where schemaname = 'public' and tablename = 'saved_dataset_tables' and policyname = 'users can delete own saved dataset tables' and cmd = 'DELETE'), 'saved_dataset_tables has owner delete policy');
 
 select ok(exists(select 1 from pg_policies where schemaname = 'public' and tablename = 'signup_email_allowlist' and policyname = 'supabase auth admin can read signup allowlist' and cmd = 'SELECT'), 'signup_email_allowlist has supabase auth admin read policy');
 

@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 
 import type { CsvColumn, DatasetStatus, DatasetTag } from "@/lib/api-types";
+import type { SavedDatasetFilterState } from "@/lib/api-types";
 import {
   boolean,
   index,
@@ -65,6 +66,39 @@ export const datasetRows = pgTable(
       table.rowIndex,
     ),
     index("dataset_rows_dataset_idx").on(table.datasetId),
+  ],
+);
+
+export const savedDatasetTables = pgTable(
+  "saved_dataset_tables",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    ownerId: text("owner_id").notNull(),
+    datasetId: uuid("dataset_id")
+      .notNull()
+      .references(() => datasets.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    details: text("details").notNull().default(""),
+    filters: jsonb("filters").$type<SavedDatasetFilterState>().notNull(),
+    savedRowCount: integer("saved_row_count").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("saved_dataset_tables_owner_created_idx").on(
+      table.ownerId,
+      table.createdAt,
+    ),
+    index("saved_dataset_tables_owner_dataset_idx").on(
+      table.ownerId,
+      table.datasetId,
+      table.createdAt,
+    ),
+    index("saved_dataset_tables_dataset_idx").on(table.datasetId),
   ],
 );
 

@@ -2,6 +2,7 @@ import { mkdir } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import net from "node:net";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 
 import {
   UI_SMOKE_TMP_DIR,
@@ -9,12 +10,14 @@ import {
 import { parseGitStatusPorcelain } from "./lib/git-status";
 import {
   buildUiSmokeCommandEnv,
+  hasUsableSupabaseStatusOutput,
   parseSupabaseEnvOutput,
 } from "./lib/ui-smoke-env";
 import {
   buildUiSmokeGrepPattern,
   formatUiSmokeZeroMatchMessage,
   resolveUiSmokeSelection,
+  type UiSmokeSelection,
 } from "./lib/ui-smoke-selection";
 
 function runCommand(
@@ -107,6 +110,11 @@ function sleep(milliseconds: number) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
+export const DEFAULT_SUPABASE_PORT_RELEASE_WAIT = {
+  maxAttempts: 30,
+  retryDelayMs: 2_000,
+} as const;
+
 function createPipelineError(
   classification: "bootstrap" | "contract" | "product",
   message: string,
@@ -152,8 +160,9 @@ async function waitForSupabasePortsAvailable(options?: {
   retryDelayMs?: number;
 }) {
   let lastError: unknown = null;
-  const maxAttempts = options?.maxAttempts ?? 15;
-  const retryDelayMs = options?.retryDelayMs ?? 2_000;
+  const maxAttempts = options?.maxAttempts ?? DEFAULT_SUPABASE_PORT_RELEASE_WAIT.maxAttempts;
+  const retryDelayMs =
+    options?.retryDelayMs ?? DEFAULT_SUPABASE_PORT_RELEASE_WAIT.retryDelayMs;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     try {
@@ -332,25 +341,49 @@ async function resetSupabaseAfterStartupFailure() {
     }
   }
 
-  await waitForSupabasePortsAvailable({ maxAttempts: 30, retryDelayMs: 2_000 });
+  await waitForSupabasePortsAvailable(DEFAULT_SUPABASE_PORT_RELEASE_WAIT);
   await sleep(3_000);
 }
 
+async function hasUsableLocalSupabaseStatus() {
+  try {
+    const statusOutput = await runCommand("supabase", ["status", "-o", "env"], {
+      captureOutput: true,
+      timeoutMs: 30_000,
+    });
+
+    return hasUsableSupabaseStatusOutput(statusOutput);
+  } catch {
+    return false;
+  }
+}
+
 async function startLocalSupabaseStack() {
-  await runStageWithRetry({
-    classification: "bootstrap",
-    message: "supabase start failed.",
-    command: "supabase",
-    args: ["start"],
-    captureOutput: true,
-    attempts: 3,
-    retryDelayMs: 3_000,
-    timeoutMs: 120_000,
-    shouldRetry: isSupabaseStartRetryableError,
-    beforeRetry: async () => {
-      await resetSupabaseAfterStartupFailure();
-    },
-  });
+  try {
+    await runStageWithRetry({
+      classification: "bootstrap",
+      message: "supabase start failed.",
+      command: "supabase",
+      args: ["start", "--ignore-health-check"],
+      captureOutput: true,
+      attempts: 3,
+      retryDelayMs: 3_000,
+      timeoutMs: 120_000,
+      shouldRetry: isSupabaseStartRetryableError,
+      beforeRetry: async () => {
+        await resetSupabaseAfterStartupFailure();
+      },
+    });
+  } catch (error) {
+    if (!(await hasUsableLocalSupabaseStatus())) {
+      throw error;
+    }
+
+    console.warn(
+      "supabase start exited non-zero, but the local Supabase status is available. Continuing.",
+    );
+  }
+
   await sleep(3_000);
 }
 
@@ -363,6 +396,87 @@ function printSelectionSummary(lines: string[]) {
   for (const line of lines) {
     console.log(`- ${line}`);
   }
+}
+
+export type UiSmokeSuitePlan = {
+  kind: "targeted" | "full";
+  grepPattern: string | null;
+  projectNames: string[];
+};
+
+export type UiSmokeRunPlan = {
+  selection: UiSmokeSelection | null;
+  suites: UiSmokeSuitePlan[];
+  summary: string[];
+};
+
+export function buildUiSmokeRunPlan(input: {
+  changedFiles: string[];
+  targeted: boolean;
+  fullAfterTargeted: boolean;
+}) {
+  const selection = input.targeted
+    ? resolveUiSmokeSelection(input.changedFiles)
+    : null;
+
+  if (selection?.mode === "none") {
+    return {
+      selection,
+      suites: [],
+      summary: [],
+    } satisfies UiSmokeRunPlan;
+  }
+
+  if (!selection) {
+    return {
+      selection: null,
+      suites: [
+        {
+          kind: "full",
+          grepPattern: null,
+          projectNames: [],
+        },
+      ],
+      summary: [],
+    } satisfies UiSmokeRunPlan;
+  }
+
+  if (selection.mode === "full") {
+    return {
+      selection,
+      suites: [
+        {
+          kind: "full",
+          grepPattern: null,
+          projectNames: [],
+        },
+      ],
+      summary: selection.summary,
+    } satisfies UiSmokeRunPlan;
+  }
+
+  const grepPattern = buildUiSmokeGrepPattern(selection);
+  const suites: UiSmokeSuitePlan[] = [
+    {
+      kind: "targeted",
+      grepPattern,
+      projectNames: selection.projectNames,
+    },
+  ];
+
+  if (input.fullAfterTargeted) {
+    suites.push({
+      kind: "full",
+      grepPattern: null,
+      projectNames: [],
+    });
+  }
+
+  return {
+    selection,
+    suites,
+    summary: selection.summary,
+  } satisfies UiSmokeRunPlan;
 }
 
 async function validateTargetedSelection(input: {
@@ -401,7 +515,8 @@ async function validateTargetedSelection(input: {
 
 async function main() {
   const headed = process.argv.includes("--headed");
-  const targeted = process.argv.includes("--targeted");
+  const fullAfterTargeted = process.argv.includes("--targeted-and-full");
+  const targeted = process.argv.includes("--targeted") || fullAfterTargeted;
   const changedFiles = targeted
     ? parseGitStatusPorcelain(
         await runCommand(
@@ -411,29 +526,30 @@ async function main() {
         ),
       ).map((file) => file.path)
     : [];
-  const targetedSelection = targeted
-    ? resolveUiSmokeSelection(changedFiles)
-    : null;
+  const runPlan = buildUiSmokeRunPlan({
+    changedFiles,
+    targeted,
+    fullAfterTargeted,
+  });
 
-  if (targetedSelection?.mode === "none") {
+  if (runPlan.selection?.mode === "none") {
     console.log("No targeted UI smoke routes or journeys matched the current worktree.");
     return;
   }
 
-  if (targetedSelection) {
-    printSelectionSummary(targetedSelection.summary);
+  if (runPlan.summary.length > 0) {
+    printSelectionSummary(runPlan.summary);
   }
+  const targetedSuite = runPlan.suites.find((suite) => suite.kind === "targeted");
 
-  const grepPattern =
-    targetedSelection?.mode === "targeted"
-      ? buildUiSmokeGrepPattern(targetedSelection)
-      : null;
-
-  if (targetedSelection?.mode === "targeted" && grepPattern) {
+  if (
+    runPlan.selection?.mode === "targeted" &&
+    targetedSuite?.grepPattern
+  ) {
     await validateTargetedSelection({
-      grepPattern,
-      projectNames: targetedSelection.projectNames,
-      targetedSelection,
+      grepPattern: targetedSuite.grepPattern,
+      projectNames: targetedSuite.projectNames,
+      targetedSelection: runPlan.selection,
     });
   }
 
@@ -510,40 +626,48 @@ async function main() {
     env: smokeEnv,
   });
 
-  const playwrightArgs = [
-    "exec",
-    "playwright",
-    "test",
-    "-c",
-    "playwright.smoke.config.ts",
-  ];
+  for (const suite of runPlan.suites) {
+    const playwrightArgs = [
+      "exec",
+      "playwright",
+      "test",
+      "-c",
+      "playwright.smoke.config.ts",
+    ];
 
-  if (grepPattern) {
-    playwrightArgs.push("--grep", grepPattern);
-  }
+    if (suite.grepPattern) {
+      playwrightArgs.push("--grep", suite.grepPattern);
+    }
 
-  for (const projectName of targetedSelection?.mode === "targeted"
-    ? targetedSelection.projectNames
-    : []) {
-    playwrightArgs.push("--project", projectName);
-  }
+    for (const projectName of suite.projectNames) {
+      playwrightArgs.push("--project", projectName);
+    }
 
-  if (headed) {
-    playwrightArgs.push("--headed");
-  }
+    if (headed) {
+      playwrightArgs.push("--headed");
+    }
 
-  try {
-    await runCommand("pnpm", playwrightArgs, { env: smokeEnv });
-  } catch (error) {
-    throw createPipelineError(
-      "product",
-      "Playwright UI smoke suite failed. Review the classified failures above.",
-      error,
-    );
+    try {
+      await runCommand("pnpm", playwrightArgs, { env: smokeEnv });
+    } catch (error) {
+      throw createPipelineError(
+        "product",
+        `${
+          suite.kind === "targeted" ? "Targeted" : "Full"
+        } Playwright UI smoke suite failed. Review the classified failures above.`,
+        error,
+      );
+    }
   }
 }
 
-void main().catch((error) => {
-  console.error(error instanceof Error ? error.message : error);
-  process.exitCode = 1;
-});
+function isMainModule(metaUrl: string) {
+  return Boolean(process.argv[1]) && pathToFileURL(process.argv[1]).href === metaUrl;
+}
+
+if (isMainModule(import.meta.url)) {
+  void main().catch((error) => {
+    console.error(error instanceof Error ? error.message : error);
+    process.exitCode = 1;
+  });
+}
