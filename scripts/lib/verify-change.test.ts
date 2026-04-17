@@ -108,7 +108,7 @@ describe("verify-change", () => {
 
   it("includes required targeted smoke and test delta for dataset UI changes", () => {
     const report = createVerifyChangeReport({
-      changedFiles: ["src/components/dashboard/dataset-edit-sheet.tsx"],
+      changedFiles: ["src/components/dashboard/dataset-edit-page-client.tsx"],
       contractIssues: [],
       testDelta: passingTestDelta,
     });

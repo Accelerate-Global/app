@@ -1,6 +1,7 @@
 "use client";
 
 import { DownloadIcon, FileTextIcon, GripVerticalIcon } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { KeyboardEvent, MouseEvent } from "react";
 
@@ -10,14 +11,13 @@ import {
   SortableItem,
   SortableItemHandle,
 } from "@/components/reui/sortable";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import type { DatasetSummary } from "@/lib/api-types";
 
 type DatasetsGridProps = {
   datasets: DatasetSummary[];
   canManageDatasets: boolean;
   isBusy?: boolean;
-  onEditDataset?: (datasetId: string) => void;
   onReorderDatasets?: (datasets: DatasetSummary[]) => void;
 };
 
@@ -27,13 +27,9 @@ const DATASET_GRID_TEMPLATE_COLUMNS =
 function DatasetActions({
   dataset,
   canManageDatasets,
-  isBusy,
-  onEditDataset,
 }: {
   dataset: DatasetSummary;
   canManageDatasets: boolean;
-  isBusy: boolean;
-  onEditDataset?: (datasetId: string) => void;
 }) {
   return (
     <div className="flex w-full justify-end text-right">
@@ -55,22 +51,21 @@ function DatasetActions({
           <DownloadIcon />
         </a>
         {canManageDatasets ? (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="shrink-0"
-            disabled={isBusy}
-            data-smoke-trigger="dataset-edit-sheet"
+          <Link
+            href={`/dashboard/datasets/${dataset.id}/edit`}
+            className={buttonVariants({
+              variant: "outline",
+              size: "sm",
+              className: "shrink-0",
+            })}
             data-smoke-write="safe"
             data-smoke-dataset-id={dataset.id}
             onClick={(event) => {
               event.stopPropagation();
-              onEditDataset?.(dataset.id);
             }}
           >
             Edit
-          </Button>
+          </Link>
         ) : null}
       </div>
     </div>
@@ -80,15 +75,11 @@ function DatasetActions({
 function DatasetListRow({
   dataset,
   canManageDatasets,
-  isBusy,
   isSortable,
-  onEditDataset,
 }: {
   dataset: DatasetSummary;
   canManageDatasets: boolean;
-  isBusy: boolean;
   isSortable: boolean;
-  onEditDataset?: (datasetId: string) => void;
 }) {
   const router = useRouter();
 
@@ -152,8 +143,6 @@ function DatasetListRow({
       <DatasetActions
         dataset={dataset}
         canManageDatasets={canManageDatasets}
-        isBusy={isBusy}
-        onEditDataset={onEditDataset}
       />
     </div>
   );
@@ -177,7 +166,6 @@ export function DatasetsGrid({
   datasets,
   canManageDatasets,
   isBusy = false,
-  onEditDataset,
   onReorderDatasets,
 }: DatasetsGridProps) {
   const canReorderDatasets =
@@ -209,9 +197,7 @@ export function DatasetsGrid({
                   <DatasetListRow
                     dataset={dataset}
                     canManageDatasets={canManageDatasets}
-                    isBusy={isBusy}
                     isSortable
-                    onEditDataset={onEditDataset}
                   />
                 </SortableItem>
               ))}
@@ -223,9 +209,7 @@ export function DatasetsGrid({
                   key={dataset.id}
                   dataset={dataset}
                   canManageDatasets={canManageDatasets}
-                  isBusy={isBusy}
                   isSortable={false}
-                  onEditDataset={onEditDataset}
                 />
               ))}
             </div>

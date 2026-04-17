@@ -98,6 +98,20 @@ export const smokeRouteSpecs: SmokeRouteSpec[] = [
     pageId: "dataset-detail",
   },
   {
+    id: "dataset-edit-viewer-redirect",
+    role: "viewer",
+    pageFile: "src/app/dashboard/datasets/[datasetId]/edit/page.tsx",
+    path: "/dashboard/datasets/{{primaryDatasetId}}/edit",
+    redirectTo: "/dashboard/datasets/{{primaryDatasetId}}",
+  },
+  {
+    id: "dataset-edit-admin",
+    role: "admin",
+    pageFile: "src/app/dashboard/datasets/[datasetId]/edit/page.tsx",
+    path: "/dashboard/datasets/{{primaryDatasetId}}/edit",
+    pageId: "dataset-edit",
+  },
+  {
     id: "field-definitions-viewer",
     role: "viewer",
     pageFile: "src/app/dashboard/field-definitions/page.tsx",

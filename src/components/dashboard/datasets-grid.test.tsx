@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { fireEvent, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { DatasetsGrid } from "./datasets-grid";
@@ -49,14 +49,11 @@ const dataset = {
 };
 
 describe("DatasetsGrid", () => {
-  it("renders separated download and edit controls in a scroll-safe table", () => {
-    const onEditDataset = vi.fn();
-
+  it("renders separated download and edit links in a scroll-safe table", () => {
     const { container } = render(
       <DatasetsGrid
         datasets={[dataset]}
         canManageDatasets
-        onEditDataset={onEditDataset}
       />,
     );
 
@@ -71,9 +68,9 @@ describe("DatasetsGrid", () => {
         .getAttribute("href"),
     ).toBe(`/api/datasets/${dataset.id}/download`);
 
-    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+    const editLink = screen.getByRole("link", { name: "Edit" });
+    expect(editLink.getAttribute("href")).toBe(`/dashboard/datasets/${dataset.id}/edit`);
 
-    expect(onEditDataset).toHaveBeenCalledWith(dataset.id);
     expect(pushMock).not.toHaveBeenCalled();
   });
 });

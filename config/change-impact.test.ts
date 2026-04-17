@@ -22,6 +22,23 @@ describe("change-impact", () => {
     expect(impact.requiredCommands).toContain("verify:test-delta");
   });
 
+  it("targets the standalone dataset edit smoke routes for dataset flow changes", () => {
+    const impact = resolveChangeImpact([
+      "src/app/dashboard/datasets/[datasetId]/edit/page.tsx",
+      "src/components/dashboard/dataset-edit-page-client.tsx",
+    ]);
+
+    expect(impact.requiredCommands).toEqual(
+      expect.arrayContaining([
+        "typecheck",
+        "verify:test-delta",
+        "verify:app",
+        "smoke:check",
+        "test:ui:smoke:targeted",
+      ]),
+    );
+  });
+
   it("requires database security and drift checks for migration changes", () => {
     const impact = resolveChangeImpact([
       "supabase/migrations/20260415172837_add_field_definition_viewer_visibility.sql",
