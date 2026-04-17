@@ -2,28 +2,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getCurrentIdentity } from "@/lib/auth";
 import { replaceDatasetContents } from "@/lib/datasets";
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { POST } from "./route";
 
 vi.mock("@/lib/auth", () => ({
   getCurrentIdentity: vi.fn(),
-}));
-
-const { removeMock, fromMock } = vi.hoisted(() => {
-  const removeMock = vi.fn();
-  const fromMock = vi.fn(() => ({
-    remove: removeMock,
-  }));
-
-  return { removeMock, fromMock };
-});
-
-vi.mock("@/lib/supabase/admin", () => ({
-  createSupabaseAdminClient: vi.fn(() => ({
-    storage: {
-      from: fromMock,
-    },
-  })),
 }));
 
 vi.mock("@/lib/datasets", () => ({
@@ -32,7 +14,6 @@ vi.mock("@/lib/datasets", () => ({
 
 const getCurrentIdentityMock = vi.mocked(getCurrentIdentity);
 const replaceDatasetContentsMock = vi.mocked(replaceDatasetContents);
-const createSupabaseAdminClientMock = vi.mocked(createSupabaseAdminClient);
 
 const identity = {
   ownerId: "supabase-user",
@@ -51,7 +32,7 @@ const context = {
 const dataset = {
   id: "f0000000-0000-4000-8000-000000000001",
   sortOrder: 0,
-  fileName: "customers-v2.csv",
+  fileName: "customers.csv",
   blobUrl:
     "https://example.supabase.co/storage/v1/object/datasets/datasets/csv/customers-v2.csv",
   blobPath: "datasets/csv/customers-v2.csv",
@@ -70,8 +51,6 @@ const dataset = {
 describe("/api/datasets/[datasetId]/replace", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    removeMock.mockResolvedValue({ data: [], error: null });
-    fromMock.mockReturnValue({ remove: removeMock });
     getCurrentIdentityMock.mockResolvedValue(identity);
   });
 
@@ -82,7 +61,6 @@ describe("/api/datasets/[datasetId]/replace", () => {
       new Request("http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001/replace", {
         method: "POST",
         body: JSON.stringify({
-          fileName: "customers-v2.csv",
           blobPath: "datasets/csv/customers-v2.csv",
           sizeBytes: 100,
           columns: [{ key: "email", label: "Email", sourceIndex: 0 }],
@@ -106,7 +84,6 @@ describe("/api/datasets/[datasetId]/replace", () => {
       new Request("http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001/replace", {
         method: "POST",
         body: JSON.stringify({
-          fileName: "customers-v2.csv",
           blobPath: "datasets/csv/customers-v2.csv",
           sizeBytes: 100,
           columns: [{ key: "email", label: "Email", sourceIndex: 0 }],
@@ -119,17 +96,15 @@ describe("/api/datasets/[datasetId]/replace", () => {
     expect(replaceDatasetContentsMock).not.toHaveBeenCalled();
   });
 
-  it("replaces the dataset and removes the previous stored CSV", async () => {
+  it("replaces the dataset while preserving upload history", async () => {
     replaceDatasetContentsMock.mockResolvedValue({
       dataset,
-      previousBlobPath: "datasets/csv/customers.csv",
     });
 
     const response = await POST(
       new Request("http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001/replace", {
         method: "POST",
         body: JSON.stringify({
-          fileName: "customers-v2.csv",
           blobPath: "datasets/csv/customers-v2.csv",
           sizeBytes: 100,
           columns: [{ key: "email", label: "Email", sourceIndex: 0 }],
@@ -142,14 +117,12 @@ describe("/api/datasets/[datasetId]/replace", () => {
     await expect(response.json()).resolves.toEqual({ dataset });
     expect(replaceDatasetContentsMock).toHaveBeenCalledWith({
       datasetId: dataset.id,
-      fileName: "customers-v2.csv",
+      actorOwnerId: identity.ownerId,
+      actorEmail: identity.email,
       blobPath: "datasets/csv/customers-v2.csv",
       sizeBytes: 100,
       columns: [{ key: "email", label: "Email", sourceIndex: 0 }],
     });
-    expect(createSupabaseAdminClientMock).toHaveBeenCalledWith();
-    expect(fromMock).toHaveBeenCalledWith("datasets");
-    expect(removeMock).toHaveBeenCalledWith(["datasets/csv/customers.csv"]);
   });
 
   it("returns not found when the dataset does not exist", async () => {
@@ -159,7 +132,6 @@ describe("/api/datasets/[datasetId]/replace", () => {
       new Request("http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001/replace", {
         method: "POST",
         body: JSON.stringify({
-          fileName: "customers-v2.csv",
           blobPath: "datasets/csv/customers-v2.csv",
           sizeBytes: 100,
           columns: [{ key: "email", label: "Email", sourceIndex: 0 }],
@@ -169,6 +141,5 @@ describe("/api/datasets/[datasetId]/replace", () => {
     );
 
     expect(response.status).toBe(404);
-    expect(removeMock).not.toHaveBeenCalled();
   });
 });

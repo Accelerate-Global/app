@@ -32,9 +32,40 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const siteIconVersion = "20260417";
+const shouldLoadAdobeFontStylesheet = process.env.UI_SMOKE_ENABLED !== "1";
+
 export const metadata: Metadata = {
   title: "Accelerate Global",
   description: "Access shared people group datasets for Accelerate Global.",
+  manifest: "/manifest.webmanifest",
+  icons: {
+    shortcut: [{ url: `/ag-site-favicon.ico?v=${siteIconVersion}` }],
+    icon: [
+      {
+        url: `/ag-site-icon-32.png?v=${siteIconVersion}`,
+        sizes: "32x32",
+        type: "image/png",
+      },
+      {
+        url: `/ag-site-icon-192.png?v=${siteIconVersion}`,
+        sizes: "192x192",
+        type: "image/png",
+      },
+      {
+        url: `/ag-site-icon-512.png?v=${siteIconVersion}`,
+        sizes: "512x512",
+        type: "image/png",
+      },
+    ],
+    apple: [
+      {
+        url: `/ag-apple-touch-icon.png?v=${siteIconVersion}`,
+        sizes: "180x180",
+        type: "image/png",
+      },
+    ],
+  },
 };
 
 export default function RootLayout({
@@ -49,7 +80,9 @@ export default function RootLayout({
       className={`${lexend.variable} ${geistMono.variable} h-full antialiased`}
     >
       <head>
-        <link rel="stylesheet" href="https://use.typekit.net/nyp5ner.css" />
+        {shouldLoadAdobeFontStylesheet ? (
+          <link rel="stylesheet" href="https://use.typekit.net/nyp5ner.css" />
+        ) : null}
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body className="flex min-h-full flex-col">

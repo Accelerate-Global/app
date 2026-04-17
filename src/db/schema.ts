@@ -1,6 +1,11 @@
 import { sql } from "drizzle-orm";
 
-import type { CsvColumn, DatasetStatus, DatasetTag } from "@/lib/api-types";
+import type {
+  CsvColumn,
+  DatasetStatus,
+  DatasetTag,
+  DatasetVersionAction,
+} from "@/lib/api-types";
 import type { SavedDatasetFilterState } from "@/lib/api-types";
 import {
   boolean,
@@ -23,6 +28,17 @@ export const datasets = pgTable(
     sortOrder: integer("sort_order").notNull().default(0),
     blobUrl: text("blob_url").notNull(),
     blobPath: text("blob_path").notNull(),
+    currentVersionAction: text("current_version_action")
+      .$type<DatasetVersionAction>()
+      .notNull()
+      .default("upload"),
+    currentVersionActorOwnerId: text("current_version_actor_owner_id").notNull(),
+    currentVersionActorEmail: text("current_version_actor_email"),
+    currentVersionCreatedAt: timestamp("current_version_created_at", {
+      withTimezone: true,
+    })
+      .defaultNow()
+      .notNull(),
     isPrimary: boolean("is_primary").notNull().default(false),
     status: text("status").$type<DatasetStatus>().notNull().default("processing"),
     rowCount: integer("row_count").notNull().default(0),
@@ -66,6 +82,65 @@ export const datasetRows = pgTable(
       table.rowIndex,
     ),
     index("dataset_rows_dataset_idx").on(table.datasetId),
+  ],
+);
+
+export const datasetVersions = pgTable(
+  "dataset_versions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    datasetId: uuid("dataset_id")
+      .notNull()
+      .references(() => datasets.id, { onDelete: "cascade" }),
+    fileName: text("file_name").notNull(),
+    blobUrl: text("blob_url").notNull(),
+    blobPath: text("blob_path").notNull(),
+    action: text("action").$type<DatasetVersionAction>().notNull(),
+    actorOwnerId: text("actor_owner_id").notNull(),
+    actorEmail: text("actor_email"),
+    status: text("status").$type<DatasetStatus>().notNull(),
+    rowCount: integer("row_count").notNull().default(0),
+    sizeBytes: integer("size_bytes").notNull(),
+    columns: jsonb("columns").$type<CsvColumn[]>().notNull(),
+    error: text("error"),
+    versionCreatedAt: timestamp("version_created_at", { withTimezone: true })
+      .notNull(),
+    archivedAt: timestamp("archived_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("dataset_versions_dataset_version_created_idx").on(
+      table.datasetId,
+      table.versionCreatedAt,
+      table.archivedAt,
+    ),
+    index("dataset_versions_dataset_archived_idx").on(
+      table.datasetId,
+      table.archivedAt,
+    ),
+  ],
+);
+
+export const datasetVersionRows = pgTable(
+  "dataset_version_rows",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    versionId: uuid("version_id")
+      .notNull()
+      .references(() => datasetVersions.id, { onDelete: "cascade" }),
+    rowIndex: integer("row_index").notNull(),
+    data: jsonb("data").$type<Record<string, string>>().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("dataset_version_rows_version_row_idx").on(
+      table.versionId,
+      table.rowIndex,
+    ),
+    index("dataset_version_rows_version_idx").on(table.versionId),
   ],
 );
 

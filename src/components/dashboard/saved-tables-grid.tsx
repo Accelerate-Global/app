@@ -3,7 +3,6 @@
 import { DownloadIcon, PanelRightOpenIcon } from "lucide-react";
 
 import { Button, buttonVariants } from "@/components/ui/button";
-import { ButtonGroup } from "@/components/ui/button-group";
 import type { SavedDatasetTable } from "@/lib/api-types";
 
 type SavedTablesGridProps = {
@@ -23,7 +22,7 @@ function SavedTableActions({
 }) {
   return (
     <div className="flex w-full justify-end text-right">
-      <ButtonGroup>
+      <div className="flex items-center justify-end gap-2">
         <a
           data-slot="button"
           className={buttonVariants({ variant: "outline", size: "icon-sm" })}
@@ -48,7 +47,7 @@ function SavedTableActions({
           <PanelRightOpenIcon />
           Details
         </Button>
-      </ButtonGroup>
+      </div>
     </div>
   );
 }
@@ -74,21 +73,21 @@ function SavedTableListRow({
   savedTable: SavedDatasetTable;
   onOpenDetails: (savedTableId: string) => void;
 }) {
+  const hasDetails = savedTable.details.trim().length > 0;
+
   return (
     <div
       className="grid items-center gap-4 px-5 py-4"
       style={{ gridTemplateColumns: SAVED_TABLE_GRID_TEMPLATE_COLUMNS }}
       data-smoke-saved-table-row={savedTable.id}
     >
-      <div className="min-w-0 space-y-1">
+      <div className="min-w-0">
         <p className="truncate font-medium text-foreground">{savedTable.name}</p>
-        {savedTable.details ? (
-          <p className="truncate text-sm text-muted-foreground">{savedTable.details}</p>
-        ) : (
+        {hasDetails ? (
           <p className="truncate text-sm text-muted-foreground">
-            No details added yet.
+            {savedTable.details}
           </p>
-        )}
+        ) : null}
       </div>
 
       <span className="truncate text-sm text-muted-foreground">

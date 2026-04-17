@@ -11,18 +11,28 @@ import {
 } from "drizzle-orm";
 
 import { getDb } from "@/db";
-import { datasetRows, datasets } from "@/db/schema";
+import {
+  datasetRows,
+  datasetVersionRows,
+  datasetVersions,
+  datasets,
+} from "@/db/schema";
 import type {
   CsvColumn,
   DatasetStatus,
   DatasetSummary,
   DatasetTag,
+  DatasetVersionSummary,
 } from "@/lib/api-types";
 import { normalizeDatasetHiddenColumnKeys } from "@/lib/dataset-column-visibility";
 import { getDatasetStorageObjectUrl } from "@/lib/dataset-storage";
 import { syncFieldDefinitionsForColumns } from "@/lib/field-definitions";
 
-function toDatasetSummary(row: typeof datasets.$inferSelect): DatasetSummary {
+type DbExecutor = Parameters<Parameters<ReturnType<typeof getDb>["transaction"]>[0]>[0];
+type DatasetRecord = typeof datasets.$inferSelect;
+type DatasetVersionRecord = typeof datasetVersions.$inferSelect;
+
+function toDatasetSummary(row: DatasetRecord): DatasetSummary {
   return {
     id: row.id,
     sortOrder: row.sortOrder,
@@ -40,6 +50,108 @@ function toDatasetSummary(row: typeof datasets.$inferSelect): DatasetSummary {
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
+}
+
+function toCurrentDatasetVersionSummary(row: DatasetRecord): DatasetVersionSummary {
+  return {
+    id: row.id,
+    datasetId: row.id,
+    isCurrent: true,
+    fileName: row.fileName,
+    action: row.currentVersionAction,
+    actorOwnerId: row.currentVersionActorOwnerId,
+    actorEmail: row.currentVersionActorEmail,
+    status: row.status,
+    rowCount: row.rowCount,
+    sizeBytes: row.sizeBytes,
+    columnCount: row.columns.length,
+    versionCreatedAt: row.currentVersionCreatedAt.toISOString(),
+    archivedAt: null,
+  };
+}
+
+function toDatasetVersionSummary(row: DatasetVersionRecord): DatasetVersionSummary {
+  return {
+    id: row.id,
+    datasetId: row.datasetId,
+    isCurrent: false,
+    fileName: row.fileName,
+    action: row.action,
+    actorOwnerId: row.actorOwnerId,
+    actorEmail: row.actorEmail,
+    status: row.status,
+    rowCount: row.rowCount,
+    sizeBytes: row.sizeBytes,
+    columnCount: row.columns.length,
+    versionCreatedAt: row.versionCreatedAt.toISOString(),
+    archivedAt: row.archivedAt.toISOString(),
+  };
+}
+
+export class DatasetVersionRevertConflictError extends Error {
+  readonly status = 409;
+
+  constructor(message = "Only ready dataset versions can be reverted.") {
+    super(message);
+    this.name = "DatasetVersionRevertConflictError";
+  }
+}
+
+async function archiveDatasetVersion(tx: DbExecutor, dataset: DatasetRecord) {
+  const [version] = await tx
+    .insert(datasetVersions)
+    .values({
+      datasetId: dataset.id,
+      fileName: dataset.fileName,
+      blobUrl: dataset.blobUrl,
+      blobPath: dataset.blobPath,
+      action: dataset.currentVersionAction,
+      actorOwnerId: dataset.currentVersionActorOwnerId,
+      actorEmail: dataset.currentVersionActorEmail,
+      status: dataset.status,
+      rowCount: dataset.rowCount,
+      sizeBytes: dataset.sizeBytes,
+      columns: dataset.columns,
+      error: dataset.error,
+      versionCreatedAt: dataset.currentVersionCreatedAt,
+    })
+    .returning();
+
+  await tx.execute(sql`
+    insert into ${datasetVersionRows} (
+      "version_id",
+      "row_index",
+      "data"
+    )
+    select
+      ${version.id},
+      ${datasetRows.rowIndex},
+      ${datasetRows.data}
+    from ${datasetRows}
+    where ${datasetRows.datasetId} = ${dataset.id}
+  `);
+
+  return version;
+}
+
+async function restoreDatasetVersionRows(
+  tx: DbExecutor,
+  datasetId: string,
+  versionId: string,
+) {
+  await tx.execute(sql`
+    insert into ${datasetRows} (
+      "dataset_id",
+      "row_index",
+      "data"
+    )
+    select
+      ${datasetId},
+      ${datasetVersionRows.rowIndex},
+      ${datasetVersionRows.data}
+    from ${datasetVersionRows}
+    where ${datasetVersionRows.versionId} = ${versionId}
+  `);
 }
 
 export async function listDatasets() {
@@ -61,6 +173,29 @@ export async function getDataset(datasetId: string) {
   return dataset ? toDatasetSummary(dataset) : null;
 }
 
+export async function listDatasetVersions(datasetId: string) {
+  const [dataset] = await getDb()
+    .select()
+    .from(datasets)
+    .where(eq(datasets.id, datasetId))
+    .limit(1);
+
+  if (!dataset) {
+    return null;
+  }
+
+  const versions = await getDb()
+    .select()
+    .from(datasetVersions)
+    .where(eq(datasetVersions.datasetId, datasetId))
+    .orderBy(desc(datasetVersions.versionCreatedAt), desc(datasetVersions.archivedAt));
+
+  return [
+    toCurrentDatasetVersionSummary(dataset),
+    ...versions.map(toDatasetVersionSummary),
+  ];
+}
+
 export async function getDefaultDataset() {
   const [dataset] = await getDb()
     .select()
@@ -73,6 +208,7 @@ export async function getDefaultDataset() {
 
 export async function createDataset(input: {
   ownerId: string;
+  actorEmail?: string | null;
   fileName: string;
   blobPath: string;
   sizeBytes: number;
@@ -85,6 +221,7 @@ export async function createDataset(input: {
       })
       .from(datasets);
 
+    const now = new Date();
     const [created] = await tx
       .insert(datasets)
       .values({
@@ -93,6 +230,10 @@ export async function createDataset(input: {
         sortOrder: (position?.value ?? -1) + 1,
         blobUrl: getDatasetStorageObjectUrl(input.blobPath),
         blobPath: input.blobPath,
+        currentVersionAction: "upload",
+        currentVersionActorOwnerId: input.ownerId,
+        currentVersionActorEmail: input.actorEmail ?? null,
+        currentVersionCreatedAt: now,
         sizeBytes: input.sizeBytes,
         columns: input.columns,
         hiddenColumnKeys: [],
@@ -194,7 +335,8 @@ export async function updateDatasetDetails(input: {
 
 export async function replaceDatasetContents(input: {
   datasetId: string;
-  fileName: string;
+  actorOwnerId: string;
+  actorEmail?: string | null;
   blobPath: string;
   sizeBytes: number;
   columns: CsvColumn[];
@@ -210,14 +352,20 @@ export async function replaceDatasetContents(input: {
       return null;
     }
 
+    await archiveDatasetVersion(tx, existing);
     await tx.delete(datasetRows).where(eq(datasetRows.datasetId, input.datasetId));
 
+    const now = new Date();
     const [updated] = await tx
       .update(datasets)
       .set({
-        fileName: input.fileName,
+        fileName: existing.fileName,
         blobUrl: getDatasetStorageObjectUrl(input.blobPath),
         blobPath: input.blobPath,
+        currentVersionAction: "replace",
+        currentVersionActorOwnerId: input.actorOwnerId,
+        currentVersionActorEmail: input.actorEmail ?? null,
+        currentVersionCreatedAt: now,
         sizeBytes: input.sizeBytes,
         columns: input.columns,
         hiddenColumnKeys: normalizeDatasetHiddenColumnKeys(
@@ -228,7 +376,7 @@ export async function replaceDatasetContents(input: {
         status: "processing",
         rowCount: 0,
         error: null,
-        updatedAt: new Date(),
+        updatedAt: now,
       })
       .where(eq(datasets.id, input.datasetId))
       .returning();
@@ -240,26 +388,111 @@ export async function replaceDatasetContents(input: {
 
     return {
       dataset: toDatasetSummary(updated),
-      previousBlobPath: existing.blobPath,
+    };
+  });
+}
+
+export async function revertDatasetVersion(input: {
+  datasetId: string;
+  versionId: string;
+  actorOwnerId: string;
+  actorEmail?: string | null;
+}) {
+  return getDb().transaction(async (tx) => {
+    const [existing] = await tx
+      .select()
+      .from(datasets)
+      .where(eq(datasets.id, input.datasetId))
+      .limit(1);
+
+    if (!existing) {
+      return null;
+    }
+
+    const [version] = await tx
+      .select()
+      .from(datasetVersions)
+      .where(
+        and(
+          eq(datasetVersions.id, input.versionId),
+          eq(datasetVersions.datasetId, input.datasetId),
+        ),
+      )
+      .limit(1);
+
+    if (!version) {
+      return null;
+    }
+
+    if (version.status !== "ready") {
+      throw new DatasetVersionRevertConflictError();
+    }
+
+    await archiveDatasetVersion(tx, existing);
+    await tx.delete(datasetRows).where(eq(datasetRows.datasetId, input.datasetId));
+    await restoreDatasetVersionRows(tx, input.datasetId, input.versionId);
+
+    const now = new Date();
+    const [updated] = await tx
+      .update(datasets)
+      .set({
+        fileName: existing.fileName,
+        blobUrl: version.blobUrl,
+        blobPath: version.blobPath,
+        currentVersionAction: "revert",
+        currentVersionActorOwnerId: input.actorOwnerId,
+        currentVersionActorEmail: input.actorEmail ?? null,
+        currentVersionCreatedAt: now,
+        status: version.status,
+        rowCount: version.rowCount,
+        sizeBytes: version.sizeBytes,
+        columns: version.columns,
+        hiddenColumnKeys: normalizeDatasetHiddenColumnKeys(
+          existing.hiddenColumnKeys,
+          version.columns,
+        ),
+        error: version.error,
+        updatedAt: now,
+      })
+      .where(eq(datasets.id, input.datasetId))
+      .returning();
+
+    await syncFieldDefinitionsForColumns({
+      columns: version.columns,
+      executor: tx,
+    });
+
+    return {
+      dataset: toDatasetSummary(updated),
     };
   });
 }
 
 export async function deleteDataset(datasetId: string) {
-  const [dataset] = await getDb()
-    .select()
-    .from(datasets)
-    .where(eq(datasets.id, datasetId))
-    .limit(1);
+  return getDb().transaction(async (tx) => {
+    const [dataset] = await tx
+      .select()
+      .from(datasets)
+      .where(eq(datasets.id, datasetId))
+      .limit(1);
 
-  if (!dataset) {
-    return null;
-  }
+    if (!dataset) {
+      return null;
+    }
 
-  await getDb().delete(datasetRows).where(eq(datasetRows.datasetId, datasetId));
-  await getDb().delete(datasets).where(eq(datasets.id, datasetId));
+    const versionBlobRows = await tx
+      .select({ blobPath: datasetVersions.blobPath })
+      .from(datasetVersions)
+      .where(eq(datasetVersions.datasetId, datasetId));
 
-  return toDatasetSummary(dataset);
+    await tx.delete(datasetRows).where(eq(datasetRows.datasetId, datasetId));
+    await tx.delete(datasets).where(eq(datasets.id, datasetId));
+
+    return {
+      dataset: toDatasetSummary(dataset),
+      blobPaths: [...new Set([dataset.blobPath, ...versionBlobRows.map((row) => row.blobPath)])],
+    };
+  });
 }
 
 export async function reorderDatasets(datasetIds: string[]) {

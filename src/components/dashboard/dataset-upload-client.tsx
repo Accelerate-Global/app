@@ -136,7 +136,6 @@ async function replaceDatasetRecord(input: {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      fileName: input.file.name,
       blobPath: input.blobPath,
       sizeBytes: input.file.size,
       columns: input.columns,
@@ -286,6 +285,7 @@ export function DatasetUploadClient({
 
   async function handleFile(file: File) {
     let datasetId: string | null = null;
+    const uploadFileName = isReplacing ? targetDataset.fileName : file.name;
 
     try {
       if (!isCsvFile(file)) {
@@ -298,7 +298,7 @@ export function DatasetUploadClient({
 
       setCompletedDataset(null);
       setUpload({
-        fileName: file.name,
+        fileName: uploadFileName,
         phase: "uploading",
         progress: 2,
         rowsParsed: 0,
@@ -406,7 +406,7 @@ export function DatasetUploadClient({
 
       setCompletedDataset(null);
       setUpload({
-        fileName: file.name,
+        fileName: uploadFileName,
         phase: "failed",
         progress: 100,
         rowsParsed: 0,
@@ -529,7 +529,7 @@ export function DatasetUploadClient({
               href="/dashboard#datasets"
               className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}
             >
-              Back to data
+              Dashboard
             </Link>
           </AlertDescription>
         </Alert>

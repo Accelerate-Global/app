@@ -1,12 +1,8 @@
 import { getCurrentIdentity } from "@/lib/auth";
 import { replaceDatasetContents } from "@/lib/datasets";
-import {
-  getDatasetStorageBucket,
-  isDatasetStoragePath,
-} from "@/lib/dataset-storage";
+import { isDatasetStoragePath } from "@/lib/dataset-storage";
 import { jsonAdminOnlyError, jsonError } from "@/lib/http";
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { createDatasetSchema } from "@/lib/validation";
+import { replaceDatasetSchema } from "@/lib/validation";
 
 type DatasetContext = {
   params: Promise<{
@@ -25,7 +21,7 @@ export async function POST(request: Request, context: DatasetContext) {
     return jsonAdminOnlyError("replace datasets");
   }
 
-  const parsed = createDatasetSchema.safeParse(await request.json());
+  const parsed = replaceDatasetSchema.safeParse(await request.json());
 
   if (!parsed.success) {
     return jsonError("Dataset replacement payload is invalid.");
@@ -38,29 +34,13 @@ export async function POST(request: Request, context: DatasetContext) {
   const { datasetId } = await context.params;
   const replacement = await replaceDatasetContents({
     datasetId,
+    actorOwnerId: identity.ownerId,
+    actorEmail: identity.email,
     ...parsed.data,
   });
 
   if (!replacement) {
     return jsonError("Dataset not found.", 404);
-  }
-
-  if (replacement.previousBlobPath !== parsed.data.blobPath) {
-    try {
-      const supabase = createSupabaseAdminClient();
-      const deletion = await supabase.storage
-        .from(getDatasetStorageBucket())
-        .remove([replacement.previousBlobPath]);
-
-      if (deletion.error) {
-        console.error(
-          "Failed to delete previous dataset file from Supabase Storage",
-          deletion.error,
-        );
-      }
-    } catch (error) {
-      console.error("Failed to delete previous dataset file from Supabase Storage", error);
-    }
   }
 
   return Response.json({ dataset: replacement.dataset });

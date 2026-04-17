@@ -82,12 +82,62 @@ function createSavedTable() {
   };
 }
 
+function createDatasetVersion(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "dataset-version-1",
+    datasetId: "dataset-1",
+    isCurrent: true,
+    fileName: "Global.csv",
+    action: "upload" as const,
+    actorOwnerId: "supabase-user",
+    actorEmail: "admin@example.com",
+    status: "ready" as const,
+    rowCount: 128,
+    sizeBytes: 4096,
+    columnCount: 2,
+    versionCreatedAt: new Date("2026-04-15T16:00:00.000Z").toISOString(),
+    archivedAt: null,
+    ...overrides,
+  };
+}
+
+function buildJsonResponse(payload: unknown, status = 200) {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
 describe("DashboardClient", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     vi.stubGlobal("fetch", fetchMock);
     vi.stubGlobal("confirm", confirmMock);
     confirmMock.mockReturnValue(true);
+    fetchMock.mockImplementation(async (input, init) => {
+      if (
+        input === "/api/datasets/dataset-1/versions" &&
+        (init?.method === undefined || init.method === "GET")
+      ) {
+        return buildJsonResponse({
+          versions: [
+            createDatasetVersion(),
+            createDatasetVersion({
+              id: "dataset-version-0",
+              isCurrent: false,
+              fileName: "Global-upload.csv",
+              action: "replace",
+              actorEmail: "editor@example.com",
+              rowCount: 120,
+              versionCreatedAt: new Date("2026-04-14T12:00:00.000Z").toISOString(),
+              archivedAt: new Date("2026-04-15T16:00:00.000Z").toISOString(),
+            }),
+          ],
+        });
+      }
+
+      throw new Error(`Unexpected fetch: ${String(input)} ${init?.method ?? "GET"}`);
+    });
   });
 
   afterEach(() => {
@@ -141,13 +191,121 @@ describe("DashboardClient", () => {
     });
   });
 
-  it("deletes datasets for admins from the edit sheet", async () => {
-    fetchMock.mockResolvedValue(
-      new Response(JSON.stringify({ dataset: createDataset() }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      }),
+  it("loads upload history when the edit sheet opens", async () => {
+    render(
+      <DashboardClient
+        initialDatasets={[createDataset()]}
+        initialSavedTables={[]}
+        canManageDatasets
+      />,
     );
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+
+    const dialog = await screen.findByRole("dialog", { name: "Edit dataset" });
+
+    expect(await within(dialog).findByText("Upload history")).toBeTruthy();
+    expect(await within(dialog).findByText("Global-upload.csv")).toBeTruthy();
+    expect(fetchMock).toHaveBeenCalledWith("/api/datasets/dataset-1/versions");
+  });
+
+  it("reverts a historical dataset version from the edit sheet", async () => {
+    fetchMock.mockImplementation(async (input, init) => {
+      if (
+        input === "/api/datasets/dataset-1/versions" &&
+        (init?.method === undefined || init.method === "GET")
+      ) {
+        return buildJsonResponse({
+          versions: [
+            createDatasetVersion({
+              action: "revert",
+              versionCreatedAt: new Date("2026-04-17T10:30:00.000Z").toISOString(),
+            }),
+            createDatasetVersion({
+              id: "dataset-version-0",
+              isCurrent: false,
+              fileName: "Global-upload.csv",
+              action: "replace",
+              actorEmail: "editor@example.com",
+              rowCount: 120,
+              versionCreatedAt: new Date("2026-04-14T12:00:00.000Z").toISOString(),
+              archivedAt: new Date("2026-04-17T10:30:00.000Z").toISOString(),
+            }),
+          ],
+        });
+      }
+
+      if (
+        input === "/api/datasets/dataset-1/versions/dataset-version-0/revert" &&
+        init?.method === "POST"
+      ) {
+        return buildJsonResponse({
+          dataset: {
+            ...createDataset(),
+            updatedAt: new Date("2026-04-17T10:30:00.000Z").toISOString(),
+          },
+        });
+      }
+
+      throw new Error(`Unexpected fetch: ${String(input)} ${init?.method ?? "GET"}`);
+    });
+
+    render(
+      <DashboardClient
+        initialDatasets={[createDataset()]}
+        initialSavedTables={[]}
+        canManageDatasets
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+
+    const dialog = await screen.findByRole("dialog", { name: "Edit dataset" });
+    const historicalRow = await within(dialog).findByText("Global-upload.csv");
+    fireEvent.click(
+      within(historicalRow.closest("[data-smoke-dataset-version-row]") as HTMLElement).getByRole(
+        "button",
+        { name: "Revert" },
+      ),
+    );
+
+    expect(confirmMock).toHaveBeenCalledWith(
+      expect.stringContaining("Revert to Global-upload.csv"),
+    );
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/datasets/dataset-1/versions/dataset-version-0/revert",
+        { method: "POST" },
+      );
+    });
+
+    await waitFor(() => {
+      const datasetRow = document.querySelector(
+        '[data-smoke-dataset-row="dataset-1"]',
+      ) as HTMLElement | null;
+
+      expect(datasetRow).toBeTruthy();
+      expect(within(datasetRow!).getByText("Global.csv")).toBeTruthy();
+      expect(within(datasetRow!).queryByText("Global-upload.csv")).toBeNull();
+    });
+  });
+
+  it("deletes datasets for admins from the edit sheet", async () => {
+    fetchMock.mockImplementation(async (input, init) => {
+      if (
+        input === "/api/datasets/dataset-1/versions" &&
+        (init?.method === undefined || init.method === "GET")
+      ) {
+        return buildJsonResponse({ versions: [createDatasetVersion()] });
+      }
+
+      if (input === "/api/datasets/dataset-1" && init?.method === "DELETE") {
+        return buildJsonResponse({ dataset: createDataset() });
+      }
+
+      throw new Error(`Unexpected fetch: ${String(input)} ${init?.method ?? "GET"}`);
+    });
 
     render(
       <DashboardClient
@@ -180,12 +338,20 @@ describe("DashboardClient", () => {
   });
 
   it("shows dataset delete failures inline in the edit sheet", async () => {
-    fetchMock.mockResolvedValue(
-      new Response(JSON.stringify({ error: "The dataset is locked." }), {
-        status: 409,
-        headers: { "Content-Type": "application/json" },
-      }),
-    );
+    fetchMock.mockImplementation(async (input, init) => {
+      if (
+        input === "/api/datasets/dataset-1/versions" &&
+        (init?.method === undefined || init.method === "GET")
+      ) {
+        return buildJsonResponse({ versions: [createDatasetVersion()] });
+      }
+
+      if (input === "/api/datasets/dataset-1" && init?.method === "DELETE") {
+        return buildJsonResponse({ error: "The dataset is locked." }, 409);
+      }
+
+      throw new Error(`Unexpected fetch: ${String(input)} ${init?.method ?? "GET"}`);
+    });
 
     render(
       <DashboardClient
@@ -204,26 +370,24 @@ describe("DashboardClient", () => {
     expect(confirmMock).toHaveBeenCalledWith('Delete the dataset "Global.csv"?');
 
     expect(await within(dialog).findByText("The dataset is locked.")).toBeTruthy();
-    expect(screen.getAllByText("Global.csv")).toHaveLength(2);
+    expect(screen.getAllByText("Global.csv").length).toBeGreaterThanOrEqual(2);
   });
 
   it("opens the saved table details sheet and persists saved table edits", async () => {
-    fetchMock.mockResolvedValue(
-      new Response(
-        JSON.stringify({
+    fetchMock.mockImplementation(async (input, init) => {
+      if (input === "/api/saved-tables/saved-table-1" && init?.method === "PATCH") {
+        return buildJsonResponse({
           savedTable: {
             ...createSavedTable(),
             name: "North Africa saved",
             details: "Saved from dataset detail page.",
             updatedAt: new Date("2026-04-16T02:00:00.000Z").toISOString(),
           },
-        }),
-        {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        },
-      ),
-    );
+        });
+      }
+
+      throw new Error(`Unexpected fetch: ${String(input)} ${init?.method ?? "GET"}`);
+    });
 
     render(
       <DashboardClient

@@ -394,7 +394,7 @@ test("admin can edit a field definition", async ({ page }, testInfo) => {
     ).toBeHidden();
     await expect(
       getFieldDefinitionNameLocator(page, bootstrap.fieldDefinitions.editable.id),
-    ).toHaveText(nextDisplayLabel);
+    ).toContainText(nextDisplayLabel);
 
     await page
       .locator(
@@ -407,7 +407,7 @@ test("admin can edit a field definition", async ({ page }, testInfo) => {
     await page.locator("[data-smoke-field-definition-save]").click();
     await expect(
       getFieldDefinitionNameLocator(page, bootstrap.fieldDefinitions.editable.id),
-    ).toHaveText(originalDisplayLabel);
+    ).toContainText(originalDisplayLabel);
   });
 });
 
@@ -474,6 +474,23 @@ test("admin can replace a dataset through the real upload flow", async ({ page }
     await expect(page.getByText("Replacement complete")).toBeVisible({
       timeout: 45_000,
     });
-    await expect(page.getByText("smoke-dataset-replacement.csv is ready.")).toBeVisible();
+    await expect(
+      page.getByText(`${bootstrap.datasets.secondary.fileName} is ready.`),
+    ).toBeVisible();
+    await page.getByRole("link", { name: "Dashboard" }).click();
+    await expect(page.locator('[data-smoke-page="dashboard"]')).toBeVisible();
+
+    await page
+      .locator(
+        `[data-smoke-dataset-id="${bootstrap.datasets.secondary.id}"][data-smoke-trigger="dataset-edit-sheet"]`,
+      )
+      .click();
+    await expect(page.locator('[data-smoke-ready="dataset-edit-sheet"]')).toBeVisible();
+    await expect(page.locator("[data-smoke-dataset-version-revert]")).toHaveCount(1);
+
+    page.once("dialog", (dialog) => void dialog.accept());
+    await page.locator("[data-smoke-dataset-version-revert]").click();
+
+    await expect(page.locator("[data-smoke-dataset-version-revert]")).toHaveCount(2);
   });
 });

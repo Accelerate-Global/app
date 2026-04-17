@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(68);
+select plan(84);
 
 select results_eq(
   $$
@@ -13,6 +13,8 @@ select results_eq(
   $$,
   array[
     'dataset_rows'::name,
+    'dataset_version_rows'::name,
+    'dataset_versions'::name,
     'datasets'::name,
     'field_definition_sources'::name,
     'field_definitions'::name,
@@ -27,6 +29,8 @@ select results_eq(
 
 select ok((select relrowsecurity from pg_class join pg_namespace on pg_namespace.oid = pg_class.relnamespace where pg_namespace.nspname = 'public' and pg_class.relname = 'datasets' and pg_class.relkind = 'r'), 'datasets has row level security enabled');
 select ok((select relrowsecurity from pg_class join pg_namespace on pg_namespace.oid = pg_class.relnamespace where pg_namespace.nspname = 'public' and pg_class.relname = 'dataset_rows' and pg_class.relkind = 'r'), 'dataset_rows has row level security enabled');
+select ok((select relrowsecurity from pg_class join pg_namespace on pg_namespace.oid = pg_class.relnamespace where pg_namespace.nspname = 'public' and pg_class.relname = 'dataset_versions' and pg_class.relkind = 'r'), 'dataset_versions has row level security enabled');
+select ok((select relrowsecurity from pg_class join pg_namespace on pg_namespace.oid = pg_class.relnamespace where pg_namespace.nspname = 'public' and pg_class.relname = 'dataset_version_rows' and pg_class.relkind = 'r'), 'dataset_version_rows has row level security enabled');
 select ok((select relrowsecurity from pg_class join pg_namespace on pg_namespace.oid = pg_class.relnamespace where pg_namespace.nspname = 'public' and pg_class.relname = 'filter_regions' and pg_class.relkind = 'r'), 'filter_regions has row level security enabled');
 select ok((select relrowsecurity from pg_class join pg_namespace on pg_namespace.oid = pg_class.relnamespace where pg_namespace.nspname = 'public' and pg_class.relname = 'filter_region_countries' and pg_class.relkind = 'r'), 'filter_region_countries has row level security enabled');
 select ok((select relrowsecurity from pg_class join pg_namespace on pg_namespace.oid = pg_class.relnamespace where pg_namespace.nspname = 'public' and pg_class.relname = 'field_definitions' and pg_class.relkind = 'r'), 'field_definitions has row level security enabled');
@@ -44,6 +48,16 @@ select ok(exists(select 1 from pg_policies where schemaname = 'public' and table
 select ok(exists(select 1 from pg_policies where schemaname = 'public' and tablename = 'dataset_rows' and policyname = 'dataset admin can insert shared dataset rows' and cmd = 'INSERT'), 'dataset_rows has admin insert policy');
 select ok(exists(select 1 from pg_policies where schemaname = 'public' and tablename = 'dataset_rows' and policyname = 'dataset admin can update shared dataset rows' and cmd = 'UPDATE'), 'dataset_rows has admin update policy');
 select ok(exists(select 1 from pg_policies where schemaname = 'public' and tablename = 'dataset_rows' and policyname = 'dataset admin can delete shared dataset rows' and cmd = 'DELETE'), 'dataset_rows has admin delete policy');
+
+select ok(exists(select 1 from pg_policies where schemaname = 'public' and tablename = 'dataset_versions' and policyname = 'dataset admin can read dataset versions' and cmd = 'SELECT'), 'dataset_versions has admin read policy');
+select ok(exists(select 1 from pg_policies where schemaname = 'public' and tablename = 'dataset_versions' and policyname = 'dataset admin can insert dataset versions' and cmd = 'INSERT'), 'dataset_versions has admin insert policy');
+select ok(exists(select 1 from pg_policies where schemaname = 'public' and tablename = 'dataset_versions' and policyname = 'dataset admin can update dataset versions' and cmd = 'UPDATE'), 'dataset_versions has admin update policy');
+select ok(exists(select 1 from pg_policies where schemaname = 'public' and tablename = 'dataset_versions' and policyname = 'dataset admin can delete dataset versions' and cmd = 'DELETE'), 'dataset_versions has admin delete policy');
+
+select ok(exists(select 1 from pg_policies where schemaname = 'public' and tablename = 'dataset_version_rows' and policyname = 'dataset admin can read dataset version rows' and cmd = 'SELECT'), 'dataset_version_rows has admin read policy');
+select ok(exists(select 1 from pg_policies where schemaname = 'public' and tablename = 'dataset_version_rows' and policyname = 'dataset admin can insert dataset version rows' and cmd = 'INSERT'), 'dataset_version_rows has admin insert policy');
+select ok(exists(select 1 from pg_policies where schemaname = 'public' and tablename = 'dataset_version_rows' and policyname = 'dataset admin can update dataset version rows' and cmd = 'UPDATE'), 'dataset_version_rows has admin update policy');
+select ok(exists(select 1 from pg_policies where schemaname = 'public' and tablename = 'dataset_version_rows' and policyname = 'dataset admin can delete dataset version rows' and cmd = 'DELETE'), 'dataset_version_rows has admin delete policy');
 
 select ok(exists(select 1 from pg_policies where schemaname = 'public' and tablename = 'filter_regions' and policyname = 'authenticated users can read filter regions' and cmd = 'SELECT'), 'filter_regions has authenticated read policy');
 select ok(exists(select 1 from pg_policies where schemaname = 'public' and tablename = 'filter_regions' and policyname = 'dataset admin can insert filter regions' and cmd = 'INSERT'), 'filter_regions has admin insert policy');
@@ -193,6 +207,10 @@ insert into public.datasets (
   file_name,
   blob_url,
   blob_path,
+  current_version_action,
+  current_version_actor_owner_id,
+  current_version_actor_email,
+  current_version_created_at,
   size_bytes,
   columns
 )
@@ -202,6 +220,10 @@ values (
   'security-test.csv',
   'https://example.com/security-test.csv',
   'datasets/security-test.csv',
+  'upload',
+  'owner-1',
+  'security-admin@example.com',
+  now(),
   1,
   '[]'::jsonb
 );
@@ -217,6 +239,54 @@ values (
   '10000000-0000-4000-8000-000000000001',
   0,
   '{"email":"person@example.com"}'::jsonb
+);
+
+insert into public.dataset_versions (
+  id,
+  dataset_id,
+  file_name,
+  blob_url,
+  blob_path,
+  action,
+  actor_owner_id,
+  actor_email,
+  status,
+  row_count,
+  size_bytes,
+  columns,
+  error,
+  version_created_at,
+  archived_at
+)
+values (
+  '21000000-0000-4000-8000-000000000001',
+  '10000000-0000-4000-8000-000000000001',
+  'security-test-previous.csv',
+  'https://example.com/security-test-previous.csv',
+  'datasets/security-test-previous.csv',
+  'upload',
+  'owner-1',
+  'security-admin@example.com',
+  'ready',
+  1,
+  1,
+  '[]'::jsonb,
+  null,
+  now() - interval '1 day',
+  now()
+);
+
+insert into public.dataset_version_rows (
+  id,
+  version_id,
+  row_index,
+  data
+)
+values (
+  '22000000-0000-4000-8000-000000000001',
+  '21000000-0000-4000-8000-000000000001',
+  0,
+  '{"email":"previous@example.com"}'::jsonb
 );
 
 insert into public.filter_regions (
@@ -289,6 +359,8 @@ set local role anon;
 
 select results_eq($$ select count(*)::bigint from public.datasets where id = '10000000-0000-4000-8000-000000000001' $$, array[0::bigint], 'anon cannot read datasets');
 select results_eq($$ select count(*)::bigint from public.dataset_rows where dataset_id = '10000000-0000-4000-8000-000000000001' $$, array[0::bigint], 'anon cannot read dataset_rows');
+select results_eq($$ select count(*)::bigint from public.dataset_versions where dataset_id = '10000000-0000-4000-8000-000000000001' $$, array[0::bigint], 'anon cannot read dataset_versions');
+select results_eq($$ select count(*)::bigint from public.dataset_version_rows where version_id = '21000000-0000-4000-8000-000000000001' $$, array[0::bigint], 'anon cannot read dataset_version_rows');
 select results_eq($$ select count(*)::bigint from public.filter_regions where id = '30000000-0000-4000-8000-000000000001' $$, array[0::bigint], 'anon cannot read filter_regions');
 select results_eq($$ select count(*)::bigint from public.filter_region_countries where region_id = '30000000-0000-4000-8000-000000000001' $$, array[0::bigint], 'anon cannot read filter_region_countries');
 select results_eq($$ select count(*)::bigint from public.field_definitions where id = '40000000-0000-4000-8000-000000000001' $$, array[0::bigint], 'anon cannot read field_definitions');
@@ -303,6 +375,8 @@ set local role authenticated;
 
 select results_eq($$ select count(*)::bigint from public.datasets where id = '10000000-0000-4000-8000-000000000001' $$, array[1::bigint], 'authenticated users can read datasets');
 select results_eq($$ select count(*)::bigint from public.dataset_rows where dataset_id = '10000000-0000-4000-8000-000000000001' $$, array[1::bigint], 'authenticated users can read dataset_rows');
+select results_eq($$ select count(*)::bigint from public.dataset_versions where dataset_id = '10000000-0000-4000-8000-000000000001' $$, array[0::bigint], 'non-admin authenticated users cannot read dataset_versions');
+select results_eq($$ select count(*)::bigint from public.dataset_version_rows where version_id = '21000000-0000-4000-8000-000000000001' $$, array[0::bigint], 'non-admin authenticated users cannot read dataset_version_rows');
 select results_eq($$ select count(*)::bigint from public.filter_regions where id = '30000000-0000-4000-8000-000000000001' $$, array[1::bigint], 'authenticated users can read filter_regions');
 select results_eq($$ select count(*)::bigint from public.filter_region_countries where region_id = '30000000-0000-4000-8000-000000000001' $$, array[1::bigint], 'authenticated users can read filter_region_countries');
 select results_eq($$ select count(*)::bigint from public.field_definitions where id = '40000000-0000-4000-8000-000000000001' $$, array[1::bigint], 'authenticated users can read field_definitions');
@@ -368,6 +442,10 @@ select lives_ok(
       file_name,
       blob_url,
       blob_path,
+      current_version_action,
+      current_version_actor_owner_id,
+      current_version_actor_email,
+      current_version_created_at,
       size_bytes,
       columns
     )
@@ -377,11 +455,69 @@ select lives_ok(
       'admin-insert.csv',
       'https://example.com/admin-insert.csv',
       'datasets/admin-insert.csv',
+      'upload',
+      'owner-2',
+      'admin@example.com',
+      now(),
       1,
       '[]'::jsonb
     )
   $$,
   'dataset admin can insert datasets'
+);
+
+select lives_ok(
+  $$
+    insert into public.dataset_versions (
+      id,
+      dataset_id,
+      file_name,
+      blob_url,
+      blob_path,
+      action,
+      actor_owner_id,
+      actor_email,
+      status,
+      row_count,
+      size_bytes,
+      columns,
+      version_created_at
+    )
+    values (
+      '21000000-0000-4000-8000-000000000002',
+      '10000000-0000-4000-8000-000000000001',
+      'admin-version.csv',
+      'https://example.com/admin-version.csv',
+      'datasets/admin-version.csv',
+      'replace',
+      'owner-2',
+      'admin@example.com',
+      'ready',
+      0,
+      1,
+      '[]'::jsonb,
+      now()
+    )
+  $$,
+  'dataset admin can insert dataset_versions'
+);
+
+select lives_ok(
+  $$
+    insert into public.dataset_version_rows (
+      id,
+      version_id,
+      row_index,
+      data
+    )
+    values (
+      '22000000-0000-4000-8000-000000000002',
+      '21000000-0000-4000-8000-000000000002',
+      0,
+      '{"email":"admin-version@example.com"}'::jsonb
+    )
+  $$,
+  'dataset admin can insert dataset_version_rows'
 );
 
 select lives_ok(

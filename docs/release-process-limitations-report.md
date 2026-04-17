@@ -102,11 +102,13 @@ Validated in this run:
   `II-ricky-bobby-II <116130409+II-ricky-bobby-II@users.noreply.github.com>`.
 
 Newly confirmed remaining gap:
-- Ship orchestration reliability and observability still need hardening. During
-  the April 17 run, the scripted ship flow stalled without producing enough
-  state to distinguish an active wait from a blocked CLI call, even though the
-  GitHub checks later completed successfully.
+- The observed ship stall narrowed to the post-seed CLI handoff. During the
+  April 17 run, `scripts/seed-field-sources.ts` printed its success line but
+  continued holding the shared `@/db` singleton client open, which prevented
+  `pnpm ship` from advancing from remote seed into PR lookup.
 
 Next step:
-- Add explicit non-interactive command timeouts, state-change logging, richer
-  timeout/failure messages, and orchestration tests around `pnpm ship`.
+- Add explicit DB lifecycle support to `src/db/index.ts`, close the shared
+  client in release-critical CLI scripts such as
+  `scripts/seed-field-sources.ts`, and add a regression that proves control
+  returns to `scripts/ship.ts` after the remote seed step.

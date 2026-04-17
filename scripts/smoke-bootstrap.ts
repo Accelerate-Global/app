@@ -231,6 +231,7 @@ async function insertFilterRegions(sql: postgres.Sql) {
 async function insertDatasets(input: {
   sql: postgres.Sql;
   ownerId: string;
+  actorEmail: string;
   supabaseUrl: string;
   bucket: string;
 }) {
@@ -313,6 +314,10 @@ async function insertDatasets(input: {
           sort_order: 0,
           blob_url: buildBlobUrl(input.supabaseUrl, input.bucket, primaryBlobPath),
           blob_path: primaryBlobPath,
+          current_version_action: "upload",
+          current_version_actor_owner_id: input.ownerId,
+          current_version_actor_email: input.actorEmail,
+          current_version_created_at: new Date("2026-04-17T00:00:00.000Z"),
           is_primary: true,
           status: "ready",
           row_count: primaryRows.length,
@@ -335,6 +340,10 @@ async function insertDatasets(input: {
           sort_order: 1,
           blob_url: buildBlobUrl(input.supabaseUrl, input.bucket, secondaryBlobPath),
           blob_path: secondaryBlobPath,
+          current_version_action: "upload",
+          current_version_actor_owner_id: input.ownerId,
+          current_version_actor_email: input.actorEmail,
+          current_version_created_at: new Date("2026-04-17T00:05:00.000Z"),
           is_primary: false,
           status: "ready",
           row_count: secondaryRows.length,
@@ -357,6 +366,10 @@ async function insertDatasets(input: {
       "sort_order",
       "blob_url",
       "blob_path",
+      "current_version_action",
+      "current_version_actor_owner_id",
+      "current_version_actor_email",
+      "current_version_created_at",
       "is_primary",
       "status",
       "row_count",
@@ -373,6 +386,10 @@ async function insertDatasets(input: {
       sort_order = excluded.sort_order,
       blob_url = excluded.blob_url,
       blob_path = excluded.blob_path,
+      current_version_action = excluded.current_version_action,
+      current_version_actor_owner_id = excluded.current_version_actor_owner_id,
+      current_version_actor_email = excluded.current_version_actor_email,
+      current_version_created_at = excluded.current_version_created_at,
       is_primary = excluded.is_primary,
       status = excluded.status,
       row_count = excluded.row_count,
@@ -641,6 +658,7 @@ async function main() {
     await insertDatasets({
       sql,
       ownerId: adminUser.id,
+      actorEmail: adminUser.email,
       supabaseUrl: smokeEnv.supabaseUrl,
       bucket: smokeEnv.storageBucket,
     });

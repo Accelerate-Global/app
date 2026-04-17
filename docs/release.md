@@ -46,6 +46,9 @@ Vercel production deploys for emergency recovery only.
 
 - refuses to run with a dirty worktree
 - fails early if the linked remote database is missing tracked migrations
+- relies on release-critical CLI scripts that use the shared `@/db` singleton
+  to close that client before exit, so control returns cleanly to the ship
+  process after remote checks such as `field-sources:seed:remote`
 - waits for the PR `App Quality`, `UI Smoke`, and `Database Security` checks
 - emits progress updates while waiting on remote checks, merge state, release
   health, and production deployment state
