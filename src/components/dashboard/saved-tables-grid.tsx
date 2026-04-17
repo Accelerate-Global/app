@@ -11,7 +11,7 @@ type SavedTablesGridProps = {
 };
 
 const SAVED_TABLE_GRID_TEMPLATE_COLUMNS =
-  "minmax(18rem,1fr) minmax(14rem,0.8fr) minmax(10rem,max-content) 10rem";
+  "minmax(16rem,1.8fr) minmax(12rem,1.2fr) minmax(8rem,0.7fr) max-content";
 
 function SavedTableActions({
   savedTable,
@@ -22,10 +22,14 @@ function SavedTableActions({
 }) {
   return (
     <div className="flex w-full justify-end text-right">
-      <div className="flex items-center justify-end gap-2">
+      <div className="flex shrink-0 items-center justify-end gap-2">
         <a
           data-slot="button"
-          className={buttonVariants({ variant: "outline", size: "icon-sm" })}
+          className={buttonVariants({
+            variant: "outline",
+            size: "icon-sm",
+            className: "shrink-0",
+          })}
           href={`/api/saved-tables/${savedTable.id}/download`}
           aria-label={`Download ${savedTable.name}`}
           title={`Download ${savedTable.name}`}
@@ -39,6 +43,7 @@ function SavedTableActions({
           type="button"
           variant="outline"
           size="sm"
+          className="shrink-0"
           data-smoke-trigger="saved-table-detail-sheet"
           data-smoke-write="safe"
           data-smoke-saved-table-id={savedTable.id}
@@ -118,24 +123,26 @@ export function SavedTablesGrid({
         </p>
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-border bg-background">
-        <SavedTableListHeader />
+      <div className="overflow-x-auto rounded-xl border border-border bg-background">
+        <div className="min-w-[52rem]">
+          <SavedTableListHeader />
 
-        {savedTables.length === 0 ? (
-          <div className="px-5 py-10 text-sm text-muted-foreground">
-            No saved tables yet.
-          </div>
-        ) : (
-          <div className="divide-y divide-border">
-            {savedTables.map((savedTable) => (
-              <SavedTableListRow
-                key={savedTable.id}
-                savedTable={savedTable}
-                onOpenDetails={onOpenDetails}
-              />
-            ))}
-          </div>
-        )}
+          {savedTables.length === 0 ? (
+            <div className="px-5 py-10 text-sm text-muted-foreground">
+              No saved tables yet.
+            </div>
+          ) : (
+            <div className="divide-y divide-border">
+              {savedTables.map((savedTable) => (
+                <SavedTableListRow
+                  key={savedTable.id}
+                  savedTable={savedTable}
+                  onOpenDetails={onOpenDetails}
+                />
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </section>
   );

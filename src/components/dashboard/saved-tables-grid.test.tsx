@@ -21,6 +21,9 @@ const savedTable = {
     watchlist: {
       enabled: false,
       threshold: 0,
+      engagementPhaseThreshold: 6,
+      evangelicalBelieversThreshold: 1000,
+      evangelicalPercentThreshold: 0.05,
       frontierGroupValue: false,
     },
     uupg: {
@@ -37,11 +40,16 @@ describe("SavedTablesGrid", () => {
   it("omits the empty details placeholder and keeps row actions available", () => {
     const onOpenDetails = vi.fn();
 
-    render(
+    const { container } = render(
       <SavedTablesGrid savedTables={[savedTable]} onOpenDetails={onOpenDetails} />,
     );
 
+    const scroller = container.querySelector(".overflow-x-auto");
+    const header = container.querySelector("[style]");
+
     expect(screen.queryByText("No details added yet.")).toBeNull();
+    expect(scroller?.className).toContain("overflow-x-auto");
+    expect(header?.getAttribute("style")).toContain("max-content");
 
     fireEvent.click(screen.getByRole("button", { name: "Details" }));
 

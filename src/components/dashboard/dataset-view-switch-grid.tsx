@@ -1,7 +1,13 @@
 "use client";
 
-import { InfoIcon, MapIcon, MicroscopeIcon, UserRoundIcon } from "lucide-react";
-import type { ReactNode } from "react";
+import {
+  ChevronDownIcon,
+  InfoIcon,
+  MapIcon,
+  MicroscopeIcon,
+  UserRoundIcon,
+} from "lucide-react";
+import { useState, type ReactNode } from "react";
 
 import {
   NumberField,
@@ -25,6 +31,7 @@ type RegionSelector = {
 };
 
 type DatasetViewSwitchGridProps = {
+  className?: string;
   regionCard: {
     enabled: boolean;
     supported: boolean;
@@ -39,11 +46,29 @@ type DatasetViewSwitchGridProps = {
     threshold: number;
     minThreshold: number;
     maxThreshold: number;
+    engagementPhaseLabel: string;
+    engagementPhaseDefinition: string;
+    engagementPhaseThreshold: number;
+    minEngagementPhaseThreshold: number;
+    maxEngagementPhaseThreshold: number;
+    evangelicalBelieversLabel: string;
+    evangelicalBelieversDefinition: string;
+    evangelicalBelieversThreshold: number;
+    minEvangelicalBelieversThreshold: number;
+    maxEvangelicalBelieversThreshold: number;
+    evangelicalPercentLabel: string;
+    evangelicalPercentDefinition: string;
+    evangelicalPercentThreshold: number;
+    minEvangelicalPercentThreshold: number;
+    maxEvangelicalPercentThreshold: number;
     frontierGroupLabel: string;
     frontierGroupDefinition: string;
     frontierGroupValue: boolean;
     onEnabledChange: (checked: boolean) => void;
     onThresholdChange: (value: number) => void;
+    onEngagementPhaseThresholdChange: (value: number) => void;
+    onEvangelicalBelieversThresholdChange: (value: number) => void;
+    onEvangelicalPercentThresholdChange: (value: number) => void;
     onFrontierGroupValueChange: (value: boolean) => void;
   };
   uupgCard: {
@@ -54,60 +79,18 @@ type DatasetViewSwitchGridProps = {
     onEnabledChange: (checked: boolean) => void;
   };
 };
+
+type FilterSectionId = "region" | "watchlist" | "uupg";
+
+const FILTER_PANEL_DESCRIPTIONS = {
+  region: "A grouping of people groups based on geography.",
+  watchlist:
+    "People groups unengaged or would be unengaged if the current mission work stopped today.",
+  uupg: "People groups who have no record of engagement among them.",
+} as const;
+
 const INFO_TOOLTIP_CONTENT_CLASSNAME =
   "max-w-[26rem] rounded-2xl border border-border/80 bg-popover px-4 py-3.5 text-sm leading-6 text-popover-foreground shadow-lg ring-1 ring-foreground/8";
-
-function DatasetViewCard({
-  title,
-  description,
-  icon,
-  enabled,
-  disabled = false,
-  children,
-  onEnabledChange,
-}: {
-  title: string;
-  description: string;
-  icon: ReactNode;
-  enabled: boolean;
-  disabled?: boolean;
-  children?: ReactNode;
-  onEnabledChange?: (checked: boolean) => void;
-}) {
-  return (
-    <div
-      className={cn(
-        "flex h-full min-h-[14rem] flex-col overflow-hidden rounded-[1.25rem] border border-border/80 bg-card/95 p-4 shadow-sm transition-colors",
-        enabled ? "border-foreground/15 bg-accent/10" : "hover:bg-accent/10",
-        disabled ? "opacity-75" : "",
-      )}
-    >
-      <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0 flex items-start gap-3">
-          <div className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-border bg-background shadow-xs shadow-black/5">
-            {icon}
-          </div>
-          <div className="min-w-0 space-y-1">
-            <h2 className="text-base font-semibold tracking-[-0.02em] text-foreground">
-              {title}
-            </h2>
-            <p className="text-sm leading-5 text-muted-foreground">{description}</p>
-          </div>
-        </div>
-        {onEnabledChange ? (
-          <Switch
-            size="sm"
-            checked={enabled}
-            disabled={disabled}
-            onCheckedChange={onEnabledChange}
-            aria-label={`Toggle ${title}`}
-          />
-        ) : null}
-      </div>
-      <div className="mt-4 flex min-h-0 flex-1">{children}</div>
-    </div>
-  );
-}
 
 function RegionCountriesInfo({
   label,
@@ -194,10 +177,7 @@ function FieldDefinitionInfo({
       >
         <InfoIcon aria-hidden="true" className="size-3.5" />
       </TooltipTrigger>
-      <TooltipContent
-        sideOffset={8}
-        className={INFO_TOOLTIP_CONTENT_CLASSNAME}
-      >
+      <TooltipContent sideOffset={8} className={INFO_TOOLTIP_CONTENT_CLASSNAME}>
         <div className="space-y-1.5 text-left">
           <p className="font-medium tracking-[-0.01em] text-popover-foreground">
             {label}
@@ -211,60 +191,296 @@ function FieldDefinitionInfo({
   );
 }
 
-function WatchlistExpressionLabel({
+function FilterExpressionLabel({
   label,
   definition,
-  operator,
 }: {
   label: string;
   definition: string;
-  operator: "<=" | "=";
 }) {
   return (
-    <div className="min-w-0 flex items-center gap-1.5">
-      <div className="inline-flex min-w-0 max-w-full items-center gap-2 rounded-xl border border-border/70 bg-background/80 px-3 py-2 shadow-xs shadow-black/5">
-        <span className="truncate text-sm font-semibold tracking-[-0.02em] text-foreground">
-          {label}
-        </span>
-        <span className="shrink-0 text-sm font-semibold tracking-[-0.02em] text-foreground/70">
-          {operator}
-        </span>
-      </div>
+    <div className="flex min-w-0 items-start gap-1.5">
+      <span className="min-w-0 flex-1 text-sm font-medium leading-5 text-foreground [overflow-wrap:anywhere]">
+        {label}
+      </span>
       <FieldDefinitionInfo label={label} definition={definition} />
     </div>
   );
 }
 
+function DatasetFilterRow({
+  label,
+  definition,
+  children,
+  controlClassName,
+}: {
+  label: string;
+  definition: string;
+  children?: ReactNode;
+  controlClassName?: string;
+}) {
+  return (
+    <div className="flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="min-w-0 sm:flex-1 sm:pr-3">
+        <FilterExpressionLabel label={label} definition={definition} />
+      </div>
+      {children ? (
+        <div className={cn("w-full sm:w-auto sm:shrink-0", controlClassName)}>
+          {children}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function WatchlistNumberControl({
+  label,
+  value,
+  min,
+  max,
+  operator,
+  disabled,
+  onValueChange,
+  step = 1,
+  smallStep = 1,
+  largeStep = 1,
+}: {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  operator: "<=" | ">=";
+  disabled: boolean;
+  onValueChange: (value: number) => void;
+  step?: number;
+  smallStep?: number;
+  largeStep?: number;
+}) {
+  return (
+    <NumberField
+      value={value}
+      min={min}
+      max={max}
+      step={step}
+      smallStep={smallStep}
+      largeStep={largeStep}
+      snapOnStep
+      disabled={disabled}
+      onValueChange={(nextValue) => onValueChange(nextValue ?? min)}
+      className="w-full sm:w-[10rem]"
+    >
+      <NumberFieldGroup className="h-10 overflow-hidden rounded-xl border-border/70 bg-background/80 text-foreground shadow-xs shadow-black/5 focus-within:border-foreground/20 focus-within:ring-foreground/10">
+        <span
+          aria-hidden="true"
+          data-slot="number-field-operator"
+          className="flex shrink-0 items-center justify-center border-r border-border/70 px-2 text-sm font-semibold tracking-[-0.02em] text-foreground/70"
+        >
+          {operator}
+        </span>
+        <NumberFieldDecrement
+          className="rounded-none border-r border-border/70 text-muted-foreground hover:bg-accent/40 hover:text-foreground"
+          aria-label={`Decrease ${label} threshold`}
+        />
+        <NumberFieldInput
+          className="border-r border-border/70 px-3 text-center text-sm font-semibold tracking-[-0.02em] text-foreground"
+          aria-label={`Watchlist ${label} threshold`}
+        />
+        <NumberFieldIncrement
+          className="rounded-none border-0 text-muted-foreground hover:bg-accent/40 hover:text-foreground"
+          aria-label={`Increase ${label} threshold`}
+        />
+      </NumberFieldGroup>
+    </NumberField>
+  );
+}
+
+function FilterSection({
+  id,
+  title,
+  icon,
+  summary,
+  description,
+  expanded,
+  toggleControl,
+  onExpandedChange,
+  children,
+}: {
+  id: FilterSectionId;
+  title: string;
+  icon: ReactNode;
+  summary: string[];
+  description: string;
+  expanded: boolean;
+  toggleControl: ReactNode;
+  onExpandedChange: (expanded: boolean) => void;
+  children?: ReactNode;
+}) {
+  const panelId = `${id}-filter-panel`;
+
+  return (
+    <section className="rounded-[1.1rem] border border-border/70 bg-background/80 shadow-xs shadow-black/5">
+      <div className="flex items-start gap-3 p-3">
+        <button
+          type="button"
+          aria-expanded={expanded}
+          aria-controls={panelId}
+          aria-label={`${title} filters`}
+          className="group flex min-w-0 flex-1 items-start gap-3 rounded-xl text-left transition-colors hover:bg-accent/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+          onClick={() => onExpandedChange(!expanded)}
+        >
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-border bg-card text-foreground">
+            {icon}
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold tracking-[-0.02em] text-foreground">
+                {title}
+              </span>
+              <span
+                className={cn(
+                  "flex size-5 shrink-0 items-center justify-center rounded-full border border-border/70 bg-background/90 text-muted-foreground transition-colors group-hover:border-foreground/20 group-hover:text-foreground",
+                  expanded ? "border-foreground/20 text-foreground" : "",
+                )}
+              >
+                <ChevronDownIcon
+                  aria-hidden="true"
+                  className={cn(
+                    "size-3.5 transition-transform",
+                    expanded ? "rotate-180" : "",
+                  )}
+                />
+              </span>
+            </div>
+            <div className="mt-1 space-y-0.5 text-xs leading-5 text-muted-foreground">
+              {summary.map((line) => (
+                <p key={line}>{line}</p>
+              ))}
+            </div>
+          </div>
+        </button>
+        <div className="shrink-0 pt-0.5">{toggleControl}</div>
+      </div>
+      {expanded ? (
+        <div id={panelId} className="border-t border-border/70 px-3 pb-3 pt-3">
+          <div className="space-y-3">
+            <p className="text-sm leading-5 text-muted-foreground">{description}</p>
+            {children}
+          </div>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+function getRegionSummary(regionCard: DatasetViewSwitchGridProps["regionCard"]) {
+  if (!regionCard.supported) {
+    return ["Unavailable"];
+  }
+
+  if (regionCard.selectors.length === 0) {
+    return ["No regions configured"];
+  }
+
+  const selectedCount = regionCard.selectors.filter((selector) => selector.checked).length;
+
+  if (selectedCount === 0 || selectedCount === regionCard.selectors.length) {
+    return ["All regions"];
+  }
+
+  return [`${selectedCount} selected`];
+}
+
+function getWatchlistSummary(
+  watchlistCard: DatasetViewSwitchGridProps["watchlistCard"],
+) {
+  if (!watchlistCard.supported) {
+    return ["Unavailable"];
+  }
+
+  if (!watchlistCard.enabled) {
+    return ["Off"];
+  }
+
+  return [
+    `${watchlistCard.thresholdLabel} <= ${watchlistCard.threshold}`,
+    `${watchlistCard.engagementPhaseLabel} >= ${watchlistCard.engagementPhaseThreshold}`,
+    `${watchlistCard.evangelicalPercentLabel} >= ${watchlistCard.evangelicalPercentThreshold}`,
+    `${watchlistCard.evangelicalBelieversLabel} <= ${watchlistCard.evangelicalBelieversThreshold}`,
+    `${watchlistCard.frontierGroupLabel}: ${
+      watchlistCard.frontierGroupValue ? "True" : "False"
+    }`,
+  ];
+}
+
+function getUupgSummary(uupgCard: DatasetViewSwitchGridProps["uupgCard"]) {
+  if (!uupgCard.supported) {
+    return ["Unavailable"];
+  }
+
+  return [uupgCard.enabled ? "On" : "Off"];
+}
+
 export function DatasetViewSwitchGrid({
+  className,
   regionCard,
   watchlistCard,
   uupgCard,
 }: DatasetViewSwitchGridProps) {
   const hasRegions = regionCard.selectors.length > 0;
-  const regionCardDisabled = !regionCard.supported || !hasRegions;
-  const watchlistCardDisabled = !watchlistCard.supported;
-  const uupgCardDisabled = !uupgCard.supported;
+  const [expandedSections, setExpandedSections] = useState<
+    Record<FilterSectionId, boolean>
+  >({
+    region: false,
+    watchlist: false,
+    uupg: false,
+  });
 
   return (
-    <div className="grid w-full auto-rows-fr gap-4 md:grid-cols-2 xl:grid-cols-3">
-      <DatasetViewCard
-        title="Region"
-        description="A grouping of people groups based on geography."
-        icon={<MapIcon aria-hidden="true" className="size-5" />}
-        enabled={regionCard.enabled}
-        disabled={regionCardDisabled}
-      >
-        {!regionCard.supported ? (
-          <div className="self-end text-sm leading-5 text-muted-foreground">
-            This dataset does not include <code>Geo_Country_Name</code>, so region filtering is unavailable.
-          </div>
-        ) : !hasRegions ? (
-          <div className="self-end text-sm leading-5 text-muted-foreground">
-            No regions have been configured yet.
-          </div>
-        ) : (
-          <div className="min-h-0 flex-1 overflow-y-auto">
-            <div className="divide-y divide-border/70">
+    <div
+      className={cn(
+        "rounded-[1.25rem] border border-border/80 bg-card/95 shadow-sm",
+        className,
+      )}
+    >
+      <div className="border-b border-border/70 px-4 py-4">
+        <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+          Filters
+        </p>
+        <p className="mt-1 text-sm leading-5 text-muted-foreground">
+          Expand a section to review its description and adjust the table.
+        </p>
+      </div>
+      <div className="space-y-3 p-3">
+        <FilterSection
+          id="region"
+          title="Region"
+          icon={<MapIcon aria-hidden="true" className="size-5" />}
+          summary={getRegionSummary(regionCard)}
+          description={FILTER_PANEL_DESCRIPTIONS.region}
+          expanded={expandedSections.region}
+          onExpandedChange={(expanded) =>
+            setExpandedSections((current) => ({ ...current, region: expanded }))
+          }
+          toggleControl={
+            <Switch
+              size="sm"
+              checked={regionCard.enabled && hasRegions}
+              disabled
+              aria-label="Region status"
+            />
+          }
+        >
+          {!regionCard.supported ? (
+            <p className="text-sm leading-5 text-muted-foreground">
+              This dataset does not include <code>Geo_Country_Name</code>, so region
+              filtering is unavailable.
+            </p>
+          ) : !hasRegions ? (
+            <p className="text-sm leading-5 text-muted-foreground">
+              No regions have been configured yet.
+            </p>
+          ) : (
+            <div className="divide-y divide-border/70 px-3">
               {regionCard.selectors.map((selector) => (
                 <div
                   key={selector.id}
@@ -294,72 +510,107 @@ export function DatasetViewSwitchGrid({
                 </div>
               ))}
             </div>
-          </div>
-        )}
-      </DatasetViewCard>
+          )}
+        </FilterSection>
 
-      <DatasetViewCard
-        title="Watchlist"
-        description="People groups unengaged or would be unengaged if the current mission work stopped today."
-        icon={<MicroscopeIcon aria-hidden="true" className="size-5" />}
-        enabled={watchlistCard.enabled}
-        disabled={watchlistCardDisabled}
-        onEnabledChange={watchlistCard.onEnabledChange}
-      >
-        {!watchlistCard.supported ? (
-          <div className="self-end text-sm leading-5 text-muted-foreground">
-            This dataset does not include <code>{watchlistCard.thresholdLabel}</code>{" "}
-            and <code>{watchlistCard.frontierGroupLabel}</code>, so Watchlist
-            filtering is unavailable.
-          </div>
-        ) : (
-          <div className="mt-auto w-full self-end">
-            <div className="space-y-3.5">
-              <div className="flex flex-wrap items-center gap-2.5 text-sm">
-                <WatchlistExpressionLabel
+        <FilterSection
+          id="watchlist"
+          title="Watchlist"
+          icon={<MicroscopeIcon aria-hidden="true" className="size-5" />}
+          summary={getWatchlistSummary(watchlistCard)}
+          description={FILTER_PANEL_DESCRIPTIONS.watchlist}
+          expanded={expandedSections.watchlist}
+          onExpandedChange={(expanded) =>
+            setExpandedSections((current) => ({ ...current, watchlist: expanded }))
+          }
+          toggleControl={
+            <Switch
+              size="sm"
+              checked={watchlistCard.enabled}
+              disabled={!watchlistCard.supported}
+              onCheckedChange={watchlistCard.onEnabledChange}
+              aria-label="Toggle Watchlist"
+            />
+          }
+        >
+          {!watchlistCard.supported ? (
+            <p className="text-sm leading-5 text-muted-foreground">
+              This dataset does not include the fields required for Watchlist
+              filtering.
+            </p>
+          ) : (
+            <div className="divide-y divide-border/70 px-3">
+              <DatasetFilterRow
+                label={watchlistCard.thresholdLabel}
+                definition={watchlistCard.thresholdDefinition}
+                controlClassName="sm:w-[10rem]"
+              >
+                <WatchlistNumberControl
                   label={watchlistCard.thresholdLabel}
-                  definition={watchlistCard.thresholdDefinition}
-                  operator="<="
-                />
-                <NumberField
                   value={watchlistCard.threshold}
                   min={watchlistCard.minThreshold}
                   max={watchlistCard.maxThreshold}
-                  step={1}
-                  smallStep={1}
-                  largeStep={1}
-                  snapOnStep
+                  operator="<="
                   disabled={!watchlistCard.enabled}
-                  onValueChange={(value) =>
-                    watchlistCard.onThresholdChange(value ?? watchlistCard.minThreshold)
-                  }
-                  className="min-w-[8.75rem]"
-                >
-                  <NumberFieldGroup className="h-10 rounded-xl border-border/70 bg-background/80 text-foreground shadow-xs shadow-black/5 focus-within:border-foreground/20 focus-within:ring-foreground/10">
-                    <NumberFieldInput
-                      className="px-3 text-left text-sm font-semibold tracking-[-0.02em] text-foreground"
-                      aria-label={`Watchlist ${watchlistCard.thresholdLabel} threshold`}
-                    />
-                    <NumberFieldDecrement
-                      className="rounded-none! border-l border-border/70 text-muted-foreground hover:bg-accent/40 hover:text-foreground"
-                      aria-label={`Decrease ${watchlistCard.thresholdLabel} threshold`}
-                    />
-                    <NumberFieldIncrement
-                      className="border-l border-border/70 text-muted-foreground hover:bg-accent/40 hover:text-foreground"
-                      aria-label={`Increase ${watchlistCard.thresholdLabel} threshold`}
-                    />
-                  </NumberFieldGroup>
-                </NumberField>
-              </div>
-              <div className="flex flex-wrap items-center gap-2.5 text-sm">
-                <WatchlistExpressionLabel
-                  label={watchlistCard.frontierGroupLabel}
-                  definition={watchlistCard.frontierGroupDefinition}
-                  operator="="
+                  onValueChange={watchlistCard.onThresholdChange}
                 />
+              </DatasetFilterRow>
+              <DatasetFilterRow
+                label={watchlistCard.engagementPhaseLabel}
+                definition={watchlistCard.engagementPhaseDefinition}
+                controlClassName="sm:w-[10rem]"
+              >
+                <WatchlistNumberControl
+                  label={watchlistCard.engagementPhaseLabel}
+                  value={watchlistCard.engagementPhaseThreshold}
+                  min={watchlistCard.minEngagementPhaseThreshold}
+                  max={watchlistCard.maxEngagementPhaseThreshold}
+                  operator=">="
+                  disabled={!watchlistCard.enabled}
+                  onValueChange={watchlistCard.onEngagementPhaseThresholdChange}
+                />
+              </DatasetFilterRow>
+              <DatasetFilterRow
+                label={watchlistCard.evangelicalPercentLabel}
+                definition={watchlistCard.evangelicalPercentDefinition}
+                controlClassName="sm:w-[10rem]"
+              >
+                <WatchlistNumberControl
+                  label={watchlistCard.evangelicalPercentLabel}
+                  value={watchlistCard.evangelicalPercentThreshold}
+                  min={watchlistCard.minEvangelicalPercentThreshold}
+                  max={watchlistCard.maxEvangelicalPercentThreshold}
+                  operator=">="
+                  disabled={!watchlistCard.enabled}
+                  onValueChange={watchlistCard.onEvangelicalPercentThresholdChange}
+                  step={0.01}
+                  smallStep={0.01}
+                  largeStep={0.05}
+                />
+              </DatasetFilterRow>
+              <DatasetFilterRow
+                label={watchlistCard.evangelicalBelieversLabel}
+                definition={watchlistCard.evangelicalBelieversDefinition}
+                controlClassName="sm:w-[10rem]"
+              >
+                <WatchlistNumberControl
+                  label={watchlistCard.evangelicalBelieversLabel}
+                  value={watchlistCard.evangelicalBelieversThreshold}
+                  min={watchlistCard.minEvangelicalBelieversThreshold}
+                  max={watchlistCard.maxEvangelicalBelieversThreshold}
+                  operator="<="
+                  disabled={!watchlistCard.enabled}
+                  onValueChange={watchlistCard.onEvangelicalBelieversThresholdChange}
+                />
+              </DatasetFilterRow>
+              <DatasetFilterRow
+                label={watchlistCard.frontierGroupLabel}
+                definition={watchlistCard.frontierGroupDefinition}
+                controlClassName="sm:w-[8.75rem]"
+              >
                 <ButtonGroup
                   aria-label={`Watchlist ${watchlistCard.frontierGroupLabel} value`}
-                  className="rounded-xl border border-border/70 bg-background/80 p-1 shadow-xs shadow-black/5"
+                  className="w-full rounded-xl border border-border/70 bg-background/80 p-0.5 shadow-xs shadow-black/5"
                 >
                   {[
                     { label: "TRUE", value: true },
@@ -378,7 +629,7 @@ export function DatasetViewSwitchGrid({
                         aria-pressed={isActive}
                         aria-label={`Set Watchlist ${watchlistCard.frontierGroupLabel} value to ${option.label}`}
                         className={cn(
-                          "min-w-[4.75rem] border-0 px-3 text-[0.8rem] font-semibold tracking-[0.08em] uppercase shadow-none",
+                          "min-w-0 flex-1 rounded-lg border-0 px-2.5 text-[0.72rem] font-semibold tracking-[0.08em] uppercase shadow-none",
                           isActive
                             ? "bg-foreground text-background hover:bg-foreground/90 hover:text-background"
                             : "text-muted-foreground hover:bg-accent/40 hover:text-foreground",
@@ -392,49 +643,46 @@ export function DatasetViewSwitchGrid({
                     );
                   })}
                 </ButtonGroup>
-              </div>
+              </DatasetFilterRow>
             </div>
-          </div>
-        )}
-      </DatasetViewCard>
+          )}
+        </FilterSection>
 
-      <DatasetViewCard
-        title="UUPG"
-        description="People groups who have no record of engagement among them."
-        icon={<UserRoundIcon aria-hidden="true" className="size-5" />}
-        enabled={uupgCard.enabled}
-        disabled={uupgCardDisabled}
-      >
-        {!uupgCard.supported ? (
-          <div className="self-end text-sm leading-5 text-muted-foreground">
-            This dataset does not include <code>{uupgCard.fieldLabel}</code>, so UUPG
-            filtering is unavailable.
-          </div>
-        ) : (
-          <div className="mt-auto w-full self-end">
-            <div className="flex items-center justify-between gap-3 py-2.5">
-              <div className="min-w-0">
-                <div className="flex min-w-0 items-center gap-1.5">
-                  <code className="rounded-md bg-muted px-2 py-1 text-xs font-medium text-foreground">
-                    {uupgCard.fieldLabel}
-                  </code>
-                  <FieldDefinitionInfo
-                    label={uupgCard.fieldLabel}
-                    definition={uupgCard.fieldDefinition}
-                  />
-                </div>
-              </div>
-              <Switch
-                size="sm"
-                checked={uupgCard.enabled}
-                disabled={uupgCardDisabled}
-                onCheckedChange={uupgCard.onEnabledChange}
-                aria-label={`Toggle ${uupgCard.fieldLabel}`}
+        <FilterSection
+          id="uupg"
+          title="UUPG"
+          icon={<UserRoundIcon aria-hidden="true" className="size-5" />}
+          summary={getUupgSummary(uupgCard)}
+          description={FILTER_PANEL_DESCRIPTIONS.uupg}
+          expanded={expandedSections.uupg}
+          onExpandedChange={(expanded) =>
+            setExpandedSections((current) => ({ ...current, uupg: expanded }))
+          }
+          toggleControl={
+            <Switch
+              size="sm"
+              checked={uupgCard.enabled}
+              disabled={!uupgCard.supported}
+              onCheckedChange={uupgCard.onEnabledChange}
+              aria-label="Toggle UUPG"
+            />
+          }
+        >
+          {!uupgCard.supported ? (
+            <p className="text-sm leading-5 text-muted-foreground">
+              This dataset does not include <code>{uupgCard.fieldLabel}</code>, so
+              UUPG filtering is unavailable.
+            </p>
+          ) : (
+            <div className="px-3">
+              <DatasetFilterRow
+                label={uupgCard.fieldLabel}
+                definition={uupgCard.fieldDefinition}
               />
             </div>
-          </div>
-        )}
-      </DatasetViewCard>
+          )}
+        </FilterSection>
+      </div>
     </div>
   );
 }
