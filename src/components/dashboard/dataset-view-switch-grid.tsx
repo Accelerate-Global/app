@@ -11,13 +11,7 @@ import {
   NumberFieldInput,
 } from "@/components/reui/number-field";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { ButtonGroup } from "@/components/ui/button-group";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
@@ -35,7 +29,6 @@ type DatasetViewSwitchGridProps = {
     enabled: boolean;
     supported: boolean;
     selectors: RegionSelector[];
-    onEnabledChange: (checked: boolean) => void;
     onSelectorChange: (regionId: string, checked: boolean) => void;
   };
   watchlistCard: {
@@ -56,6 +49,8 @@ type DatasetViewSwitchGridProps = {
   uupgCard: {
     enabled: boolean;
     supported: boolean;
+    fieldLabel: string;
+    fieldDefinition: string;
     onEnabledChange: (checked: boolean) => void;
   };
 };
@@ -77,7 +72,7 @@ function DatasetViewCard({
   enabled: boolean;
   disabled?: boolean;
   children?: ReactNode;
-  onEnabledChange: (checked: boolean) => void;
+  onEnabledChange?: (checked: boolean) => void;
 }) {
   return (
     <div
@@ -99,13 +94,15 @@ function DatasetViewCard({
             <p className="text-sm leading-5 text-muted-foreground">{description}</p>
           </div>
         </div>
-        <Switch
-          size="sm"
-          checked={enabled}
-          disabled={disabled}
-          onCheckedChange={onEnabledChange}
-          aria-label={`Toggle ${title}`}
-        />
+        {onEnabledChange ? (
+          <Switch
+            size="sm"
+            checked={enabled}
+            disabled={disabled}
+            onCheckedChange={onEnabledChange}
+            aria-label={`Toggle ${title}`}
+          />
+        ) : null}
       </div>
       <div className="mt-4 flex min-h-0 flex-1">{children}</div>
     </div>
@@ -176,7 +173,7 @@ export function getRegionTooltipText(
   return countries.join(", ");
 }
 
-function WatchlistFieldInfo({
+function FieldDefinitionInfo({
   label,
   definition,
 }: {
@@ -214,6 +211,30 @@ function WatchlistFieldInfo({
   );
 }
 
+function WatchlistExpressionLabel({
+  label,
+  definition,
+  operator,
+}: {
+  label: string;
+  definition: string;
+  operator: "<=" | "=";
+}) {
+  return (
+    <div className="min-w-0 flex items-center gap-1.5">
+      <div className="inline-flex min-w-0 max-w-full items-center gap-2 rounded-xl border border-border/70 bg-background/80 px-3 py-2 shadow-xs shadow-black/5">
+        <span className="truncate text-sm font-semibold tracking-[-0.02em] text-foreground">
+          {label}
+        </span>
+        <span className="shrink-0 text-sm font-semibold tracking-[-0.02em] text-foreground/70">
+          {operator}
+        </span>
+      </div>
+      <FieldDefinitionInfo label={label} definition={definition} />
+    </div>
+  );
+}
+
 export function DatasetViewSwitchGrid({
   regionCard,
   watchlistCard,
@@ -232,7 +253,6 @@ export function DatasetViewSwitchGrid({
         icon={<MapIcon aria-hidden="true" className="size-5" />}
         enabled={regionCard.enabled}
         disabled={regionCardDisabled}
-        onEnabledChange={regionCard.onEnabledChange}
       >
         {!regionCard.supported ? (
           <div className="self-end text-sm leading-5 text-muted-foreground">
@@ -294,20 +314,13 @@ export function DatasetViewSwitchGrid({
           </div>
         ) : (
           <div className="mt-auto w-full self-end">
-            <div className="space-y-3">
-              <div className="flex flex-wrap items-center gap-2 text-sm">
-                <div className="flex items-center gap-1.5">
-                  <code className="rounded-md bg-muted px-2 py-1 text-xs font-medium text-foreground">
-                    {watchlistCard.thresholdLabel}
-                  </code>
-                  <WatchlistFieldInfo
-                    label={watchlistCard.thresholdLabel}
-                    definition={watchlistCard.thresholdDefinition}
-                  />
-                </div>
-                <span className="rounded-md border border-border bg-background px-2 py-1 text-xs font-medium text-muted-foreground">
-                  {"<="}
-                </span>
+            <div className="space-y-3.5">
+              <div className="flex flex-wrap items-center gap-2.5 text-sm">
+                <WatchlistExpressionLabel
+                  label={watchlistCard.thresholdLabel}
+                  definition={watchlistCard.thresholdDefinition}
+                  operator="<="
+                />
                 <NumberField
                   value={watchlistCard.threshold}
                   min={watchlistCard.minThreshold}
@@ -320,59 +333,65 @@ export function DatasetViewSwitchGrid({
                   onValueChange={(value) =>
                     watchlistCard.onThresholdChange(value ?? watchlistCard.minThreshold)
                   }
-                  className="w-28"
+                  className="min-w-[8.75rem]"
                 >
-                  <NumberFieldGroup>
+                  <NumberFieldGroup className="h-10 rounded-xl border-border/70 bg-background/80 text-foreground shadow-xs shadow-black/5 focus-within:border-foreground/20 focus-within:ring-foreground/10">
                     <NumberFieldInput
-                      className="text-left"
+                      className="px-3 text-left text-sm font-semibold tracking-[-0.02em] text-foreground"
                       aria-label={`Watchlist ${watchlistCard.thresholdLabel} threshold`}
                     />
                     <NumberFieldDecrement
-                      className="rounded-none!"
+                      className="rounded-none! border-l border-border/70 text-muted-foreground hover:bg-accent/40 hover:text-foreground"
                       aria-label={`Decrease ${watchlistCard.thresholdLabel} threshold`}
                     />
                     <NumberFieldIncrement
+                      className="border-l border-border/70 text-muted-foreground hover:bg-accent/40 hover:text-foreground"
                       aria-label={`Increase ${watchlistCard.thresholdLabel} threshold`}
                     />
                   </NumberFieldGroup>
                 </NumberField>
               </div>
-              <div className="flex flex-wrap items-center gap-2 text-sm">
-                <div className="flex items-center gap-1.5">
-                  <code className="rounded-md bg-muted px-2 py-1 text-xs font-medium text-foreground">
-                    {watchlistCard.frontierGroupLabel}
-                  </code>
-                  <WatchlistFieldInfo
-                    label={watchlistCard.frontierGroupLabel}
-                    definition={watchlistCard.frontierGroupDefinition}
-                  />
-                </div>
-                <span className="rounded-md border border-border bg-background px-2 py-1 text-xs font-medium text-muted-foreground">
-                  =
-                </span>
-                <Select
-                  value={watchlistCard.frontierGroupValue ? "true" : "false"}
-                  disabled={!watchlistCard.enabled}
-                  onValueChange={(value) =>
-                    watchlistCard.onFrontierGroupValueChange(value === "true")
-                  }
+              <div className="flex flex-wrap items-center gap-2.5 text-sm">
+                <WatchlistExpressionLabel
+                  label={watchlistCard.frontierGroupLabel}
+                  definition={watchlistCard.frontierGroupDefinition}
+                  operator="="
+                />
+                <ButtonGroup
+                  aria-label={`Watchlist ${watchlistCard.frontierGroupLabel} value`}
+                  className="rounded-xl border border-border/70 bg-background/80 p-1 shadow-xs shadow-black/5"
                 >
-                  <SelectTrigger
-                    aria-label={`Watchlist ${watchlistCard.frontierGroupLabel} value`}
-                    className={cn(
-                      "min-w-24 rounded-md border-0 px-2 py-1 text-xs font-medium uppercase",
-                      watchlistCard.frontierGroupValue
-                        ? "bg-emerald-500/12 text-emerald-700 dark:text-emerald-300"
-                        : "bg-amber-500/12 text-amber-700 dark:text-amber-300",
-                    )}
-                  >
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="true">TRUE</SelectItem>
-                    <SelectItem value="false">FALSE</SelectItem>
-                  </SelectContent>
-                </Select>
+                  {[
+                    { label: "TRUE", value: true },
+                    { label: "FALSE", value: false },
+                  ].map((option) => {
+                    const isActive =
+                      watchlistCard.frontierGroupValue === option.value;
+
+                    return (
+                      <Button
+                        key={option.label}
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        disabled={!watchlistCard.enabled}
+                        aria-pressed={isActive}
+                        aria-label={`Set Watchlist ${watchlistCard.frontierGroupLabel} value to ${option.label}`}
+                        className={cn(
+                          "min-w-[4.75rem] border-0 px-3 text-[0.8rem] font-semibold tracking-[0.08em] uppercase shadow-none",
+                          isActive
+                            ? "bg-foreground text-background hover:bg-foreground/90 hover:text-background"
+                            : "text-muted-foreground hover:bg-accent/40 hover:text-foreground",
+                        )}
+                        onClick={() =>
+                          watchlistCard.onFrontierGroupValueChange(option.value)
+                        }
+                      >
+                        {option.label}
+                      </Button>
+                    );
+                  })}
+                </ButtonGroup>
               </div>
             </div>
           </div>
@@ -385,13 +404,36 @@ export function DatasetViewSwitchGrid({
         icon={<UserRoundIcon aria-hidden="true" className="size-5" />}
         enabled={uupgCard.enabled}
         disabled={uupgCardDisabled}
-        onEnabledChange={uupgCard.onEnabledChange}
       >
         {!uupgCard.supported ? (
           <div className="self-end text-sm leading-5 text-muted-foreground">
-            This dataset does not include <code>Engage_Global_Engagement_Anywhere</code>, so UUPG filtering is unavailable.
+            This dataset does not include <code>{uupgCard.fieldLabel}</code>, so UUPG
+            filtering is unavailable.
           </div>
-        ) : null}
+        ) : (
+          <div className="mt-auto w-full self-end">
+            <div className="flex items-center justify-between gap-3 py-2.5">
+              <div className="min-w-0">
+                <div className="flex min-w-0 items-center gap-1.5">
+                  <code className="rounded-md bg-muted px-2 py-1 text-xs font-medium text-foreground">
+                    {uupgCard.fieldLabel}
+                  </code>
+                  <FieldDefinitionInfo
+                    label={uupgCard.fieldLabel}
+                    definition={uupgCard.fieldDefinition}
+                  />
+                </div>
+              </div>
+              <Switch
+                size="sm"
+                checked={uupgCard.enabled}
+                disabled={uupgCardDisabled}
+                onCheckedChange={uupgCard.onEnabledChange}
+                aria-label={`Toggle ${uupgCard.fieldLabel}`}
+              />
+            </div>
+          </div>
+        )}
       </DatasetViewCard>
     </div>
   );

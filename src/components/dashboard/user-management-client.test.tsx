@@ -29,6 +29,15 @@ function createUser(overrides: Partial<WorkspaceUser> = {}): WorkspaceUser {
   };
 }
 
+function renderUserManagementClient(users: WorkspaceUser[] = [createUser()]) {
+  return render(
+    <UserManagementClient
+      currentUserId="admin-1"
+      initialUsers={users}
+    />,
+  );
+}
+
 describe("UserManagementClient", () => {
   beforeEach(() => {
     vi.resetAllMocks();
@@ -40,6 +49,40 @@ describe("UserManagementClient", () => {
     cleanup();
   });
 
+  it("renders the simplified table and compact invite form", () => {
+    renderUserManagementClient();
+
+    expect(screen.queryByText("Total users")).toBeNull();
+    expect(screen.queryByText("Active admins")).toBeNull();
+    expect(screen.queryByText("Disabled accounts")).toBeNull();
+    expect(screen.queryByLabelText("Full name")).toBeNull();
+    expect(screen.queryByText("Last login")).toBeNull();
+    expect(screen.queryByText("Created")).toBeNull();
+    expect(screen.queryByText("Details")).toBeNull();
+    expect(screen.queryByText("Send password reset email")).toBeNull();
+  });
+
+  it("opens the details sheet when a user row is clicked", async () => {
+    renderUserManagementClient([
+      createUser(),
+      createUser({
+        id: "user-2",
+        email: "admin@example.com",
+        fullName: "Admin User",
+        workspaceRole: "admin",
+      }),
+    ]);
+
+    const row = screen.getByText("Admin User").closest("tr");
+
+    expect(row).toBeTruthy();
+    fireEvent.click(row!);
+
+    expect(await screen.findByText("Review identifiers, providers, access level, and account status.")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Admin User" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Send password reset email" })).toBeTruthy();
+  });
+
   it("sends password reset emails for the selected user", async () => {
     fetchMock.mockResolvedValue(
       new Response(JSON.stringify({ ok: true }), {
@@ -48,14 +91,13 @@ describe("UserManagementClient", () => {
       }),
     );
 
-    render(
-      <UserManagementClient
-        currentUserId="admin-1"
-        initialUsers={[createUser()]}
-      />,
-    );
+    renderUserManagementClient();
 
-    fireEvent.click(screen.getByRole("button", { name: "Send password reset email" }));
+    const row = screen.getByText("Viewer User").closest("tr");
+
+    expect(row).toBeTruthy();
+    fireEvent.click(row!);
+    fireEvent.click(await screen.findByRole("button", { name: "Send password reset email" }));
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith("/api/admin/users/user-1/password-reset", {
@@ -69,16 +111,16 @@ describe("UserManagementClient", () => {
   });
 
   it("disables password reset for accounts without an email address", () => {
-    render(
-      <UserManagementClient
-        currentUserId="admin-1"
-        initialUsers={[
-          createUser({
-            email: null,
-          }),
-        ]}
-      />,
-    );
+    renderUserManagementClient([
+      createUser({
+        email: null,
+      }),
+    ]);
+
+    const row = screen.getByText("Viewer User").closest("tr");
+
+    expect(row).toBeTruthy();
+    fireEvent.click(row!);
 
     const button = screen.getByRole("button", { name: "Send password reset email" });
 

@@ -1,12 +1,43 @@
 // @vitest-environment jsdom
 
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import {
   DatasetViewSwitchGrid,
   getRegionTooltipText,
 } from "./dataset-view-switch-grid";
+
+const baseRegionCard = {
+  enabled: false,
+  supported: true,
+  selectors: [],
+  onSelectorChange: vi.fn(),
+};
+
+const baseWatchlistCard = {
+  enabled: false,
+  supported: true,
+  thresholdLabel: "Christianity: GSEC",
+  thresholdDefinition: "GSEC definition",
+  threshold: 2,
+  minThreshold: 0,
+  maxThreshold: 6,
+  frontierGroupLabel: "Christianity: Frontier Group Y/N",
+  frontierGroupDefinition: "Frontier group definition",
+  frontierGroupValue: true,
+  onEnabledChange: vi.fn(),
+  onThresholdChange: vi.fn(),
+  onFrontierGroupValueChange: vi.fn(),
+};
+
+const baseUupgCard = {
+  enabled: false,
+  supported: true,
+  fieldLabel: "Global Engagement Anywhere",
+  fieldDefinition: "UUPG definition",
+  onEnabledChange: vi.fn(),
+};
 
 describe("DatasetViewSwitchGrid", () => {
   it("uses a short fallback for Globe when no description is configured", () => {
@@ -24,123 +55,94 @@ describe("DatasetViewSwitchGrid", () => {
   it("shows an unavailable message when UUPG filtering is not supported", () => {
     render(
       <DatasetViewSwitchGrid
-        regionCard={{
-          enabled: false,
-          supported: true,
-          selectors: [],
-          onEnabledChange: vi.fn(),
-          onSelectorChange: vi.fn(),
-        }}
+        regionCard={baseRegionCard}
         watchlistCard={{
-          enabled: false,
-          supported: true,
+          ...baseWatchlistCard,
           thresholdLabel: "Christianity_GSEC",
-          thresholdDefinition: "GSEC definition",
-          threshold: 2,
-          minThreshold: 0,
-          maxThreshold: 6,
           frontierGroupLabel: "Christianity_Frontier_Group",
-          frontierGroupDefinition: "Frontier group definition",
-          frontierGroupValue: true,
-          onEnabledChange: vi.fn(),
-          onThresholdChange: vi.fn(),
-          onFrontierGroupValueChange: vi.fn(),
         }}
         uupgCard={{
-          enabled: false,
+          ...baseUupgCard,
           supported: false,
-          onEnabledChange: vi.fn(),
         }}
       />,
     );
 
-    expect(
-      screen.getByText(/This dataset does not include/i),
-    ).toBeTruthy();
-    expect(
-      screen.getByText(/Engage_Global_Engagement_Anywhere/),
-    ).toBeTruthy();
+    expect(screen.getByText(/This dataset does not include/i)).toBeTruthy();
+    expect(screen.getByText(/Global Engagement Anywhere/)).toBeTruthy();
+    expect(screen.queryByLabelText("Toggle UUPG")).toBeNull();
   });
 
   it("shows an unavailable message when Watchlist filtering is not supported", () => {
     render(
       <DatasetViewSwitchGrid
-        regionCard={{
-          enabled: false,
-          supported: true,
-          selectors: [],
-          onEnabledChange: vi.fn(),
-          onSelectorChange: vi.fn(),
-        }}
+        regionCard={baseRegionCard}
         watchlistCard={{
-          enabled: false,
+          ...baseWatchlistCard,
           supported: false,
-          thresholdLabel: "Christianity: GSEC",
-          thresholdDefinition: "GSEC definition",
-          threshold: 2,
-          minThreshold: 0,
-          maxThreshold: 6,
-          frontierGroupLabel: "Christianity: Frontier Group Y/N",
-          frontierGroupDefinition: "Frontier group definition",
-          frontierGroupValue: true,
-          onEnabledChange: vi.fn(),
-          onThresholdChange: vi.fn(),
-          onFrontierGroupValueChange: vi.fn(),
         }}
-        uupgCard={{
-          enabled: false,
-          supported: true,
-          onEnabledChange: vi.fn(),
-        }}
+        uupgCard={baseUupgCard}
       />,
     );
 
-    expect(
-      screen.getByText(/This dataset does not include/i),
-    ).toBeTruthy();
+    expect(screen.getByText(/This dataset does not include/i)).toBeTruthy();
     expect(screen.getByText(/Christianity: GSEC/)).toBeTruthy();
     expect(screen.getByText(/Christianity: Frontier Group Y\/N/)).toBeTruthy();
+  });
+
+  it("renders region selectors without a card-level toggle", () => {
+    const onSelectorChange = vi.fn();
+
+    render(
+      <DatasetViewSwitchGrid
+        regionCard={{
+          enabled: true,
+          supported: true,
+          selectors: [
+            {
+              id: "globe",
+              label: "Globe",
+              checked: true,
+              description: "",
+              countries: ["Nepal"],
+            },
+          ],
+          onSelectorChange,
+        }}
+        watchlistCard={baseWatchlistCard}
+        uupgCard={baseUupgCard}
+      />,
+    );
+
+    expect(screen.queryByLabelText("Toggle Region")).toBeNull();
+
+    fireEvent.click(screen.getByLabelText("Toggle Globe"));
+
+    expect(onSelectorChange).toHaveBeenCalledWith("globe", false);
   });
 
   it("renders watchlist controls with the supplied display labels and disables them when watchlist is off", () => {
     render(
       <DatasetViewSwitchGrid
-        regionCard={{
-          enabled: false,
-          supported: true,
-          selectors: [],
-          onEnabledChange: vi.fn(),
-          onSelectorChange: vi.fn(),
-        }}
+        regionCard={baseRegionCard}
         watchlistCard={{
-          enabled: false,
-          supported: true,
-          thresholdLabel: "Christianity: GSEC",
+          ...baseWatchlistCard,
           thresholdDefinition: "Global Status of Evangelical Christianity.",
-          threshold: 2,
-          minThreshold: 0,
-          maxThreshold: 6,
-          frontierGroupLabel: "Christianity: Frontier Group Y/N",
           frontierGroupDefinition:
             "<.1% Christian Adherents and no confirmed sustained movement.",
-          frontierGroupValue: true,
-          onEnabledChange: vi.fn(),
-          onThresholdChange: vi.fn(),
-          onFrontierGroupValueChange: vi.fn(),
         }}
-        uupgCard={{
-          enabled: false,
-          supported: true,
-          onEnabledChange: vi.fn(),
-        }}
+        uupgCard={baseUupgCard}
       />,
     );
 
     const thresholdInput = screen.getByLabelText(
       "Watchlist Christianity: GSEC threshold",
     ) as HTMLInputElement;
-    const frontierGroupInput = screen.getByRole("combobox", {
-      name: "Watchlist Christianity: Frontier Group Y/N value",
+    const selectedBooleanButton = screen.getByRole("button", {
+      name: "Set Watchlist Christianity: Frontier Group Y/N value to TRUE",
+    });
+    const unselectedBooleanButton = screen.getByRole("button", {
+      name: "Set Watchlist Christianity: Frontier Group Y/N value to FALSE",
     });
 
     expect(thresholdInput.value).toBe("2");
@@ -154,48 +156,65 @@ describe("DatasetViewSwitchGrid", () => {
         "View definition for Christianity: Frontier Group Y/N",
       ),
     ).toBeTruthy();
-    expect(frontierGroupInput.textContent?.toLowerCase()).toContain("true");
+    expect(selectedBooleanButton.getAttribute("aria-pressed")).toBe("true");
+    expect(unselectedBooleanButton.getAttribute("aria-pressed")).toBe("false");
+    expect((selectedBooleanButton as HTMLButtonElement).disabled).toBe(true);
+    expect((unselectedBooleanButton as HTMLButtonElement).disabled).toBe(true);
   });
 
-  it("renders the watchlist frontier group boolean selector when watchlist is enabled", () => {
+  it("renders the watchlist frontier group boolean selector as segmented buttons when watchlist is enabled", () => {
+    const onFrontierGroupValueChange = vi.fn();
+
     render(
       <DatasetViewSwitchGrid
-        regionCard={{
-          enabled: false,
-          supported: true,
-          selectors: [],
-          onEnabledChange: vi.fn(),
-          onSelectorChange: vi.fn(),
-        }}
+        regionCard={baseRegionCard}
         watchlistCard={{
+          ...baseWatchlistCard,
           enabled: true,
-          supported: true,
-          thresholdLabel: "Christianity: GSEC",
-          thresholdDefinition: "GSEC definition",
-          threshold: 2,
-          minThreshold: 0,
-          maxThreshold: 6,
-          frontierGroupLabel: "Christianity: Frontier Group Y/N",
-          frontierGroupDefinition: "Frontier group definition",
-          frontierGroupValue: true,
-          onEnabledChange: vi.fn(),
-          onThresholdChange: vi.fn(),
-          onFrontierGroupValueChange: vi.fn(),
+          onFrontierGroupValueChange,
         }}
+        uupgCard={baseUupgCard}
+      />,
+    );
+
+    const trueButton = screen.getByRole("button", {
+      name: "Set Watchlist Christianity: Frontier Group Y/N value to TRUE",
+    });
+    const falseButton = screen.getByRole("button", {
+      name: "Set Watchlist Christianity: Frontier Group Y/N value to FALSE",
+    });
+
+    expect(
+      screen.getByRole("group", {
+        name: "Watchlist Christianity: Frontier Group Y/N value",
+      }),
+    ).toBeTruthy();
+    expect(trueButton.getAttribute("aria-pressed")).toBe("true");
+    expect(falseButton.getAttribute("aria-pressed")).toBe("false");
+
+    fireEvent.click(falseButton);
+
+    expect(onFrontierGroupValueChange).toHaveBeenCalledWith(false);
+  });
+
+  it("renders the UUPG field as the only toggle inside the card", () => {
+    render(
+      <DatasetViewSwitchGrid
+        regionCard={baseRegionCard}
+        watchlistCard={baseWatchlistCard}
         uupgCard={{
-          enabled: false,
-          supported: true,
-          onEnabledChange: vi.fn(),
+          ...baseUupgCard,
+          enabled: true,
+          fieldDefinition: "Tracks whether engagement exists anywhere.",
         }}
       />,
     );
 
-    const frontierGroupInput = screen.getByRole("combobox", {
-      name: "Watchlist Christianity: Frontier Group Y/N value",
-    });
-
-    expect(frontierGroupInput).toBeTruthy();
-    expect(frontierGroupInput.getAttribute("aria-expanded")).toBe("false");
-    expect(frontierGroupInput.textContent?.toLowerCase()).toContain("true");
+    expect(screen.queryByLabelText("Toggle UUPG")).toBeNull();
+    expect(screen.getByText("Global Engagement Anywhere")).toBeTruthy();
+    expect(
+      screen.getByLabelText("View definition for Global Engagement Anywhere"),
+    ).toBeTruthy();
+    expect(screen.getByLabelText("Toggle Global Engagement Anywhere")).toBeTruthy();
   });
 });

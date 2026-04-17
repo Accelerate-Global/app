@@ -13,6 +13,7 @@ import type {
   SavedDatasetSort,
 } from "@/lib/api-types";
 import {
+  UUPG_DATASET_COLUMN_KEY,
   WATCHLIST_DATASET_COLUMN_KEY,
   WATCHLIST_FRONTIER_GROUP_DATASET_COLUMN_KEY,
 } from "@/lib/dataset-region-constants";
@@ -64,11 +65,17 @@ export function DatasetDetailClient({
     fieldDefinitionPresentationByColumnKey[
       WATCHLIST_FRONTIER_GROUP_DATASET_COLUMN_KEY
     ]?.definition ?? "";
+  const uupgFieldLabel =
+    fieldDefinitionPresentationByColumnKey[UUPG_DATASET_COLUMN_KEY]
+      ?.effectiveLabel ?? "Engage_Global_Engagement_Anywhere";
+  const uupgFieldDefinition =
+    fieldDefinitionPresentationByColumnKey[UUPG_DATASET_COLUMN_KEY]
+      ?.definition ?? "";
   const supportsRegionFiltering = datasetSupportsRegionFiltering(dataset);
   const supportsWatchlistFiltering = datasetSupportsWatchlistFiltering(dataset);
   const supportsUupgFiltering = datasetSupportsUupgFiltering(dataset);
   const canUseRegionFilter = supportsRegionFiltering && regions.length > 0;
-  const [regionEnabled, setRegionEnabled] = useState(canUseRegionFilter);
+  const regionEnabled = canUseRegionFilter;
   const [selectedRegionIds, setSelectedRegionIds] = useState<Record<string, boolean>>(
     () =>
       Object.fromEntries(
@@ -150,7 +157,6 @@ export function DatasetDetailClient({
           enabled: regionEnabled,
           supported: supportsRegionFiltering,
           selectors: regionSelectors,
-          onEnabledChange: setRegionEnabled,
           onSelectorChange: (regionId, checked) =>
             setSelectedRegionIds((current) => ({
               ...current,
@@ -176,6 +182,8 @@ export function DatasetDetailClient({
         uupgCard={{
           enabled: uupgEnabled,
           supported: supportsUupgFiltering,
+          fieldLabel: uupgFieldLabel,
+          fieldDefinition: uupgFieldDefinition,
           onEnabledChange: setUupgEnabled,
         }}
       />
