@@ -152,4 +152,71 @@ describe("DatasetTable", () => {
     expect(within(firstVisibleRow as HTMLTableRowElement).getByText("1")).toBeTruthy();
     expect(within(secondVisibleRow as HTMLTableRowElement).getByText("3")).toBeTruthy();
   });
+
+  it("orders visible fields alphabetically by their display label by default", async () => {
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify(createRowsResponse()), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    render(
+      <DatasetTable
+        dataset={{
+          ...createDataset(),
+          columns: [
+            {
+              key: "pg_rop3",
+              label: "People Group: 6dig Code ROP3 (PGIC)",
+              sourceIndex: 0,
+            },
+            {
+              key: "geo_country_name",
+              label: "Country",
+              sourceIndex: 1,
+            },
+            {
+              key: "alt_countries",
+              label: "alt_countries",
+              sourceIndex: 2,
+            },
+          ],
+        }}
+        fieldDefinitionPresentationByColumnKey={{
+          pg_rop3: {
+            definition: "",
+            displayLabel: "ROP3",
+            effectiveLabel: "ROP3",
+            linkedSources: [],
+          },
+          geo_country_name: {
+            definition: "",
+            displayLabel: "Country",
+            effectiveLabel: "Country",
+            linkedSources: [],
+          },
+          alt_countries: {
+            definition: "",
+            displayLabel: "Alternate Countries",
+            effectiveLabel: "Alternate Countries",
+            linkedSources: [],
+          },
+        }}
+      />,
+    );
+
+    await screen.findByText("100011.0");
+
+    expect(
+      screen.getAllByRole("columnheader").map((columnHeader) =>
+        columnHeader.textContent?.trim(),
+      ),
+    ).toEqual([
+      "Row number",
+      "Alternate Countries",
+      "Country",
+      "ROP3",
+    ]);
+  });
 });

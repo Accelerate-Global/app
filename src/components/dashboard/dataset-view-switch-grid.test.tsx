@@ -3,9 +3,24 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import { DatasetViewSwitchGrid } from "./dataset-view-switch-grid";
+import {
+  DatasetViewSwitchGrid,
+  getRegionTooltipText,
+} from "./dataset-view-switch-grid";
 
 describe("DatasetViewSwitchGrid", () => {
+  it("uses a short fallback for Globe when no description is configured", () => {
+    expect(getRegionTooltipText("Globe", "   ", ["Albania", "Brazil"])).toBe(
+      "All countries.",
+    );
+  });
+
+  it("falls back to the country list for non-Globe regions without descriptions", () => {
+    expect(
+      getRegionTooltipText("South East Asia", "", ["Thailand", "Vietnam"]),
+    ).toBe("Thailand, Vietnam");
+  });
+
   it("shows an unavailable message when UUPG filtering is not supported", () => {
     render(
       <DatasetViewSwitchGrid
