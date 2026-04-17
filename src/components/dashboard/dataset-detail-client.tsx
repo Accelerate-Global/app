@@ -49,10 +49,17 @@ export function DatasetDetailClient({
   const watchlistThresholdLabel =
     fieldDefinitionPresentationByColumnKey[WATCHLIST_DATASET_COLUMN_KEY]
       ?.effectiveLabel ?? "Christianity_GSEC";
+  const watchlistThresholdDefinition =
+    fieldDefinitionPresentationByColumnKey[WATCHLIST_DATASET_COLUMN_KEY]
+      ?.definition ?? "";
   const watchlistFrontierGroupLabel =
     fieldDefinitionPresentationByColumnKey[
       WATCHLIST_FRONTIER_GROUP_DATASET_COLUMN_KEY
     ]?.effectiveLabel ?? "Christianity_Frontier_Group";
+  const watchlistFrontierGroupDefinition =
+    fieldDefinitionPresentationByColumnKey[
+      WATCHLIST_FRONTIER_GROUP_DATASET_COLUMN_KEY
+    ]?.definition ?? "";
   const supportsRegionFiltering = datasetSupportsRegionFiltering(dataset);
   const supportsWatchlistFiltering = datasetSupportsWatchlistFiltering(dataset);
   const supportsUupgFiltering = datasetSupportsUupgFiltering(dataset);
@@ -107,10 +114,12 @@ export function DatasetDetailClient({
           enabled: watchlistEnabled,
           supported: supportsWatchlistFiltering,
           thresholdLabel: watchlistThresholdLabel,
+          thresholdDefinition: watchlistThresholdDefinition,
           threshold: watchlistThreshold,
           minThreshold: WATCHLIST_THRESHOLD_MIN,
           maxThreshold: WATCHLIST_THRESHOLD_MAX,
           frontierGroupLabel: watchlistFrontierGroupLabel,
+          frontierGroupDefinition: watchlistFrontierGroupDefinition,
           frontierGroupValue: watchlistFrontierGroupValue,
           onEnabledChange: setWatchlistEnabled,
           onThresholdChange: (value) =>

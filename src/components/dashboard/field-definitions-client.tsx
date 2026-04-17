@@ -1,11 +1,12 @@
 "use client";
 
-import { PencilLineIcon } from "lucide-react";
-import { useMemo, useState } from "react";
+import { PencilLineIcon, SearchIcon } from "lucide-react";
+import { useDeferredValue, useMemo, useState } from "react";
 
 import { FieldSourceTagList } from "@/components/dashboard/field-source-tag-list";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -76,6 +77,17 @@ function getFieldDefinitionDescription(definition: string) {
   const trimmedDefinition = definition.trim();
 
   return trimmedDefinition || "No definition available yet.";
+}
+
+function getSearchableFieldDefinitionText(fieldDefinition: FieldDefinition) {
+  return [
+    getFieldDefinitionEffectiveLabel(fieldDefinition),
+    fieldDefinition.label,
+    fieldDefinition.definition,
+    ...fieldDefinition.linkedSources.map((linkedSource) => linkedSource.label),
+  ]
+    .join(" ")
+    .toLowerCase();
 }
 
 function FieldDefinitionName({
@@ -298,6 +310,14 @@ function FieldDefinitionEmptyState() {
   );
 }
 
+function FieldDefinitionSearchEmptyState() {
+  return (
+    <div className="rounded-xl border border-dashed border-border px-4 py-8 text-sm text-muted-foreground">
+      No definitions match this search.
+    </div>
+  );
+}
+
 export function FieldDefinitionsClient({
   initialFieldDefinitions,
   canEdit,
@@ -305,16 +325,31 @@ export function FieldDefinitionsClient({
   const [fieldDefinitions, setFieldDefinitions] = useState(() =>
     sortFieldDefinitions(initialFieldDefinitions),
   );
+  const [searchValue, setSearchValue] = useState("");
   const [editingFieldDefinitionId, setEditingFieldDefinitionId] = useState<string | null>(
     null,
   );
   const [isSaving, setIsSaving] = useState(false);
+  const deferredSearchValue = useDeferredValue(searchValue);
 
   const hasFieldDefinitions = fieldDefinitions.length > 0;
   const sortedFieldDefinitions = useMemo(
     () => sortFieldDefinitions(fieldDefinitions),
     [fieldDefinitions],
   );
+  const filteredFieldDefinitions = useMemo(() => {
+    const normalizedSearchValue = deferredSearchValue.trim().toLowerCase();
+
+    if (!normalizedSearchValue) {
+      return sortedFieldDefinitions;
+    }
+
+    return sortedFieldDefinitions.filter((fieldDefinition) =>
+      getSearchableFieldDefinitionText(fieldDefinition).includes(
+        normalizedSearchValue,
+      ),
+    );
+  }, [deferredSearchValue, sortedFieldDefinitions]);
   const editingFieldDefinition = useMemo(
     () =>
       fieldDefinitions.find(
@@ -352,13 +387,31 @@ export function FieldDefinitionsClient({
     <>
       <div className="grid gap-6">
         {hasFieldDefinitions ? (
-          <FieldDefinitionsTable
-            fieldDefinitions={sortedFieldDefinitions}
-            canEdit={canEdit}
-            onEdit={(fieldDefinition) =>
-              setEditingFieldDefinitionId(fieldDefinition.id)
-            }
-          />
+          <>
+            <div className="relative max-w-xl">
+              <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                type="search"
+                value={searchValue}
+                placeholder="Search definitions"
+                aria-label="Search definitions"
+                className="pl-9"
+                data-smoke-field-definitions-search="field-definitions"
+                onChange={(event) => setSearchValue(event.target.value)}
+              />
+            </div>
+            {filteredFieldDefinitions.length > 0 ? (
+              <FieldDefinitionsTable
+                fieldDefinitions={filteredFieldDefinitions}
+                canEdit={canEdit}
+                onEdit={(fieldDefinition) =>
+                  setEditingFieldDefinitionId(fieldDefinition.id)
+                }
+              />
+            ) : (
+              <FieldDefinitionSearchEmptyState />
+            )}
+          </>
         ) : (
           <FieldDefinitionEmptyState />
         )}

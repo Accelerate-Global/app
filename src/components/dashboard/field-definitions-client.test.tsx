@@ -59,6 +59,7 @@ describe("FieldDefinitionsClient", () => {
       />,
     );
 
+    expect(screen.getByRole("searchbox", { name: "Search definitions" })).toBeTruthy();
     expect(screen.getAllByText("Country Name").length).toBeGreaterThan(0);
     expect(screen.queryByText("Global")).toBeNull();
     expect(screen.getAllByText("Joshua Project").length).toBeGreaterThan(0);
@@ -160,5 +161,65 @@ describe("FieldDefinitionsClient", () => {
     expect(
       screen.getAllByText("The country assigned to the row.").length,
     ).toBeGreaterThan(0);
+  });
+
+  it("filters field definitions by search text", () => {
+    render(
+      <FieldDefinitionsClient
+        canEdit={false}
+        initialFieldDefinitions={[
+          {
+            id: "field-1",
+            canonicalKey: "geo_country_name",
+            label: "Geo_country_name",
+            displayLabel: "Country Name",
+            definition: "The primary country assigned to the row.",
+            hideFromViewerFieldDefinitions: false,
+            linkedDatasets: [{ id: "dataset-1", fileName: "Global" }],
+            linkedSources: [
+              {
+                id: "source-1",
+                key: "joshua_project",
+                label: "Joshua Project",
+              },
+            ],
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+          {
+            id: "field-2",
+            canonicalKey: "religion_name",
+            label: "Religion_Name",
+            displayLabel: "Primary Religion",
+            definition: "The primary religion reported for the people group.",
+            hideFromViewerFieldDefinitions: false,
+            linkedDatasets: [{ id: "dataset-1", fileName: "Global" }],
+            linkedSources: [
+              {
+                id: "source-2",
+                key: "imb_people_groups",
+                label: "IMB (People Groups)",
+              },
+            ],
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+        ]}
+      />,
+    );
+
+    fireEvent.change(screen.getByRole("searchbox", { name: "Search definitions" }), {
+      target: { value: "religion" },
+    });
+
+    expect(screen.getAllByText("Primary Religion").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Country Name")).toBeNull();
+
+    fireEvent.change(screen.getByRole("searchbox", { name: "Search definitions" }), {
+      target: { value: "missing text" },
+    });
+
+    expect(screen.getByText("No definitions match this search.")).toBeTruthy();
+    expect(screen.queryByText("Primary Religion")).toBeNull();
   });
 });

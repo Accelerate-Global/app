@@ -146,10 +146,12 @@ describe("DatasetDetailClient", () => {
         enabled: boolean;
         supported: boolean;
         thresholdLabel: string;
+        thresholdDefinition: string;
         threshold: number;
         minThreshold: number;
         maxThreshold: number;
         frontierGroupLabel: string;
+        frontierGroupDefinition: string;
         frontierGroupValue: boolean;
       };
     };
@@ -166,10 +168,12 @@ describe("DatasetDetailClient", () => {
       enabled: false,
       supported: true,
       thresholdLabel: "Christianity: GSEC",
+      thresholdDefinition: "Watchlist status definition",
       threshold: 2,
       minThreshold: 0,
       maxThreshold: 6,
       frontierGroupLabel: "Christianity: Frontier Group Y/N",
+      frontierGroupDefinition: "Frontier group definition",
       frontierGroupValue: true,
     });
     expect(datasetTableProps.watchlistFilter).toEqual({

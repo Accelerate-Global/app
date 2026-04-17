@@ -9,6 +9,8 @@ import type { FieldDefinitionLinkedSource } from "@/lib/api-types";
 
 const DEFAULT_FIELD_DEFINITION_TOOLTIP =
   "No definition available yet.";
+const FIELD_INFO_TOOLTIP_CONTENT_CLASSNAME =
+  "max-w-[26rem] rounded-2xl border border-border/80 bg-popover px-4 py-3.5 text-sm leading-6 text-popover-foreground shadow-lg ring-1 ring-foreground/8";
 
 export function getFieldDefinitionTooltipText(definition: string) {
   const trimmedDefinition = definition.trim();
@@ -46,17 +48,21 @@ export function FieldDefinitionHeaderInfo({
       </TooltipTrigger>
       <TooltipContent
         sideOffset={8}
-        className="max-w-80 rounded-2xl px-3.5 py-2.5 text-sm leading-5"
+        className={FIELD_INFO_TOOLTIP_CONTENT_CLASSNAME}
         data-smoke-surface="field-definition-tooltip"
         data-smoke-ready="field-definition-tooltip"
       >
         <div className="space-y-2 text-left">
-          <p>
-            <span className="font-medium">{label}:</span>{" "}
-            <span className="whitespace-pre-line">{tooltipText}</span>
-          </p>
+          <div className="space-y-1.5">
+            <p className="font-medium tracking-[-0.01em] text-popover-foreground">
+              {label}
+            </p>
+            <p className="whitespace-pre-line text-popover-foreground">
+              {tooltipText}
+            </p>
+          </div>
           {linkedSources.length > 0 ? (
-            <div className="space-y-1">
+            <div className="space-y-1.5 pt-1">
               <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
                 Sources
               </p>

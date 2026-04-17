@@ -42,10 +42,12 @@ type DatasetViewSwitchGridProps = {
     enabled: boolean;
     supported: boolean;
     thresholdLabel: string;
+    thresholdDefinition: string;
     threshold: number;
     minThreshold: number;
     maxThreshold: number;
     frontierGroupLabel: string;
+    frontierGroupDefinition: string;
     frontierGroupValue: boolean;
     onEnabledChange: (checked: boolean) => void;
     onThresholdChange: (value: number) => void;
@@ -57,6 +59,8 @@ type DatasetViewSwitchGridProps = {
     onEnabledChange: (checked: boolean) => void;
   };
 };
+const INFO_TOOLTIP_CONTENT_CLASSNAME =
+  "max-w-[26rem] rounded-2xl border border-border/80 bg-popover px-4 py-3.5 text-sm leading-6 text-popover-foreground shadow-lg ring-1 ring-foreground/8";
 
 function DatasetViewCard({
   title,
@@ -137,14 +141,56 @@ function RegionCountriesInfo({
       </TooltipTrigger>
       <TooltipContent
         sideOffset={8}
-        className="max-w-80 rounded-2xl px-3.5 py-2.5 text-sm leading-5"
+        className={INFO_TOOLTIP_CONTENT_CLASSNAME}
         data-smoke-surface="region-tooltip"
         data-smoke-ready="region-tooltip"
       >
-        <p className="text-left">
-          <span className="font-medium">{label}:</span>{" "}
-          <span className="whitespace-pre-line">{tooltipText}</span>
-        </p>
+        <div className="space-y-1.5 text-left">
+          <p className="font-medium tracking-[-0.01em] text-popover-foreground">
+            {label}
+          </p>
+          <p className="whitespace-pre-line text-popover-foreground">
+            {tooltipText}
+          </p>
+        </div>
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
+function WatchlistFieldInfo({
+  label,
+  definition,
+}: {
+  label: string;
+  definition: string;
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            aria-label={`View definition for ${label}`}
+            className="shrink-0 text-muted-foreground hover:text-foreground"
+          />
+        }
+      >
+        <InfoIcon aria-hidden="true" className="size-3.5" />
+      </TooltipTrigger>
+      <TooltipContent
+        sideOffset={8}
+        className={INFO_TOOLTIP_CONTENT_CLASSNAME}
+      >
+        <div className="space-y-1.5 text-left">
+          <p className="font-medium tracking-[-0.01em] text-popover-foreground">
+            {label}
+          </p>
+          <p className="whitespace-pre-line text-popover-foreground">
+            {definition}
+          </p>
+        </div>
       </TooltipContent>
     </Tooltip>
   );
@@ -232,9 +278,15 @@ export function DatasetViewSwitchGrid({
           <div className="mt-auto w-full self-end">
             <div className="space-y-3">
               <div className="flex flex-wrap items-center gap-2 text-sm">
-                <code className="rounded-md bg-muted px-2 py-1 text-xs font-medium text-foreground">
-                  {watchlistCard.thresholdLabel}
-                </code>
+                <div className="flex items-center gap-1.5">
+                  <code className="rounded-md bg-muted px-2 py-1 text-xs font-medium text-foreground">
+                    {watchlistCard.thresholdLabel}
+                  </code>
+                  <WatchlistFieldInfo
+                    label={watchlistCard.thresholdLabel}
+                    definition={watchlistCard.thresholdDefinition}
+                  />
+                </div>
                 <span className="rounded-md border border-border bg-background px-2 py-1 text-xs font-medium text-muted-foreground">
                   {"<="}
                 </span>
@@ -268,9 +320,15 @@ export function DatasetViewSwitchGrid({
                 </NumberField>
               </div>
               <div className="flex flex-wrap items-center gap-2 text-sm">
-                <code className="rounded-md bg-muted px-2 py-1 text-xs font-medium text-foreground">
-                  {watchlistCard.frontierGroupLabel}
-                </code>
+                <div className="flex items-center gap-1.5">
+                  <code className="rounded-md bg-muted px-2 py-1 text-xs font-medium text-foreground">
+                    {watchlistCard.frontierGroupLabel}
+                  </code>
+                  <WatchlistFieldInfo
+                    label={watchlistCard.frontierGroupLabel}
+                    definition={watchlistCard.frontierGroupDefinition}
+                  />
+                </div>
                 <span className="rounded-md border border-border bg-background px-2 py-1 text-xs font-medium text-muted-foreground">
                   =
                 </span>
