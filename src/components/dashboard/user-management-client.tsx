@@ -29,6 +29,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import {
   Table,
   TableBody,
   TableCell,
@@ -121,7 +130,6 @@ async function getErrorMessage(response: Response, fallback: string) {
 
 async function inviteUser(input: {
   email: string;
-  fullName: string;
   workspaceRole: WorkspaceRole;
 }) {
   const response = await fetch("/api/admin/users", {
@@ -184,16 +192,13 @@ export function UserManagementClient({
   initialUsers,
 }: UserManagementClientProps) {
   const [users, setUsers] = useState(() => sortUsers(initialUsers));
-  const [selectedUserId, setSelectedUserId] = useState<string | null>(
-    initialUsers[0]?.id ?? null,
-  );
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<WorkspaceRole | "all">("all");
   const [statusFilter, setStatusFilter] = useState<
     WorkspaceUserAccountStatus | "all"
   >("all");
   const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteFullName, setInviteFullName] = useState("");
   const [inviteRole, setInviteRole] = useState<WorkspaceRole>("viewer");
   const [selectedRole, setSelectedRole] = useState<WorkspaceRole>("viewer");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -221,12 +226,7 @@ export function UserManagementClient({
     });
   }, [roleFilter, searchQuery, statusFilter, users]);
 
-  const selectedUser =
-    filteredUsers.find((user) => user.id === selectedUserId) ??
-    users.find((user) => user.id === selectedUserId) ??
-    filteredUsers[0] ??
-    users[0] ??
-    null;
+  const selectedUser = users.find((user) => user.id === selectedUserId) ?? null;
   const activeAdminCount = useMemo(
     () =>
       users.filter(
@@ -236,25 +236,6 @@ export function UserManagementClient({
       ).length,
     [users],
   );
-  const disabledUserCount = useMemo(
-    () => users.filter((user) => user.accountStatus === "disabled").length,
-    [users],
-  );
-
-  useEffect(() => {
-    if (!selectedUserId && filteredUsers[0]) {
-      setSelectedUserId(filteredUsers[0].id);
-      return;
-    }
-
-    if (
-      selectedUserId &&
-      !users.some((user) => user.id === selectedUserId) &&
-      filteredUsers[0]
-    ) {
-      setSelectedUserId(filteredUsers[0].id);
-    }
-  }, [filteredUsers, selectedUserId, users]);
 
   useEffect(() => {
     if (selectedUser) {
@@ -285,14 +266,12 @@ export function UserManagementClient({
     try {
       const user = await inviteUser({
         email,
-        fullName: inviteFullName.trim(),
         workspaceRole: inviteRole,
       });
 
       setUsers((current) => replaceUser(current, user));
       setSelectedUserId(user.id);
       setInviteEmail("");
-      setInviteFullName("");
       setInviteRole("viewer");
       setSuccessMessage(`Invitation sent to ${user.email ?? "the new user"}.`);
     } catch (error) {
@@ -385,65 +364,36 @@ export function UserManagementClient({
 
   const isCurrentUserSelected = selectedUser?.id === currentUserId;
   const removesLastActiveAdmin =
-    selectedUser?.workspaceRole === "admin" &&
+    selectedUser !== null &&
+    selectedUser.workspaceRole === "admin" &&
     selectedUser.accountStatus !== "disabled" &&
     activeAdminCount <= 1;
   const isSelectedUserBusy = selectedUser?.id === isUpdatingUserId;
   const canSaveRole =
-    Boolean(selectedUser) &&
+    selectedUser !== null &&
     !isCurrentUserSelected &&
     !isSelectedUserBusy &&
     selectedRole !== selectedUser.workspaceRole &&
     !(selectedUser.workspaceRole === "admin" && selectedRole === "viewer" && removesLastActiveAdmin);
   const canDisableSelectedUser =
-    Boolean(selectedUser) &&
+    selectedUser !== null &&
     !isCurrentUserSelected &&
     !isSelectedUserBusy &&
     selectedUser.accountStatus !== "disabled" &&
     !removesLastActiveAdmin;
   const canEnableSelectedUser =
-    Boolean(selectedUser) &&
+    selectedUser !== null &&
     !isCurrentUserSelected &&
     !isSelectedUserBusy &&
     selectedUser.accountStatus === "disabled";
   const canSendSelectedUserPasswordReset =
-    Boolean(selectedUser) &&
+    selectedUser !== null &&
     !isSelectedUserBusy &&
     Boolean(selectedUser.email) &&
     selectedUser.accountStatus !== "disabled";
 
   return (
     <div className="grid gap-6">
-      <section className="grid gap-4 md:grid-cols-3">
-        <Card size="sm">
-          <CardHeader>
-            <CardTitle>Total users</CardTitle>
-            <CardDescription>All workspace accounts in Supabase Auth.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-semibold tracking-[-0.04em]">{users.length}</p>
-          </CardContent>
-        </Card>
-        <Card size="sm">
-          <CardHeader>
-            <CardTitle>Active admins</CardTitle>
-            <CardDescription>Admins who can still access the dashboard.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-semibold tracking-[-0.04em]">{activeAdminCount}</p>
-          </CardContent>
-        </Card>
-        <Card size="sm">
-          <CardHeader>
-            <CardTitle>Disabled accounts</CardTitle>
-            <CardDescription>Users currently blocked from signing in.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-semibold tracking-[-0.04em]">{disabledUserCount}</p>
-          </CardContent>
-        </Card>
-      </section>
-
       {errorMessage ? (
         <Alert variant="destructive">
           <AlertTitle>Request failed</AlertTitle>
@@ -459,7 +409,7 @@ export function UserManagementClient({
       ) : null}
 
       <Card>
-        <CardHeader>
+        <CardHeader className="pb-4">
           <CardTitle className="flex items-center gap-2 text-2xl">
             <UserPlusIcon className="size-5 text-muted-foreground" />
             Invite user
@@ -468,7 +418,7 @@ export function UserManagementClient({
             Add the email to the allowlist and send a Supabase invite.
           </CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-[1.2fr_1fr_0.75fr_auto] md:items-end">
+        <CardContent className="grid gap-4 md:grid-cols-[minmax(0,1fr)_12rem_auto] md:items-end">
           <div className="space-y-2">
             <Label htmlFor="invite-email">Email</Label>
             <Input
@@ -478,16 +428,6 @@ export function UserManagementClient({
               placeholder="name@example.com"
               disabled={isInviting}
               onChange={(event) => setInviteEmail(event.target.value)}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="invite-name">Full name</Label>
-            <Input
-              id="invite-name"
-              value={inviteFullName}
-              placeholder="Optional"
-              disabled={isInviting}
-              onChange={(event) => setInviteFullName(event.target.value)}
             />
           </div>
           <div className="space-y-2">
@@ -507,6 +447,7 @@ export function UserManagementClient({
           </div>
           <Button
             type="button"
+            className="md:self-end"
             disabled={isInviting || !inviteEmail.trim()}
             onClick={() => {
               void handleInviteUser();
@@ -518,138 +459,146 @@ export function UserManagementClient({
         </CardContent>
       </Card>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.8fr)_minmax(20rem,1fr)]">
-        <Card>
-          <CardHeader className="gap-3">
-            <div className="flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
-              <div>
-                <CardTitle className="flex items-center gap-2 text-2xl">
-                  <UsersIcon className="size-5 text-muted-foreground" />
-                  Users
-                </CardTitle>
-                <CardDescription>
-                  Search, filter, and inspect every workspace account.
-                </CardDescription>
-              </div>
-              <div className="grid gap-2 sm:grid-cols-3">
-                <Input
-                  value={searchQuery}
-                  placeholder="Search name, email, or id"
-                  onChange={(event) => setSearchQuery(event.target.value)}
-                />
-                <Select
-                  value={roleFilter}
-                  onValueChange={(value) =>
-                    setRoleFilter(value as WorkspaceRole | "all")
-                  }
-                >
-                  <SelectTrigger className="w-full justify-between">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent align="start">
-                    <SelectItem value="all">All roles</SelectItem>
-                    <SelectItem value="admin">Admins</SelectItem>
-                    <SelectItem value="viewer">Viewers</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Select
-                  value={statusFilter}
-                  onValueChange={(value) =>
-                    setStatusFilter(value as WorkspaceUserAccountStatus | "all")
-                  }
-                >
-                  <SelectTrigger className="w-full justify-between">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent align="start">
-                    <SelectItem value="all">All statuses</SelectItem>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="pending_invite">Pending invite</SelectItem>
-                    <SelectItem value="pending_confirmation">
-                      Pending confirmation
-                    </SelectItem>
-                    <SelectItem value="disabled">Disabled</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+      <Card>
+        <CardHeader className="gap-3">
+          <div className="flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2 text-2xl">
+                <UsersIcon className="size-5 text-muted-foreground" />
+                Users
+              </CardTitle>
+              <CardDescription>
+                Search, filter, and inspect every workspace account.
+              </CardDescription>
             </div>
-          </CardHeader>
-          <CardContent>
-            {filteredUsers.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-border px-4 py-8 text-sm text-muted-foreground">
-                No users match the current filters.
-              </div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>User</TableHead>
-                    <TableHead>Role</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Last login</TableHead>
-                    <TableHead>Created</TableHead>
-                    <TableHead className="text-right">Details</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredUsers.map((user) => {
-                    const isSelected = user.id === selectedUser?.id;
+            <div className="grid gap-2 sm:grid-cols-3">
+              <Input
+                value={searchQuery}
+                placeholder="Search name, email, or id"
+                onChange={(event) => setSearchQuery(event.target.value)}
+              />
+              <Select
+                value={roleFilter}
+                onValueChange={(value) =>
+                  setRoleFilter(value as WorkspaceRole | "all")
+                }
+              >
+                <SelectTrigger className="w-full justify-between">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent align="start">
+                  <SelectItem value="all">All roles</SelectItem>
+                  <SelectItem value="admin">Admins</SelectItem>
+                  <SelectItem value="viewer">Viewers</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select
+                value={statusFilter}
+                onValueChange={(value) =>
+                  setStatusFilter(value as WorkspaceUserAccountStatus | "all")
+                }
+              >
+                <SelectTrigger className="w-full justify-between">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent align="start">
+                  <SelectItem value="all">All statuses</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="pending_invite">Pending invite</SelectItem>
+                  <SelectItem value="pending_confirmation">
+                    Pending confirmation
+                  </SelectItem>
+                  <SelectItem value="disabled">Disabled</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {filteredUsers.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-border px-4 py-8 text-sm text-muted-foreground">
+              No users match the current filters.
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>User</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredUsers.map((user) => {
+                  const isSelected = user.id === selectedUser?.id;
 
-                    return (
-                      <TableRow
-                        key={user.id}
-                        data-state={isSelected ? "selected" : undefined}
-                      >
-                        <TableCell className="min-w-56">
-                          <div className="flex flex-col">
-                            <span className="font-medium text-foreground">
-                              {getUserDisplayName(user)}
-                            </span>
-                            <span className="text-muted-foreground">
-                              {user.email ?? user.id}
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell>{ROLE_LABELS[user.workspaceRole]}</TableCell>
-                        <TableCell>
-                          <Badge variant={STATUS_BADGE_VARIANTS[user.accountStatus]}>
-                            {STATUS_LABELS[user.accountStatus]}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{formatDate(user.lastLoginAt)}</TableCell>
-                        <TableCell>{formatDate(user.createdAt)}</TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            type="button"
-                            variant={isSelected ? "secondary" : "ghost"}
-                            onClick={() => setSelectedUserId(user.id)}
-                          >
-                            View
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
+                  return (
+                    <TableRow
+                      key={user.id}
+                      tabIndex={0}
+                      data-state={isSelected ? "selected" : undefined}
+                      data-smoke-trigger="user-management-detail-sheet"
+                      data-smoke-write="safe"
+                      data-smoke-user-id={user.id}
+                      className="cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-2"
+                      onClick={() => setSelectedUserId(user.id)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          setSelectedUserId(user.id);
+                        }
+                      }}
+                    >
+                      <TableCell className="min-w-56 py-3">
+                        <div className="flex flex-col">
+                          <span className="font-medium text-foreground">
+                            {getUserDisplayName(user)}
+                          </span>
+                          <span className="break-all text-muted-foreground">
+                            {user.email ?? user.id}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell>{ROLE_LABELS[user.workspaceRole]}</TableCell>
+                      <TableCell>
+                        <Badge variant={STATUS_BADGE_VARIANTS[user.accountStatus]}>
+                          {STATUS_LABELS[user.accountStatus]}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-2xl">
-              {selectedUser ? getUserDisplayName(selectedUser) : "User details"}
-            </CardTitle>
-            <CardDescription>
-              {selectedUser
-                ? "Review identifiers, providers, access level, and account status."
-                : "Select a user to inspect and manage their account."}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-6">
-            {selectedUser ? (
-              <>
+      {selectedUser ? (
+        <Sheet
+          open
+          onOpenChange={(nextOpen) => {
+            if (!nextOpen) {
+              setSelectedUserId(null);
+            }
+          }}
+        >
+          <SheetContent
+            side="right"
+            showCloseButton={false}
+            className="w-full gap-0 sm:max-w-lg"
+            data-smoke-surface="user-management-detail-sheet"
+            data-smoke-ready="user-management-detail-sheet"
+          >
+            <div className="flex h-full flex-col">
+              <SheetHeader className="border-b border-border px-6 py-5">
+                <SheetTitle>{getUserDisplayName(selectedUser)}</SheetTitle>
+                <SheetDescription>
+                  Review identifiers, providers, access level, and account status.
+                </SheetDescription>
+              </SheetHeader>
+
+              <div className="flex-1 space-y-6 overflow-y-auto overscroll-contain px-6 py-5">
                 <div className="flex flex-wrap gap-2">
                   <Badge>{ROLE_LABELS[selectedUser.workspaceRole]}</Badge>
                   <Badge variant={STATUS_BADGE_VARIANTS[selectedUser.accountStatus]}>
@@ -857,15 +806,26 @@ export function UserManagementClient({
                     </p>
                   ) : null}
                 </div>
-              </>
-            ) : (
-              <div className="rounded-xl border border-dashed border-border px-4 py-8 text-sm text-muted-foreground">
-                No user selected.
               </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+
+              <SheetFooter className="border-t border-border px-6 py-5">
+                <SheetClose
+                  render={
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full sm:w-auto"
+                      data-smoke-close="user-management-detail-sheet"
+                    />
+                  }
+                >
+                  Close
+                </SheetClose>
+              </SheetFooter>
+            </div>
+          </SheetContent>
+        </Sheet>
+      ) : null}
     </div>
   );
 }
