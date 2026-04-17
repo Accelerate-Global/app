@@ -20,7 +20,7 @@ export function FieldSourceTagList({
         label: linkedSource.label,
       }))}
       className={className}
-      badgeClassName="border-border/80 bg-muted/35 text-foreground"
+      badgeClassName="border-border/80 bg-secondary text-secondary-foreground shadow-xs"
     />
   );
 }

@@ -20,10 +20,12 @@ describe("DatasetViewSwitchGrid", () => {
           enabled: false,
           supported: true,
           thresholdLabel: "Christianity_GSEC",
+          thresholdDefinition: "GSEC definition",
           threshold: 2,
           minThreshold: 0,
           maxThreshold: 6,
           frontierGroupLabel: "Christianity_Frontier_Group",
+          frontierGroupDefinition: "Frontier group definition",
           frontierGroupValue: true,
           onEnabledChange: vi.fn(),
           onThresholdChange: vi.fn(),
@@ -59,10 +61,12 @@ describe("DatasetViewSwitchGrid", () => {
           enabled: false,
           supported: false,
           thresholdLabel: "Christianity: GSEC",
+          thresholdDefinition: "GSEC definition",
           threshold: 2,
           minThreshold: 0,
           maxThreshold: 6,
           frontierGroupLabel: "Christianity: Frontier Group Y/N",
+          frontierGroupDefinition: "Frontier group definition",
           frontierGroupValue: true,
           onEnabledChange: vi.fn(),
           onThresholdChange: vi.fn(),
@@ -97,10 +101,13 @@ describe("DatasetViewSwitchGrid", () => {
           enabled: false,
           supported: true,
           thresholdLabel: "Christianity: GSEC",
+          thresholdDefinition: "Global Status of Evangelical Christianity.",
           threshold: 2,
           minThreshold: 0,
           maxThreshold: 6,
           frontierGroupLabel: "Christianity: Frontier Group Y/N",
+          frontierGroupDefinition:
+            "<.1% Christian Adherents and no confirmed sustained movement.",
           frontierGroupValue: true,
           onEnabledChange: vi.fn(),
           onThresholdChange: vi.fn(),
@@ -124,6 +131,14 @@ describe("DatasetViewSwitchGrid", () => {
     expect(thresholdInput.value).toBe("2");
     expect(thresholdInput.disabled).toBe(true);
     expect(screen.getByText("Christianity: Frontier Group Y/N")).toBeTruthy();
+    expect(
+      screen.getByLabelText("View definition for Christianity: GSEC"),
+    ).toBeTruthy();
+    expect(
+      screen.getByLabelText(
+        "View definition for Christianity: Frontier Group Y/N",
+      ),
+    ).toBeTruthy();
     expect(frontierGroupInput.textContent?.toLowerCase()).toContain("true");
   });
 
@@ -141,10 +156,12 @@ describe("DatasetViewSwitchGrid", () => {
           enabled: true,
           supported: true,
           thresholdLabel: "Christianity: GSEC",
+          thresholdDefinition: "GSEC definition",
           threshold: 2,
           minThreshold: 0,
           maxThreshold: 6,
           frontierGroupLabel: "Christianity: Frontier Group Y/N",
+          frontierGroupDefinition: "Frontier group definition",
           frontierGroupValue: true,
           onEnabledChange: vi.fn(),
           onThresholdChange: vi.fn(),

@@ -15,12 +15,24 @@ describe("FieldDefinitionHeaderInfo", () => {
     );
   });
 
+  it("returns the trimmed definition when content exists", () => {
+    expect(getFieldDefinitionTooltipText("  The country tied to the row.  ")).toBe(
+      "The country tied to the row.",
+    );
+  });
+
   it("renders the info icon button for the field", () => {
     render(
       <FieldDefinitionHeaderInfo
         label="Geo Country Name"
         definition="The country tied to the current row."
-        linkedSources={[]}
+        linkedSources={[
+          {
+            id: "source-1",
+            key: "joshua_project",
+            label: "Joshua Project",
+          },
+        ]}
       />,
     );
 
