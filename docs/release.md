@@ -29,14 +29,7 @@ Vercel production deploys for emergency recovery only.
    pnpm db:push:remote
    ```
 
-4. Ensure the remote field-source registry is seeded from the checked-in
-   Aggregate 1 mapping CSV:
-
-   ```bash
-   pnpm field-sources:seed:remote
-   ```
-
-5. Ship the reviewed PR:
+4. Ship the reviewed PR:
 
    ```bash
    pnpm ship --pr <number>
@@ -46,6 +39,8 @@ Vercel production deploys for emergency recovery only.
 
 - refuses to run with a dirty worktree
 - fails early if the linked remote database is missing tracked migrations
+- inspects the PR file list and only seeds the remote field-source registry
+  when the diff touches checked-in field-source seed inputs
 - relies on release-critical CLI scripts that use the shared `@/db` singleton
   to close that client before exit, so control returns cleanly to the ship
   process after remote checks such as `field-sources:seed:remote`

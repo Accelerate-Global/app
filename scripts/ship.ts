@@ -1,3 +1,4 @@
+import path from "node:path";
 import { pathToFileURL } from "node:url";
 
 import {
@@ -12,6 +13,11 @@ const GIT_COMMAND_TIMEOUT_MS = 30_000;
 const GH_COMMAND_TIMEOUT_MS = 30_000;
 const DRIFT_CHECK_TIMEOUT_MS = 2 * 60_000;
 const REMOTE_SEED_TIMEOUT_MS = 5 * 60_000;
+const FIELD_SOURCE_SEED_INPUT_PATTERNS = [
+  "scripts/seed-field-sources.ts",
+  "src/lib/field-sources.ts",
+  "src/data/field-sources/**",
+] as const;
 
 type PullRequestView = {
   baseRefName: string;
@@ -25,6 +31,16 @@ type PullRequestView = {
   title: string;
   url: string;
 };
+
+type PullRequestFile = {
+  filename: string;
+};
+
+const matchesGlob = (
+  path as typeof path & {
+    matchesGlob?: (filePath: string, pattern: string) => boolean;
+  }
+).matchesGlob;
 
 function logStage(message: string) {
   console.log(`[ship] ${message}`);
@@ -58,6 +74,48 @@ async function getPullRequest(prNumber: string) {
   );
 
   return JSON.parse(stdout) as PullRequestView;
+}
+
+function normalizePath(filePath: string) {
+  return filePath.split(path.sep).join("/");
+}
+
+function matchesAnyPattern(filePath: string, patterns: readonly string[]) {
+  return patterns.some((pattern) =>
+    matchesGlob ? matchesGlob(filePath, pattern) : filePath === pattern,
+  );
+}
+
+async function listPullRequestFiles(prNumber: string) {
+  const { stdout } = await runCommand(
+    "gh",
+    [
+      "api",
+      `repos/{owner}/{repo}/pulls/${prNumber}/files`,
+      "--paginate",
+      "--slurp",
+    ],
+    {
+      quiet: true,
+      stdinMode: "ignore",
+      timeoutMs: GH_COMMAND_TIMEOUT_MS,
+    },
+  );
+
+  const parsedFiles = JSON.parse(stdout) as PullRequestFile[] | PullRequestFile[][];
+  const pullRequestFiles = Array.isArray(parsedFiles[0])
+    ? (parsedFiles as PullRequestFile[][]).flat()
+    : (parsedFiles as PullRequestFile[]);
+
+  return pullRequestFiles.map((file) => normalizePath(file.filename));
+}
+
+function shouldSeedRemoteFieldSourceRegistry(changedFiles: string[]) {
+  const normalizedChangedFiles = [...new Set(changedFiles.map(normalizePath))];
+
+  return normalizedChangedFiles.some((filePath) =>
+    matchesAnyPattern(filePath, FIELD_SOURCE_SEED_INPUT_PATTERNS),
+  );
 }
 
 async function ensureCleanWorktree() {
@@ -101,23 +159,30 @@ export async function shipPullRequest(input: { prNumber: string }) {
 
   await ensureCleanWorktree();
 
+  logStage(`Looking up PR #${prNumber}...`);
+  let pullRequest = await getPullRequest(prNumber);
+
+  if (pullRequest.baseRefName !== "main") {
+    throw new Error(`Ship only supports PRs targeting main. Received ${pullRequest.baseRefName}.`);
+  }
+
+  const pullRequestFiles = await listPullRequestFiles(prNumber);
+  const needsRemoteFieldSourceSeed = shouldSeedRemoteFieldSourceRegistry(pullRequestFiles);
+
   logStage("Checking linked Supabase migration drift...");
   await runCommand("pnpm", ["run", "db:check-migration-drift"], {
     stdinMode: "ignore",
     timeoutMs: DRIFT_CHECK_TIMEOUT_MS,
   });
 
-  logStage("Ensuring the remote field-source registry is seeded...");
-  await runCommand("pnpm", ["run", "field-sources:seed:remote"], {
-    stdinMode: "ignore",
-    timeoutMs: REMOTE_SEED_TIMEOUT_MS,
-  });
-
-  logStage(`Looking up PR #${prNumber}...`);
-  let pullRequest = await getPullRequest(prNumber);
-
-  if (pullRequest.baseRefName !== "main") {
-    throw new Error(`Ship only supports PRs targeting main. Received ${pullRequest.baseRefName}.`);
+  if (needsRemoteFieldSourceSeed) {
+    logStage("Ensuring the remote field-source registry is seeded...");
+    await runCommand("pnpm", ["run", "field-sources:seed:remote"], {
+      stdinMode: "ignore",
+      timeoutMs: REMOTE_SEED_TIMEOUT_MS,
+    });
+  } else {
+    logStage("Skipping remote field-source seeding; PR does not touch field-source seed inputs.");
   }
 
   logStage(
