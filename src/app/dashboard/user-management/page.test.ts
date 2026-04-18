@@ -1,10 +1,15 @@
+// @vitest-environment jsdom
+
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { render } from "@testing-library/react";
 
 import { redirect } from "next/navigation";
 
 import { getCurrentIdentity } from "@/lib/auth";
 import { listWorkspaceUsers } from "@/lib/user-management";
 import UserManagementPage from "./page";
+
+const userManagementClientSpy = vi.fn();
 
 vi.mock("next/navigation", () => ({
   redirect: vi.fn((target: string) => {
@@ -25,7 +30,10 @@ vi.mock("@/components/layout/site-header", () => ({
 }));
 
 vi.mock("@/components/dashboard/user-management-client", () => ({
-  UserManagementClient: () => null,
+  UserManagementClient: (props: unknown) => {
+    userManagementClientSpy(props);
+    return null;
+  },
 }));
 
 const getCurrentIdentityMock = vi.mocked(getCurrentIdentity);
@@ -35,6 +43,7 @@ const redirectMock = vi.mocked(redirect);
 describe("/dashboard/user-management", () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    userManagementClientSpy.mockReset();
   });
 
   it("redirects anonymous users home", async () => {
@@ -71,5 +80,13 @@ describe("/dashboard/user-management", () => {
 
     expect(view).toBeTruthy();
     expect(listWorkspaceUsersMock).toHaveBeenCalledWith();
+    render(view);
+    expect(userManagementClientSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        currentUserId: "owner-1",
+        actorOwnerId: "owner-1",
+        workspaceRole: "admin",
+      }),
+    );
   });
 });

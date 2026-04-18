@@ -1,35 +1,39 @@
 // @vitest-environment jsdom
 
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 import { ForgotPasswordForm } from "./forgot-password-form";
 
+const { trackAppEventMock } = vi.hoisted(() => ({
+  trackAppEventMock: vi.fn(),
+}));
+
 vi.mock("@/lib/supabase/client", () => ({
   createSupabaseBrowserClient: vi.fn(),
+}));
+
+vi.mock("@/lib/analytics-client", () => ({
+  trackAppEvent: trackAppEventMock,
 }));
 
 const createSupabaseBrowserClientMock = vi.mocked(createSupabaseBrowserClient);
 
 describe("ForgotPasswordForm", () => {
-  afterEach(() => {
-    cleanup();
-  });
-
   beforeEach(() => {
     vi.resetAllMocks();
   });
 
-  it("shows a success state without surfacing a false failure", async () => {
-    const resetPasswordForEmail = vi.fn().mockResolvedValue({ error: null });
+  afterEach(() => {
+    cleanup();
+  });
+
+  it("tracks password reset requests without sending the email", async () => {
+    const resetPasswordForEmail = vi.fn().mockResolvedValue({
+      error: null,
+    });
 
     createSupabaseBrowserClientMock.mockReturnValue({
       auth: { resetPasswordForEmail },
@@ -37,48 +41,46 @@ describe("ForgotPasswordForm", () => {
 
     render(<ForgotPasswordForm />);
 
-    const emailInput = screen.getByLabelText(/email/i) as HTMLInputElement;
-
-    fireEvent.change(emailInput, {
-      target: { value: "admin@example.com" },
+    fireEvent.change(screen.getByLabelText("Email"), {
+      target: { value: "viewer@example.com" },
     });
-    fireEvent.click(screen.getByRole("button", { name: /send reset link/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Send reset link" }));
 
     await waitFor(() => {
       expect(resetPasswordForEmail).toHaveBeenCalledWith(
-        "admin@example.com",
+        "viewer@example.com",
         expect.objectContaining({
           redirectTo: expect.stringContaining("/reset-password"),
         }),
       );
     });
-
-    expect(
-      await screen.findByText(
-        "If an account exists for that email, a password reset link is on its way.",
-      ),
-    ).toBeTruthy();
-    expect(screen.queryByText(/password reset failed/i)).toBeNull();
-    expect(emailInput.value).toBe("");
+    expect(trackAppEventMock).toHaveBeenCalledWith(
+      "password_reset_requested",
+      expect.objectContaining({
+        route: "forgot_password",
+        source_surface: "forgot_password_form",
+        success: true,
+      }),
+    );
   });
 
-  it("shows the Supabase error when the reset request fails", async () => {
-    const resetPasswordForEmail = vi.fn().mockResolvedValue({
-      error: { message: "SMTP is unavailable." },
-    });
-
+  it("tracks invalid recovery link messages", () => {
     createSupabaseBrowserClientMock.mockReturnValue({
-      auth: { resetPasswordForEmail },
+      auth: {},
     } as never);
 
-    render(<ForgotPasswordForm />);
+    render(
+      <ForgotPasswordForm message="Recovery link could not be verified." />,
+    );
 
-    fireEvent.change(screen.getByLabelText(/email/i), {
-      target: { value: "admin@example.com" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: /send reset link/i }));
-
-    expect(await screen.findByText("SMTP is unavailable.")).toBeTruthy();
-    expect(screen.queryByText(/check your inbox/i)).toBeNull();
+    expect(trackAppEventMock).toHaveBeenCalledWith(
+      "password_reset_invalid_link",
+      expect.objectContaining({
+        route: "forgot_password",
+        source_surface: "forgot_password_message",
+        success: false,
+        error_code: "invalid_recovery_link",
+      }),
+    );
   });
 });

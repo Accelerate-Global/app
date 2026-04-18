@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { DatasetTableActionBar } from "@/components/dashboard/dataset-table-action-bar";
 import { DatasetTable } from "@/components/dashboard/dataset-table";
@@ -15,12 +15,22 @@ import {
 import { useDatasetTableState } from "@/components/dashboard/use-dataset-table-state";
 import type {
   DatasetOpenPreset,
+  SavedDatasetFilterState,
   DatasetSummary,
   DatasetTag,
   FieldDefinitionPresentation,
   FilterRegion,
   SavedDatasetSort,
 } from "@/lib/api-types";
+import {
+  buildAnalyticsContext,
+  type DatasetOpenSource,
+  getEnabledFilterSections,
+  getSortingKeys,
+  type AnalyticsWorkspaceRole,
+  withAnalyticsContext,
+} from "@/lib/analytics";
+import { trackAppEvent } from "@/lib/analytics-client";
 import { getDatasetOpenPresetTag, normalizeDatasetTags } from "@/lib/dataset-tags";
 import {
   UUPG_DATASET_COLUMN_KEY,
@@ -54,6 +64,13 @@ type DatasetDetailClientProps = {
   initialFilters?: DatasetOpenPreset | null;
   initialSorting?: SavedDatasetSort[] | null;
   canManageOpenPresets?: boolean;
+  actorOwnerId?: string;
+  workspaceRole?: AnalyticsWorkspaceRole;
+  datasetSource?: DatasetOpenSource;
+  initialSavedTableId?: string | null;
+  initialSavedTableRowCount?: number | null;
+  initialSavedTableFilterSections?: SavedDatasetFilterState | null;
+  initialPresetTagId?: string | null;
 };
 
 const WATCHLIST_THRESHOLD_MIN = 0;
@@ -119,6 +136,13 @@ export function DatasetDetailClient({
   initialFilters = null,
   initialSorting = null,
   canManageOpenPresets = false,
+  actorOwnerId = "anonymous",
+  workspaceRole = "anonymous",
+  datasetSource = "dashboard",
+  initialSavedTableId = null,
+  initialSavedTableRowCount = null,
+  initialSavedTableFilterSections = null,
+  initialPresetTagId = null,
 }: DatasetDetailClientProps) {
   const watchlistThresholdLabel =
     fieldDefinitionPresentationByColumnKey[WATCHLIST_DATASET_COLUMN_KEY]
@@ -228,6 +252,23 @@ export function DatasetDetailClient({
   );
   const [uupgEnabled, setUupgEnabled] = useState(initialState.uupgEnabled);
   const [isFiltersSheetOpen, setIsFiltersSheetOpen] = useState(false);
+  const analyticsContext = useMemo(
+    () =>
+      buildAnalyticsContext({
+        route: "dataset_detail",
+        actorOwnerId,
+        workspaceRole,
+      }),
+    [actorOwnerId, workspaceRole],
+  );
+  const hasTrackedInitialFiltersRef = useRef(false);
+  const datasetTableAnalytics = useMemo(
+    () => ({
+      context: analyticsContext,
+      datasetSource,
+    }),
+    [analyticsContext, datasetSource],
+  );
 
   const enabledCountryNames = useMemo(
     () => getEnabledRegionCountryNames(visibleRegions, selectedRegionIds),
@@ -277,6 +318,7 @@ export function DatasetDetailClient({
       enabled: uupgEnabled,
       isSupported: supportsUupgFiltering,
     },
+    analytics: datasetTableAnalytics,
   });
   const savedFilters = useMemo(
     () =>
@@ -321,6 +363,157 @@ export function DatasetDetailClient({
       watchlistThreshold,
     ],
   );
+
+  useEffect(() => {
+    trackAppEvent(
+      "dataset_opened",
+      withAnalyticsContext(analyticsContext, {
+        source_surface: "dataset_detail_page",
+        success: true,
+        dataset_id: dataset.id,
+        dataset_source: datasetSource,
+      }),
+    );
+  }, [analyticsContext, dataset.id, datasetSource]);
+
+  useEffect(() => {
+    if (initialSavedTableId && initialSavedTableRowCount !== null) {
+      trackAppEvent(
+        "saved_table_opened",
+        withAnalyticsContext(analyticsContext, {
+          source_surface: "dataset_detail_page",
+          success: true,
+          dataset_id: dataset.id,
+          saved_table_id: initialSavedTableId,
+          saved_row_count: initialSavedTableRowCount,
+          filter_sections_enabled: initialSavedTableFilterSections
+            ? getEnabledFilterSections(initialSavedTableFilterSections)
+            : "none",
+        }),
+      );
+    }
+  }, [
+    analyticsContext,
+    dataset.id,
+    initialSavedTableFilterSections,
+    initialSavedTableId,
+    initialSavedTableRowCount,
+  ]);
+
+  useEffect(() => {
+    if (!initialPresetTagId) {
+      return;
+    }
+
+    trackAppEvent(
+      "dataset_open_preset_used",
+      withAnalyticsContext(analyticsContext, {
+        source_surface: "dataset_detail_page",
+        success: true,
+        dataset_id: dataset.id,
+        tag_id: initialPresetTagId,
+      }),
+    );
+  }, [analyticsContext, dataset.id, initialPresetTagId]);
+
+  const filterSnapshotKey = useMemo(
+    () =>
+      JSON.stringify({
+        regionEnabled,
+        selectedRegionIds,
+        countryEnabled,
+        selectedCountryNames,
+        watchlistEnabled,
+        watchlistThresholdEnabled,
+        watchlistThreshold,
+        watchlistEngagementPhaseEnabled,
+        watchlistEngagementPhaseThreshold,
+        watchlistFrontierGroupEnabled,
+        watchlistFrontierGroupValue,
+        uupgEnabled,
+        sorting: datasetTable.sorting,
+      }),
+    [
+      countryEnabled,
+      datasetTable.sorting,
+      regionEnabled,
+      selectedCountryNames,
+      selectedRegionIds,
+      uupgEnabled,
+      watchlistEnabled,
+      watchlistEngagementPhaseEnabled,
+      watchlistEngagementPhaseThreshold,
+      watchlistFrontierGroupEnabled,
+      watchlistFrontierGroupValue,
+      watchlistThreshold,
+      watchlistThresholdEnabled,
+    ],
+  );
+
+  useEffect(() => {
+    if (datasetTable.isLoading || datasetTable.error) {
+      return;
+    }
+
+    if (!hasTrackedInitialFiltersRef.current) {
+      hasTrackedInitialFiltersRef.current = true;
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      trackAppEvent(
+        "dataset_filters_applied",
+        withAnalyticsContext(analyticsContext, {
+          source_surface: "dataset_filters",
+          success: true,
+          dataset_id: dataset.id,
+          result_count: datasetTable.recordCount,
+          region_enabled: regionEnabled,
+          region_count: Object.values(selectedRegionIds).filter(Boolean).length,
+          country_enabled: countryEnabled,
+          country_count: selectedCountryNames.length,
+          watchlist_enabled: watchlistEnabled,
+          watchlist_threshold_enabled: watchlistThresholdEnabled,
+          watchlist_threshold: watchlistThresholdEnabled
+            ? watchlistThreshold
+            : null,
+          watchlist_frontier_group_enabled: watchlistFrontierGroupEnabled,
+          watchlist_frontier_group_value: watchlistFrontierGroupEnabled
+            ? watchlistFrontierGroupValue
+            : null,
+          watchlist_engagement_phase_enabled: watchlistEngagementPhaseEnabled,
+          watchlist_engagement_phase_threshold: watchlistEngagementPhaseEnabled
+            ? watchlistEngagementPhaseThreshold
+            : null,
+          uupg_enabled: uupgEnabled,
+          sorting_count: savedFilters.sorting.length,
+          sorting_keys: getSortingKeys(savedFilters.sorting),
+        }),
+      );
+    }, 500);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [
+    analyticsContext,
+    countryEnabled,
+    dataset.id,
+    datasetTable.error,
+    datasetTable.isLoading,
+    datasetTable.recordCount,
+    filterSnapshotKey,
+    regionEnabled,
+    savedFilters.sorting,
+    selectedCountryNames.length,
+    selectedRegionIds,
+    uupgEnabled,
+    watchlistEnabled,
+    watchlistEngagementPhaseEnabled,
+    watchlistEngagementPhaseThreshold,
+    watchlistFrontierGroupEnabled,
+    watchlistFrontierGroupValue,
+    watchlistThreshold,
+    watchlistThresholdEnabled,
+  ]);
 
   async function updateDatasetTags(nextTags: DatasetTag[]) {
     const response = await fetch(`/api/datasets/${dataset.id}`, {
@@ -528,6 +721,7 @@ export function DatasetDetailClient({
             isLoading={datasetTable.isLoading}
             hasError={Boolean(dataset.error || datasetTable.error)}
             fieldDefinitionPresentationByColumnKey={fieldDefinitionPresentationByColumnKey}
+            analyticsContext={analyticsContext}
             onOpenFilters={() => setIsFiltersSheetOpen(true)}
             openPresetControls={
               canManageOpenPresets

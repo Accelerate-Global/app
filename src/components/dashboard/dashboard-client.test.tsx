@@ -6,11 +6,18 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DashboardClient } from "./dashboard-client";
 
 const fetchMock = vi.fn();
+const { trackAppEventMock } = vi.hoisted(() => ({
+  trackAppEventMock: vi.fn(),
+}));
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
     push: vi.fn(),
   }),
+}));
+
+vi.mock("@/lib/analytics-client", () => ({
+  trackAppEvent: trackAppEventMock,
 }));
 
 function createDataset() {
@@ -132,6 +139,15 @@ describe("DashboardClient", () => {
 
     expect(editLink.getAttribute("href")).toBe("/dashboard/datasets/dataset-1/edit");
     expect(screen.queryByRole("dialog", { name: "Edit dataset" })).toBeNull();
+    expect(trackAppEventMock).toHaveBeenCalledWith(
+      "dashboard_viewed",
+      expect.objectContaining({
+        source_surface: "dashboard_page",
+        success: true,
+        dataset_count: 1,
+        saved_table_count: 0,
+      }),
+    );
   });
 
   it("opens the saved table details sheet and persists saved table edits", async () => {
@@ -176,5 +192,16 @@ describe("DashboardClient", () => {
 
     expect(screen.getByText("North Africa saved")).toBeTruthy();
     expect(screen.getByText("Saved from dataset detail page.")).toBeTruthy();
+    expect(trackAppEventMock).toHaveBeenCalledWith(
+      "saved_table_updated",
+      expect.objectContaining({
+        source_surface: "saved_table_detail_sheet",
+        success: true,
+        dataset_id: "dataset-1",
+        saved_table_id: "saved-table-1",
+        saved_row_count: 28,
+        filter_sections_enabled: "region",
+      }),
+    );
   });
 });

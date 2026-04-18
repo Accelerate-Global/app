@@ -9,12 +9,21 @@ const pushMock = vi.fn();
 const refreshMock = vi.fn();
 const fetchMock = vi.fn();
 const assignMock = vi.fn();
+const { pathnameMock, trackAppEventMock } = vi.hoisted(() => ({
+  pathnameMock: vi.fn(),
+  trackAppEventMock: vi.fn(),
+}));
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
     push: pushMock,
     refresh: refreshMock,
   }),
+  usePathname: () => pathnameMock(),
+}));
+
+vi.mock("@/lib/analytics-client", () => ({
+  trackAppEvent: trackAppEventMock,
 }));
 
 function openMenu() {
@@ -38,11 +47,20 @@ describe("AccountControl", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     global.fetch = fetchMock as typeof fetch;
+    pathnameMock.mockReturnValue("/dashboard");
     Object.defineProperty(window, "location", {
       configurable: true,
       value: {
         ...window.location,
         assign: assignMock,
+      },
+    });
+    Object.defineProperty(window, "localStorage", {
+      configurable: true,
+      value: {
+        getItem: vi.fn(() => null),
+        setItem: vi.fn(),
+        removeItem: vi.fn(),
       },
     });
     document.documentElement.classList.remove("dark");
@@ -139,8 +157,50 @@ describe("AccountControl", () => {
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith("/auth/sign-out", { method: "POST" });
     });
+    expect(trackAppEventMock).toHaveBeenCalledWith(
+      "sign_out",
+      expect.objectContaining({
+        route: "dashboard",
+        actor_owner_id: "owner-1",
+        workspace_role: "viewer",
+        source_surface: "account_menu",
+        success: true,
+      }),
+    );
     expect(assignMock).toHaveBeenCalledWith("/");
     expect(pushMock).not.toHaveBeenCalled();
     expect(refreshMock).not.toHaveBeenCalled();
+  });
+
+  it("tracks theme toggles using the current pathname route", () => {
+    pathnameMock.mockReturnValue("/dashboard/profile");
+
+    render(
+      <AccountControl
+        identity={{
+          ownerId: "owner-1",
+          email: "viewer@example.com",
+          fullName: null,
+          isDatasetAdmin: false,
+          mode: "supabase",
+        }}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button"));
+    fireEvent.click(screen.getByText("Dark mode"));
+
+    expect(trackAppEventMock).toHaveBeenCalledWith(
+      "theme_toggled",
+      expect.objectContaining({
+        route: "profile",
+        actor_owner_id: "owner-1",
+        workspace_role: "viewer",
+        source_surface: "account_menu",
+        success: true,
+        from_theme: "light",
+        to_theme: "dark",
+      }),
+    );
   });
 });

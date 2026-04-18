@@ -73,14 +73,14 @@ export const smokeRouteSpecs: SmokeRouteSpec[] = [
     role: "viewer",
     pageFile: "src/app/dashboard/datasets/page.tsx",
     path: "/dashboard/datasets",
-    redirectTo: "/dashboard/datasets/{{primaryDatasetId}}",
+    redirectTo: "/dashboard/datasets/{{primaryDatasetId}}?source=default_redirect",
   },
   {
     id: "datasets-index-admin",
     role: "admin",
     pageFile: "src/app/dashboard/datasets/page.tsx",
     path: "/dashboard/datasets",
-    redirectTo: "/dashboard/datasets/{{primaryDatasetId}}",
+    redirectTo: "/dashboard/datasets/{{primaryDatasetId}}?source=default_redirect",
   },
   {
     id: "dataset-detail-viewer",

@@ -3,7 +3,7 @@
 import { DownloadIcon, FileTextIcon, GripVerticalIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { KeyboardEvent, MouseEvent } from "react";
+import type { KeyboardEvent, MouseEvent, ReactNode } from "react";
 
 import { DatasetTagList } from "@/components/dashboard/dataset-tag-list";
 import {
@@ -21,8 +21,17 @@ type DatasetsGridProps = {
   onReorderDatasets?: (datasets: DatasetSummary[]) => void;
 };
 
+const DATASET_ACTIONS_COLUMN_WIDTH = "10.5rem";
 const DATASET_GRID_TEMPLATE_COLUMNS =
-  "minmax(16rem,1.8fr) minmax(12rem,1.15fr) minmax(8rem,0.7fr) max-content";
+  `minmax(16rem,1.8fr) minmax(12rem,1.15fr) minmax(8rem,0.7fr) ${DATASET_ACTIONS_COLUMN_WIDTH}`;
+
+function CenteredHeaderCell({ children }: { children: ReactNode }) {
+  return (
+    <span className="flex w-full items-center justify-center text-center">
+      {children}
+    </span>
+  );
+}
 
 function DatasetActions({
   dataset,
@@ -84,7 +93,7 @@ function DatasetListRow({
   const router = useRouter();
 
   function navigateToDataset() {
-    router.push(`/dashboard/datasets/${dataset.id}`);
+    router.push(`/dashboard/datasets/${dataset.id}?source=dashboard`);
   }
 
   function handleRowKeyDown(event: KeyboardEvent<HTMLDivElement>) {
@@ -155,8 +164,8 @@ function DatasetListHeader() {
       style={{ gridTemplateColumns: DATASET_GRID_TEMPLATE_COLUMNS }}
     >
       <span>Name</span>
-      <span className="block w-full text-center">Tags</span>
-      <span className="block w-full text-center">People Groups</span>
+      <CenteredHeaderCell>Tags</CenteredHeaderCell>
+      <CenteredHeaderCell>People Groups</CenteredHeaderCell>
       <span className="block w-full text-right" />
     </div>
   );
@@ -175,7 +184,16 @@ export function DatasetsGrid({
     datasets.length > 1;
 
   return (
-    <section id="datasets">
+    <section id="datasets" className="space-y-3">
+      <div className="space-y-1">
+        <h2 className="text-2xl font-semibold tracking-[-0.03em] text-foreground">
+          Datasets
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          Source datasets available to browse, download, and manage.
+        </p>
+      </div>
+
       <div className="overflow-x-auto rounded-xl border border-border bg-background">
         <div className="min-w-[54rem]">
           <DatasetListHeader />

@@ -6,6 +6,7 @@ import { FieldSourcesClient } from "@/components/dashboard/field-sources-client"
 import { SiteHeader } from "@/components/layout/site-header";
 import { buttonVariants } from "@/components/ui/button";
 import { getCurrentIdentity } from "@/lib/auth";
+import { getAnalyticsWorkspaceRole } from "@/lib/analytics";
 import { listFieldSourceGridData } from "@/lib/field-sources";
 import { cn } from "@/lib/utils";
 
@@ -52,6 +53,8 @@ export default async function FieldSourcesPage() {
         <FieldSourcesClient
           initialFieldSourceTypes={fieldSourceTypes}
           initialFieldSources={fieldSources}
+          actorOwnerId={identity.ownerId}
+          workspaceRole={getAnalyticsWorkspaceRole(identity.isDatasetAdmin)}
         />
       </div>
     </main>

@@ -8,7 +8,7 @@ import {
   type SortingState,
 } from "@tanstack/react-table";
 import { Loader2Icon, PlusIcon } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { DataGrid, DataGridContainer } from "@/components/reui/data-grid/data-grid";
 import { DataGridColumnHeader } from "@/components/reui/data-grid/data-grid-column-header";
@@ -23,10 +23,18 @@ import type {
   FieldSourceType,
   FieldSourceTypeResponse,
 } from "@/lib/api-types";
+import {
+  buildAnalyticsContext,
+  type AnalyticsWorkspaceRole,
+  withAnalyticsContext,
+} from "@/lib/analytics";
+import { trackAppEvent } from "@/lib/analytics-client";
 
 type FieldSourcesClientProps = {
   initialFieldSourceTypes: FieldSourceType[];
   initialFieldSources: FieldSourceGridRow[];
+  actorOwnerId?: string;
+  workspaceRole?: AnalyticsWorkspaceRole;
 };
 
 async function getErrorMessage(response: Response, fallback: string) {
@@ -179,6 +187,8 @@ function FieldSourcesEmptyState() {
 export function FieldSourcesClient({
   initialFieldSourceTypes,
   initialFieldSources,
+  actorOwnerId = "anonymous",
+  workspaceRole = "admin",
 }: FieldSourcesClientProps) {
   const [fieldSourceTypes, setFieldSourceTypes] = useState(initialFieldSourceTypes);
   const [fieldSources, setFieldSources] = useState(() =>
@@ -193,12 +203,17 @@ export function FieldSourcesClient({
   const [newSourceLabel, setNewSourceLabel] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isCreatingSourceType, setIsCreatingSourceType] = useState(false);
+  const analyticsContext = buildAnalyticsContext({
+    route: "field_sources",
+    actorOwnerId,
+    workspaceRole,
+  });
 
-  async function handleCommitSourceValue(input: {
+  const handleCommitSourceValue = useCallback(async (input: {
     fieldDefinitionId: string;
     sourceTypeId: string;
     sourceFieldName: string;
-  }) {
+  }) => {
     setErrorMessage(null);
 
     try {
@@ -213,9 +228,30 @@ export function FieldSourcesClient({
           ),
         ),
       );
+      trackAppEvent(
+        "field_source_value_saved",
+        withAnalyticsContext(analyticsContext, {
+          source_surface: "field_sources_grid",
+          success: true,
+          field_definition_id: input.fieldDefinitionId,
+          source_type_id: input.sourceTypeId,
+          has_value: Boolean(input.sourceFieldName.trim()),
+        }),
+      );
 
       return updatedFieldSource;
     } catch (error) {
+      trackAppEvent(
+        "field_source_value_saved",
+        withAnalyticsContext(analyticsContext, {
+          source_surface: "field_sources_grid",
+          success: false,
+          error_code: "field_source_value_save_failed",
+          field_definition_id: input.fieldDefinitionId,
+          source_type_id: input.sourceTypeId,
+          has_value: Boolean(input.sourceFieldName.trim()),
+        }),
+      );
       setErrorMessage(
         error instanceof Error
           ? error.message
@@ -223,7 +259,7 @@ export function FieldSourcesClient({
       );
       throw error;
     }
-  }
+  }, [analyticsContext]);
 
   async function handleCreateSourceType() {
     const trimmedLabel = newSourceLabel.trim();
@@ -234,6 +270,7 @@ export function FieldSourcesClient({
 
     setErrorMessage(null);
     setIsCreatingSourceType(true);
+    const startedAt = Date.now();
 
     try {
       const fieldSourceType = await createSourceType(trimmedLabel);
@@ -249,7 +286,27 @@ export function FieldSourcesClient({
         })),
       );
       setNewSourceLabel("");
+      trackAppEvent(
+        "field_source_type_created",
+        withAnalyticsContext(analyticsContext, {
+          source_surface: "field_source_create_form",
+          success: true,
+          duration_ms: Date.now() - startedAt,
+          source_type_id: fieldSourceType.id,
+          label_length: trimmedLabel.length,
+        }),
+      );
     } catch (error) {
+      trackAppEvent(
+        "field_source_type_created",
+        withAnalyticsContext(analyticsContext, {
+          source_surface: "field_source_create_form",
+          success: false,
+          error_code: "field_source_type_create_failed",
+          duration_ms: Date.now() - startedAt,
+          label_length: trimmedLabel.length,
+        }),
+      );
       setErrorMessage(
         error instanceof Error
           ? error.message
@@ -301,7 +358,7 @@ export function FieldSourcesClient({
         }),
       ),
     ],
-    [fieldSourceTypes],
+    [fieldSourceTypes, handleCommitSourceValue],
   );
 
   const table = useReactTable({

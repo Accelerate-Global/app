@@ -21,6 +21,12 @@ import type {
   DatasetTag,
   DatasetVersionSummary,
 } from "@/lib/api-types";
+import {
+  buildAnalyticsContext,
+  type AnalyticsWorkspaceRole,
+  withAnalyticsContext,
+} from "@/lib/analytics";
+import { trackAppEvent } from "@/lib/analytics-client";
 import { normalizeDatasetHiddenColumnKeys } from "@/lib/dataset-column-visibility";
 import {
   DATASET_TAG_COLOR_OPTIONS,
@@ -47,6 +53,8 @@ type DatasetEditPageClientProps = {
   initialDataset: DatasetSummary;
   availableTags: DatasetTag[];
   initialVersions: DatasetVersionSummary[];
+  actorOwnerId?: string;
+  workspaceRole?: AnalyticsWorkspaceRole;
 };
 
 type DatasetEditFormProps = {
@@ -974,6 +982,8 @@ export function DatasetEditPageClient({
   initialDataset,
   availableTags,
   initialVersions,
+  actorOwnerId = "anonymous",
+  workspaceRole = "anonymous",
 }: DatasetEditPageClientProps) {
   const router = useRouter();
   const [dataset, setDataset] = useState(initialDataset);
@@ -987,6 +997,11 @@ export function DatasetEditPageClient({
   const [revertingVersionId, setRevertingVersionId] = useState<string | null>(
     null,
   );
+  const analyticsContext = buildAnalyticsContext({
+    route: "dataset_edit",
+    actorOwnerId,
+    workspaceRole,
+  });
 
   async function handleSaveDataset(input: {
     datasetId: string;
@@ -1000,11 +1015,39 @@ export function DatasetEditPageClient({
     }
 
     setIsSaving(true);
+    const saveStartTime = Date.now();
 
     try {
       await updateDatasetRecord(input);
+      trackAppEvent(
+        "dataset_metadata_saved",
+        withAnalyticsContext(analyticsContext, {
+          source_surface: "dataset_edit_form",
+          success: true,
+          dataset_id: input.datasetId,
+          renamed: input.fileName !== dataset.fileName,
+          primary_changed: input.isPrimary !== dataset.isPrimary,
+          hidden_column_count: input.hiddenColumnKeys.length,
+          tag_count: input.tags.length,
+          duration_ms: Date.now() - saveStartTime,
+        }),
+      );
       router.push("/dashboard");
     } catch (error) {
+      trackAppEvent(
+        "dataset_metadata_saved",
+        withAnalyticsContext(analyticsContext, {
+          source_surface: "dataset_edit_form",
+          success: false,
+          error_code: "dataset_metadata_save_failed",
+          dataset_id: input.datasetId,
+          renamed: input.fileName !== dataset.fileName,
+          primary_changed: input.isPrimary !== dataset.isPrimary,
+          hidden_column_count: input.hiddenColumnKeys.length,
+          tag_count: input.tags.length,
+          duration_ms: Date.now() - saveStartTime,
+        }),
+      );
       throw new Error(
         error instanceof Error
           ? error.message
@@ -1021,11 +1064,31 @@ export function DatasetEditPageClient({
     }
 
     setIsDeleting(true);
+    const deleteStartTime = Date.now();
 
     try {
       await deleteDatasetRecord(datasetId);
+      trackAppEvent(
+        "dataset_deleted",
+        withAnalyticsContext(analyticsContext, {
+          source_surface: "dataset_edit_form",
+          success: true,
+          dataset_id: datasetId,
+          duration_ms: Date.now() - deleteStartTime,
+        }),
+      );
       router.push("/dashboard");
     } catch (error) {
+      trackAppEvent(
+        "dataset_deleted",
+        withAnalyticsContext(analyticsContext, {
+          source_surface: "dataset_edit_form",
+          success: false,
+          error_code: "dataset_delete_failed",
+          dataset_id: datasetId,
+          duration_ms: Date.now() - deleteStartTime,
+        }),
+      );
       throw new Error(
         error instanceof Error
           ? error.message
@@ -1042,6 +1105,7 @@ export function DatasetEditPageClient({
     }
 
     setRevertingVersionId(versionId);
+    const revertStartTime = Date.now();
 
     try {
       const revertedDataset = await revertDatasetVersionRecord({
@@ -1065,7 +1129,28 @@ export function DatasetEditPageClient({
       } finally {
         setIsLoadingVersions(false);
       }
+      trackAppEvent(
+        "dataset_version_reverted",
+        withAnalyticsContext(analyticsContext, {
+          source_surface: "dataset_version_history",
+          success: true,
+          dataset_id: dataset.id,
+          version_id: versionId,
+          duration_ms: Date.now() - revertStartTime,
+        }),
+      );
     } catch (error) {
+      trackAppEvent(
+        "dataset_version_reverted",
+        withAnalyticsContext(analyticsContext, {
+          source_surface: "dataset_version_history",
+          success: false,
+          error_code: "dataset_version_revert_failed",
+          dataset_id: dataset.id,
+          version_id: versionId,
+          duration_ms: Date.now() - revertStartTime,
+        }),
+      );
       throw new Error(
         error instanceof Error
           ? error.message

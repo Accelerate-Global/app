@@ -13,7 +13,7 @@ import {
   UserIcon,
   UsersIcon,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
 import {
@@ -33,12 +33,20 @@ import {
 } from "@/components/ui/dropdown-menu";
 import type { CurrentIdentity } from "@/lib/auth";
 import { getIdentityDisplayName, getIdentityInitials } from "@/lib/account-display";
+import {
+  buildAnalyticsContext,
+  getAnalyticsRouteFromPathname,
+  getAnalyticsWorkspaceRole,
+  withAnalyticsContext,
+} from "@/lib/analytics";
+import { trackAppEvent } from "@/lib/analytics-client";
 
 type AccountControlProps = {
   identity: CurrentIdentity;
 };
 
 export function AccountControl({ identity }: AccountControlProps) {
+  const pathname = usePathname();
   const router = useRouter();
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [theme, setTheme] = useState<AppTheme>(() =>
@@ -49,10 +57,35 @@ export function AccountControl({ identity }: AccountControlProps) {
     () => getIdentityInitials(identity),
     [identity],
   );
+  const analyticsContext = useMemo(
+    () =>
+      buildAnalyticsContext({
+        route: getAnalyticsRouteFromPathname(pathname),
+        actorOwnerId: identity.ownerId,
+        workspaceRole: getAnalyticsWorkspaceRole(identity.isDatasetAdmin),
+      }),
+    [identity.isDatasetAdmin, identity.ownerId, pathname],
+  );
 
   async function signOut() {
     setIsSigningOut(true);
-    await fetch("/auth/sign-out", { method: "POST" });
+    let success = false;
+
+    try {
+      const response = await fetch("/auth/sign-out", { method: "POST" });
+      success = response.ok;
+    } catch {
+      success = false;
+    }
+
+    trackAppEvent(
+      "sign_out",
+      withAnalyticsContext(analyticsContext, {
+        source_surface: "account_menu",
+        success,
+        error_code: success ? undefined : "sign_out_failed",
+      }),
+    );
 
     if (typeof window !== "undefined") {
       window.location.assign("/");
@@ -65,6 +98,15 @@ export function AccountControl({ identity }: AccountControlProps) {
 
   function toggleTheme() {
     const nextTheme = theme === "dark" ? "light" : "dark";
+    trackAppEvent(
+      "theme_toggled",
+      withAnalyticsContext(analyticsContext, {
+        source_surface: "account_menu",
+        success: true,
+        from_theme: theme,
+        to_theme: nextTheme,
+      }),
+    );
     applyDocumentTheme(nextTheme);
     setTheme(nextTheme);
   }

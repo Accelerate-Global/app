@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { DatasetUploadClient } from "@/components/dashboard/dataset-upload-client";
 import { SiteHeader } from "@/components/layout/site-header";
+import { getAnalyticsWorkspaceRole } from "@/lib/analytics";
 import { getCurrentIdentity } from "@/lib/auth";
 import { getDataset } from "@/lib/datasets";
 
@@ -50,7 +51,11 @@ export default async function UploadPage({ searchParams }: UploadPageProps) {
             </p>
           ) : null}
         </section>
-        <DatasetUploadClient targetDataset={targetDataset} />
+        <DatasetUploadClient
+          targetDataset={targetDataset}
+          actorOwnerId={identity.ownerId}
+          workspaceRole={getAnalyticsWorkspaceRole(identity.isDatasetAdmin)}
+        />
       </div>
     </main>
   );

@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   getFieldSourceTypeKey,
+  mergeSeededFieldDisplayLabel,
   parseFieldDescriptionCsv,
   parseFieldSourceMappingCsv,
 } from "@/lib/field-sources";
@@ -25,6 +26,21 @@ const fieldDescriptionCsv = readFileSync(
 );
 
 describe("field-sources", () => {
+  it("preserves existing display labels when seed data is reapplied", () => {
+    expect(
+      mergeSeededFieldDisplayLabel({
+        existingDisplayLabel: "People Groups",
+        seededDisplayLabel: "People Group",
+      }),
+    ).toBe("People Groups");
+    expect(
+      mergeSeededFieldDisplayLabel({
+        existingDisplayLabel: "   ",
+        seededDisplayLabel: "People Group",
+      }),
+    ).toBe("People Group");
+  });
+
   it("normalizes source labels into stable source keys", () => {
     expect(getFieldSourceTypeKey("Joshua Project")).toBe("joshua_project");
     expect(getFieldSourceTypeKey("IMB (People Groups)")).toBe(

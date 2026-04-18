@@ -17,7 +17,15 @@ import type {
   DatasetTag,
   FieldDefinitionPresentation,
   SavedDatasetFilterState,
+  SavedDatasetTableResponse,
 } from "@/lib/api-types";
+import {
+  buildAnalyticsContext,
+  getEnabledFilterSections,
+  type AppAnalyticsContext,
+  withAnalyticsContext,
+} from "@/lib/analytics";
+import { trackAppEvent } from "@/lib/analytics-client";
 import {
   getFilteredDatasetDownloadFileName,
   serializeDatasetRowsToCsv,
@@ -46,6 +54,7 @@ type DatasetTableActionBarProps = {
     string,
     FieldDefinitionPresentation
   >;
+  analyticsContext?: AppAnalyticsContext;
   onOpenFilters?: () => void;
   openPresetControls?: DatasetOpenPresetControls;
 };
@@ -77,6 +86,11 @@ export function DatasetTableActionBar({
   isLoading,
   hasError,
   fieldDefinitionPresentationByColumnKey,
+  analyticsContext = buildAnalyticsContext({
+    route: "dataset_detail",
+    actorOwnerId: "anonymous",
+    workspaceRole: "anonymous",
+  }),
   onOpenFilters,
   openPresetControls,
 }: DatasetTableActionBarProps) {
@@ -93,6 +107,8 @@ export function DatasetTableActionBar({
   const selectedPresetTag = openPresetControls?.tags.find(
     (tag) => tag.id === openPresetControls.selectedTagId,
   );
+  const presetBearingTag =
+    openPresetControls?.tags.find((tag) => tag.openPreset !== undefined) ?? null;
 
   function handleDownload() {
     const csv = serializeDatasetRowsToCsv({
@@ -105,6 +121,16 @@ export function DatasetTableActionBar({
       fileName: getFilteredDatasetDownloadFileName(dataset.fileName),
       csv,
     });
+    trackAppEvent(
+      "dataset_downloaded",
+      withAnalyticsContext(analyticsContext, {
+        source_surface: "dataset_action_bar",
+        success: true,
+        dataset_id: dataset.id,
+        filtered_row_count: recordCount,
+        visible_column_count: visibleColumns.length,
+      }),
+    );
     setMessage(null);
     setMessageTone("default");
   }
@@ -134,15 +160,33 @@ export function DatasetTableActionBar({
         throw new Error(payload?.error || "The filtered table could not be saved.");
       }
 
-      const payload = (await response.json()) as {
-        savedTable: {
-          name: string;
-        };
-      };
+      const payload = (await response.json()) as SavedDatasetTableResponse;
 
       setMessage(`Saved to dashboard as "${payload.savedTable.name}".`);
       setMessageTone("default");
+      trackAppEvent(
+        "saved_table_created",
+        withAnalyticsContext(analyticsContext, {
+          source_surface: "dataset_action_bar",
+          success: true,
+          dataset_id: dataset.id,
+          saved_table_id: payload.savedTable.id,
+          saved_row_count: recordCount,
+          filter_sections_enabled: getEnabledFilterSections(filters),
+        }),
+      );
     } catch (error) {
+      trackAppEvent(
+        "saved_table_created",
+        withAnalyticsContext(analyticsContext, {
+          source_surface: "dataset_action_bar",
+          success: false,
+          error_code: "saved_table_create_failed",
+          dataset_id: dataset.id,
+          saved_row_count: recordCount,
+          filter_sections_enabled: getEnabledFilterSections(filters),
+        }),
+      );
       setMessage(
         error instanceof Error
           ? error.message
@@ -166,7 +210,28 @@ export function DatasetTableActionBar({
       await openPresetControls.onSave();
       setMessage(`Saved open preset to "${selectedPresetTag.label}".`);
       setMessageTone("default");
+      trackAppEvent(
+        "dataset_open_preset_saved",
+        withAnalyticsContext(analyticsContext, {
+          source_surface: "dataset_action_bar",
+          success: true,
+          dataset_id: dataset.id,
+          tag_id: selectedPresetTag.id,
+          filter_sections_enabled: getEnabledFilterSections(filters),
+        }),
+      );
     } catch (error) {
+      trackAppEvent(
+        "dataset_open_preset_saved",
+        withAnalyticsContext(analyticsContext, {
+          source_surface: "dataset_action_bar",
+          success: false,
+          error_code: "dataset_open_preset_save_failed",
+          dataset_id: dataset.id,
+          tag_id: selectedPresetTag.id,
+          filter_sections_enabled: getEnabledFilterSections(filters),
+        }),
+      );
       setMessage(
         error instanceof Error
           ? error.message
@@ -188,7 +253,26 @@ export function DatasetTableActionBar({
       await openPresetControls.onClear();
       setMessage("Cleared the dataset open preset.");
       setMessageTone("default");
+      trackAppEvent(
+        "dataset_open_preset_cleared",
+        withAnalyticsContext(analyticsContext, {
+          source_surface: "dataset_action_bar",
+          success: true,
+          dataset_id: dataset.id,
+          tag_id: presetBearingTag?.id,
+        }),
+      );
     } catch (error) {
+      trackAppEvent(
+        "dataset_open_preset_cleared",
+        withAnalyticsContext(analyticsContext, {
+          source_surface: "dataset_action_bar",
+          success: false,
+          error_code: "dataset_open_preset_clear_failed",
+          dataset_id: dataset.id,
+          tag_id: presetBearingTag?.id,
+        }),
+      );
       setMessage(
         error instanceof Error
           ? error.message

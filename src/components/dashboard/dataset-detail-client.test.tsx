@@ -15,6 +15,9 @@ const actionBarSpy = vi.fn();
 const datasetTableSpy = vi.fn();
 const useDatasetTableStateMock = vi.fn();
 const viewSwitchGridSpy = vi.fn();
+const { trackAppEventMock } = vi.hoisted(() => ({
+  trackAppEventMock: vi.fn(),
+}));
 
 vi.mock("@/components/dashboard/dataset-table-action-bar", () => ({
   DatasetTableActionBar: (props: unknown) => {
@@ -39,6 +42,10 @@ vi.mock("@/components/dashboard/dataset-view-switch-grid", () => ({
 
 vi.mock("@/components/dashboard/use-dataset-table-state", () => ({
   useDatasetTableState: (props: unknown) => useDatasetTableStateMock(props),
+}));
+
+vi.mock("@/lib/analytics-client", () => ({
+  trackAppEvent: trackAppEventMock,
 }));
 
 const datasetBase = {
@@ -101,6 +108,7 @@ describe("DatasetDetailClient", () => {
     datasetTableSpy.mockReset();
     useDatasetTableStateMock.mockReset();
     viewSwitchGridSpy.mockReset();
+    trackAppEventMock.mockReset();
     useDatasetTableStateMock.mockReturnValue({
       table: {} as never,
       sorting: [],
@@ -139,6 +147,9 @@ describe("DatasetDetailClient", () => {
     const mainColumn = actionBar.parentElement;
     const actionBarProps = actionBarSpy.mock.calls[0]?.[0] as {
       onOpenFilters?: () => void;
+      analyticsContext: {
+        route: string;
+      };
     };
 
     expect(layout).toBeTruthy();
@@ -148,6 +159,16 @@ describe("DatasetDetailClient", () => {
     expect(stickyRail?.className).toContain("sticky");
     expect(mainColumn).toBe(screen.getByTestId("dataset-table").parentElement);
     expect(actionBarProps.onOpenFilters).toEqual(expect.any(Function));
+    expect(actionBarProps.analyticsContext.route).toBe("dataset_detail");
+    expect(trackAppEventMock).toHaveBeenCalledWith(
+      "dataset_opened",
+      expect.objectContaining({
+        source_surface: "dataset_detail_page",
+        success: true,
+        dataset_id: "dataset-1",
+        dataset_source: "dashboard",
+      }),
+    );
   });
 
   it("passes supported UUPG filter state into the card, shared table state, and action bar", () => {
