@@ -12,12 +12,18 @@ import {
   index,
   integer,
   jsonb,
+  pgSchema,
   pgTable,
   text,
   timestamp,
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
+
+import type {
+  AnalyticsWorkspaceRole,
+  AppAnalyticsRoute,
+} from "@/lib/analytics";
 
 export const datasets = pgTable(
   "datasets",
@@ -314,3 +320,48 @@ export const signupEmailAllowlist = pgTable("signup_email_allowlist", {
     .defaultNow()
     .notNull(),
 });
+
+const privateSchema = pgSchema("private");
+
+export const analyticsEvents = privateSchema.table(
+  "analytics_events",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    eventName: text("event_name").notNull(),
+    route: text("route").$type<AppAnalyticsRoute>().notNull(),
+    sourceSurface: text("source_surface").notNull(),
+    actorOwnerId: text("actor_owner_id").notNull(),
+    workspaceRole: text("workspace_role")
+      .$type<AnalyticsWorkspaceRole>()
+      .notNull(),
+    success: boolean("success").notNull(),
+    errorCode: text("error_code"),
+    durationMs: integer("duration_ms"),
+    datasetId: uuid("dataset_id"),
+    savedTableId: uuid("saved_table_id"),
+    targetUserId: text("target_user_id"),
+    eventProps: jsonb("event_props")
+      .$type<Record<string, string | number | boolean | null>>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("analytics_events_created_at_idx").on(table.createdAt),
+    index("analytics_events_event_name_created_at_idx").on(
+      table.eventName,
+      table.createdAt,
+    ),
+    index("analytics_events_route_created_at_idx").on(table.route, table.createdAt),
+    index("analytics_events_success_created_at_idx").on(
+      table.success,
+      table.createdAt,
+    ),
+    index("analytics_events_actor_owner_created_at_idx").on(
+      table.actorOwnerId,
+      table.createdAt,
+    ),
+  ],
+);

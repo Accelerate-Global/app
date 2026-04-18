@@ -62,6 +62,7 @@ describe("analytics helpers", () => {
   it("maps pathname segments into analytics routes", () => {
     expect(getAnalyticsRouteFromPathname("/")).toBe("sign_in");
     expect(getAnalyticsRouteFromPathname("/dashboard/profile")).toBe("profile");
+    expect(getAnalyticsRouteFromPathname("/dashboard/analytics")).toBe("analytics");
     expect(
       getAnalyticsRouteFromPathname("/dashboard/datasets/123/edit"),
     ).toBe("dataset_edit");

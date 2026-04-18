@@ -6,6 +6,7 @@ import {
   DatabaseIcon,
   SlidersHorizontalIcon,
   LayoutDashboardIcon,
+  ActivityIcon,
   LogOutIcon,
   MoonIcon,
   UploadIcon,
@@ -188,6 +189,10 @@ export function AccountControl({ identity }: AccountControlProps) {
               <DropdownMenuItem onClick={() => navigateTo("/dashboard/filter-settings")}>
                 <SlidersHorizontalIcon aria-hidden="true" />
                 Filter Settings
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigateTo("/dashboard/analytics")}>
+                <ActivityIcon aria-hidden="true" />
+                Analytics
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => navigateTo("/dashboard/user-management")}>
                 <UsersIcon aria-hidden="true" />
