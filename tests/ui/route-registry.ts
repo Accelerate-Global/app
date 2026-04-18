@@ -189,6 +189,20 @@ export const smokeRouteSpecs: SmokeRouteSpec[] = [
     pageId: "user-management",
   },
   {
+    id: "analytics-viewer-redirect",
+    role: "viewer",
+    pageFile: "src/app/dashboard/analytics/page.tsx",
+    path: "/dashboard/analytics",
+    redirectTo: "/dashboard",
+  },
+  {
+    id: "analytics-admin",
+    role: "admin",
+    pageFile: "src/app/dashboard/analytics/page.tsx",
+    path: "/dashboard/analytics",
+    pageId: "analytics",
+  },
+  {
     id: "upload-viewer-redirect",
     role: "viewer",
     pageFile: "src/app/dashboard/upload/page.tsx",

@@ -4,6 +4,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
+  analyticsEvents,
   datasetVersionRows,
   datasetVersions,
   datasets,
@@ -86,5 +87,26 @@ describe("savedDatasetTables schema", () => {
     expect(migration).toContain(
       'create policy "users can read own saved dataset tables"',
     );
+  });
+});
+
+describe("analyticsEvents schema", () => {
+  it("declares the private analytics event columns", () => {
+    expect(analyticsEvents.eventName.name).toBe("event_name");
+    expect(analyticsEvents.route.name).toBe("route");
+    expect(analyticsEvents.eventProps.name).toBe("event_props");
+  });
+
+  it("creates the private analytics events migration", async () => {
+    const migrationPath = path.join(
+      process.cwd(),
+      "supabase/migrations/20260418145413_add_private_analytics_events.sql",
+    );
+
+    const migration = await readFile(migrationPath, "utf8");
+
+    expect(migration).toContain("create table if not exists private.analytics_events");
+    expect(migration).toContain("enable row level security");
+    expect(migration).toContain("create index if not exists analytics_events_created_at_idx");
   });
 });

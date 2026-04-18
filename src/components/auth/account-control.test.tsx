@@ -101,6 +101,7 @@ describe("AccountControl", () => {
       "separator",
       "Field Sources",
       "Filter Settings",
+      "Analytics",
       "User Management",
       "Upload",
       "separator",
