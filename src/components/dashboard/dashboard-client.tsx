@@ -1,16 +1,25 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { DatasetsGrid } from "@/components/dashboard/datasets-grid";
 import { SavedTableDetailSheet } from "@/components/dashboard/saved-table-detail-sheet";
 import { SavedTablesGrid } from "@/components/dashboard/saved-tables-grid";
+import {
+  buildAnalyticsContext,
+  getEnabledFilterSections,
+  type AnalyticsWorkspaceRole,
+  withAnalyticsContext,
+} from "@/lib/analytics";
 import type { DatasetSummary, SavedDatasetTable } from "@/lib/api-types";
+import { trackAppEvent } from "@/lib/analytics-client";
 
 type DashboardClientProps = {
   initialDatasets: DatasetSummary[];
   initialSavedTables: SavedDatasetTable[];
   canManageDatasets: boolean;
+  actorOwnerId?: string;
+  workspaceRole?: AnalyticsWorkspaceRole;
 };
 
 type SavedDatasetTableResponse = {
@@ -86,6 +95,8 @@ export function DashboardClient({
   initialDatasets,
   initialSavedTables,
   canManageDatasets,
+  actorOwnerId = "anonymous",
+  workspaceRole = "anonymous",
 }: DashboardClientProps) {
   const [datasets, setDatasets] = useState(initialDatasets);
   const [savedTables, setSavedTables] = useState(initialSavedTables);
@@ -102,6 +113,27 @@ export function DashboardClient({
     activeSavedTable === null
       ? null
       : datasets.find((dataset) => dataset.id === activeSavedTable.datasetId) ?? null;
+  const analyticsContext = useMemo(
+    () =>
+      buildAnalyticsContext({
+        route: "dashboard",
+        actorOwnerId,
+        workspaceRole,
+      }),
+    [actorOwnerId, workspaceRole],
+  );
+
+  useEffect(() => {
+    trackAppEvent(
+      "dashboard_viewed",
+      withAnalyticsContext(analyticsContext, {
+        source_surface: "dashboard_page",
+        success: true,
+        dataset_count: initialDatasets.length,
+        saved_table_count: initialSavedTables.length,
+      }),
+    );
+  }, [analyticsContext, initialDatasets.length, initialSavedTables.length]);
 
   async function handleReorderDatasets(nextDatasets: DatasetSummary[]) {
     if (!canManageDatasets || isReordering) {
@@ -122,8 +154,25 @@ export function DashboardClient({
     try {
       const reorderedDatasets = await reorderDatasetRecords(nextDatasetIds);
       setDatasets(reorderedDatasets);
+      trackAppEvent(
+        "dataset_reordered",
+        withAnalyticsContext(analyticsContext, {
+          source_surface: "datasets_grid",
+          success: true,
+          dataset_count: reorderedDatasets.length,
+        }),
+      );
     } catch (error) {
       setDatasets(previousDatasets);
+      trackAppEvent(
+        "dataset_reordered",
+        withAnalyticsContext(analyticsContext, {
+          source_surface: "datasets_grid",
+          success: false,
+          error_code: "reorder_failed",
+          dataset_count: previousDatasets.length,
+        }),
+      );
       window.alert(
         error instanceof Error
           ? error.message
@@ -165,6 +214,9 @@ export function DashboardClient({
             }
 
             setUpdatingSavedTableId(input.savedTableId);
+            const savedTableToUpdate =
+              savedTables.find((savedTable) => savedTable.id === input.savedTableId) ??
+              null;
 
             try {
               const updatedSavedTable = await updateSavedTableRecord(input);
@@ -176,6 +228,37 @@ export function DashboardClient({
                     : savedTable,
                 ),
               );
+              trackAppEvent(
+                "saved_table_updated",
+                withAnalyticsContext(analyticsContext, {
+                  source_surface: "saved_table_detail_sheet",
+                  success: true,
+                  dataset_id: updatedSavedTable.datasetId,
+                  saved_table_id: updatedSavedTable.id,
+                  saved_row_count: updatedSavedTable.savedRowCount,
+                  filter_sections_enabled: getEnabledFilterSections(
+                    updatedSavedTable.filters,
+                  ),
+                }),
+              );
+            } catch (error) {
+              if (savedTableToUpdate) {
+                trackAppEvent(
+                  "saved_table_updated",
+                  withAnalyticsContext(analyticsContext, {
+                    source_surface: "saved_table_detail_sheet",
+                    success: false,
+                    error_code: "saved_table_update_failed",
+                    dataset_id: savedTableToUpdate.datasetId,
+                    saved_table_id: savedTableToUpdate.id,
+                    saved_row_count: savedTableToUpdate.savedRowCount,
+                    filter_sections_enabled: getEnabledFilterSections(
+                      savedTableToUpdate.filters,
+                    ),
+                  }),
+                );
+              }
+              throw error;
             } finally {
               setUpdatingSavedTableId(null);
             }
@@ -186,6 +269,8 @@ export function DashboardClient({
             }
 
             setDeletingSavedTableId(savedTableId);
+            const savedTableToDelete =
+              savedTables.find((savedTable) => savedTable.id === savedTableId) ?? null;
 
             try {
               const deletedSavedTable = await deleteSavedTableRecord(savedTableId);
@@ -196,6 +281,37 @@ export function DashboardClient({
               setActiveSavedTableId((current) =>
                 current === deletedSavedTable.id ? null : current,
               );
+              trackAppEvent(
+                "saved_table_deleted",
+                withAnalyticsContext(analyticsContext, {
+                  source_surface: "saved_table_detail_sheet",
+                  success: true,
+                  dataset_id: deletedSavedTable.datasetId,
+                  saved_table_id: deletedSavedTable.id,
+                  saved_row_count: deletedSavedTable.savedRowCount,
+                  filter_sections_enabled: getEnabledFilterSections(
+                    deletedSavedTable.filters,
+                  ),
+                }),
+              );
+            } catch (error) {
+              if (savedTableToDelete) {
+                trackAppEvent(
+                  "saved_table_deleted",
+                  withAnalyticsContext(analyticsContext, {
+                    source_surface: "saved_table_detail_sheet",
+                    success: false,
+                    error_code: "saved_table_delete_failed",
+                    dataset_id: savedTableToDelete.datasetId,
+                    saved_table_id: savedTableToDelete.id,
+                    saved_row_count: savedTableToDelete.savedRowCount,
+                    filter_sections_enabled: getEnabledFilterSections(
+                      savedTableToDelete.filters,
+                    ),
+                  }),
+                );
+              }
+              throw error;
             } finally {
               setDeletingSavedTableId(null);
             }

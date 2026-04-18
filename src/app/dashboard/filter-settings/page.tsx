@@ -6,6 +6,7 @@ import { FilterSettingsClient } from "@/components/dashboard/filter-settings-cli
 import { SiteHeader } from "@/components/layout/site-header";
 import { buttonVariants } from "@/components/ui/button";
 import { getCurrentIdentity } from "@/lib/auth";
+import { getAnalyticsWorkspaceRole } from "@/lib/analytics";
 import { listFilterRegions, listRegionCountryOptions } from "@/lib/filter-settings";
 import { cn } from "@/lib/utils";
 
@@ -54,6 +55,8 @@ export default async function FilterSettingsPage() {
         <FilterSettingsClient
           initialRegions={regions}
           countryOptions={countryOptions}
+          actorOwnerId={identity.ownerId}
+          workspaceRole={getAnalyticsWorkspaceRole(identity.isDatasetAdmin)}
         />
       </div>
     </main>

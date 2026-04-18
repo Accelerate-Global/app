@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { UserManagementClient } from "@/components/dashboard/user-management-client";
 import { SiteHeader } from "@/components/layout/site-header";
 import { buttonVariants } from "@/components/ui/button";
+import { getAnalyticsWorkspaceRole } from "@/lib/analytics";
 import { getCurrentIdentity } from "@/lib/auth";
 import { listWorkspaceUsers } from "@/lib/user-management";
 import { cn } from "@/lib/utils";
@@ -59,6 +60,8 @@ export default async function UserManagementPage() {
         <UserManagementClient
           currentUserId={identity.ownerId}
           initialUsers={users}
+          actorOwnerId={identity.ownerId}
+          workspaceRole={getAnalyticsWorkspaceRole(identity.isDatasetAdmin)}
         />
       </div>
     </main>

@@ -17,6 +17,9 @@ import type {
   FieldDefinitionPresentation,
   SavedDatasetSort,
 } from "@/lib/api-types";
+import type { AppAnalyticsContext, DatasetOpenSource } from "@/lib/analytics";
+import { withAnalyticsContext } from "@/lib/analytics";
+import { trackAppEvent } from "@/lib/analytics-client";
 import {
   getDatasetCellValue,
   getDatasetColumnDisplayLabel,
@@ -68,6 +71,10 @@ export function useDatasetTableState(input: {
     string,
     FieldDefinitionPresentation
   >;
+  analytics?: {
+    context: AppAnalyticsContext;
+    datasetSource: DatasetOpenSource;
+  };
 }) {
   const [rows, setRows] = useState<DatasetRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -197,6 +204,7 @@ export function useDatasetTableState(input: {
     const controller = new AbortController();
 
     async function loadRows() {
+      const startTime = Date.now();
       setRows([]);
       setIsLoading(true);
       setError(null);
@@ -209,6 +217,22 @@ export function useDatasetTableState(input: {
 
         if (!controller.signal.aborted) {
           setRows(payload.rows);
+          if (input.analytics) {
+            const { datasetSource, context } = input.analytics;
+            const durationMs = Date.now() - startTime;
+            trackAppEvent(
+              "dataset_rows_loaded",
+              withAnalyticsContext(context, {
+                source_surface: "dataset_table",
+                success: true,
+                dataset_id: input.dataset.id,
+                dataset_source: datasetSource,
+                row_count: payload.rows.length,
+                load_duration_ms: durationMs,
+                duration_ms: durationMs,
+              }),
+            );
+          }
         }
       } catch (fetchError) {
         if (
@@ -218,6 +242,20 @@ export function useDatasetTableState(input: {
           return;
         }
 
+        if (input.analytics) {
+          const { datasetSource, context } = input.analytics;
+          trackAppEvent(
+            "dataset_rows_failed",
+            withAnalyticsContext(context, {
+              source_surface: "dataset_table",
+              success: false,
+              error_code: "dataset_rows_failed",
+              dataset_id: input.dataset.id,
+              dataset_source: datasetSource,
+              duration_ms: Date.now() - startTime,
+            }),
+          );
+        }
         setError(
           fetchError instanceof Error
             ? fetchError.message
@@ -233,7 +271,7 @@ export function useDatasetTableState(input: {
     void loadRows();
 
     return () => controller.abort();
-  }, [input.dataset.id, input.dataset.rowCount]);
+  }, [input.analytics, input.dataset.id, input.dataset.rowCount]);
 
   return {
     table,

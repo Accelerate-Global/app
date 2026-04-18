@@ -10,6 +10,9 @@ import { AuthForm } from "./auth-form";
 const pushMock = vi.fn();
 const refreshMock = vi.fn();
 const fetchMock = vi.fn();
+const { trackAppEventMock } = vi.hoisted(() => ({
+  trackAppEventMock: vi.fn(),
+}));
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
@@ -20,6 +23,10 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("@/lib/supabase/client", () => ({
   createSupabaseBrowserClient: vi.fn(),
+}));
+
+vi.mock("@/lib/analytics-client", () => ({
+  trackAppEvent: trackAppEventMock,
 }));
 
 const createSupabaseBrowserClientMock = vi.mocked(createSupabaseBrowserClient);
@@ -60,6 +67,16 @@ describe("AuthForm", () => {
         password: "SmokePass123!",
       });
     });
+    expect(trackAppEventMock).toHaveBeenCalledWith(
+      "auth_sign_in_succeeded",
+      expect.objectContaining({
+        route: "sign_in",
+        actor_owner_id: "anonymous",
+        workspace_role: "anonymous",
+        source_surface: "auth_form",
+        success: true,
+      }),
+    );
     expect(pushMock).toHaveBeenCalledWith("/dashboard");
     expect(refreshMock).toHaveBeenCalled();
   });
@@ -93,6 +110,23 @@ describe("AuthForm", () => {
         "This email address has not been granted access yet. Ask an administrator to add it to the signup allowlist first.",
       ),
     ).toBeTruthy();
+    expect(trackAppEventMock).toHaveBeenCalledWith(
+      "auth_sign_up_started",
+      expect.objectContaining({
+        route: "sign_up",
+        source_surface: "auth_form",
+        success: true,
+      }),
+    );
+    expect(trackAppEventMock).toHaveBeenCalledWith(
+      "auth_sign_up_allowlist_rejected",
+      expect.objectContaining({
+        route: "sign_up",
+        source_surface: "auth_form",
+        success: false,
+        error_code: "allowlist_rejected",
+      }),
+    );
     expect(signUp).not.toHaveBeenCalled();
   });
 
@@ -138,6 +172,14 @@ describe("AuthForm", () => {
         },
       });
     });
+    expect(trackAppEventMock).toHaveBeenCalledWith(
+      "auth_sign_up_succeeded",
+      expect.objectContaining({
+        route: "sign_up",
+        source_surface: "auth_form",
+        success: true,
+      }),
+    );
     expect(pushMock).toHaveBeenCalledWith("/dashboard");
   });
 
@@ -170,5 +212,13 @@ describe("AuthForm", () => {
         "/?message=Check your email to confirm your account, then sign in.",
       );
     });
+    expect(trackAppEventMock).toHaveBeenCalledWith(
+      "auth_sign_up_confirmation_required",
+      expect.objectContaining({
+        route: "sign_up",
+        source_surface: "auth_form",
+        success: true,
+      }),
+    );
   });
 });

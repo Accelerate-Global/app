@@ -51,10 +51,10 @@ describe("/dashboard/datasets", () => {
     } as never);
 
     await expect(DatasetsIndexPage()).rejects.toThrow(
-      "NEXT_REDIRECT:/dashboard/datasets/f0000000-0000-4000-8000-000000000001",
+      "NEXT_REDIRECT:/dashboard/datasets/f0000000-0000-4000-8000-000000000001?source=default_redirect",
     );
     expect(redirectMock).toHaveBeenCalledWith(
-      "/dashboard/datasets/f0000000-0000-4000-8000-000000000001",
+      "/dashboard/datasets/f0000000-0000-4000-8000-000000000001?source=default_redirect",
     );
   });
 

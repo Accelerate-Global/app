@@ -45,6 +45,12 @@ describe("field-source registry seed", () => {
     const fieldSourceTypesDeleteWhereMock = vi.fn().mockResolvedValue(undefined);
     const selectResponses = [
       [
+        {
+          canonicalKey: "christianity_frontier_group",
+          displayLabel: "Custom Frontier Label",
+        },
+      ],
+      [
         { id: "source-joshua", key: "joshua_project" },
         { id: "source-imb", key: "imb_people_groups" },
         { id: "source-etno", key: "etnopedia" },
@@ -125,7 +131,7 @@ describe("field-source registry seed", () => {
         expect.objectContaining({
           canonicalKey: "christianity_frontier_group",
           label: "Christianity_Frontier_Group",
-          displayLabel: "Christianity: Frontier Group Y/N",
+          displayLabel: "Custom Frontier Label",
         }),
       ]),
     );

@@ -13,6 +13,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { FieldDefinitionsClient } from "./field-definitions-client";
 
 const fetchMock = vi.fn();
+const { trackAppEventMock } = vi.hoisted(() => ({
+  trackAppEventMock: vi.fn(),
+}));
+
+vi.mock("@/lib/analytics-client", () => ({
+  trackAppEvent: trackAppEventMock,
+}));
 
 describe("FieldDefinitionsClient", () => {
   beforeEach(() => {
@@ -125,6 +132,20 @@ describe("FieldDefinitionsClient", () => {
       screen.getAllByRole("button", { name: "Edit Geo_country_name" })[0],
     );
 
+    expect(trackAppEventMock).toHaveBeenCalledWith(
+      "field_definition_info_opened",
+      expect.objectContaining({
+        route: "field_definitions",
+        actor_owner_id: "anonymous",
+        workspace_role: "admin",
+        source_surface: "field_definition_row",
+        success: true,
+        definition_id: "field-1",
+        linked_source_count: 1,
+        hidden_from_viewers: false,
+      }),
+    );
+
     const dialog = await screen.findByRole("dialog", { name: "Edit field" });
 
     fireEvent.change(within(dialog).getByLabelText("Display label"), {
@@ -156,6 +177,17 @@ describe("FieldDefinitionsClient", () => {
       });
     });
     expect(screen.queryByRole("dialog", { name: "Edit field" })).toBeNull();
+    expect(trackAppEventMock).toHaveBeenCalledWith(
+      "field_definition_updated",
+      expect.objectContaining({
+        route: "field_definitions",
+        source_surface: "field_definition_edit_sheet",
+        success: true,
+        definition_id: "field-1",
+        linked_source_count: 1,
+        hidden_from_viewers_changed: true,
+      }),
+    );
     expect(screen.getAllByText("Country Name").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Hidden from viewers").length).toBeGreaterThan(0);
     expect(
@@ -163,7 +195,7 @@ describe("FieldDefinitionsClient", () => {
     ).toBeGreaterThan(0);
   });
 
-  it("filters field definitions by search text", () => {
+  it("filters field definitions by search text", async () => {
     render(
       <FieldDefinitionsClient
         canEdit={false}
@@ -214,6 +246,18 @@ describe("FieldDefinitionsClient", () => {
 
     expect(screen.getAllByText("Primary Religion").length).toBeGreaterThan(0);
     expect(screen.queryByText("Country Name")).toBeNull();
+    await waitFor(() => {
+      expect(trackAppEventMock).toHaveBeenCalledWith(
+        "field_definition_search_used",
+        expect.objectContaining({
+          route: "field_definitions",
+          source_surface: "field_definitions_search",
+          success: true,
+          query_length: 8,
+          result_count: 1,
+        }),
+      );
+    });
 
     fireEvent.change(screen.getByRole("searchbox", { name: "Search definitions" }), {
       target: { value: "missing text" },

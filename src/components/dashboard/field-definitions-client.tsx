@@ -1,7 +1,7 @@
 "use client";
 
 import { PencilLineIcon, SearchIcon } from "lucide-react";
-import { useDeferredValue, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 
 import { FieldSourceTagList } from "@/components/dashboard/field-source-tag-list";
 import { Badge } from "@/components/ui/badge";
@@ -20,11 +20,19 @@ import type {
   FieldDefinition,
   FieldDefinitionResponse,
 } from "@/lib/api-types";
+import {
+  buildAnalyticsContext,
+  type AnalyticsWorkspaceRole,
+  withAnalyticsContext,
+} from "@/lib/analytics";
+import { trackAppEvent } from "@/lib/analytics-client";
 import { getFieldDefinitionEffectiveLabel } from "@/lib/field-definition-presentation";
 
 type FieldDefinitionsClientProps = {
   initialFieldDefinitions: FieldDefinition[];
   canEdit: boolean;
+  actorOwnerId?: string;
+  workspaceRole?: AnalyticsWorkspaceRole;
 };
 
 async function getErrorMessage(response: Response, fallback: string) {
@@ -321,6 +329,8 @@ function FieldDefinitionSearchEmptyState() {
 export function FieldDefinitionsClient({
   initialFieldDefinitions,
   canEdit,
+  actorOwnerId = "anonymous",
+  workspaceRole = canEdit ? "admin" : "viewer",
 }: FieldDefinitionsClientProps) {
   const [fieldDefinitions, setFieldDefinitions] = useState(() =>
     sortFieldDefinitions(initialFieldDefinitions),
@@ -331,6 +341,12 @@ export function FieldDefinitionsClient({
   );
   const [isSaving, setIsSaving] = useState(false);
   const deferredSearchValue = useDeferredValue(searchValue);
+  const lastTrackedSearchRef = useRef<string | null>(null);
+  const analyticsContext = buildAnalyticsContext({
+    route: "field_definitions",
+    actorOwnerId,
+    workspaceRole,
+  });
 
   const hasFieldDefinitions = fieldDefinitions.length > 0;
   const sortedFieldDefinitions = useMemo(
@@ -358,6 +374,39 @@ export function FieldDefinitionsClient({
     [editingFieldDefinitionId, fieldDefinitions],
   );
 
+  useEffect(() => {
+    const normalizedSearchValue = deferredSearchValue.trim().toLowerCase();
+
+    if (!normalizedSearchValue || lastTrackedSearchRef.current === normalizedSearchValue) {
+      return;
+    }
+
+    lastTrackedSearchRef.current = normalizedSearchValue;
+    trackAppEvent(
+      "field_definition_search_used",
+      withAnalyticsContext(analyticsContext, {
+        source_surface: "field_definitions_search",
+        success: true,
+        query_length: normalizedSearchValue.length,
+        result_count: filteredFieldDefinitions.length,
+      }),
+    );
+  }, [analyticsContext, deferredSearchValue, filteredFieldDefinitions.length]);
+
+  function handleOpenFieldDefinition(fieldDefinition: FieldDefinition) {
+    trackAppEvent(
+      "field_definition_info_opened",
+      withAnalyticsContext(analyticsContext, {
+        source_surface: "field_definition_row",
+        success: true,
+        definition_id: fieldDefinition.id,
+        linked_source_count: fieldDefinition.linkedSources.length,
+        hidden_from_viewers: fieldDefinition.hideFromViewerFieldDefinitions,
+      }),
+    );
+    setEditingFieldDefinitionId(fieldDefinition.id);
+  }
+
   async function handleSaveFieldDefinition(input: {
     fieldDefinitionId: string;
     displayLabel: string;
@@ -365,6 +414,10 @@ export function FieldDefinitionsClient({
     hideFromViewerFieldDefinitions: boolean;
   }) {
     setIsSaving(true);
+    const previousFieldDefinition =
+      fieldDefinitions.find(
+        (fieldDefinition) => fieldDefinition.id === input.fieldDefinitionId,
+      ) ?? null;
 
     try {
       const updatedFieldDefinition = await saveFieldDefinition(input);
@@ -378,6 +431,33 @@ export function FieldDefinitionsClient({
           ),
         ),
       );
+      trackAppEvent(
+        "field_definition_updated",
+        withAnalyticsContext(analyticsContext, {
+          source_surface: "field_definition_edit_sheet",
+          success: true,
+          definition_id: updatedFieldDefinition.id,
+          linked_source_count: updatedFieldDefinition.linkedSources.length,
+          hidden_from_viewers_changed:
+            previousFieldDefinition?.hideFromViewerFieldDefinitions !==
+            updatedFieldDefinition.hideFromViewerFieldDefinitions,
+        }),
+      );
+    } catch (error) {
+      trackAppEvent(
+        "field_definition_updated",
+        withAnalyticsContext(analyticsContext, {
+          source_surface: "field_definition_edit_sheet",
+          success: false,
+          error_code: "field_definition_update_failed",
+          definition_id: input.fieldDefinitionId,
+          linked_source_count: previousFieldDefinition?.linkedSources.length ?? 0,
+          hidden_from_viewers_changed:
+            previousFieldDefinition?.hideFromViewerFieldDefinitions !==
+            input.hideFromViewerFieldDefinitions,
+        }),
+      );
+      throw error;
     } finally {
       setIsSaving(false);
     }
@@ -404,9 +484,7 @@ export function FieldDefinitionsClient({
               <FieldDefinitionsTable
                 fieldDefinitions={filteredFieldDefinitions}
                 canEdit={canEdit}
-                onEdit={(fieldDefinition) =>
-                  setEditingFieldDefinitionId(fieldDefinition.id)
-                }
+                onEdit={handleOpenFieldDefinition}
               />
             ) : (
               <FieldDefinitionSearchEmptyState />

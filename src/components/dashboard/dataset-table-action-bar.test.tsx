@@ -1,11 +1,20 @@
 // @vitest-environment jsdom
 
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { DatasetSummary, SavedDatasetFilterState } from "@/lib/api-types";
 
 import { DatasetTableActionBar } from "./dataset-table-action-bar";
+
+const fetchMock = vi.fn();
+const { trackAppEventMock } = vi.hoisted(() => ({
+  trackAppEventMock: vi.fn(),
+}));
+
+vi.mock("@/lib/analytics-client", () => ({
+  trackAppEvent: trackAppEventMock,
+}));
 
 const dataset = {
   id: "dataset-1",
@@ -51,6 +60,15 @@ const filters: SavedDatasetFilterState = {
 };
 
 describe("DatasetTableActionBar", () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    vi.stubGlobal("fetch", fetchMock);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it("shows the filtered count with a matching People Groups label", () => {
     render(
       <DatasetTableActionBar
@@ -139,5 +157,71 @@ describe("DatasetTableActionBar", () => {
     expect(
       await screen.findByText('Saved open preset to "Watchlist".'),
     ).toBeTruthy();
+    expect(trackAppEventMock).toHaveBeenCalledWith(
+      "dataset_open_preset_saved",
+      expect.objectContaining({
+        source_surface: "dataset_action_bar",
+        success: true,
+        dataset_id: "dataset-1",
+        tag_id: "tag-1",
+      }),
+    );
+  });
+
+  it("tracks saved table creation outcomes", async () => {
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          savedTable: {
+            id: "saved-table-1",
+            name: "Saved table",
+          },
+        }),
+        {
+          status: 201,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
+    );
+
+    render(
+      <DatasetTableActionBar
+        dataset={dataset}
+        filters={filters}
+        recordCount={12507}
+        sortedRows={[]}
+        visibleColumns={[]}
+        isLoading={false}
+        hasError={false}
+        fieldDefinitionPresentationByColumnKey={{}}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Save to dashboard" }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith("/api/saved-tables", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          datasetId: dataset.id,
+          savedRowCount: 12507,
+          filters,
+        }),
+      });
+    });
+
+    expect(trackAppEventMock).toHaveBeenCalledWith(
+      "saved_table_created",
+      expect.objectContaining({
+        source_surface: "dataset_action_bar",
+        success: true,
+        dataset_id: "dataset-1",
+        saved_table_id: "saved-table-1",
+        saved_row_count: 12507,
+      }),
+    );
   });
 });

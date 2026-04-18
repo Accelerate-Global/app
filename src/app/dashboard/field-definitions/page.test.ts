@@ -9,6 +9,10 @@ import { getCurrentIdentity } from "@/lib/auth";
 import { listFieldDefinitions } from "@/lib/field-definitions";
 import FieldDefinitionsPage from "./page";
 
+const { fieldDefinitionsClientMock } = vi.hoisted(() => ({
+  fieldDefinitionsClientMock: vi.fn(() => null),
+}));
+
 vi.mock("next/navigation", () => ({
   redirect: vi.fn((target: string) => {
     throw new Error(`NEXT_REDIRECT:${target}`);
@@ -28,7 +32,7 @@ vi.mock("@/components/layout/site-header", () => ({
 }));
 
 vi.mock("@/components/dashboard/field-definitions-client", () => ({
-  FieldDefinitionsClient: () => null,
+  FieldDefinitionsClient: fieldDefinitionsClientMock,
 }));
 
 const getCurrentIdentityMock = vi.mocked(getCurrentIdentity);
@@ -70,6 +74,14 @@ describe("/dashboard/field-definitions", () => {
     expect(listFieldDefinitionsMock).toHaveBeenCalledWith({
       includeHidden: false,
     });
+    expect(fieldDefinitionsClientMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        canEdit: false,
+        actorOwnerId: "viewer-1",
+        workspaceRole: "viewer",
+      }),
+      undefined,
+    );
   });
 
   it("renders for admins", async () => {
@@ -82,11 +94,18 @@ describe("/dashboard/field-definitions", () => {
     });
     listFieldDefinitionsMock.mockResolvedValue([]);
 
-    const view = await FieldDefinitionsPage();
+    render(await FieldDefinitionsPage());
 
-    expect(view).toBeTruthy();
     expect(listFieldDefinitionsMock).toHaveBeenCalledWith({
       includeHidden: true,
     });
+    expect(fieldDefinitionsClientMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        canEdit: true,
+        actorOwnerId: "owner-1",
+        workspaceRole: "admin",
+      }),
+      undefined,
+    );
   });
 });

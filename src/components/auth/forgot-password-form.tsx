@@ -2,7 +2,7 @@
 
 import { Loader2Icon } from "lucide-react";
 import Link from "next/link";
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,11 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  buildAnalyticsContext,
+  withAnalyticsContext,
+} from "@/lib/analytics";
+import { trackAppEvent } from "@/lib/analytics-client";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 type ForgotPasswordFormProps = {
@@ -21,15 +26,38 @@ type ForgotPasswordFormProps = {
 };
 
 export function ForgotPasswordForm({ message }: ForgotPasswordFormProps) {
+  const invalidLinkTrackedRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const analyticsContext = buildAnalyticsContext({
+    route: "forgot_password",
+    actorOwnerId: "anonymous",
+    workspaceRole: "anonymous",
+  });
+
+  useEffect(() => {
+    if (!message || invalidLinkTrackedRef.current) {
+      return;
+    }
+
+    invalidLinkTrackedRef.current = true;
+    trackAppEvent(
+      "password_reset_invalid_link",
+      withAnalyticsContext(analyticsContext, {
+        source_surface: "forgot_password_message",
+        success: false,
+        error_code: "invalid_recovery_link",
+      }),
+    );
+  }, [analyticsContext, message]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
     setSuccessMessage(null);
     setIsSubmitting(true);
+    const startedAt = Date.now();
 
     const form = event.currentTarget;
     const formData = new FormData(form);
@@ -42,15 +70,41 @@ export function ForgotPasswordForm({ message }: ForgotPasswordFormProps) {
       });
 
       if (error) {
+        trackAppEvent(
+          "password_reset_requested",
+          withAnalyticsContext(analyticsContext, {
+            source_surface: "forgot_password_form",
+            success: false,
+            error_code: "password_reset_request_failed",
+            duration_ms: Date.now() - startedAt,
+          }),
+        );
         setError(error.message);
         return;
       }
 
+      trackAppEvent(
+        "password_reset_requested",
+        withAnalyticsContext(analyticsContext, {
+          source_surface: "forgot_password_form",
+          success: true,
+          duration_ms: Date.now() - startedAt,
+        }),
+      );
       setSuccessMessage(
         "If an account exists for that email, a password reset link is on its way.",
       );
       form.reset();
     } catch (submitError) {
+      trackAppEvent(
+        "password_reset_requested",
+        withAnalyticsContext(analyticsContext, {
+          source_surface: "forgot_password_form",
+          success: false,
+          error_code: "password_reset_request_failed",
+          duration_ms: Date.now() - startedAt,
+        }),
+      );
       setError(
         submitError instanceof Error
           ? submitError.message

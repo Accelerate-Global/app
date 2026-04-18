@@ -5,6 +5,10 @@ import { notFound, redirect } from "next/navigation";
 import { DatasetDetailClient } from "@/components/dashboard/dataset-detail-client";
 import { SiteHeader } from "@/components/layout/site-header";
 import { buttonVariants } from "@/components/ui/button";
+import {
+  getAnalyticsWorkspaceRole,
+  type DatasetOpenSource,
+} from "@/lib/analytics";
 import { getCurrentIdentity } from "@/lib/auth";
 import { getDataset } from "@/lib/datasets";
 import { getDatasetOpenPresetTag } from "@/lib/dataset-tags";
@@ -21,6 +25,7 @@ type DatasetPageProps = {
   }>;
   searchParams: Promise<{
     savedTableId?: string;
+    source?: string;
   }>;
 };
 
@@ -30,7 +35,7 @@ export default async function DatasetPage({
 }: DatasetPageProps) {
   const identity = await getCurrentIdentity();
   const { datasetId } = await params;
-  const { savedTableId } = await searchParams;
+  const { savedTableId, source } = await searchParams;
 
   if (!identity) {
     redirect("/");
@@ -55,10 +60,17 @@ export default async function DatasetPage({
     (matchingSavedTable
       ? buildDatasetOpenPreset(matchingSavedTable.filters)
       : openPresetTag?.openPreset) ?? null;
+  const datasetSource =
+    source === "saved_table" ||
+    source === "default_redirect" ||
+    source === "dashboard"
+      ? (source satisfies DatasetOpenSource)
+      : "dashboard";
   const detailKey = [
     dataset.id,
     matchingSavedTable?.id ?? null,
     openPresetTag?.id ?? null,
+    datasetSource,
   ].join(":");
 
   const [regions, headerDescription, fieldDefinitionPresentationByColumnKey] = await Promise.all([
@@ -103,6 +115,19 @@ export default async function DatasetPage({
           initialFilters={initialFilters}
           initialSorting={matchingSavedTable?.filters.sorting}
           canManageOpenPresets={identity.isDatasetAdmin}
+          actorOwnerId={identity.ownerId}
+          workspaceRole={getAnalyticsWorkspaceRole(identity.isDatasetAdmin)}
+          datasetSource={datasetSource}
+          initialSavedTableId={matchingSavedTable?.id ?? null}
+          initialSavedTableRowCount={matchingSavedTable?.savedRowCount ?? null}
+          initialSavedTableFilterSections={
+            matchingSavedTable
+              ? matchingSavedTable.filters
+              : null
+          }
+          initialPresetTagId={
+            matchingSavedTable ? null : openPresetTag?.id ?? null
+          }
         />
       </div>
     </main>

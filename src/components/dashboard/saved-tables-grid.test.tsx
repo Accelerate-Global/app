@@ -49,7 +49,7 @@ const savedTable = {
 };
 
 describe("SavedTablesGrid", () => {
-  it("omits the empty details placeholder and keeps row actions available", () => {
+  it("updates the section copy and keeps centered headers aligned with row actions", () => {
     pushMock.mockReset();
     const onOpenDetails = vi.fn();
 
@@ -65,14 +65,21 @@ describe("SavedTablesGrid", () => {
 
     expect(screen.queryByText("No details added yet.")).toBeNull();
     expect(scroller?.className).toContain("overflow-x-auto");
-    expect(header?.getAttribute("style")).toContain("max-content");
+    expect(header?.getAttribute("style")).toContain("10.5rem");
+    expect(screen.getByRole("heading", { name: "Saved Datasets" })).toBeTruthy();
+    expect(
+      screen.getByText("Personal filtered tables you have saved."),
+    ).toBeTruthy();
+    expect(screen.getByText("Source dataset").className).toContain("justify-center");
+    expect(screen.getByText("People Groups").className).toContain("justify-center");
+    expect(screen.getByText("All People Groups").className).toContain("text-center");
 
     expect(row).toBeTruthy();
 
     fireEvent.click(row!);
 
     expect(pushMock).toHaveBeenCalledWith(
-      "/dashboard/datasets/dataset-1?savedTableId=saved-table-1",
+      "/dashboard/datasets/dataset-1?savedTableId=saved-table-1&source=saved_table",
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Details" }));

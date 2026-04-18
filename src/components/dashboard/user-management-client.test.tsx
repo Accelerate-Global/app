@@ -8,6 +8,13 @@ import type { WorkspaceUser } from "@/lib/api-types";
 import { UserManagementClient } from "./user-management-client";
 
 const fetchMock = vi.fn();
+const { trackAppEventMock } = vi.hoisted(() => ({
+  trackAppEventMock: vi.fn(),
+}));
+
+vi.mock("@/lib/analytics-client", () => ({
+  trackAppEvent: trackAppEventMock,
+}));
 
 function createUser(overrides: Partial<WorkspaceUser> = {}): WorkspaceUser {
   return {
@@ -50,7 +57,7 @@ describe("UserManagementClient", () => {
   });
 
   it("renders the simplified table and compact invite form", () => {
-    renderUserManagementClient();
+    const { container } = renderUserManagementClient();
 
     expect(screen.queryByText("Total users")).toBeNull();
     expect(screen.queryByText("Active admins")).toBeNull();
@@ -60,16 +67,30 @@ describe("UserManagementClient", () => {
     expect(screen.queryByText("Created")).toBeNull();
     expect(screen.queryByText("Details")).toBeNull();
     expect(screen.queryByText("Send password reset email")).toBeNull();
+    expect(screen.getByText("All roles")).toBeTruthy();
+    expect(screen.getByText("All statuses")).toBeTruthy();
+
+    const inviteFormGrid = container.querySelector(".md\\:grid-cols-\\[minmax\\(0\\,1fr\\)_12rem_auto\\]");
+
+    expect(inviteFormGrid?.className).toContain("md:items-start");
   });
 
   it("opens the details sheet when a user row is clicked", async () => {
-    renderUserManagementClient([
+    const { container } = renderUserManagementClient([
       createUser(),
       createUser({
         id: "user-2",
         email: "admin@example.com",
         fullName: "Admin User",
         workspaceRole: "admin",
+        identities: [
+          {
+            id: "identity-1",
+            provider: "email",
+            createdAt: "2026-04-15T20:00:00.000Z",
+            lastLoginAt: "2026-04-16T16:30:00.000Z",
+          },
+        ],
       }),
     ]);
 
@@ -81,6 +102,19 @@ describe("UserManagementClient", () => {
     expect(await screen.findByText("Review identifiers, providers, access level, and account status.")).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Admin User" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Send password reset email" })).toBeTruthy();
+    expect(screen.getAllByText("email")).toHaveLength(1);
+    expect(container.querySelector(".rounded-2xl.border.border-border.p-4")).toBeNull();
+    expect(container.querySelector(".rounded-xl.border.border-border.p-3.text-sm")).toBeNull();
+    expect(trackAppEventMock).toHaveBeenCalledWith(
+      "user_record_opened",
+      expect.objectContaining({
+        source_surface: "user_management_table",
+        success: true,
+        target_user_id: "user-2",
+        target_status: "active",
+        target_role: "admin",
+      }),
+    );
   });
 
   it("sends password reset emails for the selected user", async () => {
@@ -108,6 +142,15 @@ describe("UserManagementClient", () => {
     expect(
       await screen.findByText("Password reset email sent to viewer@example.com."),
     ).toBeTruthy();
+    expect(trackAppEventMock).toHaveBeenCalledWith(
+      "admin_password_reset_sent",
+      expect.objectContaining({
+        source_surface: "user_detail_sheet",
+        success: true,
+        target_user_id: "user-1",
+        to_status: "active",
+      }),
+    );
   });
 
   it("disables password reset for accounts without an email address", () => {

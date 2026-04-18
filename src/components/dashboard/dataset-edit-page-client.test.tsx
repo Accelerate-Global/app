@@ -8,11 +8,18 @@ import { DatasetEditPageClient } from "./dataset-edit-page-client";
 const pushMock = vi.fn();
 const fetchMock = vi.fn();
 const confirmMock = vi.fn();
+const { trackAppEventMock } = vi.hoisted(() => ({
+  trackAppEventMock: vi.fn(),
+}));
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
     push: pushMock,
   }),
+}));
+
+vi.mock("@/lib/analytics-client", () => ({
+  trackAppEvent: trackAppEventMock,
 }));
 
 function createDataset(overrides: Record<string, unknown> = {}) {
@@ -169,6 +176,15 @@ describe("DatasetEditPageClient", () => {
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith("/api/datasets/dataset-1/versions");
     });
+    expect(trackAppEventMock).toHaveBeenCalledWith(
+      "dataset_version_reverted",
+      expect.objectContaining({
+        source_surface: "dataset_version_history",
+        success: true,
+        dataset_id: "dataset-1",
+        version_id: "dataset-version-0",
+      }),
+    );
   });
 
   it("routes to dataset replacement from the edit page", () => {
@@ -278,6 +294,18 @@ describe("DatasetEditPageClient", () => {
         }),
       });
     });
+    expect(trackAppEventMock).toHaveBeenCalledWith(
+      "dataset_metadata_saved",
+      expect.objectContaining({
+        source_surface: "dataset_edit_form",
+        success: true,
+        dataset_id: "dataset-1",
+        renamed: true,
+        primary_changed: false,
+        hidden_column_count: 0,
+        tag_count: 1,
+      }),
+    );
     expect(pushMock).toHaveBeenCalledWith("/dashboard");
   });
 
@@ -298,6 +326,15 @@ describe("DatasetEditPageClient", () => {
 
     expect(confirmMock).toHaveBeenCalledWith('Delete the dataset "Global.csv"?');
     expect(await screen.findByText("The dataset is locked.")).toBeTruthy();
+    expect(trackAppEventMock).toHaveBeenCalledWith(
+      "dataset_deleted",
+      expect.objectContaining({
+        source_surface: "dataset_edit_form",
+        success: false,
+        dataset_id: "dataset-1",
+        error_code: "dataset_delete_failed",
+      }),
+    );
     expect(pushMock).not.toHaveBeenCalled();
   });
 

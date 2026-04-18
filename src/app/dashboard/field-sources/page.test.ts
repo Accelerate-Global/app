@@ -1,3 +1,6 @@
+// @vitest-environment jsdom
+
+import { render } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { redirect } from "next/navigation";
@@ -5,6 +8,10 @@ import { redirect } from "next/navigation";
 import { getCurrentIdentity } from "@/lib/auth";
 import { listFieldSourceGridData } from "@/lib/field-sources";
 import FieldSourcesPage from "./page";
+
+const { fieldSourcesClientMock } = vi.hoisted(() => ({
+  fieldSourcesClientMock: vi.fn(() => null),
+}));
 
 vi.mock("next/navigation", () => ({
   redirect: vi.fn((target: string) => {
@@ -25,7 +32,7 @@ vi.mock("@/components/layout/site-header", () => ({
 }));
 
 vi.mock("@/components/dashboard/field-sources-client", () => ({
-  FieldSourcesClient: () => null,
+  FieldSourcesClient: fieldSourcesClientMock,
 }));
 
 const getCurrentIdentityMock = vi.mocked(getCurrentIdentity);
@@ -70,9 +77,15 @@ describe("/dashboard/field-sources", () => {
       fieldSources: [],
     });
 
-    const view = await FieldSourcesPage();
+    render(await FieldSourcesPage());
 
-    expect(view).toBeTruthy();
     expect(listFieldSourceGridDataMock).toHaveBeenCalledWith();
+    expect(fieldSourcesClientMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actorOwnerId: "owner-1",
+        workspaceRole: "admin",
+      }),
+      undefined,
+    );
   });
 });

@@ -5,6 +5,7 @@ import { notFound, redirect } from "next/navigation";
 import { DatasetEditPageClient } from "@/components/dashboard/dataset-edit-page-client";
 import { SiteHeader } from "@/components/layout/site-header";
 import { buttonVariants } from "@/components/ui/button";
+import { getAnalyticsWorkspaceRole } from "@/lib/analytics";
 import { getCurrentIdentity } from "@/lib/auth";
 import { getDataset, listDatasetVersions, listDatasets } from "@/lib/datasets";
 import { getReusableDatasetTags } from "@/lib/dataset-tags";
@@ -75,6 +76,8 @@ export default async function DatasetEditPage({
           initialDataset={dataset}
           availableTags={availableTags}
           initialVersions={versions ?? []}
+          actorOwnerId={identity.ownerId}
+          workspaceRole={getAnalyticsWorkspaceRole(identity.isDatasetAdmin)}
         />
       </div>
     </main>

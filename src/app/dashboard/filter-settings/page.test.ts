@@ -1,3 +1,6 @@
+// @vitest-environment jsdom
+
+import { render } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { redirect } from "next/navigation";
@@ -5,6 +8,10 @@ import { redirect } from "next/navigation";
 import { getCurrentIdentity } from "@/lib/auth";
 import { listFilterRegions, listRegionCountryOptions } from "@/lib/filter-settings";
 import FilterSettingsPage from "./page";
+
+const { filterSettingsClientMock } = vi.hoisted(() => ({
+  filterSettingsClientMock: vi.fn(() => null),
+}));
 
 vi.mock("next/navigation", () => ({
   redirect: vi.fn((target: string) => {
@@ -26,7 +33,7 @@ vi.mock("@/components/layout/site-header", () => ({
 }));
 
 vi.mock("@/components/dashboard/filter-settings-client", () => ({
-  FilterSettingsClient: () => null,
+  FilterSettingsClient: filterSettingsClientMock,
 }));
 
 const getCurrentIdentityMock = vi.mocked(getCurrentIdentity);
@@ -70,10 +77,16 @@ describe("/dashboard/filter-settings", () => {
     listFilterRegionsMock.mockResolvedValue([]);
     listRegionCountryOptionsMock.mockResolvedValue(["India", "Nepal"]);
 
-    const view = await FilterSettingsPage();
+    render(await FilterSettingsPage());
 
-    expect(view).toBeTruthy();
     expect(listFilterRegionsMock).toHaveBeenCalledWith();
     expect(listRegionCountryOptionsMock).toHaveBeenCalledWith();
+    expect(filterSettingsClientMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actorOwnerId: "owner-1",
+        workspaceRole: "admin",
+      }),
+      undefined,
+    );
   });
 });

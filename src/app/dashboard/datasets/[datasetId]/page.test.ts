@@ -214,6 +214,11 @@ describe("/dashboard/datasets/[datasetId]", () => {
       initialFilters: unknown;
       initialSorting?: unknown;
       canManageOpenPresets?: boolean;
+      actorOwnerId: string;
+      workspaceRole: string;
+      datasetSource: string;
+      initialSavedTableId: string | null;
+      initialSavedTableRowCount: number | null;
     };
 
     expect(getSavedDatasetTableMock).toHaveBeenCalledWith({
@@ -246,6 +251,28 @@ describe("/dashboard/datasets/[datasetId]", () => {
       },
     ]);
     expect(props.canManageOpenPresets).toBe(true);
+    expect(props.actorOwnerId).toBe("owner-1");
+    expect(props.workspaceRole).toBe("admin");
+    expect(props.datasetSource).toBe("dashboard");
+    expect(props.initialSavedTableId).toBe("saved-table-1");
+    expect(props.initialSavedTableRowCount).toBe(10);
+  });
+
+  it("passes through explicit dataset source analytics props", async () => {
+    render(
+      await DatasetPage({
+        params: Promise.resolve({ datasetId: "dataset-1" }),
+        searchParams: Promise.resolve({ source: "default_redirect" }),
+      }),
+    );
+
+    const props = datasetDetailClientSpy.mock.lastCall?.[0] as {
+      datasetSource: string;
+      initialPresetTagId: string | null;
+    };
+
+    expect(props.datasetSource).toBe("default_redirect");
+    expect(props.initialPresetTagId).toBe("tag-1");
   });
 
   it("falls back to the dataset tag preset when the saved table targets another dataset", async () => {

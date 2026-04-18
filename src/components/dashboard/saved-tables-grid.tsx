@@ -2,7 +2,7 @@
 
 import { DownloadIcon, PanelRightOpenIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
-import type { KeyboardEvent } from "react";
+import type { KeyboardEvent, ReactNode } from "react";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import type { SavedDatasetTable } from "@/lib/api-types";
@@ -12,8 +12,17 @@ type SavedTablesGridProps = {
   onOpenDetails: (savedTableId: string) => void;
 };
 
+const SAVED_TABLE_ACTIONS_COLUMN_WIDTH = "10.5rem";
 const SAVED_TABLE_GRID_TEMPLATE_COLUMNS =
-  "minmax(16rem,1.8fr) minmax(12rem,1.2fr) minmax(8rem,0.7fr) max-content";
+  `minmax(16rem,1.8fr) minmax(12rem,1.2fr) minmax(8rem,0.7fr) ${SAVED_TABLE_ACTIONS_COLUMN_WIDTH}`;
+
+function CenteredHeaderCell({ children }: { children: ReactNode }) {
+  return (
+    <span className="flex w-full items-center justify-center text-center">
+      {children}
+    </span>
+  );
+}
 
 function SavedTableActions({
   savedTable,
@@ -69,8 +78,8 @@ function SavedTableListHeader() {
       style={{ gridTemplateColumns: SAVED_TABLE_GRID_TEMPLATE_COLUMNS }}
     >
       <span>Name</span>
-      <span>Source dataset</span>
-      <span className="block w-full text-center">People Groups</span>
+      <CenteredHeaderCell>Source dataset</CenteredHeaderCell>
+      <CenteredHeaderCell>People Groups</CenteredHeaderCell>
       <span className="block w-full text-right" />
     </div>
   );
@@ -88,7 +97,7 @@ function SavedTableListRow({
 
   function navigateToSavedTable() {
     router.push(
-      `/dashboard/datasets/${savedTable.datasetId}?savedTableId=${savedTable.id}`,
+      `/dashboard/datasets/${savedTable.datasetId}?savedTableId=${savedTable.id}&source=saved_table`,
     );
   }
 
@@ -118,7 +127,7 @@ function SavedTableListRow({
         ) : null}
       </div>
 
-      <span className="truncate text-sm text-muted-foreground">
+      <span className="block w-full truncate text-center text-sm text-muted-foreground">
         {savedTable.datasetFileName}
       </span>
 
@@ -139,10 +148,10 @@ export function SavedTablesGrid({
     <section id="saved-tables" className="space-y-3">
       <div className="space-y-1">
         <h2 className="text-2xl font-semibold tracking-[-0.03em] text-foreground">
-          Saved Tables
+          Saved Datasets
         </h2>
         <p className="text-sm text-muted-foreground">
-          Personal filtered tables you have saved from dataset detail views.
+          Personal filtered tables you have saved.
         </p>
       </div>
 

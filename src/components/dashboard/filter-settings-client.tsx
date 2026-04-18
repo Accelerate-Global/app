@@ -12,11 +12,19 @@ import type {
   FilterRegion,
   FilterRegionResponse,
 } from "@/lib/api-types";
+import {
+  buildAnalyticsContext,
+  type AnalyticsWorkspaceRole,
+  withAnalyticsContext,
+} from "@/lib/analytics";
+import { trackAppEvent } from "@/lib/analytics-client";
 import { normalizeRegionDisplayName } from "@/lib/region-display";
 
 type FilterSettingsClientProps = {
   initialRegions: FilterRegion[];
   countryOptions: string[];
+  actorOwnerId?: string;
+  workspaceRole?: AnalyticsWorkspaceRole;
 };
 
 type RegionMutationInput = {
@@ -329,6 +337,8 @@ function RegionEditorCard({
 export function FilterSettingsClient({
   initialRegions,
   countryOptions,
+  actorOwnerId = "anonymous",
+  workspaceRole = "admin",
 }: FilterSettingsClientProps) {
   const [regions, setRegions] = useState(() => sortRegions(initialRegions));
   const [newName, setNewName] = useState("");
@@ -342,6 +352,11 @@ export function FilterSettingsClient({
   const [createSuccess, setCreateSuccess] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const parsedNewSortOrder = parseSortOrder(newSortOrder);
+  const analyticsContext = buildAnalyticsContext({
+    route: "filter_settings",
+    actorOwnerId,
+    workspaceRole,
+  });
 
   const canCreate =
     !isCreating &&
@@ -397,6 +412,7 @@ export function FilterSettingsClient({
     setCreateError(null);
     setCreateSuccess(null);
     setIsCreating(true);
+    const startedAt = Date.now();
 
     try {
       const region = await createRegion({
@@ -414,7 +430,29 @@ export function FilterSettingsClient({
       setNewSelectedCountries([]);
       setNewSearchValue("");
       setCreateSuccess(`Created ${normalizeRegionDisplayName(region.name)}.`);
+      trackAppEvent(
+        "filter_region_created",
+        withAnalyticsContext(analyticsContext, {
+          source_surface: "filter_region_create_form",
+          success: true,
+          duration_ms: Date.now() - startedAt,
+          region_id: region.id,
+          country_count: region.countries.length,
+          sort_order: region.sortOrder,
+        }),
+      );
     } catch (error) {
+      trackAppEvent(
+        "filter_region_created",
+        withAnalyticsContext(analyticsContext, {
+          source_surface: "filter_region_create_form",
+          success: false,
+          error_code: "filter_region_create_failed",
+          duration_ms: Date.now() - startedAt,
+          country_count: newSelectedCountries.length,
+          sort_order: parsedNewSortOrder ?? 0,
+        }),
+      );
       setCreateError(
         error instanceof Error ? error.message : "The region could not be created.",
       );
@@ -424,26 +462,79 @@ export function FilterSettingsClient({
   }
 
   async function handleSaveRegion(regionId: string, input: RegionMutationInput) {
-    const updatedRegion = await updateRegion(regionId, input);
+    try {
+      const updatedRegion = await updateRegion(regionId, input);
 
-    setRegions((current) => {
-      const nextRegions = sortRegions(
-        current.map((region) =>
-          region.id === updatedRegion.id ? updatedRegion : region,
-        ),
+      setRegions((current) => {
+        const nextRegions = sortRegions(
+          current.map((region) =>
+            region.id === updatedRegion.id ? updatedRegion : region,
+          ),
+        );
+        setNewSortOrder(String(getNextSortOrder(nextRegions)));
+        return nextRegions;
+      });
+      trackAppEvent(
+        "filter_region_updated",
+        withAnalyticsContext(analyticsContext, {
+          source_surface: "filter_region_editor",
+          success: true,
+          region_id: updatedRegion.id,
+          country_count: updatedRegion.countries.length,
+          sort_order: updatedRegion.sortOrder,
+        }),
       );
-      setNewSortOrder(String(getNextSortOrder(nextRegions)));
-      return nextRegions;
-    });
+    } catch (error) {
+      trackAppEvent(
+        "filter_region_updated",
+        withAnalyticsContext(analyticsContext, {
+          source_surface: "filter_region_editor",
+          success: false,
+          error_code: "filter_region_update_failed",
+          region_id: regionId,
+          country_count: input.countries.length,
+          sort_order: input.sortOrder,
+        }),
+      );
+      throw error;
+    }
   }
 
   async function handleDeleteRegion(regionId: string) {
-    await removeRegion(regionId);
-    setRegions((current) => {
-      const nextRegions = current.filter((region) => region.id !== regionId);
-      setNewSortOrder(String(getNextSortOrder(nextRegions)));
-      return nextRegions;
-    });
+    const existingRegion =
+      regions.find((region) => region.id === regionId) ?? null;
+
+    try {
+      await removeRegion(regionId);
+      setRegions((current) => {
+        const nextRegions = current.filter((region) => region.id !== regionId);
+        setNewSortOrder(String(getNextSortOrder(nextRegions)));
+        return nextRegions;
+      });
+      trackAppEvent(
+        "filter_region_deleted",
+        withAnalyticsContext(analyticsContext, {
+          source_surface: "filter_region_editor",
+          success: true,
+          region_id: regionId,
+          country_count: existingRegion?.countries.length ?? 0,
+          sort_order: existingRegion?.sortOrder ?? 0,
+        }),
+      );
+    } catch (error) {
+      trackAppEvent(
+        "filter_region_deleted",
+        withAnalyticsContext(analyticsContext, {
+          source_surface: "filter_region_editor",
+          success: false,
+          error_code: "filter_region_delete_failed",
+          region_id: regionId,
+          country_count: existingRegion?.countries.length ?? 0,
+          sort_order: existingRegion?.sortOrder ?? 0,
+        }),
+      );
+      throw error;
+    }
   }
 
   return (

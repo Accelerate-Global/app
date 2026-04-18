@@ -49,7 +49,7 @@ const dataset = {
 };
 
 describe("DatasetsGrid", () => {
-  it("renders separated download and edit links in a scroll-safe table", () => {
+  it("renders section copy and centered column headers in a scroll-safe table", () => {
     const { container } = render(
       <DatasetsGrid
         datasets={[dataset]}
@@ -61,7 +61,13 @@ describe("DatasetsGrid", () => {
     const header = container.querySelector("[style]");
 
     expect(scroller?.className).toContain("overflow-x-auto");
-    expect(header?.getAttribute("style")).toContain("max-content");
+    expect(header?.getAttribute("style")).toContain("10.5rem");
+    expect(screen.getByRole("heading", { name: "Datasets" })).toBeTruthy();
+    expect(
+      screen.getByText("Source datasets available to browse, download, and manage."),
+    ).toBeTruthy();
+    expect(screen.getByText("Tags").className).toContain("justify-center");
+    expect(screen.getByText("People Groups").className).toContain("justify-center");
     expect(
       screen
         .getByRole("link", { name: `Download ${dataset.fileName}` })

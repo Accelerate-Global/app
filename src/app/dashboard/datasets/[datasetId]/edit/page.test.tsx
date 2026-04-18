@@ -172,6 +172,8 @@ describe("/dashboard/datasets/[datasetId]/edit", () => {
       initialDataset: ReturnType<typeof createDataset>;
       availableTags: Array<{ label: string }>;
       initialVersions: ReturnType<typeof createVersion>[];
+      actorOwnerId: string;
+      workspaceRole: string;
     };
 
     expect(listDatasetsMock).toHaveBeenCalledWith();
@@ -182,6 +184,8 @@ describe("/dashboard/datasets/[datasetId]/edit", () => {
       "Primary",
       "Regional focus",
     ]);
+    expect(props.actorOwnerId).toBe("owner-1");
+    expect(props.workspaceRole).toBe("admin");
   });
 
   it("renders not found when the dataset does not exist", async () => {

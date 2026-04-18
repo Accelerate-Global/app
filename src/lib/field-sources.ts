@@ -122,6 +122,21 @@ function normalizeFieldDisplayLabel(value: string | null | undefined) {
   return (value ?? "").trim();
 }
 
+export function mergeSeededFieldDisplayLabel(input: {
+  existingDisplayLabel?: string | null;
+  seededDisplayLabel?: string | null;
+}) {
+  const existingDisplayLabel = normalizeFieldDisplayLabel(
+    input.existingDisplayLabel,
+  );
+
+  if (existingDisplayLabel) {
+    return existingDisplayLabel;
+  }
+
+  return normalizeFieldDisplayLabel(input.seededDisplayLabel);
+}
+
 function normalizeFieldId(value: string | null | undefined) {
   return (value ?? "").trim();
 }
@@ -519,6 +534,34 @@ export async function seedFieldSourceRegistryIfNeeded() {
   }
 
   await getDb().transaction(async (tx) => {
+    const existingFieldDefinitionRows = await tx
+      .select({
+        canonicalKey: fieldDefinitions.canonicalKey,
+        displayLabel: fieldDefinitions.displayLabel,
+      })
+      .from(fieldDefinitions)
+      .where(
+        inArray(
+          fieldDefinitions.canonicalKey,
+          seedRows.map((row) => row.canonicalKey),
+        ),
+      );
+    const existingDisplayLabelByCanonicalKey = new Map(
+      existingFieldDefinitionRows.map((row) => [
+        row.canonicalKey,
+        row.displayLabel,
+      ]),
+    );
+    const mergedSeedRows = seedRows.map((row) => ({
+      ...row,
+      displayLabel: mergeSeededFieldDisplayLabel({
+        existingDisplayLabel: existingDisplayLabelByCanonicalKey.get(
+          row.canonicalKey,
+        ),
+        seededDisplayLabel: row.displayLabel,
+      }),
+    }));
+
     await tx
       .insert(fieldSourceTypes)
       .values(
@@ -539,7 +582,7 @@ export async function seedFieldSourceRegistryIfNeeded() {
     await tx
       .insert(fieldDefinitions)
       .values(
-        seedRows.map((row) => ({
+        mergedSeedRows.map((row) => ({
           canonicalKey: row.canonicalKey,
           label: row.label,
           displayLabel: row.displayLabel,
@@ -553,11 +596,7 @@ export async function seedFieldSourceRegistryIfNeeded() {
       .onConflictDoUpdate({
         target: fieldDefinitions.canonicalKey,
         set: {
-          displayLabel: sql`case
-            when btrim(coalesce(excluded.display_label, '')) <> ''
-            then excluded.display_label
-            else ${fieldDefinitions.displayLabel}
-          end`,
+          displayLabel: sql`excluded.display_label`,
           definition: sql`case
             when btrim(coalesce(${fieldDefinitions.definition}, '')) = ''
               and btrim(coalesce(excluded.definition, '')) <> ''
@@ -594,7 +633,7 @@ export async function seedFieldSourceRegistryIfNeeded() {
       .where(
         inArray(
           fieldDefinitions.canonicalKey,
-          seedRows.map((row) => row.canonicalKey),
+          mergedSeedRows.map((row) => row.canonicalKey),
         ),
       );
     const sourceTypeIdByKey = new Map(
@@ -604,7 +643,7 @@ export async function seedFieldSourceRegistryIfNeeded() {
       fieldDefinitionRows.map((row) => [row.canonicalKey, row.id]),
     );
     const matchedFieldDefinitionIds = fieldDefinitionRows.map((row) => row.id);
-    const fieldDefinitionSourceRows = seedRows.flatMap((row) =>
+    const fieldDefinitionSourceRows = mergedSeedRows.flatMap((row) =>
       row.sourceValues.flatMap((sourceValue) => {
         const fieldDefinitionId = fieldDefinitionIdByCanonicalKey.get(row.canonicalKey);
         const sourceTypeId = sourceTypeIdByKey.get(sourceValue.sourceKey);

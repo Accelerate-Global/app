@@ -10,6 +10,9 @@ import { AccountProfileForm } from "./account-profile-form";
 const pushMock = vi.fn();
 const refreshMock = vi.fn();
 const fetchMock = vi.fn();
+const { trackAppEventMock } = vi.hoisted(() => ({
+  trackAppEventMock: vi.fn(),
+}));
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
@@ -20,6 +23,10 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("@/lib/supabase/client", () => ({
   createSupabaseBrowserClient: vi.fn(),
+}));
+
+vi.mock("@/lib/analytics-client", () => ({
+  trackAppEvent: trackAppEventMock,
 }));
 
 const createSupabaseBrowserClientMock = vi.mocked(createSupabaseBrowserClient);
@@ -69,6 +76,16 @@ describe("AccountProfileForm", () => {
         data: { timezone: "pst", full_name: "Blake L." },
       });
     });
+    expect(trackAppEventMock).toHaveBeenCalledWith(
+      "profile_name_updated",
+      expect.objectContaining({
+        route: "profile",
+        actor_owner_id: "owner-1",
+        workspace_role: "admin",
+        source_surface: "profile_name_form",
+        success: true,
+      }),
+    );
     expect(refreshMock).toHaveBeenCalled();
   });
 
@@ -96,6 +113,16 @@ describe("AccountProfileForm", () => {
         }),
       );
     });
+    expect(trackAppEventMock).toHaveBeenCalledWith(
+      "email_change_started",
+      expect.objectContaining({
+        route: "profile",
+        actor_owner_id: "owner-1",
+        workspace_role: "admin",
+        source_surface: "profile_email_form",
+        success: true,
+      }),
+    );
   });
 
   it("disables the account through the existing API route", async () => {
@@ -116,6 +143,16 @@ describe("AccountProfileForm", () => {
         method: "POST",
       });
     });
+    expect(trackAppEventMock).toHaveBeenCalledWith(
+      "account_disabled_self",
+      expect.objectContaining({
+        route: "profile",
+        actor_owner_id: "owner-1",
+        workspace_role: "admin",
+        source_surface: "profile_disable_form",
+        success: true,
+      }),
+    );
     expect(pushMock).toHaveBeenCalledWith("/");
     expect(refreshMock).toHaveBeenCalled();
   });
