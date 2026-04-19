@@ -1,5 +1,6 @@
 import type {
   DatasetOpenPreset,
+  PopulationBelieversRule,
   DatasetSummary,
   FilterRegion,
   SavedDatasetFilterState,
@@ -16,6 +17,11 @@ import {
   type DatasetUupgFilterState,
   type DatasetWatchlistFilterState,
 } from "@/lib/dataset-region-filtering";
+import {
+  createDefaultPopulationBelieversRule,
+  createSingleTierPopulationBelieversRule,
+  sanitizePopulationBelieversRule,
+} from "@/lib/evangelical-population-believers-rule";
 import { normalizeRegionDisplayName } from "@/lib/region-display";
 
 function dedupeStrings(values: string[]) {
@@ -36,10 +42,8 @@ export type InitialDatasetDetailState = {
   watchlistThreshold: number;
   watchlistEngagementPhaseEnabled: boolean;
   watchlistEngagementPhaseThreshold: number;
-  watchlistEvangelicalBelieversEnabled: boolean;
-  watchlistEvangelicalBelieversThreshold: number;
-  watchlistEvangelicalPercentEnabled: boolean;
-  watchlistEvangelicalPercentThreshold: number;
+  watchlistPopulationBelieversRuleEnabled: boolean;
+  watchlistPopulationBelieversRule: PopulationBelieversRule;
   watchlistFrontierGroupEnabled: boolean;
   watchlistFrontierGroupValue: boolean;
   uupgEnabled: boolean;
@@ -89,6 +93,39 @@ function getMatchingRegionIds(
   return selectedRegionIds;
 }
 
+function getNormalizedPopulationBelieversRuleState(
+  watchlist: SavedDatasetFilterState["watchlist"] | DatasetOpenPreset["watchlist"],
+) {
+  if (watchlist.evangelicalPopulationBelieversRule) {
+    return {
+      enabled: watchlist.evangelicalPopulationBelieversRuleEnabled ?? true,
+      rule: sanitizePopulationBelieversRule(
+        watchlist.evangelicalPopulationBelieversRule,
+      ),
+      hasPersistedRule: true,
+    }
+  }
+
+  if (
+    watchlist.evangelicalBelieversThreshold !== undefined &&
+    (watchlist.evangelicalBelieversEnabled ?? true)
+  ) {
+    return {
+      enabled: true,
+      rule: createSingleTierPopulationBelieversRule(
+        watchlist.evangelicalBelieversThreshold,
+      ),
+      hasPersistedRule: true,
+    }
+  }
+
+  return {
+    enabled: watchlist.evangelicalPopulationBelieversRuleEnabled ?? true,
+    rule: createDefaultPopulationBelieversRule(),
+    hasPersistedRule: false,
+  }
+}
+
 export function buildSavedDatasetFilterState(input: {
   regions: FilterRegion[];
   selectedRegionIds: Record<string, boolean>;
@@ -100,10 +137,8 @@ export function buildSavedDatasetFilterState(input: {
   watchlistThreshold: number;
   watchlistEngagementPhaseEnabled: boolean;
   watchlistEngagementPhaseThreshold: number;
-  watchlistEvangelicalBelieversEnabled: boolean;
-  watchlistEvangelicalBelieversThreshold: number;
-  watchlistEvangelicalPercentEnabled: boolean;
-  watchlistEvangelicalPercentThreshold: number;
+  watchlistPopulationBelieversRuleEnabled: boolean;
+  watchlistPopulationBelieversRule: PopulationBelieversRule;
   watchlistFrontierGroupEnabled: boolean;
   watchlistFrontierGroupValue: boolean;
   uupgEnabled: boolean;
@@ -135,11 +170,11 @@ export function buildSavedDatasetFilterState(input: {
       threshold: input.watchlistThreshold,
       engagementPhaseEnabled: input.watchlistEngagementPhaseEnabled,
       engagementPhaseThreshold: input.watchlistEngagementPhaseThreshold,
-      evangelicalBelieversEnabled: input.watchlistEvangelicalBelieversEnabled,
-      evangelicalBelieversThreshold:
-        input.watchlistEvangelicalBelieversThreshold,
-      evangelicalPercentEnabled: input.watchlistEvangelicalPercentEnabled,
-      evangelicalPercentThreshold: input.watchlistEvangelicalPercentThreshold,
+      evangelicalPopulationBelieversRuleEnabled:
+        input.watchlistPopulationBelieversRuleEnabled,
+      evangelicalPopulationBelieversRule: sanitizePopulationBelieversRule(
+        input.watchlistPopulationBelieversRule,
+      ),
       frontierGroupEnabled: input.watchlistFrontierGroupEnabled,
       frontierGroupValue: input.watchlistFrontierGroupValue,
     },
@@ -248,10 +283,8 @@ export function getInitialDatasetDetailState(input: {
     watchlistThreshold: 2,
     watchlistEngagementPhaseEnabled: true,
     watchlistEngagementPhaseThreshold: 6,
-    watchlistEvangelicalBelieversEnabled: true,
-    watchlistEvangelicalBelieversThreshold: 50,
-    watchlistEvangelicalPercentEnabled: true,
-    watchlistEvangelicalPercentThreshold: 0.05,
+    watchlistPopulationBelieversRuleEnabled: true,
+    watchlistPopulationBelieversRule: createDefaultPopulationBelieversRule(),
     watchlistFrontierGroupEnabled: true,
     watchlistFrontierGroupValue: true,
     uupgEnabled: false,
@@ -298,18 +331,12 @@ export function getInitialDatasetDetailState(input: {
     watchlistEngagementPhaseThreshold: supportsWatchlistFiltering
       ? normalizedPreset.watchlist.engagementPhaseThreshold
       : defaultState.watchlistEngagementPhaseThreshold,
-    watchlistEvangelicalBelieversEnabled: supportsWatchlistFiltering
-      ? normalizedPreset.watchlist.evangelicalBelieversEnabled ?? true
-      : defaultState.watchlistEvangelicalBelieversEnabled,
-    watchlistEvangelicalBelieversThreshold: supportsWatchlistFiltering
-      ? normalizedPreset.watchlist.evangelicalBelieversThreshold
-      : defaultState.watchlistEvangelicalBelieversThreshold,
-    watchlistEvangelicalPercentEnabled: supportsWatchlistFiltering
-      ? normalizedPreset.watchlist.evangelicalPercentEnabled ?? true
-      : defaultState.watchlistEvangelicalPercentEnabled,
-    watchlistEvangelicalPercentThreshold: supportsWatchlistFiltering
-      ? normalizedPreset.watchlist.evangelicalPercentThreshold
-      : defaultState.watchlistEvangelicalPercentThreshold,
+    watchlistPopulationBelieversRuleEnabled: supportsWatchlistFiltering
+      ? getNormalizedPopulationBelieversRuleState(normalizedPreset.watchlist).enabled
+      : defaultState.watchlistPopulationBelieversRuleEnabled,
+    watchlistPopulationBelieversRule: supportsWatchlistFiltering
+      ? getNormalizedPopulationBelieversRuleState(normalizedPreset.watchlist).rule
+      : defaultState.watchlistPopulationBelieversRule,
     watchlistFrontierGroupEnabled: supportsWatchlistFiltering
       ? normalizedPreset.watchlist.frontierGroupEnabled ?? true
       : defaultState.watchlistFrontierGroupEnabled,
@@ -322,6 +349,9 @@ export function getInitialDatasetDetailState(input: {
 }
 
 export function normalizeSavedDatasetFilterState(filters: SavedDatasetFilterState) {
+  const populationBelieversRuleState =
+    getNormalizedPopulationBelieversRuleState(filters.watchlist)
+
   return {
     ...filters,
     country: {
@@ -329,14 +359,33 @@ export function normalizeSavedDatasetFilterState(filters: SavedDatasetFilterStat
       selectedCountryNames: dedupeStrings(filters.country?.selectedCountryNames ?? []),
     },
     watchlist: {
-      ...filters.watchlist,
+      enabled: filters.watchlist.enabled,
       thresholdEnabled: filters.watchlist.thresholdEnabled ?? true,
+      threshold: filters.watchlist.threshold,
       engagementPhaseEnabled: filters.watchlist.engagementPhaseEnabled ?? true,
-      evangelicalBelieversEnabled:
-        filters.watchlist.evangelicalBelieversEnabled ?? true,
-      evangelicalPercentEnabled:
-        filters.watchlist.evangelicalPercentEnabled ?? true,
+      engagementPhaseThreshold: filters.watchlist.engagementPhaseThreshold,
+      evangelicalPopulationBelieversRuleEnabled:
+        populationBelieversRuleState.hasPersistedRule
+          ? populationBelieversRuleState.enabled
+          : filters.watchlist.evangelicalPopulationBelieversRuleEnabled ??
+            filters.watchlist.evangelicalBelieversEnabled ??
+            true,
+      evangelicalPopulationBelieversRule:
+        populationBelieversRuleState.hasPersistedRule
+          ? populationBelieversRuleState.rule
+          : undefined,
+      ...(populationBelieversRuleState.hasPersistedRule
+        ? {}
+        : {
+            evangelicalPercentEnabled:
+              filters.watchlist.evangelicalPercentThreshold === undefined
+                ? undefined
+                : filters.watchlist.evangelicalPercentEnabled ?? true,
+            evangelicalPercentThreshold:
+              filters.watchlist.evangelicalPercentThreshold,
+          }),
       frontierGroupEnabled: filters.watchlist.frontierGroupEnabled ?? true,
+      frontierGroupValue: filters.watchlist.frontierGroupValue,
     },
   } satisfies SavedDatasetFilterState;
 }
@@ -382,12 +431,13 @@ export function getDatasetWatchlistFilterStateFromSavedView(
     engagementPhaseEnabled:
       normalizedFilters.watchlist.engagementPhaseEnabled ?? true,
     engagementPhaseThreshold: normalizedFilters.watchlist.engagementPhaseThreshold,
-    evangelicalBelieversEnabled:
-      normalizedFilters.watchlist.evangelicalBelieversEnabled ?? true,
-    evangelicalBelieversThreshold:
-      normalizedFilters.watchlist.evangelicalBelieversThreshold,
+    evangelicalPopulationBelieversRuleEnabled:
+      normalizedFilters.watchlist.evangelicalPopulationBelieversRuleEnabled ??
+      true,
+    evangelicalPopulationBelieversRule:
+      normalizedFilters.watchlist.evangelicalPopulationBelieversRule,
     evangelicalPercentEnabled:
-      normalizedFilters.watchlist.evangelicalPercentEnabled ?? true,
+      normalizedFilters.watchlist.evangelicalPercentEnabled,
     evangelicalPercentThreshold:
       normalizedFilters.watchlist.evangelicalPercentThreshold,
     frontierGroupEnabled:

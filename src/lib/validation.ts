@@ -1,6 +1,10 @@
 import { z } from "zod";
 
 import { MAX_CSV_BYTES, ROW_BATCH_SIZE } from "@/lib/csv";
+import {
+  POPULATION_BELIEVERS_RULE_MAX_TIERS,
+  POPULATION_BELIEVERS_RULE_MIN_TIERS,
+} from "@/lib/evangelical-population-believers-rule";
 import { WORKSPACE_ROLES } from "@/lib/workspace-role";
 
 export const csvColumnSchema = z.object({
@@ -81,16 +85,92 @@ const savedDatasetCountryFilterStateSchema = z
     }
   });
 
+const populationBelieversTierSchema = z.object({
+  minPopulation: z.number().int().min(0),
+  maxPopulation: z.number().int().min(0).nullable(),
+  minBelievers: z.number().int().min(0),
+});
+
+const populationBelieversRuleSchema = z
+  .object({
+    tiers: z
+      .array(populationBelieversTierSchema)
+      .min(POPULATION_BELIEVERS_RULE_MIN_TIERS)
+      .max(POPULATION_BELIEVERS_RULE_MAX_TIERS),
+  })
+  .superRefine((value, ctx) => {
+    value.tiers.forEach((tier, index) => {
+      if (index === 0 && tier.minPopulation !== 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["tiers", index, "minPopulation"],
+          message: "The first tier must start at population 0.",
+        });
+      }
+
+      if (tier.maxPopulation === null && index !== value.tiers.length - 1) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["tiers", index, "maxPopulation"],
+          message: "Only the final tier can be open-ended.",
+        });
+      }
+
+      if (tier.maxPopulation !== null && tier.maxPopulation < tier.minPopulation) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["tiers", index, "maxPopulation"],
+          message: "Each tier must include at least one population value.",
+        });
+      }
+
+      if (index === value.tiers.length - 1 && tier.maxPopulation !== null) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["tiers", index, "maxPopulation"],
+          message: "The final tier must be open-ended.",
+        });
+      }
+
+      if (index === 0) {
+        return;
+      }
+
+      const previousTier = value.tiers[index - 1];
+      const expectedMinPopulation =
+        previousTier.maxPopulation === null ? null : previousTier.maxPopulation + 1;
+
+      if (expectedMinPopulation === null) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["tiers", index, "minPopulation"],
+          message: "No tiers can follow an open-ended tier.",
+        });
+        return;
+      }
+
+      if (tier.minPopulation !== expectedMinPopulation) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["tiers", index, "minPopulation"],
+          message: "Tiers must stay sorted and contiguous without gaps or overlap.",
+        });
+      }
+    });
+  });
+
 const savedDatasetWatchlistFilterStateSchema = z.object({
   enabled: z.boolean(),
   thresholdEnabled: z.boolean().optional().default(true),
   threshold: z.number().int().min(0).max(6),
   engagementPhaseEnabled: z.boolean().optional().default(true),
   engagementPhaseThreshold: z.number().int().min(0).max(7),
-  evangelicalBelieversEnabled: z.boolean().optional().default(true),
-  evangelicalBelieversThreshold: z.number().int().min(0).max(1_000_000_000),
-  evangelicalPercentEnabled: z.boolean().optional().default(true),
-  evangelicalPercentThreshold: z.number().min(0).max(100),
+  evangelicalPopulationBelieversRuleEnabled: z.boolean().optional().default(true),
+  evangelicalPopulationBelieversRule: populationBelieversRuleSchema.optional(),
+  evangelicalBelieversEnabled: z.boolean().optional(),
+  evangelicalBelieversThreshold: z.number().int().min(0).max(1_000_000_000).optional(),
+  evangelicalPercentEnabled: z.boolean().optional(),
+  evangelicalPercentThreshold: z.number().min(0).max(100).optional(),
   frontierGroupEnabled: z.boolean().optional().default(true),
   frontierGroupValue: z.boolean(),
 });

@@ -238,4 +238,9 @@ Use `pnpm run verify:ship:local` as the final local merge or release gate. It re
 
 `.github/workflows/ui-smoke.yml` is the PR gate for this system.
 
-It installs dependencies, installs Chromium, starts local Supabase, bootstraps smoke data, builds the app, and runs the Playwright suite.
+The workflow now uses the same diff planner as local verification:
+
+- when the diff does not require UI smoke, the workflow reports a skip
+- when the diff maps to a targeted subset, it runs `pnpm run test:ui:smoke:targeted` against the PR base/head diff
+- when the smoke harness changes, it runs the full suite
+- when targeted diff selection matches no browser routes, the command still runs `pnpm run smoke:check` so contract validation stays blocking without paying for a no-op browser boot

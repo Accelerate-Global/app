@@ -96,6 +96,8 @@ export type AppAnalyticsEventMap = {
     watchlist_enabled: boolean;
     watchlist_threshold_enabled: boolean;
     watchlist_threshold: number | null;
+    watchlist_population_believers_rule_enabled: boolean;
+    watchlist_population_believers_rule_tier_count: number | null;
     watchlist_frontier_group_enabled: boolean;
     watchlist_frontier_group_value: boolean | null;
     watchlist_engagement_phase_enabled: boolean;
@@ -367,6 +369,8 @@ const APP_ANALYTICS_EVENT_PROPERTY_KEYS = {
     "watchlist_enabled",
     "watchlist_threshold_enabled",
     "watchlist_threshold",
+    "watchlist_population_believers_rule_enabled",
+    "watchlist_population_believers_rule_tier_count",
     "watchlist_frontier_group_enabled",
     "watchlist_frontier_group_value",
     "watchlist_engagement_phase_enabled",

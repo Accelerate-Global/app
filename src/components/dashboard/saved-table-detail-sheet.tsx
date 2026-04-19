@@ -14,7 +14,9 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import type { DatasetSummary, SavedDatasetTable } from "@/lib/api-types";
+import { buildPopulationBelieversRuleSummaryLines } from "@/lib/evangelical-population-believers-rule";
 import { normalizeRegionDisplayName } from "@/lib/region-display";
+import { normalizeSavedDatasetFilterState } from "@/lib/saved-dataset-filters";
 
 type SavedTableDetailSheetProps = {
   savedTable: SavedDatasetTable;
@@ -53,39 +55,41 @@ function getRegionSummary(savedTable: SavedDatasetTable) {
 }
 
 function getWatchlistSummary(savedTable: SavedDatasetTable) {
-  if (!savedTable.filters.watchlist.enabled) {
+  const normalizedFilters = normalizeSavedDatasetFilterState(savedTable.filters);
+
+  if (!normalizedFilters.watchlist.enabled) {
     return "Off";
   }
 
   const summary: string[] = [];
 
-  if (savedTable.filters.watchlist.thresholdEnabled ?? true) {
-    summary.push(`Christianity: GSEC <= ${savedTable.filters.watchlist.threshold}`);
+  if (normalizedFilters.watchlist.thresholdEnabled ?? true) {
+    summary.push(`Christianity: GSEC <= ${normalizedFilters.watchlist.threshold}`);
   }
 
-  if (savedTable.filters.watchlist.frontierGroupEnabled ?? true) {
+  if (normalizedFilters.watchlist.frontierGroupEnabled ?? true) {
     summary.push(
       `Frontier Group = ${
-        savedTable.filters.watchlist.frontierGroupValue ? "True" : "False"
+        normalizedFilters.watchlist.frontierGroupValue ? "True" : "False"
       }`,
     );
   }
 
-  if (savedTable.filters.watchlist.evangelicalBelieversEnabled ?? true) {
+  if (normalizedFilters.watchlist.evangelicalPopulationBelieversRuleEnabled) {
     summary.push(
-      `Min. # of Evangelical Believers <= ${savedTable.filters.watchlist.evangelicalBelieversThreshold}`,
+      ...buildPopulationBelieversRuleSummaryLines(
+        normalizedFilters.watchlist.evangelicalPopulationBelieversRule,
+      ),
+    );
+  } else if (normalizedFilters.watchlist.evangelicalPercentEnabled ?? false) {
+    summary.push(
+      `Min. Evangelical % >= ${normalizedFilters.watchlist.evangelicalPercentThreshold}`,
     );
   }
 
-  if (savedTable.filters.watchlist.evangelicalPercentEnabled ?? true) {
+  if (normalizedFilters.watchlist.engagementPhaseEnabled ?? true) {
     summary.push(
-      `Min. Evangelical % >= ${savedTable.filters.watchlist.evangelicalPercentThreshold}`,
-    );
-  }
-
-  if (savedTable.filters.watchlist.engagementPhaseEnabled ?? true) {
-    summary.push(
-      `Engage: 8 Phases >= ${savedTable.filters.watchlist.engagementPhaseThreshold}`,
+      `Engage: 8 Phases >= ${normalizedFilters.watchlist.engagementPhaseThreshold}`,
     );
   }
 

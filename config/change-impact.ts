@@ -395,6 +395,24 @@ export type ChangeImpactResult = {
   contractRequirements: ContractRequirementId[];
 };
 
+const ciAppQualityPatterns = [
+  ".github/workflows/**",
+  "package.json",
+  "pnpm-lock.yaml",
+  "config/**/*.ts",
+  "scripts/**/*.ts",
+  "src/**/*.ts",
+  "src/**/*.tsx",
+  "tests/**/*.ts",
+  "tests/**/*.tsx",
+  "drizzle.config.ts",
+  "eslint.config.mjs",
+  "next.config.ts",
+  "playwright.smoke.config.ts",
+  "tsconfig.json",
+  "vitest.config.ts",
+] as const;
+
 function normalizePath(filePath: string) {
   return filePath.split(path.sep).join("/");
 }
@@ -456,4 +474,12 @@ export function resolveChangeImpact(changedFiles: string[]): ChangeImpactResult 
       contractRequirementOrder,
     ),
   };
+}
+
+export function shouldRunAppQualityOnCi(changedFiles: string[]) {
+  const normalizedChangedFiles = [...new Set(changedFiles.map(normalizePath))].sort();
+
+  return normalizedChangedFiles.some((filePath) =>
+    matchesAnyPattern(filePath, [...ciAppQualityPatterns]),
+  );
 }

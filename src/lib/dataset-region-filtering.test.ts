@@ -470,7 +470,9 @@ describe("dataset-region-filtering", () => {
         isSupported: true,
         threshold: 2,
         engagementPhaseThreshold: 6,
+        evangelicalBelieversEnabled: false,
         evangelicalBelieversThreshold: 1000,
+        evangelicalPercentEnabled: false,
         evangelicalPercentThreshold: 0.05,
         frontierGroupValue: true,
       },
@@ -532,7 +534,9 @@ describe("dataset-region-filtering", () => {
         isSupported: true,
         threshold: 2,
         engagementPhaseThreshold: 6,
+        evangelicalBelieversEnabled: false,
         evangelicalBelieversThreshold: 1000,
+        evangelicalPercentEnabled: false,
         evangelicalPercentThreshold: 0.05,
         frontierGroupValue: true,
       },
@@ -583,7 +587,9 @@ describe("dataset-region-filtering", () => {
         isSupported: true,
         threshold: 2,
         engagementPhaseThreshold: 6,
+        evangelicalBelieversEnabled: false,
         evangelicalBelieversThreshold: 1000,
+        evangelicalPercentEnabled: false,
         evangelicalPercentThreshold: 0.05,
         frontierGroupValue: false,
       },
@@ -623,7 +629,9 @@ describe("dataset-region-filtering", () => {
         isSupported: true,
         threshold: 2,
         engagementPhaseThreshold: 6,
+        evangelicalBelieversEnabled: false,
         evangelicalBelieversThreshold: 1000,
+        evangelicalPercentEnabled: false,
         evangelicalPercentThreshold: 0.05,
         frontierGroupValue: false,
       },
@@ -632,7 +640,7 @@ describe("dataset-region-filtering", () => {
     expect(filteredRows.map((row) => row.id)).toEqual(["row-alias-false"]);
   });
 
-  it("keeps only rows whose evangelical believers count is less than or equal to the threshold", () => {
+  it("keeps only rows whose evangelical believers count meets the minimum threshold", () => {
     const filteredRows = filterDatasetRowsByWatchlist(
       [
         {
@@ -643,7 +651,7 @@ describe("dataset-region-filtering", () => {
             engage_8_phases_of_engagement: "6",
             christianity_frontier_group: "TRUE",
             pg_population: "10000",
-            percent_evangelical_pgac: "10",
+            percent_evangelical_pgac: "20",
           },
         },
         {
@@ -654,7 +662,7 @@ describe("dataset-region-filtering", () => {
             engage_8_phases_of_engagement: "6",
             christianity_frontier_group: "TRUE",
             pg_population: "20000",
-            percent_evangelical_pgac: "10",
+            percent_evangelical_pgac: "5",
           },
         },
       ],
@@ -663,7 +671,8 @@ describe("dataset-region-filtering", () => {
         isSupported: true,
         threshold: 2,
         engagementPhaseThreshold: 6,
-        evangelicalBelieversThreshold: 1000,
+        evangelicalBelieversThreshold: 1500,
+        evangelicalPercentEnabled: false,
         evangelicalPercentThreshold: 0.05,
         frontierGroupValue: true,
       },
@@ -703,6 +712,7 @@ describe("dataset-region-filtering", () => {
         isSupported: true,
         threshold: 2,
         engagementPhaseThreshold: 6,
+        evangelicalBelieversEnabled: false,
         evangelicalBelieversThreshold: 1000,
         evangelicalPercentThreshold: 0.05,
         frontierGroupValue: true,
@@ -743,7 +753,9 @@ describe("dataset-region-filtering", () => {
         isSupported: true,
         threshold: 2,
         engagementPhaseThreshold: 6,
+        evangelicalBelieversEnabled: false,
         evangelicalBelieversThreshold: 1000,
+        evangelicalPercentEnabled: false,
         evangelicalPercentThreshold: 0.05,
         frontierGroupValue: true,
       },
@@ -908,7 +920,7 @@ describe("dataset-region-filtering", () => {
             engage_8_phases_of_engagement: "6",
             christianity_frontier_group: "TRUE",
             pg_population: "50000",
-            percent_evangelical_pgac: "10",
+            percent_evangelical_pgac: "1",
             engage_global_engagement_anywhere: "FALSE",
           },
         },

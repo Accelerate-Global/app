@@ -2,8 +2,6 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 
 import {
-  smokeCheckDeployment,
-  waitForGitHubDeployment,
   waitForPullRequestChecks,
   waitForWorkflowRun,
 } from "./lib/release";
@@ -253,22 +251,9 @@ export async function shipPullRequest(input: { prNumber: string }) {
     commitSha: mergeSha,
   });
 
-  logStage(`Waiting for the git-based production deployment for ${mergeSha}...`);
-  const deployment = await waitForGitHubDeployment({
-    commitSha: mergeSha,
-  });
-  logStage(`Verifying the production alias for ${mergeSha}...`);
-  const smokeCheck = await smokeCheckDeployment({
-    productionUrl: "https://data.accelerateglobal.org",
-    expectedTitle: "Accelerate Global",
-  });
-
   logStage(`PR #${pullRequest.number} shipped successfully.`);
   logStage(`PR URL: ${pullRequest.url}`);
   logStage(`Merge SHA: ${mergeSha}`);
-  logStage(`Production deployment: ${deployment.deploymentUrl}`);
-  logStage(`Production alias: ${smokeCheck.productionUrl}`);
-  logStage(`Vercel deployment id: ${smokeCheck.deploymentId}`);
 }
 
 async function main() {

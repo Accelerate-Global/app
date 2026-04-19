@@ -29,8 +29,16 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
-      - run: pnpm run verify:test-delta
+      - id: selection
+        run: node --import tsx scripts/ci-select-validation.ts --base "${{ github.event.pull_request.base.sha }}" --head "${{ github.event.pull_request.head.sha }}"
+
+      - if: steps.selection.outputs.app_quality == 'true'
+        run: pnpm run verify:test-delta
         env:
-          VERIFY_TEST_DELTA_BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
-          VERIFY_TEST_DELTA_HEAD_SHA: ${{ github.sha }}
-      - run: pnpm run verify:app
+          VERIFY_TEST_DELTA_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          VERIFY_TEST_DELTA_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      - if: steps.selection.outputs.app_quality == 'true'
+        run: pnpm run verify:app
+
+      - if: steps.selection.outputs.app_quality != 'true'
+        run: echo "No app-quality-relevant files changed."

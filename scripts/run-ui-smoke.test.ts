@@ -4,6 +4,8 @@ import { hasUsableSupabaseStatusOutput } from "./lib/ui-smoke-env";
 import {
   buildUiSmokeRunPlan,
   DEFAULT_SUPABASE_PORT_RELEASE_WAIT,
+  parseRunUiSmokeArgs,
+  resolveUiSmokeChangedFiles,
 } from "./run-ui-smoke";
 
 describe("run-ui-smoke", () => {
@@ -57,11 +59,54 @@ describe("run-ui-smoke", () => {
     ]);
   });
 
+  it("builds a smoke-check-only targeted plan when no routes match", () => {
+    const plan = buildUiSmokeRunPlan({
+      changedFiles: ["src/lib/analytics.ts"],
+      targeted: true,
+      fullAfterTargeted: false,
+    });
+
+    expect(plan.selection?.mode).toBe("none");
+    expect(plan.suites).toEqual([]);
+  });
+
   it("uses the longer Supabase port release wait by default", () => {
     expect(DEFAULT_SUPABASE_PORT_RELEASE_WAIT).toEqual({
       maxAttempts: 30,
       retryDelayMs: 2_000,
     });
+  });
+
+  it("parses explicit base and head refs for CI-targeted smoke", () => {
+    expect(
+      parseRunUiSmokeArgs([
+        "node",
+        "scripts/run-ui-smoke.ts",
+        "--targeted",
+        "--base",
+        "base-sha",
+        "--head",
+        "head-sha",
+      ]),
+    ).toEqual({
+      headed: false,
+      fullAfterTargeted: false,
+      targeted: true,
+      baseSha: "base-sha",
+      headSha: "head-sha",
+    });
+  });
+
+  it("prefers git diff files when CI refs are provided", () => {
+    expect(
+      resolveUiSmokeChangedFiles({
+        targeted: true,
+        baseSha: "base-sha",
+        headSha: "head-sha",
+        diffFiles: ["src/components/dashboard/dataset-edit-page-client.tsx"],
+        statusFiles: ["src/components/dashboard/dataset-table.tsx"],
+      }),
+    ).toEqual(["src/components/dashboard/dataset-edit-page-client.tsx"]);
   });
 
   it("recognizes usable local Supabase status output", () => {

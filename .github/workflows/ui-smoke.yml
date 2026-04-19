@@ -17,60 +17,45 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
-      - uses: dorny/paths-filter@v3
-        id: changes
         with:
-          filters: |
-            ui_smoke:
-              - '.github/workflows/ui-smoke.yml'
-              - 'AGENTS.md'
-              - 'README.md'
-              - 'docs/testing/ui-smoke.md'
-              - 'package.json'
-              - 'pnpm-lock.yaml'
-              - 'playwright.smoke.config.ts'
-              - 'scripts/check-ui-smoke.ts'
-              - 'scripts/run-ui-smoke.ts'
-              - 'scripts/smoke-bootstrap.ts'
-              - 'src/app/**'
-              - 'src/components/**'
-              - 'src/lib/**'
-              - 'supabase/**'
-              - 'tests/ui/**'
+          fetch-depth: 0
 
       - uses: pnpm/action-setup@v4
-        if: steps.changes.outputs.ui_smoke == 'true'
         with:
           version: 10
 
       - uses: actions/setup-node@v4
-        if: steps.changes.outputs.ui_smoke == 'true'
         with:
           node-version: 22
           cache: pnpm
 
+      - run: pnpm install --frozen-lockfile
+
+      - id: selection
+        run: node --import tsx scripts/ci-select-validation.ts --base "${{ github.event.pull_request.base.sha }}" --head "${{ github.event.pull_request.head.sha }}"
+
       - uses: supabase/setup-cli@v1
-        if: steps.changes.outputs.ui_smoke == 'true'
+        if: steps.selection.outputs.ui_smoke_browser == 'true'
         with:
           version: latest
 
-      - if: steps.changes.outputs.ui_smoke == 'true'
-        run: pnpm install --frozen-lockfile
-
-      - if: steps.changes.outputs.ui_smoke == 'true'
+      - if: steps.selection.outputs.ui_smoke_browser == 'true'
         run: pnpm exec playwright install --with-deps chromium
 
-      - if: steps.changes.outputs.ui_smoke == 'true'
+      - if: steps.selection.outputs.ui_smoke_mode == 'targeted'
+        run: pnpm run test:ui:smoke:targeted -- --base "${{ github.event.pull_request.base.sha }}" --head "${{ github.event.pull_request.head.sha }}"
+
+      - if: steps.selection.outputs.ui_smoke_mode == 'full'
         run: pnpm run test:ui:smoke
 
-      - if: always() && steps.changes.outputs.ui_smoke == 'true'
+      - if: always() && steps.selection.outputs.ui_smoke_mode != 'none'
         uses: actions/upload-artifact@v4
         with:
           name: ui-smoke-report
           path: |
             output/playwright/ui-smoke
             test-results/ui-smoke
+          if-no-files-found: ignore
 
-      - if: steps.changes.outputs.ui_smoke != 'true'
+      - if: steps.selection.outputs.ui_smoke_mode == 'none'
         run: echo "No UI smoke-relevant files changed."

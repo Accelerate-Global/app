@@ -11,6 +11,7 @@ import {
 import { useState, type ReactNode } from "react";
 
 import { CountrySearchSelector } from "@/components/dashboard/country-search-selector";
+import { WatchlistPopulationBelieversBuilder } from "@/components/dashboard/watchlist-population-believers-builder";
 import {
   NumberField,
   NumberFieldDecrement,
@@ -20,8 +21,23 @@ import {
 } from "@/components/reui/number-field";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import type { PopulationBelieversRule } from "@/lib/api-types";
+import {
+  buildPopulationBelieversRuleSummaryLines,
+  createDefaultPopulationBelieversRule,
+} from "@/lib/evangelical-population-believers-rule";
 import {
   isGlobeRegionName,
   normalizeRegionDisplayName,
@@ -73,18 +89,10 @@ type DatasetViewSwitchGridProps = {
     engagementPhaseThreshold: number;
     minEngagementPhaseThreshold: number;
     maxEngagementPhaseThreshold: number;
-    evangelicalBelieversLabel: string;
-    evangelicalBelieversDefinition: string;
-    evangelicalBelieversEnabled: boolean;
-    evangelicalBelieversThreshold: number;
-    minEvangelicalBelieversThreshold: number;
-    maxEvangelicalBelieversThreshold: number;
-    evangelicalPercentLabel: string;
-    evangelicalPercentDefinition: string;
-    evangelicalPercentEnabled: boolean;
-    evangelicalPercentThreshold: number;
-    minEvangelicalPercentThreshold: number;
-    maxEvangelicalPercentThreshold: number;
+    populationBelieversRuleLabel: string;
+    populationBelieversRuleDefinition: string;
+    populationBelieversRuleEnabled: boolean;
+    populationBelieversRule: PopulationBelieversRule;
     frontierGroupLabel: string;
     frontierGroupDefinition: string;
     frontierGroupEnabled: boolean;
@@ -94,10 +102,8 @@ type DatasetViewSwitchGridProps = {
     onThresholdChange: (value: number) => void;
     onEngagementPhaseEnabledChange: (checked: boolean) => void;
     onEngagementPhaseThresholdChange: (value: number) => void;
-    onEvangelicalBelieversEnabledChange: (checked: boolean) => void;
-    onEvangelicalBelieversThresholdChange: (value: number) => void;
-    onEvangelicalPercentEnabledChange: (checked: boolean) => void;
-    onEvangelicalPercentThresholdChange: (value: number) => void;
+    onPopulationBelieversRuleEnabledChange: (checked: boolean) => void;
+    onPopulationBelieversRuleChange: (rule: PopulationBelieversRule) => void;
     onFrontierGroupEnabledChange: (checked: boolean) => void;
     onFrontierGroupValueChange: (value: boolean) => void;
   };
@@ -123,6 +129,7 @@ const FILTER_PANEL_DESCRIPTIONS = {
 
 const INFO_TOOLTIP_CONTENT_CLASSNAME =
   "max-w-[26rem] rounded-2xl border border-border/80 bg-popover px-4 py-3.5 text-sm leading-6 text-popover-foreground shadow-lg ring-1 ring-foreground/8";
+const POPULATION_BELIEVERS_INLINE_SUMMARY_LIMIT = 3;
 
 function RegionCountriesInfo({
   label,
@@ -467,15 +474,11 @@ function getWatchlistSummary(
     );
   }
 
-  if (watchlistCard.evangelicalBelieversEnabled) {
+  if (watchlistCard.populationBelieversRuleEnabled) {
     summary.push(
-      `${watchlistCard.evangelicalBelieversLabel} <= ${watchlistCard.evangelicalBelieversThreshold}`,
-    );
-  }
-
-  if (watchlistCard.evangelicalPercentEnabled) {
-    summary.push(
-      `${watchlistCard.evangelicalPercentLabel} >= ${watchlistCard.evangelicalPercentThreshold}`,
+      ...buildPopulationBelieversRuleSummaryLines(
+        watchlistCard.populationBelieversRule,
+      ),
     );
   }
 
@@ -486,6 +489,114 @@ function getWatchlistSummary(
   }
 
   return summary.length > 0 ? summary : ["No criteria selected"];
+}
+
+function WatchlistPopulationBelieversControl({
+  watchlistCard,
+}: {
+  watchlistCard: DatasetViewSwitchGridProps["watchlistCard"];
+}) {
+  const [open, setOpen] = useState(false);
+  const isEditorDisabled =
+    !watchlistCard.enabled || !watchlistCard.populationBelieversRuleEnabled;
+  const summaryLines = buildPopulationBelieversRuleSummaryLines(
+    watchlistCard.populationBelieversRule,
+  );
+  const visibleSummaryLines = summaryLines.slice(
+    0,
+    POPULATION_BELIEVERS_INLINE_SUMMARY_LIMIT,
+  );
+  const additionalTierCount = summaryLines.length - visibleSummaryLines.length;
+
+  return (
+    <div
+      className={cn(
+        "rounded-2xl border border-border/70 bg-muted/20 px-4 py-3",
+        isEditorDisabled && "opacity-70",
+      )}
+    >
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+            Configured rule
+          </p>
+          <div className="mt-2 space-y-1.5 text-sm text-foreground">
+            {visibleSummaryLines.map((line) => (
+              <p key={line}>{line}</p>
+            ))}
+            {additionalTierCount > 0 ? (
+              <p className="text-muted-foreground">+{additionalTierCount} more tiers</p>
+            ) : null}
+          </div>
+          <p className="mt-3 text-xs leading-5 text-muted-foreground">
+            Open the popup editor to adjust breakpoints, minimum believers, and
+            the scenario test dot.
+          </p>
+        </div>
+
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger
+            render={
+              <Button
+                type="button"
+                variant="outline"
+                disabled={isEditorDisabled}
+                data-smoke-trigger="watchlist-population-believers-dialog"
+                data-smoke-write="safe"
+                className="shrink-0"
+              />
+            }
+          >
+            Edit rule
+          </DialogTrigger>
+          <DialogContent
+            className="p-0"
+            data-smoke-surface="watchlist-population-believers-dialog"
+            data-smoke-ready="watchlist-population-believers-dialog"
+          >
+            <DialogHeader className="border-b border-border/70 px-4 py-4 pr-16 sm:px-6 sm:py-5">
+              <DialogTitle>Population vs Evangelical Believers</DialogTitle>
+              <DialogDescription className="max-w-3xl leading-6">
+                Edit the tiered threshold visually. Changes apply to the current
+                filter immediately while the popup is open.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
+              <WatchlistPopulationBelieversBuilder
+                presentation="embedded"
+                disabled={isEditorDisabled}
+                rule={watchlistCard.populationBelieversRule}
+                onRuleChange={watchlistCard.onPopulationBelieversRuleChange}
+              />
+            </div>
+            <DialogFooter className="border-t border-border/70 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() =>
+                  watchlistCard.onPopulationBelieversRuleChange(
+                    createDefaultPopulationBelieversRule(),
+                  )
+                }
+              >
+                Reset to defaults
+              </Button>
+              <DialogClose
+                render={
+                  <Button
+                    type="button"
+                    data-smoke-close="watchlist-population-believers-dialog"
+                  />
+                }
+              >
+                Done
+              </DialogClose>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+    </div>
+  );
 }
 
 function getCountrySummary(countryCard: DatasetViewSwitchGridProps["countryCard"]) {
@@ -779,64 +890,21 @@ export function DatasetViewSwitchGrid({
                 </ButtonGroup>
               </DatasetFilterRow>
               <DatasetFilterRow
-                label={watchlistCard.evangelicalBelieversLabel}
-                definition={watchlistCard.evangelicalBelieversDefinition}
-                controlClassName="max-w-[10rem]"
+                label={watchlistCard.populationBelieversRuleLabel}
+                definition={watchlistCard.populationBelieversRuleDefinition}
                 toggleControl={
                   <Switch
                     size="sm"
-                    checked={watchlistCard.evangelicalBelieversEnabled}
+                    checked={watchlistCard.populationBelieversRuleEnabled}
                     disabled={!watchlistCard.enabled}
                     onCheckedChange={
-                      watchlistCard.onEvangelicalBelieversEnabledChange
+                      watchlistCard.onPopulationBelieversRuleEnabledChange
                     }
-                    aria-label={`Toggle Watchlist ${watchlistCard.evangelicalBelieversLabel}`}
+                    aria-label={`Toggle Watchlist ${watchlistCard.populationBelieversRuleLabel}`}
                   />
                 }
               >
-                <WatchlistNumberControl
-                  label={watchlistCard.evangelicalBelieversLabel}
-                  value={watchlistCard.evangelicalBelieversThreshold}
-                  min={watchlistCard.minEvangelicalBelieversThreshold}
-                  max={watchlistCard.maxEvangelicalBelieversThreshold}
-                  operator="<="
-                  disabled={
-                    !watchlistCard.enabled ||
-                    !watchlistCard.evangelicalBelieversEnabled
-                  }
-                  onValueChange={watchlistCard.onEvangelicalBelieversThresholdChange}
-                />
-              </DatasetFilterRow>
-              <DatasetFilterRow
-                label={watchlistCard.evangelicalPercentLabel}
-                definition={watchlistCard.evangelicalPercentDefinition}
-                controlClassName="max-w-[10rem]"
-                toggleControl={
-                  <Switch
-                    size="sm"
-                    checked={watchlistCard.evangelicalPercentEnabled}
-                    disabled={!watchlistCard.enabled}
-                    onCheckedChange={
-                      watchlistCard.onEvangelicalPercentEnabledChange
-                    }
-                    aria-label={`Toggle Watchlist ${watchlistCard.evangelicalPercentLabel}`}
-                  />
-                }
-              >
-                <WatchlistNumberControl
-                  label={watchlistCard.evangelicalPercentLabel}
-                  value={watchlistCard.evangelicalPercentThreshold}
-                  min={watchlistCard.minEvangelicalPercentThreshold}
-                  max={watchlistCard.maxEvangelicalPercentThreshold}
-                  operator=">="
-                  disabled={
-                    !watchlistCard.enabled || !watchlistCard.evangelicalPercentEnabled
-                  }
-                  onValueChange={watchlistCard.onEvangelicalPercentThresholdChange}
-                  step={0.01}
-                  smallStep={0.01}
-                  largeStep={0.05}
-                />
+                <WatchlistPopulationBelieversControl watchlistCard={watchlistCard} />
               </DatasetFilterRow>
               <DatasetFilterRow
                 label={watchlistCard.engagementPhaseLabel}

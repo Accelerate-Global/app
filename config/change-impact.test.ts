@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { resolveChangeImpact } from "./change-impact";
+import { resolveChangeImpact, shouldRunAppQualityOnCi } from "./change-impact";
 
 describe("change-impact", () => {
   it("requires smoke:check for shared UI primitive changes", () => {
@@ -56,5 +56,13 @@ describe("change-impact", () => {
     expect(impact.requiredCommands).toEqual([]);
     expect(impact.manualSteps).toEqual([]);
     expect(impact.domains).toEqual([]);
+  });
+
+  it("runs app quality on CI for workflow changes", () => {
+    expect(shouldRunAppQualityOnCi([".github/workflows/ui-smoke.yml"])).toBe(true);
+  });
+
+  it("skips app quality on CI for docs-only changes", () => {
+    expect(shouldRunAppQualityOnCi(["docs/testing/ui-smoke.md"])).toBe(false);
   });
 });

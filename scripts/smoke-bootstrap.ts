@@ -245,10 +245,21 @@ async function insertDatasets(input: {
       label: "Christianity_Frontier_Group",
       sourceIndex: 4,
     },
+    { key: "pg_population", label: "PG_Population", sourceIndex: 5 },
+    {
+      key: "percent_evangelical_pgac",
+      label: "Percent_Evangelical_PGAC",
+      sourceIndex: 6,
+    },
+    {
+      key: "engage_8_phases_of_engagement",
+      label: "Engage_8_Phases_of_Engagement",
+      sourceIndex: 7,
+    },
     {
       key: "engage_global_engagement_anywhere",
       label: "Engage_Global_Engagement_Anywhere",
-      sourceIndex: 5,
+      sourceIndex: 8,
     },
   ];
   const primaryRows: SmokeDatasetRow[] = [
@@ -258,6 +269,9 @@ async function insertDatasets(input: {
       geo_country_name: "India",
       christianity_gsec: "1",
       christianity_frontier_group: "true",
+      pg_population: "4000",
+      percent_evangelical_pgac: "2",
+      engage_8_phases_of_engagement: "6",
       engage_global_engagement_anywhere: "false",
     },
     {
@@ -266,6 +280,9 @@ async function insertDatasets(input: {
       geo_country_name: "Nepal",
       christianity_gsec: "3",
       christianity_frontier_group: "false",
+      pg_population: "9000",
+      percent_evangelical_pgac: "1",
+      engage_8_phases_of_engagement: "5",
       engage_global_engagement_anywhere: "true",
     },
     {
@@ -274,6 +291,9 @@ async function insertDatasets(input: {
       geo_country_name: "Brazil",
       christianity_gsec: "2",
       christianity_frontier_group: "true",
+      pg_population: "15000",
+      percent_evangelical_pgac: "0.8",
+      engage_8_phases_of_engagement: "7",
       engage_global_engagement_anywhere: "false",
     },
   ];
