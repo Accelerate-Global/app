@@ -199,6 +199,41 @@ describe("dataset-region-filtering", () => {
     ).toBe(true);
   });
 
+  it("detects watchlist support when the frontier field uses the alias key", () => {
+    expect(
+      datasetSupportsWatchlistFiltering({
+        ...dataset,
+        columns: [
+          {
+            key: "christianity_gsec",
+            label: "Christianity_GSEC",
+            sourceIndex: 0,
+          },
+          {
+            key: "frontier_group",
+            label: "Frontier_Group",
+            sourceIndex: 1,
+          },
+          {
+            key: "engage_8_phases_of_engagement",
+            label: "Engage_8_Phases_of_Engagement",
+            sourceIndex: 2,
+          },
+          {
+            key: "pg_population",
+            label: "PG_Population",
+            sourceIndex: 3,
+          },
+          {
+            key: "percent_evangelical_pgac",
+            label: "Percent_Evangelical_PGAC",
+            sourceIndex: 4,
+          },
+        ],
+      }),
+    ).toBe(true);
+  });
+
   it("reports watchlist filtering as unsupported when the column is absent", () => {
     expect(
       datasetSupportsWatchlistFiltering({
@@ -555,6 +590,46 @@ describe("dataset-region-filtering", () => {
     );
 
     expect(filteredRows.map((row) => row.id)).toEqual(["row-false"]);
+  });
+
+  it("falls back to the frontier alias key when filtering watchlist rows", () => {
+    const filteredRows = filterDatasetRowsByWatchlist(
+      [
+        {
+          id: "row-alias-true",
+          rowIndex: 0,
+          data: {
+            christianity_gsec: "1",
+            engage_8_phases_of_engagement: "6",
+            frontier_group: "TRUE",
+            pg_population: "10000",
+            percent_evangelical_pgac: "5",
+          },
+        },
+        {
+          id: "row-alias-false",
+          rowIndex: 1,
+          data: {
+            christianity_gsec: "2",
+            engage_8_phases_of_engagement: "6",
+            frontier_group: "FALSE",
+            pg_population: "10000",
+            percent_evangelical_pgac: "5",
+          },
+        },
+      ],
+      {
+        enabled: true,
+        isSupported: true,
+        threshold: 2,
+        engagementPhaseThreshold: 6,
+        evangelicalBelieversThreshold: 1000,
+        evangelicalPercentThreshold: 0.05,
+        frontierGroupValue: false,
+      },
+    );
+
+    expect(filteredRows.map((row) => row.id)).toEqual(["row-alias-false"]);
   });
 
   it("keeps only rows whose evangelical believers count is less than or equal to the threshold", () => {

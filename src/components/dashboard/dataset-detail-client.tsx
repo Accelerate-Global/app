@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { DatasetOpenPresetSheet } from "@/components/dashboard/dataset-open-preset-sheet";
 import { DatasetTableActionBar } from "@/components/dashboard/dataset-table-action-bar";
 import { DatasetTable } from "@/components/dashboard/dataset-table";
 import { DatasetViewSwitchGrid } from "@/components/dashboard/dataset-view-switch-grid";
@@ -252,6 +253,7 @@ export function DatasetDetailClient({
   );
   const [uupgEnabled, setUupgEnabled] = useState(initialState.uupgEnabled);
   const [isFiltersSheetOpen, setIsFiltersSheetOpen] = useState(false);
+  const [isOpenPresetSheetOpen, setIsOpenPresetSheetOpen] = useState(false);
   const analyticsContext = useMemo(
     () =>
       buildAnalyticsContext({
@@ -723,16 +725,9 @@ export function DatasetDetailClient({
             fieldDefinitionPresentationByColumnKey={fieldDefinitionPresentationByColumnKey}
             analyticsContext={analyticsContext}
             onOpenFilters={() => setIsFiltersSheetOpen(true)}
-            openPresetControls={
+            onOpenOpenPreset={
               canManageOpenPresets
-                ? {
-                    tags: datasetTags,
-                    selectedTagId: selectedOpenPresetTagId,
-                    isSaving: isSavingOpenPreset,
-                    onSelectedTagIdChange: setSelectedOpenPresetTagId,
-                    onSave: handleSaveOpenPreset,
-                    onClear: handleClearOpenPreset,
-                  }
+                ? () => setIsOpenPresetSheetOpen(true)
                 : undefined
             }
           />
@@ -745,6 +740,21 @@ export function DatasetDetailClient({
           />
         </div>
       </div>
+      {canManageOpenPresets ? (
+        <DatasetOpenPresetSheet
+          open={isOpenPresetSheetOpen}
+          onOpenChange={setIsOpenPresetSheetOpen}
+          dataset={dataset}
+          filters={savedFilters}
+          tags={datasetTags}
+          selectedTagId={selectedOpenPresetTagId}
+          isSaving={isSavingOpenPreset}
+          analyticsContext={analyticsContext}
+          onSelectedTagIdChange={setSelectedOpenPresetTagId}
+          onSave={handleSaveOpenPreset}
+          onClear={handleClearOpenPreset}
+        />
+      ) : null}
       <Sheet open={isFiltersSheetOpen} onOpenChange={setIsFiltersSheetOpen}>
         <SheetContent
           side="left"

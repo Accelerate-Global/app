@@ -529,6 +529,11 @@ export function DatasetViewSwitchGrid({
     watchlist: false,
     uupg: false,
   });
+  const enableCountryFilter = () => {
+    if (!countryCard.enabled) {
+      countryCard.onEnabledChange(true);
+    }
+  };
 
   return (
     <div
@@ -648,10 +653,22 @@ export function DatasetViewSwitchGrid({
                 allCountries={countryCard.availableCountries}
                 selectedCountries={countryCard.selectedCountries}
                 searchValue={countryCard.searchValue}
-                disabled={!countryCard.enabled}
+                disabled={false}
                 onSearchChange={countryCard.onSearchChange}
-                onToggleCountry={countryCard.onToggleCountry}
-                onSelectVisible={countryCard.onSelectVisible}
+                onToggleCountry={(country, checked) => {
+                  if (checked) {
+                    enableCountryFilter();
+                  }
+
+                  countryCard.onToggleCountry(country, checked);
+                }}
+                onSelectVisible={(countryNames) => {
+                  if (countryNames.length > 0) {
+                    enableCountryFilter();
+                  }
+
+                  countryCard.onSelectVisible(countryNames);
+                }}
                 onClearVisible={countryCard.onClearVisible}
               />
             </div>

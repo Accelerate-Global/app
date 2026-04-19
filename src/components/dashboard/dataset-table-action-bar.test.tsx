@@ -119,8 +119,8 @@ describe("DatasetTableActionBar", () => {
     expect(onOpenFilters).toHaveBeenCalledTimes(1);
   });
 
-  it("lets admins save the current filters to a dataset tag preset", async () => {
-    const onSave = vi.fn(async () => undefined);
+  it("renders an admin-only open preset trigger in the action row", () => {
+    const onOpenOpenPreset = vi.fn();
 
     render(
       <DatasetTableActionBar
@@ -132,40 +132,23 @@ describe("DatasetTableActionBar", () => {
         isLoading={false}
         hasError={false}
         fieldDefinitionPresentationByColumnKey={{}}
-        openPresetControls={{
-          tags: [
-            {
-              id: "tag-1",
-              label: "Watchlist",
-              color: "#262531",
-            },
-          ],
-          selectedTagId: "tag-1",
-          isSaving: false,
-          onSelectedTagIdChange: vi.fn(),
-          onSave,
-          onClear: vi.fn(async () => undefined),
-        }}
+        onOpenOpenPreset={onOpenOpenPreset}
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Save open preset" }));
+    const actionRow = screen.getByRole("button", { name: "Download" }).parentElement;
+    const openPresetButton = screen.getByRole("button", { name: "Open preset" });
 
-    await waitFor(() => {
-      expect(onSave).toHaveBeenCalledTimes(1);
-    });
-    expect(
-      await screen.findByText('Saved open preset to "Watchlist".'),
-    ).toBeTruthy();
-    expect(trackAppEventMock).toHaveBeenCalledWith(
-      "dataset_open_preset_saved",
-      expect.objectContaining({
-        source_surface: "dataset_action_bar",
-        success: true,
-        dataset_id: "dataset-1",
-        tag_id: "tag-1",
-      }),
+    expect(actionRow?.contains(openPresetButton)).toBe(true);
+    expect(openPresetButton.getAttribute("data-smoke-trigger")).toBe(
+      "dataset-open-preset-sheet",
     );
+    expect(screen.queryByText("Dataset open preset")).toBeNull();
+    expect(screen.queryByText("Preset tag")).toBeNull();
+
+    fireEvent.click(openPresetButton);
+
+    expect(onOpenOpenPreset).toHaveBeenCalledTimes(1);
   });
 
   it("tracks saved table creation outcomes", async () => {

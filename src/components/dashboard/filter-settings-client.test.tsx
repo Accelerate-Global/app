@@ -65,7 +65,7 @@ describe("FilterSettingsClient", () => {
     fireEvent.change(screen.getByLabelText("Region name"), {
       target: { value: "North Africa" },
     });
-    fireEvent.change(screen.getAllByPlaceholderText("Search countries")[0], {
+    fireEvent.change(screen.getAllByLabelText("Search countries")[0], {
       target: { value: "Algeria" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Select visible" }));

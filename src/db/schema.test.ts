@@ -66,6 +66,20 @@ describe("fieldDefinitions schema", () => {
       'add column "hide_from_viewer_field_definitions" boolean not null default false',
     );
   });
+
+  it("creates the frontier group canonical merge migration", async () => {
+    const migrationPath = path.join(
+      process.cwd(),
+      "supabase/migrations/20260418211633_frontier_group_canonical_merge.sql",
+    );
+
+    const migration = await readFile(migrationPath, "utf8");
+
+    expect(migration).toContain("christianity_frontier_group");
+    expect(migration).toContain("frontier_group");
+    expect(migration).toContain("insert into public.field_definition_sources");
+    expect(migration).toContain("delete from public.field_definitions");
+  });
 });
 
 describe("savedDatasetTables schema", () => {
