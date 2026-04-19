@@ -81,6 +81,16 @@ export type SavedDatasetSort = {
   desc: boolean;
 };
 
+export type PopulationBelieversTier = {
+  minPopulation: number;
+  maxPopulation: number | null;
+  minBelievers: number;
+};
+
+export type PopulationBelieversRule = {
+  tiers: PopulationBelieversTier[];
+};
+
 export type SavedDatasetFilterState = {
   region: {
     enabled: boolean;
@@ -98,10 +108,12 @@ export type SavedDatasetFilterState = {
     threshold: number;
     engagementPhaseEnabled?: boolean;
     engagementPhaseThreshold: number;
+    evangelicalPopulationBelieversRuleEnabled?: boolean;
+    evangelicalPopulationBelieversRule?: PopulationBelieversRule;
     evangelicalBelieversEnabled?: boolean;
-    evangelicalBelieversThreshold: number;
+    evangelicalBelieversThreshold?: number;
     evangelicalPercentEnabled?: boolean;
-    evangelicalPercentThreshold: number;
+    evangelicalPercentThreshold?: number;
     frontierGroupEnabled?: boolean;
     frontierGroupValue: boolean;
   };

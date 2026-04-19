@@ -1,4 +1,11 @@
 import type { DatasetRowsResponse, DatasetSummary, FilterRegion } from "@/lib/api-types";
+import type { PopulationBelieversRule } from "@/lib/api-types";
+import {
+  calculateActualBelievers,
+  createSingleTierPopulationBelieversRule,
+  getRequiredBelieversForPopulation,
+  sanitizePopulationBelieversRule,
+} from "@/lib/evangelical-population-believers-rule";
 import { getFieldDefinitionCanonicalKeyLookupKeys } from "@/lib/field-definition-canonical";
 import {
   COUNTRY_ALTERNATE_DATASET_COLUMN_KEY,
@@ -42,10 +49,12 @@ export type DatasetWatchlistFilterState = {
   threshold: number;
   engagementPhaseEnabled?: boolean;
   engagementPhaseThreshold: number;
+  evangelicalPopulationBelieversRuleEnabled?: boolean;
+  evangelicalPopulationBelieversRule?: PopulationBelieversRule;
   evangelicalBelieversEnabled?: boolean;
-  evangelicalBelieversThreshold: number;
+  evangelicalBelieversThreshold?: number;
   evangelicalPercentEnabled?: boolean;
-  evangelicalPercentThreshold: number;
+  evangelicalPercentThreshold?: number;
   frontierGroupEnabled?: boolean;
   frontierGroupValue: boolean;
 };
@@ -355,14 +364,35 @@ export function filterDatasetRowsByWatchlist(
 
   const thresholdEnabled = watchlistFilter.thresholdEnabled ?? true;
   const engagementPhaseEnabled = watchlistFilter.engagementPhaseEnabled ?? true;
+  const hasTieredPopulationBelieversRule = Boolean(
+    watchlistFilter.evangelicalPopulationBelieversRule,
+  );
+  const populationBelieversRuleEnabled =
+    watchlistFilter.evangelicalPopulationBelieversRuleEnabled ??
+    hasTieredPopulationBelieversRule;
   const evangelicalBelieversEnabled =
-    watchlistFilter.evangelicalBelieversEnabled ?? true;
+    !hasTieredPopulationBelieversRule &&
+    (watchlistFilter.evangelicalBelieversEnabled ?? true);
   const evangelicalPercentEnabled =
-    watchlistFilter.evangelicalPercentEnabled ?? true;
+    !hasTieredPopulationBelieversRule &&
+    (watchlistFilter.evangelicalPercentEnabled ?? true);
   const frontierGroupEnabled = watchlistFilter.frontierGroupEnabled ?? true;
+  const populationBelieversRule =
+    populationBelieversRuleEnabled
+      ? watchlistFilter.evangelicalPopulationBelieversRule
+        ? sanitizePopulationBelieversRule(
+            watchlistFilter.evangelicalPopulationBelieversRule,
+          )
+        : watchlistFilter.evangelicalBelieversThreshold !== undefined
+          ? createSingleTierPopulationBelieversRule(
+              watchlistFilter.evangelicalBelieversThreshold,
+            )
+          : null
+      : null;
   const hasEnabledCriteria =
     thresholdEnabled ||
     engagementPhaseEnabled ||
+    Boolean(populationBelieversRule) ||
     evangelicalBelieversEnabled ||
     evangelicalPercentEnabled ||
     frontierGroupEnabled;
@@ -407,6 +437,7 @@ export function filterDatasetRowsByWatchlist(
     }
 
     if (
+      Boolean(populationBelieversRule) ||
       evangelicalPercentEnabled ||
       evangelicalBelieversEnabled
     ) {
@@ -420,12 +451,13 @@ export function filterDatasetRowsByWatchlist(
 
       if (
         evangelicalPercentEnabled &&
-        percentEvangelical < watchlistFilter.evangelicalPercentThreshold
+        percentEvangelical <
+          (watchlistFilter.evangelicalPercentThreshold ?? 0)
       ) {
         return false;
       }
 
-      if (evangelicalBelieversEnabled) {
+      if (populationBelieversRule || evangelicalBelieversEnabled) {
         const population = normalizeDatasetNumericValue(
           getWatchlistPopulationDatasetValue(row),
         );
@@ -434,10 +466,28 @@ export function filterDatasetRowsByWatchlist(
           return false;
         }
 
-        const evangelicalBelievers = population * (percentEvangelical / 100);
+        const evangelicalBelievers = calculateActualBelievers(
+          population,
+          percentEvangelical,
+        );
 
-        if (
-          evangelicalBelievers > watchlistFilter.evangelicalBelieversThreshold
+        if (evangelicalBelievers === null) {
+          return false;
+        }
+
+        if (populationBelieversRule) {
+          const requiredBelievers = getRequiredBelieversForPopulation(
+            populationBelieversRule,
+            population,
+          )
+
+          if (evangelicalBelievers < requiredBelievers) {
+            return false;
+          }
+        } else if (
+          evangelicalBelieversEnabled &&
+          evangelicalBelievers <
+            (watchlistFilter.evangelicalBelieversThreshold ?? 0)
         ) {
           return false;
         }

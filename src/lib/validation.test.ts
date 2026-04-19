@@ -25,8 +25,15 @@ describe("datasetMetadataPatchSchema", () => {
               enabled: true,
               threshold: 2,
               engagementPhaseThreshold: 6,
-              evangelicalBelieversThreshold: 50,
-              evangelicalPercentThreshold: 0.05,
+              evangelicalPopulationBelieversRule: {
+                tiers: [
+                  {
+                    minPopulation: 0,
+                    maxPopulation: null,
+                    minBelievers: 50,
+                  },
+                ],
+              },
               frontierGroupValue: true,
             },
             uupg: {
@@ -53,8 +60,15 @@ describe("datasetMetadataPatchSchema", () => {
               enabled: false,
               threshold: 2,
               engagementPhaseThreshold: 6,
-              evangelicalBelieversThreshold: 50,
-              evangelicalPercentThreshold: 0.05,
+              evangelicalPopulationBelieversRule: {
+                tiers: [
+                  {
+                    minPopulation: 0,
+                    maxPopulation: null,
+                    minBelievers: 50,
+                  },
+                ],
+              },
               frontierGroupValue: true,
             },
             uupg: {

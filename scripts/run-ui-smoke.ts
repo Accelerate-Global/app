@@ -106,6 +106,41 @@ function runCommand(
   });
 }
 
+export function parseRunUiSmokeArgs(argv: string[]) {
+  const headed = argv.includes("--headed");
+  const fullAfterTargeted = argv.includes("--targeted-and-full");
+  const targeted = argv.includes("--targeted") || fullAfterTargeted;
+  const baseSha = (() => {
+    const index = argv.indexOf("--base");
+
+    return index === -1 ? null : (argv[index + 1] ?? null);
+  })();
+  const headSha = (() => {
+    const index = argv.indexOf("--head");
+
+    return index === -1 ? null : (argv[index + 1] ?? null);
+  })();
+
+  if (Boolean(baseSha) !== Boolean(headSha)) {
+    throw new Error("Pass both --base and --head together when running targeted UI smoke.");
+  }
+
+  return {
+    headed,
+    fullAfterTargeted,
+    targeted,
+    baseSha,
+    headSha,
+  };
+}
+
+function parseNullSeparatedPaths(output: string) {
+  return output
+    .split("\0")
+    .map((token) => token.trim())
+    .filter(Boolean);
+}
+
 function sleep(milliseconds: number) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
@@ -479,6 +514,52 @@ export function buildUiSmokeRunPlan(input: {
   } satisfies UiSmokeRunPlan;
 }
 
+export function resolveUiSmokeChangedFiles(input: {
+  targeted: boolean;
+  baseSha: string | null;
+  headSha: string | null;
+  diffFiles: string[];
+  statusFiles: string[];
+}) {
+  if (!input.targeted) {
+    return [];
+  }
+
+  if (input.baseSha && input.headSha) {
+    return input.diffFiles;
+  }
+
+  return input.statusFiles;
+}
+
+async function getChangedFilesForRunPlan(input: {
+  targeted: boolean;
+  baseSha: string | null;
+  headSha: string | null;
+}) {
+  if (!input.targeted) {
+    return [];
+  }
+
+  if (input.baseSha && input.headSha) {
+    return parseNullSeparatedPaths(
+      await runCommand(
+        "git",
+        ["diff", "--name-only", "-z", `${input.baseSha}...${input.headSha}`],
+        { captureOutput: true },
+      ),
+    );
+  }
+
+  return parseGitStatusPorcelain(
+    await runCommand(
+      "git",
+      ["status", "--porcelain=v1", "--untracked-files=all", "-z"],
+      { captureOutput: true },
+    ),
+  ).map((file) => file.path);
+}
+
 async function validateTargetedSelection(input: {
   grepPattern: string;
   projectNames: string[];
@@ -514,18 +595,13 @@ async function validateTargetedSelection(input: {
 }
 
 async function main() {
-  const headed = process.argv.includes("--headed");
-  const fullAfterTargeted = process.argv.includes("--targeted-and-full");
-  const targeted = process.argv.includes("--targeted") || fullAfterTargeted;
-  const changedFiles = targeted
-    ? parseGitStatusPorcelain(
-        await runCommand(
-          "git",
-          ["status", "--porcelain=v1", "--untracked-files=all", "-z"],
-          { captureOutput: true },
-        ),
-      ).map((file) => file.path)
-    : [];
+  const { headed, fullAfterTargeted, targeted, baseSha, headSha } =
+    parseRunUiSmokeArgs(process.argv);
+  const changedFiles = await getChangedFilesForRunPlan({
+    targeted,
+    baseSha,
+    headSha,
+  });
   const runPlan = buildUiSmokeRunPlan({
     changedFiles,
     targeted,
@@ -533,7 +609,15 @@ async function main() {
   });
 
   if (runPlan.selection?.mode === "none") {
-    console.log("No targeted UI smoke routes or journeys matched the current worktree.");
+    console.log(
+      "No targeted UI smoke routes or journeys matched the current diff. Running smoke:check only.",
+    );
+    await runStage(
+      "contract",
+      "UI smoke contract validation failed.",
+      "pnpm",
+      ["run", "smoke:check"],
+    );
     return;
   }
 

@@ -8,6 +8,7 @@ import type {
   DatasetSummary,
   SavedDatasetSort,
 } from "@/lib/api-types";
+import { DEFAULT_POPULATION_BELIEVERS_RULE } from "@/lib/evangelical-population-believers-rule";
 
 import { DatasetDetailClient } from "./dataset-detail-client";
 
@@ -95,10 +96,8 @@ function createInitialFilters(
       threshold: 2,
       engagementPhaseEnabled: true,
       engagementPhaseThreshold: 6,
-      evangelicalBelieversEnabled: true,
-      evangelicalBelieversThreshold: 50,
-      evangelicalPercentEnabled: true,
-      evangelicalPercentThreshold: 0.05,
+      evangelicalPopulationBelieversRuleEnabled: true,
+      evangelicalPopulationBelieversRule: DEFAULT_POPULATION_BELIEVERS_RULE,
       frontierGroupEnabled: true,
       frontierGroupValue: true,
       ...overrides.watchlist,
@@ -617,14 +616,16 @@ describe("DatasetDetailClient", () => {
         engagementPhaseDefinition: string;
         engagementPhaseEnabled: boolean;
         engagementPhaseThreshold: number;
-        evangelicalBelieversLabel: string;
-        evangelicalBelieversDefinition: string;
-        evangelicalBelieversEnabled: boolean;
-        evangelicalBelieversThreshold: number;
-        evangelicalPercentLabel: string;
-        evangelicalPercentDefinition: string;
-        evangelicalPercentEnabled: boolean;
-        evangelicalPercentThreshold: number;
+        populationBelieversRuleLabel: string;
+        populationBelieversRuleDefinition: string;
+        populationBelieversRuleEnabled: boolean;
+        populationBelieversRule: {
+          tiers: Array<{
+            minPopulation: number;
+            maxPopulation: number | null;
+            minBelievers: number;
+          }>;
+        };
         frontierGroupLabel: string;
         frontierGroupDefinition: string;
         frontierGroupEnabled: boolean;
@@ -639,10 +640,14 @@ describe("DatasetDetailClient", () => {
         threshold: number;
         engagementPhaseEnabled: boolean;
         engagementPhaseThreshold: number;
-        evangelicalBelieversEnabled: boolean;
-        evangelicalBelieversThreshold: number;
-        evangelicalPercentEnabled: boolean;
-        evangelicalPercentThreshold: number;
+        evangelicalPopulationBelieversRuleEnabled: boolean;
+        evangelicalPopulationBelieversRule: {
+          tiers: Array<{
+            minPopulation: number;
+            maxPopulation: number | null;
+            minBelievers: number;
+          }>;
+        };
         frontierGroupEnabled: boolean;
         frontierGroupValue: boolean;
       };
@@ -655,10 +660,14 @@ describe("DatasetDetailClient", () => {
           threshold: number;
           engagementPhaseEnabled?: boolean;
           engagementPhaseThreshold: number;
-          evangelicalBelieversEnabled?: boolean;
-          evangelicalBelieversThreshold: number;
-          evangelicalPercentEnabled?: boolean;
-          evangelicalPercentThreshold: number;
+          evangelicalPopulationBelieversRuleEnabled?: boolean;
+          evangelicalPopulationBelieversRule?: {
+            tiers: Array<{
+              minPopulation: number;
+              maxPopulation: number | null;
+              minBelievers: number;
+            }>;
+          };
           frontierGroupEnabled?: boolean;
           frontierGroupValue: boolean;
         };
@@ -680,16 +689,11 @@ describe("DatasetDetailClient", () => {
       engagementPhaseDefinition: "Engagement phase definition",
       engagementPhaseEnabled: true,
       engagementPhaseThreshold: 6,
-      evangelicalBelieversLabel: "Min. # of Evangelical Believers",
-      evangelicalBelieversDefinition:
-        "Calculated as People Group: Population * (Percent Evangelical PGAC / 100).",
-      evangelicalBelieversEnabled: true,
-      evangelicalBelieversThreshold: 50,
-      minEvangelicalBelieversThreshold: 50,
-      evangelicalPercentLabel: "Min. Evangelical %",
-      evangelicalPercentDefinition: "Percent evangelical definition",
-      evangelicalPercentEnabled: true,
-      evangelicalPercentThreshold: 0.05,
+      populationBelieversRuleLabel: "Population vs Evangelical Believers",
+      populationBelieversRuleDefinition:
+        "Build a tiered minimum-believers rule by population. Actual believers are calculated as People Group: Population * (Percent Evangelical PGAC / 100), and the implied percentage is shown live for context.",
+      populationBelieversRuleEnabled: true,
+      populationBelieversRule: DEFAULT_POPULATION_BELIEVERS_RULE,
       frontierGroupLabel: "Christianity: Frontier Group Y/N",
       frontierGroupDefinition: "Frontier group definition",
       frontierGroupEnabled: true,
@@ -702,10 +706,8 @@ describe("DatasetDetailClient", () => {
       threshold: 2,
       engagementPhaseEnabled: true,
       engagementPhaseThreshold: 6,
-      evangelicalBelieversEnabled: true,
-      evangelicalBelieversThreshold: 50,
-      evangelicalPercentEnabled: true,
-      evangelicalPercentThreshold: 0.05,
+      evangelicalPopulationBelieversRuleEnabled: true,
+      evangelicalPopulationBelieversRule: DEFAULT_POPULATION_BELIEVERS_RULE,
       frontierGroupEnabled: true,
       frontierGroupValue: true,
     });
@@ -715,10 +717,8 @@ describe("DatasetDetailClient", () => {
       threshold: 2,
       engagementPhaseEnabled: true,
       engagementPhaseThreshold: 6,
-      evangelicalBelieversEnabled: true,
-      evangelicalBelieversThreshold: 50,
-      evangelicalPercentEnabled: true,
-      evangelicalPercentThreshold: 0.05,
+      evangelicalPopulationBelieversRuleEnabled: true,
+      evangelicalPopulationBelieversRule: DEFAULT_POPULATION_BELIEVERS_RULE,
       frontierGroupEnabled: true,
       frontierGroupValue: true,
     });
@@ -731,7 +731,7 @@ describe("DatasetDetailClient", () => {
     expect(actionBarProps.recordCount).toBe(5);
   });
 
-  it("clamps the evangelical believers threshold at 50", () => {
+  it("sanitizes the population-believers rule when it changes", () => {
     render(
       <DatasetDetailClient
         dataset={{
@@ -771,25 +771,61 @@ describe("DatasetDetailClient", () => {
 
     const initialViewSwitchGridProps = viewSwitchGridSpy.mock.lastCall?.[0] as {
       watchlistCard: {
-        onEvangelicalBelieversThresholdChange: (value: number) => void;
+        onPopulationBelieversRuleChange: (value: {
+          tiers: Array<{
+            minPopulation: number;
+            maxPopulation: number | null;
+            minBelievers: number;
+          }>;
+        }) => void;
       };
     };
 
     act(() => {
-      initialViewSwitchGridProps.watchlistCard.onEvangelicalBelieversThresholdChange(
-        49,
-      );
+      initialViewSwitchGridProps.watchlistCard.onPopulationBelieversRuleChange({
+        tiers: [
+          {
+            minPopulation: 4_000,
+            maxPopulation: 8_000,
+            minBelievers: 60,
+          },
+          {
+            minPopulation: 9_000,
+            maxPopulation: null,
+            minBelievers: 120,
+          },
+        ],
+      });
     });
 
     const latestDatasetTableStateProps = useDatasetTableStateMock.mock.lastCall?.[0] as {
       watchlistFilter: {
-        evangelicalBelieversThreshold: number;
+        evangelicalPopulationBelieversRule: {
+          tiers: Array<{
+            minPopulation: number;
+            maxPopulation: number | null;
+            minBelievers: number;
+          }>;
+        };
       };
     };
 
     expect(
-      latestDatasetTableStateProps.watchlistFilter.evangelicalBelieversThreshold,
-    ).toBe(50);
+      latestDatasetTableStateProps.watchlistFilter.evangelicalPopulationBelieversRule,
+    ).toEqual({
+      tiers: [
+        {
+          minPopulation: 0,
+          maxPopulation: 8_000,
+          minBelievers: 60,
+        },
+        {
+          minPopulation: 8_001,
+          maxPopulation: null,
+          minBelievers: 120,
+        },
+      ],
+    });
   });
 
   it("uses an initial preset to override the default region-on behavior", () => {

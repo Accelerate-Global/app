@@ -60,10 +60,16 @@ describe("dataset-tags", () => {
           threshold: 2,
           engagementPhaseEnabled: true,
           engagementPhaseThreshold: 6,
-          evangelicalBelieversEnabled: true,
-          evangelicalBelieversThreshold: 50,
-          evangelicalPercentEnabled: true,
-          evangelicalPercentThreshold: 0.05,
+          evangelicalPopulationBelieversRuleEnabled: true,
+          evangelicalPopulationBelieversRule: {
+            tiers: [
+              {
+                minPopulation: 0,
+                maxPopulation: null,
+                minBelievers: 50,
+              },
+            ],
+          },
           frontierGroupEnabled: true,
           frontierGroupValue: true,
         },

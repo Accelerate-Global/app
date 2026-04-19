@@ -45,15 +45,15 @@ Vercel production deploys for emergency recovery only.
   to close that client before exit, so control returns cleanly to the ship
   process after remote checks such as `field-sources:seed:remote`
 - waits for the PR `App Quality`, `UI Smoke`, and `Database Security` checks
-- emits progress updates while waiting on remote checks, merge state, release
-  health, and production deployment state
+- emits progress updates while waiting on remote checks, merge state, and
+  release health
 - merges the PR to `main`
 - switches the local checkout back to `main`, pulls `--ff-only`, deletes the
   merged branch locally when safe, and prunes remote refs
-- waits for the `main` branch `Release Health` workflow
-- waits for the GitHub-backed Vercel production deployment
-- verifies that [data.accelerateglobal.org](https://data.accelerateglobal.org)
-  points at the same Vercel deployment as the git-based production deploy
+- waits for the `main` branch `Release Health` workflow, which in turn waits
+  for the GitHub-backed Vercel production deployment and verifies the
+  [data.accelerateglobal.org](https://data.accelerateglobal.org) production
+  alias
 - fails fast if a `gh`, `git`, or release-critical `pnpm` step stops making
   progress because it is waiting on interactive input
 

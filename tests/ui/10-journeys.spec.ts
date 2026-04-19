@@ -340,6 +340,18 @@ test("authenticated user can save a filtered table", async ({ page }, testInfo) 
 
     await page.goto(`/dashboard/datasets/${bootstrap.datasets.primary.id}`);
     await expect(page.locator('[data-smoke-page="dataset-detail"]')).toBeVisible();
+    await page.getByRole("button", { name: "Watchlist filters" }).click();
+    await page.getByRole("switch", { name: /^Toggle Watchlist$/ }).click();
+    await page
+      .locator('[data-smoke-trigger="watchlist-population-believers-dialog"]')
+      .click();
+    await expect(
+      page.locator('[data-smoke-ready="watchlist-population-believers-dialog"]'),
+    ).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(
+      page.locator('[data-smoke-surface="watchlist-population-believers-dialog"]'),
+    ).toBeHidden();
     await page.locator("[data-smoke-save-filtered-table]").click();
     await expect(page.getByText(/Saved to dashboard as/)).toBeVisible();
 

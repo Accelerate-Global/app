@@ -54,6 +54,7 @@ import {
   buildSavedDatasetFilterState,
   getInitialDatasetDetailState,
 } from "@/lib/saved-dataset-filters";
+import { sanitizePopulationBelieversRule } from "@/lib/evangelical-population-believers-rule";
 
 type DatasetDetailClientProps = {
   dataset: DatasetSummary;
@@ -78,12 +79,8 @@ const WATCHLIST_THRESHOLD_MIN = 0;
 const WATCHLIST_THRESHOLD_MAX = 6;
 const WATCHLIST_ENGAGEMENT_PHASE_MIN = 0;
 const WATCHLIST_ENGAGEMENT_PHASE_MAX = 7;
-const WATCHLIST_EVANGELICAL_BELIEVERS_LABEL = "Min. # of Evangelical Believers";
-const WATCHLIST_EVANGELICAL_BELIEVERS_MIN = 50;
-const WATCHLIST_EVANGELICAL_BELIEVERS_MAX = 1_000_000_000;
-const WATCHLIST_EVANGELICAL_PERCENT_LABEL = "Min. Evangelical %";
-const WATCHLIST_EVANGELICAL_PERCENT_MIN = 0;
-const WATCHLIST_EVANGELICAL_PERCENT_MAX = 100;
+const WATCHLIST_POPULATION_BELIEVERS_RULE_LABEL =
+  "Population vs Evangelical Believers";
 
 function clampWatchlistThreshold(value: number) {
   return Math.min(
@@ -97,22 +94,6 @@ function clampWatchlistEngagementPhaseThreshold(value: number) {
     WATCHLIST_ENGAGEMENT_PHASE_MAX,
     Math.max(WATCHLIST_ENGAGEMENT_PHASE_MIN, Math.round(value)),
   );
-}
-
-function clampWatchlistEvangelicalBelieversThreshold(value: number) {
-  return Math.min(
-    WATCHLIST_EVANGELICAL_BELIEVERS_MAX,
-    Math.max(WATCHLIST_EVANGELICAL_BELIEVERS_MIN, Math.round(value)),
-  );
-}
-
-function clampWatchlistEvangelicalPercentThreshold(value: number) {
-  const clampedValue = Math.min(
-    WATCHLIST_EVANGELICAL_PERCENT_MAX,
-    Math.max(WATCHLIST_EVANGELICAL_PERCENT_MIN, value),
-  );
-
-  return Math.round(clampedValue * 100) / 100;
 }
 
 function dedupeCountryNames(values: string[]) {
@@ -166,11 +147,7 @@ export function DatasetDetailClient({
     fieldDefinitionPresentationByColumnKey[
       WATCHLIST_PERCENT_EVANGELICAL_DATASET_COLUMN_KEY
     ]?.effectiveLabel ?? "Percent_Evangelical_PGAC";
-  const watchlistPercentEvangelicalDefinition =
-    fieldDefinitionPresentationByColumnKey[
-      WATCHLIST_PERCENT_EVANGELICAL_DATASET_COLUMN_KEY
-    ]?.definition ?? `Mapped from ${watchlistPercentEvangelicalLabel}.`;
-  const watchlistEvangelicalBelieversDefinition = `Calculated as ${watchlistPopulationLabel} * (${watchlistPercentEvangelicalLabel} / 100).`;
+  const watchlistPopulationBelieversRuleDefinition = `Build a tiered minimum-believers rule by population. Actual believers are calculated as ${watchlistPopulationLabel} * (${watchlistPercentEvangelicalLabel} / 100), and the implied percentage is shown live for context.`;
   const watchlistFrontierGroupLabel =
     fieldDefinitionPresentationByColumnKey[
       WATCHLIST_FRONTIER_GROUP_DATASET_COLUMN_KEY
@@ -235,19 +212,19 @@ export function DatasetDetailClient({
   );
   const [watchlistFrontierGroupEnabled, setWatchlistFrontierGroupEnabled] =
     useState(initialState.watchlistFrontierGroupEnabled);
-  const [watchlistEvangelicalBelieversEnabled, setWatchlistEvangelicalBelieversEnabled] =
-    useState(initialState.watchlistEvangelicalBelieversEnabled);
-  const [watchlistEvangelicalPercentEnabled, setWatchlistEvangelicalPercentEnabled] =
-    useState(initialState.watchlistEvangelicalPercentEnabled);
+  const [
+    watchlistPopulationBelieversRuleEnabled,
+    setWatchlistPopulationBelieversRuleEnabled,
+  ] = useState(initialState.watchlistPopulationBelieversRuleEnabled);
   const [watchlistEngagementPhaseEnabled, setWatchlistEngagementPhaseEnabled] =
     useState(initialState.watchlistEngagementPhaseEnabled);
   const [watchlistThreshold, setWatchlistThreshold] = useState(initialState.watchlistThreshold);
   const [watchlistEngagementPhaseThreshold, setWatchlistEngagementPhaseThreshold] =
     useState(initialState.watchlistEngagementPhaseThreshold);
-  const [watchlistEvangelicalBelieversThreshold, setWatchlistEvangelicalBelieversThreshold] =
-    useState(initialState.watchlistEvangelicalBelieversThreshold);
-  const [watchlistEvangelicalPercentThreshold, setWatchlistEvangelicalPercentThreshold] =
-    useState(initialState.watchlistEvangelicalPercentThreshold);
+  const [
+    watchlistPopulationBelieversRule,
+    setWatchlistPopulationBelieversRule,
+  ] = useState(initialState.watchlistPopulationBelieversRule);
   const [watchlistFrontierGroupValue, setWatchlistFrontierGroupValue] = useState(
     initialState.watchlistFrontierGroupValue,
   );
@@ -309,10 +286,9 @@ export function DatasetDetailClient({
       threshold: watchlistThreshold,
       engagementPhaseEnabled: watchlistEngagementPhaseEnabled,
       engagementPhaseThreshold: watchlistEngagementPhaseThreshold,
-      evangelicalBelieversEnabled: watchlistEvangelicalBelieversEnabled,
-      evangelicalBelieversThreshold: watchlistEvangelicalBelieversThreshold,
-      evangelicalPercentEnabled: watchlistEvangelicalPercentEnabled,
-      evangelicalPercentThreshold: watchlistEvangelicalPercentThreshold,
+      evangelicalPopulationBelieversRuleEnabled:
+        watchlistPopulationBelieversRuleEnabled,
+      evangelicalPopulationBelieversRule: watchlistPopulationBelieversRule,
       frontierGroupEnabled: watchlistFrontierGroupEnabled,
       frontierGroupValue: watchlistFrontierGroupValue,
     },
@@ -335,10 +311,8 @@ export function DatasetDetailClient({
         watchlistThreshold,
         watchlistEngagementPhaseEnabled,
         watchlistEngagementPhaseThreshold,
-        watchlistEvangelicalBelieversEnabled,
-        watchlistEvangelicalBelieversThreshold,
-        watchlistEvangelicalPercentEnabled,
-        watchlistEvangelicalPercentThreshold,
+        watchlistPopulationBelieversRuleEnabled,
+        watchlistPopulationBelieversRule,
         watchlistFrontierGroupEnabled,
         watchlistFrontierGroupValue,
         uupgEnabled,
@@ -354,13 +328,11 @@ export function DatasetDetailClient({
       uupgEnabled,
       watchlistEngagementPhaseEnabled,
       watchlistEnabled,
-      watchlistEvangelicalBelieversEnabled,
-      watchlistEvangelicalPercentEnabled,
+      watchlistPopulationBelieversRuleEnabled,
       watchlistFrontierGroupEnabled,
       watchlistThresholdEnabled,
       watchlistEngagementPhaseThreshold,
-      watchlistEvangelicalBelieversThreshold,
-      watchlistEvangelicalPercentThreshold,
+      watchlistPopulationBelieversRule,
       watchlistFrontierGroupValue,
       watchlistThreshold,
     ],
@@ -430,6 +402,8 @@ export function DatasetDetailClient({
         watchlistThreshold,
         watchlistEngagementPhaseEnabled,
         watchlistEngagementPhaseThreshold,
+        watchlistPopulationBelieversRuleEnabled,
+        watchlistPopulationBelieversRule,
         watchlistFrontierGroupEnabled,
         watchlistFrontierGroupValue,
         uupgEnabled,
@@ -445,6 +419,8 @@ export function DatasetDetailClient({
       watchlistEnabled,
       watchlistEngagementPhaseEnabled,
       watchlistEngagementPhaseThreshold,
+      watchlistPopulationBelieversRuleEnabled,
+      watchlistPopulationBelieversRule,
       watchlistFrontierGroupEnabled,
       watchlistFrontierGroupValue,
       watchlistThreshold,
@@ -479,6 +455,12 @@ export function DatasetDetailClient({
           watchlist_threshold: watchlistThresholdEnabled
             ? watchlistThreshold
             : null,
+          watchlist_population_believers_rule_enabled:
+            watchlistPopulationBelieversRuleEnabled,
+          watchlist_population_believers_rule_tier_count:
+            watchlistPopulationBelieversRuleEnabled
+              ? watchlistPopulationBelieversRule.tiers.length
+              : null,
           watchlist_frontier_group_enabled: watchlistFrontierGroupEnabled,
           watchlist_frontier_group_value: watchlistFrontierGroupEnabled
             ? watchlistFrontierGroupValue
@@ -511,6 +493,8 @@ export function DatasetDetailClient({
     watchlistEnabled,
     watchlistEngagementPhaseEnabled,
     watchlistEngagementPhaseThreshold,
+    watchlistPopulationBelieversRuleEnabled,
+    watchlistPopulationBelieversRule,
     watchlistFrontierGroupEnabled,
     watchlistFrontierGroupValue,
     watchlistThreshold,
@@ -654,21 +638,12 @@ export function DatasetDetailClient({
       engagementPhaseThreshold: watchlistEngagementPhaseThreshold,
       minEngagementPhaseThreshold: WATCHLIST_ENGAGEMENT_PHASE_MIN,
       maxEngagementPhaseThreshold: WATCHLIST_ENGAGEMENT_PHASE_MAX,
-      evangelicalBelieversLabel: WATCHLIST_EVANGELICAL_BELIEVERS_LABEL,
-      evangelicalBelieversDefinition:
-        watchlistEvangelicalBelieversDefinition,
-      evangelicalBelieversEnabled: watchlistEvangelicalBelieversEnabled,
-      evangelicalBelieversThreshold: watchlistEvangelicalBelieversThreshold,
-      minEvangelicalBelieversThreshold:
-        WATCHLIST_EVANGELICAL_BELIEVERS_MIN,
-      maxEvangelicalBelieversThreshold:
-        WATCHLIST_EVANGELICAL_BELIEVERS_MAX,
-      evangelicalPercentLabel: WATCHLIST_EVANGELICAL_PERCENT_LABEL,
-      evangelicalPercentDefinition: watchlistPercentEvangelicalDefinition,
-      evangelicalPercentEnabled: watchlistEvangelicalPercentEnabled,
-      evangelicalPercentThreshold: watchlistEvangelicalPercentThreshold,
-      minEvangelicalPercentThreshold: WATCHLIST_EVANGELICAL_PERCENT_MIN,
-      maxEvangelicalPercentThreshold: WATCHLIST_EVANGELICAL_PERCENT_MAX,
+      populationBelieversRuleLabel: WATCHLIST_POPULATION_BELIEVERS_RULE_LABEL,
+      populationBelieversRuleDefinition:
+        watchlistPopulationBelieversRuleDefinition,
+      populationBelieversRuleEnabled:
+        watchlistPopulationBelieversRuleEnabled,
+      populationBelieversRule: watchlistPopulationBelieversRule,
       frontierGroupLabel: watchlistFrontierGroupLabel,
       frontierGroupDefinition: watchlistFrontierGroupDefinition,
       frontierGroupEnabled: watchlistFrontierGroupEnabled,
@@ -682,16 +657,11 @@ export function DatasetDetailClient({
         setWatchlistEngagementPhaseThreshold(
           clampWatchlistEngagementPhaseThreshold(value),
         ),
-      onEvangelicalBelieversEnabledChange:
-        setWatchlistEvangelicalBelieversEnabled,
-      onEvangelicalBelieversThresholdChange: (value: number) =>
-        setWatchlistEvangelicalBelieversThreshold(
-          clampWatchlistEvangelicalBelieversThreshold(value),
-        ),
-      onEvangelicalPercentEnabledChange: setWatchlistEvangelicalPercentEnabled,
-      onEvangelicalPercentThresholdChange: (value: number) =>
-        setWatchlistEvangelicalPercentThreshold(
-          clampWatchlistEvangelicalPercentThreshold(value),
+      onPopulationBelieversRuleEnabledChange:
+        setWatchlistPopulationBelieversRuleEnabled,
+      onPopulationBelieversRuleChange: (value) =>
+        setWatchlistPopulationBelieversRule(
+          sanitizePopulationBelieversRule(value),
         ),
       onFrontierGroupEnabledChange: setWatchlistFrontierGroupEnabled,
       onFrontierGroupValueChange: setWatchlistFrontierGroupValue,

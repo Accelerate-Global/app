@@ -1,8 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const runCommandMock = vi.fn();
-const smokeCheckDeploymentMock = vi.fn();
-const waitForGitHubDeploymentMock = vi.fn();
 const waitForPullRequestChecksMock = vi.fn();
 const waitForWorkflowRunMock = vi.fn();
 let consoleLogMock: ReturnType<typeof vi.spyOn>;
@@ -12,8 +10,6 @@ vi.mock("./lib/command", () => ({
 }));
 
 vi.mock("./lib/release", () => ({
-  smokeCheckDeployment: smokeCheckDeploymentMock,
-  waitForGitHubDeployment: waitForGitHubDeploymentMock,
   waitForPullRequestChecks: waitForPullRequestChecksMock,
   waitForWorkflowRun: waitForWorkflowRunMock,
 }));
@@ -100,8 +96,6 @@ function installShipCommandMock(input: {
 describe("ship", () => {
   beforeEach(() => {
     runCommandMock.mockReset();
-    smokeCheckDeploymentMock.mockReset();
-    waitForGitHubDeploymentMock.mockReset();
     waitForPullRequestChecksMock.mockReset();
     waitForWorkflowRunMock.mockReset();
     consoleLogMock = vi.spyOn(console, "log").mockImplementation(() => {});
@@ -129,13 +123,6 @@ describe("ship", () => {
     waitForPullRequestChecksMock.mockResolvedValue([]);
     waitForWorkflowRunMock.mockResolvedValue({
       workflowName: "Release Health",
-    });
-    waitForGitHubDeploymentMock.mockResolvedValue({
-      deploymentUrl: "https://online.example.vercel.app",
-    });
-    smokeCheckDeploymentMock.mockResolvedValue({
-      deploymentId: "dpl_123",
-      productionUrl: "https://data.accelerateglobal.org",
     });
 
     await shipPullRequest({ prNumber: "46" });
@@ -176,9 +163,6 @@ describe("ship", () => {
       workflowName: "Release Health",
       commitSha: "merge-sha",
     });
-    expect(waitForGitHubDeploymentMock).toHaveBeenCalledWith({
-      commitSha: "merge-sha",
-    });
 
     const stageMessages = consoleLogMock.mock.calls.map(
       (call: [unknown, ...unknown[]]) => String(call[0]),
@@ -206,13 +190,6 @@ describe("ship", () => {
     });
     waitForWorkflowRunMock.mockResolvedValue({
       workflowName: "Release Health",
-    });
-    waitForGitHubDeploymentMock.mockResolvedValue({
-      deploymentUrl: "https://online.example.vercel.app",
-    });
-    smokeCheckDeploymentMock.mockResolvedValue({
-      deploymentId: "dpl_123",
-      productionUrl: "https://data.accelerateglobal.org",
     });
 
     await shipPullRequest({ prNumber: "46" });
@@ -284,33 +261,5 @@ describe("ship", () => {
     await expect(shipPullRequest({ prNumber: "46" })).rejects.toThrow(
       "release health failed",
     );
-
-    expect(waitForGitHubDeploymentMock).not.toHaveBeenCalled();
-  });
-
-  it("surfaces production deployment failures", async () => {
-    const { shipPullRequest } = await import("./ship");
-
-    installShipCommandMock({
-      pullRequestViews: [
-        buildPullRequest({
-          mergeCommit: {
-            oid: "merge-sha",
-          },
-          state: "MERGED",
-        }),
-      ],
-      pullRequestFiles: ["README.md"],
-    });
-    waitForWorkflowRunMock.mockResolvedValue({
-      workflowName: "Release Health",
-    });
-    waitForGitHubDeploymentMock.mockRejectedValue(new Error("deployment failed"));
-
-    await expect(shipPullRequest({ prNumber: "46" })).rejects.toThrow(
-      "deployment failed",
-    );
-
-    expect(smokeCheckDeploymentMock).not.toHaveBeenCalled();
   });
 });

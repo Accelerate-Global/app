@@ -3,6 +3,8 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
+import { DEFAULT_POPULATION_BELIEVERS_RULE } from "@/lib/evangelical-population-believers-rule";
+
 import {
   DatasetViewSwitchGrid,
   getRegionTooltipText,
@@ -44,19 +46,11 @@ const baseWatchlistCard = {
   engagementPhaseThreshold: 6,
   minEngagementPhaseThreshold: 0,
   maxEngagementPhaseThreshold: 7,
-  evangelicalBelieversLabel: "Min. # of Evangelical Believers",
-  evangelicalBelieversDefinition:
-    "Calculated as PG_Population * (Percent_Evangelical_PGAC / 100).",
-  evangelicalBelieversEnabled: true,
-  evangelicalBelieversThreshold: 50,
-  minEvangelicalBelieversThreshold: 50,
-  maxEvangelicalBelieversThreshold: 1_000_000_000,
-  evangelicalPercentLabel: "Min. Evangelical %",
-  evangelicalPercentDefinition: "Percent evangelical definition",
-  evangelicalPercentEnabled: true,
-  evangelicalPercentThreshold: 0.05,
-  minEvangelicalPercentThreshold: 0,
-  maxEvangelicalPercentThreshold: 100,
+  populationBelieversRuleLabel: "Population vs Evangelical Believers",
+  populationBelieversRuleDefinition:
+    "Build a tiered minimum-believers rule by population.",
+  populationBelieversRuleEnabled: true,
+  populationBelieversRule: DEFAULT_POPULATION_BELIEVERS_RULE,
   frontierGroupLabel: "Christianity: Frontier Group Y/N",
   frontierGroupDefinition: "Frontier group definition",
   frontierGroupEnabled: true,
@@ -66,10 +60,8 @@ const baseWatchlistCard = {
   onThresholdChange: vi.fn(),
   onEngagementPhaseEnabledChange: vi.fn(),
   onEngagementPhaseThresholdChange: vi.fn(),
-  onEvangelicalBelieversEnabledChange: vi.fn(),
-  onEvangelicalBelieversThresholdChange: vi.fn(),
-  onEvangelicalPercentEnabledChange: vi.fn(),
-  onEvangelicalPercentThresholdChange: vi.fn(),
+  onPopulationBelieversRuleEnabledChange: vi.fn(),
+  onPopulationBelieversRuleChange: vi.fn(),
   onFrontierGroupEnabledChange: vi.fn(),
   onFrontierGroupValueChange: vi.fn(),
 };
@@ -134,10 +126,9 @@ describe("DatasetViewSwitchGrid", () => {
     expect(
       screen.getByText("Christianity: Frontier Group Y/N: True"),
     ).toBeTruthy();
-    expect(
-      screen.getByText("Min. # of Evangelical Believers <= 50"),
-    ).toBeTruthy();
-    expect(screen.getByText("Min. Evangelical % >= 0.05")).toBeTruthy();
+    expect(screen.getByText("Under 5,000 -> at least 50 believers")).toBeTruthy();
+    expect(screen.getByText("5,000-10,000 -> at least 75 believers")).toBeTruthy();
+    expect(screen.getByText("Over 10,000 -> at least 100 believers")).toBeTruthy();
     expect(screen.getByText("Engage: 8 Phases of Engagement >= 6")).toBeTruthy();
   });
 
@@ -284,8 +275,7 @@ describe("DatasetViewSwitchGrid", () => {
     ) as HTMLInputElement;
     const thresholdLabel = screen.getByText("Christianity: GSEC");
     const frontierLabel = screen.getByText("Christianity: Frontier Group Y/N");
-    const believersLabel = screen.getByText("Min. # of Evangelical Believers");
-    const percentLabel = screen.getByText("Min. Evangelical %");
+    const ruleLabel = screen.getByText("Population vs Evangelical Believers");
     const engagementLabel = screen.getByText("Engage: 8 Phases of Engagement");
     const thresholdInfo = screen.getByLabelText(
       "View definition for Christianity: GSEC",
@@ -331,28 +321,27 @@ describe("DatasetViewSwitchGrid", () => {
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
     expect(
-      frontierLabel.compareDocumentPosition(believersLabel) &
+      frontierLabel.compareDocumentPosition(ruleLabel) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
     expect(
-      believersLabel.compareDocumentPosition(percentLabel) &
+      ruleLabel.compareDocumentPosition(engagementLabel) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
+    expect(screen.getByText("Configured rule")).toBeTruthy();
     expect(
-      percentLabel.compareDocumentPosition(engagementLabel) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
+      (
+        screen.getByRole("button", {
+          name: "Edit rule",
+        }) as HTMLButtonElement
+      ).disabled,
+    ).toBe(true);
     expect(
-      screen.getByLabelText(
-        "Watchlist Min. # of Evangelical Believers threshold",
+      screen.getByText(
+        "Open the popup editor to adjust breakpoints, minimum believers, and the scenario test dot.",
       ),
     ).toBeTruthy();
-    expect(
-      screen.getByLabelText("Watchlist Min. Evangelical % threshold"),
-    ).toBeTruthy();
-    expect(
-      screen.getByLabelText("Watchlist Engage: 8 Phases of Engagement threshold"),
-    ).toBeTruthy();
+    expect(screen.getByLabelText("Watchlist Engage: 8 Phases of Engagement threshold")).toBeTruthy();
   });
 
   it("keeps country search interactive and auto-enables the filter on selection", () => {
@@ -453,6 +442,102 @@ describe("DatasetViewSwitchGrid", () => {
     expect(onThresholdEnabledChange.mock.calls[0]?.[0]).toBe(false);
     expect(onFrontierGroupEnabledChange.mock.calls[0]?.[0]).toBe(false);
     expect(onFrontierGroupValueChange).toHaveBeenCalledWith(false);
+  });
+
+  it("opens the population-believers editor in a dialog and closes it with Done", () => {
+    render(
+      <DatasetViewSwitchGrid
+        regionCard={baseRegionCard}
+        countryCard={baseCountryCard}
+        watchlistCard={{ ...baseWatchlistCard, enabled: true }}
+        uupgCard={baseUupgCard}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Watchlist filters" }));
+    fireEvent.click(screen.getByRole("button", { name: "Edit rule" }));
+
+    expect(
+      screen.getByRole("dialog", { name: "Population vs Evangelical Believers" }),
+    ).toBeTruthy();
+    expect(screen.getByText("Scenario result")).toBeTruthy();
+    expect(screen.getByText("Test scenario")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+
+    expect(
+      screen.queryByRole("dialog", {
+        name: "Population vs Evangelical Believers",
+      }),
+    ).toBeNull();
+  });
+
+  it("closes the population-believers editor with Escape", () => {
+    render(
+      <DatasetViewSwitchGrid
+        regionCard={baseRegionCard}
+        countryCard={baseCountryCard}
+        watchlistCard={{ ...baseWatchlistCard, enabled: true }}
+        uupgCard={baseUupgCard}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Watchlist filters" }));
+    fireEvent.click(screen.getByRole("button", { name: "Edit rule" }));
+
+    expect(
+      screen.getByRole("dialog", { name: "Population vs Evangelical Believers" }),
+    ).toBeTruthy();
+
+    fireEvent.keyDown(document, { key: "Escape" });
+
+    expect(
+      screen.queryByRole("dialog", {
+        name: "Population vs Evangelical Believers",
+      }),
+    ).toBeNull();
+  });
+
+  it("shows only the first three inline rule lines and a remainder count", () => {
+    render(
+      <DatasetViewSwitchGrid
+        regionCard={baseRegionCard}
+        countryCard={baseCountryCard}
+        watchlistCard={{
+          ...baseWatchlistCard,
+          enabled: true,
+          populationBelieversRule: {
+            tiers: [
+              { minPopulation: 0, maxPopulation: 999, minBelievers: 10 },
+              { minPopulation: 1_000, maxPopulation: 4_999, minBelievers: 25 },
+              { minPopulation: 5_000, maxPopulation: 9_999, minBelievers: 50 },
+              { minPopulation: 10_000, maxPopulation: null, minBelievers: 75 },
+            ],
+          },
+        }}
+        uupgCard={baseUupgCard}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Watchlist filters" }));
+
+    const configuredRuleCard = screen.getByText("Configured rule").closest("div");
+
+    expect(configuredRuleCard).toBeTruthy();
+    if (!configuredRuleCard) {
+      throw new Error("Expected configured rule card to render");
+    }
+
+    expect(
+      within(configuredRuleCard).getByText("Under 1,000 -> at least 10 believers"),
+    ).toBeTruthy();
+    expect(
+      within(configuredRuleCard).getByText("1,000-4,999 -> at least 25 believers"),
+    ).toBeTruthy();
+    expect(
+      within(configuredRuleCard).getByText("5,000-9,999 -> at least 50 believers"),
+    ).toBeTruthy();
+    expect(within(configuredRuleCard).getByText("+1 more tiers")).toBeTruthy();
   });
 
   it("reveals the UUPG field metadata when expanded while keeping the toggle in the section header", () => {

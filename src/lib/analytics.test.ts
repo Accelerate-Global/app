@@ -35,10 +35,26 @@ describe("analytics helpers", () => {
           threshold: 2,
           engagementPhaseEnabled: true,
           engagementPhaseThreshold: 6,
-          evangelicalBelieversEnabled: true,
-          evangelicalBelieversThreshold: 50,
-          evangelicalPercentEnabled: true,
-          evangelicalPercentThreshold: 0.05,
+          evangelicalPopulationBelieversRuleEnabled: true,
+          evangelicalPopulationBelieversRule: {
+            tiers: [
+              {
+                minPopulation: 0,
+                maxPopulation: 4_999,
+                minBelievers: 50,
+              },
+              {
+                minPopulation: 5_000,
+                maxPopulation: 10_000,
+                minBelievers: 75,
+              },
+              {
+                minPopulation: 10_001,
+                maxPopulation: null,
+                minBelievers: 100,
+              },
+            ],
+          },
           frontierGroupEnabled: true,
           frontierGroupValue: true,
         },
