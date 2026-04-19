@@ -13,6 +13,7 @@ import { DatasetDetailClient } from "./dataset-detail-client";
 
 const actionBarSpy = vi.fn();
 const datasetTableSpy = vi.fn();
+const openPresetSheetSpy = vi.fn();
 const useDatasetTableStateMock = vi.fn();
 const viewSwitchGridSpy = vi.fn();
 const { trackAppEventMock } = vi.hoisted(() => ({
@@ -30,6 +31,13 @@ vi.mock("@/components/dashboard/dataset-table", () => ({
   DatasetTable: (props: unknown) => {
     datasetTableSpy(props);
     return <div data-testid="dataset-table" />;
+  },
+}));
+
+vi.mock("@/components/dashboard/dataset-open-preset-sheet", () => ({
+  DatasetOpenPresetSheet: (props: unknown) => {
+    openPresetSheetSpy(props);
+    return <div data-testid="dataset-open-preset-sheet" />;
   },
 }));
 
@@ -106,6 +114,7 @@ describe("DatasetDetailClient", () => {
   beforeEach(() => {
     actionBarSpy.mockReset();
     datasetTableSpy.mockReset();
+    openPresetSheetSpy.mockReset();
     useDatasetTableStateMock.mockReset();
     viewSwitchGridSpy.mockReset();
     trackAppEventMock.mockReset();
@@ -147,6 +156,7 @@ describe("DatasetDetailClient", () => {
     const mainColumn = actionBar.parentElement;
     const actionBarProps = actionBarSpy.mock.calls[0]?.[0] as {
       onOpenFilters?: () => void;
+      onOpenOpenPreset?: () => void;
       analyticsContext: {
         route: string;
       };
@@ -159,6 +169,8 @@ describe("DatasetDetailClient", () => {
     expect(stickyRail?.className).toContain("sticky");
     expect(mainColumn).toBe(screen.getByTestId("dataset-table").parentElement);
     expect(actionBarProps.onOpenFilters).toEqual(expect.any(Function));
+    expect(actionBarProps.onOpenOpenPreset).toBeUndefined();
+    expect(openPresetSheetSpy).not.toHaveBeenCalled();
     expect(actionBarProps.analyticsContext.route).toBe("dataset_detail");
     expect(trackAppEventMock).toHaveBeenCalledWith(
       "dataset_opened",
@@ -169,6 +181,59 @@ describe("DatasetDetailClient", () => {
         dataset_source: "dashboard",
       }),
     );
+  });
+
+  it("wires the admin-only open preset sheet from the action bar trigger", () => {
+    render(
+      <DatasetDetailClient
+        dataset={{
+          ...datasetBase,
+          columns: [
+            {
+              key: "geo_country_name",
+              label: "Geo_Country_Name",
+              sourceIndex: 0,
+            },
+          ],
+          tags: [
+            {
+              id: "tag-1",
+              label: "Watchlist",
+              color: "#262531",
+            },
+          ],
+        }}
+        regions={[]}
+        fieldDefinitionPresentationByColumnKey={{}}
+        canManageOpenPresets
+      />,
+    );
+
+    const actionBarProps = actionBarSpy.mock.lastCall?.[0] as {
+      onOpenOpenPreset?: () => void;
+    };
+    const initialSheetProps = openPresetSheetSpy.mock.lastCall?.[0] as {
+      open: boolean;
+      selectedTagId: string | null;
+      tags: Array<{ id: string }>;
+    };
+
+    expect(actionBarProps.onOpenOpenPreset).toEqual(expect.any(Function));
+    expect(initialSheetProps.open).toBe(false);
+    expect(initialSheetProps.selectedTagId).toBe("tag-1");
+    expect(initialSheetProps.tags).toEqual([
+      expect.objectContaining({ id: "tag-1" }),
+    ]);
+
+    act(() => {
+      actionBarProps.onOpenOpenPreset?.();
+    });
+
+    const updatedSheetProps = openPresetSheetSpy.mock.lastCall?.[0] as {
+      open: boolean;
+    };
+
+    expect(updatedSheetProps.open).toBe(true);
   });
 
   it("passes supported UUPG filter state into the card, shared table state, and action bar", () => {

@@ -16,6 +16,7 @@ import type {
   FieldSourceType,
 } from "@/lib/api-types";
 import { normalizeHeaderIdentity } from "@/lib/csv";
+import { getFieldDefinitionCanonicalKeyFromLabel } from "@/lib/field-definition-canonical";
 import { getFieldDefinitionEffectiveLabel } from "@/lib/field-definition-presentation";
 
 const FIELD_SOURCE_MAPPING_CSV_PATH = path.join(
@@ -330,7 +331,7 @@ export function parseFieldDescriptionCsv(content: string) {
 export function parseFieldSourceMappingCsv(
   content: string,
   descriptionsByFieldId = new Map<string, string>(),
-) {
+): FieldSourceSeedRow[] {
   const parsed = Papa.parse<FieldSourceMappingCsvRow>(content, {
     header: true,
     skipEmptyLines: true,
@@ -375,7 +376,7 @@ export function parseFieldSourceMappingCsv(
 
     return [
       {
-        canonicalKey: normalizeHeaderIdentity(label, 0),
+        canonicalKey: getFieldDefinitionCanonicalKeyFromLabel(label, 0),
         label,
         displayLabel: normalizeFieldDisplayLabel(row["User Interface"]),
         definition: descriptionsByFieldId.get(

@@ -8,7 +8,11 @@ import type {
   FieldDefinitionLinkedDataset,
   FieldDefinitionPresentation,
 } from "@/lib/api-types";
-import { normalizeHeaderIdentity } from "@/lib/csv";
+import {
+  getFieldDefinitionCanonicalKeyFromLabel,
+  getFieldDefinitionCanonicalKeyLookupKeys,
+  resolveFieldDefinitionCanonicalKey,
+} from "@/lib/field-definition-canonical";
 import { getFieldDefinitionEffectiveLabel } from "@/lib/field-definition-presentation";
 import {
   listLinkedSourcesByFieldDefinitionId,
@@ -30,6 +34,10 @@ type FieldDefinitionInsertExecutor = {
 };
 
 type FieldDefinitionRow = typeof fieldDefinitions.$inferSelect;
+type PreferredFieldDefinitionRow = Pick<
+  FieldDefinitionRow,
+  "id" | "canonicalKey" | "createdAt"
+>;
 
 function normalizeFieldDefinitionLabel(label: string, sourceIndex: number) {
   const trimmedLabel = label.trim();
@@ -63,6 +71,47 @@ function sortLinkedDatasets(
       sensitivity: "base",
     }),
   );
+}
+
+function shouldPreferFieldDefinitionRow<TRow extends PreferredFieldDefinitionRow>(
+  currentRow: TRow,
+  nextRow: TRow,
+  resolvedCanonicalKey: string,
+) {
+  const currentIsCanonical = currentRow.canonicalKey === resolvedCanonicalKey;
+  const nextIsCanonical = nextRow.canonicalKey === resolvedCanonicalKey;
+
+  if (currentIsCanonical !== nextIsCanonical) {
+    return nextIsCanonical;
+  }
+
+  if (currentRow.createdAt.getTime() !== nextRow.createdAt.getTime()) {
+    return nextRow.createdAt < currentRow.createdAt;
+  }
+
+  return nextRow.id < currentRow.id;
+}
+
+function buildPreferredFieldDefinitionRowMap<TRow extends PreferredFieldDefinitionRow>(
+  rows: TRow[],
+) {
+  const rowsByResolvedCanonicalKey = new Map<string, TRow>();
+
+  for (const row of rows) {
+    const resolvedCanonicalKey = resolveFieldDefinitionCanonicalKey(
+      row.canonicalKey,
+    );
+    const currentRow = rowsByResolvedCanonicalKey.get(resolvedCanonicalKey);
+
+    if (
+      !currentRow ||
+      shouldPreferFieldDefinitionRow(currentRow, row, resolvedCanonicalKey)
+    ) {
+      rowsByResolvedCanonicalKey.set(resolvedCanonicalKey, row);
+    }
+  }
+
+  return rowsByResolvedCanonicalKey;
 }
 
 function buildFieldDefinitionSeedRows(columns: CsvColumn[]) {
@@ -154,7 +203,7 @@ export function getFieldDefinitionCanonicalKey(
   label: string,
   sourceIndex: number,
 ) {
-  return normalizeHeaderIdentity(label, sourceIndex);
+  return getFieldDefinitionCanonicalKeyFromLabel(label, sourceIndex);
 }
 
 export async function syncFieldDefinitionsForColumns(input: {
@@ -187,21 +236,35 @@ export async function listFieldDefinitions(options?: {
   const visibleRows = options?.includeHidden
     ? rows
     : rows.filter((row) => !row.hideFromViewerFieldDefinitions);
+  const preferredRowsByResolvedCanonicalKey =
+    buildPreferredFieldDefinitionRowMap(visibleRows);
+  const preferredRows = visibleRows.filter(
+    (row) =>
+      preferredRowsByResolvedCanonicalKey.get(
+        resolveFieldDefinitionCanonicalKey(row.canonicalKey),
+      )?.id === row.id,
+  );
   const linkedDatasetsByCanonicalKey = await listLinkedDatasetsByCanonicalKey(
-    new Set(visibleRows.map((row) => row.canonicalKey)),
+    new Set(
+      preferredRows.map((row) =>
+        resolveFieldDefinitionCanonicalKey(row.canonicalKey),
+      ),
+    ),
   );
   const linkedSourcesByFieldDefinitionId = await listLinkedSourcesByFieldDefinitionId(
-    visibleRows.map((row) => ({
+    preferredRows.map((row) => ({
       id: row.id,
       sourcePriorityKeys: row.sourcePriorityKeys,
     })),
   );
 
-  return visibleRows.map((row) =>
+  return preferredRows.map((row) =>
     toFieldDefinition(
       row,
       sortLinkedDatasets(
-        linkedDatasetsByCanonicalKey.get(row.canonicalKey) ?? [],
+        linkedDatasetsByCanonicalKey.get(
+          resolveFieldDefinitionCanonicalKey(row.canonicalKey),
+        ) ?? [],
       ),
       linkedSourcesByFieldDefinitionId.get(row.id) ?? [],
     ),
@@ -222,6 +285,13 @@ export async function listFieldDefinitionPresentationByColumnKey(
   if (canonicalKeys.length === 0) {
     return {};
   }
+  const lookupKeys = Array.from(
+    new Set(
+      canonicalKeys.flatMap((canonicalKey) =>
+        getFieldDefinitionCanonicalKeyLookupKeys(canonicalKey),
+      ),
+    ),
+  );
 
   const rows = await getDb()
     .select({
@@ -231,19 +301,23 @@ export async function listFieldDefinitionPresentationByColumnKey(
       displayLabel: fieldDefinitions.displayLabel,
       definition: fieldDefinitions.definition,
       sourcePriorityKeys: fieldDefinitions.sourcePriorityKeys,
+      createdAt: fieldDefinitions.createdAt,
     })
     .from(fieldDefinitions)
-    .where(inArray(fieldDefinitions.canonicalKey, canonicalKeys));
+    .where(inArray(fieldDefinitions.canonicalKey, lookupKeys));
+  const preferredRows = Array.from(
+    buildPreferredFieldDefinitionRowMap(rows).values(),
+  );
   const linkedSourcesByFieldDefinitionId = await listLinkedSourcesByFieldDefinitionId(
-    rows.map((row) => ({
+    preferredRows.map((row) => ({
       id: row.id,
       sourcePriorityKeys: row.sourcePriorityKeys,
     })),
   );
 
   const presentationByCanonicalKey = new Map(
-    rows.map((row) => [
-      row.canonicalKey,
+    preferredRows.map((row) => [
+      resolveFieldDefinitionCanonicalKey(row.canonicalKey),
       {
         definition: row.definition,
         displayLabel: row.displayLabel,
@@ -292,8 +366,11 @@ export async function updateFieldDefinition(input: {
     return null;
   }
 
+  const resolvedCanonicalKey = resolveFieldDefinitionCanonicalKey(
+    updatedFieldDefinition.canonicalKey,
+  );
   const linkedDatasetsByCanonicalKey = await listLinkedDatasetsByCanonicalKey(
-    new Set([updatedFieldDefinition.canonicalKey]),
+    new Set([resolvedCanonicalKey]),
   );
   const linkedSourcesByFieldDefinitionId = await listLinkedSourcesByFieldDefinitionId([
     {
@@ -305,7 +382,7 @@ export async function updateFieldDefinition(input: {
   return toFieldDefinition(
     updatedFieldDefinition,
     sortLinkedDatasets(
-      linkedDatasetsByCanonicalKey.get(updatedFieldDefinition.canonicalKey) ?? [],
+      linkedDatasetsByCanonicalKey.get(resolvedCanonicalKey) ?? [],
     ),
     linkedSourcesByFieldDefinitionId.get(updatedFieldDefinition.id) ?? [],
   );

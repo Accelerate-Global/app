@@ -103,6 +103,29 @@ describe("field-sources", () => {
     ]);
   });
 
+  it("maps frontier alias seed labels onto the canonical frontier key", () => {
+    const rows = parseFieldSourceMappingCsv(`Field ID,Aggregate 1 (internal),User Interface,Data Type,Active,Joshua Project
+F_2,Frontier_Group,Frontier Group,Boolean,TRUE,Frontier
+`);
+
+    expect(rows).toEqual([
+      expect.objectContaining({
+        canonicalKey: "christianity_frontier_group",
+        label: "Frontier_Group",
+        displayLabel: "Frontier Group",
+        mappingFieldId: "F_2",
+        mappingDataType: "Boolean",
+        mappingIsActive: true,
+        sourceValues: [
+          {
+            sourceKey: "joshua_project",
+            sourceFieldName: "Frontier",
+          },
+        ],
+      }),
+    ]);
+  });
+
   it("aliases Add-on Fields to the Accelerate source key", () => {
     const rows = parseFieldSourceMappingCsv(fieldSourceMappingCsv);
     const dataSourceRow = rows.find((row) => row.canonicalKey === "data_source");

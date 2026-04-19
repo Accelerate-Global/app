@@ -355,7 +355,7 @@ describe("DatasetViewSwitchGrid", () => {
     ).toBeTruthy();
   });
 
-  it("renders searchable country controls and updates the card callbacks", () => {
+  it("keeps country search interactive and auto-enables the filter on selection", () => {
     const onEnabledChange = vi.fn();
     const onSearchChange = vi.fn();
     const onToggleCountry = vi.fn();
@@ -366,11 +366,11 @@ describe("DatasetViewSwitchGrid", () => {
       <DatasetViewSwitchGrid
         regionCard={baseRegionCard}
         countryCard={{
-          enabled: true,
+          enabled: false,
           supported: true,
           searchValue: "jor",
           availableCountries: ["Egypt", "Jordan", "Turkey"],
-          selectedCountries: ["Jordan"],
+          selectedCountries: [],
           onEnabledChange,
           onSearchChange,
           onToggleCountry,
@@ -382,25 +382,26 @@ describe("DatasetViewSwitchGrid", () => {
       />,
     );
 
-    expect(screen.getByText("1 selected")).toBeTruthy();
-
     fireEvent.click(screen.getByRole("button", { name: "Country filters" }));
 
-    const searchInput = screen.getByPlaceholderText("Search countries");
+    expect(screen.getByText("0 selected")).toBeTruthy();
+
+    const searchInput = screen.getByLabelText("Search countries");
+
+    expect(searchInput.getAttribute("disabled")).toBeNull();
 
     fireEvent.change(searchInput, { target: { value: "eg" } });
     fireEvent.click(screen.getByRole("button", { name: "Select visible" }));
-    fireEvent.click(screen.getByRole("button", { name: "Clear visible" }));
     fireEvent.click(screen.getByLabelText("Include Jordan"));
-    fireEvent.click(screen.getByLabelText("Toggle Country"));
+    fireEvent.click(screen.getByRole("button", { name: "Clear visible" }));
 
     expect(screen.queryByText("Egypt")).toBeNull();
     expect(screen.getByText("Jordan")).toBeTruthy();
     expect(onSearchChange).toHaveBeenCalledWith("eg");
     expect(onSelectVisible).toHaveBeenCalledWith(["Jordan"]);
     expect(onClearVisible).toHaveBeenCalledWith(["Jordan"]);
-    expect(onToggleCountry).toHaveBeenCalledWith("Jordan", false);
-    expect(onEnabledChange.mock.calls[0]?.[0]).toBe(false);
+    expect(onToggleCountry).toHaveBeenCalledWith("Jordan", true);
+    expect(onEnabledChange).toHaveBeenCalledWith(true);
   });
 
   it("keeps the watchlist segmented control interactive when the section is expanded", () => {

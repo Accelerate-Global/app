@@ -258,6 +258,35 @@ describe("/dashboard/datasets/[datasetId]", () => {
     expect(props.initialSavedTableRowCount).toBe(10);
   });
 
+  it("keeps tag preset hydration for viewers while hiding open preset management", async () => {
+    getCurrentIdentityMock.mockResolvedValue({
+      ownerId: "viewer-1",
+      email: "viewer@example.com",
+      fullName: "Viewer",
+      isDatasetAdmin: false,
+      mode: "supabase",
+    });
+
+    render(
+      await DatasetPage({
+        params: Promise.resolve({ datasetId: "dataset-1" }),
+        searchParams: Promise.resolve({}),
+      }),
+    );
+
+    const props = datasetDetailClientSpy.mock.lastCall?.[0] as {
+      initialFilters: { watchlist: { enabled: boolean } };
+      canManageOpenPresets?: boolean;
+      workspaceRole: string;
+      initialPresetTagId: string | null;
+    };
+
+    expect(props.initialFilters.watchlist.enabled).toBe(true);
+    expect(props.canManageOpenPresets).toBe(false);
+    expect(props.workspaceRole).toBe("viewer");
+    expect(props.initialPresetTagId).toBe("tag-1");
+  });
+
   it("passes through explicit dataset source analytics props", async () => {
     render(
       await DatasetPage({

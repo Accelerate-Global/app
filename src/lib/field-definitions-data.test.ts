@@ -150,4 +150,185 @@ describe("field-definitions data access", () => {
       }),
     );
   });
+
+  it("deduplicates frontier aliases and aggregates linked datasets onto the canonical row", async () => {
+    const canonicalRow = {
+      id: "field-canonical",
+      canonicalKey: "christianity_frontier_group",
+      label: "Christianity_Frontier_Group",
+      displayLabel: "Frontier Group",
+      definition: "Frontier definition",
+      hideFromViewerFieldDefinitions: false,
+      mappingFieldId: "F_2",
+      mappingDataType: "Boolean",
+      mappingIsActive: true,
+      sourcePriorityKeys: ["joshua_project"],
+      createdAt: new Date("2026-04-15T00:00:00.000Z"),
+      updatedAt: new Date("2026-04-15T00:00:00.000Z"),
+    };
+    const aliasRow = {
+      ...canonicalRow,
+      id: "field-alias",
+      canonicalKey: "frontier_group",
+      label: "Frontier_Group",
+      displayLabel: "",
+      definition: "",
+      sourcePriorityKeys: [],
+      createdAt: new Date("2026-04-16T00:00:00.000Z"),
+    };
+    const db = {
+      select: vi.fn(() => ({
+        from: vi.fn((table) => {
+          if (table === fieldDefinitions) {
+            return {
+              orderBy: vi.fn().mockResolvedValue([canonicalRow, aliasRow]),
+            };
+          }
+
+          if (table === datasets) {
+            return {
+              orderBy: vi.fn().mockResolvedValue([
+                {
+                  id: "dataset-1",
+                  fileName: "Global Watchlist",
+                  columns: [
+                    {
+                      key: "christianity_frontier_group",
+                      label: "Christianity_Frontier_Group",
+                      sourceIndex: 2,
+                    },
+                  ],
+                },
+                {
+                  id: "dataset-2",
+                  fileName: "UUPG Priority List",
+                  columns: [
+                    {
+                      key: "frontier_group",
+                      label: "Frontier_Group",
+                      sourceIndex: 9,
+                    },
+                  ],
+                },
+              ]),
+            };
+          }
+
+          throw new Error("Unexpected table");
+        }),
+      })),
+    };
+
+    getDbMock.mockReturnValue(db);
+    listLinkedSourcesByFieldDefinitionIdMock.mockResolvedValue(
+      new Map([
+        [
+          "field-canonical",
+          [
+            {
+              id: "source-joshua",
+              key: "joshua_project",
+              label: "Joshua Project",
+            },
+          ],
+        ],
+      ]),
+    );
+
+    const { listFieldDefinitions } = await import("./field-definitions");
+    const result = await listFieldDefinitions({ includeHidden: true });
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      id: "field-canonical",
+      canonicalKey: "christianity_frontier_group",
+      linkedDatasets: [
+        { id: "dataset-1", fileName: "Global Watchlist" },
+        { id: "dataset-2", fileName: "UUPG Priority List" },
+      ],
+      linkedSources: [
+        {
+          id: "source-joshua",
+          key: "joshua_project",
+          label: "Joshua Project",
+        },
+      ],
+    });
+    expect(listLinkedSourcesByFieldDefinitionIdMock).toHaveBeenCalledWith([
+      {
+        id: "field-canonical",
+        sourcePriorityKeys: ["joshua_project"],
+      },
+    ]);
+  });
+
+  it("maps the frontier alias column to the canonical field presentation", async () => {
+    const canonicalRow = {
+      id: "field-canonical",
+      canonicalKey: "christianity_frontier_group",
+      label: "Christianity_Frontier_Group",
+      displayLabel: "Frontier Group",
+      definition: "Frontier definition",
+      hideFromViewerFieldDefinitions: false,
+      mappingFieldId: "F_2",
+      mappingDataType: "Boolean",
+      mappingIsActive: true,
+      sourcePriorityKeys: ["joshua_project"],
+      createdAt: new Date("2026-04-15T00:00:00.000Z"),
+      updatedAt: new Date("2026-04-15T00:00:00.000Z"),
+    };
+    const db = {
+      select: vi.fn(() => ({
+        from: vi.fn((table) => {
+          if (table === fieldDefinitions) {
+            return {
+              where: vi.fn().mockResolvedValue([canonicalRow]),
+            };
+          }
+
+          throw new Error("Unexpected table");
+        }),
+      })),
+    };
+
+    getDbMock.mockReturnValue(db);
+    listLinkedSourcesByFieldDefinitionIdMock.mockResolvedValue(
+      new Map([
+        [
+          "field-canonical",
+          [
+            {
+              id: "source-joshua",
+              key: "joshua_project",
+              label: "Joshua Project",
+            },
+          ],
+        ],
+      ]),
+    );
+
+    const { listFieldDefinitionPresentationByColumnKey } = await import(
+      "./field-definitions"
+    );
+    const result = await listFieldDefinitionPresentationByColumnKey([
+      {
+        key: "frontier_group",
+        label: "Frontier_Group",
+        sourceIndex: 0,
+      },
+    ]);
+
+    expect(result.frontier_group).toEqual({
+      definition: "Frontier definition",
+      displayLabel: "Frontier Group",
+      effectiveLabel: "Frontier Group",
+      linkedSources: [
+        {
+          id: "source-joshua",
+          key: "joshua_project",
+          label: "Joshua Project",
+        },
+      ],
+    });
+  });
 });

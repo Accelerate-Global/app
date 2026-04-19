@@ -1,20 +1,17 @@
 "use client";
 
-import { DownloadIcon, SaveIcon, SlidersHorizontalIcon } from "lucide-react";
+import {
+  DownloadIcon,
+  PanelRightOpenIcon,
+  SaveIcon,
+  SlidersHorizontalIcon,
+} from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import type {
   DatasetRowsResponse,
   DatasetSummary,
-  DatasetTag,
   FieldDefinitionPresentation,
   SavedDatasetFilterState,
   SavedDatasetTableResponse,
@@ -33,15 +30,6 @@ import {
 
 type DatasetRow = DatasetRowsResponse["rows"][number];
 
-type DatasetOpenPresetControls = {
-  tags: DatasetTag[];
-  selectedTagId: string | null;
-  isSaving: boolean;
-  onSelectedTagIdChange: (tagId: string | null) => void;
-  onSave: () => Promise<void>;
-  onClear: () => Promise<void>;
-};
-
 type DatasetTableActionBarProps = {
   dataset: DatasetSummary;
   filters: SavedDatasetFilterState;
@@ -56,7 +44,7 @@ type DatasetTableActionBarProps = {
   >;
   analyticsContext?: AppAnalyticsContext;
   onOpenFilters?: () => void;
-  openPresetControls?: DatasetOpenPresetControls;
+  onOpenOpenPreset?: () => void;
 };
 
 function downloadCsvFile(input: {
@@ -92,23 +80,14 @@ export function DatasetTableActionBar({
     workspaceRole: "anonymous",
   }),
   onOpenFilters,
-  openPresetControls,
+  onOpenOpenPreset,
 }: DatasetTableActionBarProps) {
   const [isSavingSavedTable, setIsSavingSavedTable] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [messageTone, setMessageTone] = useState<"default" | "destructive">(
     "default",
   );
-  const isSavingPreset = openPresetControls?.isSaving ?? false;
-  const isDisabled = isLoading || hasError || isSavingSavedTable || isSavingPreset;
-  const hasPresetTag = openPresetControls?.tags.some(
-    (tag) => tag.openPreset !== undefined,
-  );
-  const selectedPresetTag = openPresetControls?.tags.find(
-    (tag) => tag.id === openPresetControls.selectedTagId,
-  );
-  const presetBearingTag =
-    openPresetControls?.tags.find((tag) => tag.openPreset !== undefined) ?? null;
+  const isDisabled = isLoading || hasError || isSavingSavedTable;
 
   function handleDownload() {
     const csv = serializeDatasetRowsToCsv({
@@ -198,90 +177,6 @@ export function DatasetTableActionBar({
     }
   }
 
-  async function handleSaveOpenPreset() {
-    if (!openPresetControls || !selectedPresetTag) {
-      return;
-    }
-
-    setMessage(null);
-    setMessageTone("default");
-
-    try {
-      await openPresetControls.onSave();
-      setMessage(`Saved open preset to "${selectedPresetTag.label}".`);
-      setMessageTone("default");
-      trackAppEvent(
-        "dataset_open_preset_saved",
-        withAnalyticsContext(analyticsContext, {
-          source_surface: "dataset_action_bar",
-          success: true,
-          dataset_id: dataset.id,
-          tag_id: selectedPresetTag.id,
-          filter_sections_enabled: getEnabledFilterSections(filters),
-        }),
-      );
-    } catch (error) {
-      trackAppEvent(
-        "dataset_open_preset_saved",
-        withAnalyticsContext(analyticsContext, {
-          source_surface: "dataset_action_bar",
-          success: false,
-          error_code: "dataset_open_preset_save_failed",
-          dataset_id: dataset.id,
-          tag_id: selectedPresetTag.id,
-          filter_sections_enabled: getEnabledFilterSections(filters),
-        }),
-      );
-      setMessage(
-        error instanceof Error
-          ? error.message
-          : "The dataset open preset could not be saved.",
-      );
-      setMessageTone("destructive");
-    }
-  }
-
-  async function handleClearOpenPreset() {
-    if (!openPresetControls || !hasPresetTag) {
-      return;
-    }
-
-    setMessage(null);
-    setMessageTone("default");
-
-    try {
-      await openPresetControls.onClear();
-      setMessage("Cleared the dataset open preset.");
-      setMessageTone("default");
-      trackAppEvent(
-        "dataset_open_preset_cleared",
-        withAnalyticsContext(analyticsContext, {
-          source_surface: "dataset_action_bar",
-          success: true,
-          dataset_id: dataset.id,
-          tag_id: presetBearingTag?.id,
-        }),
-      );
-    } catch (error) {
-      trackAppEvent(
-        "dataset_open_preset_cleared",
-        withAnalyticsContext(analyticsContext, {
-          source_surface: "dataset_action_bar",
-          success: false,
-          error_code: "dataset_open_preset_clear_failed",
-          dataset_id: dataset.id,
-          tag_id: presetBearingTag?.id,
-        }),
-      );
-      setMessage(
-        error instanceof Error
-          ? error.message
-          : "The dataset open preset could not be cleared.",
-      );
-      setMessageTone("destructive");
-    }
-  }
-
   return (
     <section className="rounded-2xl border border-border bg-card px-4 py-3">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
@@ -302,113 +197,53 @@ export function DatasetTableActionBar({
           </div>
         </div>
 
-        <div className="flex flex-col gap-3 lg:items-end">
-          {openPresetControls ? (
-            <div className="flex flex-col gap-2 rounded-2xl border border-border bg-background/70 px-3 py-3 sm:min-w-[22rem]">
-              <div className="space-y-1">
-                <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
-                  Dataset open preset
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Save the current filters onto one dataset tag so this view opens pre-filtered.
-                </p>
-              </div>
-              {openPresetControls.tags.length > 0 ? (
-                <>
-                  <div className="space-y-2">
-                    <label
-                      className="text-sm font-medium text-foreground"
-                      htmlFor="dataset-open-preset-tag"
-                    >
-                      Preset tag
-                    </label>
-                    <Select
-                      value={openPresetControls.selectedTagId ?? undefined}
-                      disabled={isDisabled}
-                      onValueChange={openPresetControls.onSelectedTagIdChange}
-                    >
-                      <SelectTrigger
-                        id="dataset-open-preset-tag"
-                        className="w-full"
-                      >
-                        <SelectValue placeholder="Select a tag" />
-                      </SelectTrigger>
-                      <SelectContent align="end">
-                        {openPresetControls.tags.map((tag) => (
-                          <SelectItem key={tag.id} value={tag.id}>
-                            {tag.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      disabled={isDisabled || !selectedPresetTag}
-                      onClick={() => {
-                        void handleSaveOpenPreset();
-                      }}
-                    >
-                      {isSavingPreset ? "Saving..." : "Save open preset"}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      disabled={isDisabled || !hasPresetTag}
-                      onClick={() => {
-                        void handleClearOpenPreset();
-                      }}
-                    >
-                      Clear preset
-                    </Button>
-                  </div>
-                </>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  Add a dataset tag from Edit dataset before saving an open preset.
-                </p>
-              )}
-            </div>
-          ) : null}
-
-          <div className="flex flex-wrap items-center gap-2">
-            {onOpenFilters ? (
-              <Button
-                type="button"
-                variant="outline"
-                className="xl:hidden"
-                data-smoke-trigger="dataset-filters-sheet"
-                data-smoke-write="safe"
-                onClick={onOpenFilters}
-              >
-                <SlidersHorizontalIcon />
-                Filters
-              </Button>
-            ) : null}
+        <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+          {onOpenFilters ? (
             <Button
               type="button"
               variant="outline"
-              disabled={isDisabled}
-              data-smoke-filtered-table-download
-              onClick={handleDownload}
+              className="xl:hidden"
+              data-smoke-trigger="dataset-filters-sheet"
+              data-smoke-write="safe"
+              onClick={onOpenFilters}
             >
-              <DownloadIcon />
-              Download
+              <SlidersHorizontalIcon />
+              Filters
             </Button>
+          ) : null}
+          <Button
+            type="button"
+            variant="outline"
+            disabled={isDisabled}
+            data-smoke-filtered-table-download
+            onClick={handleDownload}
+          >
+            <DownloadIcon />
+            Download
+          </Button>
+          <Button
+            type="button"
+            disabled={isDisabled}
+            data-smoke-save-filtered-table
+            onClick={() => {
+              void handleSave();
+            }}
+          >
+            <SaveIcon />
+            {isSavingSavedTable ? "Saving..." : "Save to dashboard"}
+          </Button>
+          {onOpenOpenPreset ? (
             <Button
               type="button"
-              disabled={isDisabled}
-              data-smoke-save-filtered-table
-              onClick={() => {
-                void handleSave();
-              }}
+              variant="outline"
+              data-smoke-trigger="dataset-open-preset-sheet"
+              data-smoke-write="safe"
+              onClick={onOpenOpenPreset}
             >
-              <SaveIcon />
-              {isSavingSavedTable ? "Saving..." : "Save to dashboard"}
+              <PanelRightOpenIcon />
+              Open preset
             </Button>
-          </div>
+          ) : null}
         </div>
       </div>
 

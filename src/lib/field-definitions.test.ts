@@ -25,6 +25,12 @@ describe("field-definitions", () => {
     );
   });
 
+  it("maps the frontier alias key to the canonical frontier field identity", () => {
+    expect(getFieldDefinitionCanonicalKey("Frontier_Group", 0)).toBe(
+      "christianity_frontier_group",
+    );
+  });
+
   it("syncs only one field definition per canonical field", async () => {
     const onConflictDoNothingMock = vi.fn().mockResolvedValue(undefined);
     const valuesMock = vi.fn(() => ({

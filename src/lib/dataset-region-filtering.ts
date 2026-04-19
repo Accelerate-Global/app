@@ -1,4 +1,5 @@
 import type { DatasetRowsResponse, DatasetSummary, FilterRegion } from "@/lib/api-types";
+import { getFieldDefinitionCanonicalKeyLookupKeys } from "@/lib/field-definition-canonical";
 import {
   COUNTRY_ALTERNATE_DATASET_COLUMN_KEY,
   REGION_DATASET_COLUMN_KEY,
@@ -11,6 +12,10 @@ import {
 } from "@/lib/dataset-region-constants";
 
 type DatasetRow = DatasetRowsResponse["rows"][number];
+const WATCHLIST_FRONTIER_GROUP_DATASET_COLUMN_KEYS =
+  getFieldDefinitionCanonicalKeyLookupKeys(
+    WATCHLIST_FRONTIER_GROUP_DATASET_COLUMN_KEY,
+  );
 
 export type DatasetRegionFilterState = {
   enabled: boolean;
@@ -81,9 +86,28 @@ function isDatasetColumnKey(
   return normalizeDatasetColumnKey(value) === expectedKey;
 }
 
-function getDatasetValue(row: DatasetRow, expectedKey: string) {
+function findDatasetValue(row: DatasetRow, expectedKey: string) {
   for (const [key, value] of Object.entries(row.data)) {
     if (isDatasetColumnKey(key, expectedKey)) {
+      return value;
+    }
+  }
+
+  return undefined;
+}
+
+function getDatasetValue(row: DatasetRow, expectedKey: string) {
+  return findDatasetValue(row, expectedKey) ?? "";
+}
+
+function getDatasetValueByKeys(
+  row: DatasetRow,
+  expectedKeys: readonly string[],
+) {
+  for (const expectedKey of expectedKeys) {
+    const value = findDatasetValue(row, expectedKey);
+
+    if (value !== undefined) {
       return value;
     }
   }
@@ -108,7 +132,10 @@ function getWatchlistDatasetValue(row: DatasetRow) {
 }
 
 function getWatchlistFrontierGroupDatasetValue(row: DatasetRow) {
-  return getDatasetValue(row, WATCHLIST_FRONTIER_GROUP_DATASET_COLUMN_KEY);
+  return getDatasetValueByKeys(
+    row,
+    WATCHLIST_FRONTIER_GROUP_DATASET_COLUMN_KEYS,
+  );
 }
 
 function getWatchlistPopulationDatasetValue(row: DatasetRow) {
@@ -131,6 +158,15 @@ function datasetSupportsColumnFiltering(
     (column) =>
       isDatasetColumnKey(column.key, expectedKey) ||
       isDatasetColumnKey(column.label, expectedKey),
+  );
+}
+
+function datasetSupportsAnyColumnFiltering(
+  dataset: Pick<DatasetSummary, "columns">,
+  expectedKeys: readonly string[],
+) {
+  return expectedKeys.some((expectedKey) =>
+    datasetSupportsColumnFiltering(dataset, expectedKey),
   );
 }
 
@@ -157,12 +193,14 @@ export function datasetSupportsWatchlistFiltering(
 ) {
   return [
     WATCHLIST_DATASET_COLUMN_KEY,
-    WATCHLIST_FRONTIER_GROUP_DATASET_COLUMN_KEY,
     WATCHLIST_POPULATION_DATASET_COLUMN_KEY,
     WATCHLIST_PERCENT_EVANGELICAL_DATASET_COLUMN_KEY,
     WATCHLIST_ENGAGEMENT_PHASES_DATASET_COLUMN_KEY,
   ].every((expectedKey) =>
     datasetSupportsColumnFiltering(dataset, expectedKey),
+  ) && datasetSupportsAnyColumnFiltering(
+    dataset,
+    WATCHLIST_FRONTIER_GROUP_DATASET_COLUMN_KEYS,
   );
 }
 
