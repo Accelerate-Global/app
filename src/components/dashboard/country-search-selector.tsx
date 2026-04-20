@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 type CountrySearchSelectorProps = {
   allCountries: string[];
   selectedCountries: string[];
+  visibleCountries?: string[];
   searchValue: string;
   disabled: boolean;
   onSearchChange: (value: string) => void;
@@ -24,6 +25,7 @@ type CountrySearchSelectorProps = {
 export function CountrySearchSelector({
   allCountries,
   selectedCountries,
+  visibleCountries,
   searchValue,
   disabled,
   onSearchChange,
@@ -33,7 +35,7 @@ export function CountrySearchSelector({
   smokeSearchMarker,
 }: CountrySearchSelectorProps) {
   const normalizedSearch = searchValue.trim().toLowerCase();
-  const visibleCountries = useMemo(
+  const filteredCountries = useMemo(
     () =>
       normalizedSearch
         ? allCountries.filter((country) =>
@@ -46,6 +48,12 @@ export function CountrySearchSelector({
     () => new Set(selectedCountries),
     [selectedCountries],
   );
+  const selectionSummary =
+    selectedCountries.length > 0
+      ? `${selectedCountries.length} selected`
+      : visibleCountries && visibleCountries.length > 0
+        ? `${visibleCountries.length} visible`
+        : "0 selected";
 
   return (
     <div className="overflow-hidden rounded-[1.1rem] border border-border/70 bg-card/45 shadow-xs shadow-black/5">
@@ -55,7 +63,7 @@ export function CountrySearchSelector({
             variant="outline"
             className="rounded-full px-2.5 py-1 text-[0.68rem] font-semibold tracking-[0.14em] uppercase"
           >
-            {selectedCountries.length} selected
+            {selectionSummary}
           </Badge>
           <div className="flex flex-wrap items-center gap-2">
             <Button
@@ -63,8 +71,8 @@ export function CountrySearchSelector({
               size="xs"
               variant="outline"
               className="rounded-full px-3"
-              disabled={disabled || visibleCountries.length === 0}
-              onClick={() => onSelectVisible(visibleCountries)}
+              disabled={disabled || filteredCountries.length === 0}
+              onClick={() => onSelectVisible(filteredCountries)}
             >
               Select visible
             </Button>
@@ -73,8 +81,8 @@ export function CountrySearchSelector({
               size="xs"
               variant="outline"
               className="rounded-full px-3"
-              disabled={disabled || visibleCountries.length === 0}
-              onClick={() => onClearVisible(visibleCountries)}
+              disabled={disabled || filteredCountries.length === 0}
+              onClick={() => onClearVisible(filteredCountries)}
             >
               Clear visible
             </Button>
@@ -97,13 +105,13 @@ export function CountrySearchSelector({
       </div>
 
       <div className="border-t border-border/70 bg-background/35">
-        {visibleCountries.length === 0 ? (
+        {filteredCountries.length === 0 ? (
           <div className="px-4 py-6 text-sm text-muted-foreground">
             No countries match this search.
           </div>
         ) : (
           <div className="max-h-64 divide-y divide-border/70 overflow-y-auto">
-            {visibleCountries.map((country) => (
+            {filteredCountries.map((country) => (
               <label
                 key={country}
                 className={cn(

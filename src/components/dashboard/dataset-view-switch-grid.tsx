@@ -39,7 +39,7 @@ import {
   createDefaultPopulationBelieversRule,
 } from "@/lib/evangelical-population-believers-rule";
 import {
-  isGlobeRegionName,
+  isGlobalRegionName,
   normalizeRegionDisplayName,
   normalizeRegionDisplayText,
 } from "@/lib/region-display";
@@ -56,10 +56,8 @@ type RegionSelector = {
 type DatasetViewSwitchGridProps = {
   className?: string;
   regionCard: {
-    enabled: boolean;
     supported: boolean;
     selectors: RegionSelector[];
-    onEnabledChange: (checked: boolean) => void;
     onSelectorChange: (regionId: string, checked: boolean) => void;
   };
   countryCard: {
@@ -68,7 +66,11 @@ type DatasetViewSwitchGridProps = {
     searchValue: string;
     availableCountries: string[];
     selectedCountries: string[];
+    visibleCountries?: string[];
+    includeAlternateCountries: boolean;
+    supportsAlternateCountries: boolean;
     onEnabledChange: (checked: boolean) => void;
+    onIncludeAlternateCountriesChange: (checked: boolean) => void;
     onSearchChange: (value: string) => void;
     onToggleCountry: (country: string, checked: boolean) => void;
     onSelectVisible: (countries: string[]) => void;
@@ -121,7 +123,7 @@ type FilterSectionId = "region" | "country" | "watchlist" | "uupg";
 const FILTER_PANEL_DESCRIPTIONS = {
   region: "A grouping of people groups based on geography.",
   country:
-    "Filter people groups by country, including matches found in alternate-country fields.",
+    "Filter people groups by country. Enable alternate-country matching when you want alternate-country values included.",
   watchlist:
     "People groups unengaged or would be unengaged if the current mission work stopped today.",
   uupg: "People groups who have no record of engagement among them.",
@@ -189,19 +191,11 @@ export function getRegionTooltipText(
     return normalizeRegionDisplayText(trimmedDescription);
   }
 
-  if (isGlobeRegionName(label)) {
+  if (isGlobalRegionName(label)) {
     return "All countries.";
   }
 
   return countries.join(", ");
-}
-
-function getVisibleRegionSelectors(
-  regionCard: DatasetViewSwitchGridProps["regionCard"],
-) {
-  return regionCard.selectors.filter(
-    (selector) => !isGlobeRegionName(selector.label),
-  );
 }
 
 function FieldDefinitionInfo({
@@ -364,7 +358,7 @@ function FilterSection({
   summary: string[];
   description: string;
   expanded: boolean;
-  toggleControl: ReactNode;
+  toggleControl?: ReactNode;
   onExpandedChange: (expanded: boolean) => void;
   children?: ReactNode;
 }) {
@@ -411,7 +405,7 @@ function FilterSection({
             </div>
           </div>
         </button>
-        <div className="shrink-0 pt-0.5">{toggleControl}</div>
+        {toggleControl ? <div className="shrink-0 pt-0.5">{toggleControl}</div> : null}
       </div>
       {expanded ? (
         <div id={panelId} className="border-t border-border/70 px-3 pb-3 pt-3">
@@ -430,19 +424,23 @@ function getRegionSummary(regionCard: DatasetViewSwitchGridProps["regionCard"]) 
     return ["Unavailable"];
   }
 
-  const visibleSelectors = getVisibleRegionSelectors(regionCard);
+  const visibleSelectors = regionCard.selectors;
 
   if (visibleSelectors.length === 0) {
     return ["No regions configured"];
   }
 
-  if (!regionCard.enabled) {
-    return ["Off"];
+  const globalSelector = visibleSelectors.find((selector) =>
+    isGlobalRegionName(selector.label),
+  );
+
+  if (globalSelector?.checked) {
+    return ["Global"];
   }
 
   const selectedCount = visibleSelectors.filter((selector) => selector.checked).length;
 
-  if (selectedCount === 0 || selectedCount === visibleSelectors.length) {
+  if (selectedCount === 0) {
     return ["All regions"];
   }
 
@@ -604,12 +602,12 @@ function getCountrySummary(countryCard: DatasetViewSwitchGridProps["countryCard"
     return ["Unavailable"];
   }
 
-  if (!countryCard.enabled) {
-    return ["Off"];
+  if (countryCard.availableCountries.length === 0) {
+    return ["No visible countries"];
   }
 
-  if (countryCard.selectedCountries.length === 0) {
-    return ["All countries"];
+  if (!countryCard.enabled || countryCard.selectedCountries.length === 0) {
+    return ["All visible countries"];
   }
 
   return [`${countryCard.selectedCountries.length} selected`];
@@ -630,7 +628,7 @@ export function DatasetViewSwitchGrid({
   watchlistCard,
   uupgCard,
 }: DatasetViewSwitchGridProps) {
-  const visibleRegionSelectors = getVisibleRegionSelectors(regionCard);
+  const visibleRegionSelectors = regionCard.selectors;
   const hasRegions = visibleRegionSelectors.length > 0;
   const [expandedSections, setExpandedSections] = useState<
     Record<FilterSectionId, boolean>
@@ -672,15 +670,6 @@ export function DatasetViewSwitchGrid({
           onExpandedChange={(expanded) =>
             setExpandedSections((current) => ({ ...current, region: expanded }))
           }
-          toggleControl={
-            <Switch
-              size="sm"
-              checked={regionCard.enabled}
-              disabled={!regionCard.supported || !hasRegions}
-              onCheckedChange={regionCard.onEnabledChange}
-              aria-label="Toggle Region"
-            />
-          }
         >
           {!regionCard.supported ? (
             <p className="text-sm leading-5 text-muted-foreground">
@@ -716,7 +705,6 @@ export function DatasetViewSwitchGrid({
                     <Switch
                       size="sm"
                       checked={selector.checked}
-                      disabled={!regionCard.enabled}
                       onCheckedChange={(checked) =>
                         regionCard.onSelectorChange(selector.id, checked)
                       }
@@ -756,13 +744,28 @@ export function DatasetViewSwitchGrid({
             </p>
           ) : countryCard.availableCountries.length === 0 ? (
             <p className="text-sm leading-5 text-muted-foreground">
-              No countries are available in this dataset.
+              No countries are visible for the current filters.
             </p>
           ) : (
-            <div className="px-3">
+            <div className="space-y-3 px-3">
+              {countryCard.supportsAlternateCountries ? (
+                <DatasetFilterRow
+                  label="Include alternate countries"
+                  definition="When enabled, country options and matches can come from both Geo_Country_Name and Alternate_Countries."
+                  toggleControl={
+                    <Switch
+                      size="sm"
+                      checked={countryCard.includeAlternateCountries}
+                      onCheckedChange={countryCard.onIncludeAlternateCountriesChange}
+                      aria-label="Toggle Include alternate countries"
+                    />
+                  }
+                />
+              ) : null}
               <CountrySearchSelector
                 allCountries={countryCard.availableCountries}
                 selectedCountries={countryCard.selectedCountries}
+                visibleCountries={countryCard.visibleCountries}
                 searchValue={countryCard.searchValue}
                 disabled={false}
                 onSearchChange={countryCard.onSearchChange}

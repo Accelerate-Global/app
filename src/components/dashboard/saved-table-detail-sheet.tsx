@@ -41,15 +41,16 @@ function formatSavedAt(value: string) {
 }
 
 function getRegionSummary(savedTable: SavedDatasetTable) {
-  if (!savedTable.filters.region.enabled) {
-    return "Off";
+  const normalizedFilters = normalizeSavedDatasetFilterState(savedTable.filters);
+
+  if (normalizedFilters.region.selectedRegionNames.length === 0) {
+    return normalizedFilters.region.enabledCountryNames.length > 0 ||
+      normalizedFilters.region.enabled
+      ? "Global"
+      : "Off";
   }
 
-  if (savedTable.filters.region.selectedRegionNames.length === 0) {
-    return "All configured regions";
-  }
-
-  return savedTable.filters.region.selectedRegionNames
+  return normalizedFilters.region.selectedRegionNames
     .map((regionName) => normalizeRegionDisplayName(regionName))
     .join(", ");
 }

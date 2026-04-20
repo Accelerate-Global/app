@@ -8,6 +8,7 @@ import type {
 } from "@/lib/api-types";
 import type { SavedDatasetFilterState } from "@/lib/api-types";
 import {
+  type AnyPgColumn,
   boolean,
   index,
   integer,
@@ -30,6 +31,12 @@ export const datasets = pgTable(
   {
     id: uuid("id").defaultRandom().primaryKey(),
     ownerId: text("owner_id").notNull(),
+    backingDatasetId: uuid("backing_dataset_id").references(
+      (): AnyPgColumn => datasets.id,
+      {
+        onDelete: "restrict",
+      },
+    ),
     fileName: text("file_name").notNull(),
     sortOrder: integer("sort_order").notNull().default(0),
     blobUrl: text("blob_url").notNull(),
@@ -65,6 +72,7 @@ export const datasets = pgTable(
   },
   (table) => [
     index("datasets_owner_created_idx").on(table.ownerId, table.createdAt),
+    index("datasets_backing_dataset_idx").on(table.backingDatasetId),
     index("datasets_sort_order_idx").on(table.sortOrder, table.createdAt),
   ],
 );

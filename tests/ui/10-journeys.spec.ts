@@ -373,6 +373,51 @@ test("authenticated user can save a filtered table", async ({ page }, testInfo) 
   });
 });
 
+test("viewer reuses warmed primary dataset rows for derived dataset cards", async ({ page }, testInfo) => {
+  test.skip(skipUnlessDesktopViewer(testInfo.project.name));
+
+  await runSmokeJourney(
+    "viewer reuses warmed primary dataset rows for derived dataset cards",
+    async () => {
+      const bootstrap = await readUiSmokeBootstrap();
+      const rowRequests: string[] = [];
+
+      page.on("request", (request) => {
+        const url = request.url();
+
+        if (url.includes("/api/datasets/") && url.includes("/rows?")) {
+          rowRequests.push(url);
+        }
+      });
+
+      await page.goto(`/dashboard/datasets/${bootstrap.datasets.primary.id}`);
+      await expect(page.locator('[data-smoke-page="dataset-detail"]')).toBeVisible();
+      await expect(page.getByText("Rana Tharu")).toBeVisible();
+      await expect(
+        page.getByRole("heading", { name: bootstrap.datasets.primary.fileName }),
+      ).toBeVisible();
+      await expect.poll(
+        () =>
+          rowRequests.filter((url) =>
+            url.includes(`/api/datasets/${bootstrap.datasets.primary.id}/rows?`),
+          ).length,
+      ).toBeGreaterThan(0);
+
+      const warmRequestCount = rowRequests.length;
+
+      await page.getByRole("link", { name: "Back to dashboard" }).click();
+      await expect(page.locator('[data-smoke-page="dashboard"]')).toBeVisible();
+      await page.locator(`[data-smoke-dataset-row="${bootstrap.datasets.derived.id}"]`).click();
+      await expect(page.locator('[data-smoke-page="dataset-detail"]')).toBeVisible();
+      await expect(
+        page.getByRole("heading", { name: bootstrap.datasets.derived.fileName }),
+      ).toBeVisible();
+      await expect(page.getByText("Rana Tharu")).toBeVisible();
+      await expect(rowRequests).toHaveLength(warmRequestCount);
+    },
+  );
+});
+
 test("admin can edit a field definition", async ({ page }, testInfo) => {
   test.skip(skipUnlessDesktopAdmin(testInfo.project.name));
 

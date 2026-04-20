@@ -84,4 +84,45 @@ describe("datasetMetadataPatchSchema", () => {
       "Only one dataset tag can store an open preset.",
     );
   });
+
+  it("defaults legacy country presets to primary-country-only matching", () => {
+    const result = datasetMetadataPatchSchema.safeParse({
+      tags: [
+        {
+          id: "tag-1",
+          label: "Watchlist",
+          color: "#262531",
+          openPreset: {
+            region: {
+              enabled: false,
+              selectedRegionIds: [],
+              selectedRegionNames: [],
+              enabledCountryNames: [],
+            },
+            country: {
+              enabled: true,
+              selectedCountryNames: ["Jordan"],
+            },
+            watchlist: {
+              enabled: false,
+              threshold: 2,
+              engagementPhaseThreshold: 6,
+              frontierGroupValue: true,
+            },
+            uupg: {
+              enabled: false,
+            },
+          },
+        },
+      ],
+    });
+
+    expect(result.success).toBe(true);
+    if (!result.success) {
+      return;
+    }
+
+    const tag = result.data.tags?.[0];
+    expect(tag?.openPreset?.country.includeAlternateCountries).toBe(false);
+  });
 });

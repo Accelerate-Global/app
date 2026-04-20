@@ -51,6 +51,7 @@ const notFoundMock = vi.mocked(notFound);
 function createDataset(overrides: Record<string, unknown> = {}) {
   return {
     id: "dataset-1",
+    backingDatasetId: null,
     sortOrder: 0,
     fileName: "Global",
     blobUrl: "https://example.com/global.csv",
@@ -186,6 +187,27 @@ describe("/dashboard/datasets/[datasetId]/edit", () => {
     ]);
     expect(props.actorOwnerId).toBe("owner-1");
     expect(props.workspaceRole).toBe("admin");
+  });
+
+  it("skips upload history loading for derived dataset views", async () => {
+    getDatasetMock.mockResolvedValue(
+      createDataset({
+        backingDatasetId: "dataset-source-1",
+        isPrimary: false,
+      }),
+    );
+
+    render(
+      await DatasetEditPage({
+        params: Promise.resolve({ datasetId: "dataset-1" }),
+      }),
+    );
+
+    expect(listDatasetVersionsMock).not.toHaveBeenCalled();
+    const props = datasetEditPageClientSpy.mock.lastCall?.[0] as {
+      initialVersions: ReturnType<typeof createVersion>[];
+    };
+    expect(props.initialVersions).toEqual([]);
   });
 
   it("renders not found when the dataset does not exist", async () => {

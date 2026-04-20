@@ -68,6 +68,7 @@ export type UiSmokeBootstrap = {
   aliases: {
     primaryDatasetId: string;
     secondaryDatasetId: string;
+    derivedDatasetId: string;
     editableFieldDefinitionId: string;
     editableFieldSourceTypeId: string;
     southAsiaRegionId: string;
@@ -122,6 +123,10 @@ export type UiSmokeBootstrap = {
   };
   datasets: {
     primary: {
+      id: string;
+      fileName: string;
+    };
+    derived: {
       id: string;
       fileName: string;
     };

@@ -7,8 +7,13 @@ import {
   type ColumnDef,
   type SortingState,
 } from "@tanstack/react-table";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
+import {
+  ensureDatasetRowsCache,
+  getDatasetRowsCacheSnapshot,
+  subscribeToDatasetRowsCache,
+} from "@/components/dashboard/dataset-row-cache";
 import { FieldDefinitionHeaderInfo } from "@/components/dashboard/field-definition-header-info";
 import { DataGridColumnHeader } from "@/components/reui/data-grid/data-grid-column-header";
 import type {
@@ -39,27 +44,6 @@ import {
 
 type DatasetRow = DatasetRowsResponse["rows"][number];
 
-async function fetchAllRows(input: {
-  datasetId: string;
-  signal: AbortSignal;
-}) {
-  const params = new URLSearchParams({
-    all: "true",
-  });
-  const response = await fetch(
-    `/api/datasets/${input.datasetId}/rows?${params.toString()}`,
-    {
-      signal: input.signal,
-    },
-  );
-
-  if (!response.ok) {
-    throw new Error("Rows could not be loaded.");
-  }
-
-  return (await response.json()) as DatasetRowsResponse;
-}
-
 export function useDatasetTableState(input: {
   dataset: DatasetSummary;
   initialSorting?: SavedDatasetSort[] | null;
@@ -76,40 +60,57 @@ export function useDatasetTableState(input: {
     datasetSource: DatasetOpenSource;
   };
 }) {
-  const [rows, setRows] = useState<DatasetRow[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const sourceDatasetId = input.dataset.backingDatasetId ?? input.dataset.id;
+  const [rows, setRows] = useState<DatasetRow[]>(
+    () => getDatasetRowsCacheSnapshot(sourceDatasetId).rows,
+  );
+  const [isLoading, setIsLoading] = useState(
+    () => {
+      const status = getDatasetRowsCacheSnapshot(sourceDatasetId).status;
+      return status === "idle" || status === "loading";
+    },
+  );
+  const [error, setError] = useState<string | null>(
+    () => getDatasetRowsCacheSnapshot(sourceDatasetId).error,
+  );
   const [sorting, setSorting] = useState<SortingState>(
     () => input.initialSorting ?? [],
   );
+  const cacheLoadStartTimeRef = useRef<number>(Date.now());
+  const hasTrackedRowsLoadedRef = useRef(false);
+  const hasTrackedRowsFailedRef = useRef(false);
   const fieldDefinitionPresentationByColumnKey = useMemo(
     () => input.fieldDefinitionPresentationByColumnKey ?? {},
     [input.fieldDefinitionPresentationByColumnKey],
   );
 
-  const filteredRows = useMemo(
+  const rowsBeforeCountryFilter = useMemo(
     () =>
       filterDatasetRowsByUupg(
         filterDatasetRowsByWatchlist(
-          filterDatasetRowsByCountry(
-            filterDatasetRowsByRegion(rows, input.regionFilter),
-            input.countryFilter,
-          ),
+          filterDatasetRowsByRegion(rows, input.regionFilter),
           input.watchlistFilter,
         ),
         input.uupgFilter,
       ),
     [
       rows,
-      input.countryFilter,
       input.regionFilter,
       input.uupgFilter,
       input.watchlistFilter,
     ],
   );
+  const filteredRows = useMemo(
+    () => filterDatasetRowsByCountry(rowsBeforeCountryFilter, input.countryFilter),
+    [rowsBeforeCountryFilter, input.countryFilter],
+  );
   const availableCountryNames = useMemo(
-    () => getAvailableDatasetCountryNames(rows),
-    [rows],
+    () =>
+      getAvailableDatasetCountryNames(rowsBeforeCountryFilter, {
+        includeAlternateCountries:
+          input.countryFilter?.includeAlternateCountries ?? false,
+      }),
+    [input.countryFilter?.includeAlternateCountries, rowsBeforeCountryFilter],
   );
   const visibleColumns = useMemo(
     () =>
@@ -181,6 +182,7 @@ export function useDatasetTableState(input: {
     [fieldDefinitionPresentationByColumnKey, visibleColumns],
   );
 
+  // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
     data: filteredRows,
     columns,
@@ -201,77 +203,86 @@ export function useDatasetTableState(input: {
   });
 
   useEffect(() => {
-    const controller = new AbortController();
+    hasTrackedRowsLoadedRef.current = false;
+    hasTrackedRowsFailedRef.current = false;
+    cacheLoadStartTimeRef.current = Date.now();
 
-    async function loadRows() {
-      const startTime = Date.now();
-      setRows([]);
-      setIsLoading(true);
-      setError(null);
+    const initialSnapshot = getDatasetRowsCacheSnapshot(sourceDatasetId);
+    setRows(initialSnapshot.rows);
+    setIsLoading(
+      initialSnapshot.status === "idle" || initialSnapshot.status === "loading",
+    );
+    setError(initialSnapshot.error);
 
-      try {
-        const payload = await fetchAllRows({
-          datasetId: input.dataset.id,
-          signal: controller.signal,
-        });
+    if (input.analytics) {
+      const { datasetSource, context } = input.analytics;
+      const isCacheHit =
+        initialSnapshot.status === "ready" || initialSnapshot.status === "loading";
 
-        if (!controller.signal.aborted) {
-          setRows(payload.rows);
-          if (input.analytics) {
-            const { datasetSource, context } = input.analytics;
-            const durationMs = Date.now() - startTime;
-            trackAppEvent(
-              "dataset_rows_loaded",
-              withAnalyticsContext(context, {
-                source_surface: "dataset_table",
-                success: true,
-                dataset_id: input.dataset.id,
-                dataset_source: datasetSource,
-                row_count: payload.rows.length,
-                load_duration_ms: durationMs,
-                duration_ms: durationMs,
-              }),
-            );
-          }
-        }
-      } catch (fetchError) {
-        if (
-          fetchError instanceof DOMException &&
-          fetchError.name === "AbortError"
-        ) {
-          return;
-        }
-
-        if (input.analytics) {
-          const { datasetSource, context } = input.analytics;
-          trackAppEvent(
-            "dataset_rows_failed",
-            withAnalyticsContext(context, {
-              source_surface: "dataset_table",
-              success: false,
-              error_code: "dataset_rows_failed",
-              dataset_id: input.dataset.id,
-              dataset_source: datasetSource,
-              duration_ms: Date.now() - startTime,
-            }),
-          );
-        }
-        setError(
-          fetchError instanceof Error
-            ? fetchError.message
-            : "Rows could not be loaded.",
-        );
-      } finally {
-        if (!controller.signal.aborted) {
-          setIsLoading(false);
-        }
-      }
+      trackAppEvent(
+        isCacheHit ? "dataset_row_cache_hit" : "dataset_row_cache_miss",
+        withAnalyticsContext(context, {
+          source_surface: "dataset_table",
+          success: true,
+          dataset_id: input.dataset.id,
+          dataset_source: datasetSource,
+          source_dataset_id: sourceDatasetId,
+          cached_row_count: initialSnapshot.rows.length,
+        }),
+      );
     }
 
-    void loadRows();
+    const unsubscribe = subscribeToDatasetRowsCache(sourceDatasetId, (snapshot) => {
+      setRows(snapshot.rows);
+      setIsLoading(snapshot.status === "idle" || snapshot.status === "loading");
+      setError(snapshot.error);
 
-    return () => controller.abort();
-  }, [input.analytics, input.dataset.id, input.dataset.rowCount]);
+      if (!input.analytics) {
+        return;
+      }
+
+      const { datasetSource, context } = input.analytics;
+      const durationMs = Date.now() - cacheLoadStartTimeRef.current;
+
+      if (snapshot.isReady && !hasTrackedRowsLoadedRef.current) {
+        hasTrackedRowsLoadedRef.current = true;
+        trackAppEvent(
+          "dataset_rows_loaded",
+          withAnalyticsContext(context, {
+            source_surface: "dataset_table",
+            success: true,
+            dataset_id: input.dataset.id,
+            dataset_source: datasetSource,
+            row_count: snapshot.rows.length,
+            load_duration_ms: durationMs,
+            duration_ms: durationMs,
+          }),
+        );
+      }
+
+      if (snapshot.status === "error" && !hasTrackedRowsFailedRef.current) {
+        hasTrackedRowsFailedRef.current = true;
+        trackAppEvent(
+          "dataset_rows_failed",
+          withAnalyticsContext(context, {
+            source_surface: "dataset_table",
+            success: false,
+            error_code: "dataset_rows_failed",
+            dataset_id: input.dataset.id,
+            dataset_source: datasetSource,
+            duration_ms: durationMs,
+          }),
+        );
+      }
+    });
+
+    void ensureDatasetRowsCache({
+      datasetId: input.dataset.id,
+      sourceDatasetId,
+    }).promise;
+
+    return unsubscribe;
+  }, [input.analytics, input.dataset.id, sourceDatasetId]);
 
   return {
     table,

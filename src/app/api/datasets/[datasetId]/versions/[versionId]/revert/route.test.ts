@@ -12,6 +12,14 @@ vi.mock("@/lib/auth", () => ({
 }));
 
 vi.mock("@/lib/datasets", () => ({
+  DerivedDatasetMutationError: class DerivedDatasetMutationError extends Error {
+    readonly status = 409;
+
+    constructor(message = "Derived dataset views do not have upload history to revert.") {
+      super(message);
+      this.name = "DerivedDatasetMutationError";
+    }
+  },
   DatasetVersionRevertConflictError: class DatasetVersionRevertConflictError extends Error {
     readonly status = 409;
 
@@ -36,6 +44,7 @@ const identity = {
 
 const dataset = {
   id: "dataset-1",
+  backingDatasetId: null,
   sortOrder: 0,
   fileName: "customers.csv",
   blobUrl:
@@ -145,6 +154,23 @@ describe("/api/datasets/[datasetId]/versions/[versionId]/revert", () => {
     expect(response.status).toBe(409);
     await expect(response.json()).resolves.toEqual({
       error: "Only ready dataset versions can be reverted.",
+    });
+  });
+
+  it("rejects reverts for derived dataset views", async () => {
+    const { DerivedDatasetMutationError } = await import("@/lib/datasets");
+    revertDatasetVersionMock.mockRejectedValue(new DerivedDatasetMutationError());
+
+    const response = await POST(
+      new Request("http://localhost/api/datasets/dataset-1/versions/version-1/revert", {
+        method: "POST",
+      }),
+      context,
+    );
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual({
+      error: "Derived dataset views do not have upload history to revert.",
     });
   });
 });

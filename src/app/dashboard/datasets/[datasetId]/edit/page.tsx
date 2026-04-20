@@ -39,7 +39,7 @@ export default async function DatasetEditPage({
 
   const [datasets, versions] = await Promise.all([
     listDatasets(),
-    listDatasetVersions(dataset.id),
+    dataset.backingDatasetId ? Promise.resolve([]) : listDatasetVersions(dataset.id),
   ]);
   const availableTags = getReusableDatasetTags(
     datasets.flatMap((item) => item.tags),
@@ -68,8 +68,9 @@ export default async function DatasetEditPage({
             Edit dataset
           </h1>
           <p className="max-w-3xl text-base leading-7 text-muted-foreground sm:text-lg">
-            Update {dataset.fileName} and manage its tags, displayed fields, and
-            upload history from one place.
+            {dataset.backingDatasetId
+              ? `Update ${dataset.fileName} and manage its tags, displayed fields, and default view settings from one place.`
+              : `Update ${dataset.fileName} and manage its tags, displayed fields, and upload history from one place.`}
           </p>
         </section>
         <DatasetEditPageClient

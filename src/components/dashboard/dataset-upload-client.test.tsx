@@ -50,6 +50,7 @@ function buildJsonResponse(payload: unknown, status = 200) {
 function createTargetDataset() {
   return {
     id: "dataset-1",
+    backingDatasetId: null,
     sortOrder: 0,
     fileName: "Global.csv",
     blobUrl: "https://example.com/global.csv",

@@ -63,4 +63,22 @@ describe("CountrySearchSelector", () => {
 
     expect(screen.getByText("No countries match this search.")).toBeTruthy();
   });
+
+  it("shows the active-country count when the current result set is broader than the explicit selection", () => {
+    render(
+      <CountrySearchSelector
+        allCountries={["Egypt", "Jordan", "Turkey"]}
+        selectedCountries={[]}
+        visibleCountries={["Egypt", "Jordan"]}
+        searchValue=""
+        disabled={false}
+        onSearchChange={vi.fn()}
+        onToggleCountry={vi.fn()}
+        onSelectVisible={vi.fn()}
+        onClearVisible={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("2 visible")).toBeTruthy();
+  });
 });

@@ -25,6 +25,7 @@ vi.mock("@/lib/analytics-client", () => ({
 function createDataset(overrides: Record<string, unknown> = {}) {
   return {
     id: "dataset-1",
+    backingDatasetId: null,
     sortOrder: 0,
     fileName: "Global.csv",
     blobUrl: "https://example.com/global.csv",
@@ -199,6 +200,37 @@ describe("DatasetEditPageClient", () => {
     fireEvent.click(screen.getByRole("button", { name: "Replace dataset" }));
 
     expect(pushMock).toHaveBeenCalledWith("/dashboard/upload?replace=dataset-1");
+  });
+
+  it("disables primary and replacement controls for derived dataset views", () => {
+    render(
+      <DatasetEditPageClient
+        initialDataset={createDataset({
+          backingDatasetId: "dataset-source-1",
+          isPrimary: false,
+        })}
+        availableTags={[]}
+        initialVersions={[
+          createVersion({
+            id: "dataset-version-0",
+            isCurrent: false,
+            fileName: "Global-upload.csv",
+            action: "replace",
+          }),
+        ]}
+      />,
+    );
+
+    expect(
+      screen.getByText(/This dataset is a derived view backed by another dataset/i),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "Replace dataset" }).hasAttribute("disabled"),
+    ).toBe(true);
+    expect(
+      screen.getByText(/Replace and revert actions are only available on the backing source dataset/i),
+    ).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Revert" })).toBeNull();
   });
 
   it("shows an error when a saved preset tag needs unsupported dataset filters", async () => {

@@ -26,7 +26,7 @@ export default async function UploadPage({ searchParams }: UploadPageProps) {
   const { replace } = await searchParams;
   const targetDataset = replace ? await getDataset(replace) : null;
 
-  if (replace && !targetDataset) {
+  if (replace && (!targetDataset || targetDataset.backingDatasetId)) {
     redirect("/dashboard");
   }
 

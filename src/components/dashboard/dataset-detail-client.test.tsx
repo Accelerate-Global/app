@@ -59,6 +59,7 @@ vi.mock("@/lib/analytics-client", () => ({
 
 const datasetBase = {
   id: "dataset-1",
+  backingDatasetId: null,
   sortOrder: 0,
   fileName: "Global",
   blobUrl: "https://example.com/dataset.csv",
@@ -88,6 +89,7 @@ function createInitialFilters(
     country: {
       enabled: false,
       selectedCountryNames: [],
+      includeAlternateCountries: false,
       ...overrides.country,
     },
     watchlist: {
@@ -294,14 +296,14 @@ describe("DatasetDetailClient", () => {
     expect(actionBarProps.recordCount).toBe(2);
   });
 
-  it("hides Globe from the region card and uses the visible regions for filtering", () => {
+  it("selects Global by default and uses it for region filtering", () => {
     const regions = [
       {
         id: "f1000000-0000-4000-8000-000000000001",
-        name: "Globe",
+        name: "Global",
         description: "",
         sortOrder: 1,
-        countries: ["Nepal"],
+        countries: ["India", "Nepal"],
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       },
@@ -335,9 +337,8 @@ describe("DatasetDetailClient", () => {
 
     const viewSwitchGridProps = viewSwitchGridSpy.mock.calls[0]?.[0] as {
       regionCard: {
-        enabled: boolean;
         supported: boolean;
-        selectors: Array<{ id: string; checked: boolean }>;
+        selectors: Array<{ id: string; label: string; checked: boolean }>;
       };
     };
     const datasetTableStateProps = useDatasetTableStateMock.mock.calls[0]?.[0] as {
@@ -360,12 +361,17 @@ describe("DatasetDetailClient", () => {
     };
 
     expect(viewSwitchGridProps.regionCard).toMatchObject({
-      enabled: true,
       supported: true,
       selectors: [
         {
-          id: "f1000000-0000-4000-8000-000000000002",
+          id: "f1000000-0000-4000-8000-000000000001",
+          label: "Global",
           checked: true,
+        },
+        {
+          id: "f1000000-0000-4000-8000-000000000002",
+          label: "South Asia",
+          checked: false,
         },
       ],
     });
@@ -373,13 +379,13 @@ describe("DatasetDetailClient", () => {
       enabled: true,
       isSupported: true,
       hasConfiguredRegions: true,
-      enabledCountryNames: ["India"],
+      enabledCountryNames: ["India", "Nepal"],
     });
     expect(actionBarProps.filters.region).toEqual({
       enabled: true,
-      selectedRegionIds: ["f1000000-0000-4000-8000-000000000002"],
-      selectedRegionNames: ["South Asia"],
-      enabledCountryNames: ["India"],
+      selectedRegionIds: ["f1000000-0000-4000-8000-000000000001"],
+      selectedRegionNames: ["Global"],
+      enabledCountryNames: ["India", "Nepal"],
     });
   });
 
@@ -388,8 +394,24 @@ describe("DatasetDetailClient", () => {
       table: {} as never,
       sorting: [],
       visibleColumns: [],
-      availableCountryNames: ["Egypt", "Jordan", "Turkey"],
-      sortedRows: [],
+      availableCountryNames: ["Egypt", "Jordan"],
+      sortedRows: [
+        {
+          id: "row-1",
+          rowIndex: 0,
+          data: {
+            Geo_Country_Name: "Jordan",
+          },
+        },
+        {
+          id: "row-2",
+          rowIndex: 1,
+          data: {
+            Geo_Country_Name: "Egypt",
+            Alternate_Countries: "Turkey",
+          },
+        },
+      ],
       recordCount: 2,
       isLoading: false,
       error: null,
@@ -422,7 +444,10 @@ describe("DatasetDetailClient", () => {
         enabled: boolean;
         supported: boolean;
         availableCountries: string[];
+        visibleCountries: string[];
         selectedCountries: string[];
+        includeAlternateCountries: boolean;
+        supportsAlternateCountries: boolean;
         onEnabledChange: (enabled: boolean) => void;
         onToggleCountry: (countryName: string, checked: boolean) => void;
       };
@@ -431,8 +456,11 @@ describe("DatasetDetailClient", () => {
     expect(initialViewSwitchGridProps.countryCard).toMatchObject({
       enabled: false,
       supported: true,
-      availableCountries: ["Egypt", "Jordan", "Turkey"],
+      availableCountries: ["Egypt", "Jordan"],
+      visibleCountries: ["Egypt", "Jordan"],
       selectedCountries: [],
+      includeAlternateCountries: false,
+      supportsAlternateCountries: true,
     });
 
     act(() => {
@@ -445,6 +473,7 @@ describe("DatasetDetailClient", () => {
         enabled: boolean;
         isSupported: boolean;
         selectedCountryNames: string[];
+        includeAlternateCountries: boolean;
       };
     };
     const latestActionBarProps = actionBarSpy.mock.lastCall?.[0] as {
@@ -452,6 +481,7 @@ describe("DatasetDetailClient", () => {
         country: {
           enabled: boolean;
           selectedCountryNames: string[];
+          includeAlternateCountries?: boolean;
         };
       };
     };
@@ -460,14 +490,204 @@ describe("DatasetDetailClient", () => {
       enabled: true,
       isSupported: true,
       selectedCountryNames: ["Jordan"],
+      includeAlternateCountries: false,
     });
     expect(latestActionBarProps.filters.country).toEqual({
       enabled: true,
       selectedCountryNames: ["Jordan"],
+      includeAlternateCountries: false,
     });
   });
 
-  it("lets the region header switch disable region filtering", () => {
+  it("defaults legacy presets to primary-country-only matching", () => {
+    useDatasetTableStateMock.mockImplementation((props: {
+      countryFilter: {
+        includeAlternateCountries: boolean;
+      };
+    }) => ({
+      table: {} as never,
+      sorting: [],
+      visibleColumns: [],
+      availableCountryNames: props.countryFilter.includeAlternateCountries
+        ? ["Egypt", "Jordan", "Turkey"]
+        : ["Egypt", "Jordan"],
+      sortedRows: [],
+      recordCount: 2,
+      isLoading: false,
+      error: null,
+    }));
+
+    render(
+      <DatasetDetailClient
+        dataset={{
+          ...datasetBase,
+          columns: [
+            {
+              key: "geo_country_name",
+              label: "Geo_Country_Name",
+              sourceIndex: 0,
+            },
+            {
+              key: "alternate_countries",
+              label: "Alternate Countries",
+              sourceIndex: 1,
+            },
+          ],
+        }}
+        regions={[]}
+        fieldDefinitionPresentationByColumnKey={{}}
+        initialFilters={createInitialFilters({
+          country: {
+            enabled: true,
+            selectedCountryNames: ["Turkey"],
+          },
+        })}
+      />,
+    );
+
+    const datasetTableStateProps = useDatasetTableStateMock.mock.lastCall?.[0] as {
+      countryFilter: {
+        enabled: boolean;
+        isSupported: boolean;
+        includeAlternateCountries: boolean;
+        selectedCountryNames: string[];
+      };
+    };
+    const actionBarProps = actionBarSpy.mock.lastCall?.[0] as {
+      filters: {
+        country: {
+          enabled: boolean;
+          includeAlternateCountries?: boolean;
+          selectedCountryNames: string[];
+        };
+      };
+    };
+
+    expect(datasetTableStateProps.countryFilter).toEqual({
+      enabled: true,
+      isSupported: true,
+      includeAlternateCountries: false,
+      selectedCountryNames: [],
+    });
+    expect(actionBarProps.filters.country).toEqual({
+      enabled: true,
+      includeAlternateCountries: false,
+      selectedCountryNames: [],
+    });
+  });
+
+  it("prunes alternate-only country selections when alternate-country matching is turned off", () => {
+    useDatasetTableStateMock.mockImplementation((props: {
+      countryFilter: {
+        includeAlternateCountries: boolean;
+      };
+    }) => ({
+      table: {} as never,
+      sorting: [],
+      visibleColumns: [],
+      availableCountryNames: props.countryFilter.includeAlternateCountries
+        ? ["Egypt", "Jordan", "Turkey"]
+        : ["Egypt", "Jordan"],
+      sortedRows: [],
+      recordCount: 2,
+      isLoading: false,
+      error: null,
+    }));
+
+    render(
+      <DatasetDetailClient
+        dataset={{
+          ...datasetBase,
+          columns: [
+            {
+              key: "geo_country_name",
+              label: "Geo_Country_Name",
+              sourceIndex: 0,
+            },
+            {
+              key: "alternate_countries",
+              label: "Alternate Countries",
+              sourceIndex: 1,
+            },
+          ],
+        }}
+        regions={[]}
+        fieldDefinitionPresentationByColumnKey={{}}
+      />,
+    );
+
+    const viewSwitchGridProps = viewSwitchGridSpy.mock.lastCall?.[0] as {
+      countryCard: {
+        onEnabledChange: (enabled: boolean) => void;
+        onIncludeAlternateCountriesChange: (enabled: boolean) => void;
+        onToggleCountry: (countryName: string, checked: boolean) => void;
+      };
+    };
+
+    act(() => {
+      viewSwitchGridProps.countryCard.onIncludeAlternateCountriesChange(true);
+      viewSwitchGridProps.countryCard.onEnabledChange(true);
+      viewSwitchGridProps.countryCard.onToggleCountry("Turkey", true);
+    });
+
+    let latestDatasetTableStateProps = useDatasetTableStateMock.mock.lastCall?.[0] as {
+      countryFilter: {
+        enabled: boolean;
+        isSupported: boolean;
+        includeAlternateCountries: boolean;
+        selectedCountryNames: string[];
+      };
+    };
+
+    expect(latestDatasetTableStateProps.countryFilter).toEqual({
+      enabled: true,
+      isSupported: true,
+      includeAlternateCountries: true,
+      selectedCountryNames: ["Turkey"],
+    });
+
+    const alternateToggleProps = viewSwitchGridSpy.mock.lastCall?.[0] as {
+      countryCard: {
+        onIncludeAlternateCountriesChange: (enabled: boolean) => void;
+      };
+    };
+
+    act(() => {
+      alternateToggleProps.countryCard.onIncludeAlternateCountriesChange(false);
+    });
+
+    latestDatasetTableStateProps = useDatasetTableStateMock.mock.lastCall?.[0] as {
+      countryFilter: {
+        enabled: boolean;
+        isSupported: boolean;
+        includeAlternateCountries: boolean;
+        selectedCountryNames: string[];
+      };
+    };
+    const latestActionBarProps = actionBarSpy.mock.lastCall?.[0] as {
+      filters: {
+        country: {
+          enabled: boolean;
+          includeAlternateCountries?: boolean;
+          selectedCountryNames: string[];
+        };
+      };
+    };
+
+    expect(latestDatasetTableStateProps.countryFilter).toEqual({
+      enabled: true,
+      isSupported: true,
+      includeAlternateCountries: false,
+      selectedCountryNames: [],
+    });
+    expect(latestActionBarProps.filters.country).toEqual({
+      enabled: true,
+      includeAlternateCountries: false,
+      selectedCountryNames: [],
+    });
+  });
+
+  it("uses exclusive Global selector behavior and restores Global when the last specific region turns off", () => {
     render(
       <DatasetDetailClient
         dataset={{
@@ -482,10 +702,19 @@ describe("DatasetDetailClient", () => {
         }}
         regions={[
           {
+            id: "f1000000-0000-4000-8000-000000000001",
+            name: "Global",
+            description: "",
+            sortOrder: 1,
+            countries: ["India", "Nepal"],
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+          {
             id: "f1000000-0000-4000-8000-000000000002",
             name: "South Asia",
             description: "Countries across South Asia.",
-            sortOrder: 1,
+            sortOrder: 2,
             countries: ["India"],
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
@@ -497,29 +726,137 @@ describe("DatasetDetailClient", () => {
 
     const initialViewSwitchGridProps = viewSwitchGridSpy.mock.lastCall?.[0] as {
       regionCard: {
-        onEnabledChange: (enabled: boolean) => void;
+        onSelectorChange: (regionId: string, checked: boolean) => void;
       };
     };
 
     act(() => {
-      initialViewSwitchGridProps.regionCard.onEnabledChange(false);
+      initialViewSwitchGridProps.regionCard.onSelectorChange(
+        "f1000000-0000-4000-8000-000000000002",
+        true,
+      );
     });
 
-    const latestDatasetTableStateProps = useDatasetTableStateMock.mock.lastCall?.[0] as {
+    let latestDatasetTableStateProps = useDatasetTableStateMock.mock.lastCall?.[0] as {
       regionFilter: {
         enabled: boolean;
+        isSupported: boolean;
+        hasConfiguredRegions: boolean;
+        enabledCountryNames: string[];
       };
     };
-    const latestActionBarProps = actionBarSpy.mock.lastCall?.[0] as {
+    let latestActionBarProps = actionBarSpy.mock.lastCall?.[0] as {
       filters: {
         region: {
           enabled: boolean;
+          selectedRegionIds: string[];
+          selectedRegionNames: string[];
+          enabledCountryNames: string[];
         };
       };
     };
 
-    expect(latestDatasetTableStateProps.regionFilter.enabled).toBe(false);
-    expect(latestActionBarProps.filters.region.enabled).toBe(false);
+    expect(latestDatasetTableStateProps.regionFilter).toEqual({
+      enabled: true,
+      isSupported: true,
+      hasConfiguredRegions: true,
+      enabledCountryNames: ["India"],
+    });
+    expect(latestActionBarProps.filters.region).toEqual({
+      enabled: true,
+      selectedRegionIds: ["f1000000-0000-4000-8000-000000000002"],
+      selectedRegionNames: ["South Asia"],
+      enabledCountryNames: ["India"],
+    });
+
+    const specificRegionProps = viewSwitchGridSpy.mock.lastCall?.[0] as {
+      regionCard: {
+        onSelectorChange: (regionId: string, checked: boolean) => void;
+      };
+    };
+
+    act(() => {
+      specificRegionProps.regionCard.onSelectorChange(
+        "f1000000-0000-4000-8000-000000000001",
+        true,
+      );
+    });
+
+    latestActionBarProps = actionBarSpy.mock.lastCall?.[0] as {
+      filters: {
+        region: {
+          enabled: boolean;
+          selectedRegionIds: string[];
+          selectedRegionNames: string[];
+          enabledCountryNames: string[];
+        };
+      };
+    };
+
+    expect(latestActionBarProps.filters.region).toEqual({
+      enabled: true,
+      selectedRegionIds: ["f1000000-0000-4000-8000-000000000001"],
+      selectedRegionNames: ["Global"],
+      enabledCountryNames: ["India", "Nepal"],
+    });
+
+    const selectedSpecificRegionProps = viewSwitchGridSpy.mock.lastCall?.[0] as {
+      regionCard: {
+        onSelectorChange: (regionId: string, checked: boolean) => void;
+      };
+    };
+
+    act(() => {
+      selectedSpecificRegionProps.regionCard.onSelectorChange(
+        "f1000000-0000-4000-8000-000000000002",
+        true,
+      );
+    });
+
+    const selectedRegionProps = viewSwitchGridSpy.mock.lastCall?.[0] as {
+      regionCard: {
+        onSelectorChange: (regionId: string, checked: boolean) => void;
+      };
+    };
+
+    act(() => {
+      selectedRegionProps.regionCard.onSelectorChange(
+        "f1000000-0000-4000-8000-000000000002",
+        false,
+      );
+    });
+
+    latestDatasetTableStateProps = useDatasetTableStateMock.mock.lastCall?.[0] as {
+      regionFilter: {
+        enabled: boolean;
+        isSupported: boolean;
+        hasConfiguredRegions: boolean;
+        enabledCountryNames: string[];
+      };
+    };
+    latestActionBarProps = actionBarSpy.mock.lastCall?.[0] as {
+      filters: {
+        region: {
+          enabled: boolean;
+          selectedRegionIds: string[];
+          selectedRegionNames: string[];
+          enabledCountryNames: string[];
+        };
+      };
+    };
+
+    expect(latestDatasetTableStateProps.regionFilter).toEqual({
+      enabled: true,
+      isSupported: true,
+      hasConfiguredRegions: true,
+      enabledCountryNames: ["India", "Nepal"],
+    });
+    expect(latestActionBarProps.filters.region).toEqual({
+      enabled: true,
+      selectedRegionIds: ["f1000000-0000-4000-8000-000000000001"],
+      selectedRegionNames: ["Global"],
+      enabledCountryNames: ["India", "Nepal"],
+    });
   });
 
   it("passes supported watchlist filter state into the card, shared table state, and action bar", () => {
@@ -828,7 +1165,7 @@ describe("DatasetDetailClient", () => {
     });
   });
 
-  it("uses an initial preset to override the default region-on behavior", () => {
+  it("maps a legacy disabled preset to the default Global selection", () => {
     render(
       <DatasetDetailClient
         dataset={{
@@ -843,10 +1180,19 @@ describe("DatasetDetailClient", () => {
         }}
         regions={[
           {
+            id: "f1000000-0000-4000-8000-000000000001",
+            name: "Global",
+            description: "",
+            sortOrder: 1,
+            countries: ["India", "Nepal"],
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+          {
             id: "f1000000-0000-4000-8000-000000000002",
             name: "South Asia",
             description: "Countries across South Asia.",
-            sortOrder: 1,
+            sortOrder: 2,
             countries: ["India"],
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
@@ -873,16 +1219,16 @@ describe("DatasetDetailClient", () => {
     };
 
     expect(datasetTableStateProps.regionFilter).toMatchObject({
-      enabled: false,
-      enabledCountryNames: ["India"],
+      enabled: true,
+      enabledCountryNames: ["India", "Nepal"],
     });
     expect(actionBarProps.filters.region).toMatchObject({
-      enabled: false,
-      selectedRegionIds: [],
+      enabled: true,
+      selectedRegionIds: ["f1000000-0000-4000-8000-000000000001"],
     });
   });
 
-  it("hydrates saved-view region matching by current region name and restores initial sorting", () => {
+  it("hydrates legacy Globe saved-view names to the current Global selector and restores initial sorting", () => {
     const initialSorting: SavedDatasetSort[] = [
       {
         id: "geo_country_name",
@@ -904,10 +1250,19 @@ describe("DatasetDetailClient", () => {
         }}
         regions={[
           {
+            id: "f1000000-0000-4000-8000-000000000001",
+            name: "Global",
+            description: "",
+            sortOrder: 1,
+            countries: ["India", "Nepal"],
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+          {
             id: "f1000000-0000-4000-8000-000000000002",
             name: "South Asia",
             description: "Countries across South Asia.",
-            sortOrder: 1,
+            sortOrder: 2,
             countries: ["India"],
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
@@ -918,8 +1273,8 @@ describe("DatasetDetailClient", () => {
           region: {
             enabled: true,
             selectedRegionIds: ["missing-region-id"],
-            selectedRegionNames: ["South Asia"],
-            enabledCountryNames: ["India"],
+            selectedRegionNames: ["Globe"],
+            enabledCountryNames: ["India", "Nepal"],
           },
         })}
         initialSorting={initialSorting}
@@ -946,16 +1301,16 @@ describe("DatasetDetailClient", () => {
     expect(datasetTableStateProps.initialSorting).toEqual(initialSorting);
     expect(datasetTableStateProps.regionFilter).toMatchObject({
       enabled: true,
-      enabledCountryNames: ["India"],
+      enabledCountryNames: ["India", "Nepal"],
     });
     expect(actionBarProps.filters.region).toMatchObject({
       enabled: true,
-      selectedRegionIds: ["f1000000-0000-4000-8000-000000000002"],
-      selectedRegionNames: ["South Asia"],
+      selectedRegionIds: ["f1000000-0000-4000-8000-000000000001"],
+      selectedRegionNames: ["Global"],
     });
   });
 
-  it("turns region filtering off when a saved view no longer matches any configured region", () => {
+  it("falls back to Global when a saved view no longer matches any configured region", () => {
     render(
       <DatasetDetailClient
         dataset={{
@@ -970,10 +1325,19 @@ describe("DatasetDetailClient", () => {
         }}
         regions={[
           {
+            id: "f1000000-0000-4000-8000-000000000001",
+            name: "Global",
+            description: "",
+            sortOrder: 1,
+            countries: ["India", "Nepal"],
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+          {
             id: "f1000000-0000-4000-8000-000000000002",
             name: "South Asia",
             description: "Countries across South Asia.",
-            sortOrder: 1,
+            sortOrder: 2,
             countries: ["India"],
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
@@ -999,8 +1363,8 @@ describe("DatasetDetailClient", () => {
     };
 
     expect(datasetTableStateProps.regionFilter).toMatchObject({
-      enabled: false,
-      enabledCountryNames: ["India"],
+      enabled: true,
+      enabledCountryNames: ["India", "Nepal"],
     });
   });
 });

@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getCurrentIdentity } from "@/lib/auth";
-import { getDataset } from "@/lib/datasets";
+import { getAllDatasetRows, getDataset } from "@/lib/datasets";
+import { listFieldDefinitionPresentationByColumnKey } from "@/lib/field-definitions";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { GET } from "./route";
 
@@ -27,11 +28,20 @@ vi.mock("@/lib/supabase/admin", () => ({
 }));
 
 vi.mock("@/lib/datasets", () => ({
+  getAllDatasetRows: vi.fn(),
   getDataset: vi.fn(),
 }));
 
+vi.mock("@/lib/field-definitions", () => ({
+  listFieldDefinitionPresentationByColumnKey: vi.fn(),
+}));
+
+const getAllDatasetRowsMock = vi.mocked(getAllDatasetRows);
 const getCurrentIdentityMock = vi.mocked(getCurrentIdentity);
 const getDatasetMock = vi.mocked(getDataset);
+const listFieldDefinitionPresentationByColumnKeyMock = vi.mocked(
+  listFieldDefinitionPresentationByColumnKey,
+);
 const createSupabaseAdminClientMock = vi.mocked(createSupabaseAdminClient);
 
 const adminIdentity = {
@@ -56,8 +66,9 @@ const context = {
   }),
 };
 
-const dataset = {
+const physicalDataset = {
   id: "f0000000-0000-4000-8000-000000000001",
+  backingDatasetId: null,
   sortOrder: 0,
   fileName: "customers.csv",
   blobUrl:
@@ -75,11 +86,87 @@ const dataset = {
   updatedAt: new Date().toISOString(),
 };
 
+const derivedDataset = {
+  ...physicalDataset,
+  id: "f0000000-0000-4000-8000-000000000099",
+  backingDatasetId: physicalDataset.id,
+  fileName: "Watchlist.csv",
+  tags: [
+    {
+      id: "tag-1",
+      label: "Watchlist",
+      color: "#262531",
+      openPreset: {
+        region: {
+          enabled: false,
+          selectedRegionIds: [],
+          selectedRegionNames: [],
+          enabledCountryNames: [],
+        },
+        country: {
+          enabled: true,
+          selectedCountryNames: ["Egypt"],
+        },
+        watchlist: {
+          enabled: false,
+          thresholdEnabled: true,
+          threshold: 2,
+          engagementPhaseEnabled: true,
+          engagementPhaseThreshold: 6,
+          evangelicalPopulationBelieversRuleEnabled: true,
+          evangelicalPopulationBelieversRule: {
+            tiers: [
+              {
+                minPopulation: 0,
+                maxPopulation: null,
+                minBelievers: 50,
+              },
+            ],
+          },
+          frontierGroupEnabled: true,
+          frontierGroupValue: true,
+        },
+        uupg: {
+          enabled: false,
+        },
+      },
+    },
+  ],
+};
+
 describe("/api/datasets/[datasetId]/download", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     getCurrentIdentityMock.mockResolvedValue(viewerIdentity);
-    getDatasetMock.mockResolvedValue(dataset);
+    getDatasetMock.mockResolvedValue(physicalDataset);
+    getAllDatasetRowsMock.mockResolvedValue({
+      sourceDatasetId: physicalDataset.id,
+      rows: [
+        {
+          id: "row-1",
+          rowIndex: 0,
+          data: { email: "ada@example.com", geo_country_name: "Egypt" },
+        },
+      ],
+      page: 1,
+      pageSize: 1,
+      totalRows: 1,
+      pageCount: 1,
+    });
+    listFieldDefinitionPresentationByColumnKeyMock.mockResolvedValue({
+      email: {
+        definition: "",
+        displayLabel: "Email",
+        effectiveLabel: "Email",
+        linkedSources: [],
+      },
+      geo_country_name: {
+        definition: "",
+        displayLabel: "Country",
+        effectiveLabel: "Country",
+        linkedSources: [],
+      },
+    });
     createSignedUrlMock.mockResolvedValue({
       data: {
         signedUrl: "https://example.supabase.co/storage/v1/object/sign/datasets/csv/customers.csv",
@@ -112,7 +199,7 @@ describe("/api/datasets/[datasetId]/download", () => {
     expect(createSupabaseAdminClientMock).not.toHaveBeenCalled();
   });
 
-  it("creates a signed download URL for authenticated viewers", async () => {
+  it("creates a signed download URL for physical datasets", async () => {
     const response = await GET(
       new Request("http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001/download"),
       context,
@@ -124,8 +211,58 @@ describe("/api/datasets/[datasetId]/download", () => {
     );
     expect(createSupabaseAdminClientMock).toHaveBeenCalledWith();
     expect(fromMock).toHaveBeenCalledWith("datasets");
-    expect(createSignedUrlMock).toHaveBeenCalledWith(dataset.blobPath, 60, {
-      download: dataset.fileName,
+    expect(createSignedUrlMock).toHaveBeenCalledWith(physicalDataset.blobPath, 60, {
+      download: physicalDataset.fileName,
+    });
+    expect(getAllDatasetRowsMock).not.toHaveBeenCalled();
+  });
+
+  it("exports filtered csv data for derived datasets", async () => {
+    getDatasetMock.mockResolvedValue({
+      ...derivedDataset,
+      columns: [
+        { key: "email", label: "Email", sourceIndex: 0 },
+        { key: "geo_country_name", label: "Country", sourceIndex: 1 },
+      ],
+    });
+    getAllDatasetRowsMock.mockResolvedValue({
+      sourceDatasetId: physicalDataset.id,
+      rows: [
+        {
+          id: "row-1",
+          rowIndex: 0,
+          data: { email: "ada@example.com", geo_country_name: "Egypt" },
+        },
+        {
+          id: "row-2",
+          rowIndex: 1,
+          data: { email: "grace@example.com", geo_country_name: "Turkey" },
+        },
+      ],
+      page: 1,
+      pageSize: 2,
+      totalRows: 2,
+      pageCount: 1,
+    });
+
+    const response = await GET(
+      new Request("http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001/download"),
+      {
+        params: Promise.resolve({
+          datasetId: derivedDataset.id,
+        }),
+      },
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toContain("text/csv");
+    expect(response.headers.get("content-disposition")).toContain(
+      'filename="Watchlist-filtered.csv"',
+    );
+    await expect(response.text()).resolves.toContain("1,Egypt,ada@example.com");
+    expect(createSupabaseAdminClientMock).not.toHaveBeenCalled();
+    expect(getAllDatasetRowsMock).toHaveBeenCalledWith({
+      datasetId: derivedDataset.id,
     });
   });
 

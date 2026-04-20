@@ -1,6 +1,8 @@
 import { getCurrentIdentity } from "@/lib/auth";
 import {
   DatasetOpenPresetCompatibilityError,
+  DatasetDeleteConflictError,
+  DerivedDatasetMutationError,
   deleteDataset,
   getDataset,
   updateDatasetDetails,
@@ -70,7 +72,10 @@ export async function PATCH(request: Request, context: DatasetContext) {
             hiddenColumnKeys: parsed.data.hiddenColumnKeys,
           });
   } catch (error) {
-    if (error instanceof DatasetOpenPresetCompatibilityError) {
+    if (
+      error instanceof DatasetOpenPresetCompatibilityError ||
+      error instanceof DerivedDatasetMutationError
+    ) {
       return jsonError(error.message, error.status);
     }
 
@@ -96,7 +101,17 @@ export async function DELETE(_request: Request, context: DatasetContext) {
   }
 
   const { datasetId } = await context.params;
-  const deleted = await deleteDataset(datasetId);
+  let deleted;
+
+  try {
+    deleted = await deleteDataset(datasetId);
+  } catch (error) {
+    if (error instanceof DatasetDeleteConflictError) {
+      return jsonError(error.message, error.status);
+    }
+
+    throw error;
+  }
 
   if (!deleted) {
     return jsonError("Dataset not found.", 404);

@@ -9,6 +9,14 @@ vi.mock("@/lib/auth", () => ({
 }));
 
 vi.mock("@/lib/datasets", () => ({
+  DerivedDatasetMutationError: class DerivedDatasetMutationError extends Error {
+    readonly status = 409;
+
+    constructor(message = "Derived dataset views cannot store their own dataset rows.") {
+      super(message);
+      this.name = "DerivedDatasetMutationError";
+    }
+  },
   insertDatasetRowBatch: vi.fn(),
 }));
 
@@ -31,6 +39,7 @@ const context = {
 
 const dataset = {
   id: "f0000000-0000-4000-8000-000000000001",
+  backingDatasetId: null,
   sortOrder: 0,
   fileName: "customers.csv",
   blobUrl:
@@ -141,5 +150,30 @@ describe("/api/datasets/[datasetId]/rows/batch", () => {
     );
 
     expect(response.status).toBe(404);
+  });
+
+  it("rejects row writes for derived dataset views", async () => {
+    const { DerivedDatasetMutationError } = await import("@/lib/datasets");
+    insertDatasetRowBatchMock.mockRejectedValue(
+      new DerivedDatasetMutationError(),
+    );
+
+    const response = await POST(
+      new Request("http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001/rows/batch", {
+        method: "POST",
+        body: JSON.stringify({
+          startIndex: 0,
+          rows: [{ email: "ada@example.com" }],
+          isFinalBatch: true,
+          totalRows: 1,
+        }),
+      }),
+      context,
+    );
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual({
+      error: "Derived dataset views cannot store their own dataset rows.",
+    });
   });
 });

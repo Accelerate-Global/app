@@ -3,6 +3,7 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { clearDatasetRowsCache } from "@/components/dashboard/dataset-row-cache";
 import { DashboardClient } from "./dashboard-client";
 
 const fetchMock = vi.fn();
@@ -23,6 +24,7 @@ vi.mock("@/lib/analytics-client", () => ({
 function createDataset() {
   return {
     id: "dataset-1",
+    backingDatasetId: null,
     sortOrder: 0,
     fileName: "Global.csv",
     blobUrl: "https://example.com/global.csv",
@@ -104,8 +106,32 @@ function buildJsonResponse(payload: unknown, status = 200) {
 describe("DashboardClient", () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    clearDatasetRowsCache();
     vi.stubGlobal("fetch", fetchMock);
     fetchMock.mockImplementation(async (input, init) => {
+      if (
+        input === "/api/datasets/dataset-1/rows?page=1&pageSize=1000" &&
+        (init?.method === undefined || init.method === "GET")
+      ) {
+        return buildJsonResponse({
+          sourceDatasetId: "dataset-1",
+          rows: [
+            {
+              id: "row-1",
+              rowIndex: 0,
+              data: {
+                people_group_id: "PG-1",
+                country: "Egypt",
+              },
+            },
+          ],
+          page: 1,
+          pageSize: 1000,
+          totalRows: 1,
+          pageCount: 1,
+        });
+      }
+
       if (input === "/api/saved-tables/saved-table-1" && init?.method === "PATCH") {
         return buildJsonResponse({
           savedTable: {
@@ -148,6 +174,47 @@ describe("DashboardClient", () => {
         saved_table_count: 0,
       }),
     );
+  });
+
+  it("starts a background preload for the primary dataset rows", async () => {
+    render(
+      <DashboardClient
+        initialDatasets={[createDataset()]}
+        initialSavedTables={[]}
+        canManageDatasets={false}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/datasets/dataset-1/rows?page=1&pageSize=1000",
+      );
+    });
+
+    await waitFor(() => {
+      expect(trackAppEventMock).toHaveBeenCalledWith(
+        "dataset_preload_started",
+        expect.objectContaining({
+          source_surface: "dashboard_page",
+          success: true,
+          dataset_id: "dataset-1",
+          source_dataset_id: "dataset-1",
+        }),
+      );
+    });
+
+    await waitFor(() => {
+      expect(trackAppEventMock).toHaveBeenCalledWith(
+        "dataset_preload_completed",
+        expect.objectContaining({
+          source_surface: "dashboard_page",
+          success: true,
+          dataset_id: "dataset-1",
+          source_dataset_id: "dataset-1",
+          row_count: 1,
+        }),
+      );
+    });
   });
 
   it("opens the saved table details sheet and persists saved table edits", async () => {

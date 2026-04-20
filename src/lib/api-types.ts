@@ -28,6 +28,7 @@ export type FilterRegion = {
 
 export type DatasetSummary = {
   id: string;
+  backingDatasetId: string | null;
   sortOrder: number;
   fileName: string;
   blobUrl: string;
@@ -65,6 +66,7 @@ export type DatasetVersionsResponse = {
 };
 
 export type DatasetRowsResponse = {
+  sourceDatasetId: string;
   rows: Array<{
     id: string;
     rowIndex: number;
@@ -101,6 +103,7 @@ export type SavedDatasetFilterState = {
   country: {
     enabled: boolean;
     selectedCountryNames: string[];
+    includeAlternateCountries?: boolean;
   };
   watchlist: {
     enabled: boolean;

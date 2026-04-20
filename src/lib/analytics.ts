@@ -82,6 +82,32 @@ export type AppAnalyticsEventMap = {
     row_count: number;
     load_duration_ms: number;
   };
+  dataset_preload_started: AppAnalyticsEventBase & {
+    dataset_id: string;
+    source_dataset_id: string;
+  };
+  dataset_preload_completed: AppAnalyticsEventBase & {
+    dataset_id: string;
+    source_dataset_id: string;
+    row_count: number;
+    load_duration_ms: number;
+  };
+  dataset_preload_failed: AppAnalyticsEventBase & {
+    dataset_id: string;
+    source_dataset_id: string;
+  };
+  dataset_row_cache_hit: AppAnalyticsEventBase & {
+    dataset_id: string;
+    dataset_source: DatasetOpenSource;
+    source_dataset_id: string;
+    cached_row_count: number;
+  };
+  dataset_row_cache_miss: AppAnalyticsEventBase & {
+    dataset_id: string;
+    dataset_source: DatasetOpenSource;
+    source_dataset_id: string;
+    cached_row_count: number;
+  };
   dataset_rows_failed: AppAnalyticsEventBase & {
     dataset_id: string;
     dataset_source: DatasetOpenSource;
@@ -293,6 +319,11 @@ export const APP_ANALYTICS_EVENT_NAMES = [
   "dashboard_viewed",
   "dataset_opened",
   "dataset_rows_loaded",
+  "dataset_preload_started",
+  "dataset_preload_completed",
+  "dataset_preload_failed",
+  "dataset_row_cache_hit",
+  "dataset_row_cache_miss",
   "dataset_rows_failed",
   "dataset_filters_applied",
   "dataset_downloaded",
@@ -359,6 +390,23 @@ const APP_ANALYTICS_EVENT_PROPERTY_KEYS = {
   dashboard_viewed: ["dataset_count", "saved_table_count"],
   dataset_opened: ["dataset_source"],
   dataset_rows_loaded: ["dataset_source", "row_count", "load_duration_ms"],
+  dataset_preload_started: ["source_dataset_id"],
+  dataset_preload_completed: [
+    "source_dataset_id",
+    "row_count",
+    "load_duration_ms",
+  ],
+  dataset_preload_failed: ["source_dataset_id"],
+  dataset_row_cache_hit: [
+    "dataset_source",
+    "source_dataset_id",
+    "cached_row_count",
+  ],
+  dataset_row_cache_miss: [
+    "dataset_source",
+    "source_dataset_id",
+    "cached_row_count",
+  ],
   dataset_rows_failed: ["dataset_source"],
   dataset_filters_applied: [
     "result_count",

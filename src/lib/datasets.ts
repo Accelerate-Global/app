@@ -37,6 +37,7 @@ type DatasetVersionRecord = typeof datasetVersions.$inferSelect;
 function toDatasetSummary(row: DatasetRecord): DatasetSummary {
   return {
     id: row.id,
+    backingDatasetId: row.backingDatasetId,
     sortOrder: row.sortOrder,
     fileName: row.fileName,
     blobUrl: row.blobUrl,
@@ -106,6 +107,100 @@ export class DatasetOpenPresetCompatibilityError extends Error {
     super(message);
     this.name = "DatasetOpenPresetCompatibilityError";
   }
+}
+
+export class DerivedDatasetMutationError extends Error {
+  readonly status = 409;
+
+  constructor(message = "Derived dataset views cannot change their backing data.") {
+    super(message);
+    this.name = "DerivedDatasetMutationError";
+  }
+}
+
+export class DerivedDatasetSourceConflictError extends Error {
+  readonly status = 409;
+
+  constructor(
+    message = "Derived dataset views must reference a physical dataset.",
+  ) {
+    super(message);
+    this.name = "DerivedDatasetSourceConflictError";
+  }
+}
+
+export class DatasetDeleteConflictError extends Error {
+  readonly status = 409;
+
+  constructor(
+    message = "Datasets used as a backing source cannot be deleted while derived views still reference them.",
+  ) {
+    super(message);
+    this.name = "DatasetDeleteConflictError";
+  }
+}
+
+async function getDatasetRecord(
+  datasetId: string,
+  executor: Pick<ReturnType<typeof getDb>, "select"> = getDb(),
+) {
+  const [dataset] = await executor
+    .select()
+    .from(datasets)
+    .where(eq(datasets.id, datasetId))
+    .limit(1);
+
+  return dataset ?? null;
+}
+
+async function resolveDatasetSourceRecord(
+  input:
+    | {
+        datasetId: string;
+        executor?: Pick<ReturnType<typeof getDb>, "select">;
+      }
+    | {
+        dataset: DatasetRecord;
+        executor?: Pick<ReturnType<typeof getDb>, "select">;
+      },
+) {
+  const executor = input.executor ?? getDb();
+  const dataset =
+    "dataset" in input ? input.dataset : await getDatasetRecord(input.datasetId, executor);
+
+  if (!dataset) {
+    return null;
+  }
+
+  if (!dataset.backingDatasetId) {
+    return {
+      dataset,
+      sourceDataset: dataset,
+    };
+  }
+
+  if (dataset.backingDatasetId === dataset.id) {
+    throw new DerivedDatasetSourceConflictError(
+      "Derived dataset views cannot reference themselves as a backing dataset.",
+    );
+  }
+
+  const sourceDataset = await getDatasetRecord(dataset.backingDatasetId, executor);
+
+  if (!sourceDataset) {
+    throw new DerivedDatasetSourceConflictError(
+      "The backing dataset for this derived view could not be found.",
+    );
+  }
+
+  if (sourceDataset.backingDatasetId) {
+    throw new DerivedDatasetSourceConflictError();
+  }
+
+  return {
+    dataset,
+    sourceDataset,
+  };
 }
 
 async function archiveDatasetVersion(tx: DbExecutor, dataset: DatasetRecord) {
@@ -185,14 +280,14 @@ export async function getDataset(datasetId: string) {
 }
 
 export async function listDatasetVersions(datasetId: string) {
-  const [dataset] = await getDb()
-    .select()
-    .from(datasets)
-    .where(eq(datasets.id, datasetId))
-    .limit(1);
+  const dataset = await getDatasetRecord(datasetId);
 
   if (!dataset) {
     return null;
+  }
+
+  if (dataset.backingDatasetId) {
+    return [] as DatasetVersionSummary[];
   }
 
   const versions = await getDb()
@@ -237,6 +332,7 @@ export async function createDataset(input: {
       .insert(datasets)
       .values({
         ownerId: input.ownerId,
+        backingDatasetId: null,
         fileName: input.fileName,
         sortOrder: (position?.value ?? -1) + 1,
         blobUrl: getDatasetStorageObjectUrl(input.blobPath),
@@ -337,6 +433,12 @@ export async function updateDatasetDetails(input: {
     }
 
     if (input.isPrimary !== undefined) {
+      if (input.isPrimary && existingDataset.backingDatasetId) {
+        throw new DerivedDatasetMutationError(
+          "Derived dataset views cannot be marked as primary.",
+        );
+      }
+
       updates.isPrimary = input.isPrimary;
     }
 
@@ -377,6 +479,12 @@ export async function replaceDatasetContents(input: {
 
     if (!existing) {
       return null;
+    }
+
+    if (existing.backingDatasetId) {
+      throw new DerivedDatasetMutationError(
+        "Derived dataset views cannot replace their backing data.",
+      );
     }
 
     await archiveDatasetVersion(tx, existing);
@@ -434,6 +542,12 @@ export async function revertDatasetVersion(input: {
 
     if (!existing) {
       return null;
+    }
+
+    if (existing.backingDatasetId) {
+      throw new DerivedDatasetMutationError(
+        "Derived dataset views do not have upload history to revert.",
+      );
     }
 
     const [version] = await tx
@@ -507,6 +621,16 @@ export async function deleteDataset(datasetId: string) {
       return null;
     }
 
+    const [dependentDerivedView] = await tx
+      .select({ id: datasets.id })
+      .from(datasets)
+      .where(eq(datasets.backingDatasetId, datasetId))
+      .limit(1);
+
+    if (dependentDerivedView) {
+      throw new DatasetDeleteConflictError();
+    }
+
     const versionBlobRows = await tx
       .select({ blobPath: datasetVersions.blobPath })
       .from(datasetVersions)
@@ -568,6 +692,12 @@ export async function insertDatasetRowBatch(input: {
     return null;
   }
 
+  if (dataset.backingDatasetId) {
+    throw new DerivedDatasetMutationError(
+      "Derived dataset views cannot store their own dataset rows.",
+    );
+  }
+
   if (input.rows.length > 0) {
     await getDb()
       .insert(datasetRows)
@@ -612,16 +742,21 @@ export async function getDatasetRows(input: {
   sortColumn?: string;
   sortDirection?: "asc" | "desc";
 }) {
-  const dataset = await getDataset(input.datasetId);
+  const resolved = await resolveDatasetSourceRecord({
+    datasetId: input.datasetId,
+  });
 
-  if (!dataset) {
+  if (!resolved) {
     return null;
   }
+
+  const dataset = toDatasetSummary(resolved.dataset);
+  const sourceDatasetId = resolved.sourceDataset.id;
 
   const page = Math.max(input.page, 1);
   const pageSize = Math.min(Math.max(input.pageSize, 1), 1000);
   const offset = (page - 1) * pageSize;
-  const predicates: SQL[] = [eq(datasetRows.datasetId, input.datasetId)];
+  const predicates: SQL[] = [eq(datasetRows.datasetId, sourceDatasetId)];
 
   if (input.filter?.trim()) {
     const filter = `%${input.filter.trim()}%`;
@@ -659,6 +794,7 @@ export async function getDatasetRows(input: {
     .offset(offset);
 
   return {
+    sourceDatasetId,
     rows,
     page,
     pageSize,
@@ -668,11 +804,15 @@ export async function getDatasetRows(input: {
 }
 
 export async function getAllDatasetRows(input: { datasetId: string }) {
-  const dataset = await getDataset(input.datasetId);
+  const resolved = await resolveDatasetSourceRecord({
+    datasetId: input.datasetId,
+  });
 
-  if (!dataset) {
+  if (!resolved) {
     return null;
   }
+
+  const sourceDatasetId = resolved.sourceDataset.id;
 
   const rows = await getDb()
     .select({
@@ -681,10 +821,11 @@ export async function getAllDatasetRows(input: { datasetId: string }) {
       data: datasetRows.data,
     })
     .from(datasetRows)
-    .where(eq(datasetRows.datasetId, input.datasetId))
+    .where(eq(datasetRows.datasetId, sourceDatasetId))
     .orderBy(asc(datasetRows.rowIndex));
 
   return {
+    sourceDatasetId,
     rows,
     page: 1,
     pageSize: rows.length,
