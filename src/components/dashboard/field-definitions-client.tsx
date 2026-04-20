@@ -431,6 +431,7 @@ export function FieldDefinitionsClient({
           ),
         ),
       );
+      setEditingFieldDefinitionId(null);
       trackAppEvent(
         "field_definition_updated",
         withAnalyticsContext(analyticsContext, {

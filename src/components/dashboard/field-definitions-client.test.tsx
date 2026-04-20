@@ -176,6 +176,7 @@ describe("FieldDefinitionsClient", () => {
         }),
       });
     });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole("dialog", { name: "Edit field" })).toBeNull();
     expect(trackAppEventMock).toHaveBeenCalledWith(
       "field_definition_updated",
