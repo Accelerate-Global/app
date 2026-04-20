@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { DatasetRowsResponse, DatasetSummary } from "@/lib/api-types";
+import { REGION_COUNTRY_OPTIONS } from "@/lib/region-country-options";
 import {
   datasetSupportsCountryFiltering,
   datasetSupportsRegionFiltering,
@@ -11,7 +12,10 @@ import {
   filterDatasetRowsByWatchlist,
   filterDatasetRowsByUupg,
   getAvailableDatasetCountryNames,
+  getEffectiveCountrySelection,
   getEnabledRegionCountryNames,
+  getMatchingRegionIdsForCountries,
+  getSelectedRegionCountryNames,
 } from "./dataset-region-filtering";
 
 const rows: DatasetRowsResponse["rows"] = [
@@ -315,6 +319,196 @@ describe("dataset-region-filtering", () => {
     );
 
     expect(countries).toEqual(["India", "Nepal", "Turkey", "Jordan"]);
+  });
+
+  it("builds only the exact union of currently selected region countries", () => {
+    const countries = getSelectedRegionCountryNames(
+      [
+        {
+          id: "region-global",
+          name: "Global",
+          description: "",
+          sortOrder: 1,
+          countries: ["India", "Nepal", "Brazil"],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+        {
+          id: "region-south-asia",
+          name: "South Asia",
+          description: "",
+          sortOrder: 2,
+          countries: ["India", "Nepal"],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      ],
+      {
+        "region-global": false,
+        "region-south-asia": true,
+      },
+    );
+
+    expect(countries).toEqual(["India", "Nepal"]);
+  });
+
+  it("matches Global only when the selected countries exactly equal Global", () => {
+    const matchedRegionIds = getMatchingRegionIdsForCountries(
+      [
+        {
+          id: "region-global",
+          name: "Global",
+          description: "",
+          sortOrder: 1,
+          countries: ["India", "Nepal", "Brazil"],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+        {
+          id: "region-south-asia",
+          name: "South Asia",
+          description: "",
+          sortOrder: 2,
+          countries: ["India", "Nepal"],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      ],
+      ["India", "Nepal", "Brazil"],
+      ["India", "Nepal", "Brazil"],
+    );
+
+    expect(matchedRegionIds).toEqual(["region-global"]);
+  });
+
+  it("matches Global when the selected countries equal the dataset-relative Global subset", () => {
+    const datasetCountryNames = REGION_COUNTRY_OPTIONS.slice(0, 222);
+    const matchedRegionIds = getMatchingRegionIdsForCountries(
+      [
+        {
+          id: "region-global",
+          name: "Global",
+          description: "",
+          sortOrder: 1,
+          countries: [...REGION_COUNTRY_OPTIONS],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      ],
+      datasetCountryNames,
+      datasetCountryNames,
+    );
+
+    expect(matchedRegionIds).toEqual(["region-global"]);
+  });
+
+  it("matches the smallest exact non-global region combination when no single region fits", () => {
+    const matchedRegionIds = getMatchingRegionIdsForCountries(
+      [
+        {
+          id: "region-global",
+          name: "Global",
+          description: "",
+          sortOrder: 1,
+          countries: ["India", "Nepal", "Brazil", "Peru", "Mexico"],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+        {
+          id: "region-south-asia",
+          name: "South Asia",
+          description: "",
+          sortOrder: 2,
+          countries: ["India", "Nepal"],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+        {
+          id: "region-latin-america",
+          name: "Latin America",
+          description: "",
+          sortOrder: 3,
+          countries: ["Brazil", "Peru"],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+        {
+          id: "region-india",
+          name: "India only",
+          description: "",
+          sortOrder: 4,
+          countries: ["India"],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      ],
+      ["India", "Nepal", "Brazil", "Peru"],
+      ["India", "Nepal", "Brazil", "Peru", "Mexico"],
+    );
+
+    expect(matchedRegionIds).toEqual([
+      "region-south-asia",
+      "region-latin-america",
+    ]);
+  });
+
+  it("returns no region match when the selected countries no longer match a configured region", () => {
+    const matchedRegionIds = getMatchingRegionIdsForCountries(
+      [
+        {
+          id: "region-global",
+          name: "Global",
+          description: "",
+          sortOrder: 1,
+          countries: ["India", "Nepal", "Brazil"],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+        {
+          id: "region-south-asia",
+          name: "South Asia",
+          description: "",
+          sortOrder: 2,
+          countries: ["India", "Nepal"],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      ],
+      ["India"],
+      ["India", "Nepal", "Brazil"],
+    );
+
+    expect(matchedRegionIds).toEqual([]);
+  });
+
+  it("treats all visible countries as selected when there is no explicit country subset", () => {
+    const selection = getEffectiveCountrySelection({
+      availableCountryNames: ["Brazil", "India", "Nepal"],
+      countryFilterEnabled: false,
+      regionFilterEnabled: true,
+      regionCountryNames: ["India", "Nepal"],
+      selectedCountryNames: ["India", "Nepal"],
+    });
+
+    expect(selection).toEqual({
+      selectedCountryNames: ["India", "Nepal"],
+      hasExplicitSelection: false,
+    });
+  });
+
+  it("keeps only the explicit visible country subset when country filtering is active", () => {
+    const selection = getEffectiveCountrySelection({
+      availableCountryNames: ["Brazil", "India", "Nepal"],
+      countryFilterEnabled: true,
+      regionFilterEnabled: true,
+      regionCountryNames: ["India", "Nepal"],
+      selectedCountryNames: ["India"],
+    });
+
+    expect(selection).toEqual({
+      selectedCountryNames: ["India"],
+      hasExplicitSelection: true,
+    });
   });
 
   it("filters rows by enabled region countries", () => {

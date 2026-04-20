@@ -47,7 +47,9 @@ import {
   datasetSupportsRegionFiltering,
   datasetSupportsWatchlistFiltering,
   datasetSupportsUupgFiltering,
-  getEnabledRegionCountryNames,
+  getEffectiveCountrySelection,
+  getMatchingRegionIdsForCountries,
+  getSelectedRegionCountryNames,
 } from "@/lib/dataset-region-filtering";
 import { isGlobalRegionName } from "@/lib/region-display";
 import {
@@ -109,6 +111,17 @@ function createRegionSelectionState(
 ) {
   return Object.fromEntries(
     regions.map((region) => [region.id, selectedRegionIds[region.id] ?? false]),
+  );
+}
+
+function createRegionSelectionStateFromIds(
+  regions: FilterRegion[],
+  selectedRegionIds: string[],
+) {
+  const selectedRegionIdSet = new Set(selectedRegionIds);
+
+  return Object.fromEntries(
+    regions.map((region) => [region.id, selectedRegionIdSet.has(region.id)]),
   );
 }
 
@@ -246,7 +259,7 @@ export function DatasetDetailClient({
     string | null
   >(() => initialPresetTag?.id ?? normalizedInitialDatasetTags[0]?.id ?? null);
   const [isSavingOpenPreset, setIsSavingOpenPreset] = useState(false);
-  const regionEnabled = initialState.regionEnabled;
+  const [regionEnabled, setRegionEnabled] = useState(initialState.regionEnabled);
   const [selectedRegionIds, setSelectedRegionIds] = useState<Record<string, boolean>>(
     () => initialState.selectedRegionIds,
   );
@@ -303,8 +316,8 @@ export function DatasetDetailClient({
     [analyticsContext, datasetSource],
   );
 
-  const enabledCountryNames = useMemo(
-    () => getEnabledRegionCountryNames(visibleRegions, selectedRegionIds),
+  const selectedRegionCountryNames = useMemo(
+    () => getSelectedRegionCountryNames(visibleRegions, selectedRegionIds),
     [visibleRegions, selectedRegionIds],
   );
   const regionSelectors = useMemo(
@@ -326,7 +339,7 @@ export function DatasetDetailClient({
       enabled: regionEnabled,
       isSupported: supportsRegionFiltering,
       hasConfiguredRegions: visibleRegions.length > 0,
-      enabledCountryNames,
+      enabledCountryNames: selectedRegionCountryNames,
     },
     countryFilter: {
       enabled: countryEnabled,
@@ -353,6 +366,23 @@ export function DatasetDetailClient({
     },
     analytics: datasetTableAnalytics,
   });
+  const effectiveCountrySelection = useMemo(
+    () =>
+      getEffectiveCountrySelection({
+        availableCountryNames: datasetTable.availableCountryNames,
+        countryFilterEnabled: countryEnabled,
+        regionFilterEnabled: regionEnabled,
+        regionCountryNames: selectedRegionCountryNames,
+        selectedCountryNames,
+      }),
+    [
+      countryEnabled,
+      datasetTable.availableCountryNames,
+      regionEnabled,
+      selectedCountryNames,
+      selectedRegionCountryNames,
+    ],
+  );
   const savedFilters = useMemo(
     () =>
       buildSavedDatasetFilterState({
@@ -405,6 +435,39 @@ export function DatasetDetailClient({
       return next.length === current.length ? current : next;
     });
   }, [datasetTable.availableCountryNames]);
+
+  function applyCountrySelection(nextCountryNames: string[]) {
+    const normalizedCountryNames = dedupeCountryNames(nextCountryNames);
+    const matchedRegionIds = getMatchingRegionIdsForCountries(
+      visibleRegions,
+      normalizedCountryNames,
+      datasetTable.datasetCountryNames,
+    );
+
+    setCountryEnabled(true);
+    setSelectedCountryNames(normalizedCountryNames);
+    setSelectedRegionIds(
+      createRegionSelectionStateFromIds(visibleRegions, matchedRegionIds),
+    );
+    setRegionEnabled(matchedRegionIds.length > 0);
+  }
+
+  function handleRegionSelectorChange(regionId: string, checked: boolean) {
+    const nextSelectedRegionIds = getNextSelectedRegionIds({
+      regions: visibleRegions,
+      current: selectedRegionIds,
+      regionId,
+      checked,
+    });
+    const nextSelectedCountryNames = getSelectedRegionCountryNames(
+      visibleRegions,
+      nextSelectedRegionIds,
+    );
+
+    setSelectedRegionIds(nextSelectedRegionIds);
+    setRegionEnabled(nextSelectedCountryNames.length > 0);
+    setSelectedCountryNames(nextSelectedCountryNames);
+  }
 
   useEffect(() => {
     trackAppEvent(
@@ -519,7 +582,9 @@ export function DatasetDetailClient({
           region_enabled: regionEnabled,
           region_count: Object.values(selectedRegionIds).filter(Boolean).length,
           country_enabled: countryEnabled,
-          country_count: selectedCountryNames.length,
+          country_count: effectiveCountrySelection.hasExplicitSelection
+            ? effectiveCountrySelection.selectedCountryNames.length
+            : 0,
           watchlist_enabled: watchlistEnabled,
           watchlist_threshold_enabled: watchlistThresholdEnabled,
           watchlist_threshold: watchlistThresholdEnabled
@@ -557,6 +622,8 @@ export function DatasetDetailClient({
     filterSnapshotKey,
     regionEnabled,
     savedFilters.sorting,
+    effectiveCountrySelection.hasExplicitSelection,
+    effectiveCountrySelection.selectedCountryNames.length,
     selectedCountryNames.length,
     selectedRegionIds,
     uupgEnabled,
@@ -658,15 +725,7 @@ export function DatasetDetailClient({
     regionCard: {
       supported: supportsRegionFiltering,
       selectors: regionSelectors,
-      onSelectorChange: (regionId: string, checked: boolean) =>
-        setSelectedRegionIds((current) =>
-          getNextSelectedRegionIds({
-            regions: visibleRegions,
-            current,
-            regionId,
-            checked,
-          }),
-        ),
+      onSelectorChange: handleRegionSelectorChange,
     },
     countryCard: {
       enabled: countryEnabled,
@@ -674,28 +733,35 @@ export function DatasetDetailClient({
       searchValue: countrySearchValue,
       availableCountries: datasetTable.availableCountryNames,
       visibleCountries: datasetTable.availableCountryNames,
-      selectedCountries: selectedCountryNames,
+      selectedCountries: effectiveCountrySelection.selectedCountryNames,
+      hasExplicitSelection: effectiveCountrySelection.hasExplicitSelection,
       includeAlternateCountries,
       supportsAlternateCountries: supportsAlternateCountryFiltering,
       onEnabledChange: setCountryEnabled,
       onIncludeAlternateCountriesChange: setIncludeAlternateCountries,
       onSearchChange: setCountrySearchValue,
       onToggleCountry: (countryName: string, checked: boolean) =>
-        setSelectedCountryNames((current) => {
-          if (checked) {
-            return dedupeCountryNames([...current, countryName]);
-          }
-
-          return current.filter((value) => value !== countryName);
-        }),
-      onSelectVisible: (countryNames: string[]) =>
-        setSelectedCountryNames((current) =>
-          dedupeCountryNames([...current, ...countryNames]),
+        applyCountrySelection(
+          checked
+            ? [
+                ...effectiveCountrySelection.selectedCountryNames,
+                countryName,
+              ]
+            : effectiveCountrySelection.selectedCountryNames.filter(
+                (value) => value !== countryName,
+              ),
         ),
+      onSelectVisible: (countryNames: string[]) =>
+        applyCountrySelection([
+          ...effectiveCountrySelection.selectedCountryNames,
+          ...countryNames,
+        ]),
       onClearVisible: (countryNames: string[]) => {
         const countryNamesToClear = new Set(countryNames);
-        setSelectedCountryNames((current) =>
-          current.filter((countryName) => !countryNamesToClear.has(countryName)),
+        applyCountrySelection(
+          effectiveCountrySelection.selectedCountryNames.filter(
+            (countryName) => !countryNamesToClear.has(countryName),
+          ),
         );
       },
     },

@@ -20,6 +20,10 @@ type CountrySearchSelectorProps = {
   onSelectVisible: (countries: string[]) => void;
   onClearVisible: (countries: string[]) => void;
   smokeSearchMarker?: string;
+  showSelectionSummary?: boolean;
+  selectActionLabel?: string;
+  selectActionCountries?: string[];
+  showClearAction?: boolean;
 };
 
 export function CountrySearchSelector({
@@ -33,6 +37,10 @@ export function CountrySearchSelector({
   onSelectVisible,
   onClearVisible,
   smokeSearchMarker,
+  showSelectionSummary = true,
+  selectActionLabel = "Select visible",
+  selectActionCountries,
+  showClearAction = true,
 }: CountrySearchSelectorProps) {
   const normalizedSearch = searchValue.trim().toLowerCase();
   const filteredCountries = useMemo(
@@ -48,6 +56,7 @@ export function CountrySearchSelector({
     () => new Set(selectedCountries),
     [selectedCountries],
   );
+  const primaryActionCountries = selectActionCountries ?? filteredCountries;
   const selectionSummary =
     selectedCountries.length > 0
       ? `${selectedCountries.length} selected`
@@ -58,34 +67,43 @@ export function CountrySearchSelector({
   return (
     <div className="overflow-hidden rounded-[1.1rem] border border-border/70 bg-card/45 shadow-xs shadow-black/5">
       <div className="space-y-3 p-3">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <Badge
-            variant="outline"
-            className="rounded-full px-2.5 py-1 text-[0.68rem] font-semibold tracking-[0.14em] uppercase"
-          >
-            {selectionSummary}
-          </Badge>
+        <div
+          className={cn(
+            "flex flex-col gap-3 sm:flex-row sm:items-start",
+            showSelectionSummary ? "sm:justify-between" : "sm:justify-end",
+          )}
+        >
+          {showSelectionSummary ? (
+            <Badge
+              variant="outline"
+              className="rounded-full px-2.5 py-1 text-[0.68rem] font-semibold tracking-[0.14em] uppercase"
+            >
+              {selectionSummary}
+            </Badge>
+          ) : null}
           <div className="flex flex-wrap items-center gap-2">
             <Button
               type="button"
               size="xs"
               variant="outline"
               className="rounded-full px-3"
-              disabled={disabled || filteredCountries.length === 0}
-              onClick={() => onSelectVisible(filteredCountries)}
+              disabled={disabled || primaryActionCountries.length === 0}
+              onClick={() => onSelectVisible(primaryActionCountries)}
             >
-              Select visible
+              {selectActionLabel}
             </Button>
-            <Button
-              type="button"
-              size="xs"
-              variant="outline"
-              className="rounded-full px-3"
-              disabled={disabled || filteredCountries.length === 0}
-              onClick={() => onClearVisible(filteredCountries)}
-            >
-              Clear visible
-            </Button>
+            {showClearAction ? (
+              <Button
+                type="button"
+                size="xs"
+                variant="outline"
+                className="rounded-full px-3"
+                disabled={disabled || filteredCountries.length === 0}
+                onClick={() => onClearVisible(filteredCountries)}
+              >
+                Clear visible
+              </Button>
+            ) : null}
           </div>
         </div>
 

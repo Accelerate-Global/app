@@ -17,6 +17,7 @@ import {
   WATCHLIST_DATASET_COLUMN_KEY,
   UUPG_DATASET_COLUMN_KEY,
 } from "@/lib/dataset-region-constants";
+import { isGlobalRegionName } from "@/lib/region-display";
 
 type DatasetRow = DatasetRowsResponse["rows"][number];
 const WATCHLIST_FRONTIER_GROUP_DATASET_COLUMN_KEYS =
@@ -60,8 +61,17 @@ export type DatasetWatchlistFilterState = {
   frontierGroupValue: boolean;
 };
 
+export type EffectiveCountrySelection = {
+  selectedCountryNames: string[];
+  hasExplicitSelection: boolean;
+};
+
 function normalizeCountryName(value: string | null | undefined) {
   return value?.trim() ?? "";
+}
+
+function normalizeCountryKey(value: string) {
+  return normalizeCountryName(value).toLowerCase();
 }
 
 function normalizeDatasetColumnKey(value: string | null | undefined) {
@@ -227,11 +237,38 @@ export function getEnabledRegionCountryNames(
   regions: FilterRegion[],
   selectedRegionIds: Record<string, boolean>,
 ) {
+  const selectedCountryNames = getSelectedRegionCountryNames(
+    regions,
+    selectedRegionIds,
+  );
+
+  if (selectedCountryNames.length > 0) {
+    return selectedCountryNames;
+  }
+
   const countryNames = new Set<string>();
-  const hasSelectedRegion = regions.some((region) => selectedRegionIds[region.id]);
 
   for (const region of regions) {
-    if (hasSelectedRegion && !selectedRegionIds[region.id]) {
+    for (const country of region.countries) {
+      const normalizedCountry = normalizeCountryName(country);
+
+      if (normalizedCountry) {
+        countryNames.add(normalizedCountry);
+      }
+    }
+  }
+
+  return Array.from(countryNames);
+}
+
+export function getSelectedRegionCountryNames(
+  regions: FilterRegion[],
+  selectedRegionIds: Record<string, boolean>,
+) {
+  const countryNames = new Set<string>();
+
+  for (const region of regions) {
+    if (!selectedRegionIds[region.id]) {
       continue;
     }
 
@@ -244,7 +281,9 @@ export function getEnabledRegionCountryNames(
     }
   }
 
-  return Array.from(countryNames);
+  return Array.from(countryNames).sort((left, right) =>
+    left.localeCompare(right),
+  );
 }
 
 function parseAlternateCountryNames(value: string | null | undefined) {
@@ -274,6 +313,250 @@ function dedupeCountryNames(values: string[]) {
   return Array.from(displayNameByNormalizedKey.values()).sort((left, right) =>
     left.localeCompare(right),
   );
+}
+
+function createCountryKeySet(values: string[]) {
+  return new Set(
+    dedupeCountryNames(values)
+      .map((value) => normalizeCountryKey(value))
+      .filter(Boolean),
+  );
+}
+
+function areCountryKeySetsEqual(left: Set<string>, right: Set<string>) {
+  if (left.size !== right.size) {
+    return false;
+  }
+
+  for (const value of left) {
+    if (!right.has(value)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function isCountryKeySubset(subset: Set<string>, superset: Set<string>) {
+  for (const value of subset) {
+    if (!superset.has(value)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function intersectCountryKeySets(left: Set<string>, right: Set<string>) {
+  const intersection = new Set<string>();
+
+  for (const value of left) {
+    if (right.has(value)) {
+      intersection.add(value);
+    }
+  }
+
+  return intersection;
+}
+
+type NormalizedRegionCountrySet = {
+  id: string;
+  name: string;
+  sortOrder: number;
+  isGlobal: boolean;
+  countryKeys: Set<string>;
+};
+
+function getNormalizedRegionCountrySets(
+  regions: FilterRegion[],
+  comparisonCountryKeys?: Set<string>,
+) {
+  return regions.map((region) => ({
+    id: region.id,
+    name: region.name,
+    sortOrder: region.sortOrder,
+    isGlobal: isGlobalRegionName(region.name),
+    countryKeys: comparisonCountryKeys
+      ? intersectCountryKeySets(
+          createCountryKeySet(region.countries),
+          comparisonCountryKeys,
+        )
+      : createCountryKeySet(region.countries),
+  }));
+}
+
+function compareRegionCombination(
+  left: NormalizedRegionCountrySet[],
+  right: NormalizedRegionCountrySet[],
+) {
+  if (left.length !== right.length) {
+    return left.length - right.length;
+  }
+
+  const leftSortOrders = left.map((region) => region.sortOrder);
+  const rightSortOrders = right.map((region) => region.sortOrder);
+  const maxLength = Math.max(leftSortOrders.length, rightSortOrders.length);
+
+  for (let index = 0; index < maxLength; index += 1) {
+    const leftSortOrder = leftSortOrders[index] ?? 0;
+    const rightSortOrder = rightSortOrders[index] ?? 0;
+
+    if (leftSortOrder !== rightSortOrder) {
+      return leftSortOrder - rightSortOrder;
+    }
+  }
+
+  const leftIds = left.map((region) => region.id);
+  const rightIds = right.map((region) => region.id);
+
+  for (let index = 0; index < Math.max(leftIds.length, rightIds.length); index += 1) {
+    const leftId = leftIds[index] ?? "";
+    const rightId = rightIds[index] ?? "";
+
+    if (leftId !== rightId) {
+      return leftId.localeCompare(rightId);
+    }
+  }
+
+  return 0;
+}
+
+function findExactRegionCountryCombination(
+  candidates: NormalizedRegionCountrySet[],
+  targetCountryKeys: Set<string>,
+) {
+  const exactMatches: NormalizedRegionCountrySet[][] = [];
+
+  function search(
+    startIndex: number,
+    selectedRegions: NormalizedRegionCountrySet[],
+    unionCountryKeys: Set<string>,
+  ) {
+    if (
+      selectedRegions.length >= 2 &&
+      areCountryKeySetsEqual(unionCountryKeys, targetCountryKeys)
+    ) {
+      exactMatches.push(selectedRegions);
+      return;
+    }
+
+    for (let index = startIndex; index < candidates.length; index += 1) {
+      const nextRegion = candidates[index];
+      const nextUnionCountryKeys = new Set(unionCountryKeys);
+
+      for (const countryKey of nextRegion.countryKeys) {
+        nextUnionCountryKeys.add(countryKey);
+      }
+
+      if (nextUnionCountryKeys.size === unionCountryKeys.size) {
+        continue;
+      }
+
+      search(index + 1, [...selectedRegions, nextRegion], nextUnionCountryKeys);
+    }
+  }
+
+  search(0, [], new Set<string>());
+
+  return exactMatches.sort(compareRegionCombination)[0] ?? null;
+}
+
+export function getMatchingRegionIdsForCountries(
+  regions: FilterRegion[],
+  selectedCountryNames: string[],
+  comparisonCountryNames: string[],
+) {
+  const comparisonCountryKeys = createCountryKeySet(comparisonCountryNames);
+
+  if (comparisonCountryKeys.size === 0) {
+    return [] as string[];
+  }
+
+  const targetCountryKeys = intersectCountryKeySets(
+    createCountryKeySet(selectedCountryNames),
+    comparisonCountryKeys,
+  );
+
+  if (targetCountryKeys.size === 0) {
+    return [] as string[];
+  }
+
+  const normalizedRegions = getNormalizedRegionCountrySets(
+    regions,
+    comparisonCountryKeys,
+  ).filter((region) => region.countryKeys.size > 0);
+  const globalRegion = normalizedRegions.find((region) => region.isGlobal) ?? null;
+
+  if (
+    globalRegion &&
+    areCountryKeySetsEqual(globalRegion.countryKeys, targetCountryKeys)
+  ) {
+    return [globalRegion.id];
+  }
+
+  const candidateRegions = normalizedRegions
+    .filter((region) => !region.isGlobal)
+    .filter((region) => isCountryKeySubset(region.countryKeys, targetCountryKeys))
+    .sort((left, right) => left.sortOrder - right.sortOrder);
+
+  const exactSingleMatch =
+    candidateRegions.find((region) =>
+      areCountryKeySetsEqual(region.countryKeys, targetCountryKeys),
+    ) ?? null;
+
+  if (exactSingleMatch) {
+    return [exactSingleMatch.id];
+  }
+
+  const exactCombination = findExactRegionCountryCombination(
+    candidateRegions,
+    targetCountryKeys,
+  );
+
+  if (!exactCombination) {
+    return [] as string[];
+  }
+
+  return exactCombination.map((region) => region.id);
+}
+
+export function getEffectiveCountrySelection(input: {
+  availableCountryNames: string[];
+  countryFilterEnabled: boolean;
+  regionFilterEnabled: boolean;
+  regionCountryNames: string[];
+  selectedCountryNames: string[];
+}): EffectiveCountrySelection {
+  const availableCountryNames = dedupeCountryNames(input.availableCountryNames);
+  const availableCountryKeySet = new Set(
+    availableCountryNames.map((countryName) => normalizeCountryKey(countryName)),
+  );
+  const baselineSelectedCountryNames = (
+    input.regionFilterEnabled
+      ? dedupeCountryNames(input.regionCountryNames)
+      : availableCountryNames
+  ).filter((countryName) =>
+    availableCountryKeySet.has(normalizeCountryKey(countryName)),
+  );
+  const selectedCountryNames = dedupeCountryNames(
+    input.selectedCountryNames,
+  ).filter((countryName) =>
+    availableCountryKeySet.has(normalizeCountryKey(countryName)),
+  );
+  const hasExplicitSelection =
+    input.countryFilterEnabled &&
+    selectedCountryNames.length > 0 &&
+    !areCountryKeySetsEqual(
+      createCountryKeySet(selectedCountryNames),
+      createCountryKeySet(baselineSelectedCountryNames),
+    );
+
+  return {
+    selectedCountryNames: hasExplicitSelection
+      ? selectedCountryNames
+      : baselineSelectedCountryNames,
+    hasExplicitSelection,
+  };
 }
 
 export function getAvailableDatasetCountryNames(

@@ -23,6 +23,7 @@ const baseCountryCard = {
   availableCountries: ["Egypt", "Jordan", "Turkey"],
   visibleCountries: ["Egypt", "Jordan", "Turkey"],
   selectedCountries: [] as string[],
+  hasExplicitSelection: false,
   includeAlternateCountries: false,
   supportsAlternateCountries: true,
   onEnabledChange: vi.fn(),
@@ -102,7 +103,8 @@ describe("DatasetViewSwitchGrid", () => {
     expect(screen.getByText("Filters")).toBeTruthy();
     expect(screen.getByText("No regions configured")).toBeTruthy();
     expect(screen.getAllByText("Off")).toHaveLength(2);
-    expect(screen.getByText("All visible countries")).toBeTruthy();
+    expect(screen.getByText("3 visible countries")).toBeTruthy();
+    expect(screen.queryByLabelText("Toggle Country")).toBeNull();
     expect(
       screen.queryByText("A grouping of people groups based on geography."),
     ).toBeNull();
@@ -251,6 +253,65 @@ describe("DatasetViewSwitchGrid", () => {
     expect(screen.getByText("1 selected")).toBeTruthy();
   });
 
+  it("shows a selected-country count when the country selection is narrowed", () => {
+    render(
+      <DatasetViewSwitchGrid
+        regionCard={baseRegionCard}
+        countryCard={{
+          ...baseCountryCard,
+          selectedCountries: ["Jordan"],
+          hasExplicitSelection: true,
+        }}
+        watchlistCard={baseWatchlistCard}
+        uupgCard={baseUupgCard}
+      />,
+    );
+
+    expect(screen.getByText("1 selected country")).toBeTruthy();
+  });
+
+  it("shows Off when no configured region is currently selected", () => {
+    render(
+      <DatasetViewSwitchGrid
+        regionCard={{
+          ...baseRegionCard,
+          selectors: [
+            {
+              id: "region-1",
+              label: "South Asia",
+              checked: false,
+              description: "",
+              countries: ["India"],
+            },
+          ],
+        }}
+        countryCard={baseCountryCard}
+        watchlistCard={baseWatchlistCard}
+        uupgCard={baseUupgCard}
+      />,
+    );
+
+    expect(screen.getAllByText("Off").length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("shows the simplified country description and in-card alternate-country toggle", () => {
+    render(
+      <DatasetViewSwitchGrid
+        regionCard={baseRegionCard}
+        countryCard={baseCountryCard}
+        watchlistCard={baseWatchlistCard}
+        uupgCard={baseUupgCard}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Country filters" }));
+
+    expect(screen.getByText("Filter people groups by country.")).toBeTruthy();
+    expect(screen.getByText("Alternate-country matching")).toBeTruthy();
+    expect(screen.getByLabelText("Toggle Alternate-country matching")).toBeTruthy();
+    expect(screen.queryByLabelText("Toggle Country")).toBeNull();
+  });
+
   it("reveals watchlist descriptions and controls only when expanded", () => {
     render(
       <DatasetViewSwitchGrid
@@ -380,7 +441,9 @@ describe("DatasetViewSwitchGrid", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Country filters" }));
 
-    expect(screen.getByText("2 visible")).toBeTruthy();
+    expect(screen.getByText("2 visible countries")).toBeTruthy();
+    expect(screen.queryByText("2 visible")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Clear visible" })).toBeNull();
 
     const searchInput = screen.getByLabelText("Search countries");
 
@@ -388,18 +451,17 @@ describe("DatasetViewSwitchGrid", () => {
 
     fireEvent.change(searchInput, { target: { value: "eg" } });
     fireEvent.click(
-      screen.getByLabelText("Toggle Include alternate countries"),
+      screen.getByLabelText("Toggle Alternate-country matching"),
     );
-    fireEvent.click(screen.getByRole("button", { name: "Select visible" }));
+    fireEvent.click(screen.getByRole("button", { name: "Select all" }));
     fireEvent.click(screen.getByLabelText("Include Jordan"));
-    fireEvent.click(screen.getByRole("button", { name: "Clear visible" }));
 
     expect(screen.queryByText("Egypt")).toBeNull();
     expect(screen.getByText("Jordan")).toBeTruthy();
     expect(onSearchChange).toHaveBeenCalledWith("eg");
     expect(onIncludeAlternateCountriesChange.mock.calls[0]?.[0]).toBe(true);
-    expect(onSelectVisible).toHaveBeenCalledWith(["Jordan"]);
-    expect(onClearVisible).toHaveBeenCalledWith(["Jordan"]);
+    expect(onSelectVisible).toHaveBeenCalledWith(["Egypt", "Jordan", "Turkey"]);
+    expect(onClearVisible).not.toHaveBeenCalled();
     expect(onToggleCountry).toHaveBeenCalledWith("Jordan", true);
     expect(onEnabledChange).toHaveBeenCalledWith(true);
   });
@@ -420,7 +482,7 @@ describe("DatasetViewSwitchGrid", () => {
     fireEvent.click(screen.getByRole("button", { name: "Country filters" }));
 
     expect(
-      screen.queryByLabelText("Toggle Include alternate countries"),
+      screen.queryByLabelText("Toggle Alternate-country matching"),
     ).toBeNull();
   });
 

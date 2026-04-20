@@ -66,6 +66,7 @@ type DatasetViewSwitchGridProps = {
     searchValue: string;
     availableCountries: string[];
     selectedCountries: string[];
+    hasExplicitSelection?: boolean;
     visibleCountries?: string[];
     includeAlternateCountries: boolean;
     supportsAlternateCountries: boolean;
@@ -122,8 +123,7 @@ type FilterSectionId = "region" | "country" | "watchlist" | "uupg";
 
 const FILTER_PANEL_DESCRIPTIONS = {
   region: "A grouping of people groups based on geography.",
-  country:
-    "Filter people groups by country. Enable alternate-country matching when you want alternate-country values included.",
+  country: "Filter people groups by country.",
   watchlist:
     "People groups unengaged or would be unengaged if the current mission work stopped today.",
   uupg: "People groups who have no record of engagement among them.",
@@ -441,7 +441,7 @@ function getRegionSummary(regionCard: DatasetViewSwitchGridProps["regionCard"]) 
   const selectedCount = visibleSelectors.filter((selector) => selector.checked).length;
 
   if (selectedCount === 0) {
-    return ["All regions"];
+    return ["Off"];
   }
 
   return [`${selectedCount} selected`];
@@ -606,11 +606,24 @@ function getCountrySummary(countryCard: DatasetViewSwitchGridProps["countryCard"
     return ["No visible countries"];
   }
 
-  if (!countryCard.enabled || countryCard.selectedCountries.length === 0) {
-    return ["All visible countries"];
+  const visibleCountryCount =
+    countryCard.visibleCountries?.length ?? countryCard.availableCountries.length;
+
+  if (!countryCard.hasExplicitSelection) {
+    return [
+      `${visibleCountryCount} visible ${
+        visibleCountryCount === 1 ? "country" : "countries"
+      }`,
+    ];
   }
 
-  return [`${countryCard.selectedCountries.length} selected`];
+  const selectedCountryCount = countryCard.selectedCountries.length;
+
+  return [
+    `${selectedCountryCount} selected ${
+      selectedCountryCount === 1 ? "country" : "countries"
+    }`,
+  ];
 }
 
 function getUupgSummary(uupgCard: DatasetViewSwitchGridProps["uupgCard"]) {
@@ -727,15 +740,6 @@ export function DatasetViewSwitchGrid({
           onExpandedChange={(expanded) =>
             setExpandedSections((current) => ({ ...current, country: expanded }))
           }
-          toggleControl={
-            <Switch
-              size="sm"
-              checked={countryCard.enabled}
-              disabled={!countryCard.supported}
-              onCheckedChange={countryCard.onEnabledChange}
-              aria-label="Toggle Country"
-            />
-          }
         >
           {!countryCard.supported ? (
             <p className="text-sm leading-5 text-muted-foreground">
@@ -750,14 +754,14 @@ export function DatasetViewSwitchGrid({
             <div className="space-y-3 px-3">
               {countryCard.supportsAlternateCountries ? (
                 <DatasetFilterRow
-                  label="Include alternate countries"
+                  label="Alternate-country matching"
                   definition="When enabled, country options and matches can come from both Geo_Country_Name and Alternate_Countries."
                   toggleControl={
                     <Switch
                       size="sm"
                       checked={countryCard.includeAlternateCountries}
                       onCheckedChange={countryCard.onIncludeAlternateCountriesChange}
-                      aria-label="Toggle Include alternate countries"
+                      aria-label="Toggle Alternate-country matching"
                     />
                   }
                 />
@@ -768,6 +772,10 @@ export function DatasetViewSwitchGrid({
                 visibleCountries={countryCard.visibleCountries}
                 searchValue={countryCard.searchValue}
                 disabled={false}
+                showSelectionSummary={false}
+                selectActionLabel="Select all"
+                selectActionCountries={countryCard.availableCountries}
+                showClearAction={false}
                 onSearchChange={countryCard.onSearchChange}
                 onToggleCountry={(country, checked) => {
                   if (checked) {

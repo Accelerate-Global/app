@@ -102,4 +102,44 @@ describe("SavedTableDetailSheet", () => {
 
     expect(screen.getByText("Global")).toBeTruthy();
   });
+
+  it("shows Off for custom country selections that no longer match a saved region", () => {
+    render(
+      <SavedTableDetailSheet
+        savedTable={createSavedTable({
+          filters: {
+            region: {
+              enabled: false,
+              selectedRegionIds: [],
+              selectedRegionNames: [],
+              enabledCountryNames: [],
+            },
+            country: {
+              enabled: true,
+              selectedCountryNames: ["India"],
+            },
+            watchlist: {
+              enabled: false,
+              threshold: 2,
+              engagementPhaseThreshold: 6,
+              frontierGroupValue: true,
+            },
+            uupg: {
+              enabled: false,
+            },
+            sorting: [],
+          },
+        })}
+        dataset={null}
+        open
+        isSaving={false}
+        isDeleting={false}
+        onOpenChange={vi.fn()}
+        onSaveSavedTable={vi.fn()}
+        onDeleteSavedTable={vi.fn()}
+      />,
+    );
+
+    expect(screen.getAllByText("Off").length).toBeGreaterThanOrEqual(1);
+  });
 });
