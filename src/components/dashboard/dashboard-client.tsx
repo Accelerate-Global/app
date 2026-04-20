@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+import { ensureDatasetRowsCache, getDatasetRowsCacheSnapshot } from "@/components/dashboard/dataset-row-cache";
 import { DatasetsGrid } from "@/components/dashboard/datasets-grid";
 import { SavedTableDetailSheet } from "@/components/dashboard/saved-table-detail-sheet";
 import { SavedTablesGrid } from "@/components/dashboard/saved-tables-grid";
@@ -122,6 +123,10 @@ export function DashboardClient({
       }),
     [actorOwnerId, workspaceRole],
   );
+  const primaryDataset = useMemo(
+    () => initialDatasets.find((dataset) => dataset.isPrimary) ?? null,
+    [initialDatasets],
+  );
 
   useEffect(() => {
     trackAppEvent(
@@ -134,6 +139,63 @@ export function DashboardClient({
       }),
     );
   }, [analyticsContext, initialDatasets.length, initialSavedTables.length]);
+
+  useEffect(() => {
+    if (!primaryDataset || primaryDataset.status !== "ready") {
+      return;
+    }
+
+    const sourceDatasetId = primaryDataset.backingDatasetId ?? primaryDataset.id;
+    const preloadStartTime = Date.now();
+    const { started, promise } = ensureDatasetRowsCache({
+      datasetId: primaryDataset.id,
+      sourceDatasetId,
+    });
+
+    if (!started) {
+      return;
+    }
+
+    trackAppEvent(
+      "dataset_preload_started",
+      withAnalyticsContext(analyticsContext, {
+        source_surface: "dashboard_page",
+        success: true,
+        dataset_id: primaryDataset.id,
+        source_dataset_id: sourceDatasetId,
+      }),
+    );
+
+    void promise
+      ?.then(() => {
+        const snapshot = getDatasetRowsCacheSnapshot(sourceDatasetId);
+        trackAppEvent(
+          "dataset_preload_completed",
+          withAnalyticsContext(analyticsContext, {
+            source_surface: "dashboard_page",
+            success: true,
+            dataset_id: primaryDataset.id,
+            source_dataset_id: sourceDatasetId,
+            row_count: snapshot.rows.length,
+            load_duration_ms: Date.now() - preloadStartTime,
+            duration_ms: Date.now() - preloadStartTime,
+          }),
+        );
+      })
+      .catch(() => {
+        trackAppEvent(
+          "dataset_preload_failed",
+          withAnalyticsContext(analyticsContext, {
+            source_surface: "dashboard_page",
+            success: false,
+            error_code: "dataset_preload_failed",
+            dataset_id: primaryDataset.id,
+            source_dataset_id: sourceDatasetId,
+            duration_ms: Date.now() - preloadStartTime,
+          }),
+        );
+      });
+  }, [analyticsContext, primaryDataset]);
 
   async function handleReorderDatasets(nextDatasets: DatasetSummary[]) {
     if (!canManageDatasets || isReordering) {

@@ -15,9 +15,12 @@ import {
   getUiSmokeEnv,
   getUiSmokeStorageAdminKey,
 } from "./lib/ui-smoke-env";
+import { REGION_COUNTRY_OPTIONS } from "../src/lib/region-country-options";
 
 const PRIMARY_DATASET_ID = "11111111-1111-4111-8111-111111111111";
 const SECONDARY_DATASET_ID = "22222222-2222-4222-8222-222222222222";
+const DERIVED_DATASET_ID = "99999999-9999-4999-8999-999999999999";
+const GLOBAL_REGION_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const SOUTH_ASIA_REGION_ID = "33333333-3333-4333-8333-333333333333";
 const LATIN_AMERICA_REGION_ID = "44444444-4444-4444-8444-444444444444";
 const JOSHUA_PROJECT_SOURCE_TYPE_ID = "55555555-5555-4555-8555-555555555555";
@@ -167,7 +170,14 @@ async function resetSmokeData(sql: postgres.Sql) {
     where email = any(${smokeEmails})
   `;
   await sql`delete from public.dataset_rows`;
-  await sql`delete from public.datasets`;
+  await sql`
+    delete from public.datasets
+    where backing_dataset_id is not null
+  `;
+  await sql`
+    delete from public.datasets
+    where backing_dataset_id is null
+  `;
   await sql`delete from public.filter_region_countries`;
   await sql`delete from public.filter_regions`;
   await sql`delete from public.field_definition_sources`;
@@ -211,10 +221,23 @@ async function insertFilterRegions(sql: postgres.Sql) {
   await sql`
     insert into public.filter_regions (id, name, description, sort_order)
     values
-      (${SOUTH_ASIA_REGION_ID}, ${"South Asia"}, ${"India and Nepal"}, ${1}),
-      (${LATIN_AMERICA_REGION_ID}, ${"Latin America"}, ${"Brazil and Colombia"}, ${2})
+      (${GLOBAL_REGION_ID}, ${"Global"}, ${"All countries"}, ${1}),
+      (${SOUTH_ASIA_REGION_ID}, ${"South Asia"}, ${"India and Nepal"}, ${2}),
+      (${LATIN_AMERICA_REGION_ID}, ${"Latin America"}, ${"Brazil and Colombia"}, ${3})
     on conflict (id) do update
     set name = excluded.name, description = excluded.description, sort_order = excluded.sort_order, updated_at = now()
+  `;
+
+  await sql`
+    insert into public.filter_region_countries ${sql(
+      REGION_COUNTRY_OPTIONS.map((countryName) => ({
+        region_id: GLOBAL_REGION_ID,
+        country_name: countryName,
+      })),
+      "region_id",
+      "country_name",
+    )}
+    on conflict do nothing
   `;
 
   await sql`
@@ -322,6 +345,7 @@ async function insertDatasets(input: {
     },
   ];
   const primaryBlobPath = "datasets/csv/smoke-primary-dataset.csv";
+  const derivedBlobPath = "datasets/csv/smoke-derived-dataset.csv";
   const secondaryBlobPath = "datasets/csv/smoke-secondary-dataset.csv";
 
   await input.sql`
@@ -329,6 +353,7 @@ async function insertDatasets(input: {
       [
         {
           id: PRIMARY_DATASET_ID,
+          backing_dataset_id: null,
           owner_id: input.ownerId,
           file_name: "Smoke Primary Dataset",
           sort_order: 0,
@@ -354,10 +379,72 @@ async function insertDatasets(input: {
           error: null,
         },
         {
+          id: DERIVED_DATASET_ID,
+          backing_dataset_id: PRIMARY_DATASET_ID,
+          owner_id: input.ownerId,
+          file_name: "Smoke Watchlist Dataset",
+          sort_order: 1,
+          blob_url: buildBlobUrl(input.supabaseUrl, input.bucket, derivedBlobPath),
+          blob_path: derivedBlobPath,
+          current_version_action: "upload",
+          current_version_actor_owner_id: input.ownerId,
+          current_version_actor_email: input.actorEmail,
+          current_version_created_at: new Date("2026-04-17T00:03:00.000Z"),
+          is_primary: false,
+          status: "ready",
+          row_count: 1,
+          size_bytes: 768,
+          columns: primaryColumns,
+          hidden_column_keys: [],
+          tags: [
+            {
+              id: "tag-smoke-derived",
+              label: "Watchlist",
+              color: "#262531",
+              openPreset: {
+                region: {
+                  enabled: false,
+                  selectedRegionIds: [],
+                  selectedRegionNames: [],
+                  enabledCountryNames: [],
+                },
+                country: {
+                  enabled: true,
+                  selectedCountryNames: ["India"],
+                },
+                watchlist: {
+                  enabled: false,
+                  thresholdEnabled: true,
+                  threshold: 2,
+                  engagementPhaseEnabled: true,
+                  engagementPhaseThreshold: 6,
+                  evangelicalPopulationBelieversRuleEnabled: true,
+                  evangelicalPopulationBelieversRule: {
+                    tiers: [
+                      {
+                        minPopulation: 0,
+                        maxPopulation: null,
+                        minBelievers: 50,
+                      },
+                    ],
+                  },
+                  frontierGroupEnabled: true,
+                  frontierGroupValue: true,
+                },
+                uupg: {
+                  enabled: false,
+                },
+              },
+            },
+          ],
+          error: null,
+        },
+        {
           id: SECONDARY_DATASET_ID,
+          backing_dataset_id: null,
           owner_id: input.ownerId,
           file_name: "Smoke Secondary Dataset",
-          sort_order: 1,
+          sort_order: 2,
           blob_url: buildBlobUrl(input.supabaseUrl, input.bucket, secondaryBlobPath),
           blob_path: secondaryBlobPath,
           current_version_action: "upload",
@@ -381,6 +468,7 @@ async function insertDatasets(input: {
         },
       ],
       "id",
+      "backing_dataset_id",
       "owner_id",
       "file_name",
       "sort_order",
@@ -401,6 +489,7 @@ async function insertDatasets(input: {
     )}
     on conflict (id) do update
     set
+      backing_dataset_id = excluded.backing_dataset_id,
       owner_id = excluded.owner_id,
       file_name = excluded.file_name,
       sort_order = excluded.sort_order,
@@ -691,6 +780,7 @@ async function main() {
       aliases: {
         primaryDatasetId: PRIMARY_DATASET_ID,
         secondaryDatasetId: SECONDARY_DATASET_ID,
+        derivedDatasetId: DERIVED_DATASET_ID,
         editableFieldDefinitionId: FIELD_DEFINITION_IDS.pgPeopleId1,
         editableFieldSourceTypeId: JOSHUA_PROJECT_SOURCE_TYPE_ID,
         southAsiaRegionId: SOUTH_ASIA_REGION_ID,
@@ -719,6 +809,10 @@ async function main() {
         primary: {
           id: PRIMARY_DATASET_ID,
           fileName: "Smoke Primary Dataset",
+        },
+        derived: {
+          id: DERIVED_DATASET_ID,
+          fileName: "Smoke Watchlist Dataset",
         },
         secondary: {
           id: SECONDARY_DATASET_ID,

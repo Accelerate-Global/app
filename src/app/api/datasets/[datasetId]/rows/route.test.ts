@@ -32,6 +32,7 @@ const context = {
 };
 
 const rowsResponse = {
+  sourceDatasetId: "f0000000-0000-4000-8000-000000000001",
   rows: [
     {
       id: "r0000000-0000-4000-8000-000000000001",
@@ -87,6 +88,7 @@ describe("/api/datasets/[datasetId]/rows", () => {
 
   it("reads all rows in one request when all=true", async () => {
     const allRowsResponse = {
+      sourceDatasetId: "f0000000-0000-4000-8000-000000000001",
       rows: [
         {
           id: "r0000000-0000-4000-8000-000000000001",

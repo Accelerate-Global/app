@@ -20,6 +20,7 @@ describe("datasets schema", () => {
     );
     expect(datasets.currentVersionActorEmail.name).toBe("current_version_actor_email");
     expect(datasets.currentVersionCreatedAt.name).toBe("current_version_created_at");
+    expect(datasets.backingDatasetId.name).toBe("backing_dataset_id");
   });
 
   it("creates the dataset upload versions migration", async () => {
@@ -36,6 +37,25 @@ describe("datasets schema", () => {
     expect(migration).toContain("create table if not exists public.dataset_versions");
     expect(migration).toContain(
       'create policy "dataset admin can read dataset versions"',
+    );
+  });
+
+  it("creates the derived dataset backing migration", async () => {
+    const migrationPath = path.join(
+      process.cwd(),
+      "supabase/migrations/20260420045139_add_backing_dataset_id.sql",
+    );
+
+    const migration = await readFile(migrationPath, "utf8");
+
+    expect(migration).toContain(
+      'add column if not exists backing_dataset_id uuid',
+    );
+    expect(migration).toContain(
+      "create trigger datasets_enforce_physical_backing_dataset",
+    );
+    expect(migration).toContain(
+      "Derived datasets must reference a physical dataset.",
     );
   });
 });

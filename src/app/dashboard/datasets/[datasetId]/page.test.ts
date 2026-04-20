@@ -73,6 +73,7 @@ const notFoundMock = vi.mocked(notFound);
 function createDataset() {
   return {
     id: "dataset-1",
+    backingDatasetId: null,
     sortOrder: 0,
     fileName: "Global",
     blobUrl: "https://example.com/global.csv",
@@ -101,10 +102,11 @@ function createDataset() {
             selectedRegionNames: [],
             enabledCountryNames: [],
           },
-          country: {
-            enabled: false,
-            selectedCountryNames: [],
-          },
+            country: {
+              enabled: false,
+              selectedCountryNames: [],
+              includeAlternateCountries: false,
+            },
           watchlist: {
             enabled: true,
             threshold: 2,
@@ -176,10 +178,11 @@ describe("/dashboard/datasets/[datasetId]", () => {
           selectedRegionNames: ["South Asia"],
           enabledCountryNames: ["India"],
         },
-        country: {
-          enabled: false,
-          selectedCountryNames: [],
-        },
+          country: {
+            enabled: false,
+            selectedCountryNames: [],
+            includeAlternateCountries: false,
+          },
         watchlist: {
           enabled: false,
           threshold: 2,
@@ -235,6 +238,7 @@ describe("/dashboard/datasets/[datasetId]", () => {
       country: {
         enabled: false,
         selectedCountryNames: [],
+        includeAlternateCountries: false,
       },
       watchlist: expect.objectContaining({
         enabled: false,
@@ -321,6 +325,7 @@ describe("/dashboard/datasets/[datasetId]", () => {
         country: {
           enabled: false,
           selectedCountryNames: [],
+          includeAlternateCountries: false,
         },
         watchlist: {
           enabled: false,

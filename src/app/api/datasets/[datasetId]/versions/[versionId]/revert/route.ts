@@ -1,5 +1,6 @@
 import { getCurrentIdentity } from "@/lib/auth";
 import {
+  DerivedDatasetMutationError,
   DatasetVersionRevertConflictError,
   revertDatasetVersion,
 } from "@/lib/datasets";
@@ -37,7 +38,10 @@ export async function POST(
       actorEmail: identity.email,
     });
   } catch (error) {
-    if (error instanceof DatasetVersionRevertConflictError) {
+    if (
+      error instanceof DatasetVersionRevertConflictError ||
+      error instanceof DerivedDatasetMutationError
+    ) {
       return jsonError(error.message, error.status);
     }
 

@@ -17,6 +17,7 @@ vi.mock("@/lib/analytics-client", () => ({
 
 const dataset = {
   id: "dataset-1",
+  backingDatasetId: null,
   sortOrder: 0,
   fileName: "Global",
   blobUrl: "https://example.com/dataset.csv",

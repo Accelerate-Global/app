@@ -70,6 +70,7 @@ const savedDatasetCountryFilterStateSchema = z
   .object({
     enabled: z.boolean(),
     selectedCountryNames: z.array(filterRegionCountrySchema).max(500),
+    includeAlternateCountries: z.boolean().optional().default(false),
   })
   .superRefine((value, ctx) => {
     const normalizedCountryNames = value.selectedCountryNames.map((countryName) =>

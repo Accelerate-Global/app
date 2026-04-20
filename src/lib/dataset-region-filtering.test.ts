@@ -60,6 +60,7 @@ const rows: DatasetRowsResponse["rows"] = [
 
 const dataset = {
   id: "dataset-1",
+  backingDatasetId: null,
   sortOrder: 0,
   fileName: "Global",
   blobUrl: "https://example.com/dataset.csv",
@@ -328,8 +329,19 @@ describe("dataset-region-filtering", () => {
     expect(filteredRows[0]?.id).toBe("row-2");
   });
 
-  it("builds country options from primary and alternate country fields", () => {
+  it("builds country options from primary country fields by default", () => {
     expect(getAvailableDatasetCountryNames(rows)).toEqual([
+      "India",
+      "Nepal",
+    ]);
+  });
+
+  it("includes alternate-country fields in the option list when enabled", () => {
+    expect(
+      getAvailableDatasetCountryNames(rows, {
+        includeAlternateCountries: true,
+      }),
+    ).toEqual([
       "Bhutan",
       "India",
       "Nepal",
@@ -337,11 +349,23 @@ describe("dataset-region-filtering", () => {
     ]);
   });
 
-  it("filters rows by primary or alternate country matches", () => {
+  it("filters rows by primary country matches when alternate-country matching is off", () => {
     const filteredRows = filterDatasetRowsByCountry(rows, {
       enabled: true,
       isSupported: true,
       selectedCountryNames: ["Bhutan"],
+      includeAlternateCountries: false,
+    });
+
+    expect(filteredRows).toEqual([]);
+  });
+
+  it("filters rows by primary or alternate country matches when enabled", () => {
+    const filteredRows = filterDatasetRowsByCountry(rows, {
+      enabled: true,
+      isSupported: true,
+      selectedCountryNames: ["Bhutan"],
+      includeAlternateCountries: true,
     });
 
     expect(filteredRows.map((row) => row.id)).toEqual(["row-1"]);
@@ -352,6 +376,7 @@ describe("dataset-region-filtering", () => {
       enabled: true,
       isSupported: true,
       selectedCountryNames: [],
+      includeAlternateCountries: false,
     });
 
     expect(filteredRows).toHaveLength(3);
@@ -368,6 +393,7 @@ describe("dataset-region-filtering", () => {
       enabled: true,
       isSupported: true,
       selectedCountryNames: ["Tibet"],
+      includeAlternateCountries: true,
     });
 
     expect(countryFilteredRows).toEqual([]);

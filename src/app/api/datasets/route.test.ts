@@ -27,6 +27,7 @@ const identity = {
 
 const dataset = {
   id: "f0000000-0000-4000-8000-000000000001",
+  backingDatasetId: null,
   sortOrder: 0,
   fileName: "customers.csv",
   blobUrl:

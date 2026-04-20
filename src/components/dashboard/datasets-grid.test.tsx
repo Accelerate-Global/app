@@ -15,6 +15,7 @@ vi.mock("next/navigation", () => ({
 
 const dataset = {
   id: "dataset-1",
+  backingDatasetId: null,
   sortOrder: 0,
   fileName: "All People Groups",
   blobUrl: "https://example.com/all-people-groups.csv",

@@ -11,10 +11,8 @@ import {
 } from "./dataset-view-switch-grid";
 
 const baseRegionCard = {
-  enabled: true,
   supported: true,
   selectors: [],
-  onEnabledChange: vi.fn(),
   onSelectorChange: vi.fn(),
 };
 
@@ -23,8 +21,12 @@ const baseCountryCard = {
   supported: true,
   searchValue: "",
   availableCountries: ["Egypt", "Jordan", "Turkey"],
+  visibleCountries: ["Egypt", "Jordan", "Turkey"],
   selectedCountries: [] as string[],
+  includeAlternateCountries: false,
+  supportsAlternateCountries: true,
   onEnabledChange: vi.fn(),
+  onIncludeAlternateCountriesChange: vi.fn(),
   onSearchChange: vi.fn(),
   onToggleCountry: vi.fn(),
   onSelectVisible: vi.fn(),
@@ -81,7 +83,7 @@ describe("DatasetViewSwitchGrid", () => {
     );
   });
 
-  it("falls back to the country list for non-Globe regions without descriptions", () => {
+  it("falls back to the country list for non-global regions without descriptions", () => {
     expect(
       getRegionTooltipText("South East Asia", "", ["Thailand", "Vietnam"]),
     ).toBe("Thailand, Vietnam");
@@ -99,7 +101,8 @@ describe("DatasetViewSwitchGrid", () => {
 
     expect(screen.getByText("Filters")).toBeTruthy();
     expect(screen.getByText("No regions configured")).toBeTruthy();
-    expect(screen.getAllByText("Off")).toHaveLength(3);
+    expect(screen.getAllByText("Off")).toHaveLength(2);
+    expect(screen.getByText("All visible countries")).toBeTruthy();
     expect(
       screen.queryByText("A grouping of people groups based on geography."),
     ).toBeNull();
@@ -132,14 +135,12 @@ describe("DatasetViewSwitchGrid", () => {
     expect(screen.getByText("Engage: 8 Phases of Engagement >= 6")).toBeTruthy();
   });
 
-  it("hides Globe, normalizes South Asia, and keeps region controls interactive", () => {
-    const onEnabledChange = vi.fn();
+  it("shows Global, normalizes South Asia, and keeps region controls interactive", () => {
     const onSelectorChange = vi.fn();
 
     render(
       <DatasetViewSwitchGrid
         regionCard={{
-          enabled: true,
           supported: true,
           selectors: [
             {
@@ -157,7 +158,6 @@ describe("DatasetViewSwitchGrid", () => {
               countries: ["Thailand"],
             },
           ],
-          onEnabledChange,
           onSelectorChange,
         }}
         countryCard={baseCountryCard}
@@ -171,7 +171,7 @@ describe("DatasetViewSwitchGrid", () => {
     expect(
       screen.getByText("A grouping of people groups based on geography."),
     ).toBeTruthy();
-    expect(screen.getByText("All regions")).toBeTruthy();
+    expect(screen.getAllByText("Global")).toHaveLength(2);
     expect(screen.queryByText("Globe")).toBeNull();
     expect(screen.queryByText("South East Asia")).toBeNull();
     expect(screen.getByText("South Asia")).toBeTruthy();
@@ -179,23 +179,25 @@ describe("DatasetViewSwitchGrid", () => {
     fireEvent.click(screen.getByLabelText("Toggle South Asia"));
 
     expect(onSelectorChange).toHaveBeenCalledWith("sea", false);
-
-    fireEvent.click(screen.getByLabelText("Toggle Region"));
-
-    expect(onEnabledChange.mock.calls[0]?.[0]).toBe(false);
   });
 
-  it("shows Off when region filtering is disabled", () => {
+  it("shows Global when the all-countries selector is active", () => {
     render(
       <DatasetViewSwitchGrid
         regionCard={{
           ...baseRegionCard,
-          enabled: false,
           selectors: [
+            {
+              id: "global",
+              label: "Global",
+              checked: true,
+              description: "",
+              countries: ["India", "Nepal"],
+            },
             {
               id: "region-1",
               label: "South Asia",
-              checked: true,
+              checked: false,
               description: "",
               countries: ["India"],
             },
@@ -215,7 +217,7 @@ describe("DatasetViewSwitchGrid", () => {
     if (!regionSection) {
       throw new Error("Expected Region section to render");
     }
-    expect(within(regionSection).getByText("Off")).toBeTruthy();
+    expect(within(regionSection).getByText("Global")).toBeTruthy();
   });
 
   it("shows a selected count when only a subset of visible regions is active", () => {
@@ -346,6 +348,7 @@ describe("DatasetViewSwitchGrid", () => {
 
   it("keeps country search interactive and auto-enables the filter on selection", () => {
     const onEnabledChange = vi.fn();
+    const onIncludeAlternateCountriesChange = vi.fn();
     const onSearchChange = vi.fn();
     const onToggleCountry = vi.fn();
     const onSelectVisible = vi.fn();
@@ -359,8 +362,12 @@ describe("DatasetViewSwitchGrid", () => {
           supported: true,
           searchValue: "jor",
           availableCountries: ["Egypt", "Jordan", "Turkey"],
+          visibleCountries: ["Egypt", "Jordan"],
           selectedCountries: [],
+          includeAlternateCountries: false,
+          supportsAlternateCountries: true,
           onEnabledChange,
+          onIncludeAlternateCountriesChange,
           onSearchChange,
           onToggleCountry,
           onSelectVisible,
@@ -373,13 +380,16 @@ describe("DatasetViewSwitchGrid", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Country filters" }));
 
-    expect(screen.getByText("0 selected")).toBeTruthy();
+    expect(screen.getByText("2 visible")).toBeTruthy();
 
     const searchInput = screen.getByLabelText("Search countries");
 
     expect(searchInput.getAttribute("disabled")).toBeNull();
 
     fireEvent.change(searchInput, { target: { value: "eg" } });
+    fireEvent.click(
+      screen.getByLabelText("Toggle Include alternate countries"),
+    );
     fireEvent.click(screen.getByRole("button", { name: "Select visible" }));
     fireEvent.click(screen.getByLabelText("Include Jordan"));
     fireEvent.click(screen.getByRole("button", { name: "Clear visible" }));
@@ -387,10 +397,31 @@ describe("DatasetViewSwitchGrid", () => {
     expect(screen.queryByText("Egypt")).toBeNull();
     expect(screen.getByText("Jordan")).toBeTruthy();
     expect(onSearchChange).toHaveBeenCalledWith("eg");
+    expect(onIncludeAlternateCountriesChange.mock.calls[0]?.[0]).toBe(true);
     expect(onSelectVisible).toHaveBeenCalledWith(["Jordan"]);
     expect(onClearVisible).toHaveBeenCalledWith(["Jordan"]);
     expect(onToggleCountry).toHaveBeenCalledWith("Jordan", true);
     expect(onEnabledChange).toHaveBeenCalledWith(true);
+  });
+
+  it("hides the alternate-country toggle when the dataset does not support it", () => {
+    render(
+      <DatasetViewSwitchGrid
+        regionCard={baseRegionCard}
+        countryCard={{
+          ...baseCountryCard,
+          supportsAlternateCountries: false,
+        }}
+        watchlistCard={baseWatchlistCard}
+        uupgCard={baseUupgCard}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Country filters" }));
+
+    expect(
+      screen.queryByLabelText("Toggle Include alternate countries"),
+    ).toBeNull();
   });
 
   it("keeps the watchlist segmented control interactive when the section is expanded", () => {

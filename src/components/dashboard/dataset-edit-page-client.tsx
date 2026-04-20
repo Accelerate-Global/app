@@ -397,6 +397,7 @@ function DatasetEditForm({
   onReplaceDataset,
   onRevertDatasetVersion,
 }: DatasetEditFormProps) {
+  const isDerivedView = dataset.backingDatasetId != null;
   const [fileName, setFileName] = useState(dataset.fileName);
   const [isPrimary, setIsPrimary] = useState(dataset.isPrimary);
   const [tags, setTags] = useState(() => normalizeDatasetTags(dataset.tags));
@@ -671,6 +672,13 @@ function DatasetEditForm({
           <div className="rounded-2xl border border-border bg-card px-4 py-3">
             <p className="font-medium text-foreground">{dataset.fileName}</p>
           </div>
+          {isDerivedView ? (
+            <p className="text-sm text-muted-foreground">
+              This dataset is a derived view backed by another dataset. You can
+              still edit its name, tags, displayed fields, and default preset, but
+              it cannot be primary and does not manage upload history directly.
+            </p>
+          ) : null}
         </section>
 
         <section className="space-y-2">
@@ -696,18 +704,22 @@ function DatasetEditForm({
           <div className="space-y-1">
             <p className="text-sm font-medium text-foreground">Primary dataset</p>
             <p className="text-sm text-muted-foreground">
-              Show this dataset by default when someone opens Data.
+              {isDerivedView
+                ? "Derived dataset views cannot be shown as the default source dataset."
+                : "Show this dataset by default when someone opens Data."}
             </p>
-            <p className="text-sm leading-5 text-muted-foreground">
-              Only one dataset can be primary at a time. Selecting this clears
-              the primary flag from any other dataset.
-            </p>
+            {!isDerivedView ? (
+              <p className="text-sm leading-5 text-muted-foreground">
+                Only one dataset can be primary at a time. Selecting this clears
+                the primary flag from any other dataset.
+              </p>
+            ) : null}
           </div>
 
           <Checkbox
             id="dataset-is-primary"
             checked={isPrimary}
-            disabled={isWorking}
+            disabled={isWorking || isDerivedView}
             onCheckedChange={(checked) => setIsPrimary(!!checked)}
             aria-label="Set dataset as primary"
           />
@@ -829,11 +841,18 @@ function DatasetEditForm({
           <div className="space-y-1">
             <p className="text-sm font-medium text-foreground">Upload history</p>
             <p className="text-sm text-muted-foreground">
-              Review prior uploads and revert this dataset if needed.
+              {isDerivedView
+                ? "Derived dataset views reuse a backing dataset and do not keep their own upload history."
+                : "Review prior uploads and revert this dataset if needed."}
             </p>
           </div>
 
-          {isLoadingVersions ? (
+          {isDerivedView ? (
+            <div className="rounded-2xl border border-dashed border-border px-4 py-4 text-sm text-muted-foreground">
+              Replace and revert actions are only available on the backing source
+              dataset.
+            </div>
+          ) : isLoadingVersions ? (
             <div className="rounded-2xl border border-border bg-card px-4 py-4 text-sm text-muted-foreground">
               Loading upload history...
             </div>
@@ -934,7 +953,7 @@ function DatasetEditForm({
             type="button"
             variant="outline"
             className="w-full sm:w-auto"
-            disabled={isWorking}
+            disabled={isWorking || isDerivedView}
             data-smoke-dataset-replace
             onClick={onReplaceDataset}
           >

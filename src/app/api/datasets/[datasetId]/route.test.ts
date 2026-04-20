@@ -33,6 +33,14 @@ vi.mock("@/lib/supabase/admin", () => ({
 }));
 
 vi.mock("@/lib/datasets", () => ({
+  DerivedDatasetMutationError: class DerivedDatasetMutationError extends Error {
+    readonly status = 409;
+
+    constructor(message = "Derived dataset views cannot be marked as primary.") {
+      super(message);
+      this.name = "DerivedDatasetMutationError";
+    }
+  },
   DatasetOpenPresetCompatibilityError: class DatasetOpenPresetCompatibilityError extends Error {
     readonly status = 400;
 
@@ -70,6 +78,7 @@ const context = {
 
 const dataset = {
   id: "f0000000-0000-4000-8000-000000000001",
+  backingDatasetId: null,
   sortOrder: 0,
   fileName: "customers.csv",
   blobUrl:
@@ -265,6 +274,24 @@ describe("/api/datasets/[datasetId]", () => {
       tags: undefined,
       isPrimary: undefined,
       hiddenColumnKeys: ["email"],
+    });
+  });
+
+  it("returns derived dataset mutation conflicts from metadata updates", async () => {
+    const { DerivedDatasetMutationError } = await import("@/lib/datasets");
+    updateDatasetDetailsMock.mockRejectedValue(new DerivedDatasetMutationError());
+
+    const response = await PATCH(
+      new Request("http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001", {
+        method: "PATCH",
+        body: JSON.stringify({ isPrimary: true }),
+      }),
+      context,
+    );
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual({
+      error: "Derived dataset views cannot be marked as primary.",
     });
   });
 

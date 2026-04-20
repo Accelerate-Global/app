@@ -1,5 +1,8 @@
 import { getCurrentIdentity } from "@/lib/auth";
-import { insertDatasetRowBatch } from "@/lib/datasets";
+import {
+  DerivedDatasetMutationError,
+  insertDatasetRowBatch,
+} from "@/lib/datasets";
 import { jsonAdminOnlyError, jsonError } from "@/lib/http";
 import { rowBatchSchema } from "@/lib/validation";
 
@@ -27,10 +30,20 @@ export async function POST(request: Request, context: RowBatchContext) {
     return jsonError("Row batch payload is invalid.");
   }
 
-  const dataset = await insertDatasetRowBatch({
-    datasetId,
-    ...parsed.data,
-  });
+  let dataset;
+
+  try {
+    dataset = await insertDatasetRowBatch({
+      datasetId,
+      ...parsed.data,
+    });
+  } catch (error) {
+    if (error instanceof DerivedDatasetMutationError) {
+      return jsonError(error.message, error.status);
+    }
+
+    throw error;
+  }
 
   if (!dataset) {
     return jsonError("Dataset not found.", 404);

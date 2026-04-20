@@ -23,6 +23,7 @@ describe("dataset-tags", () => {
           country: {
             enabled: false,
             selectedCountryNames: [],
+            includeAlternateCountries: false,
           },
           watchlist: {
             enabled: true,
@@ -53,6 +54,7 @@ describe("dataset-tags", () => {
         country: {
           enabled: false,
           selectedCountryNames: [],
+          includeAlternateCountries: false,
         },
         watchlist: {
           enabled: true,
@@ -100,6 +102,7 @@ describe("dataset-tags", () => {
           country: {
             enabled: false,
             selectedCountryNames: [],
+            includeAlternateCountries: false,
           },
           watchlist: {
             enabled: true,
@@ -134,6 +137,7 @@ describe("dataset-tags", () => {
             country: {
               enabled: false,
               selectedCountryNames: [],
+              includeAlternateCountries: false,
             },
             watchlist: {
               enabled: true,
@@ -162,6 +166,7 @@ describe("dataset-tags", () => {
             country: {
               enabled: false,
               selectedCountryNames: [],
+              includeAlternateCountries: false,
             },
             watchlist: {
               enabled: false,

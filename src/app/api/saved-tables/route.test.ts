@@ -44,6 +44,7 @@ const savedTable = {
     country: {
       enabled: false,
       selectedCountryNames: [],
+      includeAlternateCountries: false,
     },
     watchlist: {
       enabled: true,

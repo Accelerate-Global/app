@@ -1,5 +1,8 @@
 import { getCurrentIdentity } from "@/lib/auth";
-import { replaceDatasetContents } from "@/lib/datasets";
+import {
+  DerivedDatasetMutationError,
+  replaceDatasetContents,
+} from "@/lib/datasets";
 import { isDatasetStoragePath } from "@/lib/dataset-storage";
 import { jsonAdminOnlyError, jsonError } from "@/lib/http";
 import { replaceDatasetSchema } from "@/lib/validation";
@@ -32,12 +35,22 @@ export async function POST(request: Request, context: DatasetContext) {
   }
 
   const { datasetId } = await context.params;
-  const replacement = await replaceDatasetContents({
-    datasetId,
-    actorOwnerId: identity.ownerId,
-    actorEmail: identity.email,
-    ...parsed.data,
-  });
+  let replacement;
+
+  try {
+    replacement = await replaceDatasetContents({
+      datasetId,
+      actorOwnerId: identity.ownerId,
+      actorEmail: identity.email,
+      ...parsed.data,
+    });
+  } catch (error) {
+    if (error instanceof DerivedDatasetMutationError) {
+      return jsonError(error.message, error.status);
+    }
+
+    throw error;
+  }
 
   if (!replacement) {
     return jsonError("Dataset not found.", 404);

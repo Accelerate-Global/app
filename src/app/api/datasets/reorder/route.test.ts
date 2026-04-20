@@ -26,6 +26,7 @@ const adminIdentity = {
 const orderedDatasets = [
   {
     id: "f0000000-0000-4000-8000-000000000001",
+    backingDatasetId: null,
     sortOrder: 0,
     fileName: "customers.csv",
     blobUrl:
@@ -44,6 +45,7 @@ const orderedDatasets = [
   },
   {
     id: "f0000000-0000-4000-8000-000000000002",
+    backingDatasetId: null,
     sortOrder: 1,
     fileName: "teams.csv",
     blobUrl:

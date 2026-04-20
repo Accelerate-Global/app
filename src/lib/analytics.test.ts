@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  getAnalyticsEventPropertyKeys,
   getAnalyticsRouteFromPathname,
   getEnabledFilterSections,
   getSortingKeys,
@@ -85,5 +86,18 @@ describe("analytics helpers", () => {
     expect(
       getAnalyticsRouteFromPathname("/dashboard/field-sources"),
     ).toBe("field_sources");
+  });
+
+  it("exposes preload and cache analytics event property keys", () => {
+    expect(getAnalyticsEventPropertyKeys("dataset_preload_completed")).toEqual([
+      "source_dataset_id",
+      "row_count",
+      "load_duration_ms",
+    ]);
+    expect(getAnalyticsEventPropertyKeys("dataset_row_cache_hit")).toEqual([
+      "dataset_source",
+      "source_dataset_id",
+      "cached_row_count",
+    ]);
   });
 });

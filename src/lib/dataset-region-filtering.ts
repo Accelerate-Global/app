@@ -35,6 +35,7 @@ export type DatasetCountryFilterState = {
   enabled: boolean;
   isSupported: boolean;
   selectedCountryNames: string[];
+  includeAlternateCountries: boolean;
 };
 
 export type DatasetUupgFilterState = {
@@ -191,6 +192,15 @@ export function datasetSupportsCountryFiltering(
   return datasetSupportsColumnFiltering(dataset, REGION_DATASET_COLUMN_KEY);
 }
 
+export function datasetSupportsAlternateCountryFiltering(
+  dataset: Pick<DatasetSummary, "columns">,
+) {
+  return datasetSupportsColumnFiltering(
+    dataset,
+    COUNTRY_ALTERNATE_DATASET_COLUMN_KEY,
+  );
+}
+
 export function datasetSupportsUupgFiltering(
   dataset: Pick<DatasetSummary, "columns">,
 ) {
@@ -266,11 +276,18 @@ function dedupeCountryNames(values: string[]) {
   );
 }
 
-export function getAvailableDatasetCountryNames(rows: DatasetRow[]) {
+export function getAvailableDatasetCountryNames(
+  rows: DatasetRow[],
+  options?: {
+    includeAlternateCountries?: boolean;
+  },
+) {
   return dedupeCountryNames(
     rows.flatMap((row) => [
       normalizeCountryName(getRegionDatasetValue(row)),
-      ...parseAlternateCountryNames(getAlternateCountryDatasetValue(row)),
+      ...(options?.includeAlternateCountries
+        ? parseAlternateCountryNames(getAlternateCountryDatasetValue(row))
+        : []),
     ]),
   );
 }
@@ -329,6 +346,10 @@ export function filterDatasetRowsByCountry(
 
     if (primaryCountryName && allowedCountryNames.has(primaryCountryName)) {
       return true;
+    }
+
+    if (!countryFilter.includeAlternateCountries) {
+      return false;
     }
 
     return parseAlternateCountryNames(getAlternateCountryDatasetValue(row)).some(

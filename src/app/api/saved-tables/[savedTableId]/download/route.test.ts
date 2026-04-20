@@ -47,6 +47,7 @@ const context = {
 
 const dataset = {
   id: "f0000000-0000-4000-8000-000000000001",
+  backingDatasetId: null,
   sortOrder: 0,
   fileName: "Every People Group.csv",
   blobUrl: "https://example.com/every-people-group.csv",
@@ -90,6 +91,7 @@ const savedTable = {
     country: {
       enabled: false,
       selectedCountryNames: [],
+      includeAlternateCountries: false,
     },
     watchlist: {
       enabled: false,
@@ -121,6 +123,7 @@ describe("/api/saved-tables/[savedTableId]/download", () => {
     getSavedDatasetTableMock.mockResolvedValue(savedTable);
     getDatasetMock.mockResolvedValue(dataset);
     getAllDatasetRowsMock.mockResolvedValue({
+      sourceDatasetId: dataset.id,
       rows: [
         {
           id: "row-1",
@@ -216,6 +219,7 @@ describe("/api/saved-tables/[savedTableId]/download", () => {
         country: {
           enabled: true,
           selectedCountryNames: ["Egypt"],
+          includeAlternateCountries: true,
         },
       },
     });

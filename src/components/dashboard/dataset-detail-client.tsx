@@ -42,13 +42,14 @@ import {
   WATCHLIST_POPULATION_DATASET_COLUMN_KEY,
 } from "@/lib/dataset-region-constants";
 import {
+  datasetSupportsAlternateCountryFiltering,
   datasetSupportsCountryFiltering,
   datasetSupportsRegionFiltering,
   datasetSupportsWatchlistFiltering,
   datasetSupportsUupgFiltering,
   getEnabledRegionCountryNames,
 } from "@/lib/dataset-region-filtering";
-import { isGlobeRegionName } from "@/lib/region-display";
+import { isGlobalRegionName } from "@/lib/region-display";
 import {
   buildDatasetOpenPreset,
   buildSavedDatasetFilterState,
@@ -100,6 +101,57 @@ function dedupeCountryNames(values: string[]) {
   return Array.from(
     new Set(values.map((value) => value.trim()).filter(Boolean)),
   ).sort((left, right) => left.localeCompare(right));
+}
+
+function createRegionSelectionState(
+  regions: FilterRegion[],
+  selectedRegionIds: Record<string, boolean>,
+) {
+  return Object.fromEntries(
+    regions.map((region) => [region.id, selectedRegionIds[region.id] ?? false]),
+  );
+}
+
+function getNextSelectedRegionIds(input: {
+  regions: FilterRegion[];
+  current: Record<string, boolean>;
+  regionId: string;
+  checked: boolean;
+}) {
+  const next = createRegionSelectionState(input.regions, input.current);
+  const globalRegion =
+    input.regions.find((region) => isGlobalRegionName(region.name)) ?? null;
+
+  if (globalRegion && input.regionId === globalRegion.id) {
+    if (!input.checked) {
+      return next;
+    }
+
+    return Object.fromEntries(
+      input.regions.map((region) => [region.id, region.id === globalRegion.id]),
+    );
+  }
+
+  next[input.regionId] = input.checked;
+
+  if (!globalRegion) {
+    return next;
+  }
+
+  if (input.checked) {
+    next[globalRegion.id] = false;
+    return next;
+  }
+
+  const hasSelectedSpecificRegion = input.regions.some(
+    (region) => region.id !== globalRegion.id && next[region.id],
+  );
+
+  if (!hasSelectedSpecificRegion) {
+    next[globalRegion.id] = true;
+  }
+
+  return next;
 }
 
 async function getErrorMessage(response: Response, fallback: string) {
@@ -162,14 +214,13 @@ export function DatasetDetailClient({
   const uupgFieldDefinition =
     fieldDefinitionPresentationByColumnKey[UUPG_DATASET_COLUMN_KEY]
       ?.definition ?? "";
+  const supportsAlternateCountryFiltering =
+    datasetSupportsAlternateCountryFiltering(dataset);
   const supportsCountryFiltering = datasetSupportsCountryFiltering(dataset);
   const supportsRegionFiltering = datasetSupportsRegionFiltering(dataset);
   const supportsWatchlistFiltering = datasetSupportsWatchlistFiltering(dataset);
   const supportsUupgFiltering = datasetSupportsUupgFiltering(dataset);
-  const visibleRegions = useMemo(
-    () => regions.filter((region) => !isGlobeRegionName(region.name)),
-    [regions],
-  );
+  const visibleRegions = regions;
   const initialState = useMemo(
     () =>
       getInitialDatasetDetailState({
@@ -195,13 +246,16 @@ export function DatasetDetailClient({
     string | null
   >(() => initialPresetTag?.id ?? normalizedInitialDatasetTags[0]?.id ?? null);
   const [isSavingOpenPreset, setIsSavingOpenPreset] = useState(false);
-  const [regionEnabled, setRegionEnabled] = useState(initialState.regionEnabled);
+  const regionEnabled = initialState.regionEnabled;
   const [selectedRegionIds, setSelectedRegionIds] = useState<Record<string, boolean>>(
     () => initialState.selectedRegionIds,
   );
   const [countryEnabled, setCountryEnabled] = useState(initialState.countryEnabled);
   const [selectedCountryNames, setSelectedCountryNames] = useState<string[]>(
     () => initialState.selectedCountryNames,
+  );
+  const [includeAlternateCountries, setIncludeAlternateCountries] = useState(
+    initialState.includeAlternateCountries,
   );
   const [countrySearchValue, setCountrySearchValue] = useState("");
   const [watchlistEnabled, setWatchlistEnabled] = useState(
@@ -278,6 +332,7 @@ export function DatasetDetailClient({
       enabled: countryEnabled,
       isSupported: supportsCountryFiltering,
       selectedCountryNames,
+      includeAlternateCountries,
     },
     watchlistFilter: {
       enabled: watchlistEnabled,
@@ -306,6 +361,7 @@ export function DatasetDetailClient({
         regionEnabled,
         countryEnabled,
         selectedCountryNames,
+        includeAlternateCountries,
         watchlistEnabled,
         watchlistThresholdEnabled,
         watchlistThreshold,
@@ -321,6 +377,7 @@ export function DatasetDetailClient({
     [
       datasetTable.sorting,
       countryEnabled,
+      includeAlternateCountries,
       regionEnabled,
       selectedCountryNames,
       visibleRegions,
@@ -337,6 +394,17 @@ export function DatasetDetailClient({
       watchlistThreshold,
     ],
   );
+  useEffect(() => {
+    const allowedCountryNames = new Set(datasetTable.availableCountryNames);
+
+    setSelectedCountryNames((current) => {
+      const next = current.filter((countryName) =>
+        allowedCountryNames.has(countryName),
+      );
+
+      return next.length === current.length ? current : next;
+    });
+  }, [datasetTable.availableCountryNames]);
 
   useEffect(() => {
     trackAppEvent(
@@ -397,6 +465,7 @@ export function DatasetDetailClient({
         selectedRegionIds,
         countryEnabled,
         selectedCountryNames,
+        includeAlternateCountries,
         watchlistEnabled,
         watchlistThresholdEnabled,
         watchlistThreshold,
@@ -411,6 +480,7 @@ export function DatasetDetailClient({
       }),
     [
       countryEnabled,
+      includeAlternateCountries,
       datasetTable.sorting,
       regionEnabled,
       selectedCountryNames,
@@ -586,23 +656,29 @@ export function DatasetDetailClient({
   }
   const filterPanelProps = {
     regionCard: {
-      enabled: regionEnabled,
       supported: supportsRegionFiltering,
       selectors: regionSelectors,
-      onEnabledChange: setRegionEnabled,
       onSelectorChange: (regionId: string, checked: boolean) =>
-        setSelectedRegionIds((current) => ({
-          ...current,
-          [regionId]: checked,
-        })),
+        setSelectedRegionIds((current) =>
+          getNextSelectedRegionIds({
+            regions: visibleRegions,
+            current,
+            regionId,
+            checked,
+          }),
+        ),
     },
     countryCard: {
       enabled: countryEnabled,
       supported: supportsCountryFiltering,
       searchValue: countrySearchValue,
       availableCountries: datasetTable.availableCountryNames,
+      visibleCountries: datasetTable.availableCountryNames,
       selectedCountries: selectedCountryNames,
+      includeAlternateCountries,
+      supportsAlternateCountries: supportsAlternateCountryFiltering,
       onEnabledChange: setCountryEnabled,
+      onIncludeAlternateCountriesChange: setIncludeAlternateCountries,
       onSearchChange: setCountrySearchValue,
       onToggleCountry: (countryName: string, checked: boolean) =>
         setSelectedCountryNames((current) => {
