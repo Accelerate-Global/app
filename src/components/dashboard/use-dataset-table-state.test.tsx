@@ -99,6 +99,9 @@ function DatasetTableStateProbe({
       <div data-testid="available-countries">
         {state.availableCountryNames.join(",")}
       </div>
+      <div data-testid="dataset-country-names">
+        {state.datasetCountryNames.join(",")}
+      </div>
     </div>
   );
 }
@@ -381,6 +384,9 @@ describe("useDatasetTableState", () => {
 
     expect(screen.getByTestId("available-countries").textContent).toBe(
       "Egypt,Jordan",
+    );
+    expect(screen.getByTestId("dataset-country-names").textContent).toBe(
+      "Brazil,Egypt,Jordan",
     );
   });
 

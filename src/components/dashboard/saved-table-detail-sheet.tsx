@@ -44,10 +44,13 @@ function getRegionSummary(savedTable: SavedDatasetTable) {
   const normalizedFilters = normalizeSavedDatasetFilterState(savedTable.filters);
 
   if (normalizedFilters.region.selectedRegionNames.length === 0) {
-    return normalizedFilters.region.enabledCountryNames.length > 0 ||
-      normalizedFilters.region.enabled
-      ? "Global"
-      : "Off";
+    const isLegacyDefaultGlobal =
+      !normalizedFilters.region.enabled &&
+      normalizedFilters.region.enabledCountryNames.length > 0 &&
+      !normalizedFilters.country.enabled &&
+      normalizedFilters.country.selectedCountryNames.length === 0;
+
+    return isLegacyDefaultGlobal ? "Global" : "Off";
   }
 
   return normalizedFilters.region.selectedRegionNames

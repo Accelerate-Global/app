@@ -104,6 +104,14 @@ export function useDatasetTableState(input: {
     () => filterDatasetRowsByCountry(rowsBeforeCountryFilter, input.countryFilter),
     [rowsBeforeCountryFilter, input.countryFilter],
   );
+  const datasetCountryNames = useMemo(
+    () =>
+      getAvailableDatasetCountryNames(rows, {
+        includeAlternateCountries:
+          input.countryFilter?.includeAlternateCountries ?? false,
+      }),
+    [input.countryFilter?.includeAlternateCountries, rows],
+  );
   const availableCountryNames = useMemo(
     () =>
       getAvailableDatasetCountryNames(rowsBeforeCountryFilter, {
@@ -288,6 +296,7 @@ export function useDatasetTableState(input: {
     table,
     sorting,
     visibleColumns,
+    datasetCountryNames,
     availableCountryNames,
     sortedRows: table.getRowModel().rows.map((row) => row.original),
     recordCount: table.getRowModel().rows.length,

@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from "vitest";
 import { CountrySearchSelector } from "./country-search-selector";
 
 describe("CountrySearchSelector", () => {
-  it("renders a compact searchable selector and forwards actions", () => {
+  it("keeps the default summary and visible-selection actions for shared usage", () => {
     const onSearchChange = vi.fn();
     const onToggleCountry = vi.fn();
     const onSelectVisible = vi.fn();
@@ -45,6 +45,37 @@ describe("CountrySearchSelector", () => {
     expect(onSelectVisible).toHaveBeenCalledWith(["Jordan"]);
     expect(onClearVisible).toHaveBeenCalledWith(["Jordan"]);
     expect(onToggleCountry).toHaveBeenCalledWith("Jordan", false);
+  });
+
+  it("supports dataset-detail custom actions without changing the shared defaults", () => {
+    const onSelectVisible = vi.fn();
+
+    render(
+      <CountrySearchSelector
+        allCountries={["Egypt", "Jordan", "Turkey"]}
+        selectedCountries={[]}
+        searchValue="jor"
+        disabled={false}
+        showSelectionSummary={false}
+        selectActionLabel="Select all"
+        selectActionCountries={["Egypt", "Jordan", "Turkey"]}
+        showClearAction={false}
+        onSearchChange={vi.fn()}
+        onToggleCountry={vi.fn()}
+        onSelectVisible={onSelectVisible}
+        onClearVisible={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByText("0 selected")).toBeNull();
+    expect(screen.queryByText("Clear visible")).toBeNull();
+    expect(screen.getByRole("button", { name: "Select all" })).toBeTruthy();
+    expect(screen.queryByText("Egypt")).toBeNull();
+    expect(screen.getByText("Jordan")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Select all" }));
+
+    expect(onSelectVisible).toHaveBeenCalledWith(["Egypt", "Jordan", "Turkey"]);
   });
 
   it("renders an empty state when the search has no matches", () => {

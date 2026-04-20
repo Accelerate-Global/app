@@ -12,7 +12,7 @@ import {
   datasetSupportsRegionFiltering,
   datasetSupportsUupgFiltering,
   datasetSupportsWatchlistFiltering,
-  getEnabledRegionCountryNames,
+  getSelectedRegionCountryNames,
   type DatasetCountryFilterState,
   type DatasetRegionFilterState,
   type DatasetUupgFilterState,
@@ -79,10 +79,14 @@ function toSavedDatasetFilterStateWithEmptySorting(
 function createSelectedRegionIdMap(
   regions: FilterRegion[],
   selectedRegionIds: Set<string>,
+  options?: {
+    allowEmpty?: boolean;
+  },
 ) {
   const normalizedSelectedRegionIds = normalizeSelectedRegionIdSet(
     regions,
     selectedRegionIds,
+    options,
   );
 
   return Object.fromEntries(
@@ -107,6 +111,9 @@ function createDefaultSelectedRegionIdSet(regions: FilterRegion[]) {
 function normalizeSelectedRegionIdSet(
   regions: FilterRegion[],
   selectedRegionIds: Set<string>,
+  options?: {
+    allowEmpty?: boolean;
+  },
 ) {
   const validRegionIds = new Set(regions.map((region) => region.id));
   const normalizedSelectedRegionIds = new Set(
@@ -119,6 +126,10 @@ function normalizeSelectedRegionIdSet(
   }
 
   if (normalizedSelectedRegionIds.size === 0) {
+    if (options?.allowEmpty) {
+      return new Set<string>();
+    }
+
     return createDefaultSelectedRegionIdSet(regions);
   }
 
@@ -128,6 +139,9 @@ function normalizeSelectedRegionIdSet(
 function getMatchingRegionIds(
   regions: FilterRegion[],
   filters: DatasetOpenPreset["region"],
+  options?: {
+    allowEmpty?: boolean;
+  },
 ) {
   const selectedRegionIds = new Set<string>();
   const selectedRegionNames = new Set(
@@ -147,7 +161,19 @@ function getMatchingRegionIds(
     }
   }
 
-  return normalizeSelectedRegionIdSet(regions, selectedRegionIds);
+  return normalizeSelectedRegionIdSet(regions, selectedRegionIds, options);
+}
+
+function isLegacyDefaultGlobalPreset(preset: DatasetOpenPreset) {
+  return (
+    !preset.region.enabled &&
+    preset.region.selectedRegionIds.length === 0 &&
+    preset.region.selectedRegionNames.length === 0 &&
+    preset.region.enabledCountryNames.length === 0 &&
+    !preset.country.enabled &&
+    preset.country.selectedCountryNames.length === 0 &&
+    !(preset.country.includeAlternateCountries ?? false)
+  );
 }
 
 function getNormalizedPopulationBelieversRuleState(
@@ -202,17 +228,22 @@ export function buildSavedDatasetFilterState(input: {
   uupgEnabled: boolean;
   sorting: SavedDatasetSort[];
 }): SavedDatasetFilterState {
-  const normalizedSelectedRegionIdSet = normalizeSelectedRegionIdSet(
-    input.regions,
-    new Set(
-      input.regions
-        .filter((region) => input.selectedRegionIds[region.id])
-        .map((region) => region.id),
-    ),
-  );
+  const normalizedSelectedRegionIdSet = input.regionEnabled
+    ? normalizeSelectedRegionIdSet(
+        input.regions,
+        new Set(
+          input.regions
+            .filter((region) => input.selectedRegionIds[region.id])
+            .map((region) => region.id),
+        ),
+      )
+    : new Set<string>();
   const normalizedSelectedRegionIds = createSelectedRegionIdMap(
     input.regions,
     normalizedSelectedRegionIdSet,
+    {
+      allowEmpty: !input.regionEnabled,
+    },
   );
   const selectedRegions = input.regions.filter(
     (region) => normalizedSelectedRegionIds[region.id],
@@ -225,10 +256,9 @@ export function buildSavedDatasetFilterState(input: {
       selectedRegionNames: selectedRegions.map((region) =>
         normalizeRegionDisplayName(region.name),
       ),
-      enabledCountryNames: getEnabledRegionCountryNames(
-        input.regions,
-        normalizedSelectedRegionIds,
-      ),
+      enabledCountryNames: input.regionEnabled
+        ? getSelectedRegionCountryNames(input.regions, normalizedSelectedRegionIds)
+        : [],
     },
     country: {
       enabled: input.countryEnabled,
@@ -363,8 +393,11 @@ export function getInitialDatasetDetailState(input: {
     input.regions,
     createDefaultSelectedRegionIdSet(input.regions),
   );
+  const hasDefaultSelectedRegion = Object.values(defaultSelectedRegionIds).some(
+    Boolean,
+  );
   const defaultState = {
-    regionEnabled: canUseRegionFilter,
+    regionEnabled: canUseRegionFilter && hasDefaultSelectedRegion,
     selectedRegionIds: defaultSelectedRegionIds,
     countryEnabled: false,
     selectedCountryNames: [],
@@ -392,14 +425,26 @@ export function getInitialDatasetDetailState(input: {
   const hasPersistedRegionSelection =
     normalizedPreset.region.selectedRegionIds.length > 0 ||
     normalizedPreset.region.selectedRegionNames.length > 0;
+  const shouldUseLegacyDefaultGlobal =
+    isLegacyDefaultGlobalPreset(normalizedPreset);
   const matchedRegionIds =
     normalizedPreset.region.enabled && hasPersistedRegionSelection
-      ? getMatchingRegionIds(input.regions, normalizedPreset.region)
-      : createDefaultSelectedRegionIdSet(input.regions);
+      ? getMatchingRegionIds(input.regions, normalizedPreset.region, {
+          allowEmpty: true,
+        })
+      : shouldUseLegacyDefaultGlobal
+        ? createDefaultSelectedRegionIdSet(input.regions)
+        : new Set<string>();
+  const regionEnabled =
+    canUseRegionFilter &&
+    (shouldUseLegacyDefaultGlobal ||
+      (normalizedPreset.region.enabled && matchedRegionIds.size > 0));
 
   return {
-    regionEnabled: canUseRegionFilter,
-    selectedRegionIds: createSelectedRegionIdMap(input.regions, matchedRegionIds),
+    regionEnabled,
+    selectedRegionIds: createSelectedRegionIdMap(input.regions, matchedRegionIds, {
+      allowEmpty: !regionEnabled,
+    }),
     countryEnabled:
       supportsCountryFiltering && normalizedPreset.country.enabled,
     selectedCountryNames: supportsCountryFiltering
