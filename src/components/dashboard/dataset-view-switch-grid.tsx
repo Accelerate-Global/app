@@ -2,6 +2,7 @@
 
 import {
   ChevronDownIcon,
+  FlameIcon,
   InfoIcon,
   MapIcon,
   MapPinnedIcon,
@@ -33,7 +34,10 @@ import {
 } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import type { PopulationBelieversRule } from "@/lib/api-types";
+import type {
+  DatasetHotspotsMetric,
+  PopulationBelieversRule,
+} from "@/lib/api-types";
 import {
   buildPopulationBelieversRuleSummaryLines,
   createDefaultPopulationBelieversRule,
@@ -117,9 +121,25 @@ type DatasetViewSwitchGridProps = {
     fieldDefinition: string;
     onEnabledChange: (checked: boolean) => void;
   };
+  hotspotsCard: {
+    enabled: boolean;
+    supported: boolean;
+    metric: DatasetHotspotsMetric;
+    countryCount: number;
+    minCountryCount: number;
+    maxCountryCount: number;
+    onEnabledChange: (checked: boolean) => void;
+    onMetricChange: (metric: DatasetHotspotsMetric) => void;
+    onCountryCountChange: (value: number) => void;
+  };
 };
 
-type FilterSectionId = "region" | "country" | "watchlist" | "uupg";
+type FilterSectionId =
+  | "region"
+  | "country"
+  | "watchlist"
+  | "uupg"
+  | "hotspots";
 
 const FILTER_PANEL_DESCRIPTIONS = {
   region: "A grouping of people groups based on geography.",
@@ -127,6 +147,8 @@ const FILTER_PANEL_DESCRIPTIONS = {
   watchlist:
     "People groups unengaged or would be unengaged if the current mission work stopped today.",
   uupg: "People groups who have no record of engagement among them.",
+  hotspots:
+    "Rank primary countries by UUPG burden and keep only UUPG rows from the top countries.",
 } as const;
 
 const INFO_TOOLTIP_CONTENT_CLASSNAME =
@@ -280,7 +302,7 @@ function DatasetFilterRow({
   );
 }
 
-function WatchlistNumberControl({
+function DatasetFilterNumberControl({
   label,
   value,
   min,
@@ -326,15 +348,15 @@ function WatchlistNumberControl({
         </span>
         <NumberFieldDecrement
           className="rounded-none border-r border-border/70 text-muted-foreground hover:bg-accent/40 hover:text-foreground"
-          aria-label={`Decrease ${label} threshold`}
+          aria-label={`Decrease ${label}`}
         />
         <NumberFieldInput
           className="border-r border-border/70 px-3 text-center text-sm font-semibold tracking-[-0.02em] text-foreground"
-          aria-label={`Watchlist ${label} threshold`}
+          aria-label={label}
         />
         <NumberFieldIncrement
           className="rounded-none border-0 text-muted-foreground hover:bg-accent/40 hover:text-foreground"
-          aria-label={`Increase ${label} threshold`}
+          aria-label={`Increase ${label}`}
         />
       </NumberFieldGroup>
     </NumberField>
@@ -634,12 +656,33 @@ function getUupgSummary(uupgCard: DatasetViewSwitchGridProps["uupgCard"]) {
   return [uupgCard.enabled ? "On" : "Off"];
 }
 
+function getHotspotsMetricLabel(metric: DatasetHotspotsMetric) {
+  return metric === "population" ? "UUPG population" : "unique UUPGs";
+}
+
+function getHotspotsSummary(
+  hotspotsCard: DatasetViewSwitchGridProps["hotspotsCard"],
+) {
+  if (!hotspotsCard.supported) {
+    return ["Unavailable"];
+  }
+
+  if (!hotspotsCard.enabled) {
+    return ["Off"];
+  }
+
+  return [
+    `Top ${hotspotsCard.countryCount} countries by ${getHotspotsMetricLabel(hotspotsCard.metric)}`,
+  ];
+}
+
 function DatasetViewSwitchGridInner({
   className,
   regionCard,
   countryCard,
   watchlistCard,
   uupgCard,
+  hotspotsCard,
 }: DatasetViewSwitchGridProps) {
   const visibleRegionSelectors = regionCard.selectors;
   const hasRegions = visibleRegionSelectors.length > 0;
@@ -650,6 +693,7 @@ function DatasetViewSwitchGridInner({
     country: false,
     watchlist: false,
     uupg: false,
+    hotspots: false,
   });
   const enableCountryFilter = () => {
     if (!countryCard.enabled) {
@@ -838,7 +882,7 @@ function DatasetViewSwitchGridInner({
                   />
                 }
               >
-                <WatchlistNumberControl
+                <DatasetFilterNumberControl
                   label={watchlistCard.thresholdLabel}
                   value={watchlistCard.threshold}
                   min={watchlistCard.minThreshold}
@@ -931,7 +975,7 @@ function DatasetViewSwitchGridInner({
                   />
                 }
               >
-                <WatchlistNumberControl
+                <DatasetFilterNumberControl
                   label={watchlistCard.engagementPhaseLabel}
                   value={watchlistCard.engagementPhaseThreshold}
                   min={watchlistCard.minEngagementPhaseThreshold}
@@ -978,6 +1022,95 @@ function DatasetViewSwitchGridInner({
                 label={uupgCard.fieldLabel}
                 definition={uupgCard.fieldDefinition}
               />
+            </div>
+          )}
+        </FilterSection>
+
+        <FilterSection
+          id="hotspots"
+          title="Hotspots"
+          icon={<FlameIcon aria-hidden="true" className="size-5" />}
+          summary={getHotspotsSummary(hotspotsCard)}
+          description={FILTER_PANEL_DESCRIPTIONS.hotspots}
+          expanded={expandedSections.hotspots}
+          onExpandedChange={(expanded) =>
+            setExpandedSections((current) => ({ ...current, hotspots: expanded }))
+          }
+          toggleControl={
+            <Switch
+              size="sm"
+              checked={hotspotsCard.enabled}
+              disabled={!hotspotsCard.supported}
+              onCheckedChange={hotspotsCard.onEnabledChange}
+              aria-label="Toggle Hotspots"
+            />
+          }
+        >
+          {!hotspotsCard.supported ? (
+            <p className="text-sm leading-5 text-muted-foreground">
+              This dataset does not include the fields required for Hotspots
+              filtering.
+            </p>
+          ) : (
+            <div className="divide-y divide-border/70 px-3">
+              <DatasetFilterRow
+                label="Ranking"
+                definition="Choose whether countries are ranked by unique UUPGs or by the summed population of UUPG rows."
+              >
+                <ButtonGroup
+                  aria-label="Hotspots ranking metric"
+                  className="w-full rounded-xl border border-border/70 bg-background/80 p-0.5 shadow-xs shadow-black/5"
+                >
+                  {([
+                    {
+                      label: "Unique UUPGs",
+                      value: "unique_uupgs",
+                    },
+                    {
+                      label: "UUPG population",
+                      value: "population",
+                    },
+                  ] as const).map((option) => {
+                    const isActive = hotspotsCard.metric === option.value;
+
+                    return (
+                      <Button
+                        key={option.value}
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        disabled={!hotspotsCard.enabled}
+                        aria-pressed={isActive}
+                        aria-label={`Set Hotspots ranking to ${option.label}`}
+                        className={cn(
+                          "min-w-0 flex-1 rounded-lg border-0 px-2.5 text-[0.72rem] font-semibold tracking-[0.02em] shadow-none",
+                          isActive
+                            ? "bg-foreground text-background hover:bg-foreground/90 hover:text-background"
+                            : "text-muted-foreground hover:bg-accent/40 hover:text-foreground",
+                        )}
+                        onClick={() => hotspotsCard.onMetricChange(option.value)}
+                      >
+                        {option.label}
+                      </Button>
+                    );
+                  })}
+                </ButtonGroup>
+              </DatasetFilterRow>
+              <DatasetFilterRow
+                label="# of countries"
+                definition="Keep only UUPG rows from the top N primary countries for the selected Hotspots ranking."
+                controlClassName="max-w-[10rem]"
+              >
+                <DatasetFilterNumberControl
+                  label="Hotspots country count"
+                  value={hotspotsCard.countryCount}
+                  min={hotspotsCard.minCountryCount}
+                  max={hotspotsCard.maxCountryCount}
+                  operator="<="
+                  disabled={!hotspotsCard.enabled}
+                  onValueChange={hotspotsCard.onCountryCountChange}
+                />
+              </DatasetFilterRow>
             </div>
           )}
         </FilterSection>

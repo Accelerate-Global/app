@@ -123,16 +123,6 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
 
         <Card>
           <CardHeader>
-            <CardTitle>Forward-only history</CardTitle>
-          </CardHeader>
-          <CardContent className="text-sm leading-6 text-muted-foreground">
-            In-app analytics started when this feature shipped. Older Vercel-only
-            history is not backfilled into this dashboard.
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
             <CardTitle>Filters</CardTitle>
           </CardHeader>
           <CardContent>

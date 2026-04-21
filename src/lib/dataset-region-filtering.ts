@@ -1,4 +1,9 @@
-import type { DatasetRowsResponse, DatasetSummary, FilterRegion } from "@/lib/api-types";
+import type {
+  DatasetHotspotsMetric,
+  DatasetRowsResponse,
+  DatasetSummary,
+  FilterRegion,
+} from "@/lib/api-types";
 import type { PopulationBelieversRule } from "@/lib/api-types";
 import {
   calculateActualBelievers,
@@ -8,6 +13,7 @@ import {
 } from "@/lib/evangelical-population-believers-rule";
 import { getFieldDefinitionCanonicalKeyLookupKeys } from "@/lib/field-definition-canonical";
 import {
+  HOTSPOTS_UNIQUE_GROUP_DATASET_COLUMN_KEY,
   COUNTRY_ALTERNATE_DATASET_COLUMN_KEY,
   REGION_DATASET_COLUMN_KEY,
   WATCHLIST_ENGAGEMENT_PHASES_DATASET_COLUMN_KEY,
@@ -40,6 +46,7 @@ type DatasetRowFilterFacets = {
   alternateCountryNames: string[];
   alternateCountryKeys: string[];
   uupgValue: string;
+  uniqueGroupId: string;
   watchlistValue: number | null;
   watchlistFrontierGroupValue: string;
   watchlistPopulation: number | null;
@@ -64,6 +71,13 @@ export type DatasetCountryFilterState = {
 export type DatasetUupgFilterState = {
   enabled: boolean;
   isSupported: boolean;
+};
+
+export type DatasetHotspotsFilterState = {
+  enabled: boolean;
+  isSupported: boolean;
+  metric: DatasetHotspotsMetric;
+  countryCount: number;
 };
 
 export type DatasetWatchlistFilterState = {
@@ -121,6 +135,27 @@ function normalizeDatasetNumericValue(value: string | null | undefined) {
   return Number.isFinite(parsedValue) ? parsedValue : null;
 }
 
+export const DEFAULT_HOTSPOTS_METRIC = "unique_uupgs" as const;
+export const DEFAULT_HOTSPOTS_COUNTRY_COUNT = 10;
+export const MAX_HOTSPOTS_COUNTRY_COUNT = 500;
+
+export function normalizeHotspotsMetric(
+  value: DatasetHotspotsMetric | string | null | undefined,
+): DatasetHotspotsMetric {
+  return value === "population" ? "population" : DEFAULT_HOTSPOTS_METRIC;
+}
+
+export function normalizeHotspotsCountryCount(value: number | null | undefined) {
+  const normalizedValue = Number.isFinite(value)
+    ? Math.round(value as number)
+    : DEFAULT_HOTSPOTS_COUNTRY_COUNT;
+
+  return Math.min(
+    MAX_HOTSPOTS_COUNTRY_COUNT,
+    Math.max(1, normalizedValue),
+  );
+}
+
 function isDatasetColumnKey(
   value: string | null | undefined,
   expectedKey: string,
@@ -140,6 +175,7 @@ function getDatasetRowFilterFacets(row: DatasetRow) {
   let alternateCountryNames: string[] = [];
   let alternateCountryKeys: string[] = [];
   let uupgValue = "";
+  let uniqueGroupId = "";
   let watchlistValue: number | null = null;
   let watchlistFrontierGroupValue = "";
   let watchlistPopulation: number | null = null;
@@ -169,6 +205,11 @@ function getDatasetRowFilterFacets(row: DatasetRow) {
 
     if (!uupgValue && normalizedKey === UUPG_DATASET_COLUMN_KEY) {
       uupgValue = normalizeDatasetCellValue(value);
+      continue;
+    }
+
+    if (!uniqueGroupId && normalizedKey === HOTSPOTS_UNIQUE_GROUP_DATASET_COLUMN_KEY) {
+      uniqueGroupId = (value ?? "").trim();
       continue;
     }
 
@@ -215,6 +256,7 @@ function getDatasetRowFilterFacets(row: DatasetRow) {
     alternateCountryNames,
     alternateCountryKeys,
     uupgValue,
+    uniqueGroupId,
     watchlistValue,
     watchlistFrontierGroupValue,
     watchlistPopulation,
@@ -271,6 +313,19 @@ export function datasetSupportsUupgFiltering(
   dataset: Pick<DatasetSummary, "columns">,
 ) {
   return datasetSupportsColumnFiltering(dataset, UUPG_DATASET_COLUMN_KEY);
+}
+
+export function datasetSupportsHotspotsFiltering(
+  dataset: Pick<DatasetSummary, "columns">,
+) {
+  return [
+    REGION_DATASET_COLUMN_KEY,
+    UUPG_DATASET_COLUMN_KEY,
+    WATCHLIST_POPULATION_DATASET_COLUMN_KEY,
+    HOTSPOTS_UNIQUE_GROUP_DATASET_COLUMN_KEY,
+  ].every((expectedKey) =>
+    datasetSupportsColumnFiltering(dataset, expectedKey),
+  );
 }
 
 export function datasetSupportsWatchlistFiltering(
@@ -708,9 +763,88 @@ export function filterDatasetRowsByUupg(
     return rows;
   }
 
-  return rows.filter(
-    (row) => getDatasetRowFilterFacets(row).uupgValue === "false",
+  return rows.filter((row) => isUupgDatasetRow(getDatasetRowFilterFacets(row)));
+}
+
+function isUupgDatasetRow(row: Pick<DatasetRowFilterFacets, "uupgValue">) {
+  return row.uupgValue === "false";
+}
+
+export function filterDatasetRowsByHotspots(
+  rows: DatasetRow[],
+  hotspotsFilter: DatasetHotspotsFilterState | null | undefined,
+) {
+  if (
+    !hotspotsFilter ||
+    !hotspotsFilter.enabled ||
+    !hotspotsFilter.isSupported
+  ) {
+    return rows;
+  }
+
+  const countryMetrics = new Map<
+    string,
+    {
+      countryName: string;
+      uniqueGroupIds: Set<string>;
+      population: number;
+    }
+  >();
+
+  for (const row of rows) {
+    const facets = getDatasetRowFilterFacets(row);
+
+    if (!facets.primaryCountryName || !isUupgDatasetRow(facets)) {
+      continue;
+    }
+
+    const countryMetric = countryMetrics.get(facets.primaryCountryKey) ?? {
+      countryName: facets.primaryCountryName,
+      uniqueGroupIds: new Set<string>(),
+      population: 0,
+    };
+
+    if (facets.uniqueGroupId) {
+      countryMetric.uniqueGroupIds.add(facets.uniqueGroupId);
+    }
+
+    countryMetric.population += facets.watchlistPopulation ?? 0;
+    countryMetrics.set(facets.primaryCountryKey, countryMetric);
+  }
+
+  const metric = normalizeHotspotsMetric(hotspotsFilter.metric);
+  const countryCount = normalizeHotspotsCountryCount(hotspotsFilter.countryCount);
+  const hotspotCountryKeys = new Set(
+    Array.from(countryMetrics.entries())
+      .sort((left, right) => {
+        const leftMetric =
+          metric === "population"
+            ? left[1].population
+            : left[1].uniqueGroupIds.size;
+        const rightMetric =
+          metric === "population"
+            ? right[1].population
+            : right[1].uniqueGroupIds.size;
+
+        if (leftMetric !== rightMetric) {
+          return rightMetric - leftMetric;
+        }
+
+        return left[1].countryName.localeCompare(right[1].countryName);
+      })
+      .slice(0, countryCount)
+      .map(([countryKey]) => countryKey),
   );
+
+  return rows.filter((row) => {
+    const facets = getDatasetRowFilterFacets(row);
+
+    return (
+      facets.primaryCountryKey.length > 0 &&
+      hotspotCountryKeys.has(facets.primaryCountryKey) &&
+      isUupgDatasetRow(facets)
+    );
+  });
 }
 
 export function filterDatasetRowsByWatchlist(

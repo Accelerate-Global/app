@@ -93,6 +93,8 @@ export type PopulationBelieversRule = {
   tiers: PopulationBelieversTier[];
 };
 
+export type DatasetHotspotsMetric = "unique_uupgs" | "population";
+
 export type SavedDatasetFilterState = {
   region: {
     enabled: boolean;
@@ -122,6 +124,11 @@ export type SavedDatasetFilterState = {
   };
   uupg: {
     enabled: boolean;
+  };
+  hotspots?: {
+    enabled: boolean;
+    metric: DatasetHotspotsMetric;
+    countryCount: number;
   };
   sorting: SavedDatasetSort[];
 };

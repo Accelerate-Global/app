@@ -101,15 +101,31 @@ function getWatchlistSummary(savedTable: SavedDatasetTable) {
 }
 
 function getCountrySummary(savedTable: SavedDatasetTable) {
-  if (!savedTable.filters.country.enabled) {
+  const normalizedFilters = normalizeSavedDatasetFilterState(savedTable.filters);
+
+  if (!normalizedFilters.country.enabled) {
     return "Off";
   }
 
-  if (savedTable.filters.country.selectedCountryNames.length === 0) {
+  if (normalizedFilters.country.selectedCountryNames.length === 0) {
     return "All countries";
   }
 
-  return savedTable.filters.country.selectedCountryNames.join(", ");
+  return normalizedFilters.country.selectedCountryNames.join(", ");
+}
+
+function getHotspotsSummary(savedTable: SavedDatasetTable) {
+  const normalizedFilters = normalizeSavedDatasetFilterState(savedTable.filters);
+
+  if (!normalizedFilters.hotspots.enabled) {
+    return "Off";
+  }
+
+  return `Top ${normalizedFilters.hotspots.countryCount} countries by ${
+    normalizedFilters.hotspots.metric === "population"
+      ? "UUPG population"
+      : "unique UUPGs"
+  }`;
 }
 
 function getSortingSummary(savedTable: SavedDatasetTable, dataset: DatasetSummary | null) {
@@ -297,7 +313,15 @@ export function SavedTableDetailSheet({
                 <div className="space-y-1">
                   <dt className="text-sm font-medium text-foreground">UUPG</dt>
                   <dd className="text-sm text-muted-foreground">
-                    {savedTable.filters.uupg.enabled ? "Enabled" : "Off"}
+                    {normalizeSavedDatasetFilterState(savedTable.filters).uupg.enabled
+                      ? "Enabled"
+                      : "Off"}
+                  </dd>
+                </div>
+                <div className="space-y-1">
+                  <dt className="text-sm font-medium text-foreground">Hotspots</dt>
+                  <dd className="text-sm text-muted-foreground">
+                    {getHotspotsSummary(savedTable)}
                   </dd>
                 </div>
                 <div className="space-y-1">

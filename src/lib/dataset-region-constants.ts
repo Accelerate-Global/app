@@ -9,3 +9,4 @@ export const WATCHLIST_PERCENT_EVANGELICAL_DATASET_COLUMN_KEY =
 export const WATCHLIST_ENGAGEMENT_PHASES_DATASET_COLUMN_KEY =
   "engage_8_phases_of_engagement";
 export const UUPG_DATASET_COLUMN_KEY = "engage_global_engagement_anywhere";
+export const HOTSPOTS_UNIQUE_GROUP_DATASET_COLUMN_KEY = "pg_peid";

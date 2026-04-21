@@ -78,6 +78,11 @@ describe("dataset-tags", () => {
         uupg: {
           enabled: false,
         },
+        hotspots: {
+          enabled: false,
+          metric: "unique_uupgs",
+          countryCount: 10,
+        },
       },
     });
     expect(getDatasetOpenPresetTag([tag])).toEqual(tag);

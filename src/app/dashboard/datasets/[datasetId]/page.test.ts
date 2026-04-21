@@ -248,6 +248,11 @@ describe("/dashboard/datasets/[datasetId]", () => {
       uupg: {
         enabled: false,
       },
+      hotspots: {
+        enabled: false,
+        metric: "unique_uupgs",
+        countryCount: 10,
+      },
     });
     expect(props.initialSorting).toEqual([
       {

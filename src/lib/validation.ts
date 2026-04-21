@@ -2,6 +2,11 @@ import { z } from "zod";
 
 import { MAX_CSV_BYTES, ROW_BATCH_SIZE } from "@/lib/csv";
 import {
+  DEFAULT_HOTSPOTS_COUNTRY_COUNT,
+  DEFAULT_HOTSPOTS_METRIC,
+  MAX_HOTSPOTS_COUNTRY_COUNT,
+} from "@/lib/dataset-region-filtering";
+import {
   POPULATION_BELIEVERS_RULE_MAX_TIERS,
   POPULATION_BELIEVERS_RULE_MIN_TIERS,
 } from "@/lib/evangelical-population-believers-rule";
@@ -176,12 +181,32 @@ const savedDatasetWatchlistFilterStateSchema = z.object({
   frontierGroupValue: z.boolean(),
 });
 
+const savedDatasetHotspotsFilterStateSchema = z.object({
+  enabled: z.boolean().optional().default(false),
+  metric: z
+    .enum(["unique_uupgs", "population"])
+    .optional()
+    .default(DEFAULT_HOTSPOTS_METRIC),
+  countryCount: z
+    .number()
+    .int()
+    .min(1)
+    .max(MAX_HOTSPOTS_COUNTRY_COUNT)
+    .optional()
+    .default(DEFAULT_HOTSPOTS_COUNTRY_COUNT),
+});
+
 export const datasetOpenPresetSchema = z.object({
   region: savedDatasetRegionFilterStateSchema,
   country: savedDatasetCountryFilterStateSchema,
   watchlist: savedDatasetWatchlistFilterStateSchema,
   uupg: z.object({
     enabled: z.boolean(),
+  }),
+  hotspots: savedDatasetHotspotsFilterStateSchema.optional().default({
+    enabled: false,
+    metric: DEFAULT_HOTSPOTS_METRIC,
+    countryCount: DEFAULT_HOTSPOTS_COUNTRY_COUNT,
   }),
 });
 
@@ -198,6 +223,11 @@ export const savedDatasetFilterStateSchema = z.object({
   watchlist: savedDatasetWatchlistFilterStateSchema,
   uupg: z.object({
     enabled: z.boolean(),
+  }),
+  hotspots: savedDatasetHotspotsFilterStateSchema.optional().default({
+    enabled: false,
+    metric: DEFAULT_HOTSPOTS_METRIC,
+    countryCount: DEFAULT_HOTSPOTS_COUNTRY_COUNT,
   }),
   sorting: z.array(savedDatasetSortSchema).max(8),
 });

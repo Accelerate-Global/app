@@ -67,6 +67,40 @@ describe("analytics helpers", () => {
     ).toBe("region|watchlist");
   });
 
+  it("includes hotspots in enabled filter section serialization", () => {
+    expect(
+      getEnabledFilterSections({
+        region: {
+          enabled: false,
+          selectedRegionIds: [],
+          selectedRegionNames: [],
+          enabledCountryNames: [],
+        },
+        country: {
+          enabled: false,
+          selectedCountryNames: [],
+        },
+        watchlist: {
+          enabled: false,
+          thresholdEnabled: true,
+          threshold: 2,
+          engagementPhaseEnabled: true,
+          engagementPhaseThreshold: 6,
+          frontierGroupValue: true,
+        },
+        uupg: {
+          enabled: false,
+        },
+        hotspots: {
+          enabled: true,
+          metric: "population",
+          countryCount: 10,
+        },
+        sorting: [],
+      }),
+    ).toBe("hotspots");
+  });
+
   it("serializes sorting keys for analytics payloads", () => {
     expect(
       getSortingKeys([
@@ -99,5 +133,17 @@ describe("analytics helpers", () => {
       "source_dataset_id",
       "cached_row_count",
     ]);
+  });
+
+  it("exposes hotspots analytics event property keys", () => {
+    expect(getAnalyticsEventPropertyKeys("dataset_filters_applied")).toContain(
+      "hotspots_enabled",
+    );
+    expect(getAnalyticsEventPropertyKeys("dataset_filters_applied")).toContain(
+      "hotspots_metric",
+    );
+    expect(getAnalyticsEventPropertyKeys("dataset_filters_applied")).toContain(
+      "hotspots_country_count",
+    );
   });
 });
