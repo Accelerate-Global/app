@@ -3,6 +3,19 @@ import { describe, expect, it } from "vitest";
 import { datasetMetadataPatchSchema } from "@/lib/validation";
 
 describe("datasetMetadataPatchSchema", () => {
+  it("accepts a public visibility-only update", () => {
+    const result = datasetMetadataPatchSchema.safeParse({
+      isPublic: false,
+    });
+
+    expect(result.success).toBe(true);
+    if (!result.success) {
+      return;
+    }
+
+    expect(result.data.isPublic).toBe(false);
+  });
+
   it("rejects multiple preset-bearing tags in one dataset payload", () => {
     const result = datasetMetadataPatchSchema.safeParse({
       tags: [

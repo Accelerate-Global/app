@@ -21,6 +21,7 @@ describe("datasets schema", () => {
     expect(datasets.currentVersionActorEmail.name).toBe("current_version_actor_email");
     expect(datasets.currentVersionCreatedAt.name).toBe("current_version_created_at");
     expect(datasets.backingDatasetId.name).toBe("backing_dataset_id");
+    expect(datasets.isPublic.name).toBe("is_public");
   });
 
   it("creates the dataset upload versions migration", async () => {
@@ -56,6 +57,25 @@ describe("datasets schema", () => {
     );
     expect(migration).toContain(
       "Derived datasets must reference a physical dataset.",
+    );
+  });
+
+  it("creates the dataset public visibility migration", async () => {
+    const migrationPath = path.join(
+      process.cwd(),
+      "supabase/migrations/20260421201702_add_dataset_public_visibility.sql",
+    );
+
+    const migration = await readFile(migrationPath, "utf8");
+
+    expect(migration).toContain(
+      "add column if not exists is_public boolean not null default true",
+    );
+    expect(migration).toContain(
+      "using (is_public or private.is_dataset_admin())",
+    );
+    expect(migration).toContain(
+      'create policy "authenticated users can read shared dataset rows"',
     );
   });
 });

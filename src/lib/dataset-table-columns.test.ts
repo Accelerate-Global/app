@@ -57,7 +57,7 @@ describe("dataset-table-columns", () => {
     expect(getDatasetColumnSortMode(rows, "country")).toBe("text");
   });
 
-  it("prepends the requested preferred datasheet prefix before alphabetical columns", () => {
+  it("prepends the requested preferred datasheet prefix before the remaining source-ordered columns", () => {
     const columns: DatasetColumn[] = [
       { key: "zeta", label: "Zeta", sourceIndex: 7 },
       { key: "geo_country_name", label: "Country", sourceIndex: 2 },
@@ -125,7 +125,7 @@ describe("dataset-table-columns", () => {
     ]);
   });
 
-  it("skips missing priority fields and keeps the remaining columns alphabetized", () => {
+  it("skips missing priority fields and keeps the remaining columns in source order", () => {
     const columns: DatasetColumn[] = [
       { key: "misc-zeta", label: "Zeta", sourceIndex: 4 },
       { key: "christianity_frontier_group", label: "Frontier", sourceIndex: 2 },
@@ -138,6 +138,56 @@ describe("dataset-table-columns", () => {
       "christianity_frontier_group",
       "misc-alpha",
       "misc-zeta",
+    ]);
+  });
+
+  it("keeps renamed non-priority fields in their original source order", () => {
+    const columns: DatasetColumn[] = [
+      {
+        key: "engage_8_phases_of_engagement",
+        label: "Engage_8_Phases_of_Engagement",
+        sourceIndex: 14,
+      },
+      {
+        key: "engage_global_engagement_anywhere",
+        label: "Engage_Global_Engagement_Anywhere",
+        sourceIndex: 15,
+      },
+      {
+        key: "religion_name",
+        label: "Religion_Name",
+        sourceIndex: 16,
+      },
+    ];
+
+    expect(
+      sortVisibleColumns({
+        columns,
+        fieldDefinitionPresentationByColumnKey: {
+          engage_8_phases_of_engagement: {
+            definition: "",
+            displayLabel: "Phases of Engagement",
+            effectiveLabel: "Phases of Engagement",
+            linkedSources: [],
+          },
+          engage_global_engagement_anywhere: {
+            definition: "",
+            displayLabel: "Global Engagement Anywhere",
+            effectiveLabel: "Global Engagement Anywhere",
+            linkedSources: [],
+          },
+          religion_name: {
+            definition: "",
+            displayLabel: "Religion",
+            effectiveLabel: "Religion",
+            linkedSources: [],
+          },
+        },
+      }),
+    ).toEqual([
+      "engage_8_phases_of_engagement",
+      "engage_global_engagement_anywhere",
+      "religion_name",
     ]);
   });
 

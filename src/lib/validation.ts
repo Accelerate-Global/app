@@ -270,6 +270,7 @@ export const datasetMetadataPatchSchema = z
     fileName: z.string().trim().min(1).max(255).optional(),
     tags: z.array(datasetTagSchema).max(24).optional(),
     isPrimary: z.boolean().optional(),
+    isPublic: z.boolean().optional(),
     hiddenColumnKeys: z.array(datasetHiddenColumnKeySchema).max(500).optional(),
   })
   .superRefine((value, ctx) => {
@@ -277,12 +278,13 @@ export const datasetMetadataPatchSchema = z
       value.fileName === undefined &&
       value.tags === undefined &&
       value.isPrimary === undefined &&
+      value.isPublic === undefined &&
       value.hiddenColumnKeys === undefined
     ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message:
-          "A dataset update must include a name, tags, primary flag, or visible fields.",
+          "A dataset update must include a name, tags, primary flag, public visibility, or visible fields.",
       });
     }
 

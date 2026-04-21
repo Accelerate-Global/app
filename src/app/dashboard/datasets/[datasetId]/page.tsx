@@ -41,7 +41,9 @@ export default async function DatasetPage({
     redirect("/");
   }
 
-  const dataset = await getDataset(datasetId);
+  const dataset = await getDataset(datasetId, {
+    includeDisabled: identity.isDatasetAdmin,
+  });
 
   if (!dataset) {
     notFound();
@@ -50,7 +52,9 @@ export default async function DatasetPage({
   const sourceDataset =
     dataset.backingDatasetId === null
       ? dataset
-      : await getDataset(dataset.backingDatasetId);
+      : await getDataset(dataset.backingDatasetId, {
+          includeDisabled: identity.isDatasetAdmin,
+        });
   const sourceRowCount = sourceDataset?.rowCount ?? dataset.rowCount;
 
   const openPresetTag = getDatasetOpenPresetTag(dataset.tags);

@@ -34,6 +34,7 @@ const dataset = {
     "https://example.supabase.co/storage/v1/object/datasets/datasets/csv/customers.csv",
   blobPath: "datasets/csv/customers.csv",
   isPrimary: false,
+  isPublic: true,
   status: "processing" as const,
   rowCount: 0,
   sizeBytes: 100,
@@ -66,7 +67,9 @@ describe("/api/datasets", () => {
     const response = await GET();
 
     await expect(response.json()).resolves.toEqual({ datasets: [dataset] });
-    expect(listDatasetsMock).toHaveBeenCalledWith();
+    expect(listDatasetsMock).toHaveBeenCalledWith({
+      includeDisabled: true,
+    });
   });
 
   it("creates dataset records for the configured admin", async () => {

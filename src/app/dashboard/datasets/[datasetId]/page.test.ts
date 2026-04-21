@@ -79,6 +79,7 @@ function createDataset() {
     blobUrl: "https://example.com/global.csv",
     blobPath: "datasets/global.csv",
     isPrimary: true,
+    isPublic: true,
     status: "ready" as const,
     rowCount: 10,
     sizeBytes: 100,
@@ -296,6 +297,9 @@ describe("/dashboard/datasets/[datasetId]", () => {
     expect(props.canManageOpenPresets).toBe(false);
     expect(props.workspaceRole).toBe("viewer");
     expect(props.initialPresetTagId).toBe("tag-1");
+    expect(getDatasetMock).toHaveBeenCalledWith("dataset-1", {
+      includeDisabled: false,
+    });
   });
 
   it("passes through explicit dataset source analytics props", async () => {
@@ -348,6 +352,12 @@ describe("/dashboard/datasets/[datasetId]", () => {
       backingDatasetId: "dataset-source",
     });
     expect(props.sourceRowCount).toBe(12507);
+    expect(getDatasetMock).toHaveBeenNthCalledWith(1, "dataset-derived", {
+      includeDisabled: true,
+    });
+    expect(getDatasetMock).toHaveBeenNthCalledWith(2, "dataset-source", {
+      includeDisabled: true,
+    });
   });
 
   it("falls back to the dataset tag preset when the saved table targets another dataset", async () => {

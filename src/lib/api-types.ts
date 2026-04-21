@@ -34,6 +34,7 @@ export type DatasetSummary = {
   blobUrl: string;
   blobPath: string;
   isPrimary: boolean;
+  isPublic: boolean;
   status: DatasetStatus;
   rowCount: number;
   sizeBytes: number;

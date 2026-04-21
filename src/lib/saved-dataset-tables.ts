@@ -44,6 +44,15 @@ function getSavedDatasetTableQuery(input: {
   ownerId: string;
   savedTableId?: string;
 }) {
+  const predicates = [
+    eq(savedDatasetTables.ownerId, input.ownerId),
+    eq(datasets.isPublic, true),
+  ];
+
+  if (input.savedTableId) {
+    predicates.push(eq(savedDatasetTables.id, input.savedTableId));
+  }
+
   return getDb()
     .select({
       id: savedDatasetTables.id,
@@ -58,14 +67,7 @@ function getSavedDatasetTableQuery(input: {
     })
     .from(savedDatasetTables)
     .innerJoin(datasets, eq(savedDatasetTables.datasetId, datasets.id))
-    .where(
-      input.savedTableId
-        ? and(
-            eq(savedDatasetTables.ownerId, input.ownerId),
-            eq(savedDatasetTables.id, input.savedTableId),
-          )
-        : eq(savedDatasetTables.ownerId, input.ownerId),
-    );
+    .where(and(...predicates));
 }
 
 export async function listSavedDatasetTables(ownerId: string) {
@@ -98,7 +100,7 @@ export async function createSavedDatasetTable(input: {
         fileName: datasets.fileName,
       })
       .from(datasets)
-      .where(eq(datasets.id, input.datasetId))
+      .where(and(eq(datasets.id, input.datasetId), eq(datasets.isPublic, true)))
       .limit(1);
 
     if (!dataset) {

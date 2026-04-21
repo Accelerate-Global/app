@@ -33,6 +33,9 @@ import { getUnsupportedDatasetOpenPresetSections } from "@/lib/saved-dataset-fil
 type DbExecutor = Parameters<Parameters<ReturnType<typeof getDb>["transaction"]>[0]>[0];
 type DatasetRecord = typeof datasets.$inferSelect;
 type DatasetVersionRecord = typeof datasetVersions.$inferSelect;
+type DatasetAccessOptions = {
+  includeDisabled?: boolean;
+};
 
 function toDatasetSummary(row: DatasetRecord): DatasetSummary {
   return {
@@ -43,6 +46,7 @@ function toDatasetSummary(row: DatasetRecord): DatasetSummary {
     blobUrl: row.blobUrl,
     blobPath: row.blobPath,
     isPrimary: row.isPrimary,
+    isPublic: row.isPublic,
     status: row.status,
     rowCount: row.rowCount,
     sizeBytes: row.sizeBytes,
@@ -148,6 +152,27 @@ async function getDatasetRecord(
     .select()
     .from(datasets)
     .where(eq(datasets.id, datasetId))
+    .limit(1);
+
+  return dataset ?? null;
+}
+
+async function getAccessibleDatasetRecord(input: {
+  datasetId: string;
+  executor?: Pick<ReturnType<typeof getDb>, "select">;
+  includeDisabled?: boolean;
+}) {
+  const executor = input.executor ?? getDb();
+  const predicates: SQL[] = [eq(datasets.id, input.datasetId)];
+
+  if (!input.includeDisabled) {
+    predicates.push(eq(datasets.isPublic, true));
+  }
+
+  const [dataset] = await executor
+    .select()
+    .from(datasets)
+    .where(and(...predicates))
     .limit(1);
 
   return dataset ?? null;
@@ -260,21 +285,23 @@ async function restoreDatasetVersionRows(
   `);
 }
 
-export async function listDatasets() {
-  const rows = await getDb()
-    .select()
-    .from(datasets)
-    .orderBy(asc(datasets.sortOrder), desc(datasets.createdAt));
+export async function listDatasets(options: DatasetAccessOptions = {}) {
+  const query = getDb().select().from(datasets);
+  const rows = await (
+    options.includeDisabled ? query : query.where(eq(datasets.isPublic, true))
+  ).orderBy(asc(datasets.sortOrder), desc(datasets.createdAt));
 
   return rows.map(toDatasetSummary);
 }
 
-export async function getDataset(datasetId: string) {
-  const [dataset] = await getDb()
-    .select()
-    .from(datasets)
-    .where(eq(datasets.id, datasetId))
-    .limit(1);
+export async function getDataset(
+  datasetId: string,
+  options: DatasetAccessOptions = {},
+) {
+  const dataset = await getAccessibleDatasetRecord({
+    datasetId,
+    includeDisabled: options.includeDisabled,
+  });
 
   return dataset ? toDatasetSummary(dataset) : null;
 }
@@ -302,10 +329,11 @@ export async function listDatasetVersions(datasetId: string) {
   ];
 }
 
-export async function getDefaultDataset() {
-  const [dataset] = await getDb()
-    .select()
-    .from(datasets)
+export async function getDefaultDataset(options: DatasetAccessOptions = {}) {
+  const query = getDb().select().from(datasets);
+  const [dataset] = await (
+    options.includeDisabled ? query : query.where(eq(datasets.isPublic, true))
+  )
     .orderBy(desc(datasets.isPrimary), asc(datasets.sortOrder), desc(datasets.createdAt))
     .limit(1);
 
@@ -384,6 +412,7 @@ export async function updateDatasetDetails(input: {
   fileName?: string;
   tags?: DatasetTag[];
   isPrimary?: boolean;
+  isPublic?: boolean;
   hiddenColumnKeys?: string[];
 }) {
   return getDb().transaction(async (tx) => {
@@ -432,6 +461,10 @@ export async function updateDatasetDetails(input: {
       );
     }
 
+    if (input.isPublic !== undefined) {
+      updates.isPublic = input.isPublic;
+    }
+
     if (input.isPrimary !== undefined) {
       if (input.isPrimary && existingDataset.backingDatasetId) {
         throw new DerivedDatasetMutationError(
@@ -442,7 +475,13 @@ export async function updateDatasetDetails(input: {
       updates.isPrimary = input.isPrimary;
     }
 
-    if (input.isPrimary) {
+    const nextIsPublic = updates.isPublic ?? existingDataset.isPublic;
+
+    if (!nextIsPublic) {
+      updates.isPrimary = false;
+    }
+
+    if (updates.isPrimary === true) {
       await tx
         .update(datasets)
         .set({
@@ -686,7 +725,7 @@ export async function insertDatasetRowBatch(input: {
   isFinalBatch: boolean;
   totalRows?: number;
 }) {
-  const dataset = await getDataset(input.datasetId);
+  const dataset = await getDatasetRecord(input.datasetId);
 
   if (!dataset) {
     return null;
@@ -741,9 +780,19 @@ export async function getDatasetRows(input: {
   filter?: string;
   sortColumn?: string;
   sortDirection?: "asc" | "desc";
+  includeDisabled?: boolean;
 }) {
-  const resolved = await resolveDatasetSourceRecord({
+  const datasetRecord = await getAccessibleDatasetRecord({
     datasetId: input.datasetId,
+    includeDisabled: input.includeDisabled,
+  });
+
+  if (!datasetRecord) {
+    return null;
+  }
+
+  const resolved = await resolveDatasetSourceRecord({
+    dataset: datasetRecord,
   });
 
   if (!resolved) {
@@ -803,9 +852,21 @@ export async function getDatasetRows(input: {
   };
 }
 
-export async function getAllDatasetRows(input: { datasetId: string }) {
-  const resolved = await resolveDatasetSourceRecord({
+export async function getAllDatasetRows(input: {
+  datasetId: string;
+  includeDisabled?: boolean;
+}) {
+  const datasetRecord = await getAccessibleDatasetRecord({
     datasetId: input.datasetId,
+    includeDisabled: input.includeDisabled,
+  });
+
+  if (!datasetRecord) {
+    return null;
+  }
+
+  const resolved = await resolveDatasetSourceRecord({
+    dataset: datasetRecord,
   });
 
   if (!resolved) {

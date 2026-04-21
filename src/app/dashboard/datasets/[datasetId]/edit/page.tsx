@@ -27,7 +27,7 @@ export default async function DatasetEditPage({
     redirect("/");
   }
 
-  const dataset = await getDataset(datasetId);
+  const dataset = await getDataset(datasetId, { includeDisabled: true });
 
   if (!dataset) {
     notFound();
@@ -38,7 +38,7 @@ export default async function DatasetEditPage({
   }
 
   const [datasets, versions] = await Promise.all([
-    listDatasets(),
+    listDatasets({ includeDisabled: true }),
     dataset.backingDatasetId ? Promise.resolve([]) : listDatasetVersions(dataset.id),
   ]);
   const availableTags = getReusableDatasetTags(

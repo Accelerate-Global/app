@@ -31,7 +31,10 @@ export async function GET(request: Request, context: RowsContext) {
     url.searchParams.get("sortDirection") === "desc" ? "desc" : "asc";
 
   const result = readAllRows
-    ? await getAllDatasetRows({ datasetId })
+    ? await getAllDatasetRows({
+        datasetId,
+        includeDisabled: identity.isDatasetAdmin,
+      })
     : await getDatasetRows({
         datasetId,
         page: numberParam(url.searchParams.get("page"), 1),
@@ -39,6 +42,7 @@ export async function GET(request: Request, context: RowsContext) {
         filter: url.searchParams.get("filter") ?? undefined,
         sortColumn: url.searchParams.get("sortColumn") ?? undefined,
         sortDirection,
+        includeDisabled: identity.isDatasetAdmin,
       });
 
   if (!result) {

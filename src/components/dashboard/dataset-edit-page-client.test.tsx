@@ -31,6 +31,7 @@ function createDataset(overrides: Record<string, unknown> = {}) {
     blobUrl: "https://example.com/global.csv",
     blobPath: "datasets/global.csv",
     isPrimary: true,
+    isPublic: true,
     status: "ready" as const,
     rowCount: 128,
     sizeBytes: 4096,
@@ -202,7 +203,7 @@ describe("DatasetEditPageClient", () => {
     expect(pushMock).toHaveBeenCalledWith("/dashboard/upload?replace=dataset-1");
   });
 
-  it("disables primary and replacement controls for derived dataset views", () => {
+  it("routes derived dataset views to the backing dataset replacement flow", () => {
     render(
       <DatasetEditPageClient
         initialDataset={createDataset({
@@ -225,12 +226,19 @@ describe("DatasetEditPageClient", () => {
       screen.getByText(/This dataset is a derived view backed by another dataset/i),
     ).toBeTruthy();
     expect(
-      screen.getByRole("button", { name: "Replace dataset" }).hasAttribute("disabled"),
-    ).toBe(true);
-    expect(
-      screen.getByText(/Replace and revert actions are only available on the backing source dataset/i),
+      screen.getByText(
+        /Revert remains available only on the backing source dataset/i,
+      ),
     ).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Revert" })).toBeNull();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Replace backing dataset" }),
+    );
+
+    expect(pushMock).toHaveBeenCalledWith(
+      "/dashboard/upload?replace=dataset-source-1",
+    );
   });
 
   it("shows an error when a saved preset tag needs unsupported dataset filters", async () => {
@@ -285,11 +293,13 @@ describe("DatasetEditPageClient", () => {
     ).toBeTruthy();
   });
 
-  it("saves dataset changes and returns to the dashboard", async () => {
+  it("saves dataset visibility changes and returns to the dashboard", async () => {
     fetchMock.mockResolvedValue(
       buildJsonResponse({
         dataset: createDataset({
           fileName: "Global Updated.csv",
+          isPrimary: false,
+          isPublic: false,
           updatedAt: new Date("2026-04-17T11:00:00.000Z").toISOString(),
         }),
       }),
@@ -306,6 +316,7 @@ describe("DatasetEditPageClient", () => {
     fireEvent.change(screen.getByLabelText("Dataset name"), {
       target: { value: "Global Updated.csv" },
     });
+    fireEvent.click(screen.getByRole("switch", { name: "Public dataset" }));
     fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
 
     await waitFor(() => {
@@ -321,7 +332,8 @@ describe("DatasetEditPageClient", () => {
               color: "#fcab2a",
             },
           ],
-          isPrimary: true,
+          isPrimary: false,
+          isPublic: false,
           hiddenColumnKeys: [],
         }),
       });
@@ -333,7 +345,9 @@ describe("DatasetEditPageClient", () => {
         success: true,
         dataset_id: "dataset-1",
         renamed: true,
-        primary_changed: false,
+        primary_changed: true,
+        visibility_changed: true,
+        is_public: false,
         hidden_column_count: 0,
         tag_count: 1,
       }),

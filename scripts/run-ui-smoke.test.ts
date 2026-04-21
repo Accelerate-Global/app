@@ -9,6 +9,7 @@ import {
   getUiSmokeSupabaseStartTimeoutMs,
   parseRunUiSmokeArgs,
   resolveUiSmokeChangedFiles,
+  UI_SMOKE_DB_RESET_ARGS,
 } from "./run-ui-smoke";
 
 describe("run-ui-smoke", () => {
@@ -78,6 +79,16 @@ describe("run-ui-smoke", () => {
       maxAttempts: 30,
       retryDelayMs: 2_000,
     });
+  });
+
+  it("resets the local Supabase database without seeding smoke fixtures", () => {
+    expect(UI_SMOKE_DB_RESET_ARGS).toEqual([
+      "db",
+      "reset",
+      "--local",
+      "--no-seed",
+      "--yes",
+    ]);
   });
 
   it("uses a longer Supabase startup timeout in CI", () => {

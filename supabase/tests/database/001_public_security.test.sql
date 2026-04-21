@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(91);
+select plan(95);
 
 select results_eq(
   $$
@@ -245,6 +245,35 @@ values (
   '[]'::jsonb
 );
 
+insert into public.datasets (
+  id,
+  owner_id,
+  file_name,
+  blob_url,
+  blob_path,
+  current_version_action,
+  current_version_actor_owner_id,
+  current_version_actor_email,
+  current_version_created_at,
+  is_public,
+  size_bytes,
+  columns
+)
+values (
+  '10000000-0000-4000-8000-000000000010',
+  'owner-1',
+  'hidden-security-test.csv',
+  'https://example.com/hidden-security-test.csv',
+  'datasets/hidden-security-test.csv',
+  'upload',
+  'owner-1',
+  'security-admin@example.com',
+  now(),
+  false,
+  1,
+  '[]'::jsonb
+);
+
 insert into public.dataset_rows (
   id,
   dataset_id,
@@ -256,6 +285,19 @@ values (
   '10000000-0000-4000-8000-000000000001',
   0,
   '{"email":"person@example.com"}'::jsonb
+);
+
+insert into public.dataset_rows (
+  id,
+  dataset_id,
+  row_index,
+  data
+)
+values (
+  '20000000-0000-4000-8000-000000000010',
+  '10000000-0000-4000-8000-000000000010',
+  0,
+  '{"email":"hidden@example.com"}'::jsonb
 );
 
 insert into public.dataset_versions (
@@ -391,7 +433,9 @@ select set_config('request.jwt.claim.sub', 'aaaaaaaa-1337-403d-beb5-b7c44a1be131
 set local role authenticated;
 
 select results_eq($$ select count(*)::bigint from public.datasets where id = '10000000-0000-4000-8000-000000000001' $$, array[1::bigint], 'authenticated users can read datasets');
+select results_eq($$ select count(*)::bigint from public.datasets where id = '10000000-0000-4000-8000-000000000010' $$, array[0::bigint], 'authenticated users cannot read hidden datasets');
 select results_eq($$ select count(*)::bigint from public.dataset_rows where dataset_id = '10000000-0000-4000-8000-000000000001' $$, array[1::bigint], 'authenticated users can read dataset_rows');
+select results_eq($$ select count(*)::bigint from public.dataset_rows where dataset_id = '10000000-0000-4000-8000-000000000010' $$, array[0::bigint], 'authenticated users cannot read hidden dataset_rows');
 select results_eq($$ select count(*)::bigint from public.dataset_versions where dataset_id = '10000000-0000-4000-8000-000000000001' $$, array[0::bigint], 'non-admin authenticated users cannot read dataset_versions');
 select results_eq($$ select count(*)::bigint from public.dataset_version_rows where version_id = '21000000-0000-4000-8000-000000000001' $$, array[0::bigint], 'non-admin authenticated users cannot read dataset_version_rows');
 select results_eq($$ select count(*)::bigint from public.filter_regions where id = '30000000-0000-4000-8000-000000000001' $$, array[1::bigint], 'authenticated users can read filter_regions');
@@ -450,6 +494,9 @@ reset role;
 
 select set_config('request.jwt.claim.sub', '737ef850-1337-403d-beb5-b7c44a1be131', true);
 set local role authenticated;
+
+select results_eq($$ select count(*)::bigint from public.datasets where id = '10000000-0000-4000-8000-000000000010' $$, array[1::bigint], 'dataset admin can read hidden datasets');
+select results_eq($$ select count(*)::bigint from public.dataset_rows where dataset_id = '10000000-0000-4000-8000-000000000010' $$, array[1::bigint], 'dataset admin can read hidden dataset_rows');
 
 select lives_ok(
   $$

@@ -41,7 +41,9 @@ export async function GET(_request: Request, context: DatasetContext) {
   }
 
   const { datasetId } = await context.params;
-  const dataset = await getDataset(datasetId);
+  const dataset = await getDataset(datasetId, {
+    includeDisabled: identity.isDatasetAdmin,
+  });
 
   if (!dataset) {
     return jsonError("Dataset not found.", 404);
@@ -72,7 +74,10 @@ export async function GET(_request: Request, context: DatasetContext) {
   );
   const [rowsResponse, fieldDefinitionPresentationByColumnKey] =
     await Promise.all([
-      getAllDatasetRows({ datasetId: dataset.id }),
+      getAllDatasetRows({
+        datasetId: dataset.id,
+        includeDisabled: identity.isDatasetAdmin,
+      }),
       listFieldDefinitionPresentationByColumnKey(dataset.columns),
     ]);
 
