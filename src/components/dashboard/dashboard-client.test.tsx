@@ -110,7 +110,7 @@ describe("DashboardClient", () => {
     vi.stubGlobal("fetch", fetchMock);
     fetchMock.mockImplementation(async (input, init) => {
       if (
-        input === "/api/datasets/dataset-1/rows?page=1&pageSize=1000" &&
+        input === "/api/datasets/dataset-1/rows?all=true" &&
         (init?.method === undefined || init.method === "GET")
       ) {
         return buildJsonResponse({
@@ -187,7 +187,7 @@ describe("DashboardClient", () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        "/api/datasets/dataset-1/rows?page=1&pageSize=1000",
+        "/api/datasets/dataset-1/rows?all=true",
       );
     });
 

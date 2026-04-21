@@ -9,6 +9,7 @@ import { Column } from "@tanstack/react-table"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
+import { useDatasetPerfRenderTrace } from "@/lib/render-trace"
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -24,6 +25,8 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { ArrowDownIcon, ArrowUpIcon, ChevronsUpDownIcon, CheckIcon, ArrowLeftToLineIcon, ArrowRightToLineIcon, ArrowLeftIcon, ArrowRightIcon, Settings2Icon, PinOffIcon } from "lucide-react"
 
+const EMPTY_COLUMN_ORDER: string[] = []
+
 interface DataGridColumnHeaderProps<
   TData,
   TValue,
@@ -36,6 +39,7 @@ interface DataGridColumnHeaderProps<
   pinnable?: boolean
   filter?: ReactNode
   visibility?: boolean
+  renderStateKey?: string
 }
 
 function DataGridColumnHeaderInner<TData, TValue>({
@@ -46,12 +50,20 @@ function DataGridColumnHeaderInner<TData, TValue>({
   className,
   filter,
   visibility = false,
+  renderStateKey,
 }: DataGridColumnHeaderProps<TData, TValue>) {
+  useDatasetPerfRenderTrace("DataGridColumnHeaderInner", column.id)
+  void renderStateKey
   const { isLoading, table, props, recordCount } = useDataGrid()
   const resolvedTitle = title ?? getColumnHeaderLabel(column)
+  const columnsMovable = props.tableLayout?.columnsMovable ?? false
+  const columnsVisibilityEnabled =
+    props.tableLayout?.columnsVisibility && visibility
 
-  const columnOrder = table.getState().columnOrder
-  const columnVisibilityKey = JSON.stringify(table.getState().columnVisibility)
+  const columnOrder = columnsMovable ? table.getState().columnOrder : EMPTY_COLUMN_ORDER
+  const columnVisibilityKey = columnsVisibilityEnabled
+    ? JSON.stringify(table.getState().columnVisibility)
+    : ""
   const isSorted = column.getIsSorted()
   const isPinned = column.getIsPinned()
   const canSort = column.getCanSort()
@@ -59,8 +71,9 @@ function DataGridColumnHeaderInner<TData, TValue>({
   const canResize = column.getCanResize()
 
   const columnIndex = columnOrder.indexOf(column.id)
-  const canMoveLeft = columnIndex > 0
-  const canMoveRight = columnIndex < columnOrder.length - 1
+  const canMoveLeft = columnsMovable && columnIndex > 0
+  const canMoveRight =
+    columnsMovable && columnIndex < columnOrder.length - 1
 
   const handleSort = () => {
     if (isSorted === "asc") {
@@ -94,7 +107,7 @@ function DataGridColumnHeaderInner<TData, TValue>({
 
   const hasControls =
     props.tableLayout?.columnsMovable ||
-    (props.tableLayout?.columnsVisibility && visibility) ||
+    columnsVisibilityEnabled ||
     (props.tableLayout?.columnsPinnable && canPin) ||
     filter
 
@@ -187,7 +200,7 @@ function DataGridColumnHeaderInner<TData, TValue>({
     }
 
     // Move section
-    if (props.tableLayout?.columnsMovable) {
+    if (columnsMovable) {
       if (hasPreviousSection) {
         items.push(<DropdownMenuSeparator key="sep-move" />)
       }
@@ -227,7 +240,7 @@ function DataGridColumnHeaderInner<TData, TValue>({
     }
 
     // Visibility section
-    if (props.tableLayout?.columnsVisibility && visibility) {
+    if (columnsVisibilityEnabled) {
       if (hasPreviousSection) {
         items.push(<DropdownMenuSeparator key="sep-visibility" />)
       }
@@ -265,8 +278,8 @@ function DataGridColumnHeaderInner<TData, TValue>({
     isSorted,
     column,
     props.tableLayout?.columnsPinnable,
-    props.tableLayout?.columnsMovable,
-    props.tableLayout?.columnsVisibility,
+    columnsMovable,
+    columnsVisibilityEnabled,
     canPin,
     isPinned,
     canMoveLeft,

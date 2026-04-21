@@ -150,6 +150,7 @@ export function DashboardClient({
     const { started, promise } = ensureDatasetRowsCache({
       datasetId: primaryDataset.id,
       sourceDatasetId,
+      expectedRowCount: primaryDataset.rowCount,
     });
 
     if (!started) {

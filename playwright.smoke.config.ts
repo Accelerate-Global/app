@@ -34,7 +34,10 @@ export default defineConfig({
       UI_SMOKE_ENABLED: process.env.UI_SMOKE_ENABLED ?? "1",
     },
     url: UI_SMOKE_BASE_URL,
-    reuseExistingServer: !process.env.CI,
+    // Local verification runs `pnpm build` before Playwright. Reusing an
+    // already-running `next start` can leave the smoke browser on stale assets,
+    // which breaks hydration and turns form submits into plain GET navigations.
+    reuseExistingServer: false,
     timeout: 120_000,
   },
   projects: [

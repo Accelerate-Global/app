@@ -24,6 +24,28 @@ const WATCHLIST_FRONTIER_GROUP_DATASET_COLUMN_KEYS =
   getFieldDefinitionCanonicalKeyLookupKeys(
     WATCHLIST_FRONTIER_GROUP_DATASET_COLUMN_KEY,
   );
+const WATCHLIST_FRONTIER_GROUP_DATASET_COLUMN_KEY_SET = new Set(
+  WATCHLIST_FRONTIER_GROUP_DATASET_COLUMN_KEYS.map((key) =>
+    normalizeDatasetColumnKey(key),
+  ),
+);
+const datasetRowFilterFacetsCache = new WeakMap<
+  DatasetRow,
+  DatasetRowFilterFacets
+>();
+
+type DatasetRowFilterFacets = {
+  primaryCountryName: string;
+  primaryCountryKey: string;
+  alternateCountryNames: string[];
+  alternateCountryKeys: string[];
+  uupgValue: string;
+  watchlistValue: number | null;
+  watchlistFrontierGroupValue: string;
+  watchlistPopulation: number | null;
+  watchlistPercentEvangelical: number | null;
+  watchlistEngagementPhase: number | null;
+};
 
 export type DatasetRegionFilterState = {
   enabled: boolean;
@@ -106,68 +128,102 @@ function isDatasetColumnKey(
   return normalizeDatasetColumnKey(value) === expectedKey;
 }
 
-function findDatasetValue(row: DatasetRow, expectedKey: string) {
+function getDatasetRowFilterFacets(row: DatasetRow) {
+  const cachedFacets = datasetRowFilterFacetsCache.get(row);
+
+  if (cachedFacets) {
+    return cachedFacets;
+  }
+
+  let primaryCountryName = "";
+  let primaryCountryKey = "";
+  let alternateCountryNames: string[] = [];
+  let alternateCountryKeys: string[] = [];
+  let uupgValue = "";
+  let watchlistValue: number | null = null;
+  let watchlistFrontierGroupValue = "";
+  let watchlistPopulation: number | null = null;
+  let watchlistPercentEvangelical: number | null = null;
+  let watchlistEngagementPhase: number | null = null;
+
+  // Scan row.data once and cache the normalized filter fields for future passes.
   for (const [key, value] of Object.entries(row.data)) {
-    if (isDatasetColumnKey(key, expectedKey)) {
-      return value;
+    const normalizedKey = normalizeDatasetColumnKey(key);
+
+    if (!primaryCountryName && normalizedKey === REGION_DATASET_COLUMN_KEY) {
+      primaryCountryName = normalizeCountryName(value);
+      primaryCountryKey = normalizeCountryKey(primaryCountryName);
+      continue;
+    }
+
+    if (
+      alternateCountryNames.length === 0 &&
+      normalizedKey === COUNTRY_ALTERNATE_DATASET_COLUMN_KEY
+    ) {
+      alternateCountryNames = parseAlternateCountryNames(value);
+      alternateCountryKeys = alternateCountryNames.map((countryName) =>
+        normalizeCountryKey(countryName),
+      );
+      continue;
+    }
+
+    if (!uupgValue && normalizedKey === UUPG_DATASET_COLUMN_KEY) {
+      uupgValue = normalizeDatasetCellValue(value);
+      continue;
+    }
+
+    if (watchlistValue === null && normalizedKey === WATCHLIST_DATASET_COLUMN_KEY) {
+      watchlistValue = normalizeDatasetNumericValue(value);
+      continue;
+    }
+
+    if (
+      !watchlistFrontierGroupValue &&
+      WATCHLIST_FRONTIER_GROUP_DATASET_COLUMN_KEY_SET.has(normalizedKey)
+    ) {
+      watchlistFrontierGroupValue = normalizeDatasetCellValue(value);
+      continue;
+    }
+
+    if (
+      watchlistPopulation === null &&
+      normalizedKey === WATCHLIST_POPULATION_DATASET_COLUMN_KEY
+    ) {
+      watchlistPopulation = normalizeDatasetNumericValue(value);
+      continue;
+    }
+
+    if (
+      watchlistPercentEvangelical === null &&
+      normalizedKey === WATCHLIST_PERCENT_EVANGELICAL_DATASET_COLUMN_KEY
+    ) {
+      watchlistPercentEvangelical = normalizeDatasetNumericValue(value);
+      continue;
+    }
+
+    if (
+      watchlistEngagementPhase === null &&
+      normalizedKey === WATCHLIST_ENGAGEMENT_PHASES_DATASET_COLUMN_KEY
+    ) {
+      watchlistEngagementPhase = normalizeDatasetNumericValue(value);
     }
   }
 
-  return undefined;
-}
+  const facets = {
+    primaryCountryName,
+    primaryCountryKey,
+    alternateCountryNames,
+    alternateCountryKeys,
+    uupgValue,
+    watchlistValue,
+    watchlistFrontierGroupValue,
+    watchlistPopulation,
+    watchlistPercentEvangelical,
+    watchlistEngagementPhase,
+  } satisfies DatasetRowFilterFacets;
+  datasetRowFilterFacetsCache.set(row, facets);
 
-function getDatasetValue(row: DatasetRow, expectedKey: string) {
-  return findDatasetValue(row, expectedKey) ?? "";
-}
-
-function getDatasetValueByKeys(
-  row: DatasetRow,
-  expectedKeys: readonly string[],
-) {
-  for (const expectedKey of expectedKeys) {
-    const value = findDatasetValue(row, expectedKey);
-
-    if (value !== undefined) {
-      return value;
-    }
-  }
-
-  return "";
-}
-
-function getRegionDatasetValue(row: DatasetRow) {
-  return getDatasetValue(row, REGION_DATASET_COLUMN_KEY);
-}
-
-function getAlternateCountryDatasetValue(row: DatasetRow) {
-  return getDatasetValue(row, COUNTRY_ALTERNATE_DATASET_COLUMN_KEY);
-}
-
-function getUupgDatasetValue(row: DatasetRow) {
-  return getDatasetValue(row, UUPG_DATASET_COLUMN_KEY);
-}
-
-function getWatchlistDatasetValue(row: DatasetRow) {
-  return getDatasetValue(row, WATCHLIST_DATASET_COLUMN_KEY);
-}
-
-function getWatchlistFrontierGroupDatasetValue(row: DatasetRow) {
-  return getDatasetValueByKeys(
-    row,
-    WATCHLIST_FRONTIER_GROUP_DATASET_COLUMN_KEYS,
-  );
-}
-
-function getWatchlistPopulationDatasetValue(row: DatasetRow) {
-  return getDatasetValue(row, WATCHLIST_POPULATION_DATASET_COLUMN_KEY);
-}
-
-function getWatchlistPercentEvangelicalDatasetValue(row: DatasetRow) {
-  return getDatasetValue(row, WATCHLIST_PERCENT_EVANGELICAL_DATASET_COLUMN_KEY);
-}
-
-function getWatchlistEngagementPhasesDatasetValue(row: DatasetRow) {
-  return getDatasetValue(row, WATCHLIST_ENGAGEMENT_PHASES_DATASET_COLUMN_KEY);
+  return facets;
 }
 
 function datasetSupportsColumnFiltering(
@@ -566,12 +622,14 @@ export function getAvailableDatasetCountryNames(
   },
 ) {
   return dedupeCountryNames(
-    rows.flatMap((row) => [
-      normalizeCountryName(getRegionDatasetValue(row)),
-      ...(options?.includeAlternateCountries
-        ? parseAlternateCountryNames(getAlternateCountryDatasetValue(row))
-        : []),
-    ]),
+    rows.flatMap((row) => {
+      const facets = getDatasetRowFilterFacets(row);
+
+      return [
+        facets.primaryCountryName,
+        ...(options?.includeAlternateCountries ? facets.alternateCountryNames : []),
+      ];
+    }),
   );
 }
 
@@ -595,7 +653,7 @@ export function filterDatasetRowsByRegion(
   );
 
   return rows.filter((row) => {
-    const countryName = normalizeCountryName(getRegionDatasetValue(row));
+    const countryName = getDatasetRowFilterFacets(row).primaryCountryName;
 
     if (!countryName) {
       return false;
@@ -625,7 +683,8 @@ export function filterDatasetRowsByCountry(
   );
 
   return rows.filter((row) => {
-    const primaryCountryName = normalizeCountryName(getRegionDatasetValue(row)).toLowerCase();
+    const facets = getDatasetRowFilterFacets(row);
+    const primaryCountryName = facets.primaryCountryKey;
 
     if (primaryCountryName && allowedCountryNames.has(primaryCountryName)) {
       return true;
@@ -635,8 +694,8 @@ export function filterDatasetRowsByCountry(
       return false;
     }
 
-    return parseAlternateCountryNames(getAlternateCountryDatasetValue(row)).some(
-      (countryName) => allowedCountryNames.has(countryName.toLowerCase()),
+    return facets.alternateCountryKeys.some(
+      (countryName) => allowedCountryNames.has(countryName),
     );
   });
 }
@@ -650,7 +709,7 @@ export function filterDatasetRowsByUupg(
   }
 
   return rows.filter(
-    (row) => normalizeDatasetCellValue(getUupgDatasetValue(row)) === "false",
+    (row) => getDatasetRowFilterFacets(row).uupgValue === "false",
   );
 }
 
@@ -706,8 +765,10 @@ export function filterDatasetRowsByWatchlist(
   }
 
   return rows.filter((row) => {
+    const facets = getDatasetRowFilterFacets(row);
+
     if (thresholdEnabled) {
-      const value = normalizeDatasetNumericValue(getWatchlistDatasetValue(row));
+      const value = facets.watchlistValue;
 
       if (value === null || value > watchlistFilter.threshold) {
         return false;
@@ -715,9 +776,7 @@ export function filterDatasetRowsByWatchlist(
     }
 
     if (engagementPhaseEnabled) {
-      const engagementPhase = normalizeDatasetNumericValue(
-        getWatchlistEngagementPhasesDatasetValue(row),
-      );
+      const engagementPhase = facets.watchlistEngagementPhase;
 
       if (
         engagementPhase === null ||
@@ -728,9 +787,7 @@ export function filterDatasetRowsByWatchlist(
     }
 
     if (frontierGroupEnabled) {
-      const frontierGroupValue = normalizeDatasetCellValue(
-        getWatchlistFrontierGroupDatasetValue(row),
-      );
+      const frontierGroupValue = facets.watchlistFrontierGroupValue;
       const expectedFrontierGroupValue = watchlistFilter.frontierGroupValue
         ? "true"
         : "false";
@@ -745,9 +802,7 @@ export function filterDatasetRowsByWatchlist(
       evangelicalPercentEnabled ||
       evangelicalBelieversEnabled
     ) {
-      const percentEvangelical = normalizeDatasetNumericValue(
-        getWatchlistPercentEvangelicalDatasetValue(row),
-      );
+      const percentEvangelical = facets.watchlistPercentEvangelical;
 
       if (percentEvangelical === null) {
         return false;
@@ -762,9 +817,7 @@ export function filterDatasetRowsByWatchlist(
       }
 
       if (populationBelieversRule || evangelicalBelieversEnabled) {
-        const population = normalizeDatasetNumericValue(
-          getWatchlistPopulationDatasetValue(row),
-        );
+        const population = facets.watchlistPopulation;
 
         if (population === null) {
           return false;

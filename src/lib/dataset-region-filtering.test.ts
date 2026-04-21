@@ -616,6 +616,45 @@ describe("dataset-region-filtering", () => {
     expect(filteredRows[0]?.id).toBe("row-legacy");
   });
 
+  it("supports mixed normalized and raw country keys for options and alternate-country matches", () => {
+    const mixedRows: DatasetRowsResponse["rows"] = [
+      {
+        id: "row-mixed-country-1",
+        rowIndex: 0,
+        data: {
+          Geo_Country_Name: "India",
+          alternate_countries: "Bhutan; Nepal",
+        },
+      },
+      {
+        id: "row-mixed-country-2",
+        rowIndex: 1,
+        data: {
+          geo_country_name: "Brazil",
+          Alternate_Countries: "Argentina",
+        },
+      },
+    ];
+
+    expect(
+      getAvailableDatasetCountryNames(mixedRows, {
+        includeAlternateCountries: true,
+      }),
+    ).toEqual(["Argentina", "Bhutan", "Brazil", "India", "Nepal"]);
+
+    const filteredRows = filterDatasetRowsByCountry(mixedRows, {
+      enabled: true,
+      isSupported: true,
+      selectedCountryNames: ["Argentina", "Nepal"],
+      includeAlternateCountries: true,
+    });
+
+    expect(filteredRows.map((row) => row.id)).toEqual([
+      "row-mixed-country-1",
+      "row-mixed-country-2",
+    ]);
+  });
+
   it("keeps rows from all configured regions when no selectors are enabled", () => {
     const enabledCountryNames = getEnabledRegionCountryNames(
       [
@@ -700,6 +739,50 @@ describe("dataset-region-filtering", () => {
 
     expect(filteredRows).toHaveLength(1);
     expect(filteredRows[0]?.id).toBe("row-legacy");
+  });
+
+  it("supports mixed normalized and raw watchlist keys while honoring frontier aliases", () => {
+    const filteredRows = filterDatasetRowsByWatchlist(
+      [
+        {
+          id: "row-watchlist-mixed-match",
+          rowIndex: 0,
+          data: {
+            Christianity_GSEC: "2",
+            engage_8_phases_of_engagement: "6",
+            frontier_group: "TRUE",
+            PG_Population: "10000",
+            percent_evangelical_pgac: "5",
+          },
+        },
+        {
+          id: "row-watchlist-mixed-miss",
+          rowIndex: 1,
+          data: {
+            Christianity_GSEC: "3",
+            engage_8_phases_of_engagement: "6",
+            frontier_group: "TRUE",
+            PG_Population: "10000",
+            percent_evangelical_pgac: "5",
+          },
+        },
+      ],
+      {
+        enabled: true,
+        isSupported: true,
+        threshold: 2,
+        engagementPhaseThreshold: 6,
+        evangelicalBelieversEnabled: false,
+        evangelicalBelieversThreshold: 1000,
+        evangelicalPercentEnabled: false,
+        evangelicalPercentThreshold: 0.05,
+        frontierGroupValue: true,
+      },
+    );
+
+    expect(filteredRows.map((row) => row.id)).toEqual([
+      "row-watchlist-mixed-match",
+    ]);
   });
 
   it("excludes blank and non-numeric watchlist values when filtering is enabled", () => {
@@ -1051,6 +1134,35 @@ describe("dataset-region-filtering", () => {
     expect(filteredRows.map((row) => row.id)).toEqual([
       "row-false-uppercase",
       "row-false-trimmed",
+    ]);
+  });
+
+  it("supports mixed normalized and raw UUPG keys in the same batch", () => {
+    const filteredRows = filterDatasetRowsByUupg(
+      [
+        {
+          id: "row-uupg-mixed-match",
+          rowIndex: 0,
+          data: {
+            Engage_Global_Engagement_Anywhere: "FALSE",
+          },
+        },
+        {
+          id: "row-uupg-mixed-miss",
+          rowIndex: 1,
+          data: {
+            engage_global_engagement_anywhere: "TRUE",
+          },
+        },
+      ],
+      {
+        enabled: true,
+        isSupported: true,
+      },
+    );
+
+    expect(filteredRows.map((row) => row.id)).toEqual([
+      "row-uupg-mixed-match",
     ]);
   });
 

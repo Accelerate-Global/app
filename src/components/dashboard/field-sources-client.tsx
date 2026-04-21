@@ -323,7 +323,11 @@ export function FieldSourcesClient({
         id: "effectiveLabel",
         accessorFn: (row) => row.effectiveLabel,
         header: ({ column }) => (
-          <DataGridColumnHeader title="Field" column={column} />
+          <DataGridColumnHeader
+            title="Field"
+            column={column}
+            renderStateKey={`${column.getIsSorted()}:${column.getIsPinned()}`}
+          />
         ),
         cell: ({ row }) => (
           <p className="min-w-[14rem] font-medium text-foreground">
@@ -341,7 +345,11 @@ export function FieldSourcesClient({
           accessorFn: (row) => row.sourceValues[fieldSourceType.id] ?? "",
           header: ({ column }) => (
             <div data-smoke-field-source-column={fieldSourceType.label}>
-              <DataGridColumnHeader title={fieldSourceType.label} column={column} />
+              <DataGridColumnHeader
+                title={fieldSourceType.label}
+                column={column}
+                renderStateKey={`${column.getIsSorted()}:${column.getIsPinned()}`}
+              />
             </div>
           ),
           cell: ({ row }) => (

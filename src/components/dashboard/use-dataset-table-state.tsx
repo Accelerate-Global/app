@@ -6,8 +6,10 @@ import {
   useReactTable,
   type ColumnDef,
   type SortingState,
+  type SortingFn,
+  type Updater,
 } from "@tanstack/react-table";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import {
   ensureDatasetRowsCache,
@@ -26,7 +28,11 @@ import type { AppAnalyticsContext, DatasetOpenSource } from "@/lib/analytics";
 import { withAnalyticsContext } from "@/lib/analytics";
 import { trackAppEvent } from "@/lib/analytics-client";
 import {
+  datasetAlphanumericSortingFn,
+  type DatasetColumnSortMode,
+  datasetTextSortingFn,
   getDatasetCellValue,
+  getDatasetColumnSortMode,
   getDatasetColumnDisplayLabel,
   getSortedVisibleDatasetColumns,
 } from "@/lib/dataset-table-columns";
@@ -43,9 +49,15 @@ import {
 } from "@/lib/dataset-region-filtering";
 
 type DatasetRow = DatasetRowsResponse["rows"][number];
+type DatasetColumnPresentation = {
+  label: string;
+  headerDetail: ReactNode;
+  size: number;
+};
 
 export function useDatasetTableState(input: {
   dataset: DatasetSummary;
+  sourceRowCount?: number | null;
   initialSorting?: SavedDatasetSort[] | null;
   regionFilter?: DatasetRegionFilterState;
   countryFilter?: DatasetCountryFilterState;
@@ -133,6 +145,95 @@ export function useDatasetTableState(input: {
       input.dataset.hiddenColumnKeys,
     ],
   );
+  const columnPresentationByKey = useMemo(() => {
+    const entries = visibleColumns.map((column) => {
+      const fieldDefinitionPresentation =
+        fieldDefinitionPresentationByColumnKey[column.key];
+      const label = getDatasetColumnDisplayLabel(
+        column,
+        fieldDefinitionPresentationByColumnKey,
+      );
+
+      return [
+        column.key,
+        {
+          label,
+          headerDetail: (
+            <FieldDefinitionHeaderInfo
+              label={label}
+              definition={fieldDefinitionPresentation?.definition ?? ""}
+              linkedSources={fieldDefinitionPresentation?.linkedSources ?? []}
+            />
+          ),
+          size: Math.min(Math.max(label.length * 12, 160), 280),
+        } satisfies DatasetColumnPresentation,
+      ] as const;
+    });
+
+    return Object.fromEntries(entries) as Record<string, DatasetColumnPresentation>;
+  }, [fieldDefinitionPresentationByColumnKey, visibleColumns]);
+  const visibleColumnKeys = useMemo(
+    () => new Set(visibleColumns.map((column) => column.key)),
+    [visibleColumns],
+  );
+  const sortModesByColumnIdRef = useRef<Record<string, DatasetColumnSortMode>>({});
+  const buildSortModesByColumnId = useCallback(
+    (nextSorting: SortingState) => {
+      if (nextSorting.length === 0) {
+        return {} as Record<string, DatasetColumnSortMode>;
+      }
+
+      const nextSortModes: Record<string, DatasetColumnSortMode> = {};
+
+      for (const sortEntry of nextSorting) {
+        if (!visibleColumnKeys.has(sortEntry.id)) {
+          continue;
+        }
+
+        nextSortModes[sortEntry.id] = getDatasetColumnSortMode(
+          filteredRows,
+          sortEntry.id,
+        );
+      }
+
+      return nextSortModes;
+    },
+    [filteredRows, visibleColumnKeys],
+  );
+
+  if (sorting.length > 0 && Object.keys(sortModesByColumnIdRef.current).length === 0) {
+    sortModesByColumnIdRef.current = buildSortModesByColumnId(sorting);
+  }
+
+  const resolveDatasetSortingFn = useCallback<SortingFn<DatasetRow>>(
+    (rowA, rowB, columnId) => {
+      const mode = sortModesByColumnIdRef.current[columnId] ?? "text";
+
+      return mode === "alphanumeric"
+        ? datasetAlphanumericSortingFn(rowA, rowB, columnId)
+        : datasetTextSortingFn(rowA, rowB, columnId);
+    },
+    [],
+  );
+
+  const handleSortingChange = useCallback(
+    (updaterOrValue: Updater<SortingState>) => {
+      setSorting((currentSorting) => {
+        const nextSorting =
+          typeof updaterOrValue === "function"
+            ? updaterOrValue(currentSorting)
+            : updaterOrValue;
+
+        sortModesByColumnIdRef.current = buildSortModesByColumnId(nextSorting);
+        return nextSorting;
+      });
+    },
+    [buildSortModesByColumnId],
+  );
+
+  useEffect(() => {
+    sortModesByColumnIdRef.current = buildSortModesByColumnId(sorting);
+  }, [buildSortModesByColumnId, sorting]);
 
   const columns = useMemo<ColumnDef<DatasetRow>[]>(
     () => [
@@ -152,12 +253,12 @@ export function useDatasetTableState(input: {
       },
       ...visibleColumns.map(
         (column): ColumnDef<DatasetRow> => {
-          const fieldDefinitionPresentation =
-            fieldDefinitionPresentationByColumnKey[column.key];
-          const columnLabel = getDatasetColumnDisplayLabel(
-            column,
-            fieldDefinitionPresentationByColumnKey,
-          );
+          const columnPresentation = columnPresentationByKey[column.key] ?? {
+            label: column.label,
+            headerDetail: null,
+            size: Math.min(Math.max(column.label.length * 12, 160), 280),
+          };
+          const columnLabel = columnPresentation.label;
 
           return {
             id: column.key,
@@ -166,13 +267,8 @@ export function useDatasetTableState(input: {
               <DataGridColumnHeader
                 title={columnLabel}
                 column={tableColumn}
-                detail={
-                  <FieldDefinitionHeaderInfo
-                    label={columnLabel}
-                    definition={fieldDefinitionPresentation?.definition ?? ""}
-                    linkedSources={fieldDefinitionPresentation?.linkedSources ?? []}
-                  />
-                }
+                detail={columnPresentation.headerDetail}
+                renderStateKey={`${tableColumn.getIsSorted()}:${tableColumn.getIsPinned()}`}
               />
             ),
             cell: ({ row }) => (
@@ -181,13 +277,18 @@ export function useDatasetTableState(input: {
               </span>
             ),
             meta: { headerTitle: columnLabel },
-            size: Math.min(Math.max(columnLabel.length * 12, 160), 280),
+            size: columnPresentation.size,
             enableSorting: true,
+            sortingFn: resolveDatasetSortingFn,
           };
         },
       ),
     ],
-    [fieldDefinitionPresentationByColumnKey, visibleColumns],
+    [
+      columnPresentationByKey,
+      resolveDatasetSortingFn,
+      visibleColumns,
+    ],
   );
 
   // eslint-disable-next-line react-hooks/incompatible-library
@@ -204,7 +305,7 @@ export function useDatasetTableState(input: {
       },
     },
     columnResizeMode: "onChange",
-    onSortingChange: setSorting,
+    onSortingChange: handleSortingChange,
     autoResetPageIndex: false,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -287,10 +388,25 @@ export function useDatasetTableState(input: {
     void ensureDatasetRowsCache({
       datasetId: input.dataset.id,
       sourceDatasetId,
+      expectedRowCount:
+        input.sourceRowCount ??
+        (input.dataset.backingDatasetId ? null : input.dataset.rowCount),
     }).promise;
 
     return unsubscribe;
-  }, [input.analytics, input.dataset.id, sourceDatasetId]);
+  }, [
+    input.analytics,
+    input.dataset.backingDatasetId,
+    input.dataset.id,
+    input.dataset.rowCount,
+    input.sourceRowCount,
+    sourceDatasetId,
+  ]);
+
+  const getSortedRows = useCallback(
+    () => table.getRowModel().rows.map((row) => row.original),
+    [table],
+  );
 
   return {
     table,
@@ -298,8 +414,8 @@ export function useDatasetTableState(input: {
     visibleColumns,
     datasetCountryNames,
     availableCountryNames,
-    sortedRows: table.getRowModel().rows.map((row) => row.original),
-    recordCount: table.getRowModel().rows.length,
+    getSortedRows,
+    recordCount: filteredRows.length,
     isLoading,
     error,
   };

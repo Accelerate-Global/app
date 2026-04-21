@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { DatasetOpenPresetSheet } from "@/components/dashboard/dataset-open-preset-sheet";
 import { DatasetTableActionBar } from "@/components/dashboard/dataset-table-action-bar";
@@ -58,9 +58,11 @@ import {
   getInitialDatasetDetailState,
 } from "@/lib/saved-dataset-filters";
 import { sanitizePopulationBelieversRule } from "@/lib/evangelical-population-believers-rule";
+import { useDatasetPerfRenderTrace } from "@/lib/render-trace";
 
 type DatasetDetailClientProps = {
   dataset: DatasetSummary;
+  sourceRowCount?: number | null;
   regions: FilterRegion[];
   fieldDefinitionPresentationByColumnKey: Record<
     string,
@@ -178,6 +180,7 @@ async function getErrorMessage(response: Response, fallback: string) {
 
 export function DatasetDetailClient({
   dataset,
+  sourceRowCount = null,
   regions,
   fieldDefinitionPresentationByColumnKey,
   initialFilters = null,
@@ -191,6 +194,7 @@ export function DatasetDetailClient({
   initialSavedTableFilterSections = null,
   initialPresetTagId = null,
 }: DatasetDetailClientProps) {
+  useDatasetPerfRenderTrace("DatasetDetailClient");
   const watchlistThresholdLabel =
     fieldDefinitionPresentationByColumnKey[WATCHLIST_DATASET_COLUMN_KEY]
       ?.effectiveLabel ?? "Christianity_GSEC";
@@ -331,23 +335,36 @@ export function DatasetDetailClient({
       })),
     [visibleRegions, selectedRegionIds],
   );
-  const datasetTable = useDatasetTableState({
-    dataset,
-    initialSorting: initialState.sorting,
-    fieldDefinitionPresentationByColumnKey,
-    regionFilter: {
+  const regionFilter = useMemo(
+    () => ({
       enabled: regionEnabled,
       isSupported: supportsRegionFiltering,
       hasConfiguredRegions: visibleRegions.length > 0,
       enabledCountryNames: selectedRegionCountryNames,
-    },
-    countryFilter: {
+    }),
+    [
+      regionEnabled,
+      selectedRegionCountryNames,
+      supportsRegionFiltering,
+      visibleRegions.length,
+    ],
+  );
+  const countryFilter = useMemo(
+    () => ({
       enabled: countryEnabled,
       isSupported: supportsCountryFiltering,
       selectedCountryNames,
       includeAlternateCountries,
-    },
-    watchlistFilter: {
+    }),
+    [
+      countryEnabled,
+      includeAlternateCountries,
+      selectedCountryNames,
+      supportsCountryFiltering,
+    ],
+  );
+  const watchlistFilter = useMemo(
+    () => ({
       enabled: watchlistEnabled,
       isSupported: supportsWatchlistFiltering,
       thresholdEnabled: watchlistThresholdEnabled,
@@ -359,11 +376,36 @@ export function DatasetDetailClient({
       evangelicalPopulationBelieversRule: watchlistPopulationBelieversRule,
       frontierGroupEnabled: watchlistFrontierGroupEnabled,
       frontierGroupValue: watchlistFrontierGroupValue,
-    },
-    uupgFilter: {
+    }),
+    [
+      supportsWatchlistFiltering,
+      watchlistEnabled,
+      watchlistEngagementPhaseEnabled,
+      watchlistEngagementPhaseThreshold,
+      watchlistFrontierGroupEnabled,
+      watchlistFrontierGroupValue,
+      watchlistPopulationBelieversRule,
+      watchlistPopulationBelieversRuleEnabled,
+      watchlistThreshold,
+      watchlistThresholdEnabled,
+    ],
+  );
+  const uupgFilter = useMemo(
+    () => ({
       enabled: uupgEnabled,
       isSupported: supportsUupgFiltering,
-    },
+    }),
+    [supportsUupgFiltering, uupgEnabled],
+  );
+  const datasetTable = useDatasetTableState({
+    dataset,
+    sourceRowCount,
+    initialSorting: initialState.sorting,
+    fieldDefinitionPresentationByColumnKey,
+    regionFilter,
+    countryFilter,
+    watchlistFilter,
+    uupgFilter,
     analytics: datasetTableAnalytics,
   });
   const effectiveCountrySelection = useMemo(
@@ -436,38 +478,96 @@ export function DatasetDetailClient({
     });
   }, [datasetTable.availableCountryNames]);
 
-  function applyCountrySelection(nextCountryNames: string[]) {
-    const normalizedCountryNames = dedupeCountryNames(nextCountryNames);
-    const matchedRegionIds = getMatchingRegionIdsForCountries(
-      visibleRegions,
-      normalizedCountryNames,
-      datasetTable.datasetCountryNames,
-    );
+  const applyCountrySelection = useCallback(
+    (nextCountryNames: string[]) => {
+      const normalizedCountryNames = dedupeCountryNames(nextCountryNames);
+      const matchedRegionIds = getMatchingRegionIdsForCountries(
+        visibleRegions,
+        normalizedCountryNames,
+        datasetTable.datasetCountryNames,
+      );
 
-    setCountryEnabled(true);
-    setSelectedCountryNames(normalizedCountryNames);
-    setSelectedRegionIds(
-      createRegionSelectionStateFromIds(visibleRegions, matchedRegionIds),
-    );
-    setRegionEnabled(matchedRegionIds.length > 0);
-  }
+      setCountryEnabled(true);
+      setSelectedCountryNames(normalizedCountryNames);
+      setSelectedRegionIds(
+        createRegionSelectionStateFromIds(visibleRegions, matchedRegionIds),
+      );
+      setRegionEnabled(matchedRegionIds.length > 0);
+    },
+    [datasetTable.datasetCountryNames, visibleRegions],
+  );
 
-  function handleRegionSelectorChange(regionId: string, checked: boolean) {
-    const nextSelectedRegionIds = getNextSelectedRegionIds({
-      regions: visibleRegions,
-      current: selectedRegionIds,
-      regionId,
-      checked,
-    });
-    const nextSelectedCountryNames = getSelectedRegionCountryNames(
-      visibleRegions,
-      nextSelectedRegionIds,
-    );
+  const handleRegionSelectorChange = useCallback(
+    (regionId: string, checked: boolean) => {
+      const nextSelectedRegionIds = getNextSelectedRegionIds({
+        regions: visibleRegions,
+        current: selectedRegionIds,
+        regionId,
+        checked,
+      });
+      const nextSelectedCountryNames = getSelectedRegionCountryNames(
+        visibleRegions,
+        nextSelectedRegionIds,
+      );
 
-    setSelectedRegionIds(nextSelectedRegionIds);
-    setRegionEnabled(nextSelectedCountryNames.length > 0);
-    setSelectedCountryNames(nextSelectedCountryNames);
-  }
+      setSelectedRegionIds(nextSelectedRegionIds);
+      setRegionEnabled(nextSelectedCountryNames.length > 0);
+      setSelectedCountryNames(nextSelectedCountryNames);
+    },
+    [selectedRegionIds, visibleRegions],
+  );
+  const handleWatchlistThresholdChange = useCallback(
+    (value: number) => setWatchlistThreshold(clampWatchlistThreshold(value)),
+    [],
+  );
+  const handleWatchlistEngagementPhaseThresholdChange = useCallback(
+    (value: number) =>
+      setWatchlistEngagementPhaseThreshold(
+        clampWatchlistEngagementPhaseThreshold(value),
+      ),
+    [],
+  );
+  const handleWatchlistPopulationBelieversRuleChange = useCallback(
+    (value: typeof watchlistPopulationBelieversRule) =>
+      setWatchlistPopulationBelieversRule(sanitizePopulationBelieversRule(value)),
+    [],
+  );
+  const handleCountryToggle = useCallback(
+    (countryName: string, checked: boolean) =>
+      applyCountrySelection(
+        checked
+          ? [...effectiveCountrySelection.selectedCountryNames, countryName]
+          : effectiveCountrySelection.selectedCountryNames.filter(
+              (value) => value !== countryName,
+            ),
+      ),
+    [applyCountrySelection, effectiveCountrySelection.selectedCountryNames],
+  );
+  const handleSelectVisibleCountries = useCallback(
+    (countryNames: string[]) =>
+      applyCountrySelection([
+        ...effectiveCountrySelection.selectedCountryNames,
+        ...countryNames,
+      ]),
+    [applyCountrySelection, effectiveCountrySelection.selectedCountryNames],
+  );
+  const handleClearVisibleCountries = useCallback(
+    (countryNames: string[]) => {
+      const countryNamesToClear = new Set(countryNames);
+      applyCountrySelection(
+        effectiveCountrySelection.selectedCountryNames.filter(
+          (countryName) => !countryNamesToClear.has(countryName),
+        ),
+      );
+    },
+    [applyCountrySelection, effectiveCountrySelection.selectedCountryNames],
+  );
+  const handleOpenFilters = useCallback(() => {
+    setIsFiltersSheetOpen(true);
+  }, []);
+  const handleOpenOpenPreset = useCallback(() => {
+    setIsOpenPresetSheetOpen(true);
+  }, []);
 
   useEffect(() => {
     trackAppEvent(
@@ -721,101 +821,117 @@ export function DatasetDetailClient({
       setIsSavingOpenPreset(false);
     }
   }
-  const filterPanelProps = {
-    regionCard: {
-      supported: supportsRegionFiltering,
-      selectors: regionSelectors,
-      onSelectorChange: handleRegionSelectorChange,
-    },
-    countryCard: {
-      enabled: countryEnabled,
-      supported: supportsCountryFiltering,
-      searchValue: countrySearchValue,
-      availableCountries: datasetTable.availableCountryNames,
-      visibleCountries: datasetTable.availableCountryNames,
-      selectedCountries: effectiveCountrySelection.selectedCountryNames,
-      hasExplicitSelection: effectiveCountrySelection.hasExplicitSelection,
-      includeAlternateCountries,
-      supportsAlternateCountries: supportsAlternateCountryFiltering,
-      onEnabledChange: setCountryEnabled,
-      onIncludeAlternateCountriesChange: setIncludeAlternateCountries,
-      onSearchChange: setCountrySearchValue,
-      onToggleCountry: (countryName: string, checked: boolean) =>
-        applyCountrySelection(
-          checked
-            ? [
-                ...effectiveCountrySelection.selectedCountryNames,
-                countryName,
-              ]
-            : effectiveCountrySelection.selectedCountryNames.filter(
-                (value) => value !== countryName,
-              ),
-        ),
-      onSelectVisible: (countryNames: string[]) =>
-        applyCountrySelection([
-          ...effectiveCountrySelection.selectedCountryNames,
-          ...countryNames,
-        ]),
-      onClearVisible: (countryNames: string[]) => {
-        const countryNamesToClear = new Set(countryNames);
-        applyCountrySelection(
-          effectiveCountrySelection.selectedCountryNames.filter(
-            (countryName) => !countryNamesToClear.has(countryName),
-          ),
-        );
+  const filterPanelProps = useMemo<Parameters<typeof DatasetViewSwitchGrid>[0]>(
+    () => ({
+      regionCard: {
+        supported: supportsRegionFiltering,
+        selectors: regionSelectors,
+        onSelectorChange: handleRegionSelectorChange,
       },
-    },
-    watchlistCard: {
-      enabled: watchlistEnabled,
-      supported: supportsWatchlistFiltering,
-      thresholdLabel: watchlistThresholdLabel,
-      thresholdDefinition: watchlistThresholdDefinition,
-      thresholdEnabled: watchlistThresholdEnabled,
-      threshold: watchlistThreshold,
-      minThreshold: WATCHLIST_THRESHOLD_MIN,
-      maxThreshold: WATCHLIST_THRESHOLD_MAX,
-      engagementPhaseLabel: watchlistEngagementPhaseLabel,
-      engagementPhaseDefinition: watchlistEngagementPhaseDefinition,
-      engagementPhaseEnabled: watchlistEngagementPhaseEnabled,
-      engagementPhaseThreshold: watchlistEngagementPhaseThreshold,
-      minEngagementPhaseThreshold: WATCHLIST_ENGAGEMENT_PHASE_MIN,
-      maxEngagementPhaseThreshold: WATCHLIST_ENGAGEMENT_PHASE_MAX,
-      populationBelieversRuleLabel: WATCHLIST_POPULATION_BELIEVERS_RULE_LABEL,
-      populationBelieversRuleDefinition:
-        watchlistPopulationBelieversRuleDefinition,
-      populationBelieversRuleEnabled:
-        watchlistPopulationBelieversRuleEnabled,
-      populationBelieversRule: watchlistPopulationBelieversRule,
-      frontierGroupLabel: watchlistFrontierGroupLabel,
-      frontierGroupDefinition: watchlistFrontierGroupDefinition,
-      frontierGroupEnabled: watchlistFrontierGroupEnabled,
-      frontierGroupValue: watchlistFrontierGroupValue,
-      onEnabledChange: setWatchlistEnabled,
-      onThresholdEnabledChange: setWatchlistThresholdEnabled,
-      onThresholdChange: (value: number) =>
-        setWatchlistThreshold(clampWatchlistThreshold(value)),
-      onEngagementPhaseEnabledChange: setWatchlistEngagementPhaseEnabled,
-      onEngagementPhaseThresholdChange: (value: number) =>
-        setWatchlistEngagementPhaseThreshold(
-          clampWatchlistEngagementPhaseThreshold(value),
-        ),
-      onPopulationBelieversRuleEnabledChange:
-        setWatchlistPopulationBelieversRuleEnabled,
-      onPopulationBelieversRuleChange: (value) =>
-        setWatchlistPopulationBelieversRule(
-          sanitizePopulationBelieversRule(value),
-        ),
-      onFrontierGroupEnabledChange: setWatchlistFrontierGroupEnabled,
-      onFrontierGroupValueChange: setWatchlistFrontierGroupValue,
-    },
-    uupgCard: {
-      enabled: uupgEnabled,
-      supported: supportsUupgFiltering,
-      fieldLabel: uupgFieldLabel,
-      fieldDefinition: uupgFieldDefinition,
-      onEnabledChange: setUupgEnabled,
-    },
-  } satisfies Parameters<typeof DatasetViewSwitchGrid>[0];
+      countryCard: {
+        enabled: countryEnabled,
+        supported: supportsCountryFiltering,
+        searchValue: countrySearchValue,
+        availableCountries: datasetTable.availableCountryNames,
+        visibleCountries: datasetTable.availableCountryNames,
+        selectedCountries: effectiveCountrySelection.selectedCountryNames,
+        hasExplicitSelection: effectiveCountrySelection.hasExplicitSelection,
+        includeAlternateCountries,
+        supportsAlternateCountries: supportsAlternateCountryFiltering,
+        onEnabledChange: setCountryEnabled,
+        onIncludeAlternateCountriesChange: setIncludeAlternateCountries,
+        onSearchChange: setCountrySearchValue,
+        onToggleCountry: handleCountryToggle,
+        onSelectVisible: handleSelectVisibleCountries,
+        onClearVisible: handleClearVisibleCountries,
+      },
+      watchlistCard: {
+        enabled: watchlistEnabled,
+        supported: supportsWatchlistFiltering,
+        thresholdLabel: watchlistThresholdLabel,
+        thresholdDefinition: watchlistThresholdDefinition,
+        thresholdEnabled: watchlistThresholdEnabled,
+        threshold: watchlistThreshold,
+        minThreshold: WATCHLIST_THRESHOLD_MIN,
+        maxThreshold: WATCHLIST_THRESHOLD_MAX,
+        engagementPhaseLabel: watchlistEngagementPhaseLabel,
+        engagementPhaseDefinition: watchlistEngagementPhaseDefinition,
+        engagementPhaseEnabled: watchlistEngagementPhaseEnabled,
+        engagementPhaseThreshold: watchlistEngagementPhaseThreshold,
+        minEngagementPhaseThreshold: WATCHLIST_ENGAGEMENT_PHASE_MIN,
+        maxEngagementPhaseThreshold: WATCHLIST_ENGAGEMENT_PHASE_MAX,
+        populationBelieversRuleLabel: WATCHLIST_POPULATION_BELIEVERS_RULE_LABEL,
+        populationBelieversRuleDefinition:
+          watchlistPopulationBelieversRuleDefinition,
+        populationBelieversRuleEnabled:
+          watchlistPopulationBelieversRuleEnabled,
+        populationBelieversRule: watchlistPopulationBelieversRule,
+        frontierGroupLabel: watchlistFrontierGroupLabel,
+        frontierGroupDefinition: watchlistFrontierGroupDefinition,
+        frontierGroupEnabled: watchlistFrontierGroupEnabled,
+        frontierGroupValue: watchlistFrontierGroupValue,
+        onEnabledChange: setWatchlistEnabled,
+        onThresholdEnabledChange: setWatchlistThresholdEnabled,
+        onThresholdChange: handleWatchlistThresholdChange,
+        onEngagementPhaseEnabledChange: setWatchlistEngagementPhaseEnabled,
+        onEngagementPhaseThresholdChange:
+          handleWatchlistEngagementPhaseThresholdChange,
+        onPopulationBelieversRuleEnabledChange:
+          setWatchlistPopulationBelieversRuleEnabled,
+        onPopulationBelieversRuleChange:
+          handleWatchlistPopulationBelieversRuleChange,
+        onFrontierGroupEnabledChange: setWatchlistFrontierGroupEnabled,
+        onFrontierGroupValueChange: setWatchlistFrontierGroupValue,
+      },
+      uupgCard: {
+        enabled: uupgEnabled,
+        supported: supportsUupgFiltering,
+        fieldLabel: uupgFieldLabel,
+        fieldDefinition: uupgFieldDefinition,
+        onEnabledChange: setUupgEnabled,
+      },
+    }),
+    [
+      countryEnabled,
+      countrySearchValue,
+      datasetTable.availableCountryNames,
+      effectiveCountrySelection.hasExplicitSelection,
+      effectiveCountrySelection.selectedCountryNames,
+      handleClearVisibleCountries,
+      handleCountryToggle,
+      handleRegionSelectorChange,
+      handleSelectVisibleCountries,
+      handleWatchlistEngagementPhaseThresholdChange,
+      handleWatchlistPopulationBelieversRuleChange,
+      handleWatchlistThresholdChange,
+      includeAlternateCountries,
+      regionSelectors,
+      supportsAlternateCountryFiltering,
+      supportsCountryFiltering,
+      supportsRegionFiltering,
+      supportsUupgFiltering,
+      supportsWatchlistFiltering,
+      uupgEnabled,
+      uupgFieldDefinition,
+      uupgFieldLabel,
+      watchlistEnabled,
+      watchlistEngagementPhaseDefinition,
+      watchlistEngagementPhaseEnabled,
+      watchlistEngagementPhaseLabel,
+      watchlistEngagementPhaseThreshold,
+      watchlistFrontierGroupDefinition,
+      watchlistFrontierGroupEnabled,
+      watchlistFrontierGroupLabel,
+      watchlistFrontierGroupValue,
+      watchlistPopulationBelieversRule,
+      watchlistPopulationBelieversRuleDefinition,
+      watchlistPopulationBelieversRuleEnabled,
+      watchlistThreshold,
+      watchlistThresholdDefinition,
+      watchlistThresholdEnabled,
+      watchlistThresholdLabel,
+    ],
+  );
 
   return (
     <>
@@ -830,16 +946,16 @@ export function DatasetDetailClient({
             dataset={dataset}
             filters={savedFilters}
             recordCount={datasetTable.recordCount}
-            sortedRows={datasetTable.sortedRows}
+            getSortedRows={datasetTable.getSortedRows}
             visibleColumns={datasetTable.visibleColumns}
             isLoading={datasetTable.isLoading}
             hasError={Boolean(dataset.error || datasetTable.error)}
             fieldDefinitionPresentationByColumnKey={fieldDefinitionPresentationByColumnKey}
             analyticsContext={analyticsContext}
-            onOpenFilters={() => setIsFiltersSheetOpen(true)}
+            onOpenFilters={handleOpenFilters}
             onOpenOpenPreset={
               canManageOpenPresets
-                ? () => setIsOpenPresetSheetOpen(true)
+                ? handleOpenOpenPreset
                 : undefined
             }
           />

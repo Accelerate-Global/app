@@ -294,6 +294,39 @@ describe("DatasetViewSwitchGrid", () => {
     expect(screen.getAllByText("Off").length).toBeGreaterThanOrEqual(1);
   });
 
+  it("preserves expanded section state across rerenders with stable props", () => {
+    const regionCard = {
+      ...baseRegionCard,
+      selectors: [
+        {
+          id: "region-1",
+          label: "South Asia",
+          checked: false,
+          description: "",
+          countries: ["India"],
+        },
+      ],
+    };
+    const props = {
+      regionCard,
+      countryCard: baseCountryCard,
+      watchlistCard: baseWatchlistCard,
+      uupgCard: baseUupgCard,
+    };
+    const { rerender } = render(<DatasetViewSwitchGrid {...props} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Region filters" }));
+    expect(
+      screen.getByText("A grouping of people groups based on geography."),
+    ).toBeTruthy();
+
+    rerender(<DatasetViewSwitchGrid {...props} />);
+
+    expect(
+      screen.getByText("A grouping of people groups based on geography."),
+    ).toBeTruthy();
+  });
+
   it("shows the simplified country description and in-card alternate-country toggle", () => {
     render(
       <DatasetViewSwitchGrid
