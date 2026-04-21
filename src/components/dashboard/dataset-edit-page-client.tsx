@@ -52,6 +52,7 @@ type DatasetVersionsResponse = {
 
 type DatasetEditPageClientProps = {
   initialDataset: DatasetSummary;
+  backingDatasetName?: string | null;
   availableTags: DatasetTag[];
   initialVersions: DatasetVersionSummary[];
   actorOwnerId?: string;
@@ -60,6 +61,7 @@ type DatasetEditPageClientProps = {
 
 type DatasetEditFormProps = {
   dataset: DatasetSummary;
+  backingDatasetName?: string | null;
   availableTags: DatasetTag[];
   versions: DatasetVersionSummary[];
   isSaving: boolean;
@@ -388,6 +390,7 @@ function NewTagComposer({
 
 function DatasetEditForm({
   dataset,
+  backingDatasetName = null,
   availableTags,
   versions,
   isSaving,
@@ -402,8 +405,9 @@ function DatasetEditForm({
   onRevertDatasetVersion,
 }: DatasetEditFormProps) {
   const isDerivedView = dataset.backingDatasetId != null;
+  const sourceDatasetLabel = backingDatasetName ?? "its source dataset";
   const replaceButtonLabel = isDerivedView
-    ? "Replace backing dataset"
+    ? `Replace ${sourceDatasetLabel}`
     : "Replace dataset";
   const [fileName, setFileName] = useState(dataset.fileName);
   const [isPrimary, setIsPrimary] = useState(dataset.isPrimary);
@@ -686,10 +690,14 @@ function DatasetEditForm({
           </div>
           {isDerivedView ? (
             <p className="text-sm text-muted-foreground">
-              This dataset is a derived view backed by another dataset. You can
-              still edit its name, tags, displayed fields, and default preset, but
-              it cannot be primary and does not manage upload history directly.
-              Replacing the backing dataset will refresh this view too.
+              This dataset is a derived view backed by{" "}
+              <span className="font-medium text-foreground">
+                {sourceDatasetLabel}
+              </span>
+              . You can still edit its name, tags, displayed fields, and default
+              preset, but it cannot be primary and does not manage upload history
+              directly. Replacing {sourceDatasetLabel} will refresh this view and
+              any other derived views that share it.
             </p>
           ) : null}
         </section>
@@ -902,7 +910,11 @@ function DatasetEditForm({
             <div className="rounded-2xl border border-dashed border-border px-4 py-4 text-sm text-muted-foreground">
               Use <span className="font-medium text-foreground">{replaceButtonLabel}</span>{" "}
               to upload a new source CSV for this view. Revert remains available
-              only on the backing source dataset.
+              only on{" "}
+              <span className="font-medium text-foreground">
+                {sourceDatasetLabel}
+              </span>
+              .
             </div>
           ) : isLoadingVersions ? (
             <div className="rounded-2xl border border-border bg-card px-4 py-4 text-sm text-muted-foreground">
@@ -1051,6 +1063,7 @@ function DatasetEditForm({
 
 export function DatasetEditPageClient({
   initialDataset,
+  backingDatasetName = null,
   availableTags,
   initialVersions,
   actorOwnerId = "anonymous",
@@ -1241,6 +1254,7 @@ export function DatasetEditPageClient({
     <DatasetEditForm
       key={`${dataset.id}:${dataset.updatedAt}`}
       dataset={dataset}
+      backingDatasetName={backingDatasetName}
       availableTags={availableTags}
       versions={versions}
       isSaving={isSaving}

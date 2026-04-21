@@ -41,6 +41,10 @@ export default async function DatasetEditPage({
     listDatasets({ includeDisabled: true }),
     dataset.backingDatasetId ? Promise.resolve([]) : listDatasetVersions(dataset.id),
   ]);
+  const backingDatasetName =
+    dataset.backingDatasetId
+      ? datasets.find((item) => item.id === dataset.backingDatasetId)?.fileName ?? null
+      : null;
   const availableTags = getReusableDatasetTags(
     datasets.flatMap((item) => item.tags),
   );
@@ -75,6 +79,7 @@ export default async function DatasetEditPage({
         </section>
         <DatasetEditPageClient
           initialDataset={dataset}
+          backingDatasetName={backingDatasetName}
           availableTags={availableTags}
           initialVersions={versions ?? []}
           actorOwnerId={identity.ownerId}

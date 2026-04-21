@@ -83,14 +83,17 @@ function DatasetActions({
 
 function DatasetListRow({
   dataset,
+  backingDatasetName,
   canManageDatasets,
   isSortable,
 }: {
   dataset: DatasetSummary;
+  backingDatasetName?: string | null;
   canManageDatasets: boolean;
   isSortable: boolean;
 }) {
   const router = useRouter();
+  const isDerivedView = dataset.backingDatasetId !== null;
 
   function navigateToDataset() {
     router.push(`/dashboard/datasets/${dataset.id}?source=dashboard`);
@@ -133,12 +136,19 @@ function DatasetListRow({
           )
         ) : null}
         <FileTextIcon className="size-4 shrink-0 text-muted-foreground" />
-        <span
-          className="block truncate font-medium"
-          data-smoke-dataset-name={dataset.id}
-        >
-          {dataset.fileName}
-        </span>
+        <div className="min-w-0">
+          <span
+            className="block truncate font-medium"
+            data-smoke-dataset-name={dataset.id}
+          >
+            {dataset.fileName}
+          </span>
+          {isDerivedView ? (
+            <span className="block truncate text-xs text-muted-foreground">
+              Backed by {backingDatasetName ?? "another dataset"}
+            </span>
+          ) : null}
+        </div>
       </div>
 
       <div className="flex min-w-0 w-full justify-center text-center">
@@ -177,6 +187,7 @@ export function DatasetsGrid({
   isBusy = false,
   onReorderDatasets,
 }: DatasetsGridProps) {
+  const datasetNameById = new Map(datasets.map((dataset) => [dataset.id, dataset.fileName]));
   const canReorderDatasets =
     canManageDatasets &&
     Boolean(onReorderDatasets) &&
@@ -190,7 +201,7 @@ export function DatasetsGrid({
           Datasets
         </h2>
         <p className="text-sm text-muted-foreground">
-          Source datasets available to browse, download, and manage.
+          Source datasets and derived views available to browse, download, and manage.
         </p>
       </div>
 
@@ -214,6 +225,11 @@ export function DatasetsGrid({
                 <SortableItem key={dataset.id} value={dataset.id}>
                   <DatasetListRow
                     dataset={dataset}
+                    backingDatasetName={
+                      dataset.backingDatasetId
+                        ? datasetNameById.get(dataset.backingDatasetId) ?? null
+                        : null
+                    }
                     canManageDatasets={canManageDatasets}
                     isSortable
                   />
@@ -226,6 +242,11 @@ export function DatasetsGrid({
                 <DatasetListRow
                   key={dataset.id}
                   dataset={dataset}
+                  backingDatasetName={
+                    dataset.backingDatasetId
+                      ? datasetNameById.get(dataset.backingDatasetId) ?? null
+                      : null
+                  }
                   canManageDatasets={canManageDatasets}
                   isSortable={false}
                 />

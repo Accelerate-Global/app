@@ -51,10 +51,25 @@ const dataset = {
 };
 
 describe("DatasetsGrid", () => {
-  it("renders section copy and centered column headers in a scroll-safe table", () => {
+  it("renders section copy, centered column headers, and derived view source labels", () => {
+    const derivedDataset = {
+      ...dataset,
+      id: "dataset-2",
+      backingDatasetId: dataset.id,
+      fileName: "UUPG",
+      isPrimary: false,
+      rowCount: 3524,
+      tags: [
+        {
+          id: "tag-uupg",
+          label: "UUPG",
+          color: "#f4bf75",
+        },
+      ],
+    };
     const { container } = render(
       <DatasetsGrid
-        datasets={[dataset]}
+        datasets={[dataset, derivedDataset]}
         canManageDatasets
       />,
     );
@@ -66,17 +81,20 @@ describe("DatasetsGrid", () => {
     expect(header?.getAttribute("style")).toContain("10.5rem");
     expect(screen.getByRole("heading", { name: "Datasets" })).toBeTruthy();
     expect(
-      screen.getByText("Source datasets available to browse, download, and manage."),
+      screen.getByText(
+        "Source datasets and derived views available to browse, download, and manage.",
+      ),
     ).toBeTruthy();
     expect(screen.getByText("Tags").className).toContain("justify-center");
     expect(screen.getByText("People Groups").className).toContain("justify-center");
+    expect(screen.getByText("Backed by All People Groups")).toBeTruthy();
     expect(
       screen
         .getByRole("link", { name: `Download ${dataset.fileName}` })
         .getAttribute("href"),
     ).toBe(`/api/datasets/${dataset.id}/download`);
 
-    const editLink = screen.getByRole("link", { name: "Edit" });
+    const editLink = screen.getAllByRole("link", { name: "Edit" })[0];
     expect(editLink.getAttribute("href")).toBe(`/dashboard/datasets/${dataset.id}/edit`);
 
     expect(pushMock).not.toHaveBeenCalled();
