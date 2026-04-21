@@ -8,7 +8,7 @@ import {
   MicroscopeIcon,
   UserRoundIcon,
 } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { memo, useState, type ReactNode } from "react";
 
 import { CountrySearchSelector } from "@/components/dashboard/country-search-selector";
 import { WatchlistPopulationBelieversBuilder } from "@/components/dashboard/watchlist-population-believers-builder";
@@ -634,7 +634,7 @@ function getUupgSummary(uupgCard: DatasetViewSwitchGridProps["uupgCard"]) {
   return [uupgCard.enabled ? "On" : "Off"];
 }
 
-export function DatasetViewSwitchGrid({
+function DatasetViewSwitchGridInner({
   className,
   regionCard,
   countryCard,
@@ -985,3 +985,12 @@ export function DatasetViewSwitchGrid({
     </div>
   );
 }
+
+const MemoizedDatasetViewSwitchGrid = memo(DatasetViewSwitchGridInner);
+
+MemoizedDatasetViewSwitchGrid.displayName = "DatasetViewSwitchGrid";
+
+const DatasetViewSwitchGrid =
+  MemoizedDatasetViewSwitchGrid as typeof DatasetViewSwitchGridInner;
+
+export { DatasetViewSwitchGrid };

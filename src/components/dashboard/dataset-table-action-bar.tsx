@@ -34,7 +34,7 @@ type DatasetTableActionBarProps = {
   dataset: DatasetSummary;
   filters: SavedDatasetFilterState;
   recordCount: number;
-  sortedRows: DatasetRow[];
+  getSortedRows: () => DatasetRow[];
   visibleColumns: DatasetSummary["columns"];
   isLoading: boolean;
   hasError: boolean;
@@ -69,7 +69,7 @@ export function DatasetTableActionBar({
   dataset,
   filters,
   recordCount,
-  sortedRows,
+  getSortedRows,
   visibleColumns,
   isLoading,
   hasError,
@@ -91,7 +91,7 @@ export function DatasetTableActionBar({
 
   function handleDownload() {
     const csv = serializeDatasetRowsToCsv({
-      rows: sortedRows,
+      rows: getSortedRows(),
       visibleColumns,
       fieldDefinitionPresentationByColumnKey,
     });

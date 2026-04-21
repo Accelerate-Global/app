@@ -76,7 +76,7 @@ describe("DatasetTableActionBar", () => {
         dataset={dataset}
         filters={filters}
         recordCount={12507}
-        sortedRows={[]}
+        getSortedRows={() => []}
         visibleColumns={[]}
         isLoading={false}
         hasError={false}
@@ -100,7 +100,7 @@ describe("DatasetTableActionBar", () => {
         dataset={dataset}
         filters={filters}
         recordCount={12507}
-        sortedRows={[]}
+        getSortedRows={() => []}
         visibleColumns={[]}
         isLoading={false}
         hasError={false}
@@ -128,7 +128,7 @@ describe("DatasetTableActionBar", () => {
         dataset={dataset}
         filters={filters}
         recordCount={12507}
-        sortedRows={[]}
+        getSortedRows={() => []}
         visibleColumns={[]}
         isLoading={false}
         hasError={false}
@@ -173,7 +173,7 @@ describe("DatasetTableActionBar", () => {
         dataset={dataset}
         filters={filters}
         recordCount={12507}
-        sortedRows={[]}
+        getSortedRows={() => []}
         visibleColumns={[]}
         isLoading={false}
         hasError={false}

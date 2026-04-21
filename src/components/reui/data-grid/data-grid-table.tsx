@@ -31,6 +31,10 @@ import { cva } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Spinner } from "@/components/ui/spinner"
+import {
+  measureDatasetPerfTiming,
+  useDatasetPerfRenderTrace,
+} from "@/lib/render-trace"
 
 const headerCellSpacingVariants = cva("", {
   variants: {
@@ -601,6 +605,7 @@ function DataGridTableHeadRowCell<TData>({
   dndRef?: React.Ref<HTMLTableCellElement>
   dndStyle?: CSSProperties
 }) {
+  useDatasetPerfRenderTrace("DataGridTableHeadRowCell", header.id)
   const { props } = useDataGrid()
 
   const { column } = header
@@ -938,25 +943,13 @@ function DataGridTableBodyRow<TData>({
   dndRef?: React.Ref<HTMLTableRowElement>
   dndStyle?: CSSProperties
 }) {
+  useDatasetPerfRenderTrace("DataGridTableBodyRow", row.id)
   const { props, table } = useDataGrid()
   const isRowPinned = row.getIsPinned()
-
-  return (
-    <tr
-      ref={(node) => {
-        assignRef(rowRef, node)
-        assignRef(dndRef, node)
-      }}
-      style={{ ...(dndStyle ? dndStyle : null) }}
-      data-state={
-        table.options.enableRowSelection && row.getIsSelected()
-          ? "selected"
-          : undefined
-      }
-      data-row-pinned={isRowPinned || undefined}
-      data-row-pinned-boundary={pinnedBoundary}
-      onClick={() => props.onRowClick && props.onRowClick(row.original)}
-      className={cn(
+  const bodyRowClassName = measureDatasetPerfTiming(
+    "DataGridTableBodyRow.className",
+    () =>
+      cn(
         "hover:bg-muted/40 data-[state=selected]:bg-muted/50",
         props.onRowClick && "cursor-pointer",
         !props.tableLayout?.stripped &&
@@ -973,7 +966,27 @@ function DataGridTableBodyRow<TData>({
         pinnedBoundary === "bottom" &&
           "[&>td]:shadow-[0_2px_0_rgba(0,0,0,0.03)]",
         props.tableClassNames?.bodyRow
-      )}
+      ),
+  )
+
+  return (
+    <tr
+      ref={(node) => {
+        assignRef(rowRef, node)
+        assignRef(dndRef, node)
+      }}
+      data-dataset-perf-body-row="true"
+      style={{ ...(dndStyle ? dndStyle : null) }}
+      data-state={
+        table.options.enableRowSelection && row.getIsSelected()
+          ? "selected"
+          : undefined
+      }
+      data-row-id={row.id}
+      data-row-pinned={isRowPinned || undefined}
+      data-row-pinned-boundary={pinnedBoundary}
+      onClick={() => props.onRowClick && props.onRowClick(row.original)}
+      className={bodyRowClassName}
     >
       {children}
       <DataGridTableFillBodyCell />
@@ -1016,6 +1029,7 @@ function DataGridTableBodyRowCell<TData>({
   dndRef?: React.Ref<HTMLTableCellElement>
   dndStyle?: CSSProperties
 }) {
+  useDatasetPerfRenderTrace("DataGridTableBodyRowCell", cell.id)
   const { props } = useDataGrid()
 
   const { column, row } = cell
@@ -1023,29 +1037,17 @@ function DataGridTableBodyRowCell<TData>({
   const isLastLeftPinned = isPinned === "left" && column.getIsLastColumn("left")
   const isFirstRightPinned =
     isPinned === "right" && column.getIsFirstColumn("right")
-  const bodyCellSpacing = bodyCellSpacingVariants({
-    size: props.tableLayout?.dense ? "dense" : "default",
-  })
-
-  return (
-    <td
-      key={cell.id}
-      ref={dndRef}
-      {...(props.tableLayout?.columnsDraggable && !isPinned ? { cell } : {})}
-      style={{
-        ...(props.tableLayout?.columnsPinnable &&
-          column.getCanPin() &&
-          getPinningStyles(column)),
-        ...(props.tableLayout?.columnsResizable && {
-          width: `calc(var(--col-${column.id}-size) * 1px)`,
-        }),
-        ...(dndStyle ? dndStyle : null),
-      }}
-      data-pinned={isPinned || undefined}
-      data-last-col={
-        isLastLeftPinned ? "left" : isFirstRightPinned ? "right" : undefined
-      }
-      className={cn(
+  const bodyCellSpacing = measureDatasetPerfTiming(
+    "DataGridTableBodyRowCell.spacing",
+    () =>
+      bodyCellSpacingVariants({
+        size: props.tableLayout?.dense ? "dense" : "default",
+      }),
+  )
+  const bodyCellClassName = measureDatasetPerfTiming(
+    "DataGridTableBodyRowCell.className",
+    () =>
+      cn(
         "align-middle",
         bodyCellSpacing,
         props.tableLayout?.cellBorder && "border-e",
@@ -1060,7 +1062,33 @@ function DataGridTableBodyRowCell<TData>({
           column.getIndex() === row.getVisibleCells().length - 1
           ? props.tableClassNames?.edgeCell
           : ""
-      )}
+      ),
+  )
+  const bodyCellStyle = measureDatasetPerfTiming(
+    "DataGridTableBodyRowCell.style",
+    () => ({
+      ...(props.tableLayout?.columnsPinnable &&
+        column.getCanPin() &&
+        getPinningStyles(column)),
+      ...(props.tableLayout?.columnsResizable && {
+        width: `calc(var(--col-${column.id}-size) * 1px)`,
+      }),
+      ...(dndStyle ? dndStyle : null),
+    }),
+  )
+
+  return (
+    <td
+      key={cell.id}
+      ref={dndRef}
+      data-dataset-perf-body-cell="true"
+      {...(props.tableLayout?.columnsDraggable && !isPinned ? { cell } : {})}
+      style={bodyCellStyle}
+      data-pinned={isPinned || undefined}
+      data-last-col={
+        isLastLeftPinned ? "left" : isFirstRightPinned ? "right" : undefined
+      }
+      className={bodyCellClassName}
     >
       {children}
     </td>
@@ -1076,6 +1104,35 @@ function DataGridTableRenderedRow<TData>({
   pinnedBoundary?: DataGridTablePinnedBoundary
   rowRef?: React.Ref<HTMLTableRowElement>
 }) {
+  useDatasetPerfRenderTrace("DataGridTableRenderedRow", row.id)
+  const visibleCells = measureDatasetPerfTiming(
+    "DataGridTableRenderedRow.getVisibleCells",
+    () => row.getVisibleCells(),
+  )
+  const renderedCells = measureDatasetPerfTiming(
+    "DataGridTableRenderedRow.renderCells",
+    () =>
+      visibleCells.map((cell: Cell<TData, unknown>) => {
+        const context = measureDatasetPerfTiming(
+          "DataGridTableRenderedRow.cellContext",
+          () => cell.getContext(),
+        )
+        const content = measureDatasetPerfTiming(
+          "DataGridTableRenderedRow.cellContent",
+          () => flexRender(cell.column.columnDef.cell, context),
+        )
+
+        return (
+          <DataGridTableBodyRowCell
+            cell={cell}
+            key={cell.id}
+          >
+            {content}
+          </DataGridTableBodyRowCell>
+        )
+      }),
+  )
+
   return (
     <Fragment>
       <DataGridTableBodyRow
@@ -1083,11 +1140,7 @@ function DataGridTableRenderedRow<TData>({
         pinnedBoundary={pinnedBoundary}
         rowRef={rowRef}
       >
-        {row.getVisibleCells().map((cell: Cell<TData, unknown>) => (
-          <DataGridTableBodyRowCell cell={cell} key={cell.id}>
-            {flexRender(cell.column.columnDef.cell, cell.getContext())}
-          </DataGridTableBodyRowCell>
-        ))}
+        {renderedCells}
       </DataGridTableBodyRow>
       {row.getIsExpanded() && <DataGridTableBodyRowExpandded row={row} />}
     </Fragment>

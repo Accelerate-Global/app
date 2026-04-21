@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { FieldSourceGridRow, FieldSourceType } from "@/lib/api-types";
@@ -194,5 +194,32 @@ describe("FieldSourcesClient", () => {
         has_value: true,
       }),
     );
+  });
+
+  it("keeps field sorting working with stable header render keys", () => {
+    render(
+      <FieldSourcesClient
+        initialFieldSourceTypes={[createFieldSourceType()]}
+        initialFieldSources={[
+          createFieldSourceRow({
+            fieldDefinitionId: "field-1",
+            effectiveLabel: "Zulu",
+            sourceValues: { "source-1": "Z_FIELD" },
+          }),
+          createFieldSourceRow({
+            fieldDefinitionId: "field-2",
+            effectiveLabel: "Abaza",
+            sourceValues: { "source-1": "A_FIELD" },
+          }),
+        ]}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Field" }));
+
+    const rows = screen.getAllByRole("row");
+    const firstDataRow = rows[1];
+
+    expect(within(firstDataRow).getByText("Abaza")).toBeTruthy();
   });
 });

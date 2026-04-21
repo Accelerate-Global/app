@@ -10,6 +10,7 @@ import {
 } from "@tanstack/react-table"
 
 import { cn } from "@/lib/utils"
+import { useDatasetPerfRenderTrace } from "@/lib/render-trace"
 
 declare module "@tanstack/react-table" {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -112,6 +113,37 @@ const DataGridContext = createContext<
   DataGridContextProps<any> | undefined
 >(undefined)
 
+const DEFAULT_TABLE_LAYOUT = {
+  dense: false,
+  cellBorder: false,
+  rowBorder: true,
+  rowRounded: false,
+  stripped: false,
+  headerSticky: false,
+  headerBackground: true,
+  headerBorder: true,
+  width: "fixed",
+  columnsVisibility: false,
+  columnsResizable: false,
+  columnsResizeMode: "onEnd",
+  columnsPinnable: false,
+  columnsMovable: false,
+  columnsDraggable: false,
+  rowsDraggable: false,
+  rowsPinnable: false,
+} as const
+
+const DEFAULT_TABLE_CLASS_NAMES = {
+  base: "",
+  header: "",
+  headerRow: "",
+  headerSticky: "sticky top-0 z-15 bg-background/90 backdrop-blur-xs",
+  body: "",
+  bodyRow: "",
+  footer: "",
+  edgeCell: "",
+} as const
+
 function useDataGrid() {
   const context = useContext(DataGridContext)
   if (!context) {
@@ -125,51 +157,61 @@ function DataGridProvider<TData extends object>({
   table,
   ...props
 }: DataGridProps<TData> & { table: Table<TData> }) {
-  const tableState = table.getState()
-  const resolvedColumnsResizeMode =
-    props.tableLayout?.columnsResizeMode ?? "onEnd"
-
-  // Keep resize mode aligned with the DataGrid contract every render so
-  // consumer-level useReactTable options cannot flip it back between drags.
-  if (props.tableLayout?.columnsResizable) {
-    table.options.columnResizeMode = resolvedColumnsResizeMode
-  }
-
+  const resolvedTableLayout = useMemo(
+    () => ({
+      ...DEFAULT_TABLE_LAYOUT,
+      ...(props.tableLayout || {}),
+    }),
+    [props.tableLayout]
+  )
+  const resolvedTableClassNames = useMemo(
+    () => ({
+      ...DEFAULT_TABLE_CLASS_NAMES,
+      ...(props.tableClassNames || {}),
+    }),
+    [props.tableClassNames]
+  )
+  const resolvedProps = useMemo<DataGridProps<TData>>(
+    () => ({
+      className: props.className,
+      recordCount: props.recordCount,
+      onRowClick: props.onRowClick,
+      isLoading: props.isLoading,
+      loadingMode: props.loadingMode ?? "skeleton",
+      loadingMessage: props.loadingMessage,
+      fetchingMoreMessage: props.fetchingMoreMessage,
+      allRowsLoadedMessage: props.allRowsLoadedMessage,
+      emptyMessage: props.emptyMessage,
+      tableLayout: resolvedTableLayout,
+      tableClassNames: resolvedTableClassNames,
+    }),
+    [
+      props.allRowsLoadedMessage,
+      props.className,
+      props.emptyMessage,
+      props.fetchingMoreMessage,
+      props.isLoading,
+      props.loadingMessage,
+      props.loadingMode,
+      props.onRowClick,
+      props.recordCount,
+      resolvedTableClassNames,
+      resolvedTableLayout,
+    ]
+  )
   // Memoize context value so consumers don't re-render during column resize.
   // Column sizing state is intentionally excluded from deps -- CSS variables
   // on the <table> element handle width updates without React re-renders.
   const value = useMemo(
     () => ({
-      props,
+      props: resolvedProps,
       table,
-      recordCount: props.recordCount,
-      isLoading: props.isLoading || false,
+      recordCount: resolvedProps.recordCount,
+      isLoading: resolvedProps.isLoading || false,
     }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       table,
-      props.recordCount,
-      props.isLoading,
-      props.loadingMode,
-      props.loadingMessage,
-      props.fetchingMoreMessage,
-      props.allRowsLoadedMessage,
-      props.emptyMessage,
-      props.onRowClick,
-      props.className,
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-      JSON.stringify(props.tableLayout),
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-      JSON.stringify(props.tableClassNames),
-      tableState.sorting,
-      tableState.pagination,
-      tableState.columnFilters,
-      tableState.rowSelection,
-      tableState.expanded,
-      tableState.columnVisibility,
-      tableState.columnOrder,
-      tableState.columnPinning,
-      tableState.globalFilter,
+      resolvedProps,
     ]
   )
 
@@ -185,59 +227,14 @@ function DataGrid<TData extends object>({
   table,
   ...props
 }: DataGridProps<TData>) {
-  const defaultProps: Partial<DataGridProps<TData>> = {
-    loadingMode: "skeleton",
-    tableLayout: {
-      dense: false,
-      cellBorder: false,
-      rowBorder: true,
-      rowRounded: false,
-      stripped: false,
-      headerSticky: false,
-      headerBackground: true,
-      headerBorder: true,
-      width: "fixed",
-      columnsVisibility: false,
-      columnsResizable: false,
-      columnsResizeMode: "onEnd",
-      columnsPinnable: false,
-      columnsMovable: false,
-      columnsDraggable: false,
-      rowsDraggable: false,
-      rowsPinnable: false,
-    },
-    tableClassNames: {
-      base: "",
-      header: "",
-      headerRow: "",
-      headerSticky: "sticky top-0 z-15 bg-background/90 backdrop-blur-xs",
-      body: "",
-      bodyRow: "",
-      footer: "",
-      edgeCell: "",
-    },
-  }
-
-  const mergedProps: DataGridProps<TData> = {
-    ...defaultProps,
-    ...props,
-    tableLayout: {
-      ...defaultProps.tableLayout,
-      ...(props.tableLayout || {}),
-    },
-    tableClassNames: {
-      ...defaultProps.tableClassNames,
-      ...(props.tableClassNames || {}),
-    },
-  }
-
+  useDatasetPerfRenderTrace("DataGrid")
   // Ensure table is provided
   if (!table) {
     throw new Error('DataGrid requires a "table" prop')
   }
 
   return (
-    <DataGridProvider table={table} {...mergedProps}>
+    <DataGridProvider table={table} {...props}>
       {children}
     </DataGridProvider>
   )

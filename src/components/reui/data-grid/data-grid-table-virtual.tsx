@@ -26,7 +26,12 @@ import {
   DataGridTableViewport,
   getDataGridTableRowSections,
 } from "@/components/reui/data-grid/data-grid-table"
-import { flexRender, HeaderGroup, Row, Table } from "@tanstack/react-table"
+import {
+  flexRender,
+  HeaderGroup,
+  Row,
+  Table,
+} from "@tanstack/react-table"
 import {
   useVirtualizer,
   VirtualItem,
@@ -36,6 +41,10 @@ import {
 
 import { cn } from "@/lib/utils"
 import { Spinner } from "@/components/ui/spinner"
+import {
+  DatasetPerfProfiler,
+  useDatasetPerfRenderTrace,
+} from "@/lib/render-trace"
 
 type DataGridTableVirtualScrollElements = {
   containerElement: HTMLDivElement | null
@@ -283,6 +292,7 @@ function DataGridTableVirtual<TData>({
   fetchMoreOffset = 0,
   virtualizerOptions,
 }: DataGridTableVirtualProps<TData>) {
+  useDatasetPerfRenderTrace("DataGridTableVirtual")
   const { table, props } = useDataGrid()
   const { topRows, centerRows, bottomRows } = getDataGridTableRowSections(
     table,
@@ -426,40 +436,42 @@ function DataGridTableVirtual<TData>({
     >
       <DataGridTableBase>
         {renderHeader && (
-          <DataGridTableHead>
-            {table
-              .getHeaderGroups()
-              .map((headerGroup: HeaderGroup<TData>, index) => (
-                <DataGridTableHeadRow headerGroup={headerGroup} key={index}>
-                  {headerGroup.headers.map((header, hIndex) => {
-                    const { column } = header
+          <DatasetPerfProfiler id="DataGridTableVirtual.Head">
+            <DataGridTableHead>
+              {table
+                .getHeaderGroups()
+                .map((headerGroup: HeaderGroup<TData>, index) => (
+                  <DataGridTableHeadRow headerGroup={headerGroup} key={index}>
+                    {headerGroup.headers.map((header, hIndex) => {
+                      const { column } = header
 
-                    return (
-                      <DataGridTableHeadRowCell header={header} key={hIndex}>
-                        {header.isPlaceholder ? null : props.tableLayout
-                            ?.columnsResizable && column.getCanResize() ? (
-                          <div className="truncate">
-                            {flexRender(
+                      return (
+                        <DataGridTableHeadRowCell header={header} key={hIndex}>
+                          {header.isPlaceholder ? null : props.tableLayout
+                              ?.columnsResizable && column.getCanResize() ? (
+                            <div className="truncate">
+                              {flexRender(
+                                header.column.columnDef.header,
+                                header.getContext()
+                              )}
+                            </div>
+                          ) : (
+                            flexRender(
                               header.column.columnDef.header,
                               header.getContext()
-                            )}
-                          </div>
-                        ) : (
-                          flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )
-                        )}
-                        {props.tableLayout?.columnsResizable &&
-                          column.getCanResize() && (
-                            <DataGridTableHeadRowCellResize header={header} />
+                            )
                           )}
-                      </DataGridTableHeadRowCell>
-                    )
-                  })}
-                </DataGridTableHeadRow>
-              ))}
-          </DataGridTableHead>
+                          {props.tableLayout?.columnsResizable &&
+                            column.getCanResize() && (
+                              <DataGridTableHeadRowCellResize header={header} />
+                            )}
+                        </DataGridTableHeadRowCell>
+                      )
+                    })}
+                  </DataGridTableHeadRow>
+                ))}
+            </DataGridTableHead>
+          </DatasetPerfProfiler>
         )}
 
         {renderHeader &&
@@ -468,22 +480,24 @@ function DataGridTableVirtual<TData>({
           )}
 
         <DataGridTableBody>
-          <MemoizedVirtualBody
-            table={table}
-            columnCount={columnCount}
-            topRows={topRows}
-            centerRows={centerRows}
-            bottomRows={bottomRows}
-            virtualItems={virtualItems}
-            totalSize={totalSize}
-            isVirtualizationEnabled={isVirtualizationEnabled}
-            isInfiniteMode={isInfiniteMode}
-            isFetchingMore={isFetchingMore}
-            hasMore={hasMore}
-            loadingMoreMessage={loadingMoreMessage}
-            allRowsLoadedMessage={allRowsLoadedMessage}
-            measureRowRef={measureRowRef}
-          />
+          <DatasetPerfProfiler id="DataGridTableVirtual.Body">
+            <MemoizedVirtualBody
+              table={table}
+              columnCount={columnCount}
+              topRows={topRows}
+              centerRows={centerRows}
+              bottomRows={bottomRows}
+              virtualItems={virtualItems}
+              totalSize={totalSize}
+              isVirtualizationEnabled={isVirtualizationEnabled}
+              isInfiniteMode={isInfiniteMode}
+              isFetchingMore={isFetchingMore}
+              hasMore={hasMore}
+              loadingMoreMessage={loadingMoreMessage}
+              allRowsLoadedMessage={allRowsLoadedMessage}
+              measureRowRef={measureRowRef}
+            />
+          </DatasetPerfProfiler>
         </DataGridTableBody>
 
         {footerContent && (

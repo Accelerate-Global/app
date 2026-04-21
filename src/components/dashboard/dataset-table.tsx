@@ -9,9 +9,19 @@ import { DataGridScrollArea } from "@/components/reui/data-grid/data-grid-scroll
 import { DataGridTableVirtual } from "@/components/reui/data-grid/data-grid-table-virtual";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import type { DatasetRowsResponse } from "@/lib/api-types";
+import { useDatasetPerfRenderTrace } from "@/lib/render-trace";
 
 const ROW_HEIGHT_ESTIMATE = 40;
-const ROW_OVERSCAN = 60;
+const ROW_OVERSCAN = 10;
+const DATA_GRID_LAYOUT = {
+  columnsPinnable: true,
+  columnsResizable: true,
+  headerSticky: true,
+} as const;
+const DATA_GRID_CLASS_NAMES = {
+  headerSticky: "sticky top-0 z-10 bg-muted/90 backdrop-blur-xs",
+  bodyRow: "[&>td]:h-10 [&>td]:py-0",
+} as const;
 
 type DatasetRow = DatasetRowsResponse["rows"][number];
 
@@ -30,6 +40,7 @@ export function DatasetTable({
   datasetError,
   error,
 }: DatasetTableProps) {
+  useDatasetPerfRenderTrace("DatasetTable");
   const loadMessage = "Loading people groups...";
 
   return (
@@ -58,15 +69,8 @@ export function DatasetTable({
             ? loadMessage
             : "No people groups found."
         }
-        tableLayout={{
-          columnsPinnable: true,
-          columnsResizable: true,
-          headerSticky: true,
-        }}
-        tableClassNames={{
-          headerSticky: "sticky top-0 z-10 bg-muted/90 backdrop-blur-xs",
-          bodyRow: "[&>td]:h-10 [&>td]:py-0",
-        }}
+        tableLayout={DATA_GRID_LAYOUT}
+        tableClassNames={DATA_GRID_CLASS_NAMES}
       >
         <DataGridContainer>
           <DataGridScrollArea className="h-[560px]">

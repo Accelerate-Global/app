@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import type { ComponentProps } from "react";
+import type { ComponentProps, ReactNode } from "react";
 import { cleanup, render, screen } from "@testing-library/react";
 import {
   getCoreRowModel,
@@ -11,30 +11,43 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { DatasetRowsResponse } from "@/lib/api-types";
 
-vi.mock("@/components/reui/data-grid/data-grid-table-virtual", async () => {
-  const actual =
-    await vi.importActual<
-      typeof import("@/components/reui/data-grid/data-grid-table-virtual")
-    >("@/components/reui/data-grid/data-grid-table-virtual");
-  const disabledVirtualizerOptions = {
-    enabled: false,
-    scrollToFn: () => undefined,
-  } as unknown as NonNullable<
-    ComponentProps<typeof actual.DataGridTableVirtual>["virtualizerOptions"]
-  >;
+const dataGridSpy = vi.fn();
+const virtualTableSpy = vi.fn();
 
-  return {
-    ...actual,
-    DataGridTableVirtual: (
-      props: ComponentProps<typeof actual.DataGridTableVirtual>,
-    ) => (
-      <actual.DataGridTableVirtual
-        {...props}
-        virtualizerOptions={disabledVirtualizerOptions}
-      />
-    ),
-  };
-});
+vi.mock("@/components/reui/data-grid/data-grid", () => ({
+  DataGrid: (props: ComponentProps<typeof import("@/components/reui/data-grid/data-grid")["DataGrid"]>) => {
+    dataGridSpy(props);
+    return <div data-testid="data-grid">{props.children}</div>;
+  },
+  DataGridContainer: ({ children }: { children?: ReactNode }) => (
+    <div data-testid="data-grid-container">{children}</div>
+  ),
+}));
+
+vi.mock("@/components/reui/data-grid/data-grid-scroll-area", () => ({
+  DataGridScrollArea: ({
+    children,
+    className,
+  }: {
+    children?: ReactNode;
+    className?: string;
+  }) => (
+    <div data-testid="data-grid-scroll-area" className={className}>
+      {children}
+    </div>
+  ),
+}));
+
+vi.mock("@/components/reui/data-grid/data-grid-table-virtual", () => ({
+  DataGridTableVirtual: (
+    props: ComponentProps<
+      typeof import("@/components/reui/data-grid/data-grid-table-virtual")["DataGridTableVirtual"]
+    >,
+  ) => {
+    virtualTableSpy(props);
+    return <div data-testid="data-grid-table-virtual" />;
+  },
+}));
 
 import { DatasetTable } from "./dataset-table";
 
@@ -94,6 +107,8 @@ function DatasetTableHarness({
 describe("DatasetTable", () => {
   afterEach(() => {
     cleanup();
+    dataGridSpy.mockReset();
+    virtualTableSpy.mockReset();
   });
 
   it("renders dataset and table errors above the data grid", () => {
@@ -114,6 +129,33 @@ describe("DatasetTable", () => {
   it("shows the empty message when there are no visible rows", () => {
     render(<DatasetTableHarness rows={[]} />);
 
-    expect(screen.getByText("No people groups found.")).toBeTruthy();
+    const dataGridProps = dataGridSpy.mock.lastCall?.[0] as {
+      emptyMessage?: string;
+    };
+
+    expect(dataGridProps.emptyMessage).toBe("No people groups found.");
+  });
+
+  it("uses a smaller overscan and stable grid layout props", () => {
+    render(<DatasetTableHarness rows={createRows()} />);
+
+    const dataGridProps = dataGridSpy.mock.lastCall?.[0] as {
+      tableLayout: Record<string, unknown>;
+      tableClassNames: Record<string, unknown>;
+    };
+    const virtualTableProps = virtualTableSpy.mock.lastCall?.[0] as {
+      overscan?: number;
+    };
+
+    expect(virtualTableProps.overscan).toBe(10);
+    expect(dataGridProps.tableLayout).toEqual({
+      columnsPinnable: true,
+      columnsResizable: true,
+      headerSticky: true,
+    });
+    expect(dataGridProps.tableClassNames).toEqual({
+      headerSticky: "sticky top-0 z-10 bg-muted/90 backdrop-blur-xs",
+      bodyRow: "[&>td]:h-10 [&>td]:py-0",
+    });
   });
 });

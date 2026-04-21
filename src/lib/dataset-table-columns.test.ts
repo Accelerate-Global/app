@@ -1,13 +1,18 @@
 import { describe, expect, it } from "vitest";
 
 import type {
+  DatasetRowsResponse,
   DatasetSummary,
   FieldDefinitionPresentation,
 } from "@/lib/api-types";
 
-import { getSortedVisibleDatasetColumns } from "./dataset-table-columns";
+import {
+  getDatasetColumnSortMode,
+  getSortedVisibleDatasetColumns,
+} from "./dataset-table-columns";
 
 type DatasetColumn = DatasetSummary["columns"][number];
+type DatasetRow = DatasetRowsResponse["rows"][number];
 
 function sortVisibleColumns(input: {
   columns: DatasetColumn[];
@@ -26,6 +31,32 @@ function sortVisibleColumns(input: {
 }
 
 describe("dataset-table-columns", () => {
+  it("detects alphanumeric sorting when sampled rows include numeric tokens", () => {
+    const rows = Array.from({ length: 12 }, (_, index) => ({
+      id: `row-${index + 1}`,
+      rowIndex: index,
+      data: {
+        country:
+          index === 10 ? "Item 10" : index === 11 ? "Item 2" : `Country ${String.fromCharCode(65 + index)}`,
+      },
+    })) satisfies DatasetRow[];
+
+    expect(getDatasetColumnSortMode(rows, "country")).toBe("alphanumeric");
+  });
+
+  it("matches TanStack's sampled text fallback when numeric tokens only appear in skipped rows", () => {
+    const rows = Array.from({ length: 12 }, (_, index) => ({
+      id: `row-${index + 1}`,
+      rowIndex: index,
+      data: {
+        country:
+          index === 0 ? "Item 10" : index === 1 ? "Item 2" : `Country ${String.fromCharCode(65 + index)}`,
+      },
+    })) satisfies DatasetRow[];
+
+    expect(getDatasetColumnSortMode(rows, "country")).toBe("text");
+  });
+
   it("prepends the requested preferred datasheet prefix before alphabetical columns", () => {
     const columns: DatasetColumn[] = [
       { key: "zeta", label: "Zeta", sourceIndex: 7 },

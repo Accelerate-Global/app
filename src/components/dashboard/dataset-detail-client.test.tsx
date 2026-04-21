@@ -42,12 +42,20 @@ vi.mock("@/components/dashboard/dataset-open-preset-sheet", () => ({
   },
 }));
 
-vi.mock("@/components/dashboard/dataset-view-switch-grid", () => ({
-  DatasetViewSwitchGrid: (props: unknown) => {
+vi.mock("@/components/dashboard/dataset-view-switch-grid", async () => {
+  const React = await vi.importActual<typeof import("react")>("react");
+
+  const DatasetViewSwitchGridMock = React.memo(function DatasetViewSwitchGridMock(
+    props: unknown,
+  ) {
     viewSwitchGridSpy(props);
     return <div data-testid="dataset-view-switch-grid" />;
-  },
-}));
+  });
+
+  return {
+    DatasetViewSwitchGrid: DatasetViewSwitchGridMock,
+  };
+});
 
 vi.mock("@/components/dashboard/use-dataset-table-state", () => ({
   useDatasetTableState: (props: unknown) => useDatasetTableStateMock(props),
@@ -166,7 +174,7 @@ function mockCountrySyncTableState(
     visibleColumns: [],
     datasetCountryNames,
     availableCountryNames,
-    sortedRows: [],
+    getSortedRows: () => [],
     recordCount: 2,
     isLoading: false,
     error: null,
@@ -187,7 +195,7 @@ describe("DatasetDetailClient", () => {
       visibleColumns: [],
       datasetCountryNames: [],
       availableCountryNames: [],
-      sortedRows: [],
+      getSortedRows: () => [],
       recordCount: 2,
       isLoading: false,
       error: null,
@@ -245,6 +253,88 @@ describe("DatasetDetailClient", () => {
         dataset_source: "dashboard",
       }),
     );
+  });
+
+  it("passes the source row count into shared table state", () => {
+    render(
+      <DatasetDetailClient
+        dataset={{
+          ...datasetBase,
+          columns: [
+            {
+              key: "geo_country_name",
+              label: "Geo_Country_Name",
+              sourceIndex: 0,
+            },
+          ],
+        }}
+        sourceRowCount={12507}
+        regions={[]}
+        fieldDefinitionPresentationByColumnKey={{}}
+      />,
+    );
+
+    const datasetTableStateProps = useDatasetTableStateMock.mock.calls[0]?.[0] as {
+      sourceRowCount?: number | null;
+    };
+
+    expect(datasetTableStateProps.sourceRowCount).toBe(12507);
+  });
+
+  it("does not rerender the filter rail when only sorting changes", () => {
+    const dataset = {
+      ...datasetBase,
+      columns: [
+        {
+          key: "geo_country_name",
+          label: "Geo_Country_Name",
+          sourceIndex: 0,
+        },
+      ],
+    };
+    const regions: ReturnType<typeof createFilterRegions> = [];
+    const fieldDefinitionPresentationByColumnKey = {};
+    const baseTableState = {
+      table: {} as never,
+      visibleColumns: [],
+      datasetCountryNames: [] as string[],
+      availableCountryNames: [] as string[],
+      getSortedRows: () => [],
+      recordCount: 2,
+      isLoading: false,
+      error: null,
+    };
+
+    useDatasetTableStateMock.mockReset();
+    useDatasetTableStateMock
+      .mockReturnValueOnce({
+        ...baseTableState,
+        sorting: [],
+      })
+      .mockReturnValueOnce({
+        ...baseTableState,
+        sorting: [{ id: "geo_country_name", desc: true }],
+      });
+
+    const { rerender } = render(
+      <DatasetDetailClient
+        dataset={dataset}
+        regions={regions}
+        fieldDefinitionPresentationByColumnKey={fieldDefinitionPresentationByColumnKey}
+      />,
+    );
+
+    const initialRenderCount = viewSwitchGridSpy.mock.calls.length;
+
+    rerender(
+      <DatasetDetailClient
+        dataset={dataset}
+        regions={regions}
+        fieldDefinitionPresentationByColumnKey={fieldDefinitionPresentationByColumnKey}
+      />,
+    );
+
+    expect(viewSwitchGridSpy).toHaveBeenCalledTimes(initialRenderCount);
   });
 
   it("wires the admin-only open preset sheet from the action bar trigger", () => {
@@ -975,7 +1065,7 @@ describe("DatasetDetailClient", () => {
       visibleColumns: [],
       datasetCountryNames: ["Egypt", "Jordan"],
       availableCountryNames: ["Egypt", "Jordan"],
-      sortedRows: [
+      getSortedRows: () => [
         {
           id: "row-1",
           rowIndex: 0,
@@ -1096,7 +1186,7 @@ describe("DatasetDetailClient", () => {
       availableCountryNames: props.countryFilter.includeAlternateCountries
         ? ["Egypt", "Jordan", "Turkey"]
         : ["Egypt", "Jordan"],
-      sortedRows: [],
+      getSortedRows: () => [],
       recordCount: 2,
       isLoading: false,
       error: null,
@@ -1176,7 +1266,7 @@ describe("DatasetDetailClient", () => {
       availableCountryNames: props.countryFilter.includeAlternateCountries
         ? ["Egypt", "Jordan", "Turkey"]
         : ["Egypt", "Jordan"],
-      sortedRows: [],
+      getSortedRows: () => [],
       recordCount: 2,
       isLoading: false,
       error: null,
@@ -1474,7 +1564,7 @@ describe("DatasetDetailClient", () => {
       visibleColumns: [],
       datasetCountryNames: [],
       availableCountryNames: [],
-      sortedRows: [],
+      getSortedRows: () => [],
       recordCount: 5,
       isLoading: false,
       error: null,

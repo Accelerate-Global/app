@@ -3,7 +3,10 @@ import { describe, expect, it } from "vitest";
 import { hasUsableSupabaseStatusOutput } from "./lib/ui-smoke-env";
 import {
   buildUiSmokeRunPlan,
+  CI_UI_SMOKE_SUPABASE_START_TIMEOUT_MS,
   DEFAULT_SUPABASE_PORT_RELEASE_WAIT,
+  DEFAULT_UI_SMOKE_SUPABASE_START_TIMEOUT_MS,
+  getUiSmokeSupabaseStartTimeoutMs,
   parseRunUiSmokeArgs,
   resolveUiSmokeChangedFiles,
 } from "./run-ui-smoke";
@@ -75,6 +78,20 @@ describe("run-ui-smoke", () => {
       maxAttempts: 30,
       retryDelayMs: 2_000,
     });
+  });
+
+  it("uses a longer Supabase startup timeout in CI", () => {
+    expect(
+      getUiSmokeSupabaseStartTimeoutMs({
+        NODE_ENV: "test",
+        CI: "true",
+      } as unknown as NodeJS.ProcessEnv),
+    ).toBe(CI_UI_SMOKE_SUPABASE_START_TIMEOUT_MS);
+    expect(
+      getUiSmokeSupabaseStartTimeoutMs({
+        NODE_ENV: "test",
+      } as unknown as NodeJS.ProcessEnv),
+    ).toBe(DEFAULT_UI_SMOKE_SUPABASE_START_TIMEOUT_MS);
   });
 
   it("parses explicit base and head refs for CI-targeted smoke", () => {

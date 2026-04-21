@@ -47,6 +47,12 @@ export default async function DatasetPage({
     notFound();
   }
 
+  const sourceDataset =
+    dataset.backingDatasetId === null
+      ? dataset
+      : await getDataset(dataset.backingDatasetId);
+  const sourceRowCount = sourceDataset?.rowCount ?? dataset.rowCount;
+
   const openPresetTag = getDatasetOpenPresetTag(dataset.tags);
   const savedTable = savedTableId
     ? await getSavedDatasetTable({
@@ -110,6 +116,7 @@ export default async function DatasetPage({
         <DatasetDetailClient
           key={detailKey}
           dataset={dataset}
+          sourceRowCount={sourceRowCount}
           regions={regions}
           fieldDefinitionPresentationByColumnKey={fieldDefinitionPresentationByColumnKey}
           initialFilters={initialFilters}

@@ -220,6 +220,7 @@ describe("/dashboard/datasets/[datasetId]", () => {
       actorOwnerId: string;
       workspaceRole: string;
       datasetSource: string;
+      sourceRowCount: number;
       initialSavedTableId: string | null;
       initialSavedTableRowCount: number | null;
     };
@@ -258,6 +259,7 @@ describe("/dashboard/datasets/[datasetId]", () => {
     expect(props.actorOwnerId).toBe("owner-1");
     expect(props.workspaceRole).toBe("admin");
     expect(props.datasetSource).toBe("dashboard");
+    expect(props.sourceRowCount).toBe(10);
     expect(props.initialSavedTableId).toBe("saved-table-1");
     expect(props.initialSavedTableRowCount).toBe(10);
   });
@@ -306,6 +308,41 @@ describe("/dashboard/datasets/[datasetId]", () => {
 
     expect(props.datasetSource).toBe("default_redirect");
     expect(props.initialPresetTagId).toBe("tag-1");
+  });
+
+  it("passes the backing source row count to the dataset detail client for derived datasets", async () => {
+    getDatasetMock
+      .mockResolvedValueOnce({
+        ...createDataset(),
+        id: "dataset-derived",
+        backingDatasetId: "dataset-source",
+        rowCount: 128,
+        isPrimary: false,
+      })
+      .mockResolvedValueOnce({
+        ...createDataset(),
+        id: "dataset-source",
+        backingDatasetId: null,
+        rowCount: 12507,
+      });
+
+    render(
+      await DatasetPage({
+        params: Promise.resolve({ datasetId: "dataset-derived" }),
+        searchParams: Promise.resolve({}),
+      }),
+    );
+
+    const props = datasetDetailClientSpy.mock.lastCall?.[0] as {
+      sourceRowCount: number;
+      dataset: { id: string; backingDatasetId: string | null };
+    };
+
+    expect(props.dataset).toMatchObject({
+      id: "dataset-derived",
+      backingDatasetId: "dataset-source",
+    });
+    expect(props.sourceRowCount).toBe(12507);
   });
 
   it("falls back to the dataset tag preset when the saved table targets another dataset", async () => {

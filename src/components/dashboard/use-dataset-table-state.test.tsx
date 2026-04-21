@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { clearDatasetRowsCache } from "@/components/dashboard/dataset-row-cache";
@@ -96,12 +96,46 @@ function DatasetTableStateProbe({
     <div>
       <div data-testid="record-count">{state.recordCount}</div>
       <div data-testid="loading">{String(state.isLoading)}</div>
+      <div data-testid="sorted-row-ids">
+        {state.getSortedRows()
+          .map((row) => row.id)
+          .join(",")}
+      </div>
       <div data-testid="available-countries">
         {state.availableCountryNames.join(",")}
       </div>
       <div data-testid="dataset-country-names">
         {state.datasetCountryNames.join(",")}
       </div>
+    </div>
+  );
+}
+
+function SortableDatasetTableStateProbe({
+  dataset,
+}: {
+  dataset: ReturnType<typeof createDataset>;
+}) {
+  const state = useDatasetTableState({
+    dataset,
+  });
+
+  return (
+    <div>
+      <div data-testid="record-count">{state.recordCount}</div>
+      <div data-testid="sorted-row-ids">
+        {state.getSortedRows()
+          .map((row) => row.id)
+          .join(",")}
+      </div>
+      <button
+        type="button"
+        onClick={() => {
+          state.table.getColumn("country")?.toggleSorting(false);
+        }}
+      >
+        sort-asc
+      </button>
     </div>
   );
 }
@@ -138,7 +172,7 @@ describe("useDatasetTableState", () => {
     });
 
     fetchMock.mockImplementation(async (input) => {
-      if (input === "/api/datasets/primary-dataset/rows?page=1&pageSize=1000") {
+      if (input === "/api/datasets/primary-dataset/rows?all=true") {
         return deferred.promise;
       }
 
@@ -234,7 +268,7 @@ describe("useDatasetTableState", () => {
 
   it("fetches standalone uploaded datasets independently", async () => {
     fetchMock.mockImplementation(async (input) => {
-      if (input === "/api/datasets/uploaded-a/rows?page=1&pageSize=1000") {
+      if (input === "/api/datasets/uploaded-a/rows?all=true") {
         return buildJsonResponse({
           sourceDatasetId: "uploaded-a",
           rows: [
@@ -254,7 +288,7 @@ describe("useDatasetTableState", () => {
         });
       }
 
-      if (input === "/api/datasets/uploaded-b/rows?page=1&pageSize=1000") {
+      if (input === "/api/datasets/uploaded-b/rows?all=true") {
         return buildJsonResponse({
           sourceDatasetId: "uploaded-b",
           rows: [
@@ -308,7 +342,7 @@ describe("useDatasetTableState", () => {
 
   it("builds visible country options before applying the country filter", async () => {
     fetchMock.mockImplementation(async (input) => {
-      if (input === "/api/datasets/dataset-1/rows?page=1&pageSize=1000") {
+      if (input === "/api/datasets/dataset-1/rows?all=true") {
         return buildJsonResponse({
           sourceDatasetId: "dataset-1",
           rows: [
@@ -382,6 +416,7 @@ describe("useDatasetTableState", () => {
       expect(screen.getByTestId("record-count").textContent).toBe("1");
     });
 
+    expect(screen.getByTestId("sorted-row-ids").textContent).toBe("row-1");
     expect(screen.getByTestId("available-countries").textContent).toBe(
       "Egypt,Jordan",
     );
@@ -392,7 +427,7 @@ describe("useDatasetTableState", () => {
 
   it("includes alternate countries in the visible option list when enabled", async () => {
     fetchMock.mockImplementation(async (input) => {
-      if (input === "/api/datasets/dataset-1/rows?page=1&pageSize=1000") {
+      if (input === "/api/datasets/dataset-1/rows?all=true") {
         return buildJsonResponse({
           sourceDatasetId: "dataset-1",
           rows: [
@@ -454,6 +489,91 @@ describe("useDatasetTableState", () => {
 
     expect(screen.getByTestId("available-countries").textContent).toBe(
       "Egypt,Jordan,Libya,Turkey",
+    );
+  });
+
+  it("keeps the record count stable when sorting changes", async () => {
+    fetchMock.mockImplementation(async (input) => {
+      if (input === "/api/datasets/dataset-1/rows?all=true") {
+        return buildJsonResponse({
+          sourceDatasetId: "dataset-1",
+          rows: [
+            {
+              id: "row-1",
+              rowIndex: 0,
+              data: {
+                country: "Jordan",
+              },
+            },
+            {
+              id: "row-2",
+              rowIndex: 1,
+              data: {
+                country: "Brazil",
+              },
+            },
+          ],
+          page: 1,
+          pageSize: 1000,
+          totalRows: 2,
+          pageCount: 1,
+        });
+      }
+
+      throw new Error(`Unexpected fetch: ${String(input)}`);
+    });
+
+    render(<SortableDatasetTableStateProbe dataset={createDataset()} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("record-count").textContent).toBe("2");
+    });
+    expect(screen.getByTestId("sorted-row-ids").textContent).toBe("row-1,row-2");
+
+    fireEvent.click(screen.getByRole("button", { name: "sort-asc" }));
+
+    expect(screen.getByTestId("record-count").textContent).toBe("2");
+    expect(screen.getByTestId("sorted-row-ids").textContent).toBe("row-2,row-1");
+  });
+
+  it("keeps numeric-aware ordering for sampled text columns without changing the record count", async () => {
+    fetchMock.mockImplementation(async (input) => {
+      if (input === "/api/datasets/dataset-1/rows?all=true") {
+        return buildJsonResponse({
+          sourceDatasetId: "dataset-1",
+          rows: Array.from({ length: 12 }, (_, index) => ({
+            id: `row-${index + 1}`,
+            rowIndex: index,
+            data: {
+              country:
+                index === 10
+                  ? "Item 10"
+                  : index === 11
+                    ? "Item 2"
+                    : `Country ${String.fromCharCode(65 + index)}`,
+            },
+          })),
+          page: 1,
+          pageSize: 1000,
+          totalRows: 12,
+          pageCount: 1,
+        });
+      }
+
+      throw new Error(`Unexpected fetch: ${String(input)}`);
+    });
+
+    render(<SortableDatasetTableStateProbe dataset={createDataset({ rowCount: 12 })} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("record-count").textContent).toBe("12");
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "sort-asc" }));
+
+    expect(screen.getByTestId("record-count").textContent).toBe("12");
+    expect(screen.getByTestId("sorted-row-ids").textContent).toContain(
+      "row-12,row-11",
     );
   });
 });

@@ -27,6 +27,7 @@ type DatasetRowsCacheEntry = {
 };
 
 const DATASET_ROWS_PAGE_SIZE = 1000;
+const DATASET_ROWS_SINGLE_FETCH_MAX = 20_000;
 const datasetRowsCache = new Map<string, DatasetRowsCacheEntry>();
 
 function createEntry(sourceDatasetId: string): DatasetRowsCacheEntry {
@@ -73,15 +74,26 @@ function notifyListeners(entry: DatasetRowsCacheEntry) {
   }
 }
 
-async function fetchDatasetRowsPage(input: {
-  datasetId: string;
-  page: number;
-  pageSize: number;
-}) {
-  const params = new URLSearchParams({
-    page: String(input.page),
-    pageSize: String(input.pageSize),
-  });
+async function fetchDatasetRows(input:
+  | {
+      datasetId: string;
+      page: number;
+      pageSize: number;
+      readAll?: false;
+    }
+  | {
+      datasetId: string;
+      readAll: true;
+    }) {
+  const params = new URLSearchParams();
+
+  if (input.readAll) {
+    params.set("all", "true");
+  } else {
+    params.set("page", String(input.page));
+    params.set("pageSize", String(input.pageSize));
+  }
+
   const response = await fetch(`/api/datasets/${input.datasetId}/rows?${params.toString()}`);
 
   if (!response.ok) {
@@ -91,21 +103,59 @@ async function fetchDatasetRowsPage(input: {
   return (await response.json()) as DatasetRowsResponse;
 }
 
+async function fetchDatasetRowsPage(input: {
+  datasetId: string;
+  page: number;
+  pageSize: number;
+}) {
+  return fetchDatasetRows(input);
+}
+
+async function fetchAllDatasetRows(input: { datasetId: string }) {
+  return fetchDatasetRows({
+    datasetId: input.datasetId,
+    readAll: true,
+  });
+}
+
 async function loadDatasetRows(
   entry: DatasetRowsCacheEntry,
   input: {
     datasetId: string;
     pageSize: number;
+    expectedRowCount?: number | null;
   },
 ) {
-  let page = 1;
-  let pageCount = 1;
-
   entry.rows = [];
   entry.totalRows = null;
   entry.error = null;
   entry.status = "loading";
   notifyListeners(entry);
+
+  const shouldReadAll =
+    input.expectedRowCount !== undefined &&
+    input.expectedRowCount !== null &&
+    input.expectedRowCount <= DATASET_ROWS_SINGLE_FETCH_MAX;
+
+  if (shouldReadAll) {
+    const payload = await fetchAllDatasetRows({
+      datasetId: input.datasetId,
+    });
+
+    if (payload.sourceDatasetId !== entry.sourceDatasetId) {
+      throw new Error("The dataset rows source did not match the expected cache key.");
+    }
+
+    entry.rows = payload.rows;
+    entry.totalRows = payload.totalRows;
+    entry.status = "ready";
+    entry.error = null;
+    notifyListeners(entry);
+    return;
+  }
+
+  let page = 1;
+  let pageCount = 1;
 
   while (page <= pageCount) {
     const payload = await fetchDatasetRowsPage({
@@ -166,6 +216,7 @@ export function ensureDatasetRowsCache(input: {
   datasetId: string;
   sourceDatasetId: string;
   pageSize?: number;
+  expectedRowCount?: number | null;
 }) {
   const entry = getEntry(input.sourceDatasetId);
 
@@ -180,6 +231,7 @@ export function ensureDatasetRowsCache(input: {
   entry.promise = loadDatasetRows(entry, {
     datasetId: input.datasetId,
     pageSize,
+    expectedRowCount: input.expectedRowCount,
   })
     .catch((error) => {
       entry.status = "error";
