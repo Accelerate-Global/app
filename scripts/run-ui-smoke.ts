@@ -149,6 +149,14 @@ export const DEFAULT_SUPABASE_PORT_RELEASE_WAIT = {
   maxAttempts: 30,
   retryDelayMs: 2_000,
 } as const;
+export const DEFAULT_UI_SMOKE_SUPABASE_START_TIMEOUT_MS = 120_000;
+export const CI_UI_SMOKE_SUPABASE_START_TIMEOUT_MS = 300_000;
+
+export function getUiSmokeSupabaseStartTimeoutMs(
+  environment: NodeJS.ProcessEnv = process.env,
+) {
+  return environment.CI ? CI_UI_SMOKE_SUPABASE_START_TIMEOUT_MS : DEFAULT_UI_SMOKE_SUPABASE_START_TIMEOUT_MS;
+}
 
 function createPipelineError(
   classification: "bootstrap" | "contract" | "product",
@@ -394,6 +402,8 @@ async function hasUsableLocalSupabaseStatus() {
 }
 
 async function startLocalSupabaseStack() {
+  const startTimeoutMs = getUiSmokeSupabaseStartTimeoutMs();
+
   try {
     await runStageWithRetry({
       classification: "bootstrap",
@@ -403,7 +413,7 @@ async function startLocalSupabaseStack() {
       captureOutput: true,
       attempts: 3,
       retryDelayMs: 3_000,
-      timeoutMs: 120_000,
+      timeoutMs: startTimeoutMs,
       shouldRetry: isSupabaseStartRetryableError,
       beforeRetry: async () => {
         await resetSupabaseAfterStartupFailure();
