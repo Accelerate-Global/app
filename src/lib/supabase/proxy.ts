@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+import { logError } from "@/lib/error-logging";
 import { getSupabaseConfig, hasSupabaseConfig } from "@/lib/supabase/config";
 
 export async function updateSession(request: NextRequest) {
@@ -37,7 +38,7 @@ export async function updateSession(request: NextRequest) {
   try {
     await supabase.auth.getUser();
   } catch (error) {
-    console.error("Failed to refresh Supabase session", error);
+    logError("Failed to refresh Supabase session", error);
   }
 
   return response;

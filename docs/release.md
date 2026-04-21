@@ -44,7 +44,8 @@ Vercel production deploys for emergency recovery only.
 - relies on release-critical CLI scripts that use the shared `@/db` singleton
   to close that client before exit, so control returns cleanly to the ship
   process after remote checks such as `field-sources:seed:remote`
-- waits for the PR `App Quality`, `UI Smoke`, and `Database Security` checks
+- waits for the PR `App Quality`, `UI Smoke`, `Database Security`, and
+  `Dependency Audit` checks
 - emits progress updates while waiting on remote checks, merge state, and
   release health
 - merges the PR to `main`
@@ -85,8 +86,18 @@ git config user.email "116130409+II-ricky-bobby-II@users.noreply.github.com"
 
 ## Required Checks
 
-The repo now publishes `App Quality`, `UI Smoke`, `Database Security`, and
-`Release Health` workflow signals. GitHub branch-protection/ruleset enforcement
-is not available for this private repository on the current plan, so `pnpm ship`
-serves as the practical merge gate until repository-level required checks can be
-enabled.
+The repo now publishes `App Quality`, `UI Smoke`, `Database Security`,
+`Dependency Audit`, and `Release Health` workflow signals. `pnpm ship` waits
+for the first four checks before merge, but GitHub UI merges can still bypass
+that CLI gate unless repository settings enforce required checks.
+
+Manual GitHub follow-up:
+
+1. Add a branch protection rule or ruleset for `main`.
+2. Require `App Quality`, `UI Smoke`, `Database Security`, and `Dependency Audit`
+   before merge.
+3. Restrict direct pushes and manual bypasses to the smallest practical admin
+   set.
+
+Until that repository-level enforcement exists, treat `pnpm ship` as the
+required release path rather than a convenience wrapper.

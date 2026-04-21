@@ -126,4 +126,20 @@ describe("/api/admin/users/[userId]/password-reset", () => {
       error: "Re-enable the account before sending a password reset email.",
     });
   });
+
+  it("returns a generic error when the admin helper fails unexpectedly", async () => {
+    sendWorkspaceUserPasswordResetEmailMock.mockRejectedValue(new Error("send failed"));
+
+    const response = await POST(
+      new Request("http://localhost/api/admin/users/user-1/password-reset", {
+        method: "POST",
+      }),
+      { params: Promise.resolve({ userId: "user-1" }) },
+    );
+
+    expect(response.status).toBe(500);
+    await expect(response.json()).resolves.toEqual({
+      error: "Could not send the password reset email.",
+    });
+  });
 });

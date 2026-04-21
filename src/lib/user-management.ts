@@ -2,7 +2,6 @@ import { sql } from "drizzle-orm";
 import type { User as AuthUser } from "@supabase/supabase-js";
 
 import { getDb } from "@/db";
-import { signupEmailAllowlist } from "@/db/schema";
 import type {
   WorkspaceUser,
   WorkspaceUserAccountStatus,
@@ -34,6 +33,10 @@ type WorkspaceUserRecord = {
   last_sign_in_at: Date | string | null;
   banned_until: Date | string | null;
   identities: WorkspaceIdentityRecord[] | null;
+};
+
+type SignupAllowlistProvisionResult = {
+  created: boolean;
 };
 
 export class WorkspaceUserNotFoundError extends Error {
@@ -370,19 +373,31 @@ async function applyWorkspaceUserMutation(input: {
 }
 
 async function upsertSignupAllowlistEmail(email: string, workspaceRole: WorkspaceRole) {
-  await getDb()
-    .insert(signupEmailAllowlist)
-    .values({
-      email,
-      note: `User Management allowlist (${workspaceRole})`,
-    })
-    .onConflictDoUpdate({
-      target: signupEmailAllowlist.email,
-      set: {
-        note: `User Management allowlist (${workspaceRole})`,
-        updatedAt: sql`now()`,
-      },
-    });
+  const note = `User Management allowlist (${workspaceRole})`;
+  const [result] = (await getDb().execute(sql<SignupAllowlistProvisionResult>`
+    with inserted as (
+      insert into public.signup_email_allowlist (email, note)
+      values (${email}, ${note})
+      on conflict (email) do nothing
+      returning email
+    )
+    update public.signup_email_allowlist
+    set note = ${note},
+        updated_at = now()
+    where email = ${email}
+    returning exists(select 1 from inserted) as created
+  `)) as unknown as SignupAllowlistProvisionResult[];
+
+  return {
+    created: result?.created ?? false,
+  };
+}
+
+async function removeSignupAllowlistEmail(email: string) {
+  await getDb().execute(sql`
+    delete from public.signup_email_allowlist
+    where email = ${email}
+  `);
 }
 
 export async function revokeWorkspaceUserSessions(userId: string) {
@@ -462,7 +477,7 @@ export async function inviteWorkspaceUser(input: {
   const email = normalizeEmail(input.email);
   const fullName = normalizeFullName(input.fullName);
 
-  await upsertSignupAllowlistEmail(email, input.workspaceRole);
+  const allowlistProvision = await upsertSignupAllowlistEmail(email, input.workspaceRole);
 
   const admin = createSupabaseAdminClient();
   const inviteResult = await admin.auth.admin.inviteUserByEmail(email, {
@@ -471,6 +486,10 @@ export async function inviteWorkspaceUser(input: {
   });
 
   if (inviteResult.error) {
+    if (allowlistProvision.created) {
+      await removeSignupAllowlistEmail(email);
+    }
+
     throw inviteResult.error;
   }
 

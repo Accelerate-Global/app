@@ -13,6 +13,7 @@ import { getDatasetOpenPresetTag } from "@/lib/dataset-tags";
 import { getSortedVisibleDatasetColumns } from "@/lib/dataset-table-columns";
 import { listFieldDefinitionPresentationByColumnKey } from "@/lib/field-definitions";
 import { jsonError } from "@/lib/http";
+import { logError } from "@/lib/error-logging";
 import {
   getDatasetCountryFilterStateFromSavedView,
   getDatasetRegionFilterStateFromSavedView,
@@ -59,7 +60,7 @@ export async function GET(_request: Request, context: DatasetContext) {
 
       return Response.redirect(signedUrl.data.signedUrl);
     } catch (error) {
-      console.error("Failed to create a signed dataset download URL", error);
+      logError("Failed to create a signed dataset download URL", error);
       return jsonError("The dataset download could not be prepared.", 502);
     }
   }

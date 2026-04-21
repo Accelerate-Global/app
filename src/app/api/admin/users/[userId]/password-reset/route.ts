@@ -1,4 +1,5 @@
 import { getCurrentIdentity } from "@/lib/auth";
+import { logError } from "@/lib/error-logging";
 import { jsonAdminOnlyError, jsonError } from "@/lib/http";
 import {
   sendWorkspaceUserPasswordResetEmail,
@@ -41,7 +42,7 @@ export async function POST(request: Request, context: UserPasswordResetContext) 
       return jsonError(error.message, error.status);
     }
 
-    console.error("Failed to send workspace user password reset email", error);
+    logError("Failed to send workspace user password reset email", error);
     return jsonError("Could not send the password reset email.", 500);
   }
 }

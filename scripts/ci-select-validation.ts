@@ -20,6 +20,7 @@ export type CiValidationSelection = {
   changedFiles: string[];
   appQuality: boolean;
   databaseSecurity: boolean;
+  dependencyAudit: boolean;
   uiSmoke: boolean;
   uiSmokeMode: "none" | "targeted" | "full";
   uiSmokeBrowser: boolean;
@@ -45,9 +46,14 @@ function parseNullSeparatedPaths(output: string) {
     .filter(Boolean);
 }
 
+function normalizePath(filePath: string) {
+  return filePath.split("\\").join("/");
+}
+
 export function selectCiValidation(changedFiles: string[]): CiValidationSelection {
   const impact = resolveChangeImpact(changedFiles);
   const uiSmokeSelection = resolveUiSmokeSelection(changedFiles);
+  const normalizedChangedFiles = [...new Set(impact.changedFiles.map(normalizePath))];
   const uiSmokeContractRequired =
     impact.requiredCommands.some((commandId) => uiSmokeCommandIds.has(commandId));
   const uiSmoke = uiSmokeContractRequired || uiSmokeSelection.mode !== "none";
@@ -63,6 +69,9 @@ export function selectCiValidation(changedFiles: string[]): CiValidationSelectio
     databaseSecurity:
       impact.requiredCommands.includes("db:security") ||
       impact.requiredCommands.includes("db:check-migration-drift"),
+    dependencyAudit: normalizedChangedFiles.some((filePath) =>
+      filePath === "package.json" || filePath === "pnpm-lock.yaml"
+    ),
     uiSmoke,
     uiSmokeMode,
     uiSmokeBrowser:
@@ -107,6 +116,7 @@ async function writeGitHubOutputs(selection: CiValidationSelection) {
   const lines = [
     `app_quality=${selection.appQuality}`,
     `database_security=${selection.databaseSecurity}`,
+    `dependency_audit=${selection.dependencyAudit}`,
     `ui_smoke=${selection.uiSmoke}`,
     `ui_smoke_mode=${selection.uiSmokeMode}`,
     `ui_smoke_browser=${selection.uiSmokeBrowser}`,
@@ -124,6 +134,7 @@ async function main() {
   console.log(`Changed files: ${selection.changedFiles.length}`);
   console.log(`App Quality: ${selection.appQuality}`);
   console.log(`Database Security: ${selection.databaseSecurity}`);
+  console.log(`Dependency Audit: ${selection.dependencyAudit}`);
   console.log(`UI Smoke: ${selection.uiSmokeMode}`);
 
   if (selection.matchedDomains.length > 0) {

@@ -100,3 +100,11 @@ Treat `pnpm run verify:change` as the local planning gate for repo-tracked edits
 - If `pnpm run test:ui:smoke`, `pnpm run db:security`, or `pnpm run verify:change:run` is blocked by an already-running repo-local Supabase stack, stop or reset that stack first and then continue the required command instead of stopping to ask.
 - Use [/Users/blake/Documents/accelerate-global/online/config/change-impact.ts](/Users/blake/Documents/accelerate-global/online/config/change-impact.ts) as the canonical rule set for impacted domains and verification commands.
 - Use [/Users/blake/Documents/accelerate-global/online/docs/testing/ui-smoke.md](/Users/blake/Documents/accelerate-global/online/docs/testing/ui-smoke.md) for the detailed smoke contract and examples.
+
+# Security Remediation Invariants
+
+- Mutating `/api/**` requests and `POST /auth/sign-out` are same-origin guarded in `/Users/blake/Documents/accelerate-global/online/src/proxy.ts` via `/Users/blake/Documents/accelerate-global/online/src/lib/request-security.ts`. Keep that guard centralized unless a route needs a documented exception.
+- Repo-owned browser hardening headers and CSP are defined in `/Users/blake/Documents/accelerate-global/online/next.config.ts` via `/Users/blake/Documents/accelerate-global/online/src/lib/security-headers.ts`.
+- Provider-facing auth, storage, and admin code should log normalized error details through `/Users/blake/Documents/accelerate-global/online/src/lib/error-logging.ts`, not raw provider objects.
+- GitHub workflows in `/Users/blake/Documents/accelerate-global/online/.github/workflows` are pinned to full SHAs, and `Dependency Audit` is part of the release gate that `pnpm ship` waits on.
+- Runtime admin access comes from `auth.users.raw_app_meta_data.workspace_role`. First-admin bootstrap remains a manual environment/provider concern and must stay documented as such.

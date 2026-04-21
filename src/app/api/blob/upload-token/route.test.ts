@@ -128,4 +128,30 @@ describe("/api/blob/upload-token", () => {
     expect(fromMock).toHaveBeenCalledWith("datasets");
     expect(createSignedUploadUrlMock).toHaveBeenCalledTimes(1);
   });
+
+  it("returns 502 when Supabase Storage authorization fails", async () => {
+    createSignedUploadUrlMock.mockResolvedValue({
+      data: null,
+      error: Object.assign(new Error("upload failed"), {
+        status: 500,
+        code: "storage_failed",
+      }),
+    });
+
+    const response = await POST(
+      new Request("http://localhost/api/blob/upload-token", {
+        method: "POST",
+        body: JSON.stringify({
+          fileName: "customers.csv",
+          sizeBytes: 100,
+          contentType: "text/csv",
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(502);
+    await expect(response.json()).resolves.toEqual({
+      error: "The upload could not be authorized by Supabase Storage.",
+    });
+  });
 });

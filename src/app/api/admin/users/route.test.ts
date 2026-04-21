@@ -90,6 +90,15 @@ describe("/api/admin/users", () => {
     await expect(response.json()).resolves.toEqual({ users: [user] });
   });
 
+  it("returns a generic list error when loading users fails", async () => {
+    listWorkspaceUsersMock.mockRejectedValue(new Error("load failed"));
+
+    const response = await GET();
+
+    expect(response.status).toBe(500);
+    await expect(response.json()).resolves.toEqual({ error: "Could not load users." });
+  });
+
   it("rejects invalid invite payloads", async () => {
     const response = await POST(
       new Request("http://localhost/api/admin/users", {
@@ -145,6 +154,25 @@ describe("/api/admin/users", () => {
     expect(response.status).toBe(409);
     await expect(response.json()).resolves.toEqual({
       error: "That invite is not allowed.",
+    });
+  });
+
+  it("returns a generic invite error when the invite helper fails unexpectedly", async () => {
+    inviteWorkspaceUserMock.mockRejectedValue(new Error("invite failed"));
+
+    const response = await POST(
+      new Request("http://localhost/api/admin/users", {
+        method: "POST",
+        body: JSON.stringify({
+          email: "viewer@example.com",
+          workspaceRole: "viewer",
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(500);
+    await expect(response.json()).resolves.toEqual({
+      error: "Could not invite the user.",
     });
   });
 });

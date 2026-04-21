@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(84);
+select plan(91);
 
 select results_eq(
   $$
@@ -90,6 +90,23 @@ select ok(exists(select 1 from pg_policies where schemaname = 'public' and table
 select ok(exists(select 1 from pg_policies where schemaname = 'public' and tablename = 'saved_dataset_tables' and policyname = 'users can delete own saved dataset tables' and cmd = 'DELETE'), 'saved_dataset_tables has owner delete policy');
 
 select ok(exists(select 1 from pg_policies where schemaname = 'public' and tablename = 'signup_email_allowlist' and policyname = 'supabase auth admin can read signup allowlist' and cmd = 'SELECT'), 'signup_email_allowlist has supabase auth admin read policy');
+select ok((select relrowsecurity from pg_class join pg_namespace on pg_namespace.oid = pg_class.relnamespace where pg_namespace.nspname = 'storage' and pg_class.relname = 'objects' and pg_class.relkind = 'r'), 'storage.objects has row level security enabled');
+select ok(exists(select 1 from pg_policies where schemaname = 'storage' and tablename = 'objects' and policyname = 'dataset admin can read dataset storage objects' and cmd = 'SELECT'), 'storage.objects has dataset bucket read policy');
+select ok(exists(select 1 from pg_policies where schemaname = 'storage' and tablename = 'objects' and policyname = 'dataset admin can insert dataset storage objects' and cmd = 'INSERT'), 'storage.objects has dataset bucket insert policy');
+select ok(exists(select 1 from pg_policies where schemaname = 'storage' and tablename = 'objects' and policyname = 'dataset admin can update dataset storage objects' and cmd = 'UPDATE'), 'storage.objects has dataset bucket update policy');
+select ok(exists(select 1 from pg_policies where schemaname = 'storage' and tablename = 'objects' and policyname = 'dataset admin can delete dataset storage objects' and cmd = 'DELETE'), 'storage.objects has dataset bucket delete policy');
+select ok((select relrowsecurity from pg_class join pg_namespace on pg_namespace.oid = pg_class.relnamespace where pg_namespace.nspname = 'private' and pg_class.relname = 'analytics_events' and pg_class.relkind = 'r'), 'private.analytics_events has row level security enabled');
+select is(
+  (
+    select count(*)::bigint
+    from information_schema.table_privileges
+    where table_schema = 'private'
+      and table_name = 'analytics_events'
+      and grantee in ('PUBLIC', 'anon', 'authenticated')
+  ),
+  0::bigint,
+  'private.analytics_events has no grants for public-facing roles'
+);
 
 select throws_ok(
   $$

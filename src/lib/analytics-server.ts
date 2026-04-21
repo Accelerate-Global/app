@@ -3,6 +3,7 @@ import { track } from "@vercel/analytics/server";
 import type { AppAnalyticsEventMap, AppAnalyticsEventName } from "@/lib/analytics";
 import { sanitizeAnalyticsPayload } from "@/lib/analytics";
 import { persistAnalyticsEvent } from "@/lib/analytics-store";
+import { logError } from "@/lib/error-logging";
 
 export async function trackServerAppEvent<Name extends AppAnalyticsEventName>(
   name: Name,
@@ -15,10 +16,10 @@ export async function trackServerAppEvent<Name extends AppAnalyticsEventName>(
   ]);
 
   if (results[0].status === "rejected") {
-    console.error("Failed to track server analytics event", results[0].reason);
+    logError("Failed to track server analytics event", results[0].reason);
   }
 
   if (results[1].status === "rejected") {
-    console.error("Failed to persist server analytics event", results[1].reason);
+    logError("Failed to persist server analytics event", results[1].reason);
   }
 }

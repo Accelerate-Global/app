@@ -1,5 +1,6 @@
 import { getAnalyticsWorkspaceRole, isAppAnalyticsEventName, isAppAnalyticsRoute } from "@/lib/analytics";
 import { getCurrentIdentity } from "@/lib/auth";
+import { logError } from "@/lib/error-logging";
 import { jsonError } from "@/lib/http";
 import { persistAnalyticsEvent } from "@/lib/analytics-store";
 import { WORKSPACE_ROLES } from "@/lib/workspace-role";
@@ -82,7 +83,7 @@ export async function POST(request: Request) {
     await persistAnalyticsEvent(body.name, payload);
     return Response.json({ ok: true }, { status: 202 });
   } catch (error) {
-    console.error("Failed to persist analytics event", error);
+    logError("Failed to persist analytics event", error);
     return jsonError("Could not store the analytics event.", 500);
   }
 }

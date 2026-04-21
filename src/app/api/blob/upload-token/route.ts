@@ -4,6 +4,7 @@ import {
   getDatasetStorageBucket,
 } from "@/lib/dataset-storage";
 import { MAX_CSV_BYTES, sanitizeFileName } from "@/lib/csv";
+import { logError } from "@/lib/error-logging";
 import { jsonAdminOnlyError, jsonError } from "@/lib/http";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { blobUploadTokenSchema } from "@/lib/validation";
@@ -73,7 +74,7 @@ export async function POST(request: Request) {
       token: signedUpload.data.token,
     });
   } catch (error) {
-    console.error("Failed to create Supabase Storage upload authorization", error);
+    logError("Failed to create Supabase Storage upload authorization", error);
     return jsonError(
       "The upload could not be authorized by Supabase Storage.",
       502,

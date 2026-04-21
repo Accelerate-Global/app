@@ -1,4 +1,5 @@
 import { getCurrentIdentity } from "@/lib/auth";
+import { logError } from "@/lib/error-logging";
 import { jsonAdminOnlyError, jsonError } from "@/lib/http";
 import {
   updateWorkspaceUser,
@@ -49,7 +50,7 @@ export async function PATCH(request: Request, context: UserContext) {
       return jsonError(error.message, error.status);
     }
 
-    console.error("Failed to update workspace user", error);
+    logError("Failed to update workspace user", error);
     return jsonError("Could not update the user.", 500);
   }
 }

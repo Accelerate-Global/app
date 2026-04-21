@@ -195,6 +195,7 @@ export async function shipPullRequest(input: { prNumber: string }) {
         "App Quality",
         "UI Smoke",
         "Database Security",
+        "Dependency Audit",
       ],
     });
     logStage(

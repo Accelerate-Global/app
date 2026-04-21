@@ -89,4 +89,19 @@ describe("updateSession", () => {
       "refreshed-token",
     );
   });
+
+  it("swallows refresh failures and still returns a pass-through response", async () => {
+    createServerClientMock.mockReturnValue({
+      auth: {
+        getUser: vi.fn(async () => {
+          throw new Error("refresh failed");
+        }),
+      },
+    } as never);
+
+    const response = await updateSession(new NextRequest("http://localhost/dashboard"));
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("x-auth-refresh")).toBeNull();
+  });
 });

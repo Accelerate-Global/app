@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { logError } from "@/lib/error-logging";
 import { getCurrentIdentity } from "@/lib/auth";
 import { jsonError } from "@/lib/http";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -52,19 +53,19 @@ export async function POST() {
       );
 
       if (signOutError) {
-        console.error("Failed to revoke current sessions", signOutError);
+        logError("Failed to revoke current sessions", signOutError);
       }
     }
 
     const { error: sessionError } = await supabase.auth.signOut();
 
     if (sessionError) {
-      console.error("Failed to clear current session cookies", sessionError);
+      logError("Failed to clear current session cookies", sessionError);
     }
 
     return NextResponse.json({ ok: true });
   } catch (error) {
-    console.error("Failed to disable account", error);
+    logError("Failed to disable account", error);
     return jsonError("Could not disable the current account.", 500);
   }
 }

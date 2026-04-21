@@ -8,6 +8,7 @@ const {
   createServerClientMock,
   hasSupabaseConfigMock,
   getSupabaseConfigMock,
+  logErrorMock,
 } = vi.hoisted(() => ({
   signOutMock: vi.fn(),
   createServerClientMock: vi.fn(),
@@ -16,6 +17,7 @@ const {
     supabaseUrl: "https://supabase.example",
     supabasePublishableKey: "publishable-key",
   })),
+  logErrorMock: vi.fn(),
 }));
 
 vi.mock("@supabase/ssr", () => ({
@@ -25,6 +27,10 @@ vi.mock("@supabase/ssr", () => ({
 vi.mock("@/lib/supabase/config", () => ({
   hasSupabaseConfig: hasSupabaseConfigMock,
   getSupabaseConfig: getSupabaseConfigMock,
+}));
+
+vi.mock("@/lib/error-logging", () => ({
+  logError: logErrorMock,
 }));
 
 describe("/auth/sign-out", () => {
@@ -86,5 +92,29 @@ describe("/auth/sign-out", () => {
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({ ok: true });
     expect(response.headers.get("set-cookie")).toBeNull();
+  });
+
+  it("logs normalized sign-out failures without breaking the response", async () => {
+    hasSupabaseConfigMock.mockReturnValue(true);
+    const error = new Error("sign-out failed");
+    signOutMock.mockRejectedValue(error);
+    createServerClientMock.mockReturnValue({
+      auth: {
+        signOut: signOutMock,
+      },
+    });
+
+    const response = await POST(
+      new NextRequest("http://localhost/auth/sign-out", {
+        method: "POST",
+        headers: {
+          cookie: "sb-auth-token=active-session",
+        },
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({ ok: true });
+    expect(logErrorMock).toHaveBeenCalledWith("Failed to sign out of Supabase", error);
   });
 });

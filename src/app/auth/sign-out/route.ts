@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
 
+import { logError } from "@/lib/error-logging";
 import { getSupabaseConfig, hasSupabaseConfig } from "@/lib/supabase/config";
 
 export async function POST(request: NextRequest) {
@@ -32,7 +33,7 @@ export async function POST(request: NextRequest) {
 
       await supabase.auth.signOut();
     } catch (error) {
-      console.error("Failed to sign out of Supabase", error);
+      logError("Failed to sign out of Supabase", error);
     }
   }
 

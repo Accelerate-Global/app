@@ -133,6 +133,7 @@ describe("ship", () => {
         "App Quality",
         "UI Smoke",
         "Database Security",
+        "Dependency Audit",
       ],
     });
     expect(runCommandMock).toHaveBeenCalledWith(

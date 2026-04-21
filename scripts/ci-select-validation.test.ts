@@ -30,11 +30,18 @@ describe("ci-select-validation", () => {
     expect(selection.databaseSecurity).toBe(true);
   });
 
+  it("selects dependency audit for package manifest changes", () => {
+    const selection = selectCiValidation(["package.json", "pnpm-lock.yaml"]);
+
+    expect(selection.dependencyAudit).toBe(true);
+  });
+
   it("skips CI validation suites for docs-only changes", () => {
     const selection = selectCiValidation(["docs/release.md"]);
 
     expect(selection.appQuality).toBe(false);
     expect(selection.databaseSecurity).toBe(false);
+    expect(selection.dependencyAudit).toBe(false);
     expect(selection.uiSmokeMode).toBe("none");
     expect(selection.uiSmokeBrowser).toBe(false);
   });

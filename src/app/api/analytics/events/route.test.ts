@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getCurrentIdentity } from "@/lib/auth";
 import { persistAnalyticsEvent } from "@/lib/analytics-store";
+import { logError } from "@/lib/error-logging";
 import { POST } from "./route";
 
 vi.mock("@/lib/auth", () => ({
@@ -19,8 +20,13 @@ vi.mock("@/lib/analytics-store", async () => {
   };
 });
 
+vi.mock("@/lib/error-logging", () => ({
+  logError: vi.fn(),
+}));
+
 const getCurrentIdentityMock = vi.mocked(getCurrentIdentity);
 const persistAnalyticsEventMock = vi.mocked(persistAnalyticsEvent);
+const logErrorMock = vi.mocked(logError);
 
 describe("/api/analytics/events", () => {
   beforeEach(() => {
@@ -136,5 +142,36 @@ describe("/api/analytics/events", () => {
 
     expect(response.status).toBe(401);
     expect(persistAnalyticsEventMock).not.toHaveBeenCalled();
+  });
+
+  it("logs normalized persistence failures", async () => {
+    const error = new Error("write failed");
+    getCurrentIdentityMock.mockResolvedValue({
+      ownerId: "admin-1",
+      email: "admin@example.com",
+      fullName: "Admin User",
+      isDatasetAdmin: true,
+      mode: "supabase",
+    });
+    persistAnalyticsEventMock.mockRejectedValue(error);
+
+    const response = await POST(
+      new Request("http://localhost/api/analytics/events", {
+        method: "POST",
+        body: JSON.stringify({
+          name: "dashboard_viewed",
+          payload: {
+            route: "dashboard",
+            actor_owner_id: "spoofed-user",
+            workspace_role: "anonymous",
+            source_surface: "dashboard_page",
+            success: true,
+          },
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(500);
+    expect(logErrorMock).toHaveBeenCalledWith("Failed to persist analytics event", error);
   });
 });

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getCurrentIdentity } from "@/lib/auth";
 import { getAllDatasetRows, getDataset } from "@/lib/datasets";
+import { logError } from "@/lib/error-logging";
 import { listFieldDefinitionPresentationByColumnKey } from "@/lib/field-definitions";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { GET } from "./route";
@@ -36,6 +37,10 @@ vi.mock("@/lib/field-definitions", () => ({
   listFieldDefinitionPresentationByColumnKey: vi.fn(),
 }));
 
+vi.mock("@/lib/error-logging", () => ({
+  logError: vi.fn(),
+}));
+
 const getAllDatasetRowsMock = vi.mocked(getAllDatasetRows);
 const getCurrentIdentityMock = vi.mocked(getCurrentIdentity);
 const getDatasetMock = vi.mocked(getDataset);
@@ -43,6 +48,7 @@ const listFieldDefinitionPresentationByColumnKeyMock = vi.mocked(
   listFieldDefinitionPresentationByColumnKey,
 );
 const createSupabaseAdminClientMock = vi.mocked(createSupabaseAdminClient);
+const logErrorMock = vi.mocked(logError);
 
 const adminIdentity = {
   ownerId: "supabase-user",
@@ -278,9 +284,10 @@ describe("/api/datasets/[datasetId]/download", () => {
   });
 
   it("returns a gateway error when signing fails", async () => {
+    const error = new Error("boom");
     createSignedUrlMock.mockResolvedValue({
       data: null,
-      error: new Error("boom"),
+      error,
     });
 
     const response = await GET(
@@ -289,5 +296,9 @@ describe("/api/datasets/[datasetId]/download", () => {
     );
 
     expect(response.status).toBe(502);
+    expect(logErrorMock).toHaveBeenCalledWith(
+      "Failed to create a signed dataset download URL",
+      error,
+    );
   });
 });

@@ -4,6 +4,7 @@ import { track } from "@vercel/analytics";
 
 import type { AppAnalyticsEventMap, AppAnalyticsEventName } from "@/lib/analytics";
 import { sanitizeAnalyticsPayload } from "@/lib/analytics";
+import { logError } from "@/lib/error-logging";
 
 const ANALYTICS_INGEST_PATH = "/api/analytics/events";
 
@@ -32,7 +33,7 @@ function persistAppEvent(
     body,
     keepalive: true,
   }).catch((error) => {
-    console.error("Failed to persist analytics event", error);
+    logError("Failed to persist analytics event", error);
   });
 }
 
@@ -45,12 +46,12 @@ export function trackAppEvent<Name extends AppAnalyticsEventName>(
   try {
     track(name, sanitizedPayload);
   } catch (error) {
-    console.error("Failed to track analytics event", error);
+    logError("Failed to track analytics event", error);
   }
 
   try {
     persistAppEvent(name, sanitizedPayload);
   } catch (error) {
-    console.error("Failed to queue analytics persistence", error);
+    logError("Failed to queue analytics persistence", error);
   }
 }

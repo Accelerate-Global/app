@@ -11,6 +11,7 @@ import {
 import { jsonAdminOnlyError, jsonError } from "@/lib/http";
 import { getDatasetStorageBucket } from "@/lib/dataset-storage";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { logError } from "@/lib/error-logging";
 import { datasetPatchSchema } from "@/lib/validation";
 
 type DatasetContext = {
@@ -124,10 +125,10 @@ export async function DELETE(_request: Request, context: DatasetContext) {
       .remove(deleted.blobPaths);
 
     if (deletion.error) {
-      console.error("Failed to delete dataset file from Supabase Storage", deletion.error);
+      logError("Failed to delete dataset file from Supabase Storage", deletion.error);
     }
   } catch (error) {
-    console.error("Failed to delete dataset file from Supabase Storage", error);
+    logError("Failed to delete dataset file from Supabase Storage", error);
   }
 
   return Response.json({ dataset: deleted.dataset });

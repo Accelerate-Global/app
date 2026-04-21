@@ -1,4 +1,5 @@
 import { getCurrentIdentity } from "@/lib/auth";
+import { logError } from "@/lib/error-logging";
 import { jsonAdminOnlyError, jsonError } from "@/lib/http";
 import {
   inviteWorkspaceUser,
@@ -22,7 +23,7 @@ export async function GET() {
     const users = await listWorkspaceUsers();
     return Response.json({ users });
   } catch (error) {
-    console.error("Failed to list workspace users", error);
+    logError("Failed to list workspace users", error);
     return jsonError("Could not load users.", 500);
   }
 }
@@ -64,7 +65,7 @@ export async function POST(request: Request) {
       return jsonError(error.message, error.status);
     }
 
-    console.error("Failed to invite workspace user", error);
+    logError("Failed to invite workspace user", error);
     return jsonError("Could not invite the user.", 500);
   }
 }

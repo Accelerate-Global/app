@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 
+import { logError } from "@/lib/error-logging";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
 import { isWorkspaceAdmin } from "@/lib/workspace-role";
@@ -50,7 +51,7 @@ export async function getCurrentIdentity(): Promise<CurrentIdentity | null> {
         throw error;
       }
 
-      console.error("Failed to resolve Supabase user", error);
+      logError("Failed to resolve Supabase user", error);
     }
   }
 

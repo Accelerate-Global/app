@@ -31,13 +31,16 @@ Fill in:
 - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `SUPABASE_STORAGE_BUCKET` (defaults to `datasets`)
-- `DATASET_ADMIN_EMAIL` (defaults to `admin@example.com`)
 - `DATABASE_URL`
 
 Raw CSV files are stored in Supabase Storage. Uploads require a server-side
-`SUPABASE_SERVICE_ROLE_KEY`, and only the configured dataset admin account can
-create, update, or delete datasets. All signed-in users can browse shared
-datasets and rows.
+`SUPABASE_SERVICE_ROLE_KEY`, and runtime admin access is derived from
+`auth.users.raw_app_meta_data.workspace_role`. All signed-in users can browse
+shared datasets and rows.
+
+Bootstrap for the first admin remains an environment-specific migration or
+provider task. Review that bootstrap path manually for each environment instead
+of assuming a repo-local email setting controls it.
 
 Start the local Supabase stack:
 
@@ -116,6 +119,14 @@ pnpm run verify:ship:local
 
 `pnpm verify:release` remains available as a temporary deprecated alias to the
 new ship-local gate.
+
+## Security Controls
+
+The repo-owned browser hardening baseline lives in `next.config.ts`. The static
+CSP intentionally keeps `'unsafe-inline'` for the inline theme bootstrap script
+in `src/app/layout.tsx` and allows Adobe Typekit assets for the branded font
+stylesheet. Tightening those allowances further requires removing those runtime
+dependencies first.
 
 ## UI Smoke Verification
 

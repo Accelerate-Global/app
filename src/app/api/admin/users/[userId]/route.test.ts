@@ -182,4 +182,21 @@ describe("/api/admin/users/[userId]", () => {
       error: "You cannot change your own role or status from User Management.",
     });
   });
+
+  it("returns a generic error when the admin helper fails unexpectedly", async () => {
+    updateWorkspaceUserMock.mockRejectedValue(new Error("update failed"));
+
+    const response = await PATCH(
+      new Request("http://localhost/api/admin/users/user-1", {
+        method: "PATCH",
+        body: JSON.stringify({ disabled: true }),
+      }),
+      { params: Promise.resolve({ userId: "user-1" }) },
+    );
+
+    expect(response.status).toBe(500);
+    await expect(response.json()).resolves.toEqual({
+      error: "Could not update the user.",
+    });
+  });
 });

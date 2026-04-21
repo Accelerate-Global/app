@@ -1,18 +1,38 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { User as AuthUser } from "@supabase/supabase-js";
 
+import { getDb } from "@/db";
 import type { WorkspaceUser } from "@/lib/api-types";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import {
   assertWorkspaceUserMutationAllowed,
   assertWorkspaceUserPasswordResetAllowed,
   getActiveWorkspaceAdminCount,
   getWorkspaceUserAccountStatus,
+  inviteWorkspaceUser,
   mapAuthUserToWorkspaceUser,
   mergeWorkspaceRoleIntoAppMetadata,
   WorkspaceUserActionError,
   WorkspaceUserPermissionError,
 } from "@/lib/user-management";
+
+const { executeMock, inviteUserByEmailMock, updateUserByIdMock } = vi.hoisted(() => ({
+  executeMock: vi.fn(),
+  inviteUserByEmailMock: vi.fn(),
+  updateUserByIdMock: vi.fn(),
+}));
+
+vi.mock("@/db", () => ({
+  getDb: vi.fn(),
+}));
+
+vi.mock("@/lib/supabase/admin", () => ({
+  createSupabaseAdminClient: vi.fn(),
+}));
+
+const getDbMock = vi.mocked(getDb);
+const createSupabaseAdminClientMock = vi.mocked(createSupabaseAdminClient);
 
 function createWorkspaceUser(overrides: Partial<WorkspaceUser> = {}): WorkspaceUser {
   return {
@@ -30,6 +50,40 @@ function createWorkspaceUser(overrides: Partial<WorkspaceUser> = {}): WorkspaceU
     emailConfirmedAt: "2026-04-15T20:05:00.000Z",
     lastLoginAt: "2026-04-15T20:10:00.000Z",
     bannedUntil: null,
+    ...overrides,
+  };
+}
+
+function createWorkspaceUserRecord(
+  overrides: Partial<{
+    id: string;
+    email: string | null;
+    raw_user_meta_data: Record<string, unknown> | null;
+    raw_app_meta_data: Record<string, unknown> | null;
+    invited_at: string | null;
+    confirmed_at: string | null;
+    email_confirmed_at: string | null;
+    last_sign_in_at: string | null;
+    banned_until: string | null;
+  }> = {},
+) {
+  return {
+    id: "auth-user-1",
+    email: "viewer@example.com",
+    raw_user_meta_data: { full_name: "Viewer User" },
+    raw_app_meta_data: {
+      provider: "email",
+      providers: ["email"],
+      workspace_role: "viewer",
+    },
+    created_at: "2026-04-15T20:00:00.000Z",
+    updated_at: "2026-04-15T20:00:00.000Z",
+    invited_at: "2026-04-15T20:01:00.000Z",
+    confirmed_at: null,
+    email_confirmed_at: null,
+    last_sign_in_at: null,
+    banned_until: null,
+    identities: [],
     ...overrides,
   };
 }
@@ -80,6 +134,22 @@ function createAuthUser(overrides: Partial<AuthUser> = {}): AuthUser {
 }
 
 describe("user-management", () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    getDbMock.mockReturnValue({
+      execute: executeMock,
+    } as never);
+    createSupabaseAdminClientMock.mockReturnValue({
+      auth: {
+        admin: {
+          inviteUserByEmail: inviteUserByEmailMock,
+          updateUserById: updateUserByIdMock,
+        },
+      },
+    } as never);
+    updateUserByIdMock.mockResolvedValue({ data: { user: null }, error: null });
+  });
+
   it("maps invited users to pending invite status", () => {
     expect(
       getWorkspaceUserAccountStatus({
@@ -292,5 +362,86 @@ describe("user-management", () => {
     expect(() =>
       assertWorkspaceUserPasswordResetAllowed(createWorkspaceUser()),
     ).not.toThrow();
+  });
+
+  it("keeps the allowlist approval when inviting a user succeeds", async () => {
+    inviteUserByEmailMock.mockResolvedValue({
+      data: {
+        user: {
+          id: "auth-user-1",
+          app_metadata: {
+            provider: "email",
+            providers: ["email"],
+          },
+        },
+      },
+      error: null,
+    });
+    executeMock
+      .mockResolvedValueOnce([{ created: true }])
+      .mockResolvedValueOnce([createWorkspaceUserRecord()]);
+
+    const user = await inviteWorkspaceUser({
+      email: "viewer@example.com",
+      fullName: "Viewer User",
+      workspaceRole: "viewer",
+    });
+
+    expect(user).toMatchObject({
+      email: "viewer@example.com",
+      fullName: "Viewer User",
+      workspaceRole: "viewer",
+      accountStatus: "pending_invite",
+    });
+    expect(executeMock).toHaveBeenCalledTimes(2);
+    expect(updateUserByIdMock).toHaveBeenCalledWith("auth-user-1", {
+      app_metadata: {
+        provider: "email",
+        providers: ["email"],
+        workspace_role: "viewer",
+      },
+    });
+  });
+
+  it("removes a newly-created allowlist approval when invite creation fails", async () => {
+    const inviteError = Object.assign(new Error("Invite failed"), {
+      code: "invite_failed",
+    });
+    inviteUserByEmailMock.mockResolvedValue({
+      data: { user: null },
+      error: inviteError,
+    });
+    executeMock.mockResolvedValueOnce([{ created: true }]).mockResolvedValueOnce([]);
+
+    await expect(
+      inviteWorkspaceUser({
+        email: "viewer@example.com",
+        workspaceRole: "viewer",
+      }),
+    ).rejects.toBe(inviteError);
+
+    expect(executeMock).toHaveBeenCalledTimes(2);
+    expect(updateUserByIdMock).not.toHaveBeenCalled();
+  });
+
+  it("does not remove pre-existing allowlist approvals when invite creation fails", async () => {
+    const inviteError = Object.assign(new Error("Invite failed"), {
+      code: "invite_failed",
+    });
+    inviteUserByEmailMock.mockResolvedValue({
+      data: { user: null },
+      error: inviteError,
+    });
+    executeMock.mockResolvedValueOnce([{ created: false }]);
+
+    await expect(
+      inviteWorkspaceUser({
+        email: "viewer@example.com",
+        workspaceRole: "viewer",
+      }),
+    ).rejects.toBe(inviteError);
+
+    expect(executeMock).toHaveBeenCalledTimes(1);
+    expect(updateUserByIdMock).not.toHaveBeenCalled();
   });
 });

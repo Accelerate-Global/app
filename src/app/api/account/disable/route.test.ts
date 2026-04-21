@@ -187,4 +187,25 @@ describe("/api/account/disable", () => {
       error: "Supabase is not configured for account management.",
     });
   });
+
+  it("returns 500 when disabling the current account fails", async () => {
+    const getSession = vi.fn().mockResolvedValue({
+      data: { session: { access_token: "session-token" } },
+    });
+
+    createSupabaseAdminClientMock.mockReturnValue({
+      auth: { admin: { signOut: vi.fn().mockResolvedValue({ error: null }) } },
+    } as never);
+    createSupabaseServerClientMock.mockResolvedValue({
+      auth: { getSession, signOut: vi.fn().mockResolvedValue({ error: null }) },
+    } as never);
+    setWorkspaceUserDisabledMock.mockRejectedValue(new Error("disable failed"));
+
+    const response = await POST();
+
+    expect(response.status).toBe(500);
+    await expect(response.json()).resolves.toEqual({
+      error: "Could not disable the current account.",
+    });
+  });
 });
