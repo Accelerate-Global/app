@@ -382,6 +382,10 @@ describe("DatasetViewSwitchGrid", () => {
       />,
     );
 
+    expect(screen.getByText("Warning")).toBeTruthy();
+    expect(
+      screen.queryByText("Watchlist is not working correctly yet"),
+    ).toBeNull();
     expect(
       screen.queryByLabelText("Christianity: GSEC"),
     ).toBeNull();
@@ -411,6 +415,12 @@ describe("DatasetViewSwitchGrid", () => {
     expect(
       screen.getByText(
         "People groups unengaged or would be unengaged if the current mission work stopped today.",
+      ),
+    ).toBeTruthy();
+    expect(screen.getByText("Watchlist is not working correctly yet")).toBeTruthy();
+    expect(
+      screen.getByText(
+        "These filters can return incorrect results while the Watchlist logic is being fixed. Do not rely on this section yet.",
       ),
     ).toBeTruthy();
     expect(thresholdInput.value).toBe("2");
