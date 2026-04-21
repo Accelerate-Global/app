@@ -38,11 +38,13 @@ import {
 } from "@/lib/dataset-table-columns";
 import {
   filterDatasetRowsByCountry,
+  filterDatasetRowsByHotspots,
   filterDatasetRowsByRegion,
   filterDatasetRowsByUupg,
   filterDatasetRowsByWatchlist,
   getAvailableDatasetCountryNames,
   type DatasetCountryFilterState,
+  type DatasetHotspotsFilterState,
   type DatasetRegionFilterState,
   type DatasetUupgFilterState,
   type DatasetWatchlistFilterState,
@@ -63,6 +65,7 @@ export function useDatasetTableState(input: {
   countryFilter?: DatasetCountryFilterState;
   watchlistFilter?: DatasetWatchlistFilterState;
   uupgFilter?: DatasetUupgFilterState;
+  hotspotsFilter?: DatasetHotspotsFilterState;
   fieldDefinitionPresentationByColumnKey?: Record<
     string,
     FieldDefinitionPresentation
@@ -99,13 +102,17 @@ export function useDatasetTableState(input: {
   const rowsBeforeCountryFilter = useMemo(
     () =>
       filterDatasetRowsByUupg(
-        filterDatasetRowsByWatchlist(
-          filterDatasetRowsByRegion(rows, input.regionFilter),
-          input.watchlistFilter,
+        filterDatasetRowsByHotspots(
+          filterDatasetRowsByWatchlist(
+            filterDatasetRowsByRegion(rows, input.regionFilter),
+            input.watchlistFilter,
+          ),
+          input.hotspotsFilter,
         ),
         input.uupgFilter,
       ),
     [
+      input.hotspotsFilter,
       rows,
       input.regionFilter,
       input.uupgFilter,

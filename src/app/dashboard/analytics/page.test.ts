@@ -117,9 +117,7 @@ describe("/dashboard/analytics", () => {
     expect(
       screen.getByRole("heading", { name: "Analytics" }),
     ).toBeTruthy();
-    expect(
-      screen.getByText(/Older Vercel-only history is not backfilled/i),
-    ).toBeTruthy();
+    expect(screen.queryByText("Forward-only history")).toBeNull();
     expect(screen.getByText("Total events")).toBeTruthy();
     expect(screen.getByText("Unique actors")).toBeTruthy();
     expect(getAnalyticsDashboardDataMock).toHaveBeenCalled();

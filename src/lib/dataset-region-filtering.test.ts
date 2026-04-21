@@ -4,10 +4,12 @@ import type { DatasetRowsResponse, DatasetSummary } from "@/lib/api-types";
 import { REGION_COUNTRY_OPTIONS } from "@/lib/region-country-options";
 import {
   datasetSupportsCountryFiltering,
+  datasetSupportsHotspotsFiltering,
   datasetSupportsRegionFiltering,
   datasetSupportsWatchlistFiltering,
   datasetSupportsUupgFiltering,
   filterDatasetRowsByCountry,
+  filterDatasetRowsByHotspots,
   filterDatasetRowsByRegion,
   filterDatasetRowsByWatchlist,
   filterDatasetRowsByUupg,
@@ -31,6 +33,7 @@ const rows: DatasetRowsResponse["rows"] = [
       pg_population: "20000",
       percent_evangelical_pgac: "5",
       engage_global_engagement_anywhere: "FALSE",
+      pg_peid: "PG-INDIA-1",
     },
   },
   {
@@ -45,6 +48,7 @@ const rows: DatasetRowsResponse["rows"] = [
       pg_population: "40000",
       percent_evangelical_pgac: "5",
       engage_global_engagement_anywhere: "TRUE",
+      pg_peid: "PG-NEPAL-1",
     },
   },
   {
@@ -58,6 +62,7 @@ const rows: DatasetRowsResponse["rows"] = [
       PG_Population: "",
       Percent_Evangelical_PGAC: "",
       Engage_Global_Engagement_Anywhere: "",
+      PG_PEID: "",
     },
   },
 ];
@@ -110,9 +115,14 @@ const dataset = {
       sourceIndex: 6,
     },
     {
+      key: "pg_peid",
+      label: "PG_PEID",
+      sourceIndex: 8,
+    },
+    {
       key: "engage_global_engagement_anywhere",
       label: "Engage_Global_Engagement_Anywhere",
-      sourceIndex: 7,
+      sourceIndex: 9,
     },
   ],
   hiddenColumnKeys: [],
@@ -154,6 +164,10 @@ describe("dataset-region-filtering", () => {
     ).toBe(true);
   });
 
+  it("detects Hotspots support when the dataset stores normalized column keys", () => {
+    expect(datasetSupportsHotspotsFiltering(dataset)).toBe(true);
+  });
+
   it("reports UUPG filtering as unsupported when the column is absent", () => {
     expect(
       datasetSupportsUupgFiltering({
@@ -165,6 +179,15 @@ describe("dataset-region-filtering", () => {
             sourceIndex: 0,
           },
         ],
+      }),
+    ).toBe(false);
+  });
+
+  it("reports Hotspots filtering as unsupported when a required column is absent", () => {
+    expect(
+      datasetSupportsHotspotsFiltering({
+        ...dataset,
+        columns: dataset.columns.filter((column) => column.key !== "pg_peid"),
       }),
     ).toBe(false);
   });
@@ -591,6 +614,96 @@ describe("dataset-region-filtering", () => {
     });
 
     expect(countryFilteredRows).toEqual([]);
+  });
+
+  it("ranks hotspot countries by unique UUPGs and returns only UUPG rows", () => {
+    const filteredRows = filterDatasetRowsByHotspots(
+      [
+        {
+          id: "row-1",
+          rowIndex: 0,
+          data: {
+            geo_country_name: "India",
+            pg_peid: "PG-INDIA-1",
+            pg_population: "100",
+            engage_global_engagement_anywhere: "FALSE",
+          },
+        },
+        {
+          id: "row-2",
+          rowIndex: 1,
+          data: {
+            geo_country_name: "India",
+            pg_peid: "PG-INDIA-2",
+            pg_population: "250",
+            engage_global_engagement_anywhere: "FALSE",
+          },
+        },
+        {
+          id: "row-3",
+          rowIndex: 2,
+          data: {
+            geo_country_name: "Nepal",
+            pg_peid: "PG-NEPAL-1",
+            pg_population: "500",
+            engage_global_engagement_anywhere: "FALSE",
+          },
+        },
+        {
+          id: "row-4",
+          rowIndex: 3,
+          data: {
+            geo_country_name: "India",
+            pg_peid: "PG-INDIA-3",
+            pg_population: "999",
+            engage_global_engagement_anywhere: "TRUE",
+          },
+        },
+      ],
+      {
+        enabled: true,
+        isSupported: true,
+        metric: "unique_uupgs",
+        countryCount: 1,
+      },
+    );
+
+    expect(filteredRows.map((row) => row.id)).toEqual(["row-1", "row-2"]);
+  });
+
+  it("ranks hotspot countries by UUPG population with country-name tie-breaking", () => {
+    const filteredRows = filterDatasetRowsByHotspots(
+      [
+        {
+          id: "row-brazil",
+          rowIndex: 0,
+          data: {
+            geo_country_name: "Brazil",
+            pg_peid: "PG-BRAZIL-1",
+            pg_population: "300",
+            engage_global_engagement_anywhere: "FALSE",
+          },
+        },
+        {
+          id: "row-india",
+          rowIndex: 1,
+          data: {
+            geo_country_name: "India",
+            pg_peid: "PG-INDIA-1",
+            pg_population: "300",
+            engage_global_engagement_anywhere: "FALSE",
+          },
+        },
+      ],
+      {
+        enabled: true,
+        isSupported: true,
+        metric: "population",
+        countryCount: 1,
+      },
+    );
+
+    expect(filteredRows.map((row) => row.id)).toEqual(["row-brazil"]);
   });
 
   it("still reads legacy row keys that use the raw header casing", () => {

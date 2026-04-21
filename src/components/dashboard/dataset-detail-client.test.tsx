@@ -116,6 +116,12 @@ function createInitialFilters(
       enabled: false,
       ...overrides.uupg,
     },
+    hotspots: {
+      enabled: false,
+      metric: "unique_uupgs",
+      countryCount: 10,
+      ...overrides.hotspots,
+    },
   };
 }
 
@@ -447,6 +453,130 @@ describe("DatasetDetailClient", () => {
       enabled: false,
     });
     expect(actionBarProps.recordCount).toBe(2);
+  });
+
+  it("passes hotspots filter state into the card, shared table state, and action bar", () => {
+    render(
+      <DatasetDetailClient
+        dataset={{
+          ...datasetBase,
+          columns: [
+            {
+              key: "geo_country_name",
+              label: "Geo_Country_Name",
+              sourceIndex: 0,
+            },
+            {
+              key: "engage_global_engagement_anywhere",
+              label: "Engage_Global_Engagement_Anywhere",
+              sourceIndex: 1,
+            },
+            {
+              key: "pg_population",
+              label: "PG_Population",
+              sourceIndex: 2,
+            },
+            {
+              key: "pg_peid",
+              label: "PG_PEID",
+              sourceIndex: 3,
+            },
+          ],
+        }}
+        regions={[]}
+        fieldDefinitionPresentationByColumnKey={{}}
+        initialFilters={createInitialFilters({
+          hotspots: {
+            enabled: true,
+            metric: "population",
+            countryCount: 12,
+          },
+        })}
+      />,
+    );
+
+    const viewSwitchGridProps = viewSwitchGridSpy.mock.calls[0]?.[0] as {
+      hotspotsCard: {
+        enabled: boolean;
+        supported: boolean;
+        metric: "unique_uupgs" | "population";
+        countryCount: number;
+        onEnabledChange: (enabled: boolean) => void;
+        onMetricChange: (metric: "unique_uupgs" | "population") => void;
+        onCountryCountChange: (value: number) => void;
+      };
+    };
+    const datasetTableStateProps = useDatasetTableStateMock.mock.calls[0]?.[0] as {
+      hotspotsFilter: {
+        enabled: boolean;
+        isSupported: boolean;
+        metric: "unique_uupgs" | "population";
+        countryCount: number;
+      };
+    };
+    const actionBarProps = actionBarSpy.mock.calls[0]?.[0] as {
+      filters: {
+        hotspots?: {
+          enabled: boolean;
+          metric: "unique_uupgs" | "population";
+          countryCount: number;
+        };
+      };
+    };
+
+    expect(viewSwitchGridProps.hotspotsCard).toMatchObject({
+      enabled: true,
+      supported: true,
+      metric: "population",
+      countryCount: 12,
+    });
+    expect(datasetTableStateProps.hotspotsFilter).toEqual({
+      enabled: true,
+      isSupported: true,
+      metric: "population",
+      countryCount: 12,
+    });
+    expect(actionBarProps.filters.hotspots).toEqual({
+      enabled: true,
+      metric: "population",
+      countryCount: 12,
+    });
+
+    act(() => {
+      viewSwitchGridProps.hotspotsCard.onMetricChange("unique_uupgs");
+      viewSwitchGridProps.hotspotsCard.onCountryCountChange(15);
+      viewSwitchGridProps.hotspotsCard.onEnabledChange(false);
+    });
+
+    const latestDatasetTableStateProps = useDatasetTableStateMock.mock.lastCall?.[0] as {
+      hotspotsFilter: {
+        enabled: boolean;
+        isSupported: boolean;
+        metric: "unique_uupgs" | "population";
+        countryCount: number;
+      };
+    };
+    const latestActionBarProps = actionBarSpy.mock.lastCall?.[0] as {
+      filters: {
+        hotspots?: {
+          enabled: boolean;
+          metric: "unique_uupgs" | "population";
+          countryCount: number;
+        };
+      };
+    };
+
+    expect(latestDatasetTableStateProps.hotspotsFilter).toEqual({
+      enabled: false,
+      isSupported: true,
+      metric: "unique_uupgs",
+      countryCount: 15,
+    });
+    expect(latestActionBarProps.filters.hotspots).toEqual({
+      enabled: false,
+      metric: "unique_uupgs",
+      countryCount: 15,
+    });
   });
 
   it("selects Global by default and uses it for region filtering", () => {

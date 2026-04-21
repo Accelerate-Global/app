@@ -21,6 +21,7 @@ import type {
   DatasetTag,
   FieldDefinitionPresentation,
   FilterRegion,
+  DatasetHotspotsMetric,
   SavedDatasetSort,
 } from "@/lib/api-types";
 import {
@@ -42,8 +43,10 @@ import {
   WATCHLIST_POPULATION_DATASET_COLUMN_KEY,
 } from "@/lib/dataset-region-constants";
 import {
+  MAX_HOTSPOTS_COUNTRY_COUNT,
   datasetSupportsAlternateCountryFiltering,
   datasetSupportsCountryFiltering,
+  datasetSupportsHotspotsFiltering,
   datasetSupportsRegionFiltering,
   datasetSupportsWatchlistFiltering,
   datasetSupportsUupgFiltering,
@@ -84,6 +87,7 @@ const WATCHLIST_THRESHOLD_MIN = 0;
 const WATCHLIST_THRESHOLD_MAX = 6;
 const WATCHLIST_ENGAGEMENT_PHASE_MIN = 0;
 const WATCHLIST_ENGAGEMENT_PHASE_MAX = 7;
+const HOTSPOTS_COUNTRY_COUNT_MIN = 1;
 const WATCHLIST_POPULATION_BELIEVERS_RULE_LABEL =
   "Population vs Evangelical Believers";
 
@@ -98,6 +102,13 @@ function clampWatchlistEngagementPhaseThreshold(value: number) {
   return Math.min(
     WATCHLIST_ENGAGEMENT_PHASE_MAX,
     Math.max(WATCHLIST_ENGAGEMENT_PHASE_MIN, Math.round(value)),
+  );
+}
+
+function clampHotspotsCountryCount(value: number) {
+  return Math.min(
+    MAX_HOTSPOTS_COUNTRY_COUNT,
+    Math.max(HOTSPOTS_COUNTRY_COUNT_MIN, Math.round(value)),
   );
 }
 
@@ -234,6 +245,7 @@ export function DatasetDetailClient({
   const supportsAlternateCountryFiltering =
     datasetSupportsAlternateCountryFiltering(dataset);
   const supportsCountryFiltering = datasetSupportsCountryFiltering(dataset);
+  const supportsHotspotsFiltering = datasetSupportsHotspotsFiltering(dataset);
   const supportsRegionFiltering = datasetSupportsRegionFiltering(dataset);
   const supportsWatchlistFiltering = datasetSupportsWatchlistFiltering(dataset);
   const supportsUupgFiltering = datasetSupportsUupgFiltering(dataset);
@@ -300,6 +312,15 @@ export function DatasetDetailClient({
     initialState.watchlistFrontierGroupValue,
   );
   const [uupgEnabled, setUupgEnabled] = useState(initialState.uupgEnabled);
+  const [hotspotsEnabled, setHotspotsEnabled] = useState(
+    initialState.hotspotsEnabled,
+  );
+  const [hotspotsMetric, setHotspotsMetric] = useState<DatasetHotspotsMetric>(
+    initialState.hotspotsMetric,
+  );
+  const [hotspotsCountryCount, setHotspotsCountryCount] = useState(
+    initialState.hotspotsCountryCount,
+  );
   const [isFiltersSheetOpen, setIsFiltersSheetOpen] = useState(false);
   const [isOpenPresetSheetOpen, setIsOpenPresetSheetOpen] = useState(false);
   const analyticsContext = useMemo(
@@ -397,6 +418,20 @@ export function DatasetDetailClient({
     }),
     [supportsUupgFiltering, uupgEnabled],
   );
+  const hotspotsFilter = useMemo(
+    () => ({
+      enabled: hotspotsEnabled,
+      isSupported: supportsHotspotsFiltering,
+      metric: hotspotsMetric,
+      countryCount: hotspotsCountryCount,
+    }),
+    [
+      hotspotsCountryCount,
+      hotspotsEnabled,
+      hotspotsMetric,
+      supportsHotspotsFiltering,
+    ],
+  );
   const datasetTable = useDatasetTableState({
     dataset,
     sourceRowCount,
@@ -405,6 +440,7 @@ export function DatasetDetailClient({
     regionFilter,
     countryFilter,
     watchlistFilter,
+    hotspotsFilter,
     uupgFilter,
     analytics: datasetTableAnalytics,
   });
@@ -444,6 +480,9 @@ export function DatasetDetailClient({
         watchlistFrontierGroupEnabled,
         watchlistFrontierGroupValue,
         uupgEnabled,
+        hotspotsEnabled,
+        hotspotsMetric,
+        hotspotsCountryCount,
         sorting: datasetTable.sorting as SavedDatasetSort[],
       }),
     [
@@ -454,6 +493,9 @@ export function DatasetDetailClient({
       selectedCountryNames,
       visibleRegions,
       selectedRegionIds,
+      hotspotsCountryCount,
+      hotspotsEnabled,
+      hotspotsMetric,
       uupgEnabled,
       watchlistEngagementPhaseEnabled,
       watchlistEnabled,
@@ -530,6 +572,15 @@ export function DatasetDetailClient({
   const handleWatchlistPopulationBelieversRuleChange = useCallback(
     (value: typeof watchlistPopulationBelieversRule) =>
       setWatchlistPopulationBelieversRule(sanitizePopulationBelieversRule(value)),
+    [],
+  );
+  const handleHotspotsMetricChange = useCallback(
+    (value: DatasetHotspotsMetric) => setHotspotsMetric(value),
+    [],
+  );
+  const handleHotspotsCountryCountChange = useCallback(
+    (value: number) =>
+      setHotspotsCountryCount(clampHotspotsCountryCount(value)),
     [],
   );
   const handleCountryToggle = useCallback(
@@ -639,6 +690,9 @@ export function DatasetDetailClient({
         watchlistFrontierGroupEnabled,
         watchlistFrontierGroupValue,
         uupgEnabled,
+        hotspotsEnabled,
+        hotspotsMetric,
+        hotspotsCountryCount,
         sorting: datasetTable.sorting,
       }),
     [
@@ -648,6 +702,9 @@ export function DatasetDetailClient({
       regionEnabled,
       selectedCountryNames,
       selectedRegionIds,
+      hotspotsCountryCount,
+      hotspotsEnabled,
+      hotspotsMetric,
       uupgEnabled,
       watchlistEnabled,
       watchlistEngagementPhaseEnabled,
@@ -705,6 +762,9 @@ export function DatasetDetailClient({
             ? watchlistEngagementPhaseThreshold
             : null,
           uupg_enabled: uupgEnabled,
+          hotspots_enabled: hotspotsEnabled,
+          hotspots_metric: hotspotsEnabled ? hotspotsMetric : null,
+          hotspots_country_count: hotspotsEnabled ? hotspotsCountryCount : null,
           sorting_count: savedFilters.sorting.length,
           sorting_keys: getSortingKeys(savedFilters.sorting),
         }),
@@ -726,6 +786,9 @@ export function DatasetDetailClient({
     effectiveCountrySelection.selectedCountryNames.length,
     selectedCountryNames.length,
     selectedRegionIds,
+    hotspotsCountryCount,
+    hotspotsEnabled,
+    hotspotsMetric,
     uupgEnabled,
     watchlistEnabled,
     watchlistEngagementPhaseEnabled,
@@ -890,6 +953,17 @@ export function DatasetDetailClient({
         fieldDefinition: uupgFieldDefinition,
         onEnabledChange: setUupgEnabled,
       },
+      hotspotsCard: {
+        enabled: hotspotsEnabled,
+        supported: supportsHotspotsFiltering,
+        metric: hotspotsMetric,
+        countryCount: hotspotsCountryCount,
+        minCountryCount: HOTSPOTS_COUNTRY_COUNT_MIN,
+        maxCountryCount: MAX_HOTSPOTS_COUNTRY_COUNT,
+        onEnabledChange: setHotspotsEnabled,
+        onMetricChange: handleHotspotsMetricChange,
+        onCountryCountChange: handleHotspotsCountryCountChange,
+      },
     }),
     [
       countryEnabled,
@@ -899,15 +973,21 @@ export function DatasetDetailClient({
       effectiveCountrySelection.selectedCountryNames,
       handleClearVisibleCountries,
       handleCountryToggle,
+      handleHotspotsCountryCountChange,
+      handleHotspotsMetricChange,
       handleRegionSelectorChange,
       handleSelectVisibleCountries,
       handleWatchlistEngagementPhaseThresholdChange,
       handleWatchlistPopulationBelieversRuleChange,
       handleWatchlistThresholdChange,
+      hotspotsCountryCount,
+      hotspotsEnabled,
+      hotspotsMetric,
       includeAlternateCountries,
       regionSelectors,
       supportsAlternateCountryFiltering,
       supportsCountryFiltering,
+      supportsHotspotsFiltering,
       supportsRegionFiltering,
       supportsUupgFiltering,
       supportsWatchlistFiltering,

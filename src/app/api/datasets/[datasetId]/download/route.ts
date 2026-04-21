@@ -1,6 +1,7 @@
 import { getCurrentIdentity } from "@/lib/auth";
 import {
   filterDatasetRowsByCountry,
+  filterDatasetRowsByHotspots,
   filterDatasetRowsByRegion,
   filterDatasetRowsByUupg,
   filterDatasetRowsByWatchlist,
@@ -16,6 +17,7 @@ import { jsonError } from "@/lib/http";
 import { logError } from "@/lib/error-logging";
 import {
   getDatasetCountryFilterStateFromSavedView,
+  getDatasetHotspotsFilterStateFromSavedView,
   getDatasetRegionFilterStateFromSavedView,
   getDatasetUupgFilterStateFromSavedView,
   getDatasetWatchlistFilterStateFromSavedView,
@@ -84,18 +86,21 @@ export async function GET(_request: Request, context: DatasetContext) {
     fieldDefinitionPresentationByColumnKey,
   });
   const filteredRows = presetFilters
-    ? filterDatasetRowsByUupg(
-        filterDatasetRowsByWatchlist(
-          filterDatasetRowsByCountry(
-            filterDatasetRowsByRegion(
-              rowsResponse.rows,
-              getDatasetRegionFilterStateFromSavedView(dataset, presetFilters),
+    ? filterDatasetRowsByCountry(
+        filterDatasetRowsByUupg(
+          filterDatasetRowsByHotspots(
+            filterDatasetRowsByWatchlist(
+              filterDatasetRowsByRegion(
+                rowsResponse.rows,
+                getDatasetRegionFilterStateFromSavedView(dataset, presetFilters),
+              ),
+              getDatasetWatchlistFilterStateFromSavedView(dataset, presetFilters),
             ),
-            getDatasetCountryFilterStateFromSavedView(dataset, presetFilters),
+            getDatasetHotspotsFilterStateFromSavedView(dataset, presetFilters),
           ),
-          getDatasetWatchlistFilterStateFromSavedView(dataset, presetFilters),
+          getDatasetUupgFilterStateFromSavedView(dataset, presetFilters),
         ),
-        getDatasetUupgFilterStateFromSavedView(dataset, presetFilters),
+        getDatasetCountryFilterStateFromSavedView(dataset, presetFilters),
       )
     : rowsResponse.rows;
   const csv = serializeDatasetRowsToCsv({

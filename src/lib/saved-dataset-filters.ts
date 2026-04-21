@@ -1,4 +1,5 @@
 import type {
+  DatasetHotspotsMetric,
   DatasetOpenPreset,
   PopulationBelieversRule,
   DatasetSummary,
@@ -7,16 +8,22 @@ import type {
   SavedDatasetSort,
 } from "@/lib/api-types";
 import {
+  DEFAULT_HOTSPOTS_COUNTRY_COUNT,
+  DEFAULT_HOTSPOTS_METRIC,
   datasetSupportsAlternateCountryFiltering,
   datasetSupportsCountryFiltering,
+  datasetSupportsHotspotsFiltering,
   datasetSupportsRegionFiltering,
   datasetSupportsUupgFiltering,
   datasetSupportsWatchlistFiltering,
   getSelectedRegionCountryNames,
   type DatasetCountryFilterState,
+  type DatasetHotspotsFilterState,
   type DatasetRegionFilterState,
   type DatasetUupgFilterState,
   type DatasetWatchlistFilterState,
+  normalizeHotspotsCountryCount,
+  normalizeHotspotsMetric,
 } from "@/lib/dataset-region-filtering";
 import {
   createDefaultPopulationBelieversRule,
@@ -64,6 +71,9 @@ export type InitialDatasetDetailState = {
   watchlistFrontierGroupEnabled: boolean;
   watchlistFrontierGroupValue: boolean;
   uupgEnabled: boolean;
+  hotspotsEnabled: boolean;
+  hotspotsMetric: DatasetHotspotsMetric;
+  hotspotsCountryCount: number;
   sorting: SavedDatasetSort[];
 };
 
@@ -226,6 +236,9 @@ export function buildSavedDatasetFilterState(input: {
   watchlistFrontierGroupEnabled: boolean;
   watchlistFrontierGroupValue: boolean;
   uupgEnabled: boolean;
+  hotspotsEnabled: boolean;
+  hotspotsMetric: DatasetHotspotsMetric;
+  hotspotsCountryCount: number;
   sorting: SavedDatasetSort[];
 }): SavedDatasetFilterState {
   const normalizedSelectedRegionIdSet = input.regionEnabled
@@ -282,6 +295,11 @@ export function buildSavedDatasetFilterState(input: {
     uupg: {
       enabled: input.uupgEnabled,
     },
+    hotspots: {
+      enabled: input.hotspotsEnabled,
+      metric: normalizeHotspotsMetric(input.hotspotsMetric),
+      countryCount: normalizeHotspotsCountryCount(input.hotspotsCountryCount),
+    },
     sorting: input.sorting.map((sort) => ({
       id: sort.id,
       desc: sort.desc,
@@ -299,6 +317,7 @@ export function buildDatasetOpenPreset(
     country: normalizedFilters.country,
     watchlist: normalizedFilters.watchlist,
     uupg: normalizedFilters.uupg,
+    hotspots: normalizedFilters.hotspots,
   };
 }
 
@@ -371,6 +390,13 @@ export function getUnsupportedDatasetOpenPresetSections(
     unsupportedSections.push("uupg");
   }
 
+  if (
+    normalizedPreset.hotspots?.enabled &&
+    !datasetSupportsHotspotsFiltering(dataset)
+  ) {
+    unsupportedSections.push("hotspots");
+  }
+
   return unsupportedSections;
 }
 
@@ -386,6 +412,7 @@ export function getInitialDatasetDetailState(input: {
     datasetSupportsAlternateCountryFiltering(input.dataset);
   const supportsWatchlistFiltering = datasetSupportsWatchlistFiltering(input.dataset);
   const supportsUupgFiltering = datasetSupportsUupgFiltering(input.dataset);
+  const supportsHotspotsFiltering = datasetSupportsHotspotsFiltering(input.dataset);
   const canUseRegionFilter =
     supportsRegionFiltering && input.regions.length > 0;
   const normalizedPreset = normalizeDatasetOpenPreset(input.initialFilters);
@@ -412,6 +439,9 @@ export function getInitialDatasetDetailState(input: {
     watchlistFrontierGroupEnabled: true,
     watchlistFrontierGroupValue: true,
     uupgEnabled: false,
+    hotspotsEnabled: false,
+    hotspotsMetric: DEFAULT_HOTSPOTS_METRIC,
+    hotspotsCountryCount: DEFAULT_HOTSPOTS_COUNTRY_COUNT,
     sorting: input.initialSorting?.map((sort) => ({
       id: sort.id,
       desc: sort.desc,
@@ -480,13 +510,21 @@ export function getInitialDatasetDetailState(input: {
       ? normalizedPreset.watchlist.frontierGroupValue
       : defaultState.watchlistFrontierGroupValue,
     uupgEnabled: supportsUupgFiltering && normalizedPreset.uupg.enabled,
+    hotspotsEnabled:
+      supportsHotspotsFiltering && (normalizedPreset.hotspots?.enabled ?? false),
+    hotspotsMetric: supportsHotspotsFiltering
+      ? normalizeHotspotsMetric(normalizedPreset.hotspots?.metric)
+      : defaultState.hotspotsMetric,
+    hotspotsCountryCount: supportsHotspotsFiltering
+      ? normalizeHotspotsCountryCount(normalizedPreset.hotspots?.countryCount)
+      : defaultState.hotspotsCountryCount,
     sorting: defaultState.sorting,
   };
 }
 
 export function normalizeSavedDatasetFilterState(filters: SavedDatasetFilterState) {
   const populationBelieversRuleState =
-    getNormalizedPopulationBelieversRuleState(filters.watchlist)
+    getNormalizedPopulationBelieversRuleState(filters.watchlist);
 
   return {
     ...filters,
@@ -533,6 +571,18 @@ export function normalizeSavedDatasetFilterState(filters: SavedDatasetFilterStat
       frontierGroupEnabled: filters.watchlist.frontierGroupEnabled ?? true,
       frontierGroupValue: filters.watchlist.frontierGroupValue,
     },
+    uupg: {
+      enabled: filters.uupg?.enabled ?? false,
+    },
+    hotspots: {
+      enabled: filters.hotspots?.enabled ?? false,
+      metric: normalizeHotspotsMetric(filters.hotspots?.metric),
+      countryCount: normalizeHotspotsCountryCount(filters.hotspots?.countryCount),
+    },
+    sorting: filters.sorting.map((sort) => ({
+      id: sort.id,
+      desc: sort.desc,
+    })),
   } satisfies SavedDatasetFilterState;
 }
 
@@ -603,5 +653,21 @@ export function getDatasetUupgFilterStateFromSavedView(
   return {
     enabled: normalizedFilters.uupg.enabled,
     isSupported: datasetSupportsUupgFiltering(dataset),
+  };
+}
+
+export function getDatasetHotspotsFilterStateFromSavedView(
+  dataset: Pick<DatasetSummary, "columns">,
+  filters: SavedDatasetFilterState,
+): DatasetHotspotsFilterState {
+  const normalizedFilters = normalizeSavedDatasetFilterState(filters);
+
+  return {
+    enabled: normalizedFilters.hotspots?.enabled ?? false,
+    isSupported: datasetSupportsHotspotsFiltering(dataset),
+    metric: normalizeHotspotsMetric(normalizedFilters.hotspots?.metric),
+    countryCount: normalizeHotspotsCountryCount(
+      normalizedFilters.hotspots?.countryCount,
+    ),
   };
 }

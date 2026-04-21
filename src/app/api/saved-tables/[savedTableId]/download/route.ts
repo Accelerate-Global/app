@@ -1,6 +1,7 @@
 import { getCurrentIdentity } from "@/lib/auth";
 import {
   filterDatasetRowsByCountry,
+  filterDatasetRowsByHotspots,
   filterDatasetRowsByRegion,
   filterDatasetRowsByUupg,
   filterDatasetRowsByWatchlist,
@@ -17,6 +18,7 @@ import { listFieldDefinitionPresentationByColumnKey } from "@/lib/field-definiti
 import { jsonError } from "@/lib/http";
 import {
   getDatasetCountryFilterStateFromSavedView,
+  getDatasetHotspotsFilterStateFromSavedView,
   getDatasetRegionFilterStateFromSavedView,
   getDatasetUupgFilterStateFromSavedView,
   getDatasetWatchlistFilterStateFromSavedView,
@@ -71,18 +73,21 @@ export async function GET(
     hiddenColumnKeys: dataset.hiddenColumnKeys,
     fieldDefinitionPresentationByColumnKey,
   });
-  const filteredRows = filterDatasetRowsByUupg(
-    filterDatasetRowsByWatchlist(
-      filterDatasetRowsByCountry(
-        filterDatasetRowsByRegion(
-          rowsResponse.rows,
-          getDatasetRegionFilterStateFromSavedView(dataset, savedTable.filters),
+  const filteredRows = filterDatasetRowsByCountry(
+    filterDatasetRowsByUupg(
+      filterDatasetRowsByHotspots(
+        filterDatasetRowsByWatchlist(
+          filterDatasetRowsByRegion(
+            rowsResponse.rows,
+            getDatasetRegionFilterStateFromSavedView(dataset, savedTable.filters),
+          ),
+          getDatasetWatchlistFilterStateFromSavedView(dataset, savedTable.filters),
         ),
-        getDatasetCountryFilterStateFromSavedView(dataset, savedTable.filters),
+        getDatasetHotspotsFilterStateFromSavedView(dataset, savedTable.filters),
       ),
-      getDatasetWatchlistFilterStateFromSavedView(dataset, savedTable.filters),
+      getDatasetUupgFilterStateFromSavedView(dataset, savedTable.filters),
     ),
-    getDatasetUupgFilterStateFromSavedView(dataset, savedTable.filters),
+    getDatasetCountryFilterStateFromSavedView(dataset, savedTable.filters),
   );
   const sortedRows = sortDatasetRows(filteredRows, savedTable.filters.sorting);
   const csv = serializeDatasetRowsToCsv({

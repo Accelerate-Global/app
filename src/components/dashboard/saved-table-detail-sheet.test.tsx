@@ -142,4 +142,49 @@ describe("SavedTableDetailSheet", () => {
 
     expect(screen.getAllByText("Off").length).toBeGreaterThanOrEqual(1);
   });
+
+  it("shows the hotspots summary when the saved table uses hotspots filtering", () => {
+    render(
+      <SavedTableDetailSheet
+        savedTable={createSavedTable({
+          filters: {
+            region: {
+              enabled: false,
+              selectedRegionIds: [],
+              selectedRegionNames: [],
+              enabledCountryNames: [],
+            },
+            country: {
+              enabled: false,
+              selectedCountryNames: [],
+            },
+            watchlist: {
+              enabled: false,
+              threshold: 2,
+              engagementPhaseThreshold: 6,
+              frontierGroupValue: true,
+            },
+            uupg: {
+              enabled: false,
+            },
+            hotspots: {
+              enabled: true,
+              metric: "population",
+              countryCount: 10,
+            },
+            sorting: [],
+          },
+        })}
+        dataset={null}
+        open
+        isSaving={false}
+        isDeleting={false}
+        onOpenChange={vi.fn()}
+        onSaveSavedTable={vi.fn()}
+        onDeleteSavedTable={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("Top 10 countries by UUPG population")).toBeTruthy();
+  });
 });

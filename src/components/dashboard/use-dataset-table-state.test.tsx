@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { clearDatasetRowsCache } from "@/components/dashboard/dataset-row-cache";
 import type {
   DatasetCountryFilterState,
+  DatasetHotspotsFilterState,
   DatasetRegionFilterState,
 } from "@/lib/dataset-region-filtering";
 import { DashboardClient } from "./dashboard-client";
@@ -81,15 +82,18 @@ function DatasetTableStateProbe({
   dataset,
   regionFilter,
   countryFilter,
+  hotspotsFilter,
 }: {
   dataset: ReturnType<typeof createDataset>;
   regionFilter?: DatasetRegionFilterState;
   countryFilter?: DatasetCountryFilterState;
+  hotspotsFilter?: DatasetHotspotsFilterState;
 }) {
   const state = useDatasetTableState({
     dataset,
     regionFilter,
     countryFilter,
+    hotspotsFilter,
   });
 
   return (
@@ -490,6 +494,113 @@ describe("useDatasetTableState", () => {
     expect(screen.getByTestId("available-countries").textContent).toBe(
       "Egypt,Jordan,Libya,Turkey",
     );
+  });
+
+  it("applies hotspots before country filtering and keeps only UUPG rows from the top countries", async () => {
+    fetchMock.mockImplementation(async (input) => {
+      if (input === "/api/datasets/dataset-1/rows?all=true") {
+        return buildJsonResponse({
+          sourceDatasetId: "dataset-1",
+          rows: [
+            {
+              id: "row-1",
+              rowIndex: 0,
+              data: {
+                geo_country_name: "India",
+                pg_peid: "PG-1",
+                pg_population: "100",
+                engage_global_engagement_anywhere: "FALSE",
+              },
+            },
+            {
+              id: "row-2",
+              rowIndex: 1,
+              data: {
+                geo_country_name: "India",
+                pg_peid: "PG-2",
+                pg_population: "200",
+                engage_global_engagement_anywhere: "FALSE",
+              },
+            },
+            {
+              id: "row-3",
+              rowIndex: 2,
+              data: {
+                geo_country_name: "Nepal",
+                pg_peid: "PG-3",
+                pg_population: "50",
+                engage_global_engagement_anywhere: "FALSE",
+              },
+            },
+            {
+              id: "row-4",
+              rowIndex: 3,
+              data: {
+                geo_country_name: "India",
+                pg_peid: "PG-4",
+                pg_population: "999",
+                engage_global_engagement_anywhere: "TRUE",
+              },
+            },
+          ],
+          page: 1,
+          pageSize: 1000,
+          totalRows: 4,
+          pageCount: 1,
+        });
+      }
+
+      throw new Error(`Unexpected fetch: ${String(input)}`);
+    });
+
+    render(
+      <DatasetTableStateProbe
+        dataset={createDataset({
+          columns: [
+            {
+              key: "geo_country_name",
+              label: "Geo_Country_Name",
+              sourceIndex: 0,
+            },
+            {
+              key: "pg_peid",
+              label: "PG_PEID",
+              sourceIndex: 1,
+            },
+            {
+              key: "pg_population",
+              label: "PG_Population",
+              sourceIndex: 2,
+            },
+            {
+              key: "engage_global_engagement_anywhere",
+              label: "Engage_Global_Engagement_Anywhere",
+              sourceIndex: 3,
+            },
+          ],
+          rowCount: 4,
+        })}
+        hotspotsFilter={{
+          enabled: true,
+          isSupported: true,
+          metric: "unique_uupgs",
+          countryCount: 1,
+        }}
+        countryFilter={{
+          enabled: true,
+          isSupported: true,
+          selectedCountryNames: ["India"],
+          includeAlternateCountries: false,
+        }}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("record-count").textContent).toBe("2");
+    });
+
+    expect(screen.getByTestId("sorted-row-ids").textContent).toBe("row-1,row-2");
+    expect(screen.getByTestId("available-countries").textContent).toBe("India");
   });
 
   it("keeps the record count stable when sorting changes", async () => {

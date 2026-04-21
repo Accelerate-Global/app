@@ -1,4 +1,5 @@
 import type {
+  DatasetHotspotsMetric,
   SavedDatasetFilterState,
   SavedDatasetSort,
 } from "@/lib/api-types";
@@ -129,6 +130,9 @@ export type AppAnalyticsEventMap = {
     watchlist_engagement_phase_enabled: boolean;
     watchlist_engagement_phase_threshold: number | null;
     uupg_enabled: boolean;
+    hotspots_enabled: boolean;
+    hotspots_metric: DatasetHotspotsMetric | null;
+    hotspots_country_count: number | null;
     sorting_count: number;
     sorting_keys: string | null;
   };
@@ -424,6 +428,9 @@ const APP_ANALYTICS_EVENT_PROPERTY_KEYS = {
     "watchlist_engagement_phase_enabled",
     "watchlist_engagement_phase_threshold",
     "uupg_enabled",
+    "hotspots_enabled",
+    "hotspots_metric",
+    "hotspots_country_count",
     "sorting_count",
     "sorting_keys",
   ],
@@ -703,6 +710,10 @@ export function getEnabledFilterSections(
 
   if (filters.uupg.enabled) {
     sections.push("uupg");
+  }
+
+  if (filters.hotspots?.enabled) {
+    sections.push("hotspots");
   }
 
   return sections.length > 0 ? sections.join("|") : "none";

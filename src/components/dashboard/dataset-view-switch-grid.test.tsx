@@ -77,6 +77,18 @@ const baseUupgCard = {
   onEnabledChange: vi.fn(),
 };
 
+const baseHotspotsCard = {
+  enabled: false,
+  supported: true,
+  metric: "unique_uupgs" as const,
+  countryCount: 10,
+  minCountryCount: 1,
+  maxCountryCount: 500,
+  onEnabledChange: vi.fn(),
+  onMetricChange: vi.fn(),
+  onCountryCountChange: vi.fn(),
+};
+
 describe("DatasetViewSwitchGrid", () => {
   it("uses a short fallback for Globe when no description is configured", () => {
     expect(getRegionTooltipText("Globe", "   ", ["Albania", "Brazil"])).toBe(
@@ -97,12 +109,13 @@ describe("DatasetViewSwitchGrid", () => {
         countryCard={baseCountryCard}
         watchlistCard={baseWatchlistCard}
         uupgCard={baseUupgCard}
+        hotspotsCard={baseHotspotsCard}
       />,
     );
 
     expect(screen.getByText("Filters")).toBeTruthy();
     expect(screen.getByText("No regions configured")).toBeTruthy();
-    expect(screen.getAllByText("Off")).toHaveLength(2);
+    expect(screen.getAllByText("Off")).toHaveLength(3);
     expect(screen.getByText("3 visible countries")).toBeTruthy();
     expect(screen.queryByLabelText("Toggle Country")).toBeNull();
     expect(
@@ -122,6 +135,7 @@ describe("DatasetViewSwitchGrid", () => {
         countryCard={baseCountryCard}
         watchlistCard={{ ...baseWatchlistCard, enabled: true }}
         uupgCard={baseUupgCard}
+        hotspotsCard={baseHotspotsCard}
       />,
     );
 
@@ -165,6 +179,7 @@ describe("DatasetViewSwitchGrid", () => {
         countryCard={baseCountryCard}
         watchlistCard={baseWatchlistCard}
         uupgCard={baseUupgCard}
+        hotspotsCard={baseHotspotsCard}
       />,
     );
 
@@ -208,6 +223,7 @@ describe("DatasetViewSwitchGrid", () => {
         countryCard={baseCountryCard}
         watchlistCard={baseWatchlistCard}
         uupgCard={baseUupgCard}
+        hotspotsCard={baseHotspotsCard}
       />,
     );
 
@@ -247,6 +263,7 @@ describe("DatasetViewSwitchGrid", () => {
         countryCard={baseCountryCard}
         watchlistCard={baseWatchlistCard}
         uupgCard={baseUupgCard}
+        hotspotsCard={baseHotspotsCard}
       />,
     );
 
@@ -264,6 +281,7 @@ describe("DatasetViewSwitchGrid", () => {
         }}
         watchlistCard={baseWatchlistCard}
         uupgCard={baseUupgCard}
+        hotspotsCard={baseHotspotsCard}
       />,
     );
 
@@ -288,6 +306,7 @@ describe("DatasetViewSwitchGrid", () => {
         countryCard={baseCountryCard}
         watchlistCard={baseWatchlistCard}
         uupgCard={baseUupgCard}
+        hotspotsCard={baseHotspotsCard}
       />,
     );
 
@@ -312,6 +331,7 @@ describe("DatasetViewSwitchGrid", () => {
       countryCard: baseCountryCard,
       watchlistCard: baseWatchlistCard,
       uupgCard: baseUupgCard,
+      hotspotsCard: baseHotspotsCard,
     };
     const { rerender } = render(<DatasetViewSwitchGrid {...props} />);
 
@@ -334,6 +354,7 @@ describe("DatasetViewSwitchGrid", () => {
         countryCard={baseCountryCard}
         watchlistCard={baseWatchlistCard}
         uupgCard={baseUupgCard}
+        hotspotsCard={baseHotspotsCard}
       />,
     );
 
@@ -357,17 +378,18 @@ describe("DatasetViewSwitchGrid", () => {
             "<.1% Christian Adherents and no confirmed sustained movement.",
         }}
         uupgCard={baseUupgCard}
+        hotspotsCard={baseHotspotsCard}
       />,
     );
 
     expect(
-      screen.queryByLabelText("Watchlist Christianity: GSEC threshold"),
+      screen.queryByLabelText("Christianity: GSEC"),
     ).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "Watchlist filters" }));
 
     const thresholdInput = screen.getByLabelText(
-      "Watchlist Christianity: GSEC threshold",
+      "Christianity: GSEC",
     ) as HTMLInputElement;
     const thresholdLabel = screen.getByText("Christianity: GSEC");
     const frontierLabel = screen.getByText("Christianity: Frontier Group Y/N");
@@ -383,7 +405,7 @@ describe("DatasetViewSwitchGrid", () => {
       "[data-slot='number-field-operator']",
     ) as HTMLElement | null;
     const thresholdDecrement = screen.getByLabelText(
-      "Decrease Christianity: GSEC threshold",
+      "Decrease Christianity: GSEC",
     );
 
     expect(
@@ -437,7 +459,7 @@ describe("DatasetViewSwitchGrid", () => {
         "Open the popup editor to adjust breakpoints, minimum believers, and the scenario test dot.",
       ),
     ).toBeTruthy();
-    expect(screen.getByLabelText("Watchlist Engage: 8 Phases of Engagement threshold")).toBeTruthy();
+    expect(screen.getByLabelText("Engage: 8 Phases of Engagement")).toBeTruthy();
   });
 
   it("keeps country search interactive and auto-enables the filter on selection", () => {
@@ -469,6 +491,7 @@ describe("DatasetViewSwitchGrid", () => {
         }}
         watchlistCard={baseWatchlistCard}
         uupgCard={baseUupgCard}
+        hotspotsCard={baseHotspotsCard}
       />,
     );
 
@@ -509,6 +532,7 @@ describe("DatasetViewSwitchGrid", () => {
         }}
         watchlistCard={baseWatchlistCard}
         uupgCard={baseUupgCard}
+        hotspotsCard={baseHotspotsCard}
       />,
     );
 
@@ -536,6 +560,7 @@ describe("DatasetViewSwitchGrid", () => {
           onFrontierGroupValueChange,
         }}
         uupgCard={baseUupgCard}
+        hotspotsCard={baseHotspotsCard}
       />,
     );
 
@@ -577,6 +602,7 @@ describe("DatasetViewSwitchGrid", () => {
         countryCard={baseCountryCard}
         watchlistCard={{ ...baseWatchlistCard, enabled: true }}
         uupgCard={baseUupgCard}
+        hotspotsCard={baseHotspotsCard}
       />,
     );
 
@@ -605,6 +631,7 @@ describe("DatasetViewSwitchGrid", () => {
         countryCard={baseCountryCard}
         watchlistCard={{ ...baseWatchlistCard, enabled: true }}
         uupgCard={baseUupgCard}
+        hotspotsCard={baseHotspotsCard}
       />,
     );
 
@@ -642,6 +669,7 @@ describe("DatasetViewSwitchGrid", () => {
           },
         }}
         uupgCard={baseUupgCard}
+        hotspotsCard={baseHotspotsCard}
       />,
     );
 
@@ -678,6 +706,7 @@ describe("DatasetViewSwitchGrid", () => {
           fieldLabel: "Engage: Global Engagement Anywhere? (Y/N)",
           fieldDefinition: "Tracks whether engagement exists anywhere.",
         }}
+        hotspotsCard={baseHotspotsCard}
       />,
     );
 
@@ -701,6 +730,41 @@ describe("DatasetViewSwitchGrid", () => {
     ).toBeTruthy();
   });
 
+  it("summarizes and edits hotspots controls when the section is enabled", () => {
+    const onMetricChange = vi.fn();
+    const onCountryCountChange = vi.fn();
+
+    render(
+      <DatasetViewSwitchGrid
+        regionCard={baseRegionCard}
+        countryCard={baseCountryCard}
+        watchlistCard={baseWatchlistCard}
+        uupgCard={baseUupgCard}
+        hotspotsCard={{
+          ...baseHotspotsCard,
+          enabled: true,
+          metric: "population",
+          countryCount: 10,
+          onMetricChange,
+          onCountryCountChange,
+        }}
+      />,
+    );
+
+    expect(screen.getByText("Top 10 countries by UUPG population")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Hotspots filters" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Set Hotspots ranking to Unique UUPGs" }),
+    );
+    fireEvent.change(screen.getByLabelText("Hotspots country count"), {
+      target: { value: "12" },
+    });
+
+    expect(onMetricChange).toHaveBeenCalledWith("unique_uupgs");
+    expect(onCountryCountChange).toHaveBeenCalledWith(12);
+  });
+
   it("shows unavailable summaries for unsupported filters", () => {
     render(
       <DatasetViewSwitchGrid
@@ -708,10 +772,11 @@ describe("DatasetViewSwitchGrid", () => {
         countryCard={{ ...baseCountryCard, supported: false }}
         watchlistCard={{ ...baseWatchlistCard, supported: false }}
         uupgCard={{ ...baseUupgCard, supported: false }}
+        hotspotsCard={{ ...baseHotspotsCard, supported: false }}
       />,
     );
 
-    expect(screen.getAllByText("Unavailable")).toHaveLength(4);
+    expect(screen.getAllByText("Unavailable")).toHaveLength(5);
   });
 
   it("applies custom classes to the root panel", () => {
@@ -722,6 +787,7 @@ describe("DatasetViewSwitchGrid", () => {
         countryCard={baseCountryCard}
         watchlistCard={baseWatchlistCard}
         uupgCard={baseUupgCard}
+        hotspotsCard={baseHotspotsCard}
       />,
     );
 

@@ -123,6 +123,11 @@ describe("/api/saved-tables", () => {
           evangelicalPopulationBelieversRuleEnabled: true,
           frontierGroupEnabled: true,
         },
+        hotspots: {
+          enabled: false,
+          metric: "unique_uupgs",
+          countryCount: 10,
+        },
       },
     });
   });
