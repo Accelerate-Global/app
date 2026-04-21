@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  AlertTriangleIcon,
   ChevronDownIcon,
   FlameIcon,
   InfoIcon,
@@ -21,6 +22,7 @@ import {
   NumberFieldInput,
 } from "@/components/reui/number-field";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { ButtonGroup } from "@/components/ui/button-group";
 import {
   Dialog,
@@ -154,6 +156,9 @@ const FILTER_PANEL_DESCRIPTIONS = {
 const INFO_TOOLTIP_CONTENT_CLASSNAME =
   "max-w-[26rem] rounded-2xl border border-border/80 bg-popover px-4 py-3.5 text-sm leading-6 text-popover-foreground shadow-lg ring-1 ring-foreground/8";
 const POPULATION_BELIEVERS_INLINE_SUMMARY_LIMIT = 3;
+const WATCHLIST_WARNING_TITLE = "Watchlist is not working correctly yet";
+const WATCHLIST_WARNING_DESCRIPTION =
+  "These filters can return incorrect results while the Watchlist logic is being fixed. Do not rely on this section yet.";
 
 function RegionCountriesInfo({
   label,
@@ -370,6 +375,8 @@ function FilterSection({
   summary,
   description,
   expanded,
+  titleAccessory,
+  notice,
   toggleControl,
   onExpandedChange,
   children,
@@ -380,6 +387,8 @@ function FilterSection({
   summary: string[];
   description: string;
   expanded: boolean;
+  titleAccessory?: ReactNode;
+  notice?: ReactNode;
   toggleControl?: ReactNode;
   onExpandedChange: (expanded: boolean) => void;
   children?: ReactNode;
@@ -405,6 +414,7 @@ function FilterSection({
               <span className="text-sm font-semibold tracking-[-0.02em] text-foreground">
                 {title}
               </span>
+              {titleAccessory}
               <span
                 className={cn(
                   "flex size-5 shrink-0 items-center justify-center rounded-full border border-border/70 bg-background/90 text-muted-foreground transition-colors group-hover:border-foreground/20 group-hover:text-foreground",
@@ -433,6 +443,7 @@ function FilterSection({
         <div id={panelId} className="border-t border-border/70 px-3 pb-3 pt-3">
           <div className="space-y-3">
             <p className="text-sm leading-5 text-muted-foreground">{description}</p>
+            {notice}
             {children}
           </div>
         </div>
@@ -848,6 +859,32 @@ function DatasetViewSwitchGridInner({
           summary={getWatchlistSummary(watchlistCard)}
           description={FILTER_PANEL_DESCRIPTIONS.watchlist}
           expanded={expandedSections.watchlist}
+          titleAccessory={
+            <Badge
+              variant="outline"
+              className="shrink-0 border-warning/30 bg-warning/10 text-warning-foreground"
+            >
+              Warning
+            </Badge>
+          }
+          notice={
+            watchlistCard.supported ? (
+              <div className="flex items-start gap-3 rounded-xl border border-warning/25 bg-warning/10 p-3 text-left">
+                <AlertTriangleIcon
+                  aria-hidden="true"
+                  className="mt-0.5 size-4 shrink-0 text-warning-foreground"
+                />
+                <div className="space-y-1">
+                  <p className="text-sm font-semibold leading-5 text-warning-foreground">
+                    {WATCHLIST_WARNING_TITLE}
+                  </p>
+                  <p className="text-sm leading-5 text-warning-foreground">
+                    {WATCHLIST_WARNING_DESCRIPTION}
+                  </p>
+                </div>
+              </div>
+            ) : null
+          }
           onExpandedChange={(expanded) =>
             setExpandedSections((current) => ({ ...current, watchlist: expanded }))
           }
