@@ -75,6 +75,7 @@ const dataset = {
   blobUrl: "https://example.com/dataset.csv",
   blobPath: "datasets/global.csv",
   isPrimary: true,
+  isPublic: true,
   status: "ready",
   rowCount: 2,
   sizeBytes: 512,

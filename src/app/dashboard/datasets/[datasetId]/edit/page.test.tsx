@@ -57,6 +57,7 @@ function createDataset(overrides: Record<string, unknown> = {}) {
     blobUrl: "https://example.com/global.csv",
     blobPath: "datasets/global.csv",
     isPrimary: true,
+    isPublic: true,
     status: "ready" as const,
     rowCount: 10,
     sizeBytes: 100,
@@ -177,7 +178,12 @@ describe("/dashboard/datasets/[datasetId]/edit", () => {
       workspaceRole: string;
     };
 
-    expect(listDatasetsMock).toHaveBeenCalledWith();
+    expect(getDatasetMock).toHaveBeenCalledWith("dataset-1", {
+      includeDisabled: true,
+    });
+    expect(listDatasetsMock).toHaveBeenCalledWith({
+      includeDisabled: true,
+    });
     expect(listDatasetVersionsMock).toHaveBeenCalledWith("dataset-1");
     expect(props.initialDataset.fileName).toBe("Global");
     expect(props.initialVersions).toEqual([createVersion()]);

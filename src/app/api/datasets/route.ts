@@ -11,7 +11,9 @@ export async function GET() {
     return jsonError("Unauthorized.", 401);
   }
 
-  const datasets = await listDatasets();
+  const datasets = await listDatasets({
+    includeDisabled: identity.isDatasetAdmin,
+  });
   return Response.json({ datasets });
 }
 

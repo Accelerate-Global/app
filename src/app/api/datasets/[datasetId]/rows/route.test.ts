@@ -83,6 +83,7 @@ describe("/api/datasets/[datasetId]/rows", () => {
       filter: "ada",
       sortColumn: "email",
       sortDirection: "desc",
+      includeDisabled: false,
     });
   });
 
@@ -120,6 +121,7 @@ describe("/api/datasets/[datasetId]/rows", () => {
     await expect(response.json()).resolves.toEqual(allRowsResponse);
     expect(getAllDatasetRowsMock).toHaveBeenCalledWith({
       datasetId: "f0000000-0000-4000-8000-000000000001",
+      includeDisabled: false,
     });
     expect(getDatasetRowsMock).not.toHaveBeenCalled();
   });

@@ -151,6 +151,13 @@ export const DEFAULT_SUPABASE_PORT_RELEASE_WAIT = {
 } as const;
 export const DEFAULT_UI_SMOKE_SUPABASE_START_TIMEOUT_MS = 120_000;
 export const CI_UI_SMOKE_SUPABASE_START_TIMEOUT_MS = 300_000;
+export const UI_SMOKE_DB_RESET_ARGS = [
+  "db",
+  "reset",
+  "--local",
+  "--no-seed",
+  "--yes",
+] as const;
 
 export function getUiSmokeSupabaseStartTimeoutMs(
   environment: NodeJS.ProcessEnv = process.env,
@@ -663,7 +670,7 @@ async function main() {
     classification: "bootstrap",
     message: "supabase db reset failed.",
     command: "supabase",
-    args: ["db", "reset", "--local", "--yes"],
+    args: [...UI_SMOKE_DB_RESET_ARGS],
     captureOutput: true,
     attempts: 3,
     retryDelayMs: 2_000,

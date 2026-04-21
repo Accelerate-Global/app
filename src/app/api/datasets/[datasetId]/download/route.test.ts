@@ -81,6 +81,7 @@ const physicalDataset = {
     "https://example.supabase.co/storage/v1/object/datasets/datasets/csv/customers.csv",
   blobPath: "datasets/csv/customers.csv",
   isPrimary: false,
+  isPublic: true,
   status: "ready" as const,
   rowCount: 10,
   sizeBytes: 100,
@@ -225,6 +226,9 @@ describe("/api/datasets/[datasetId]/download", () => {
     expect(createSignedUrlMock).toHaveBeenCalledWith(physicalDataset.blobPath, 60, {
       download: physicalDataset.fileName,
     });
+    expect(getDatasetMock).toHaveBeenCalledWith(physicalDataset.id, {
+      includeDisabled: false,
+    });
     expect(getAllDatasetRowsMock).not.toHaveBeenCalled();
   });
 
@@ -274,6 +278,7 @@ describe("/api/datasets/[datasetId]/download", () => {
     expect(createSupabaseAdminClientMock).not.toHaveBeenCalled();
     expect(getAllDatasetRowsMock).toHaveBeenCalledWith({
       datasetId: derivedDataset.id,
+      includeDisabled: false,
     });
   });
 

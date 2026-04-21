@@ -352,31 +352,6 @@ function normalizeDatasetColumnIdentity(value: string) {
     .replace(/^_|_$/g, "");
 }
 
-function compareDatasetColumnsByLabel(
-  left: DatasetSummary["columns"][number],
-  right: DatasetSummary["columns"][number],
-  fieldDefinitionPresentationByColumnKey: Record<string, FieldDefinitionPresentation>,
-) {
-  const leftLabel = getDatasetColumnDisplayLabel(
-    left,
-    fieldDefinitionPresentationByColumnKey,
-  );
-  const rightLabel = getDatasetColumnDisplayLabel(
-    right,
-    fieldDefinitionPresentationByColumnKey,
-  );
-  const labelComparison = leftLabel.localeCompare(rightLabel, undefined, {
-    sensitivity: "base",
-    numeric: true,
-  });
-
-  if (labelComparison !== 0) {
-    return labelComparison;
-  }
-
-  return left.sourceIndex - right.sourceIndex;
-}
-
 function getPriorityColumnIndex(input: {
   column: DatasetSummary["columns"][number];
   fieldDefinitionPresentationByColumnKey: Record<string, FieldDefinitionPresentation>;
@@ -425,13 +400,9 @@ export function getSortedVisibleDatasetColumns(input: {
     ...prioritizedColumns.flatMap((columns) =>
       [...columns].sort((left, right) => left.sourceIndex - right.sourceIndex),
     ),
-    ...remainingColumns.sort((left, right) =>
-      compareDatasetColumnsByLabel(
-        left,
-        right,
-        input.fieldDefinitionPresentationByColumnKey,
-      ),
-    ),
+    // Keep the remaining columns in dataset/source order so the dataset detail
+    // table matches the column-selection UI and uploaded CSV structure.
+    ...remainingColumns.sort((left, right) => left.sourceIndex - right.sourceIndex),
   ];
 }
 

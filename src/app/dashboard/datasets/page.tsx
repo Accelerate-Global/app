@@ -10,7 +10,9 @@ export default async function DatasetsIndexPage() {
     redirect("/");
   }
 
-  const dataset = await getDefaultDataset();
+  const dataset = await getDefaultDataset({
+    includeDisabled: identity.isDatasetAdmin,
+  });
 
   if (!dataset) {
     redirect("/dashboard");

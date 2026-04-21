@@ -91,6 +91,7 @@ const dataset = {
     "https://example.supabase.co/storage/v1/object/datasets/datasets/csv/customers.csv",
   blobPath: "datasets/csv/customers.csv",
   isPrimary: false,
+  isPublic: true,
   status: "ready" as const,
   rowCount: 10,
   sizeBytes: 100,
@@ -131,6 +132,9 @@ describe("/api/datasets/[datasetId]", () => {
     );
 
     expect(response.status).toBe(404);
+    expect(getDatasetMock).toHaveBeenCalledWith(dataset.id, {
+      includeDisabled: true,
+    });
   });
 
   it("updates status only for the configured admin", async () => {
@@ -201,6 +205,7 @@ describe("/api/datasets/[datasetId]", () => {
           color: "#8f9f6f",
         },
       ],
+      isPublic: undefined,
       hiddenColumnKeys: ["email"],
     });
     expect(updateDatasetStatusMock).not.toHaveBeenCalled();
@@ -255,6 +260,33 @@ describe("/api/datasets/[datasetId]", () => {
       fileName: undefined,
       tags: undefined,
       isPrimary: true,
+      isPublic: undefined,
+      hiddenColumnKeys: undefined,
+    });
+  });
+
+  it("updates public dataset visibility for the configured admin", async () => {
+    updateDatasetDetailsMock.mockResolvedValue({
+      ...dataset,
+      isPrimary: false,
+      isPublic: false,
+    });
+
+    const response = await PATCH(
+      new Request("http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001", {
+        method: "PATCH",
+        body: JSON.stringify({ isPublic: false }),
+      }),
+      context,
+    );
+
+    expect(response.status).toBe(200);
+    expect(updateDatasetDetailsMock).toHaveBeenCalledWith({
+      datasetId: dataset.id,
+      fileName: undefined,
+      tags: undefined,
+      isPrimary: undefined,
+      isPublic: false,
       hiddenColumnKeys: undefined,
     });
   });
@@ -279,6 +311,7 @@ describe("/api/datasets/[datasetId]", () => {
       fileName: undefined,
       tags: undefined,
       isPrimary: undefined,
+      isPublic: undefined,
       hiddenColumnKeys: ["email"],
     });
   });

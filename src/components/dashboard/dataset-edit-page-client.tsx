@@ -16,6 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import type {
   DatasetSummary,
   DatasetTag,
@@ -72,6 +73,7 @@ type DatasetEditFormProps = {
     fileName: string;
     tags: DatasetTag[];
     isPrimary: boolean;
+    isPublic: boolean;
     hiddenColumnKeys: string[];
   }) => Promise<void>;
   onDeleteDataset: (datasetId: string) => Promise<void>;
@@ -93,6 +95,7 @@ async function updateDatasetRecord(input: {
   fileName: string;
   tags: DatasetTag[];
   isPrimary: boolean;
+  isPublic: boolean;
   hiddenColumnKeys: string[];
 }) {
   const response = await fetch(`/api/datasets/${input.datasetId}`, {
@@ -102,6 +105,7 @@ async function updateDatasetRecord(input: {
       fileName: input.fileName,
       tags: input.tags,
       isPrimary: input.isPrimary,
+      isPublic: input.isPublic,
       hiddenColumnKeys: input.hiddenColumnKeys,
     }),
   });
@@ -398,8 +402,12 @@ function DatasetEditForm({
   onRevertDatasetVersion,
 }: DatasetEditFormProps) {
   const isDerivedView = dataset.backingDatasetId != null;
+  const replaceButtonLabel = isDerivedView
+    ? "Replace backing dataset"
+    : "Replace dataset";
   const [fileName, setFileName] = useState(dataset.fileName);
   const [isPrimary, setIsPrimary] = useState(dataset.isPrimary);
+  const [isPublic, setIsPublic] = useState(dataset.isPublic);
   const [tags, setTags] = useState(() => normalizeDatasetTags(dataset.tags));
   const [hiddenColumnKeys, setHiddenColumnKeys] = useState(() =>
     normalizeDatasetHiddenColumnKeys(dataset.hiddenColumnKeys, dataset.columns),
@@ -429,6 +437,7 @@ function DatasetEditForm({
     JSON.stringify(normalizedHiddenColumnKeys) !==
     JSON.stringify(initialHiddenColumnKeys);
   const hasPrimaryChange = isPrimary !== dataset.isPrimary;
+  const hasPublicChange = isPublic !== dataset.isPublic;
   const isWorking = isSaving || isDeleting || revertingVersionId !== null;
   const canSave = Boolean(
     trimmedFileName &&
@@ -436,7 +445,8 @@ function DatasetEditForm({
       (trimmedFileName !== dataset.fileName ||
         hasTagChanges ||
         hasHiddenColumnChanges ||
-        hasPrimaryChange),
+        hasPrimaryChange ||
+        hasPublicChange),
   );
   const uploadedAt = useMemo(
     () => formatUploadedAt(dataset.createdAt),
@@ -578,7 +588,8 @@ function DatasetEditForm({
       trimmedFileName === dataset.fileName &&
       !hasTagChanges &&
       !hasHiddenColumnChanges &&
-      !hasPrimaryChange
+      !hasPrimaryChange &&
+      !hasPublicChange
     ) {
       setErrorMessage(null);
       return;
@@ -597,6 +608,7 @@ function DatasetEditForm({
         fileName: trimmedFileName,
         tags: normalizedTags,
         isPrimary,
+        isPublic,
         hiddenColumnKeys: normalizedHiddenColumnKeys,
       });
     } catch (error) {
@@ -677,6 +689,7 @@ function DatasetEditForm({
               This dataset is a derived view backed by another dataset. You can
               still edit its name, tags, displayed fields, and default preset, but
               it cannot be primary and does not manage upload history directly.
+              Replacing the backing dataset will refresh this view too.
             </p>
           ) : null}
         </section>
@@ -700,15 +713,53 @@ function DatasetEditForm({
           </p>
         </section>
 
+        <section className="space-y-3 rounded-2xl border border-border bg-card px-4 py-4">
+          <div className="flex items-start justify-between gap-4">
+            <div className="space-y-1">
+              <label
+                className="text-sm font-medium text-foreground"
+                htmlFor="dataset-is-public"
+              >
+                Public dataset
+              </label>
+              <p className="text-sm text-muted-foreground">
+                Keep this enabled to show the dataset to non-admin viewers across
+                the dashboard, detail pages, downloads, and saved views.
+              </p>
+              {!isPublic ? (
+                <p className="text-sm text-muted-foreground">
+                  This dataset is currently hidden from non-admin viewers.
+                </p>
+              ) : null}
+            </div>
+
+            <Switch
+              id="dataset-is-public"
+              checked={isPublic}
+              disabled={isWorking}
+              aria-label="Set dataset visibility for viewers"
+              data-smoke-dataset-public-toggle
+              onCheckedChange={(checked) => {
+                setIsPublic(checked);
+                if (!checked) {
+                  setIsPrimary(false);
+                }
+              }}
+            />
+          </div>
+        </section>
+
         <section className="flex items-start justify-between gap-4">
           <div className="space-y-1">
             <p className="text-sm font-medium text-foreground">Primary dataset</p>
             <p className="text-sm text-muted-foreground">
               {isDerivedView
                 ? "Derived dataset views cannot be shown as the default source dataset."
+                : !isPublic
+                  ? "Hidden datasets cannot be shown as the default source dataset."
                 : "Show this dataset by default when someone opens Data."}
             </p>
-            {!isDerivedView ? (
+            {!isDerivedView && isPublic ? (
               <p className="text-sm leading-5 text-muted-foreground">
                 Only one dataset can be primary at a time. Selecting this clears
                 the primary flag from any other dataset.
@@ -719,7 +770,7 @@ function DatasetEditForm({
           <Checkbox
             id="dataset-is-primary"
             checked={isPrimary}
-            disabled={isWorking || isDerivedView}
+            disabled={isWorking || isDerivedView || !isPublic}
             onCheckedChange={(checked) => setIsPrimary(!!checked)}
             aria-label="Set dataset as primary"
           />
@@ -849,8 +900,9 @@ function DatasetEditForm({
 
           {isDerivedView ? (
             <div className="rounded-2xl border border-dashed border-border px-4 py-4 text-sm text-muted-foreground">
-              Replace and revert actions are only available on the backing source
-              dataset.
+              Use <span className="font-medium text-foreground">{replaceButtonLabel}</span>{" "}
+              to upload a new source CSV for this view. Revert remains available
+              only on the backing source dataset.
             </div>
           ) : isLoadingVersions ? (
             <div className="rounded-2xl border border-border bg-card px-4 py-4 text-sm text-muted-foreground">
@@ -953,11 +1005,11 @@ function DatasetEditForm({
             type="button"
             variant="outline"
             className="w-full sm:w-auto"
-            disabled={isWorking || isDerivedView}
+            disabled={isWorking}
             data-smoke-dataset-replace
             onClick={onReplaceDataset}
           >
-            Replace dataset
+            {replaceButtonLabel}
           </Button>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
             <Button
@@ -1027,6 +1079,7 @@ export function DatasetEditPageClient({
     fileName: string;
     tags: DatasetTag[];
     isPrimary: boolean;
+    isPublic: boolean;
     hiddenColumnKeys: string[];
   }) {
     if (isSaving || isDeleting || revertingVersionId !== null) {
@@ -1046,6 +1099,8 @@ export function DatasetEditPageClient({
           dataset_id: input.datasetId,
           renamed: input.fileName !== dataset.fileName,
           primary_changed: input.isPrimary !== dataset.isPrimary,
+          visibility_changed: input.isPublic !== dataset.isPublic,
+          is_public: input.isPublic,
           hidden_column_count: input.hiddenColumnKeys.length,
           tag_count: input.tags.length,
           duration_ms: Date.now() - saveStartTime,
@@ -1062,6 +1117,8 @@ export function DatasetEditPageClient({
           dataset_id: input.datasetId,
           renamed: input.fileName !== dataset.fileName,
           primary_changed: input.isPrimary !== dataset.isPrimary,
+          visibility_changed: input.isPublic !== dataset.isPublic,
+          is_public: input.isPublic,
           hidden_column_count: input.hiddenColumnKeys.length,
           tag_count: input.tags.length,
           duration_ms: Date.now() - saveStartTime,
@@ -1194,7 +1251,11 @@ export function DatasetEditPageClient({
       onCancel={() => router.push("/dashboard")}
       onSaveDataset={handleSaveDataset}
       onDeleteDataset={handleDeleteDataset}
-      onReplaceDataset={() => router.push(`/dashboard/upload?replace=${dataset.id}`)}
+      onReplaceDataset={() =>
+        router.push(
+          `/dashboard/upload?replace=${dataset.backingDatasetId ?? dataset.id}`,
+        )
+      }
       onRevertDatasetVersion={handleRevertDatasetVersion}
     />
   );
