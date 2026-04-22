@@ -136,7 +136,7 @@ describe("change-impact", () => {
 
   it("tracks which verification commands own the local Supabase lifecycle", () => {
     expect(verificationCommandCatalog["test:ui:smoke"].supabaseLifecycle).toBe(
-      "runner-managed",
+      "prestart-required",
     );
     expect(verificationCommandCatalog["db:security"].supabaseLifecycle).toBe(
       "self-managed",

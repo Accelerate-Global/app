@@ -168,6 +168,12 @@ describe("analytics helpers", () => {
     expect(isAppAnalyticsEventName("filter_region_deleted")).toBe(false);
   });
 
+  it("does not recognize removed dataset preset analytics events", () => {
+    expect(isAppAnalyticsEventName("dataset_open_preset_saved")).toBe(false);
+    expect(isAppAnalyticsEventName("dataset_open_preset_cleared")).toBe(false);
+    expect(isAppAnalyticsEventName("dataset_open_preset_used")).toBe(false);
+  });
+
   it("exposes filtered dataset assignment analytics event property keys", () => {
     expect(getAnalyticsEventPropertyKeys("dataset_assigned")).toEqual([
       "source_dataset_id",

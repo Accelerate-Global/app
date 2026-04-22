@@ -31,12 +31,9 @@ import type {
 import { countDatasetDefaultRows } from "@/lib/dataset-default-view";
 import { normalizeDatasetHiddenColumnKeys } from "@/lib/dataset-column-visibility";
 import { getDatasetStorageObjectUrl } from "@/lib/dataset-storage";
-import { getDatasetOpenPresetTag, normalizeDatasetTags } from "@/lib/dataset-tags";
+import { normalizeDatasetTags } from "@/lib/dataset-tags";
 import { syncFieldDefinitionsForColumns } from "@/lib/field-definitions";
-import {
-  getUnsupportedDatasetOpenPresetSections,
-  normalizeSavedDatasetFilterState,
-} from "@/lib/saved-dataset-filters";
+import { normalizeSavedDatasetFilterState } from "@/lib/saved-dataset-filters";
 
 type DbExecutor = Parameters<Parameters<ReturnType<typeof getDb>["transaction"]>[0]>[0];
 type DatasetRecord = typeof datasets.$inferSelect;
@@ -63,7 +60,7 @@ function toDatasetSummary(row: DatasetRecord): DatasetSummary {
     defaultFilters: row.defaultFilters
       ? normalizeSavedDatasetFilterState(row.defaultFilters)
       : null,
-    tags: row.tags,
+    tags: normalizeDatasetTags(row.tags),
     error: row.error,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
@@ -112,15 +109,6 @@ export class DatasetVersionRevertConflictError extends Error {
   constructor(message = "Only ready dataset versions can be reverted.") {
     super(message);
     this.name = "DatasetVersionRevertConflictError";
-  }
-}
-
-export class DatasetOpenPresetCompatibilityError extends Error {
-  readonly status = 400;
-
-  constructor(message = "The dataset open preset is not supported by this dataset.") {
-    super(message);
-    this.name = "DatasetOpenPresetCompatibilityError";
   }
 }
 
@@ -436,7 +424,6 @@ async function refreshDerivedDatasets(input?: {
               defaultFilters: derivedDataset.defaultFilters
                 ? normalizeSavedDatasetFilterState(derivedDataset.defaultFilters)
                 : null,
-              tags: normalizeDatasetTags(derivedDataset.tags),
             },
             rows: sourceRows,
             regions,
@@ -619,23 +606,7 @@ export async function updateDatasetDetails(input: {
     }
 
     if (input.tags !== undefined) {
-      const normalizedTags = normalizeDatasetTags(input.tags);
-      const presetTag = getDatasetOpenPresetTag(normalizedTags);
-
-      if (presetTag?.openPreset) {
-        const unsupportedSections = getUnsupportedDatasetOpenPresetSections(
-          existingDataset,
-          presetTag.openPreset,
-        );
-
-        if (unsupportedSections.length > 0) {
-          throw new DatasetOpenPresetCompatibilityError(
-            `The "${presetTag.label}" preset requires ${unsupportedSections.join(", ")} filtering support on this dataset.`,
-          );
-        }
-      }
-
-      updates.tags = normalizedTags;
+      updates.tags = normalizeDatasetTags(input.tags);
     }
 
     if (input.hiddenColumnKeys !== undefined) {
@@ -747,7 +718,6 @@ export async function assignDatasetDerivedView(input: {
           dataset: {
             columns: sourceDataset.columns,
             defaultFilters: normalizedFilters,
-            tags: normalizeDatasetTags(targetDataset.tags),
           },
           rows: sourceRows,
           regions,

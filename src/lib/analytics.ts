@@ -162,19 +162,6 @@ export type AppAnalyticsEventMap = {
     saved_row_count: number;
     filter_sections_enabled: string;
   };
-  dataset_open_preset_saved: AppAnalyticsEventBase & {
-    dataset_id: string;
-    tag_id: string;
-    filter_sections_enabled: string;
-  };
-  dataset_open_preset_cleared: AppAnalyticsEventBase & {
-    dataset_id: string;
-    tag_id?: string;
-  };
-  dataset_open_preset_used: AppAnalyticsEventBase & {
-    dataset_id: string;
-    tag_id: string;
-  };
   dataset_reordered: AppAnalyticsEventBase & {
     dataset_count: number;
   };
@@ -325,9 +312,6 @@ export const APP_ANALYTICS_EVENT_NAMES = [
   "saved_table_created",
   "saved_table_updated",
   "saved_table_deleted",
-  "dataset_open_preset_saved",
-  "dataset_open_preset_cleared",
-  "dataset_open_preset_used",
   "dataset_reordered",
   "dataset_upload_started",
   "dataset_upload_completed",
@@ -425,9 +409,6 @@ const APP_ANALYTICS_EVENT_PROPERTY_KEYS = {
   saved_table_created: ["saved_row_count", "filter_sections_enabled"],
   saved_table_updated: ["saved_row_count", "filter_sections_enabled"],
   saved_table_deleted: ["saved_row_count", "filter_sections_enabled"],
-  dataset_open_preset_saved: ["tag_id", "filter_sections_enabled"],
-  dataset_open_preset_cleared: ["tag_id"],
-  dataset_open_preset_used: ["tag_id"],
   dataset_reordered: ["dataset_count"],
   dataset_upload_started: ["file_size_bytes", "replace_target_dataset_id"],
   dataset_upload_completed: ["file_size_bytes", "column_count", "row_count"],

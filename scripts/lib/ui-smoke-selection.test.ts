@@ -42,6 +42,14 @@ describe("ui-smoke-selection", () => {
     expect(selection.summary[0]).toContain("Full suite required");
   });
 
+  it("keeps explicitly global support files on the full suite path", () => {
+    const selection = resolveUiSmokeSelection(["tests/ui/support/project-context.ts"]);
+
+    expect(selection.mode).toBe("full");
+    expect(selection.command).toBe("pnpm run test:ui:smoke");
+    expect(selection.summary[0]).toContain("Full suite required");
+  });
+
   it("targets field sources routes and journey for field source changes", () => {
     const selection = resolveUiSmokeSelection([
       "src/components/dashboard/field-sources-client.tsx",

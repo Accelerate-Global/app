@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { DatasetAssignDerivedViewSheet } from "@/components/dashboard/dataset-assign-derived-view-sheet";
-import { DatasetOpenPresetSheet } from "@/components/dashboard/dataset-open-preset-sheet";
 import { DatasetTableActionBar } from "@/components/dashboard/dataset-table-action-bar";
 import { DatasetTable } from "@/components/dashboard/dataset-table";
 import { DatasetViewSwitchGrid } from "@/components/dashboard/dataset-view-switch-grid";
@@ -19,7 +18,6 @@ import type {
   DatasetOpenPreset,
   SavedDatasetFilterState,
   DatasetSummary,
-  DatasetTag,
   FieldDefinitionPresentation,
   FilterRegion,
   DatasetHotspotsMetric,
@@ -34,7 +32,6 @@ import {
   withAnalyticsContext,
 } from "@/lib/analytics";
 import { trackAppEvent } from "@/lib/analytics-client";
-import { getDatasetOpenPresetTag, normalizeDatasetTags } from "@/lib/dataset-tags";
 import {
   UUPG_DATASET_COLUMN_KEY,
   WATCHLIST_DATASET_COLUMN_KEY,
@@ -58,7 +55,6 @@ import {
 import { getFieldDefinitionCanonicalKeyLookupKeys } from "@/lib/field-definition-canonical";
 import { isGlobalRegionName } from "@/lib/region-display";
 import {
-  buildDatasetOpenPreset,
   buildSavedDatasetFilterState,
   getInitialDatasetDetailState,
 } from "@/lib/saved-dataset-filters";
@@ -75,7 +71,6 @@ type DatasetDetailClientProps = {
   >;
   initialFilters?: DatasetOpenPreset | null;
   initialSorting?: SavedDatasetSort[] | null;
-  canManageOpenPresets?: boolean;
   assignableDatasets?: DatasetSummary[];
   actorOwnerId?: string;
   workspaceRole?: AnalyticsWorkspaceRole;
@@ -83,7 +78,6 @@ type DatasetDetailClientProps = {
   initialSavedTableId?: string | null;
   initialSavedTableRowCount?: number | null;
   initialSavedTableFilterSections?: SavedDatasetFilterState | null;
-  initialPresetTagId?: string | null;
 };
 
 const WATCHLIST_THRESHOLD_MIN = 0;
@@ -222,15 +216,6 @@ function getNextSelectedRegionIds(input: {
   return next;
 }
 
-async function getErrorMessage(response: Response, fallback: string) {
-  try {
-    const payload = (await response.json()) as { error?: string };
-    return payload.error || fallback;
-  } catch {
-    return fallback;
-  }
-}
-
 export function DatasetDetailClient({
   dataset,
   sourceRowCount = null,
@@ -238,7 +223,6 @@ export function DatasetDetailClient({
   fieldDefinitionPresentationByColumnKey,
   initialFilters = null,
   initialSorting = null,
-  canManageOpenPresets = false,
   assignableDatasets = [],
   actorOwnerId = "anonymous",
   workspaceRole = "anonymous",
@@ -246,7 +230,6 @@ export function DatasetDetailClient({
   initialSavedTableId = null,
   initialSavedTableRowCount = null,
   initialSavedTableFilterSections = null,
-  initialPresetTagId = null,
 }: DatasetDetailClientProps) {
   useDatasetPerfRenderTrace("DatasetDetailClient");
   const watchlistThresholdLabel =
@@ -305,21 +288,6 @@ export function DatasetDetailClient({
       }),
     [dataset, initialFilters, initialSorting, visibleRegions],
   );
-  const normalizedInitialDatasetTags = useMemo(
-    () => normalizeDatasetTags(dataset.tags),
-    [dataset.tags],
-  );
-  const initialPresetTag = useMemo(
-    () => getDatasetOpenPresetTag(normalizedInitialDatasetTags),
-    [normalizedInitialDatasetTags],
-  );
-  const [datasetTags, setDatasetTags] = useState<DatasetTag[]>(
-    () => normalizedInitialDatasetTags,
-  );
-  const [selectedOpenPresetTagId, setSelectedOpenPresetTagId] = useState<
-    string | null
-  >(() => initialPresetTag?.id ?? normalizedInitialDatasetTags[0]?.id ?? null);
-  const [isSavingOpenPreset, setIsSavingOpenPreset] = useState(false);
   const [regionEnabled, setRegionEnabled] = useState(initialState.regionEnabled);
   const [selectedRegionIds, setSelectedRegionIds] = useState<Record<string, boolean>>(
     () => initialState.selectedRegionIds,
@@ -364,7 +332,6 @@ export function DatasetDetailClient({
   const [isFiltersSheetOpen, setIsFiltersSheetOpen] = useState(false);
   const [isAssignDerivedViewSheetOpen, setIsAssignDerivedViewSheetOpen] =
     useState(false);
-  const [isOpenPresetSheetOpen, setIsOpenPresetSheetOpen] = useState(false);
   const analyticsContext = useMemo(
     () =>
       buildAnalyticsContext({
@@ -545,14 +512,25 @@ export function DatasetDetailClient({
   );
   useEffect(() => {
     const allowedCountryNames = new Set(datasetTable.availableCountryNames);
+    let cancelled = false;
 
-    setSelectedCountryNames((current) => {
-      const next = current.filter((countryName) =>
-        allowedCountryNames.has(countryName),
-      );
+    Promise.resolve().then(() => {
+      if (cancelled) {
+        return;
+      }
 
-      return next.length === current.length ? current : next;
+      setSelectedCountryNames((current) => {
+        const next = current.filter((countryName) =>
+          allowedCountryNames.has(countryName),
+        );
+
+        return next.length === current.length ? current : next;
+      });
     });
+
+    return () => {
+      cancelled = true;
+    };
   }, [datasetTable.availableCountryNames]);
 
   const applyCountrySelection = useCallback(
@@ -651,9 +629,6 @@ export function DatasetDetailClient({
   const handleOpenFilters = useCallback(() => {
     setIsFiltersSheetOpen(true);
   }, []);
-  const handleOpenOpenPreset = useCallback(() => {
-    setIsOpenPresetSheetOpen(true);
-  }, []);
   const handleOpenAssignDerivedView = useCallback(() => {
     setIsAssignDerivedViewSheetOpen(true);
   }, []);
@@ -693,22 +668,6 @@ export function DatasetDetailClient({
     initialSavedTableId,
     initialSavedTableRowCount,
   ]);
-
-  useEffect(() => {
-    if (!initialPresetTagId) {
-      return;
-    }
-
-    trackAppEvent(
-      "dataset_open_preset_used",
-      withAnalyticsContext(analyticsContext, {
-        source_surface: "dataset_detail_page",
-        success: true,
-        dataset_id: dataset.id,
-        tag_id: initialPresetTagId,
-      }),
-    );
-  }, [analyticsContext, dataset.id, initialPresetTagId]);
 
   const filterSnapshotKey = useMemo(
     () =>
@@ -829,89 +788,6 @@ export function DatasetDetailClient({
     watchlistThresholdEnabled,
   ]);
 
-  async function updateDatasetTags(nextTags: DatasetTag[]) {
-    const response = await fetch(`/api/datasets/${dataset.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        tags: nextTags,
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error(
-        await getErrorMessage(
-          response,
-          "The dataset open preset could not be updated.",
-        ),
-      );
-    }
-
-    const payload = (await response.json()) as {
-      dataset: DatasetSummary;
-    };
-
-    const nextNormalizedTags = normalizeDatasetTags(payload.dataset.tags);
-    setDatasetTags(nextNormalizedTags);
-
-    if (!nextNormalizedTags.some((tag) => tag.id === selectedOpenPresetTagId)) {
-      setSelectedOpenPresetTagId(nextNormalizedTags[0]?.id ?? null);
-    }
-  }
-
-  async function handleSaveOpenPreset() {
-    if (!selectedOpenPresetTagId) {
-      throw new Error("Select a tag before saving the open preset.");
-    }
-
-    setIsSavingOpenPreset(true);
-
-    try {
-      const nextOpenPreset = buildDatasetOpenPreset(savedFilters);
-      const nextTags = datasetTags.map((tag) =>
-        tag.id === selectedOpenPresetTagId
-          ? {
-              ...tag,
-              openPreset: nextOpenPreset,
-            }
-          : tag.openPreset
-            ? {
-                ...tag,
-                openPreset: undefined,
-              }
-            : tag,
-      );
-
-      await updateDatasetTags(nextTags);
-    } finally {
-      setIsSavingOpenPreset(false);
-    }
-  }
-
-  async function handleClearOpenPreset() {
-    const hasPreset = datasetTags.some((tag) => tag.openPreset !== undefined);
-
-    if (!hasPreset) {
-      return;
-    }
-
-    setIsSavingOpenPreset(true);
-
-    try {
-      await updateDatasetTags(
-        datasetTags.map((tag) =>
-          tag.openPreset !== undefined
-            ? {
-                ...tag,
-                openPreset: undefined,
-              }
-            : tag,
-        ),
-      );
-    } finally {
-      setIsSavingOpenPreset(false);
-    }
-  }
   const filterPanelProps = useMemo<Parameters<typeof DatasetViewSwitchGrid>[0]>(
     () => ({
       regionCard: {
@@ -1066,11 +942,6 @@ export function DatasetDetailClient({
                 ? handleOpenAssignDerivedView
                 : undefined
             }
-            onOpenOpenPreset={
-              canManageOpenPresets
-                ? handleOpenOpenPreset
-                : undefined
-            }
           />
           <DatasetTable
             table={datasetTable.table}
@@ -1081,21 +952,6 @@ export function DatasetDetailClient({
           />
         </div>
       </div>
-      {canManageOpenPresets ? (
-        <DatasetOpenPresetSheet
-          open={isOpenPresetSheetOpen}
-          onOpenChange={setIsOpenPresetSheetOpen}
-          dataset={dataset}
-          filters={savedFilters}
-          tags={datasetTags}
-          selectedTagId={selectedOpenPresetTagId}
-          isSaving={isSavingOpenPreset}
-          analyticsContext={analyticsContext}
-          onSelectedTagIdChange={setSelectedOpenPresetTagId}
-          onSave={handleSaveOpenPreset}
-          onClear={handleClearOpenPreset}
-        />
-      ) : null}
       {assignableDatasets.length > 0 ? (
         <DatasetAssignDerivedViewSheet
           open={isAssignDerivedViewSheetOpen}

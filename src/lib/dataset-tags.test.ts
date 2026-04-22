@@ -1,42 +1,18 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  getDatasetOpenPresetTag,
   getDatasetTagIdentity,
+  getReusableDatasetTags,
   normalizeDatasetTags,
 } from "@/lib/dataset-tags";
 
 describe("dataset-tags", () => {
-  it("normalizes tag open presets and keeps a single preset-bearing tag discoverable", () => {
+  it("normalizes dataset tag ids, labels, and colors", () => {
     const [tag] = normalizeDatasetTags([
       {
         id: " tag-1 ",
         label: " Watchlist ",
         color: "262531",
-        openPreset: {
-          region: {
-            enabled: false,
-            selectedRegionIds: [],
-            selectedRegionNames: [],
-            enabledCountryNames: [],
-          },
-          country: {
-            enabled: false,
-            selectedCountryNames: [],
-            includeAlternateCountries: false,
-          },
-          watchlist: {
-            enabled: true,
-            threshold: 2,
-            engagementPhaseThreshold: 6,
-            evangelicalBelieversThreshold: 50,
-            evangelicalPercentThreshold: 0.05,
-            frontierGroupValue: true,
-          },
-          uupg: {
-            enabled: false,
-          },
-        },
       },
     ]);
 
@@ -44,149 +20,43 @@ describe("dataset-tags", () => {
       id: "tag-1",
       label: "Watchlist",
       color: "#262531",
-      openPreset: {
-        region: {
-          enabled: false,
-          selectedRegionIds: [],
-          selectedRegionNames: [],
-          enabledCountryNames: [],
-        },
-        country: {
-          enabled: false,
-          selectedCountryNames: [],
-          includeAlternateCountries: false,
-        },
-        watchlist: {
-          enabled: true,
-          thresholdEnabled: true,
-          threshold: 2,
-          engagementPhaseEnabled: true,
-          engagementPhaseThreshold: 6,
-          evangelicalPopulationBelieversRuleEnabled: true,
-          evangelicalPopulationBelieversRule: {
-            tiers: [
-              {
-                minPopulation: 0,
-                maxPopulation: null,
-                minBelievers: 50,
-              },
-            ],
-          },
-          frontierGroupEnabled: true,
-          frontierGroupValue: true,
-        },
-        uupg: {
-          enabled: false,
-        },
-        hotspots: {
-          enabled: false,
-          metric: "unique_uupgs",
-          countryCount: 10,
-        },
-      },
     });
-    expect(getDatasetOpenPresetTag([tag])).toEqual(tag);
   });
 
-  it("includes the open preset payload in reusable tag identity", () => {
-    const baseTag = {
-      label: "Watchlist",
-      color: "#262531",
-    };
-
-    expect(getDatasetTagIdentity(baseTag)).not.toBe(
+  it("uses label and color to identify reusable tags", () => {
+    expect(
       getDatasetTagIdentity({
-        ...baseTag,
-        openPreset: {
-          region: {
-            enabled: false,
-            selectedRegionIds: [],
-            selectedRegionNames: [],
-            enabledCountryNames: [],
-          },
-          country: {
-            enabled: false,
-            selectedCountryNames: [],
-            includeAlternateCountries: false,
-          },
-          watchlist: {
-            enabled: true,
-            threshold: 2,
-            engagementPhaseThreshold: 6,
-            evangelicalBelieversThreshold: 50,
-            evangelicalPercentThreshold: 0.05,
-            frontierGroupValue: true,
-          },
-          uupg: {
-            enabled: false,
-          },
-        },
+        label: "Watchlist",
+        color: "#262531",
+      }),
+    ).toBe(
+      getDatasetTagIdentity({
+        label: " watchlist ",
+        color: "262531",
       }),
     );
   });
 
-  it("returns null when multiple preset-bearing tags are present", () => {
+  it("dedupes reusable tags by normalized label and color", () => {
     expect(
-      getDatasetOpenPresetTag([
+      getReusableDatasetTags([
         {
           id: "tag-1",
           label: "Watchlist",
           color: "#262531",
-          openPreset: {
-            region: {
-              enabled: false,
-              selectedRegionIds: [],
-              selectedRegionNames: [],
-              enabledCountryNames: [],
-            },
-            country: {
-              enabled: false,
-              selectedCountryNames: [],
-              includeAlternateCountries: false,
-            },
-            watchlist: {
-              enabled: true,
-              threshold: 2,
-              engagementPhaseThreshold: 6,
-              evangelicalBelieversThreshold: 50,
-              evangelicalPercentThreshold: 0.05,
-              frontierGroupValue: true,
-            },
-            uupg: {
-              enabled: false,
-            },
-          },
         },
         {
           id: "tag-2",
-          label: "UUPG",
-          color: "#fcab2a",
-          openPreset: {
-            region: {
-              enabled: false,
-              selectedRegionIds: [],
-              selectedRegionNames: [],
-              enabledCountryNames: [],
-            },
-            country: {
-              enabled: false,
-              selectedCountryNames: [],
-              includeAlternateCountries: false,
-            },
-            watchlist: {
-              enabled: false,
-              threshold: 2,
-              engagementPhaseThreshold: 6,
-              evangelicalBelieversThreshold: 50,
-              evangelicalPercentThreshold: 0.05,
-              frontierGroupValue: true,
-            },
-            uupg: {
-              enabled: true,
-            },
-          },
+          label: " watchlist ",
+          color: "262531",
         },
       ]),
-    ).toBeNull();
+    ).toEqual([
+      {
+        id: "tag-1",
+        label: "Watchlist",
+        color: "#262531",
+      },
+    ]);
   });
 });

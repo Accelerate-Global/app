@@ -45,7 +45,6 @@ type DatasetTableActionBarProps = {
   analyticsContext?: AppAnalyticsContext;
   onOpenFilters?: () => void;
   onOpenAssignDerivedView?: () => void;
-  onOpenOpenPreset?: () => void;
 };
 
 function downloadCsvFile(input: {
@@ -82,7 +81,6 @@ export function DatasetTableActionBar({
   }),
   onOpenFilters,
   onOpenAssignDerivedView,
-  onOpenOpenPreset,
 }: DatasetTableActionBarProps) {
   const [isSavingSavedTable, setIsSavingSavedTable] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -244,18 +242,6 @@ export function DatasetTableActionBar({
             >
               <PanelRightOpenIcon />
               Assign to dataset
-            </Button>
-          ) : null}
-          {onOpenOpenPreset ? (
-            <Button
-              type="button"
-              variant="outline"
-              data-smoke-trigger="dataset-open-preset-sheet"
-              data-smoke-write="safe"
-              onClick={onOpenOpenPreset}
-            >
-              <PanelRightOpenIcon />
-              Open preset
             </Button>
           ) : null}
         </div>

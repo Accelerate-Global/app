@@ -6,16 +6,19 @@ import {
   waitForWorkflowRun,
 } from "./lib/release";
 import { runCommand } from "./lib/command";
+import { getShipLocalDiff, type ShipLocalDiff } from "./lib/ship-local-changes";
 import {
   getTrackedFileTreeSha,
   isVerificationSatisfied,
   loadVerificationReceipt,
 } from "./lib/verification-receipts";
+import { recordVerificationTiming } from "./lib/verification-timing";
 
 const GIT_COMMAND_TIMEOUT_MS = 30_000;
 const GH_COMMAND_TIMEOUT_MS = 30_000;
 const DRIFT_CHECK_TIMEOUT_MS = 2 * 60_000;
 const REMOTE_SEED_TIMEOUT_MS = 5 * 60_000;
+const VERIFY_SHIP_LOCAL_TIMEOUT_MS = 30 * 60_000;
 const FIELD_SOURCE_SEED_INPUT_PATTERNS = [
   "scripts/seed-field-sources.ts",
   "src/lib/field-sources.ts",
@@ -134,19 +137,23 @@ async function ensureCleanWorktree() {
   }
 }
 
-async function ensureShipLocalVerificationReceipt(changedFiles: string[]) {
+async function ensureShipLocalVerificationReceipt(shipLocalDiff: ShipLocalDiff) {
   const rootDir = process.cwd();
   const treeSha = await getTrackedFileTreeSha(rootDir);
   const receipt = await loadVerificationReceipt({
     rootDir,
     treeSha,
-    changedFiles,
+    changedFiles: shipLocalDiff.changedFiles,
   });
 
   if (!isVerificationSatisfied(receipt, "verify:ship:local")) {
-    throw new Error(
-      "Ship requires a current `pnpm run verify:ship:local` pass on this tracked tree before merge work begins.",
+    logStage(
+      "Current tracked tree is missing a verify:ship:local receipt. Running pnpm run verify:ship:local...",
     );
+    await runCommand("pnpm", ["run", "verify:ship:local"], {
+      stdinMode: "ignore",
+      timeoutMs: VERIFY_SHIP_LOCAL_TIMEOUT_MS,
+    });
   }
 }
 
@@ -175,112 +182,132 @@ export async function shipPullRequest(input: { prNumber: string }) {
   if (!prNumber) {
     throw new Error("Usage: pnpm ship --pr <number>");
   }
+  const rootDir = process.cwd();
+  const startedAt = Date.now();
 
-  await ensureCleanWorktree();
+  try {
+    await ensureCleanWorktree();
 
-  logStage(`Looking up PR #${prNumber}...`);
-  let pullRequest = await getPullRequest(prNumber);
+    logStage(`Looking up PR #${prNumber}...`);
+    let pullRequest = await getPullRequest(prNumber);
 
-  if (pullRequest.baseRefName !== "main") {
-    throw new Error(`Ship only supports PRs targeting main. Received ${pullRequest.baseRefName}.`);
-  }
+    if (pullRequest.baseRefName !== "main") {
+      throw new Error(`Ship only supports PRs targeting main. Received ${pullRequest.baseRefName}.`);
+    }
 
-  const pullRequestFiles = await listPullRequestFiles(prNumber);
-  const needsRemoteFieldSourceSeed = shouldSeedRemoteFieldSourceRegistry(pullRequestFiles);
+    if (pullRequest.state !== "MERGED") {
+      logStage("Checking for a current verify:ship:local receipt...");
+      await ensureShipLocalVerificationReceipt(await getShipLocalDiff());
+    }
 
-  if (pullRequest.state !== "MERGED") {
-    logStage("Checking for a current verify:ship:local receipt...");
-    await ensureShipLocalVerificationReceipt(pullRequestFiles);
-  }
+    const pullRequestFiles = await listPullRequestFiles(prNumber);
+    const needsRemoteFieldSourceSeed = shouldSeedRemoteFieldSourceRegistry(pullRequestFiles);
 
-  logStage("Checking linked Supabase migration drift...");
-  await runCommand("pnpm", ["run", "db:check-migration-drift"], {
-    stdinMode: "ignore",
-    timeoutMs: DRIFT_CHECK_TIMEOUT_MS,
-  });
-
-  if (needsRemoteFieldSourceSeed) {
-    logStage("Ensuring the remote field-source registry is seeded...");
-    await runCommand("pnpm", ["run", "field-sources:seed:remote"], {
+    logStage("Checking linked Supabase migration drift...");
+    await runCommand("pnpm", ["run", "db:check-migration-drift"], {
       stdinMode: "ignore",
-      timeoutMs: REMOTE_SEED_TIMEOUT_MS,
+      timeoutMs: DRIFT_CHECK_TIMEOUT_MS,
     });
-  } else {
-    logStage("Skipping remote field-source seeding; PR does not touch field-source seed inputs.");
-  }
 
-  logStage(
-    `Preparing to ship PR #${pullRequest.number}: ${pullRequest.title} (${pullRequest.state}, ${pullRequest.headRefName}@${pullRequest.headRefOid})`,
-  );
+    if (needsRemoteFieldSourceSeed) {
+      logStage("Ensuring the remote field-source registry is seeded...");
+      await runCommand("pnpm", ["run", "field-sources:seed:remote"], {
+        stdinMode: "ignore",
+        timeoutMs: REMOTE_SEED_TIMEOUT_MS,
+      });
+    } else {
+      logStage("Skipping remote field-source seeding; PR does not touch field-source seed inputs.");
+    }
 
-  if (pullRequest.state !== "MERGED") {
-    logStage(`Waiting for PR checks on #${pullRequest.number}...`);
-    await waitForPullRequestChecks({
-      prNumber,
-      workflowNames: [
-        "App Quality",
-        "UI Smoke",
-        "Database Security",
-        "Dependency Audit",
-      ],
-    });
     logStage(
-      `Merging PR #${pullRequest.number} with head commit ${pullRequest.headRefOid}...`,
+      `Preparing to ship PR #${pullRequest.number}: ${pullRequest.title} (${pullRequest.state}, ${pullRequest.headRefName}@${pullRequest.headRefOid})`,
     );
-    await runCommand("gh", [
-      "pr",
-      "merge",
-      prNumber,
-      "--merge",
-      "--delete-branch",
-      "--match-head-commit",
-      pullRequest.headRefOid,
-    ], {
+
+    if (pullRequest.state !== "MERGED") {
+      logStage(`Waiting for PR checks on #${pullRequest.number}...`);
+      await waitForPullRequestChecks({
+        prNumber,
+        workflowNames: [
+          "App Quality",
+          "UI Smoke",
+          "Database Security",
+          "Dependency Audit",
+        ],
+      });
+      logStage(
+        `Merging PR #${pullRequest.number} with head commit ${pullRequest.headRefOid}...`,
+      );
+      await runCommand("gh", [
+        "pr",
+        "merge",
+        prNumber,
+        "--merge",
+        "--delete-branch",
+        "--match-head-commit",
+        pullRequest.headRefOid,
+      ], {
+        stdinMode: "ignore",
+        timeoutMs: GH_COMMAND_TIMEOUT_MS,
+      });
+      logStage(`Waiting for GitHub to report the merge commit for PR #${pullRequest.number}...`);
+      pullRequest = await waitForMerge(prNumber);
+    } else {
+      logStage(
+        `PR #${pullRequest.number} is already merged at ${pullRequest.mergeCommit?.oid ?? "unknown"}. Resuming post-merge release checks.`,
+      );
+    }
+
+    const mergeSha = pullRequest.mergeCommit?.oid;
+
+    if (!mergeSha) {
+      throw new Error("Merged PR is missing a merge commit SHA.");
+    }
+
+    logStage(`Syncing local main to ${mergeSha}...`);
+    await runCommand("git", ["switch", "main"], {
       stdinMode: "ignore",
-      timeoutMs: GH_COMMAND_TIMEOUT_MS,
+      timeoutMs: GIT_COMMAND_TIMEOUT_MS,
     });
-    logStage(`Waiting for GitHub to report the merge commit for PR #${pullRequest.number}...`);
-    pullRequest = await waitForMerge(prNumber);
-  } else {
-    logStage(
-      `PR #${pullRequest.number} is already merged at ${pullRequest.mergeCommit?.oid ?? "unknown"}. Resuming post-merge release checks.`,
-    );
+    await runCommand("git", ["pull", "--ff-only"], {
+      stdinMode: "ignore",
+      timeoutMs: GIT_COMMAND_TIMEOUT_MS,
+    });
+    await runCommand("git", ["branch", "-d", pullRequest.headRefName], {
+      allowFailure: true,
+      stdinMode: "ignore",
+      timeoutMs: GIT_COMMAND_TIMEOUT_MS,
+    });
+    await runCommand("git", ["remote", "prune", "origin"], {
+      stdinMode: "ignore",
+      timeoutMs: GIT_COMMAND_TIMEOUT_MS,
+    });
+
+    logStage(`Waiting for Release Health on ${mergeSha}...`);
+    await waitForWorkflowRun({
+      workflowName: "Release Health",
+      commitSha: mergeSha,
+    });
+
+    logStage(`PR #${pullRequest.number} shipped successfully.`);
+    logStage(`PR URL: ${pullRequest.url}`);
+    logStage(`Merge SHA: ${mergeSha}`);
+    await recordVerificationTiming({
+      rootDir,
+      scope: "ship-run",
+      name: "pnpm ship",
+      durationMs: Date.now() - startedAt,
+      status: "passed",
+    });
+  } catch (error) {
+    await recordVerificationTiming({
+      rootDir,
+      scope: "ship-run",
+      name: "pnpm ship",
+      durationMs: Date.now() - startedAt,
+      status: "failed",
+    });
+    throw error;
   }
-
-  const mergeSha = pullRequest.mergeCommit?.oid;
-
-  if (!mergeSha) {
-    throw new Error("Merged PR is missing a merge commit SHA.");
-  }
-
-  logStage(`Syncing local main to ${mergeSha}...`);
-  await runCommand("git", ["switch", "main"], {
-    stdinMode: "ignore",
-    timeoutMs: GIT_COMMAND_TIMEOUT_MS,
-  });
-  await runCommand("git", ["pull", "--ff-only"], {
-    stdinMode: "ignore",
-    timeoutMs: GIT_COMMAND_TIMEOUT_MS,
-  });
-  await runCommand("git", ["branch", "-d", pullRequest.headRefName], {
-    allowFailure: true,
-    stdinMode: "ignore",
-    timeoutMs: GIT_COMMAND_TIMEOUT_MS,
-  });
-  await runCommand("git", ["remote", "prune", "origin"], {
-    stdinMode: "ignore",
-    timeoutMs: GIT_COMMAND_TIMEOUT_MS,
-  });
-
-  logStage(`Waiting for Release Health on ${mergeSha}...`);
-  await waitForWorkflowRun({
-    workflowName: "Release Health",
-    commitSha: mergeSha,
-  });
-
-  logStage(`PR #${pullRequest.number} shipped successfully.`);
-  logStage(`PR URL: ${pullRequest.url}`);
-  logStage(`Merge SHA: ${mergeSha}`);
 }
 
 async function main() {

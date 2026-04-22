@@ -122,38 +122,6 @@ describe("DatasetTableActionBar", () => {
     expect(onOpenFilters).toHaveBeenCalledTimes(1);
   });
 
-  it("renders an admin-only open preset trigger in the action row", () => {
-    const onOpenOpenPreset = vi.fn();
-
-    render(
-      <DatasetTableActionBar
-        dataset={dataset}
-        filters={filters}
-        recordCount={12507}
-        getSortedRows={() => []}
-        visibleColumns={[]}
-        isLoading={false}
-        hasError={false}
-        fieldDefinitionPresentationByColumnKey={{}}
-        onOpenOpenPreset={onOpenOpenPreset}
-      />,
-    );
-
-    const actionRow = screen.getByRole("button", { name: "Download" }).parentElement;
-    const openPresetButton = screen.getByRole("button", { name: "Open preset" });
-
-    expect(actionRow?.contains(openPresetButton)).toBe(true);
-    expect(openPresetButton.getAttribute("data-smoke-trigger")).toBe(
-      "dataset-open-preset-sheet",
-    );
-    expect(screen.queryByText("Dataset open preset")).toBeNull();
-    expect(screen.queryByText("Preset tag")).toBeNull();
-
-    fireEvent.click(openPresetButton);
-
-    expect(onOpenOpenPreset).toHaveBeenCalledTimes(1);
-  });
-
   it("renders an admin-only assign trigger in the action row", () => {
     const onOpenAssignDerivedView = vi.fn();
 

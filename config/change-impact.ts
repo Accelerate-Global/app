@@ -2,7 +2,7 @@ import path from "node:path";
 
 import manifest from "./change-impact.manifest.json";
 
-export type SupabaseLifecycle = "none" | "runner-managed" | "self-managed";
+export type SupabaseLifecycle = "none" | "prestart-required" | "self-managed";
 
 export const verificationCommandCatalog = {
   typecheck: {
@@ -41,14 +41,14 @@ export const verificationCommandCatalog = {
     id: "test:ui:smoke",
     command: "pnpm run test:ui:smoke",
     description: "Run the full Playwright UI smoke suite against the local stack.",
-    supabaseLifecycle: "runner-managed",
+    supabaseLifecycle: "prestart-required",
   },
   "test:ui:smoke:targeted": {
     id: "test:ui:smoke:targeted",
     command: "pnpm run test:ui:smoke:targeted",
     description:
       "Run the current-worktree Playwright smoke subset before attempting the full suite.",
-    supabaseLifecycle: "runner-managed",
+    supabaseLifecycle: "prestart-required",
   },
   "db:security": {
     id: "db:security",

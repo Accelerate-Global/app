@@ -9,6 +9,7 @@ const {
   getTrackedFileTreeShaMock,
   loadVerificationReceiptMock,
   recordVerificationSuccessMock,
+  recordVerificationTimingMock,
   buildLocalVerificationPlanMock,
   executeLocalVerificationPlanMock,
 } = vi.hoisted(() => ({
@@ -20,6 +21,7 @@ const {
   getTrackedFileTreeShaMock: vi.fn(),
   loadVerificationReceiptMock: vi.fn(),
   recordVerificationSuccessMock: vi.fn(),
+  recordVerificationTimingMock: vi.fn(),
   buildLocalVerificationPlanMock: vi.fn(),
   executeLocalVerificationPlanMock: vi.fn(),
 }));
@@ -53,6 +55,10 @@ vi.mock("./lib/verification-receipts", () => ({
 vi.mock("./lib/local-verification", () => ({
   buildLocalVerificationPlan: buildLocalVerificationPlanMock,
   executeLocalVerificationPlan: executeLocalVerificationPlanMock,
+}));
+
+vi.mock("./lib/verification-timing", () => ({
+  recordVerificationTiming: recordVerificationTimingMock,
 }));
 
 const passingTestDelta = {
@@ -90,6 +96,7 @@ const report = {
 describe("verify-ship-local", () => {
   beforeEach(() => {
     vi.resetModules();
+    process.exitCode = undefined;
     runCommandMock.mockReset();
     analyzeUiSmokeContractsMock.mockReset();
     evaluateTestImpactMock.mockReset();
@@ -98,13 +105,34 @@ describe("verify-ship-local", () => {
     getTrackedFileTreeShaMock.mockReset();
     loadVerificationReceiptMock.mockReset();
     recordVerificationSuccessMock.mockReset();
+    recordVerificationTimingMock.mockReset();
     buildLocalVerificationPlanMock.mockReset();
     executeLocalVerificationPlanMock.mockReset();
 
-    runCommandMock.mockResolvedValue({
-      stdout: "scripts/ship.ts\0tests/ui/global.setup.ts\0",
-      stderr: "",
-      exitCode: 0,
+    runCommandMock.mockImplementation(async (command: string, args: string[]) => {
+      if (
+        command === "git" &&
+        args.join(" ") === "fetch --quiet --no-tags origin refs/heads/main:refs/remotes/origin/main"
+      ) {
+        return {
+          stdout: "",
+          stderr: "",
+          exitCode: 0,
+        };
+      }
+
+      if (
+        command === "git" &&
+        args.join(" ") === "diff --name-only -z origin/main...HEAD"
+      ) {
+        return {
+          stdout: "scripts/ship.ts\0tests/ui/global.setup.ts\0",
+          stderr: "",
+          exitCode: 0,
+        };
+      }
+
+      throw new Error(`Unexpected command: ${command} ${args.join(" ")}`);
     });
     analyzeUiSmokeContractsMock.mockResolvedValue({
       issues: [],
@@ -119,6 +147,59 @@ describe("verify-ship-local", () => {
     });
     executeLocalVerificationPlanMock.mockResolvedValue(undefined);
     recordVerificationSuccessMock.mockResolvedValue(undefined);
+    recordVerificationTimingMock.mockResolvedValue(undefined);
+  });
+
+  it("collects the branch diff report without loading receipts or executing commands", async () => {
+    const { collectShipLocalVerificationReport } = await import("./verify-ship-local");
+
+    const collection = await collectShipLocalVerificationReport();
+
+    expect(runCommandMock).toHaveBeenCalledWith(
+      "git",
+      [
+        "fetch",
+        "--quiet",
+        "--no-tags",
+        "origin",
+        "refs/heads/main:refs/remotes/origin/main",
+      ],
+      expect.objectContaining({
+        quiet: true,
+        stdinMode: "ignore",
+      }),
+    );
+    expect(runCommandMock).toHaveBeenCalledWith(
+      "git",
+      ["diff", "--name-only", "-z", "origin/main...HEAD"],
+      expect.objectContaining({
+        quiet: true,
+        stdinMode: "ignore",
+      }),
+    );
+    expect(collection).toEqual({
+      shipLocalDiff: {
+        baseRef: "origin/main",
+        headRef: "HEAD",
+        changedFiles: ["scripts/ship.ts", "tests/ui/global.setup.ts"],
+      },
+      changedFiles: [
+        {
+          path: "scripts/ship.ts",
+          status: "M",
+          displayPath: "scripts/ship.ts",
+        },
+        {
+          path: "tests/ui/global.setup.ts",
+          status: "M",
+          displayPath: "tests/ui/global.setup.ts",
+        },
+      ],
+      report,
+    });
+    expect(loadVerificationReceiptMock).not.toHaveBeenCalled();
+    expect(buildLocalVerificationPlanMock).not.toHaveBeenCalled();
+    expect(executeLocalVerificationPlanMock).not.toHaveBeenCalled();
   });
 
   it("records ship-local receipts against the committed branch diff to origin/main", async () => {
@@ -126,6 +207,20 @@ describe("verify-ship-local", () => {
 
     await runVerifyShipLocal();
 
+    expect(runCommandMock).toHaveBeenCalledWith(
+      "git",
+      [
+        "fetch",
+        "--quiet",
+        "--no-tags",
+        "origin",
+        "refs/heads/main:refs/remotes/origin/main",
+      ],
+      expect.objectContaining({
+        quiet: true,
+        stdinMode: "ignore",
+      }),
+    );
     expect(runCommandMock).toHaveBeenCalledWith(
       "git",
       ["diff", "--name-only", "-z", "origin/main...HEAD"],
@@ -144,6 +239,11 @@ describe("verify-ship-local", () => {
       changedFiles: ["scripts/ship.ts", "tests/ui/global.setup.ts"],
     });
     expect(printVerifyChangeReportMock).toHaveBeenCalledWith({
+      shipLocalDiff: {
+        baseRef: "origin/main",
+        headRef: "HEAD",
+        changedFiles: ["scripts/ship.ts", "tests/ui/global.setup.ts"],
+      },
       changedFiles: [
         {
           path: "scripts/ship.ts",
@@ -164,5 +264,55 @@ describe("verify-ship-local", () => {
       changedFiles: ["scripts/ship.ts", "tests/ui/global.setup.ts"],
       commandIds: ["verify:ship:local"],
     });
+    expect(executeLocalVerificationPlanMock).toHaveBeenCalledWith({
+      rootDir: process.cwd(),
+      treeSha: "tree-sha",
+      changedFiles: ["scripts/ship.ts", "tests/ui/global.setup.ts"],
+      plan: {
+        reusedCommands: [],
+        steps: [],
+      },
+      uiSmokeDiff: {
+        baseRef: "origin/main",
+        headRef: "HEAD",
+      },
+    });
+    expect(recordVerificationTimingMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        rootDir: process.cwd(),
+        treeSha: "tree-sha",
+        changedFiles: ["scripts/ship.ts", "tests/ui/global.setup.ts"],
+        scope: "verification-run",
+        name: "verify:ship:local",
+        status: "passed",
+      }),
+    );
+  });
+
+  it("records failed timing and skips receipts when the preflight report exits non-zero", async () => {
+    const { runVerifyShipLocal } = await import("./verify-ship-local");
+
+    createVerifyChangeReportMock.mockReturnValue({
+      ...report,
+      exitCode: 1 as const,
+    });
+
+    await runVerifyShipLocal();
+
+    expect(process.exitCode).toBe(1);
+    expect(getTrackedFileTreeShaMock).not.toHaveBeenCalled();
+    expect(loadVerificationReceiptMock).not.toHaveBeenCalled();
+    expect(buildLocalVerificationPlanMock).not.toHaveBeenCalled();
+    expect(executeLocalVerificationPlanMock).not.toHaveBeenCalled();
+    expect(recordVerificationSuccessMock).not.toHaveBeenCalled();
+    expect(recordVerificationTimingMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        rootDir: process.cwd(),
+        changedFiles: ["scripts/ship.ts", "tests/ui/global.setup.ts"],
+        scope: "verification-run",
+        name: "verify:ship:local",
+        status: "failed",
+      }),
+    );
   });
 });

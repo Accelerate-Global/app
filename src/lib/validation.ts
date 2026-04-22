@@ -196,25 +196,10 @@ const savedDatasetHotspotsFilterStateSchema = z.object({
     .default(DEFAULT_HOTSPOTS_COUNTRY_COUNT),
 });
 
-export const datasetOpenPresetSchema = z.object({
-  region: savedDatasetRegionFilterStateSchema,
-  country: savedDatasetCountryFilterStateSchema,
-  watchlist: savedDatasetWatchlistFilterStateSchema,
-  uupg: z.object({
-    enabled: z.boolean(),
-  }),
-  hotspots: savedDatasetHotspotsFilterStateSchema.optional().default({
-    enabled: false,
-    metric: DEFAULT_HOTSPOTS_METRIC,
-    countryCount: DEFAULT_HOTSPOTS_COUNTRY_COUNT,
-  }),
-});
-
 export const datasetTagSchema = z.object({
   id: z.string().trim().min(1).max(64),
   label: z.string().trim().min(1).max(40),
   color: z.string().trim().regex(/^#[0-9a-fA-F]{6}$/),
-  openPreset: datasetOpenPresetSchema.optional(),
 });
 
 export const savedDatasetFilterStateSchema = z.object({
@@ -307,19 +292,6 @@ export const datasetMetadataPatchSchema = z
       }
     }
 
-    if (value.tags) {
-      const presetTagCount = value.tags.filter(
-        (tag) => tag.openPreset !== undefined,
-      ).length;
-
-      if (presetTagCount > 1) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["tags"],
-          message: "Only one dataset tag can store an open preset.",
-        });
-      }
-    }
   });
 
 export const datasetReorderSchema = z.object({

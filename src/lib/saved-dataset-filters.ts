@@ -53,8 +53,6 @@ function dedupeRegionNames(values: string[]) {
   );
 }
 
-export type DatasetOpenPresetSection = keyof DatasetOpenPreset;
-
 export type InitialDatasetDetailState = {
   regionEnabled: boolean;
   selectedRegionIds: Record<string, boolean>;
@@ -342,56 +340,6 @@ export function getSavedDatasetFilterStateFromOpenPreset(
     ...normalizedPreset,
     sorting: [],
   });
-}
-
-export function getUnsupportedDatasetOpenPresetSections(
-  dataset: Pick<DatasetSummary, "columns">,
-  preset: DatasetOpenPreset | undefined | null,
-) {
-  const normalizedPreset = normalizeDatasetOpenPreset(preset);
-
-  if (!normalizedPreset) {
-    return [] as DatasetOpenPresetSection[];
-  }
-
-  const unsupportedSections: DatasetOpenPresetSection[] = [];
-
-  if (
-    normalizedPreset.region.enabled &&
-    !datasetSupportsRegionFiltering(dataset)
-  ) {
-    unsupportedSections.push("region");
-  }
-
-  if (
-    normalizedPreset.country.enabled &&
-    !datasetSupportsCountryFiltering(dataset)
-  ) {
-    unsupportedSections.push("country");
-  }
-
-  if (
-    normalizedPreset.watchlist.enabled &&
-    !datasetSupportsWatchlistFiltering(dataset)
-  ) {
-    unsupportedSections.push("watchlist");
-  }
-
-  if (
-    normalizedPreset.uupg.enabled &&
-    !datasetSupportsUupgFiltering(dataset)
-  ) {
-    unsupportedSections.push("uupg");
-  }
-
-  if (
-    normalizedPreset.hotspots?.enabled &&
-    !datasetSupportsHotspotsFiltering(dataset)
-  ) {
-    unsupportedSections.push("hotspots");
-  }
-
-  return unsupportedSections;
 }
 
 export function getInitialDatasetDetailState(input: {

@@ -12,7 +12,6 @@ import {
   filterDatasetRowsByUupg,
   filterDatasetRowsByWatchlist,
 } from "@/lib/dataset-region-filtering";
-import { getDatasetOpenPresetTag } from "@/lib/dataset-tags";
 import { sortDatasetRows } from "@/lib/dataset-table-columns";
 import {
   buildDatasetOpenPreset,
@@ -21,26 +20,21 @@ import {
   getDatasetRegionFilterStateFromSavedView,
   getDatasetUupgFilterStateFromSavedView,
   getDatasetWatchlistFilterStateFromSavedView,
-  getSavedDatasetFilterStateFromOpenPreset,
   normalizeSavedDatasetFilterState,
 } from "@/lib/saved-dataset-filters";
 
 type DatasetRow = DatasetRowsResponse["rows"][number];
 type DatasetDefaultViewDataset = Pick<
   DatasetSummary,
-  "columns" | "defaultFilters" | "tags"
+  "columns" | "defaultFilters"
 >;
 
 export function getDatasetDefaultFilters(
   dataset: DatasetDefaultViewDataset,
 ): SavedDatasetFilterState | null {
-  if (dataset.defaultFilters) {
-    return normalizeSavedDatasetFilterState(dataset.defaultFilters);
-  }
-
-  return getSavedDatasetFilterStateFromOpenPreset(
-    getDatasetOpenPresetTag(dataset.tags)?.openPreset ?? null,
-  );
+  return dataset.defaultFilters
+    ? normalizeSavedDatasetFilterState(dataset.defaultFilters)
+    : null;
 }
 
 export function getDatasetDefaultOpenPreset(

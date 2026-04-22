@@ -4,7 +4,6 @@ import { getCurrentIdentity } from "@/lib/auth";
 import { logError } from "@/lib/error-logging";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import {
-  DatasetOpenPresetCompatibilityError,
   deleteDataset,
   getDataset,
   updateDatasetDetails,
@@ -44,14 +43,6 @@ vi.mock("@/lib/datasets", () => ({
     constructor(message = "Derived dataset views cannot be marked as primary.") {
       super(message);
       this.name = "DerivedDatasetMutationError";
-    }
-  },
-  DatasetOpenPresetCompatibilityError: class DatasetOpenPresetCompatibilityError extends Error {
-    readonly status = 400;
-
-    constructor(message = "The dataset open preset is not supported by this dataset.") {
-      super(message);
-      this.name = "DatasetOpenPresetCompatibilityError";
     }
   },
   deleteDataset: vi.fn(),
@@ -210,35 +201,6 @@ describe("/api/datasets/[datasetId]", () => {
       hiddenColumnKeys: ["email"],
     });
     expect(updateDatasetStatusMock).not.toHaveBeenCalled();
-  });
-
-  it("returns compatibility errors from dataset detail updates", async () => {
-    updateDatasetDetailsMock.mockRejectedValue(
-      new DatasetOpenPresetCompatibilityError(
-        "Preset filters are not supported by this dataset.",
-      ),
-    );
-
-    const response = await PATCH(
-      new Request("http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001", {
-        method: "PATCH",
-        body: JSON.stringify({
-          tags: [
-            {
-              id: "tag-1",
-              label: "Priority",
-              color: "#8f9f6f",
-            },
-          ],
-        }),
-      }),
-      context,
-    );
-
-    expect(response.status).toBe(400);
-    await expect(response.json()).resolves.toEqual({
-      error: "Preset filters are not supported by this dataset.",
-    });
   });
 
   it("updates the primary dataset flag for the configured admin", async () => {

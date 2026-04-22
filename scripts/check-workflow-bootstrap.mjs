@@ -5,28 +5,63 @@ import { fileURLToPath } from "node:url";
 const WORKFLOW_DIR = fileURLToPath(
   new URL("../.github/workflows", import.meta.url),
 );
+const SHARED_BOOTSTRAP_ACTION_FILE = fileURLToPath(
+  new URL("../.github/actions/setup-pnpm-node/action.yml", import.meta.url),
+);
 const SHARED_BOOTSTRAP_ACTION = "./.github/actions/setup-pnpm-node";
+const REQUIRED_WORKFLOWS = [
+  "app-quality.yml",
+  "database-security.yml",
+  "dependency-audit.yml",
+  "ui-smoke.yml",
+];
+
+function parseUsesReferences(content) {
+  return [...content.matchAll(/uses:\s*([^\s#]+)\s*(?:#.*)?$/gm)].map(
+    (match) => match[1],
+  );
+}
+
+function isPinnedRemoteAction(reference) {
+  return /^[^/\s]+\/[^@\s]+@[0-9a-f]{40}$/u.test(reference);
+}
+
+function isLocalAction(reference) {
+  return reference.startsWith("./") || reference.startsWith("../");
+}
+
+export function findMissingRequiredWorkflowIssues(workflows) {
+  const presentWorkflows = new Set(workflows.map(({ name }) => name));
+
+  return REQUIRED_WORKFLOWS.filter((name) => !presentWorkflows.has(name)).map(
+    (name) => `${name}: required workflow file is missing.`,
+  );
+}
+
+function findPinnedActionIssues(name, content) {
+  return parseUsesReferences(content)
+    .filter((reference) => !isLocalAction(reference))
+    .filter((reference) => !isPinnedRemoteAction(reference))
+    .map(
+      (reference) =>
+        `${name}: action ref ${reference} must be pinned to a full commit SHA.`,
+    );
+}
 
 export function findWorkflowBootstrapIssues(workflows) {
   return workflows.flatMap(({ name, content }) => {
+    if (!REQUIRED_WORKFLOWS.includes(name)) {
+      return [];
+    }
+
     const issues = [];
     const usesSharedBootstrap = content.includes(`uses: ${SHARED_BOOTSTRAP_ACTION}`);
     const usesDirectPnpmSetup = /uses:\s*pnpm\/action-setup@/m.test(content);
     const usesDirectSetupNode = /uses:\s*actions\/setup-node@/m.test(content);
-    const runsPnpmCommands = /\bpnpm\s+(install|run|exec|audit)\b/m.test(content);
-    const requiresBootstrap =
-      usesSharedBootstrap ||
-      usesDirectPnpmSetup ||
-      usesDirectSetupNode ||
-      runsPnpmCommands;
-
-    if (!requiresBootstrap) {
-      return issues;
-    }
 
     if (!usesSharedBootstrap) {
       issues.push(
-        `${name}: runs pnpm commands but does not use ${SHARED_BOOTSTRAP_ACTION}.`,
+        `${name}: must use ${SHARED_BOOTSTRAP_ACTION}.`,
       );
     }
 
@@ -42,8 +77,39 @@ export function findWorkflowBootstrapIssues(workflows) {
       );
     }
 
-    return issues;
+    return [
+      ...issues,
+      ...findPinnedActionIssues(name, content),
+    ];
   });
+}
+
+export function findSharedBootstrapActionIssues(content) {
+  const issues = [
+    ...findPinnedActionIssues(".github/actions/setup-pnpm-node/action.yml", content),
+  ];
+  const pnpmIndex = content.indexOf("uses: pnpm/action-setup@");
+  const nodeIndex = content.indexOf("uses: actions/setup-node@");
+
+  if (pnpmIndex === -1) {
+    issues.push(
+      ".github/actions/setup-pnpm-node/action.yml: must configure pnpm/action-setup.",
+    );
+  }
+
+  if (nodeIndex === -1) {
+    issues.push(
+      ".github/actions/setup-pnpm-node/action.yml: must configure actions/setup-node.",
+    );
+  }
+
+  if (pnpmIndex !== -1 && nodeIndex !== -1 && pnpmIndex > nodeIndex) {
+    issues.push(
+      ".github/actions/setup-pnpm-node/action.yml: must configure pnpm/action-setup before actions/setup-node.",
+    );
+  }
+
+  return issues;
 }
 
 export async function loadWorkflowFiles(workflowDir = WORKFLOW_DIR) {
@@ -63,7 +129,15 @@ export async function loadWorkflowFiles(workflowDir = WORKFLOW_DIR) {
 
 async function main() {
   const workflows = await loadWorkflowFiles();
-  const issues = findWorkflowBootstrapIssues(workflows);
+  const sharedBootstrapAction = await readFile(
+    SHARED_BOOTSTRAP_ACTION_FILE,
+    "utf8",
+  );
+  const issues = [
+    ...findMissingRequiredWorkflowIssues(workflows),
+    ...findWorkflowBootstrapIssues(workflows),
+    ...findSharedBootstrapActionIssues(sharedBootstrapAction),
+  ];
 
   if (issues.length > 0) {
     console.error("Workflow bootstrap policy violations:");

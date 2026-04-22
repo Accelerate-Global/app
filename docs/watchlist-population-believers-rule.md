@@ -119,7 +119,7 @@ This keeps the percentage visible as guidance without making users maintain a se
 
 ## Compatibility Rules
 
-Saved filters and open presets now persist the tiered rule.
+Saved filters now persist the tiered rule.
 
 Compatibility handling remains in place:
 

@@ -15,7 +15,6 @@ import { DatasetDetailClient } from "./dataset-detail-client";
 const actionBarSpy = vi.fn();
 const assignDerivedViewSheetSpy = vi.fn();
 const datasetTableSpy = vi.fn();
-const openPresetSheetSpy = vi.fn();
 const useDatasetTableStateMock = vi.fn();
 const viewSwitchGridSpy = vi.fn();
 const { trackAppEventMock } = vi.hoisted(() => ({
@@ -40,13 +39,6 @@ vi.mock("@/components/dashboard/dataset-assign-derived-view-sheet", () => ({
   DatasetAssignDerivedViewSheet: (props: unknown) => {
     assignDerivedViewSheetSpy(props);
     return <div data-testid="dataset-assign-derived-view-sheet" />;
-  },
-}));
-
-vi.mock("@/components/dashboard/dataset-open-preset-sheet", () => ({
-  DatasetOpenPresetSheet: (props: unknown) => {
-    openPresetSheetSpy(props);
-    return <div data-testid="dataset-open-preset-sheet" />;
   },
 }));
 
@@ -202,7 +194,6 @@ describe("DatasetDetailClient", () => {
     actionBarSpy.mockReset();
     assignDerivedViewSheetSpy.mockReset();
     datasetTableSpy.mockReset();
-    openPresetSheetSpy.mockReset();
     useDatasetTableStateMock.mockReset();
     viewSwitchGridSpy.mockReset();
     trackAppEventMock.mockReset();
@@ -246,7 +237,6 @@ describe("DatasetDetailClient", () => {
     const actionBarProps = actionBarSpy.mock.calls[0]?.[0] as {
       onOpenFilters?: () => void;
       onOpenAssignDerivedView?: () => void;
-      onOpenOpenPreset?: () => void;
       analyticsContext: {
         route: string;
       };
@@ -260,8 +250,6 @@ describe("DatasetDetailClient", () => {
     expect(mainColumn).toBe(screen.getByTestId("dataset-table").parentElement);
     expect(actionBarProps.onOpenFilters).toEqual(expect.any(Function));
     expect(actionBarProps.onOpenAssignDerivedView).toBeUndefined();
-    expect(actionBarProps.onOpenOpenPreset).toBeUndefined();
-    expect(openPresetSheetSpy).not.toHaveBeenCalled();
     expect(assignDerivedViewSheetSpy).not.toHaveBeenCalled();
     expect(actionBarProps.analyticsContext.route).toBe("dataset_detail");
     expect(trackAppEventMock).toHaveBeenCalledWith(
@@ -355,59 +343,6 @@ describe("DatasetDetailClient", () => {
     );
 
     expect(viewSwitchGridSpy).toHaveBeenCalledTimes(initialRenderCount);
-  });
-
-  it("wires the admin-only open preset sheet from the action bar trigger", () => {
-    render(
-      <DatasetDetailClient
-        dataset={{
-          ...datasetBase,
-          columns: [
-            {
-              key: "geo_country_name",
-              label: "Geo_Country_Name",
-              sourceIndex: 0,
-            },
-          ],
-          tags: [
-            {
-              id: "tag-1",
-              label: "Watchlist",
-              color: "#262531",
-            },
-          ],
-        }}
-        regions={[]}
-        fieldDefinitionPresentationByColumnKey={{}}
-        canManageOpenPresets
-      />,
-    );
-
-    const actionBarProps = actionBarSpy.mock.lastCall?.[0] as {
-      onOpenOpenPreset?: () => void;
-    };
-    const initialSheetProps = openPresetSheetSpy.mock.lastCall?.[0] as {
-      open: boolean;
-      selectedTagId: string | null;
-      tags: Array<{ id: string }>;
-    };
-
-    expect(actionBarProps.onOpenOpenPreset).toEqual(expect.any(Function));
-    expect(initialSheetProps.open).toBe(false);
-    expect(initialSheetProps.selectedTagId).toBe("tag-1");
-    expect(initialSheetProps.tags).toEqual([
-      expect.objectContaining({ id: "tag-1" }),
-    ]);
-
-    act(() => {
-      actionBarProps.onOpenOpenPreset?.();
-    });
-
-    const updatedSheetProps = openPresetSheetSpy.mock.lastCall?.[0] as {
-      open: boolean;
-    };
-
-    expect(updatedSheetProps.open).toBe(true);
   });
 
   it("wires the admin-only assign sheet from the action bar trigger", () => {
@@ -1395,7 +1330,7 @@ describe("DatasetDetailClient", () => {
     });
   });
 
-  it("defaults legacy presets to primary-country-only matching", () => {
+  it("defaults legacy presets to primary-country-only matching", async () => {
     useDatasetTableStateMock.mockImplementation((props: {
       countryFilter: {
         includeAlternateCountries: boolean;
@@ -1444,6 +1379,10 @@ describe("DatasetDetailClient", () => {
       />,
     );
 
+    await act(async () => {
+      await Promise.resolve();
+    });
+
     const datasetTableStateProps = useDatasetTableStateMock.mock.lastCall?.[0] as {
       countryFilter: {
         enabled: boolean;
@@ -1475,139 +1414,153 @@ describe("DatasetDetailClient", () => {
     });
   });
 
-  it("prunes alternate-only country selections when alternate-country matching is turned off", () => {
-    useDatasetTableStateMock.mockImplementation((props: {
-      countryFilter: {
-        includeAlternateCountries: boolean;
+  it(
+    "prunes alternate-only country selections when alternate-country matching is turned off",
+    async () => {
+      useDatasetTableStateMock.mockImplementation((props: {
+        countryFilter: {
+          includeAlternateCountries: boolean;
+        };
+      }) => ({
+        table: {} as never,
+        sorting: [],
+        visibleColumns: [],
+        datasetCountryNames: props.countryFilter.includeAlternateCountries
+          ? ["Egypt", "Jordan", "Turkey"]
+          : ["Egypt", "Jordan"],
+        availableCountryNames: props.countryFilter.includeAlternateCountries
+          ? ["Egypt", "Jordan", "Turkey"]
+          : ["Egypt", "Jordan"],
+        getSortedRows: () => [],
+        recordCount: 2,
+        isLoading: false,
+        error: null,
+      }));
+
+      render(
+        <DatasetDetailClient
+          dataset={{
+            ...datasetBase,
+            columns: [
+              {
+                key: "geo_country_name",
+                label: "Geo_Country_Name",
+                sourceIndex: 0,
+              },
+              {
+                key: "alternate_countries",
+                label: "Alternate Countries",
+                sourceIndex: 1,
+              },
+            ],
+          }}
+          regions={[]}
+          fieldDefinitionPresentationByColumnKey={{}}
+        />,
+      );
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      const initialViewSwitchGridProps = viewSwitchGridSpy.mock.lastCall?.[0] as {
+        countryCard: {
+          onEnabledChange: (enabled: boolean) => void;
+          onIncludeAlternateCountriesChange: (enabled: boolean) => void;
+          onToggleCountry: (countryName: string, checked: boolean) => void;
+        };
       };
-    }) => ({
-      table: {} as never,
-      sorting: [],
-      visibleColumns: [],
-      datasetCountryNames: props.countryFilter.includeAlternateCountries
-        ? ["Egypt", "Jordan", "Turkey"]
-        : ["Egypt", "Jordan"],
-      availableCountryNames: props.countryFilter.includeAlternateCountries
-        ? ["Egypt", "Jordan", "Turkey"]
-        : ["Egypt", "Jordan"],
-      getSortedRows: () => [],
-      recordCount: 2,
-      isLoading: false,
-      error: null,
-    }));
 
-    render(
-      <DatasetDetailClient
-        dataset={{
-          ...datasetBase,
-          columns: [
-            {
-              key: "geo_country_name",
-              label: "Geo_Country_Name",
-              sourceIndex: 0,
-            },
-            {
-              key: "alternate_countries",
-              label: "Alternate Countries",
-              sourceIndex: 1,
-            },
-          ],
-        }}
-        regions={[]}
-        fieldDefinitionPresentationByColumnKey={{}}
-      />,
-    );
+      act(() => {
+        initialViewSwitchGridProps.countryCard.onIncludeAlternateCountriesChange(
+          true,
+        );
+      });
 
-    const initialViewSwitchGridProps = viewSwitchGridSpy.mock.lastCall?.[0] as {
-      countryCard: {
-        onEnabledChange: (enabled: boolean) => void;
-        onIncludeAlternateCountriesChange: (enabled: boolean) => void;
-        onToggleCountry: (countryName: string, checked: boolean) => void;
+      const enabledViewSwitchGridProps = viewSwitchGridSpy.mock.lastCall?.[0] as {
+        countryCard: {
+          onEnabledChange: (enabled: boolean) => void;
+          onToggleCountry: (countryName: string, checked: boolean) => void;
+        };
       };
-    };
 
-    act(() => {
-      initialViewSwitchGridProps.countryCard.onIncludeAlternateCountriesChange(true);
-    });
+      act(() => {
+        enabledViewSwitchGridProps.countryCard.onEnabledChange(true);
+        enabledViewSwitchGridProps.countryCard.onToggleCountry("Egypt", false);
+      });
 
-    const enabledViewSwitchGridProps = viewSwitchGridSpy.mock.lastCall?.[0] as {
-      countryCard: {
-        onEnabledChange: (enabled: boolean) => void;
-        onToggleCountry: (countryName: string, checked: boolean) => void;
+      const narrowedViewSwitchGridProps = viewSwitchGridSpy.mock.lastCall?.[0] as {
+        countryCard: {
+          onToggleCountry: (countryName: string, checked: boolean) => void;
+        };
       };
-    };
 
-    act(() => {
-      enabledViewSwitchGridProps.countryCard.onEnabledChange(true);
-      enabledViewSwitchGridProps.countryCard.onToggleCountry("Egypt", false);
-    });
+      act(() => {
+        narrowedViewSwitchGridProps.countryCard.onToggleCountry("Jordan", false);
+      });
 
-    const narrowedViewSwitchGridProps = viewSwitchGridSpy.mock.lastCall?.[0] as {
-      countryCard: {
-        onToggleCountry: (countryName: string, checked: boolean) => void;
-      };
-    };
-
-    act(() => {
-      narrowedViewSwitchGridProps.countryCard.onToggleCountry("Jordan", false);
-    });
-
-    let latestDatasetTableStateProps = useDatasetTableStateMock.mock.lastCall?.[0] as {
-      countryFilter: {
-        enabled: boolean;
-        isSupported: boolean;
-        includeAlternateCountries: boolean;
-        selectedCountryNames: string[];
-      };
-    };
-
-    expect(latestDatasetTableStateProps.countryFilter).toEqual({
-      enabled: true,
-      isSupported: true,
-      includeAlternateCountries: true,
-      selectedCountryNames: ["Turkey"],
-    });
-
-    const alternateToggleProps = viewSwitchGridSpy.mock.lastCall?.[0] as {
-      countryCard: {
-        onIncludeAlternateCountriesChange: (enabled: boolean) => void;
-      };
-    };
-
-    act(() => {
-      alternateToggleProps.countryCard.onIncludeAlternateCountriesChange(false);
-    });
-
-    latestDatasetTableStateProps = useDatasetTableStateMock.mock.lastCall?.[0] as {
-      countryFilter: {
-        enabled: boolean;
-        isSupported: boolean;
-        includeAlternateCountries: boolean;
-        selectedCountryNames: string[];
-      };
-    };
-    const latestActionBarProps = actionBarSpy.mock.lastCall?.[0] as {
-      filters: {
-        country: {
+      let latestDatasetTableStateProps = useDatasetTableStateMock.mock
+        .lastCall?.[0] as {
+        countryFilter: {
           enabled: boolean;
-          includeAlternateCountries?: boolean;
+          isSupported: boolean;
+          includeAlternateCountries: boolean;
           selectedCountryNames: string[];
         };
       };
-    };
 
-    expect(latestDatasetTableStateProps.countryFilter).toEqual({
-      enabled: true,
-      isSupported: true,
-      includeAlternateCountries: false,
-      selectedCountryNames: [],
-    });
-    expect(latestActionBarProps.filters.country).toEqual({
-      enabled: true,
-      includeAlternateCountries: false,
-      selectedCountryNames: [],
-    });
-  });
+      expect(latestDatasetTableStateProps.countryFilter).toEqual({
+        enabled: true,
+        isSupported: true,
+        includeAlternateCountries: true,
+        selectedCountryNames: ["Turkey"],
+      });
+
+      const alternateToggleProps = viewSwitchGridSpy.mock.lastCall?.[0] as {
+        countryCard: {
+          onIncludeAlternateCountriesChange: (enabled: boolean) => void;
+        };
+      };
+
+      act(() => {
+        alternateToggleProps.countryCard.onIncludeAlternateCountriesChange(false);
+      });
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      latestDatasetTableStateProps = useDatasetTableStateMock.mock.lastCall?.[0] as {
+        countryFilter: {
+          enabled: boolean;
+          isSupported: boolean;
+          includeAlternateCountries: boolean;
+          selectedCountryNames: string[];
+        };
+      };
+      const latestActionBarProps = actionBarSpy.mock.lastCall?.[0] as {
+        filters: {
+          country: {
+            enabled: boolean;
+            includeAlternateCountries?: boolean;
+            selectedCountryNames: string[];
+          };
+        };
+      };
+
+      expect(latestDatasetTableStateProps.countryFilter).toEqual({
+        enabled: true,
+        isSupported: true,
+        includeAlternateCountries: false,
+        selectedCountryNames: [],
+      });
+      expect(latestActionBarProps.filters.country).toEqual({
+        enabled: true,
+        includeAlternateCountries: false,
+        selectedCountryNames: [],
+      });
+    },
+  );
 
   it("uses exclusive Global selector behavior and restores Global when the last specific region turns off", () => {
     render(

@@ -83,7 +83,7 @@ const regions: FilterRegion[] = [
 ];
 
 describe("dataset-default-view", () => {
-  it("prefers dataset default filters and sorting over the legacy tag preset", () => {
+  it("returns dataset default filters and sorting when present", () => {
     const dataset = {
       ...baseDataset,
       defaultFilters: {
@@ -127,53 +127,6 @@ describe("dataset-default-view", () => {
         },
         sorting: [{ id: "people_name", desc: true }],
       },
-      tags: [
-        {
-          id: "tag-1",
-          label: "Legacy",
-          color: "#262531",
-          openPreset: {
-            region: {
-              enabled: false,
-              selectedRegionIds: [],
-              selectedRegionNames: [],
-              enabledCountryNames: [],
-            },
-            country: {
-              enabled: true,
-              selectedCountryNames: ["Brazil"],
-              includeAlternateCountries: false,
-            },
-            watchlist: {
-              enabled: false,
-              thresholdEnabled: true,
-              threshold: 2,
-              engagementPhaseEnabled: true,
-              engagementPhaseThreshold: 6,
-              evangelicalPopulationBelieversRuleEnabled: true,
-              evangelicalPopulationBelieversRule: {
-                tiers: [
-                  {
-                    minPopulation: 0,
-                    maxPopulation: null,
-                    minBelievers: 50,
-                  },
-                ],
-              },
-              frontierGroupEnabled: true,
-              frontierGroupValue: true,
-            },
-            uupg: {
-              enabled: false,
-            },
-            hotspots: {
-              enabled: false,
-              metric: "unique_uupgs" as const,
-              countryCount: 10,
-            },
-          },
-        },
-      ],
     } satisfies DatasetSummary;
 
     expect(getDatasetDefaultFilters(dataset)?.region.selectedRegionNames).toEqual([
@@ -187,62 +140,10 @@ describe("dataset-default-view", () => {
     ]);
   });
 
-  it("falls back to the legacy tag preset when dataset default filters are absent", () => {
-    const dataset = {
-      ...baseDataset,
-      tags: [
-        {
-          id: "tag-1",
-          label: "Legacy",
-          color: "#262531",
-          openPreset: {
-            region: {
-              enabled: false,
-              selectedRegionIds: [],
-              selectedRegionNames: [],
-              enabledCountryNames: [],
-            },
-            country: {
-              enabled: true,
-              selectedCountryNames: ["Brazil"],
-              includeAlternateCountries: false,
-            },
-            watchlist: {
-              enabled: false,
-              thresholdEnabled: true,
-              threshold: 2,
-              engagementPhaseEnabled: true,
-              engagementPhaseThreshold: 6,
-              evangelicalPopulationBelieversRuleEnabled: true,
-              evangelicalPopulationBelieversRule: {
-                tiers: [
-                  {
-                    minPopulation: 0,
-                    maxPopulation: null,
-                    minBelievers: 50,
-                  },
-                ],
-              },
-              frontierGroupEnabled: true,
-              frontierGroupValue: true,
-            },
-            uupg: {
-              enabled: false,
-            },
-            hotspots: {
-              enabled: false,
-              metric: "unique_uupgs" as const,
-              countryCount: 10,
-            },
-          },
-        },
-      ],
-    } satisfies DatasetSummary;
-
-    expect(getDatasetDefaultFilters(dataset)?.country.selectedCountryNames).toEqual([
-      "Brazil",
-    ]);
-    expect(getDatasetDefaultSorting(dataset)).toBeNull();
+  it("returns null when dataset default filters are absent", () => {
+    expect(getDatasetDefaultFilters(baseDataset)).toBeNull();
+    expect(getDatasetDefaultOpenPreset(baseDataset)).toBeNull();
+    expect(getDatasetDefaultSorting(baseDataset)).toBeNull();
   });
 
   it("applies default filters and sorting when counting derived rows", () => {

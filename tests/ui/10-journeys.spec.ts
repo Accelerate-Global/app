@@ -575,9 +575,6 @@ test("admin can assign a filtered dataset view to an admin dataset", async ({ pa
       await expect(
         page.getByRole("button", { name: "Assign to dataset" }),
       ).toBeVisible();
-      await expect(
-        page.getByRole("button", { name: "Open preset" }),
-      ).toHaveCount(0);
     },
   );
 });
