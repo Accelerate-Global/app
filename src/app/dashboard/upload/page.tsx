@@ -28,7 +28,7 @@ export default async function UploadPage({ searchParams }: UploadPageProps) {
     ? await getDataset(replace, { includeDisabled: true })
     : null;
 
-  if (replace && (!targetDataset || targetDataset.backingDatasetId)) {
+  if (replace && !targetDataset) {
     redirect("/dashboard");
   }
 
@@ -50,6 +50,9 @@ export default async function UploadPage({ searchParams }: UploadPageProps) {
               <span className="font-medium text-foreground">
                 {targetDataset.fileName}
               </span>
+              {targetDataset.backingDatasetId
+                ? " will create an independent source dataset for this view and will not update its current backing dataset."
+                : ""}
             </p>
           ) : null}
         </section>
