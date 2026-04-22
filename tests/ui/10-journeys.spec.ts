@@ -464,33 +464,6 @@ test("admin can edit a field definition", async ({ page }, testInfo) => {
   });
 });
 
-test("admin can create and update filter settings", async ({ page }, testInfo) => {
-  test.skip(skipUnlessDesktopAdmin(testInfo.project.name));
-
-  await runSmokeJourney("admin can create and update filter settings", async () => {
-    await page.goto("/dashboard/filter-settings");
-    await page.locator('[data-smoke-region-create-name]').fill("Smoke Region");
-    await page
-      .locator('[data-smoke-region-country-search="create"]')
-      .fill("Nepal");
-    await page
-      .locator('[data-smoke-region-country-option="create:Nepal"]')
-      .click();
-    await page.locator('[data-smoke-region-create-submit]').click();
-    await expect(page.getByText("Created Smoke Region.")).toBeVisible();
-
-    const smokeRegionCard = page.locator('[data-smoke-region-card="Smoke Region"]');
-    await expect(smokeRegionCard).toBeVisible();
-    await smokeRegionCard
-      .locator('[data-smoke-region-description]')
-      .fill("Smoke region updated by the UI smoke suite.");
-    await smokeRegionCard.locator('[data-smoke-region-save]').click();
-    await expect(
-      smokeRegionCard.locator('[data-smoke-region-description]'),
-    ).toHaveValue("Smoke region updated by the UI smoke suite.");
-  });
-});
-
 test("admin can create a source column and update a field source value", async ({ page }, testInfo) => {
   test.skip(skipUnlessDesktopAdmin(testInfo.project.name));
 
@@ -555,11 +528,15 @@ test("admin can assign a filtered dataset view to an admin dataset", async ({ pa
     "admin can assign a filtered dataset view to an admin dataset",
     async () => {
       const bootstrap = await readUiSmokeBootstrap();
+      const asiaSouthToggle = page.getByRole("switch", {
+        name: "Toggle Asia, South",
+        exact: true,
+      });
 
       await page.goto(`/dashboard/datasets/${bootstrap.datasets.primary.id}`);
       await expect(page.locator('[data-smoke-page="dataset-detail"]')).toBeVisible();
       await page.getByRole("button", { name: "Region filters" }).click();
-      await page.getByRole("switch", { name: "Toggle South Asia" }).click();
+      await asiaSouthToggle.click();
       await expect(page.locator("[data-smoke-filtered-table-count]")).toHaveText("2");
       await expect(page.getByText("Rana Tharu")).toBeVisible();
       await expect(page.getByText("Tamang")).toBeVisible();
@@ -591,7 +568,7 @@ test("admin can assign a filtered dataset view to an admin dataset", async ({ pa
       ).toBeVisible();
       await expect(page.locator("[data-smoke-filtered-table-count]")).toHaveText("2");
       await page.getByRole("button", { name: "Region filters" }).click();
-      await expect(page.getByRole("switch", { name: "Toggle South Asia" })).toBeChecked();
+      await expect(asiaSouthToggle).toBeChecked();
       await expect(page.getByText("Rana Tharu")).toBeVisible();
       await expect(page.getByText("Tamang")).toBeVisible();
       await expect(page.getByText("Ribeirinho")).toHaveCount(0);

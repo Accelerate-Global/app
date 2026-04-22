@@ -1,11 +1,16 @@
 import { describe, expect, it } from "vitest";
 
+import * as validationModule from "@/lib/validation";
 import {
   datasetAssignDerivedViewSchema,
   datasetMetadataPatchSchema,
 } from "@/lib/validation";
 
 describe("datasetMetadataPatchSchema", () => {
+  it("does not expose the removed filter region editor schema", () => {
+    expect("filterRegionPayloadSchema" in validationModule).toBe(false);
+  });
+
   it("accepts a public visibility-only update", () => {
     const result = datasetMetadataPatchSchema.safeParse({
       isPublic: false,
@@ -238,7 +243,7 @@ describe("datasetAssignDerivedViewSchema", () => {
         region: {
           enabled: true,
           selectedRegionIds: ["10000000-0000-4000-8000-000000000001"],
-          selectedRegionNames: ["South Asia"],
+          selectedRegionNames: ["Asia, South"],
           enabledCountryNames: ["India", "Nepal"],
         },
         country: {
@@ -274,6 +279,36 @@ describe("datasetAssignDerivedViewSchema", () => {
       countryCount: 10,
     });
     expect(result.data.filters.country.includeAlternateCountries).toBe(false);
+  });
+
+  it("keeps legacy persisted region labels syntactically valid", () => {
+    const result = datasetAssignDerivedViewSchema.safeParse({
+      sourceDatasetId: "f0000000-0000-4000-8000-000000000099",
+      filters: {
+        region: {
+          enabled: true,
+          selectedRegionIds: ["10000000-0000-4000-8000-000000000001"],
+          selectedRegionNames: ["South Asia"],
+          enabledCountryNames: ["India", "Nepal"],
+        },
+        country: {
+          enabled: false,
+          selectedCountryNames: [],
+        },
+        watchlist: {
+          enabled: false,
+          threshold: 2,
+          engagementPhaseThreshold: 6,
+          frontierGroupValue: true,
+        },
+        uupg: {
+          enabled: false,
+        },
+        sorting: [],
+      },
+    });
+
+    expect(result.success).toBe(true);
   });
 
   it("defaults a missing watchlist frontier-group value to true", () => {
@@ -317,7 +352,7 @@ describe("datasetAssignDerivedViewSchema", () => {
         region: {
           enabled: true,
           selectedRegionIds: ["south-asia"],
-          selectedRegionNames: ["South Asia"],
+          selectedRegionNames: ["Asia, South"],
           enabledCountryNames: ["India"],
         },
         country: {

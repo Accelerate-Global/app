@@ -1056,7 +1056,10 @@ async function profileWarmRegionToggle(input: {
   try {
     await ensureFilterSectionExpanded(session.page, "Region");
     const before = await readTableSnapshot(session.page);
-    const toggle = session.page.getByRole("switch", { name: "Toggle South Asia" });
+    const toggle = session.page.getByRole("switch", {
+      name: "Toggle Asia, South",
+      exact: true,
+    });
 
     return await measureInteraction(
       session.page,

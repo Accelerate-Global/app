@@ -25,6 +25,7 @@ describe("run-ui-smoke", () => {
     expect(plan.suites).toEqual([
       expect.objectContaining({
         kind: "targeted",
+        testPaths: [],
       }),
     ]);
     expect(plan.suites[0]?.projectNames).toEqual(
@@ -45,6 +46,7 @@ describe("run-ui-smoke", () => {
         kind: "full",
         grepPattern: null,
         projectNames: [],
+        testPaths: [],
       },
     ]);
   });
@@ -62,6 +64,32 @@ describe("run-ui-smoke", () => {
         kind: "full",
         grepPattern: null,
         projectNames: [],
+        testPaths: [],
+      },
+    ]);
+    expect(plan.bootstrapScope).toBe("full");
+  });
+
+  it("targets a smoke spec file directly when only the journey spec changed", () => {
+    const plan = buildUiSmokeRunPlan({
+      changedFiles: ["tests/ui/10-journeys.spec.ts"],
+      targeted: true,
+      fullAfterTargeted: false,
+    });
+
+    expect(plan.suites).toEqual([
+      {
+        kind: "targeted",
+        grepPattern: null,
+        projectNames: [
+          "desktop-anonymous",
+          "desktop-viewer",
+          "desktop-admin",
+          "mobile-anonymous",
+          "mobile-viewer",
+          "mobile-admin",
+        ],
+        testPaths: ["tests/ui/10-journeys.spec.ts"],
       },
     ]);
     expect(plan.bootstrapScope).toBe("full");
@@ -141,8 +169,46 @@ describe("run-ui-smoke", () => {
       headed: false,
       fullAfterTargeted: false,
       targeted: true,
+      skipBuild: false,
       baseSha: "base-sha",
       headSha: "head-sha",
+    });
+  });
+
+  it("parses skip-build from flags and environment", () => {
+    expect(
+      parseRunUiSmokeArgs(
+        [
+          "node",
+          "scripts/run-ui-smoke.ts",
+          "--targeted",
+          "--skip-build",
+        ],
+        {} as NodeJS.ProcessEnv,
+      ),
+    ).toEqual({
+      headed: false,
+      fullAfterTargeted: false,
+      targeted: true,
+      skipBuild: true,
+      baseSha: null,
+      headSha: null,
+    });
+
+    expect(
+      parseRunUiSmokeArgs(
+        ["node", "scripts/run-ui-smoke.ts"],
+        {
+          UI_SMOKE_SKIP_BUILD: "1",
+        } as unknown as NodeJS.ProcessEnv,
+      ),
+    ).toEqual({
+      headed: false,
+      fullAfterTargeted: false,
+      targeted: false,
+      skipBuild: true,
+      baseSha: null,
+      headSha: null,
     });
   });
 

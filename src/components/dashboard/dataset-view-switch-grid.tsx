@@ -113,8 +113,10 @@ type DatasetViewSwitchGridProps = {
   uupgCard: {
     enabled: boolean;
     supported: boolean;
-    fieldLabel: string;
-    fieldDefinition: string;
+    fields: Array<{
+      label: string;
+      definition: string;
+    }>;
     onEnabledChange: (checked: boolean) => void;
   };
   hotspotsCard: {
@@ -142,7 +144,8 @@ const FILTER_PANEL_DESCRIPTIONS = {
   country: "Filter people groups by country.",
   watchlist:
     "People groups unengaged or would be unengaged if the current mission work stopped today.",
-  uupg: "People groups who have no record of engagement among them.",
+  uupg:
+    "Keep people groups with no global engagement record and, when present, a frontier group value of TRUE.",
   hotspots:
     "Rank primary countries by UUPG burden and keep only UUPG rows from the top countries.",
 } as const;
@@ -681,6 +684,8 @@ function DatasetViewSwitchGridInner({
   uupgCard,
   hotspotsCard,
 }: DatasetViewSwitchGridProps) {
+  const primaryUupgFieldLabel =
+    uupgCard.fields[0]?.label ?? "Engage_Global_Engagement_Anywhere";
   const visibleRegionSelectors = regionCard.selectors;
   const hasRegions = visibleRegionSelectors.length > 0;
   const [expandedSections, setExpandedSections] = useState<
@@ -984,15 +989,18 @@ function DatasetViewSwitchGridInner({
         >
           {!uupgCard.supported ? (
             <p className="text-sm leading-5 text-muted-foreground">
-              This dataset does not include <code>{uupgCard.fieldLabel}</code>, so
-              UUPG filtering is unavailable.
+              This dataset does not include <code>{primaryUupgFieldLabel}</code>,
+              so UUPG filtering is unavailable.
             </p>
           ) : (
-            <div className="px-3">
-              <DatasetFilterRow
-                label={uupgCard.fieldLabel}
-                definition={uupgCard.fieldDefinition}
-              />
+            <div className="divide-y divide-border/70 px-3">
+              {uupgCard.fields.map((field) => (
+                <DatasetFilterRow
+                  key={field.label}
+                  label={field.label}
+                  definition={field.definition}
+                />
+              ))}
             </div>
           )}
         </FilterSection>

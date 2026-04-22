@@ -92,6 +92,24 @@ describe("datasets schema", () => {
       'add column if not exists default_filters jsonb',
     );
   });
+
+  it("creates the canonical Joshua Project region migration", async () => {
+    const migrationPath = path.join(
+      process.cwd(),
+      "supabase/migrations/20260422174256_canonical_joshua_project_regions_read_only.sql",
+    );
+
+    const migration = await readFile(migrationPath, "utf8");
+
+    expect(migration).toContain("Asia, South");
+    expect(migration).toContain("America, Latin");
+    expect(migration).toContain(
+      'drop policy if exists "dataset admin can insert filter regions"',
+    );
+    expect(migration).toContain(
+      'drop policy if exists "dataset admin can delete filter region countries"',
+    );
+  });
 });
 
 describe("dataset versioning schema", () => {

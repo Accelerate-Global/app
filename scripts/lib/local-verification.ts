@@ -1,10 +1,10 @@
 import {
   verificationCommandCatalog,
+  type SupabaseLifecycle,
   type VerificationCommandId,
 } from "../../config/change-impact";
 import type { VerifyChangeReport } from "./verify-change";
 import { runCommand } from "./command";
-import { hasUsableSupabaseStatusOutput } from "./ui-smoke-env";
 import {
   isReceiptCommandId,
   isVerificationSatisfied,
@@ -37,14 +37,12 @@ const smokeCommandIds = new Set<VerificationCommandId>([
   targetedSmokeCommandId,
   fullSmokeCommandId,
 ]);
-const localSupabaseCommandIds = new Set<VerificationCommandId>([
-  targetedSmokeCommandId,
-  fullSmokeCommandId,
-  "db:security",
-]);
 
-function toCommandInvocation(commandId: VerificationCommandId) {
+function toCommandInvocation(
+  commandId: VerificationCommandId,
+) {
   const [command, ...args] = verificationCommandCatalog[commandId].command.split(" ");
+
   return { command, args };
 }
 
@@ -59,7 +57,9 @@ async function stopLocalSupabaseStack(context: string) {
       }`,
     );
   }
+}
 
+async function pruneStoppedDockerContainers(context: string) {
   try {
     console.log(`Pruning stopped Docker containers ${context}`);
     await runCommand("docker", ["container", "prune", "-f"]);
@@ -68,34 +68,6 @@ async function stopLocalSupabaseStack(context: string) {
       `Could not prune stopped Docker containers ${context}: ${
         error instanceof Error ? error.message : String(error)
       }`,
-    );
-  }
-}
-
-async function hasUsableLocalSupabaseStatus() {
-  try {
-    const status = await runCommand("supabase", ["status", "-o", "env"], {
-      quiet: true,
-    });
-
-    return hasUsableSupabaseStatusOutput(status.stdout);
-  } catch {
-    return false;
-  }
-}
-
-async function startLocalSupabaseStack(context: string) {
-  console.log(`Starting local Supabase stack ${context}`);
-
-  try {
-    await runCommand("supabase", ["start", "--ignore-health-check"]);
-  } catch (error) {
-    if (!(await hasUsableLocalSupabaseStatus())) {
-      throw error;
-    }
-
-    console.warn(
-      `Supabase start exited non-zero ${context}, but local status is available. Continuing.`,
     );
   }
 }
@@ -248,6 +220,14 @@ function getStepLabel(step: VerificationStep) {
   return verificationCommandCatalog[step.commandId].command;
 }
 
+function getStepSupabaseLifecycle(step: VerificationStep): SupabaseLifecycle {
+  if (step.kind === "combined-ui-smoke") {
+    return "runner-managed";
+  }
+
+  return verificationCommandCatalog[step.commandId].supabaseLifecycle;
+}
+
 async function runVerificationStep(step: VerificationStep) {
   if (step.kind === "combined-ui-smoke") {
     console.log(`\nRunning ${getStepLabel(step)}`);
@@ -279,6 +259,7 @@ export async function executeLocalVerificationPlan(input: {
   plan: LocalVerificationPlan;
 }) {
   const shortTreeSha = input.treeSha.slice(0, 12);
+  let shouldPruneStoppedContainers = false;
 
   for (const commandId of input.plan.reusedCommands) {
     console.log(
@@ -292,24 +273,32 @@ export async function executeLocalVerificationPlan(input: {
   }
 
   for (const step of input.plan.steps) {
-    const needsLocalSupabase =
-      step.kind === "combined-ui-smoke" ||
-      (step.kind === "command" && localSupabaseCommandIds.has(step.commandId));
+    const supabaseLifecycle = getStepSupabaseLifecycle(step);
+    const needsLocalSupabase = supabaseLifecycle !== "none";
 
     if (needsLocalSupabase) {
+      shouldPruneStoppedContainers = true;
       await stopLocalSupabaseStack(`before ${getStepLabel(step)}`);
-
-      if (step.kind === "command" && step.commandId === "db:security") {
-        await startLocalSupabaseStack(`before ${getStepLabel(step)}`);
-      }
     }
+
+    let stepError: unknown = null;
 
     try {
       await runVerificationStep(step);
+    } catch (error) {
+      stepError = error;
     } finally {
       if (needsLocalSupabase) {
         await stopLocalSupabaseStack(`after ${getStepLabel(step)}`);
       }
+    }
+
+    if (stepError) {
+      if (needsLocalSupabase) {
+        await pruneStoppedDockerContainers(`after ${getStepLabel(step)} failed`);
+      }
+
+      throw stepError;
     }
 
     const successfulCommandIds = getReceiptCommandIdsForSuccessfulStep(step);
@@ -322,5 +311,9 @@ export async function executeLocalVerificationPlan(input: {
         commandIds: successfulCommandIds,
       });
     }
+  }
+
+  if (shouldPruneStoppedContainers) {
+    await pruneStoppedDockerContainers("after local verification");
   }
 }

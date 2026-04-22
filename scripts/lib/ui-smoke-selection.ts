@@ -12,6 +12,7 @@ export type UiSmokeSelection = {
   routeIds: string[];
   journeyTitles: string[];
   projectNames: string[];
+  testPaths: string[];
   bootstrapScope: UiSmokeBootstrapScope | null;
   command: string | null;
   summary: string[];
@@ -100,13 +101,16 @@ export function buildUiSmokeGrepPattern(selection: UiSmokeSelection) {
 }
 
 export function formatUiSmokeZeroMatchMessage(input: {
-  grepPattern: string;
+  grepPattern: string | null;
   selection: UiSmokeSelection;
 }) {
   const details = [
     "Targeted UI smoke selection matched zero Playwright tests.",
-    `Grep pattern: ${input.grepPattern}`,
   ];
+
+  if (input.grepPattern) {
+    details.push(`Grep pattern: ${input.grepPattern}`);
+  }
 
   if (input.selection.routeIds.length > 0) {
     details.push(`Routes: ${input.selection.routeIds.join(", ")}`);
@@ -118,6 +122,10 @@ export function formatUiSmokeZeroMatchMessage(input: {
 
   if (input.selection.projectNames.length > 0) {
     details.push(`Projects: ${input.selection.projectNames.join(", ")}`);
+  }
+
+  if (input.selection.testPaths.length > 0) {
+    details.push(`Test files: ${input.selection.testPaths.join(", ")}`);
   }
 
   return details.join("\n");
@@ -133,6 +141,7 @@ export function resolveUiSmokeSelection(changedFiles: string[]): UiSmokeSelectio
       routeIds: [],
       journeyTitles: [],
       projectNames: [],
+      testPaths: [],
       bootstrapScope: null,
       command: null,
       summary: [],
@@ -150,6 +159,7 @@ export function resolveUiSmokeSelection(changedFiles: string[]): UiSmokeSelectio
       routeIds: [],
       journeyTitles: [],
       projectNames: [...projectOrder],
+      testPaths: [],
       bootstrapScope: "full",
       command: "pnpm run test:ui:smoke",
       summary: [
@@ -163,23 +173,35 @@ export function resolveUiSmokeSelection(changedFiles: string[]): UiSmokeSelectio
     routeIdOrder,
   );
   const journeyTitles = [...new Set(matchedRules.flatMap((rule) => rule.journeyTitles ?? []))];
+  const testPaths = [...new Set(matchedRules.flatMap((rule) => rule.testPaths ?? []))];
   const explicitProjectNames = dedupeInOrder(
     [...new Set(matchedRules.flatMap((rule) => rule.projectNames ?? []))],
     projectOrder,
   );
-  const projectNames =
+  const selectedProjectNames =
     explicitProjectNames.length > 0
       ? explicitProjectNames
       : getDefaultProjectNames(routeIds);
+  const projectNames =
+    selectedProjectNames.length > 0
+      ? selectedProjectNames
+      : testPaths.length > 0
+        ? [...projectOrder]
+        : [];
   const bootstrapScope = resolveBootstrapScope(matchedRules);
 
-  if (routeIds.length === 0 && journeyTitles.length === 0) {
+  if (
+    routeIds.length === 0 &&
+    journeyTitles.length === 0 &&
+    testPaths.length === 0
+  ) {
     return {
       mode: "none",
       matchedRuleLabels: matchedRules.map((rule) => rule.label),
       routeIds: [],
       journeyTitles: [],
       projectNames: [],
+      testPaths: [],
       bootstrapScope: null,
       command: null,
       summary: [],
@@ -204,6 +226,10 @@ export function resolveUiSmokeSelection(changedFiles: string[]): UiSmokeSelectio
     summary.push(`Projects: ${projectNames.join(", ")}`);
   }
 
+  if (testPaths.length > 0) {
+    summary.push(`Test files: ${testPaths.join(", ")}`);
+  }
+
   summary.push(`Bootstrap scope: ${bootstrapScope}`);
 
   return {
@@ -212,6 +238,7 @@ export function resolveUiSmokeSelection(changedFiles: string[]): UiSmokeSelectio
     routeIds,
     journeyTitles,
     projectNames,
+    testPaths,
     bootstrapScope,
     command: "pnpm run test:ui:smoke:targeted",
     summary,

@@ -148,8 +148,8 @@ function createFilterRegions() {
     },
     {
       id: "f1000000-0000-4000-8000-000000000002",
-      name: "South Asia",
-      description: "Countries across South Asia.",
+      name: "Asia, South",
+      description: "Countries across Asia, South.",
       sortOrder: 2,
       countries: ["India", "Nepal"],
       createdAt: new Date().toISOString(),
@@ -157,8 +157,8 @@ function createFilterRegions() {
     },
     {
       id: "f1000000-0000-4000-8000-000000000003",
-      name: "Latin America",
-      description: "Countries across Latin America.",
+      name: "America, Latin",
+      description: "Countries across America, Latin.",
       sortOrder: 3,
       countries: ["Brazil", "Peru"],
       createdAt: new Date().toISOString(),
@@ -480,6 +480,11 @@ describe("DatasetDetailClient", () => {
               label: "Engage_Global_Engagement_Anywhere",
               sourceIndex: 0,
             },
+            {
+              key: "frontier_group",
+              label: "Frontier_Group",
+              sourceIndex: 1,
+            },
           ],
         }}
         regions={[]}
@@ -490,6 +495,12 @@ describe("DatasetDetailClient", () => {
             effectiveLabel: "Watchlist status",
             linkedSources: [],
           },
+          frontier_group: {
+            definition: "Frontier definition",
+            displayLabel: "Frontier Group",
+            effectiveLabel: "Frontier Group",
+            linkedSources: [],
+          },
         }}
       />,
     );
@@ -498,8 +509,10 @@ describe("DatasetDetailClient", () => {
       uupgCard: {
         enabled: boolean;
         supported: boolean;
-        fieldLabel: string;
-        fieldDefinition: string;
+        fields: Array<{
+          label: string;
+          definition: string;
+        }>;
       };
     };
     const datasetTableStateProps = useDatasetTableStateMock.mock.calls[0]?.[0] as {
@@ -515,9 +528,17 @@ describe("DatasetDetailClient", () => {
     expect(viewSwitchGridProps.uupgCard).toMatchObject({
       enabled: false,
       supported: true,
-      fieldLabel: "Watchlist status",
-      fieldDefinition: "UUPG definition",
     });
+    expect(viewSwitchGridProps.uupgCard.fields).toEqual([
+      {
+        label: "Watchlist status",
+        definition: "UUPG definition",
+      },
+      {
+        label: "Frontier Group",
+        definition: "Frontier definition",
+      },
+    ]);
     expect(datasetTableStateProps.uupgFilter).toEqual({
       enabled: false,
       isSupported: true,
@@ -665,8 +686,8 @@ describe("DatasetDetailClient", () => {
       },
       {
         id: "f1000000-0000-4000-8000-000000000002",
-        name: "South Asia",
-        description: "Countries across South Asia.",
+        name: "Asia, South",
+        description: "Countries across Asia, South.",
         sortOrder: 2,
         countries: ["India"],
         createdAt: new Date().toISOString(),
@@ -726,7 +747,7 @@ describe("DatasetDetailClient", () => {
         },
         {
           id: "f1000000-0000-4000-8000-000000000002",
-          label: "South Asia",
+          label: "Asia, South",
           checked: false,
         },
       ],
@@ -1086,7 +1107,7 @@ describe("DatasetDetailClient", () => {
     });
   });
 
-  it("turns South Asia off when countries are changed to a non-matching custom subset", () => {
+  it("turns Asia, South off when countries are changed to a non-matching custom subset", () => {
     mockCountrySyncTableState();
 
     render(
@@ -1201,7 +1222,7 @@ describe("DatasetDetailClient", () => {
         "f1000000-0000-4000-8000-000000000002",
         "f1000000-0000-4000-8000-000000000003",
       ],
-      selectedRegionNames: ["South Asia", "Latin America"],
+      selectedRegionNames: ["Asia, South", "America, Latin"],
     });
   });
 
@@ -1613,8 +1634,8 @@ describe("DatasetDetailClient", () => {
           },
           {
             id: "f1000000-0000-4000-8000-000000000002",
-            name: "South Asia",
-            description: "Countries across South Asia.",
+            name: "Asia, South",
+            description: "Countries across Asia, South.",
             sortOrder: 2,
             countries: ["India"],
             createdAt: new Date().toISOString(),
@@ -1666,7 +1687,7 @@ describe("DatasetDetailClient", () => {
     expect(latestActionBarProps.filters.region).toEqual({
       enabled: true,
       selectedRegionIds: ["f1000000-0000-4000-8000-000000000002"],
-      selectedRegionNames: ["South Asia"],
+      selectedRegionNames: ["Asia, South"],
       enabledCountryNames: ["India"],
     });
 
@@ -2069,8 +2090,8 @@ describe("DatasetDetailClient", () => {
           },
           {
             id: "f1000000-0000-4000-8000-000000000002",
-            name: "South Asia",
-            description: "Countries across South Asia.",
+            name: "Asia, South",
+            description: "Countries across Asia, South.",
             sortOrder: 2,
             countries: ["India"],
             createdAt: new Date().toISOString(),
@@ -2139,8 +2160,8 @@ describe("DatasetDetailClient", () => {
           },
           {
             id: "f1000000-0000-4000-8000-000000000002",
-            name: "South Asia",
-            description: "Countries across South Asia.",
+            name: "Asia, South",
+            description: "Countries across Asia, South.",
             sortOrder: 2,
             countries: ["India"],
             createdAt: new Date().toISOString(),
@@ -2289,8 +2310,8 @@ describe("DatasetDetailClient", () => {
           },
           {
             id: "f1000000-0000-4000-8000-000000000002",
-            name: "South Asia",
-            description: "Countries across South Asia.",
+            name: "Asia, South",
+            description: "Countries across Asia, South.",
             sortOrder: 2,
             countries: ["India"],
             createdAt: new Date().toISOString(),

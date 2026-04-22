@@ -5,6 +5,8 @@ import {
   getAnalyticsRouteFromPathname,
   getEnabledFilterSections,
   getSortingKeys,
+  isAppAnalyticsEventName,
+  isAppAnalyticsRoute,
   redactAnalyticsUrl,
 } from "@/lib/analytics";
 
@@ -114,6 +116,9 @@ describe("analytics helpers", () => {
     expect(getAnalyticsRouteFromPathname("/")).toBe("sign_in");
     expect(getAnalyticsRouteFromPathname("/dashboard/profile")).toBe("profile");
     expect(getAnalyticsRouteFromPathname("/dashboard/analytics")).toBe("analytics");
+    expect(getAnalyticsRouteFromPathname("/dashboard/filter-settings")).toBe(
+      "dashboard",
+    );
     expect(
       getAnalyticsRouteFromPathname("/dashboard/datasets/123/edit"),
     ).toBe("dataset_edit");
@@ -154,6 +159,13 @@ describe("analytics helpers", () => {
     expect(getAnalyticsEventPropertyKeys("dataset_filters_applied")).not.toContain(
       "watchlist_frontier_group_value",
     );
+  });
+
+  it("does not recognize removed filter-settings analytics routes or events", () => {
+    expect(isAppAnalyticsRoute("filter_settings")).toBe(false);
+    expect(isAppAnalyticsEventName("filter_region_created")).toBe(false);
+    expect(isAppAnalyticsEventName("filter_region_updated")).toBe(false);
+    expect(isAppAnalyticsEventName("filter_region_deleted")).toBe(false);
   });
 
   it("exposes filtered dataset assignment analytics event property keys", () => {

@@ -16,16 +16,33 @@ import {
   getUiSmokeEnv,
   getUiSmokeStorageAdminKey,
 } from "./lib/ui-smoke-env";
-import { REGION_COUNTRY_OPTIONS } from "../src/lib/region-country-options";
+import { formatUnknownError } from "./lib/format-error";
+import {
+  CANONICAL_FILTER_REGION_DEFINITIONS,
+  type CanonicalFilterRegionKey,
+} from "../src/lib/canonical-filter-regions";
 
 const PRIMARY_DATASET_ID = "11111111-1111-4111-8111-111111111111";
 const SECONDARY_DATASET_ID = "22222222-2222-4222-8222-222222222222";
 const DERIVED_DATASET_ID = "99999999-9999-4999-8999-999999999999";
-const GLOBAL_REGION_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
-const SOUTH_ASIA_REGION_ID = "33333333-3333-4333-8333-333333333333";
-const LATIN_AMERICA_REGION_ID = "44444444-4444-4444-8444-444444444444";
 const JOSHUA_PROJECT_SOURCE_TYPE_ID = "55555555-5555-4555-8555-555555555555";
 const ACCELERATE_SOURCE_TYPE_ID = "66666666-6666-4666-8666-666666666666";
+
+const FILTER_REGION_IDS: Record<CanonicalFilterRegionKey, string> = {
+  global: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+  "africa-east-and-southern": "10000000-0000-4000-8000-000000000001",
+  "africa-north-and-middle-east": "10000000-0000-4000-8000-000000000002",
+  "africa-west-and-central": "10000000-0000-4000-8000-000000000003",
+  "america-latin": "10000000-0000-4000-8000-000000000004",
+  "america-north-and-caribbean": "10000000-0000-4000-8000-000000000005",
+  "asia-central": "10000000-0000-4000-8000-000000000006",
+  "asia-northeast": "10000000-0000-4000-8000-000000000007",
+  "asia-south": "10000000-0000-4000-8000-000000000008",
+  "asia-southeast": "10000000-0000-4000-8000-000000000009",
+  "australia-and-pacific": "10000000-0000-4000-8000-000000000010",
+  "europe-eastern-and-eurasia": "10000000-0000-4000-8000-000000000011",
+  "europe-western": "10000000-0000-4000-8000-000000000012",
+};
 
 const FIELD_DEFINITION_IDS = {
   pgPeopleId1: "77777777-7777-4777-8777-777777777771",
@@ -254,35 +271,41 @@ async function insertFieldSourceTypes(sql: postgres.Sql) {
 }
 
 async function insertFilterRegions(sql: postgres.Sql) {
+  const regionRows = CANONICAL_FILTER_REGION_DEFINITIONS.map((region) => ({
+    id: FILTER_REGION_IDS[region.key],
+    name: region.name,
+    description: region.description,
+    sort_order: region.sortOrder,
+  }));
+  const countryRows = CANONICAL_FILTER_REGION_DEFINITIONS.flatMap((region) =>
+    region.countries.map((countryName) => ({
+      region_id: FILTER_REGION_IDS[region.key],
+      country_name: countryName,
+    })),
+  );
+
   await sql`
-    insert into public.filter_regions (id, name, description, sort_order)
-    values
-      (${GLOBAL_REGION_ID}, ${"Global"}, ${"All countries"}, ${1}),
-      (${SOUTH_ASIA_REGION_ID}, ${"South Asia"}, ${"India and Nepal"}, ${2}),
-      (${LATIN_AMERICA_REGION_ID}, ${"Latin America"}, ${"Brazil and Colombia"}, ${3})
+    insert into public.filter_regions ${sql(
+      regionRows,
+      "id",
+      "name",
+      "description",
+      "sort_order",
+    )}
     on conflict (id) do update
-    set name = excluded.name, description = excluded.description, sort_order = excluded.sort_order, updated_at = now()
+    set
+      name = excluded.name,
+      description = excluded.description,
+      sort_order = excluded.sort_order,
+      updated_at = now()
   `;
 
   await sql`
     insert into public.filter_region_countries ${sql(
-      REGION_COUNTRY_OPTIONS.map((countryName) => ({
-        region_id: GLOBAL_REGION_ID,
-        country_name: countryName,
-      })),
+      countryRows,
       "region_id",
       "country_name",
     )}
-    on conflict do nothing
-  `;
-
-  await sql`
-    insert into public.filter_region_countries (region_id, country_name)
-    values
-      (${SOUTH_ASIA_REGION_ID}, ${"India"}),
-      (${SOUTH_ASIA_REGION_ID}, ${"Nepal"}),
-      (${LATIN_AMERICA_REGION_ID}, ${"Brazil"}),
-      (${LATIN_AMERICA_REGION_ID}, ${"Colombia"})
     on conflict do nothing
   `;
 }
@@ -826,8 +849,6 @@ async function main() {
         derivedDatasetId: DERIVED_DATASET_ID,
         editableFieldDefinitionId: FIELD_DEFINITION_IDS.pgPeopleId1,
         editableFieldSourceTypeId: JOSHUA_PROJECT_SOURCE_TYPE_ID,
-        southAsiaRegionId: SOUTH_ASIA_REGION_ID,
-        latinAmericaRegionId: LATIN_AMERICA_REGION_ID,
       },
       users: {
         admin: adminUser,
@@ -876,16 +897,6 @@ async function main() {
           label: "Joshua Project",
         },
       },
-      filterRegions: {
-        southAsia: {
-          id: SOUTH_ASIA_REGION_ID,
-          name: "South Asia",
-        },
-        latinAmerica: {
-          id: LATIN_AMERICA_REGION_ID,
-          name: "Latin America",
-        },
-      },
     };
 
     await writeFile(UI_SMOKE_BOOTSTRAP_FILE, JSON.stringify(payload, null, 2), "utf8");
@@ -901,7 +912,6 @@ async function main() {
 }
 
 void main().catch((error) => {
-  const message = error instanceof Error ? error.message : String(error);
-  console.error(`[bootstrap] ${message}`);
+  console.error(`[bootstrap] ${formatUnknownError(error)}`);
   process.exitCode = 1;
 });

@@ -57,7 +57,7 @@ const dataset = {
     region: {
       enabled: true,
       selectedRegionIds: ["10000000-0000-4000-8000-000000000001"],
-      selectedRegionNames: ["South Asia"],
+      selectedRegionNames: ["Asia, South"],
       enabledCountryNames: ["India", "Nepal"],
     },
     country: {

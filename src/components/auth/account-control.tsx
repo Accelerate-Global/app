@@ -4,7 +4,6 @@ import {
   BookTextIcon,
   ChevronDownIcon,
   DatabaseIcon,
-  SlidersHorizontalIcon,
   LayoutDashboardIcon,
   ActivityIcon,
   LogOutIcon,
@@ -196,10 +195,6 @@ export function AccountControl({ identity }: AccountControlProps) {
               <DropdownMenuItem onClick={() => navigateTo("/dashboard/field-sources")}>
                 <DatabaseIcon aria-hidden="true" />
                 Field Sources
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigateTo("/dashboard/filter-settings")}>
-                <SlidersHorizontalIcon aria-hidden="true" />
-                Filter Settings
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => navigateTo("/dashboard/analytics")}>
                 <ActivityIcon aria-hidden="true" />

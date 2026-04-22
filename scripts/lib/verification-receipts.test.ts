@@ -118,4 +118,25 @@ describe("verification-receipts", () => {
     expect(isVerificationSatisfied(receipt, "test:ui:smoke:targeted")).toBe(true);
     expect(isVerificationSatisfied(receipt, "smoke:check")).toBe(true);
   });
+
+  it("stores and reuses verify:ship:local receipts on the same tracked tree", async () => {
+    const rootDir = await createTempRepo();
+    await trackRepoFile(rootDir, "scripts/ship.ts", "export const shipped = true;\n");
+    const treeSha = await getTrackedFileTreeSha(rootDir);
+
+    await recordVerificationSuccess({
+      rootDir,
+      treeSha,
+      changedFiles: ["scripts/ship.ts"],
+      commandIds: ["verify:ship:local"],
+    });
+
+    const receipt = await loadVerificationReceipt({
+      rootDir,
+      treeSha,
+      changedFiles: ["scripts/ship.ts"],
+    });
+
+    expect(isVerificationSatisfied(receipt, "verify:ship:local")).toBe(true);
+  });
 });

@@ -78,7 +78,42 @@ describe("ui-smoke-selection", () => {
       "desktop-anonymous",
       "mobile-anonymous",
     ]);
+    expect(selection.testPaths).toEqual([]);
     expect(selection.bootstrapScope).toBe("auth");
+  });
+
+  it("targets the edited journeys spec directly without forcing the full suite", () => {
+    const selection = resolveUiSmokeSelection(["tests/ui/10-journeys.spec.ts"]);
+
+    expect(selection.mode).toBe("targeted");
+    expect(selection.routeIds).toEqual([]);
+    expect(selection.journeyTitles).toEqual([]);
+    expect(selection.testPaths).toEqual(["tests/ui/10-journeys.spec.ts"]);
+    expect(selection.projectNames).toEqual([
+      "desktop-anonymous",
+      "desktop-viewer",
+      "desktop-admin",
+      "mobile-anonymous",
+      "mobile-viewer",
+      "mobile-admin",
+    ]);
+    expect(selection.bootstrapScope).toBe("full");
+  });
+
+  it("reuses product-selected projects when a journeys spec changes alongside app code", () => {
+    const selection = resolveUiSmokeSelection([
+      "tests/ui/10-journeys.spec.ts",
+      "src/components/dashboard/dataset-edit-page-client.tsx",
+    ]);
+
+    expect(selection.mode).toBe("targeted");
+    expect(selection.testPaths).toEqual(["tests/ui/10-journeys.spec.ts"]);
+    expect(selection.projectNames).toEqual(["desktop-viewer", "desktop-admin"]);
+    expect(selection.routeIds).toEqual([
+      "dataset-edit-viewer-redirect",
+      "dataset-edit-admin",
+    ]);
+    expect(selection.bootstrapScope).toBe("full");
   });
 
   it("builds a grep pattern that matches Playwright full titles", () => {
@@ -115,5 +150,16 @@ describe("ui-smoke-selection", () => {
     expect(message).toContain(
       "admin can create a source column and update a field source value",
     );
+  });
+
+  it("includes direct test files in zero-match validation errors", () => {
+    const selection = resolveUiSmokeSelection(["tests/ui/10-journeys.spec.ts"]);
+    const message = formatUiSmokeZeroMatchMessage({
+      selection,
+      grepPattern: "",
+    });
+
+    expect(message).toContain("Test files: tests/ui/10-journeys.spec.ts");
+    expect(message).not.toContain("Grep pattern:");
   });
 });

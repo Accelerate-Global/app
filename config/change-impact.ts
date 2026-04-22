@@ -2,54 +2,71 @@ import path from "node:path";
 
 import manifest from "./change-impact.manifest.json";
 
+export type SupabaseLifecycle = "none" | "runner-managed" | "self-managed";
+
 export const verificationCommandCatalog = {
   typecheck: {
     id: "typecheck",
     command: "pnpm run typecheck",
     description: "TypeScript static analysis for repo code and scripts.",
+    supabaseLifecycle: "none",
   },
   "verify:test-delta": {
     id: "verify:test-delta",
     command: "pnpm run verify:test-delta",
     description:
       "Require a test file delta when directly tested repo code changes in the current diff.",
+    supabaseLifecycle: "none",
   },
   "smoke:preflight": {
     id: "smoke:preflight",
     command: "pnpm run smoke:preflight",
     description:
       "Verify local Supabase, auth, storage, and smoke bootstrap prerequisites before Playwright starts.",
+    supabaseLifecycle: "none",
   },
   "verify:app": {
     id: "verify:app",
     command: "pnpm run verify:app",
     description: "Run the repo app verification bundle: lint, vitest, and Next build.",
+    supabaseLifecycle: "none",
   },
   "smoke:check": {
     id: "smoke:check",
     command: "pnpm run smoke:check",
     description: "Regenerate the shared UI smoke fixture manifest and validate smoke contracts.",
+    supabaseLifecycle: "none",
   },
   "test:ui:smoke": {
     id: "test:ui:smoke",
     command: "pnpm run test:ui:smoke",
     description: "Run the full Playwright UI smoke suite against the local stack.",
+    supabaseLifecycle: "runner-managed",
   },
   "test:ui:smoke:targeted": {
     id: "test:ui:smoke:targeted",
     command: "pnpm run test:ui:smoke:targeted",
     description:
       "Run the current-worktree Playwright smoke subset before attempting the full suite.",
+    supabaseLifecycle: "runner-managed",
   },
   "db:security": {
     id: "db:security",
     command: "pnpm run db:security",
     description: "Reset local Supabase and run the database security suite.",
+    supabaseLifecycle: "self-managed",
   },
   "db:check-migration-drift": {
     id: "db:check-migration-drift",
     command: "pnpm run db:check-migration-drift",
     description: "Check linked Supabase migration drift before release work.",
+    supabaseLifecycle: "none",
+  },
+  "verify:ship:local": {
+    id: "verify:ship:local",
+    command: "pnpm run verify:ship:local",
+    description: "Require a passing ship-local verification receipt before merge work begins.",
+    supabaseLifecycle: "none",
   },
 } as const;
 
@@ -83,6 +100,7 @@ export type UiSmokeTargetRule = {
   routeIds?: string[];
   journeyTitles?: string[];
   projectNames?: string[];
+  testPaths?: string[];
   bootstrapScope?: UiSmokeBootstrapScope;
   forceFullSuite?: boolean;
 };

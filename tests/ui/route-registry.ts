@@ -142,21 +142,6 @@ export const smokeRouteSpecs: SmokeRouteSpec[] = [
     journeys: ["admin can create a source column and update a field source value"],
   },
   {
-    id: "filter-settings-viewer-redirect",
-    role: "viewer",
-    pageFile: "src/app/dashboard/filter-settings/page.tsx",
-    path: "/dashboard/filter-settings",
-    redirectTo: "/dashboard",
-  },
-  {
-    id: "filter-settings-admin",
-    role: "admin",
-    pageFile: "src/app/dashboard/filter-settings/page.tsx",
-    path: "/dashboard/filter-settings",
-    pageId: "filter-settings",
-    journeys: ["admin can create and update filter settings"],
-  },
-  {
     id: "profile-viewer",
     role: "viewer",
     pageFile: "src/app/dashboard/profile/page.tsx",

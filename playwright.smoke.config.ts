@@ -10,6 +10,9 @@ export default defineConfig({
   testMatch: "*.spec.ts",
   fullyParallel: false,
   workers: 1,
+  // Keep CI strict, but allow one local retry for transient repo-local
+  // Supabase/auth hiccups during the long smoke sweep.
+  retries: process.env.CI ? 0 : 1,
   timeout: 60_000,
   expect: {
     timeout: 10_000,

@@ -83,14 +83,13 @@ pnpm run test:ui:smoke:headed
 
 - anonymous auth entry routes
 - viewer dashboard and dataset browsing routes
-- admin dashboard, field definitions, field sources, filter settings, profile, and upload routes
+- admin dashboard, field definitions, field sources, profile, and upload routes
 - route redirects such as `/sign-in` and `/dashboard/datasets`
 - generic app surfaces exposed through the smoke DOM contract
 - shared primitives rendered on `/__smoke/components`
 - write journeys on disposable local data:
   - edit dataset details
   - edit field definition text
-  - create and update a filter region
   - create a source column and update a field source value
 - replace a seeded dataset through the real upload flow
 
