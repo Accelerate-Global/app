@@ -5,12 +5,16 @@ import {
   desc,
   eq,
   gte,
+  inArray,
   sql,
   type SQL,
 } from "drizzle-orm";
 
 import { getDb } from "@/db";
-import { analyticsEvents } from "@/db/schema";
+import {
+  analyticsEvents,
+  analyticsFailureResolutions,
+} from "@/db/schema";
 import {
   APP_ANALYTICS_EVENT_NAMES,
   APP_ANALYTICS_ROUTES,
@@ -66,11 +70,23 @@ export type AnalyticsBreakdownRow = {
   count: number;
 };
 
+export type KnownAnalyticsFailure = {
+  fingerprint: string;
+  eventName: AppAnalyticsEventName;
+  route: AppAnalyticsRoute;
+  sourceSurface: string;
+  errorCode: string | null;
+  occurrenceCount: number;
+  firstSeenAt: string;
+  lastSeenAt: string;
+};
+
 export type AnalyticsDashboardData = {
   filters: AnalyticsDashboardFilters;
   summary: AnalyticsSummary;
   eventBreakdown: AnalyticsBreakdownRow[];
   routeBreakdown: AnalyticsBreakdownRow[];
+  knownFailures: KnownAnalyticsFailure[];
   recentFailures: StoredAnalyticsEvent[];
   events: StoredAnalyticsEvent[];
   pageCount: number;
@@ -83,6 +99,11 @@ const ANALYTICS_RANGE_DAYS = {
   "30d": 30,
   "90d": 90,
 } as const satisfies Record<AnalyticsDashboardRange, number>;
+
+const NON_ACTIONABLE_ANALYTICS_FAILURE_KEYS = new Set([
+  "auth_sign_in_failed|invalid_credentials",
+  "password_reset_invalid_link|invalid_recovery_link",
+]);
 
 function getFirstSearchParamValue(
   value: string | string[] | undefined,
@@ -105,6 +126,18 @@ function normalizeCount(value: number | string | null | undefined) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+function coerceDate(value: Date | string | null | undefined) {
+  if (value instanceof Date) {
+    return value;
+  }
+
+  if (typeof value === "string") {
+    return new Date(value);
+  }
+
+  return new Date(0);
+}
+
 function toStoredAnalyticsEvent(row: typeof analyticsEvents.$inferSelect): StoredAnalyticsEvent {
   return {
     id: row.id,
@@ -122,6 +155,29 @@ function toStoredAnalyticsEvent(row: typeof analyticsEvents.$inferSelect): Store
     eventProps: row.eventProps,
     createdAt: row.createdAt.toISOString(),
   };
+}
+
+export function buildAnalyticsFailureFingerprint(input: {
+  eventName: AppAnalyticsEventName;
+  route: AppAnalyticsRoute;
+  sourceSurface: string;
+  errorCode: string | null;
+}) {
+  return [
+    input.eventName,
+    input.errorCode ?? "",
+    input.route,
+    input.sourceSurface,
+  ].join("|");
+}
+
+export function isActionableAnalyticsFailure(input: {
+  eventName: AppAnalyticsEventName;
+  errorCode: string | null;
+}) {
+  return !NON_ACTIONABLE_ANALYTICS_FAILURE_KEYS.has(
+    `${input.eventName}|${input.errorCode ?? ""}`,
+  );
 }
 
 function buildAnalyticsPredicates(
@@ -195,6 +251,35 @@ export async function persistAnalyticsEvent(
   payload: Record<string, unknown>,
 ) {
   await getDb().insert(analyticsEvents).values(createStoredAnalyticsEventRecord(name, payload));
+}
+
+export async function resolveAnalyticsFailure(input: {
+  fingerprint: string;
+  resolvedByOwnerId: string;
+  resolvedAt?: Date;
+}) {
+  const fingerprint = input.fingerprint.trim();
+
+  if (!fingerprint) {
+    throw new Error("Analytics failure fingerprint is required.");
+  }
+
+  const resolvedAt = input.resolvedAt ?? new Date();
+
+  await getDb()
+    .insert(analyticsFailureResolutions)
+    .values({
+      fingerprint,
+      resolvedByOwnerId: input.resolvedByOwnerId,
+      resolvedAt,
+    })
+    .onConflictDoUpdate({
+      target: analyticsFailureResolutions.fingerprint,
+      set: {
+        resolvedByOwnerId: input.resolvedByOwnerId,
+        resolvedAt,
+      },
+    });
 }
 
 export function resolveAnalyticsDashboardFilters(
@@ -279,8 +364,18 @@ export async function getAnalyticsDashboardData(
   });
   const eventCountExpression = count();
   const routeCountExpression = count();
+  const knownFailureCountExpression = count();
+  const knownFailureFingerprintExpression = sql<string>`concat(${analyticsEvents.eventName}, '|', coalesce(${analyticsEvents.errorCode}, ''), '|', ${analyticsEvents.route}, '|', ${analyticsEvents.sourceSurface})`;
+  const knownFailureFirstSeenExpression = sql<Date>`min(${analyticsEvents.createdAt})`;
+  const knownFailureLastSeenExpression = sql<Date>`max(${analyticsEvents.createdAt})`;
 
-  const [summaryRow, eventBreakdownRows, routeBreakdownRows, failureRows] =
+  const [
+    summaryRow,
+    eventBreakdownRows,
+    routeBreakdownRows,
+    failureRows,
+    knownFailureRows,
+  ] =
     await Promise.all([
       getDb()
         .select({
@@ -316,7 +411,74 @@ export async function getAnalyticsDashboardData(
         .where(failureWhereClause)
         .orderBy(desc(analyticsEvents.createdAt))
         .limit(10),
+      getDb()
+        .select({
+          fingerprint: knownFailureFingerprintExpression,
+          eventName: analyticsEvents.eventName,
+          route: analyticsEvents.route,
+          sourceSurface: analyticsEvents.sourceSurface,
+          errorCode: analyticsEvents.errorCode,
+          occurrenceCount: knownFailureCountExpression,
+          firstSeenAt: knownFailureFirstSeenExpression,
+          lastSeenAt: knownFailureLastSeenExpression,
+        })
+        .from(analyticsEvents)
+        .where(failureWhereClause)
+        .groupBy(
+          analyticsEvents.eventName,
+          analyticsEvents.route,
+          analyticsEvents.sourceSurface,
+          analyticsEvents.errorCode,
+        )
+        .orderBy(
+          desc(knownFailureLastSeenExpression),
+          desc(knownFailureCountExpression),
+          asc(analyticsEvents.eventName),
+        ),
     ]);
+
+  const actionableKnownFailureRows = knownFailureRows.filter((row) =>
+    isActionableAnalyticsFailure({
+      eventName: row.eventName as AppAnalyticsEventName,
+      errorCode: row.errorCode,
+    }),
+  );
+  const knownFailureResolutionRows =
+    actionableKnownFailureRows.length === 0
+      ? []
+      : await getDb()
+          .select()
+          .from(analyticsFailureResolutions)
+          .where(
+            inArray(
+              analyticsFailureResolutions.fingerprint,
+              actionableKnownFailureRows.map((row) => row.fingerprint),
+            ),
+          );
+  const knownFailureResolutionsByFingerprint = new Map(
+    knownFailureResolutionRows.map((row) => [row.fingerprint, row]),
+  );
+  const knownFailures = actionableKnownFailureRows
+    .filter((row) => {
+      const resolution = knownFailureResolutionsByFingerprint.get(row.fingerprint);
+
+      if (!resolution) {
+        return true;
+      }
+
+      return coerceDate(row.lastSeenAt) > resolution.resolvedAt;
+    })
+    .map((row) => ({
+      fingerprint: row.fingerprint,
+      eventName: row.eventName as AppAnalyticsEventName,
+      route: row.route as AppAnalyticsRoute,
+      sourceSurface: row.sourceSurface,
+      errorCode: row.errorCode,
+      occurrenceCount: normalizeCount(row.occurrenceCount),
+      firstSeenAt: coerceDate(row.firstSeenAt).toISOString(),
+      lastSeenAt: coerceDate(row.lastSeenAt).toISOString(),
+    }))
+    .sort((left, right) => right.lastSeenAt.localeCompare(left.lastSeenAt));
 
   const summary: AnalyticsSummary = {
     totalEvents: normalizeCount(summaryRow?.totalEvents),
@@ -351,6 +513,7 @@ export async function getAnalyticsDashboardData(
       key: row.key,
       count: normalizeCount(row.count),
     })),
+    knownFailures,
     recentFailures: failureRows.map(toStoredAnalyticsEvent),
     events: rows.map(toStoredAnalyticsEvent),
     pageCount,

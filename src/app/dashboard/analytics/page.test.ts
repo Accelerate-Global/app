@@ -107,6 +107,18 @@ describe("/dashboard/analytics", () => {
       },
       eventBreakdown: [{ key: "sign_out", count: 6 }],
       routeBreakdown: [{ key: "analytics", count: 12 }],
+      knownFailures: [
+        {
+          fingerprint: "dataset_upload_failed|authorize_failed|upload|dataset_upload",
+          eventName: "dataset_upload_failed",
+          route: "upload",
+          sourceSurface: "dataset_upload",
+          errorCode: "authorize_failed",
+          occurrenceCount: 1,
+          firstSeenAt: "2026-04-18T15:00:00.000Z",
+          lastSeenAt: "2026-04-18T15:00:00.000Z",
+        },
+      ],
       recentFailures: [],
       events: [],
       pageCount: 1,
@@ -120,6 +132,8 @@ describe("/dashboard/analytics", () => {
     expect(screen.queryByText("Forward-only history")).toBeNull();
     expect(screen.getByText("Total events")).toBeTruthy();
     expect(screen.getByText("Unique actors")).toBeTruthy();
+    expect(screen.getByText("Known failures")).toBeTruthy();
+    expect(screen.getByText("Seen 1 times")).toBeTruthy();
     expect(getAnalyticsDashboardDataMock).toHaveBeenCalled();
   });
 });

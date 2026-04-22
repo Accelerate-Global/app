@@ -114,8 +114,8 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
                 Analytics
               </h1>
               <p className="max-w-3xl text-base leading-7 text-muted-foreground sm:text-lg">
-                Review event volume, failures, and recent product activity from the
-                app&apos;s internal analytics store.
+                Review event volume, open known failures, and recent product activity
+                from the app&apos;s internal analytics store.
               </p>
             </div>
           </div>
@@ -213,7 +213,7 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
           </Card>
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Failed events</CardTitle>
+              <CardTitle className="text-base">Failed events logged</CardTitle>
             </CardHeader>
             <CardContent className="text-3xl font-semibold text-destructive">
               {formatCount(data.summary.failedEvents)}
@@ -292,32 +292,50 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
 
         <Card>
           <CardHeader>
-            <CardTitle>Recent failures</CardTitle>
+            <CardTitle>Known failures</CardTitle>
           </CardHeader>
           <CardContent>
-            {data.recentFailures.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No recent failures for this range.</p>
+            {data.knownFailures.length === 0 ? (
+              <div className="space-y-2 text-sm text-muted-foreground">
+                <p>No open known failures for this range.</p>
+                {data.summary.failedEvents > 0 ? (
+                  <p>
+                    Raw failure events remain in history below, but they are either
+                    expected user-input outcomes or already addressed.
+                  </p>
+                ) : null}
+              </div>
             ) : (
               <ul className="space-y-3">
-                {data.recentFailures.map((event) => (
+                {data.knownFailures.map((failure) => (
                   <li
-                    key={event.id}
+                    key={failure.fingerprint}
                     className="rounded-2xl border border-border px-4 py-3 text-sm"
                   >
                     <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="font-mono text-xs text-foreground">{event.eventName}</div>
+                      <div className="font-mono text-xs text-foreground">
+                        {failure.eventName}
+                      </div>
                       <div className="text-muted-foreground">
-                        {formatTimestamp(event.createdAt)}
+                        Last seen {formatTimestamp(failure.lastSeenAt)}
                       </div>
                     </div>
                     <div className="mt-1 text-muted-foreground">
-                      {event.errorCode ?? "No error code"} · {formatCodeLabel(event.route)} ·{" "}
-                      {event.sourceSurface}
+                      {failure.errorCode ?? "No error code"} ·{" "}
+                      {formatCodeLabel(failure.route)} · {failure.sourceSurface}
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                      <span>Seen {formatCount(failure.occurrenceCount)} times</span>
+                      <span>First seen {formatTimestamp(failure.firstSeenAt)}</span>
                     </div>
                   </li>
                 ))}
               </ul>
             )}
+            <p className="mt-4 text-xs text-muted-foreground">
+              Expected user-input outcomes stay in the raw event history and are not
+              treated as open known failures.
+            </p>
           </CardContent>
         </Card>
 
