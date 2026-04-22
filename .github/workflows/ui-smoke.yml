@@ -42,7 +42,7 @@ jobs:
 
       - if: steps.preinstall_selection.outputs.run_ui_smoke == 'true' && steps.selection.outputs.ui_smoke_browser == 'true'
         id: playwright_version
-        run: echo "version=$(node -p \"require('./package.json').devDependencies['@playwright/test'].replace(/[^0-9A-Za-z._-]+/g, '-')\")" >> "$GITHUB_OUTPUT"
+        run: echo "version=$(node -p 'require(\"./package.json\").devDependencies[\"@playwright/test\"].replace(/[^0-9A-Za-z._-]+/g, \"-\")')" >> "$GITHUB_OUTPUT"
 
       - if: steps.preinstall_selection.outputs.run_ui_smoke == 'true' && steps.selection.outputs.ui_smoke_browser == 'true'
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
