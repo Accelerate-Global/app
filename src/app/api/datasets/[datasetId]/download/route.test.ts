@@ -4,6 +4,7 @@ import { getCurrentIdentity } from "@/lib/auth";
 import { getAllDatasetRows, getDataset } from "@/lib/datasets";
 import { logError } from "@/lib/error-logging";
 import { listFieldDefinitionPresentationByColumnKey } from "@/lib/field-definitions";
+import { listFilterRegions } from "@/lib/filter-settings";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { GET } from "./route";
 
@@ -37,6 +38,10 @@ vi.mock("@/lib/field-definitions", () => ({
   listFieldDefinitionPresentationByColumnKey: vi.fn(),
 }));
 
+vi.mock("@/lib/filter-settings", () => ({
+  listFilterRegions: vi.fn(),
+}));
+
 vi.mock("@/lib/error-logging", () => ({
   logError: vi.fn(),
 }));
@@ -47,6 +52,7 @@ const getDatasetMock = vi.mocked(getDataset);
 const listFieldDefinitionPresentationByColumnKeyMock = vi.mocked(
   listFieldDefinitionPresentationByColumnKey,
 );
+const listFilterRegionsMock = vi.mocked(listFilterRegions);
 const createSupabaseAdminClientMock = vi.mocked(createSupabaseAdminClient);
 const logErrorMock = vi.mocked(logError);
 
@@ -87,6 +93,7 @@ const physicalDataset = {
   sizeBytes: 100,
   columns: [{ key: "email", label: "Email", sourceIndex: 0 }],
   hiddenColumnKeys: [],
+  defaultFilters: null,
   tags: [],
   error: null,
   createdAt: new Date().toISOString(),
@@ -179,6 +186,26 @@ describe("/api/datasets/[datasetId]/download", () => {
         linkedSources: [],
       },
     });
+    listFilterRegionsMock.mockResolvedValue([
+      {
+        id: "region-egypt",
+        name: "North Africa",
+        description: "",
+        sortOrder: 1,
+        countries: ["Egypt"],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      {
+        id: "region-south-asia",
+        name: "South Asia",
+        description: "",
+        sortOrder: 2,
+        countries: ["India", "Nepal"],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+    ]);
     createSignedUrlMock.mockResolvedValue({
       data: {
         signedUrl: "https://example.supabase.co/storage/v1/object/sign/datasets/csv/customers.csv",
@@ -280,6 +307,7 @@ describe("/api/datasets/[datasetId]/download", () => {
       datasetId: derivedDataset.id,
       includeDisabled: false,
     });
+    expect(listFilterRegionsMock).toHaveBeenCalledWith();
   });
 
   it("also allows admins to download datasets", async () => {
@@ -443,5 +471,100 @@ describe("/api/datasets/[datasetId]/download", () => {
     expect(csv).toContain("2,India,grace@example.com");
     expect(csv).not.toContain("Nepal");
     expect(csv).not.toContain("skip@example.com");
+  });
+
+  it("prefers dataset default filters and sorting over the legacy tag preset", async () => {
+    getDatasetMock.mockResolvedValue({
+      ...derivedDataset,
+      columns: [
+        { key: "email", label: "Email", sourceIndex: 0 },
+        { key: "geo_country_name", label: "Geo_Country_Name", sourceIndex: 1 },
+      ],
+      defaultFilters: {
+        region: {
+          enabled: true,
+          selectedRegionIds: ["region-south-asia"],
+          selectedRegionNames: ["South Asia"],
+          enabledCountryNames: ["India", "Nepal"],
+        },
+        country: {
+          enabled: false,
+          selectedCountryNames: [],
+          includeAlternateCountries: false,
+        },
+        watchlist: {
+          enabled: false,
+          thresholdEnabled: true,
+          threshold: 2,
+          engagementPhaseEnabled: true,
+          engagementPhaseThreshold: 6,
+          evangelicalPopulationBelieversRuleEnabled: true,
+          evangelicalPopulationBelieversRule: {
+            tiers: [
+              {
+                minPopulation: 0,
+                maxPopulation: null,
+                minBelievers: 50,
+              },
+            ],
+          },
+          frontierGroupEnabled: true,
+          frontierGroupValue: true,
+        },
+        uupg: {
+          enabled: false,
+        },
+        hotspots: {
+          enabled: false,
+          metric: "unique_uupgs" as const,
+          countryCount: 10,
+        },
+        sorting: [
+          {
+            id: "email",
+            desc: true,
+          },
+        ],
+      },
+    });
+    getAllDatasetRowsMock.mockResolvedValue({
+      sourceDatasetId: physicalDataset.id,
+      rows: [
+        {
+          id: "row-1",
+          rowIndex: 0,
+          data: { email: "ada@example.com", geo_country_name: "Egypt" },
+        },
+        {
+          id: "row-2",
+          rowIndex: 1,
+          data: { email: "zoe@example.com", geo_country_name: "Nepal" },
+        },
+        {
+          id: "row-3",
+          rowIndex: 2,
+          data: { email: "bea@example.com", geo_country_name: "India" },
+        },
+      ],
+      page: 1,
+      pageSize: 3,
+      totalRows: 3,
+      pageCount: 1,
+    });
+
+    const response = await GET(
+      new Request("http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001/download"),
+      {
+        params: Promise.resolve({
+          datasetId: derivedDataset.id,
+        }),
+      },
+    );
+
+    expect(response.status).toBe(200);
+    const body = await response.text();
+    expect(body).toContain("Row number,Country,Email");
+    expect(body).toContain("2,Nepal,zoe@example.com");
+    expect(body).toContain("3,India,bea@example.com");
   });
 });

@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { datasetMetadataPatchSchema } from "@/lib/validation";
+import {
+  datasetAssignDerivedViewSchema,
+  datasetMetadataPatchSchema,
+} from "@/lib/validation";
 
 describe("datasetMetadataPatchSchema", () => {
   it("accepts a public visibility-only update", () => {
@@ -224,5 +227,83 @@ describe("datasetMetadataPatchSchema", () => {
       metric: "population",
       countryCount: 10,
     });
+  });
+});
+
+describe("datasetAssignDerivedViewSchema", () => {
+  it("accepts a valid persisted filtered-view assignment payload", () => {
+    const result = datasetAssignDerivedViewSchema.safeParse({
+      sourceDatasetId: "f0000000-0000-4000-8000-000000000099",
+      filters: {
+        region: {
+          enabled: true,
+          selectedRegionIds: ["10000000-0000-4000-8000-000000000001"],
+          selectedRegionNames: ["South Asia"],
+          enabledCountryNames: ["India", "Nepal"],
+        },
+        country: {
+          enabled: false,
+          selectedCountryNames: [],
+        },
+        watchlist: {
+          enabled: false,
+          threshold: 2,
+          engagementPhaseThreshold: 6,
+          frontierGroupValue: true,
+        },
+        uupg: {
+          enabled: false,
+        },
+        sorting: [
+          {
+            id: "people_name",
+            desc: false,
+          },
+        ],
+      },
+    });
+
+    expect(result.success).toBe(true);
+    if (!result.success) {
+      return;
+    }
+
+    expect(result.data.filters.hotspots).toEqual({
+      enabled: false,
+      metric: "unique_uupgs",
+      countryCount: 10,
+    });
+    expect(result.data.filters.country.includeAlternateCountries).toBe(false);
+  });
+
+  it("rejects invalid region ids inside the saved filter state", () => {
+    const result = datasetAssignDerivedViewSchema.safeParse({
+      sourceDatasetId: "f0000000-0000-4000-8000-000000000099",
+      filters: {
+        region: {
+          enabled: true,
+          selectedRegionIds: ["south-asia"],
+          selectedRegionNames: ["South Asia"],
+          enabledCountryNames: ["India"],
+        },
+        country: {
+          enabled: false,
+          selectedCountryNames: [],
+        },
+        watchlist: {
+          enabled: false,
+          threshold: 2,
+          engagementPhaseThreshold: 6,
+          frontierGroupValue: true,
+        },
+        uupg: {
+          enabled: false,
+        },
+        sorting: [],
+      },
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.error?.issues.some((issue) => issue.path.includes("selectedRegionIds"))).toBe(true);
   });
 });

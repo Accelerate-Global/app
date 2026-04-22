@@ -19,6 +19,9 @@ import {
   resolveUiSmokeSelection,
   type UiSmokeSelection,
 } from "./lib/ui-smoke-selection";
+import {
+  type UiSmokeBootstrapScope,
+} from "../config/change-impact";
 
 function runCommand(
   command: string,
@@ -459,8 +462,20 @@ export type UiSmokeSuitePlan = {
 export type UiSmokeRunPlan = {
   selection: UiSmokeSelection | null;
   suites: UiSmokeSuitePlan[];
+  bootstrapScope: UiSmokeBootstrapScope;
   summary: string[];
 };
+
+function resolveRunBootstrapScope(input: {
+  selection: UiSmokeSelection | null;
+  fullAfterTargeted: boolean;
+}) {
+  if (!input.selection || input.selection.mode === "full" || input.fullAfterTargeted) {
+    return "full" satisfies UiSmokeBootstrapScope;
+  }
+
+  return input.selection.bootstrapScope ?? "full";
+}
 
 export function buildUiSmokeRunPlan(input: {
   changedFiles: string[];
@@ -475,6 +490,7 @@ export function buildUiSmokeRunPlan(input: {
     return {
       selection,
       suites: [],
+      bootstrapScope: "full",
       summary: [],
     } satisfies UiSmokeRunPlan;
   }
@@ -489,6 +505,7 @@ export function buildUiSmokeRunPlan(input: {
           projectNames: [],
         },
       ],
+      bootstrapScope: "full",
       summary: [],
     } satisfies UiSmokeRunPlan;
   }
@@ -503,6 +520,7 @@ export function buildUiSmokeRunPlan(input: {
           projectNames: [],
         },
       ],
+      bootstrapScope: "full",
       summary: selection.summary,
     } satisfies UiSmokeRunPlan;
   }
@@ -527,6 +545,10 @@ export function buildUiSmokeRunPlan(input: {
   return {
     selection,
     suites,
+    bootstrapScope: resolveRunBootstrapScope({
+      selection,
+      fullAfterTargeted: input.fullAfterTargeted,
+    }),
     summary: selection.summary,
   } satisfies UiSmokeRunPlan;
 }
@@ -547,6 +569,10 @@ export function resolveUiSmokeChangedFiles(input: {
   }
 
   return input.statusFiles;
+}
+
+export function getSmokeBootstrapArgs(scope: UiSmokeBootstrapScope) {
+  return ["run", "smoke:bootstrap", "--", "--scope", scope] as const;
 }
 
 async function getChangedFilesForRunPlan(input: {
@@ -710,7 +736,7 @@ async function main() {
     classification: "bootstrap",
     message: "UI smoke bootstrap failed.",
     command: "pnpm",
-    args: ["run", "smoke:bootstrap"],
+    args: [...getSmokeBootstrapArgs(runPlan.bootstrapScope)],
     env: smokeEnv,
     attempts: 5,
     retryDelayMs: 2_000,

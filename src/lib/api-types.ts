@@ -40,6 +40,7 @@ export type DatasetSummary = {
   sizeBytes: number;
   columns: CsvColumn[];
   hiddenColumnKeys: string[];
+  defaultFilters: SavedDatasetFilterState | null;
   tags: DatasetTag[];
   error: string | null;
   createdAt: string;

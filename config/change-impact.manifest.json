@@ -1,0 +1,480 @@
+{
+  "changeImpactDomains": [
+    {
+      "id": "planner-policy",
+      "label": "Planner policy and agent workflow",
+      "patterns": [
+        "AGENTS.md",
+        "config/**/*.ts",
+        "scripts/verify-change.ts",
+        "scripts/verify-change-run.ts",
+        "scripts/check-test-delta.ts",
+        "scripts/lib/test-impact.ts",
+        "scripts/lib/verify-change-report.ts",
+        "scripts/lib/verify-change.ts"
+      ],
+      "requiredCommands": ["typecheck", "verify:test-delta"],
+      "recommendedCommands": ["verify:app"],
+      "manualSteps": [],
+      "contractRequirements": []
+    },
+    {
+      "id": "app-runtime",
+      "label": "Application and script runtime",
+      "patterns": [
+        "package.json",
+        "scripts/**/*.ts",
+        "src/app/**/*.ts",
+        "src/app/**/*.tsx",
+        "src/components/**/*.ts",
+        "src/components/**/*.tsx",
+        "src/db/**/*.ts",
+        "src/db/**/*.tsx",
+        "src/lib/**/*.ts",
+        "src/lib/**/*.tsx",
+        "tests/**/*.ts",
+        "tests/**/*.tsx"
+      ],
+      "requiredCommands": ["typecheck", "verify:test-delta", "verify:app"],
+      "recommendedCommands": [],
+      "manualSteps": [],
+      "contractRequirements": []
+    },
+    {
+      "id": "ui-pages",
+      "label": "Smoke-tracked App Router pages",
+      "patterns": ["src/app/**/page.tsx"],
+      "requiredCommands": ["smoke:check", "test:ui:smoke:targeted"],
+      "recommendedCommands": [],
+      "manualSteps": [],
+      "contractRequirements": [
+        "route-registry-entry",
+        "page-marker",
+        "page-ready-marker",
+        "smoke-surface-literals"
+      ]
+    },
+    {
+      "id": "ui-primitives",
+      "label": "Shared UI primitives",
+      "patterns": ["src/components/ui/**/*.ts", "src/components/ui/**/*.tsx"],
+      "requiredCommands": ["smoke:check", "test:ui:smoke:targeted"],
+      "recommendedCommands": [],
+      "manualSteps": [],
+      "contractRequirements": ["shared-ui-fixture", "smoke-surface-literals"]
+    },
+    {
+      "id": "ui-smoke-harness",
+      "label": "UI smoke harness and fixtures",
+      "patterns": [
+        ".github/workflows/ui-smoke.yml",
+        "playwright.smoke.config.ts",
+        "scripts/check-ui-smoke.ts",
+        "scripts/check-ui-smoke-env.ts",
+        "scripts/run-ui-smoke.ts",
+        "scripts/smoke-bootstrap.ts",
+        "tests/ui/**/*.ts",
+        "tests/ui/**/*.tsx"
+      ],
+      "requiredCommands": ["smoke:check", "test:ui:smoke"],
+      "recommendedCommands": [],
+      "manualSteps": [],
+      "contractRequirements": [
+        "route-registry-entry",
+        "page-marker",
+        "page-ready-marker",
+        "shared-ui-fixture",
+        "smoke-surface-literals"
+      ]
+    },
+    {
+      "id": "database-security",
+      "label": "Database access and security",
+      "patterns": [
+        ".github/workflows/database-security.yml",
+        "scripts/check-public-rls.mjs",
+        "scripts/run-remote-db-tests.mjs",
+        "src/db/**",
+        "src/lib/auth.ts",
+        "src/lib/field-definitions.ts",
+        "src/lib/field-sources.ts",
+        "src/lib/signup-allowlist.ts",
+        "src/lib/supabase/**",
+        "src/lib/user-management.ts",
+        "src/lib/workspace-role.ts",
+        "src/app/api/admin/users/**",
+        "supabase/**"
+      ],
+      "requiredCommands": ["db:security"],
+      "recommendedCommands": [],
+      "manualSteps": [],
+      "contractRequirements": []
+    },
+    {
+      "id": "database-migrations",
+      "label": "Tracked Supabase migrations",
+      "patterns": ["supabase/migrations/**"],
+      "requiredCommands": ["db:security", "db:check-migration-drift"],
+      "recommendedCommands": [],
+      "manualSteps": ["db:push:remote"],
+      "contractRequirements": []
+    }
+  ],
+  "uiSmokeTargetRules": [
+    {
+      "id": "ui-smoke-harness-full",
+      "label": "Smoke harness and browser runner changes",
+      "patterns": [
+        ".github/workflows/ui-smoke.yml",
+        "playwright.smoke.config.ts",
+        "scripts/check-ui-smoke.ts",
+        "scripts/check-ui-smoke-env.ts",
+        "scripts/run-ui-smoke.ts",
+        "scripts/smoke-bootstrap.ts",
+        "tests/ui/**/*.ts",
+        "tests/ui/**/*.tsx"
+      ],
+      "forceFullSuite": true
+    },
+    {
+      "id": "auth-entry-routes",
+      "label": "Anonymous auth entry routes",
+      "patterns": [
+        "src/app/page.tsx",
+        "src/app/sign-in/page.tsx",
+        "src/app/sign-up/page.tsx",
+        "src/app/forgot-password/page.tsx",
+        "src/app/reset-password/page.tsx",
+        "src/app/auth/confirm/**",
+        "src/components/auth/auth-form.tsx",
+        "src/components/auth/forgot-password-form.tsx",
+        "src/components/auth/reset-password-form.tsx"
+      ],
+      "routeIds": [
+        "home-sign-in-anonymous",
+        "sign-up-anonymous",
+        "forgot-password-anonymous",
+        "reset-password-anonymous",
+        "sign-in-redirect-anonymous"
+      ],
+      "journeyTitles": [
+        "allowlisted user can sign up",
+        "blocked user cannot sign up",
+        "forgot-password request succeeds",
+        "recovery link lands on reset-password",
+        "password reset completes"
+      ],
+      "projectNames": ["desktop-anonymous"],
+      "bootstrapScope": "auth"
+    },
+    {
+      "id": "smoke-fixtures",
+      "label": "Shared UI fixtures and fixture gallery",
+      "patterns": [
+        "src/app/%5F_smoke/components/**",
+        "src/components/ui/**/*.ts",
+        "src/components/ui/**/*.tsx"
+      ],
+      "routeIds": ["smoke-components-anonymous"],
+      "projectNames": ["desktop-anonymous", "mobile-anonymous"],
+      "bootstrapScope": "auth"
+    },
+    {
+      "id": "dashboard-shell",
+      "label": "Authenticated dashboard shell",
+      "patterns": [
+        "src/components/layout/site-header.tsx",
+        "src/components/auth/account-control.tsx",
+        "src/components/dashboard/dashboard-client.tsx",
+        "src/lib/auth.ts",
+        "src/lib/supabase/**"
+      ],
+      "routeIds": ["dashboard-viewer", "dashboard-admin"],
+      "journeyTitles": ["signed-in user can sign out"],
+      "projectNames": ["desktop-anonymous", "desktop-viewer", "desktop-admin"],
+      "bootstrapScope": "full"
+    },
+    {
+      "id": "datasets-index",
+      "label": "Datasets index and dashboard landing",
+      "patterns": [
+        "src/app/dashboard/page.tsx",
+        "src/app/dashboard/datasets/page.tsx",
+        "src/components/dashboard/datasets-grid.tsx"
+      ],
+      "routeIds": [
+        "dashboard-viewer",
+        "dashboard-admin",
+        "datasets-index-viewer",
+        "datasets-index-admin"
+      ],
+      "projectNames": ["desktop-viewer", "desktop-admin"],
+      "bootstrapScope": "datasets"
+    },
+    {
+      "id": "dataset-data",
+      "label": "Dataset data access and API flows",
+      "patterns": [
+        "src/app/api/datasets/**",
+        "src/lib/dataset-*.ts"
+      ],
+      "routeIds": [
+        "dashboard-viewer",
+        "dashboard-admin",
+        "datasets-index-viewer",
+        "datasets-index-admin",
+        "dataset-detail-viewer",
+        "dataset-detail-admin",
+        "dataset-edit-viewer-redirect",
+        "dataset-edit-admin"
+      ],
+      "projectNames": ["desktop-viewer", "desktop-admin"],
+      "bootstrapScope": "datasets"
+    },
+    {
+      "id": "dataset-detail",
+      "label": "Dataset detail tables and presets",
+      "patterns": [
+        "src/app/dashboard/datasets/[datasetId]/page.tsx",
+        "src/components/dashboard/dataset-detail-client.tsx",
+        "src/components/dashboard/dataset-open-preset-sheet.tsx",
+        "src/components/dashboard/dataset-table-action-bar.tsx",
+        "src/components/dashboard/dataset-table.tsx",
+        "src/components/dashboard/dataset-tag-list.tsx",
+        "src/components/dashboard/dataset-view-switch-grid.tsx",
+        "src/components/dashboard/use-dataset-table-state.tsx",
+        "src/lib/saved-dataset-tables.ts"
+      ],
+      "routeIds": ["dataset-detail-viewer", "dataset-detail-admin"],
+      "projectNames": ["desktop-viewer", "desktop-admin"],
+      "bootstrapScope": "datasets"
+    },
+    {
+      "id": "dataset-edit",
+      "label": "Dataset edit flows",
+      "patterns": [
+        "src/app/dashboard/datasets/[datasetId]/edit/**",
+        "src/components/dashboard/dataset-edit-page-client.tsx"
+      ],
+      "routeIds": ["dataset-edit-viewer-redirect", "dataset-edit-admin"],
+      "journeyTitles": ["admin can edit dataset details"],
+      "projectNames": ["desktop-viewer", "desktop-admin"],
+      "bootstrapScope": "datasets"
+    },
+    {
+      "id": "upload",
+      "label": "Upload route and dataset replacement flow",
+      "patterns": [
+        "src/app/dashboard/upload/**",
+        "src/components/dashboard/dataset-upload-client.tsx",
+        "src/app/api/blob/**",
+        "src/app/api/datasets/[datasetId]/replace/**"
+      ],
+      "routeIds": ["upload-viewer-redirect", "upload-admin"],
+      "journeyTitles": ["admin can replace a dataset through the real upload flow"],
+      "projectNames": ["desktop-viewer", "desktop-admin"],
+      "bootstrapScope": "datasets"
+    },
+    {
+      "id": "field-definitions",
+      "label": "Field Definitions routes and edit flow",
+      "patterns": [
+        "src/app/dashboard/field-definitions/**",
+        "src/components/dashboard/field-definition-*.tsx",
+        "src/components/dashboard/field-definitions-client.tsx",
+        "src/components/dashboard/field-source-tag-list.tsx",
+        "src/lib/field-definition-*.ts",
+        "src/lib/field-definitions.ts",
+        "src/app/api/field-definitions/**"
+      ],
+      "routeIds": ["field-definitions-viewer", "field-definitions-admin"],
+      "journeyTitles": ["admin can edit a field definition"],
+      "projectNames": ["desktop-viewer", "desktop-admin"],
+      "bootstrapScope": "admin-config"
+    },
+    {
+      "id": "field-sources",
+      "label": "Field Sources routes and source mapping flow",
+      "patterns": [
+        "src/app/dashboard/field-sources/**",
+        "src/components/dashboard/field-sources-client.tsx",
+        "src/components/dashboard/field-source-tag-list.tsx",
+        "src/lib/field-sources.ts",
+        "src/app/api/field-sources/**",
+        "src/app/api/field-source-types/**"
+      ],
+      "routeIds": ["field-sources-viewer-redirect", "field-sources-admin"],
+      "journeyTitles": ["admin can create a source column and update a field source value"],
+      "projectNames": ["desktop-viewer", "desktop-admin"],
+      "bootstrapScope": "admin-config"
+    },
+    {
+      "id": "filter-settings",
+      "label": "Filter Settings routes and region editing flow",
+      "patterns": [
+        "src/app/dashboard/filter-settings/**",
+        "src/components/dashboard/filter-settings-client.tsx",
+        "src/lib/filter-settings.ts",
+        "src/app/api/filter-settings/**"
+      ],
+      "routeIds": ["filter-settings-viewer-redirect", "filter-settings-admin"],
+      "journeyTitles": ["admin can create and update filter settings"],
+      "projectNames": ["desktop-viewer", "desktop-admin"],
+      "bootstrapScope": "admin-config"
+    },
+    {
+      "id": "profile",
+      "label": "Profile and account settings",
+      "patterns": [
+        "src/app/dashboard/profile/**",
+        "src/components/auth/account-profile-form.tsx",
+        "src/app/api/account/**"
+      ],
+      "routeIds": ["profile-viewer", "profile-admin"],
+      "journeyTitles": [
+        "signed-in user can sign out",
+        "disabled user cannot sign back in"
+      ],
+      "projectNames": ["desktop-anonymous", "desktop-viewer", "desktop-admin"],
+      "bootstrapScope": "auth"
+    },
+    {
+      "id": "user-management",
+      "label": "User Management route and admin account controls",
+      "patterns": [
+        "src/app/dashboard/user-management/**",
+        "src/components/dashboard/user-management-client.tsx",
+        "src/components/auth/account-control.tsx",
+        "src/lib/user-management.ts",
+        "src/lib/workspace-role.ts",
+        "src/app/api/admin/users/**",
+        "src/app/api/account/disable/**"
+      ],
+      "routeIds": ["user-management-viewer-redirect", "user-management-admin"],
+      "projectNames": ["desktop-viewer", "desktop-admin"],
+      "bootstrapScope": "admin-config"
+    }
+  ],
+  "ci": {
+    "preinstallWorkflows": {
+      "appQualityPatterns": [
+        ".github/workflows/**",
+        "package.json",
+        "pnpm-lock.yaml",
+        "config/**/*.ts",
+        "scripts/**/*.ts",
+        "src/**/*.ts",
+        "src/**/*.tsx",
+        "tests/**/*.ts",
+        "tests/**/*.tsx",
+        "drizzle.config.ts",
+        "eslint.config.mjs",
+        "next.config.ts",
+        "playwright.smoke.config.ts",
+        "tsconfig.json",
+        "vitest.config.ts"
+      ],
+      "uiSmokePatterns": [
+        ".github/workflows/ui-smoke.yml",
+        "playwright.smoke.config.ts",
+        "scripts/check-ui-smoke.ts",
+        "scripts/check-ui-smoke-env.ts",
+        "scripts/run-ui-smoke.ts",
+        "scripts/smoke-bootstrap.ts",
+        "tests/ui/**/*.ts",
+        "tests/ui/**/*.tsx",
+        "src/app/**/page.tsx",
+        "src/components/ui/**/*.ts",
+        "src/components/ui/**/*.tsx",
+        "src/app/auth/confirm/**",
+        "src/app/dashboard/**",
+        "src/app/page.tsx",
+        "src/app/forgot-password/page.tsx",
+        "src/app/reset-password/page.tsx",
+        "src/app/sign-in/page.tsx",
+        "src/app/sign-up/page.tsx",
+        "src/components/auth/**/*.tsx",
+        "src/components/layout/site-header.tsx",
+        "src/components/dashboard/**/*.ts",
+        "src/components/dashboard/**/*.tsx",
+        "src/lib/auth.ts",
+        "src/lib/dataset-*.ts",
+        "src/lib/filter-settings.ts",
+        "src/lib/field-definition-*.ts",
+        "src/lib/field-definitions.ts",
+        "src/lib/field-sources.ts",
+        "src/lib/saved-dataset-tables.ts",
+        "src/lib/supabase/**",
+        "src/lib/user-management.ts",
+        "src/lib/workspace-role.ts",
+        "src/app/api/account/**",
+        "src/app/api/admin/users/**",
+        "src/app/api/blob/**",
+        "src/app/api/datasets/**",
+        "src/app/api/field-definitions/**",
+        "src/app/api/field-source-types/**",
+        "src/app/api/field-sources/**",
+        "src/app/api/filter-settings/**"
+      ],
+      "databaseSecurityPatterns": [
+        ".github/workflows/database-security.yml",
+        "scripts/check-public-rls.mjs",
+        "scripts/run-remote-db-tests.mjs",
+        "src/db/**",
+        "src/lib/auth.ts",
+        "src/lib/field-definitions.ts",
+        "src/lib/field-sources.ts",
+        "src/lib/signup-allowlist.ts",
+        "src/lib/supabase/**",
+        "src/lib/user-management.ts",
+        "src/lib/workspace-role.ts",
+        "src/app/api/admin/users/**",
+        "supabase/**"
+      ],
+      "dependencyAuditPatterns": ["package.json", "pnpm-lock.yaml"]
+    },
+    "appQualityTasks": {
+      "lintPatterns": [
+        "package.json",
+        "pnpm-lock.yaml",
+        "config/**/*.ts",
+        "scripts/**/*.ts",
+        "src/**/*.ts",
+        "src/**/*.tsx",
+        "tests/**/*.ts",
+        "tests/**/*.tsx",
+        "drizzle.config.ts",
+        "eslint.config.mjs",
+        "next.config.ts",
+        "playwright.smoke.config.ts",
+        "tsconfig.json",
+        "vitest.config.ts"
+      ],
+      "testPatterns": [
+        "package.json",
+        "pnpm-lock.yaml",
+        "config/**/*.ts",
+        "scripts/**/*.ts",
+        "src/**/*.ts",
+        "src/**/*.tsx",
+        "tests/**/*.ts",
+        "tests/**/*.tsx",
+        "drizzle.config.ts",
+        "eslint.config.mjs",
+        "next.config.ts",
+        "playwright.smoke.config.ts",
+        "tsconfig.json",
+        "vitest.config.ts"
+      ],
+      "buildPatterns": [
+        "package.json",
+        "pnpm-lock.yaml",
+        "src/**/*.ts",
+        "src/**/*.tsx",
+        "drizzle.config.ts",
+        "next.config.ts",
+        "tsconfig.json"
+      ]
+    }
+  }
+}

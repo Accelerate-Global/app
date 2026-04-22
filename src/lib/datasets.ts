@@ -16,19 +16,27 @@ import {
   datasetVersionRows,
   datasetVersions,
   datasets,
+  filterRegionCountries,
+  filterRegions,
 } from "@/db/schema";
 import type {
   CsvColumn,
   DatasetStatus,
+  FilterRegion,
+  SavedDatasetFilterState,
   DatasetSummary,
   DatasetTag,
   DatasetVersionSummary,
 } from "@/lib/api-types";
+import { countDatasetDefaultRows } from "@/lib/dataset-default-view";
 import { normalizeDatasetHiddenColumnKeys } from "@/lib/dataset-column-visibility";
 import { getDatasetStorageObjectUrl } from "@/lib/dataset-storage";
 import { getDatasetOpenPresetTag, normalizeDatasetTags } from "@/lib/dataset-tags";
 import { syncFieldDefinitionsForColumns } from "@/lib/field-definitions";
-import { getUnsupportedDatasetOpenPresetSections } from "@/lib/saved-dataset-filters";
+import {
+  getUnsupportedDatasetOpenPresetSections,
+  normalizeSavedDatasetFilterState,
+} from "@/lib/saved-dataset-filters";
 
 type DbExecutor = Parameters<Parameters<ReturnType<typeof getDb>["transaction"]>[0]>[0];
 type DatasetRecord = typeof datasets.$inferSelect;
@@ -52,6 +60,9 @@ function toDatasetSummary(row: DatasetRecord): DatasetSummary {
     sizeBytes: row.sizeBytes,
     columns: row.columns,
     hiddenColumnKeys: row.hiddenColumnKeys,
+    defaultFilters: row.defaultFilters
+      ? normalizeSavedDatasetFilterState(row.defaultFilters)
+      : null,
     tags: row.tags,
     error: row.error,
     createdAt: row.createdAt.toISOString(),
@@ -285,6 +296,168 @@ async function restoreDatasetVersionRows(
   `);
 }
 
+async function listFilterRegionsForDatasetCalculations(
+  executor: Pick<ReturnType<typeof getDb>, "select"> = getDb(),
+) {
+  const rows = await executor
+    .select({
+      id: filterRegions.id,
+      name: filterRegions.name,
+      description: filterRegions.description,
+      sortOrder: filterRegions.sortOrder,
+      createdAt: filterRegions.createdAt,
+      updatedAt: filterRegions.updatedAt,
+      countryName: filterRegionCountries.countryName,
+    })
+    .from(filterRegions)
+    .leftJoin(
+      filterRegionCountries,
+      eq(filterRegionCountries.regionId, filterRegions.id),
+    )
+    .orderBy(
+      asc(filterRegions.sortOrder),
+      asc(filterRegions.name),
+      asc(filterRegionCountries.countryName),
+    );
+
+  const regions = new Map<
+    string,
+    Omit<FilterRegion, "createdAt" | "updatedAt"> & {
+      createdAt: Date;
+      updatedAt: Date;
+    }
+  >();
+
+  for (const row of rows) {
+    const existing =
+      regions.get(row.id) ??
+      {
+        id: row.id,
+        name: row.name,
+        description: row.description,
+        sortOrder: row.sortOrder,
+        countries: [],
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
+      };
+
+    if (row.countryName) {
+      existing.countries.push(row.countryName);
+    }
+
+    regions.set(row.id, existing);
+  }
+
+  return Array.from(regions.values()).map((region) => ({
+    ...region,
+    countries: [...region.countries].sort((left, right) =>
+      left.localeCompare(right),
+    ),
+    createdAt: region.createdAt.toISOString(),
+    updatedAt: region.updatedAt.toISOString(),
+  }));
+}
+
+async function listDatasetRowsByDatasetId(
+  datasetId: string,
+  executor: Pick<ReturnType<typeof getDb>, "select"> = getDb(),
+) {
+  return executor
+    .select({
+      id: datasetRows.id,
+      rowIndex: datasetRows.rowIndex,
+      data: datasetRows.data,
+    })
+    .from(datasetRows)
+    .where(eq(datasetRows.datasetId, datasetId))
+    .orderBy(asc(datasetRows.rowIndex));
+}
+
+async function refreshDerivedDatasets(input?: {
+  sourceDatasetId?: string;
+  executor?: Pick<ReturnType<typeof getDb>, "select" | "update">;
+}) {
+  const executor = input?.executor ?? getDb();
+  const predicates: SQL[] = [sql`${datasets.backingDatasetId} is not null`];
+
+  if (input?.sourceDatasetId) {
+    predicates.push(eq(datasets.backingDatasetId, input.sourceDatasetId));
+  }
+
+  const derivedDatasets = await executor
+    .select()
+    .from(datasets)
+    .where(and(...predicates));
+
+  if (derivedDatasets.length === 0) {
+    return;
+  }
+
+  const regions = await listFilterRegionsForDatasetCalculations(executor);
+  const derivedDatasetsBySourceId = new Map<string, DatasetRecord[]>();
+
+  for (const derivedDataset of derivedDatasets) {
+    if (!derivedDataset.backingDatasetId) {
+      continue;
+    }
+
+    const existing = derivedDatasetsBySourceId.get(derivedDataset.backingDatasetId) ?? [];
+    existing.push(derivedDataset);
+    derivedDatasetsBySourceId.set(derivedDataset.backingDatasetId, existing);
+  }
+
+  const now = new Date();
+
+  for (const [sourceDatasetId, sourceDerivedDatasets] of derivedDatasetsBySourceId) {
+    const sourceDataset = await getDatasetRecord(sourceDatasetId, executor);
+
+    if (!sourceDataset) {
+      continue;
+    }
+
+    if (sourceDataset.backingDatasetId) {
+      throw new DerivedDatasetSourceConflictError();
+    }
+
+    const sourceRows = await listDatasetRowsByDatasetId(sourceDatasetId, executor);
+
+    for (const derivedDataset of sourceDerivedDatasets) {
+      await executor
+        .update(datasets)
+        .set({
+          columns: sourceDataset.columns,
+          hiddenColumnKeys: normalizeDatasetHiddenColumnKeys(
+            derivedDataset.hiddenColumnKeys,
+            sourceDataset.columns,
+          ),
+          rowCount: countDatasetDefaultRows({
+            dataset: {
+              columns: sourceDataset.columns,
+              defaultFilters: derivedDataset.defaultFilters
+                ? normalizeSavedDatasetFilterState(derivedDataset.defaultFilters)
+                : null,
+              tags: normalizeDatasetTags(derivedDataset.tags),
+            },
+            rows: sourceRows,
+            regions,
+          }),
+          status: sourceDataset.status,
+          error: sourceDataset.error,
+          updatedAt: now,
+        })
+        .where(eq(datasets.id, derivedDataset.id));
+    }
+  }
+}
+
+export async function refreshDerivedDatasetsForSource(sourceDatasetId: string) {
+  await refreshDerivedDatasets({ sourceDatasetId });
+}
+
+export async function refreshAllDerivedDatasets() {
+  await refreshDerivedDatasets();
+}
+
 export async function listDatasets(options: DatasetAccessOptions = {}) {
   const query = getDb().select().from(datasets);
   const rows = await (
@@ -372,6 +545,7 @@ export async function createDataset(input: {
         sizeBytes: input.sizeBytes,
         columns: input.columns,
         hiddenColumnKeys: [],
+        defaultFilters: null,
         tags: [],
         status: "processing",
         rowCount: 0,
@@ -404,7 +578,17 @@ export async function updateDatasetStatus(input: {
     .where(eq(datasets.id, input.datasetId))
     .returning();
 
-  return dataset ? toDatasetSummary(dataset) : null;
+  if (!dataset) {
+    return null;
+  }
+
+  const summary = toDatasetSummary(dataset);
+
+  if (!summary.backingDatasetId) {
+    await refreshDerivedDatasetsForSource(summary.id);
+  }
+
+  return summary;
 }
 
 export async function updateDatasetDetails(input: {
@@ -501,6 +685,88 @@ export async function updateDatasetDetails(input: {
   });
 }
 
+export async function assignDatasetDerivedView(input: {
+  datasetId: string;
+  sourceDatasetId: string;
+  filters: SavedDatasetFilterState;
+}) {
+  return getDb().transaction(async (tx) => {
+    const [targetDataset] = await tx
+      .select()
+      .from(datasets)
+      .where(eq(datasets.id, input.datasetId))
+      .limit(1);
+
+    if (!targetDataset) {
+      return null;
+    }
+
+    const resolvedSource = await resolveDatasetSourceRecord({
+      datasetId: input.sourceDatasetId,
+      executor: tx,
+    });
+
+    if (!resolvedSource) {
+      return null;
+    }
+
+    const sourceDataset = resolvedSource.sourceDataset;
+
+    if (sourceDataset.id === targetDataset.id) {
+      throw new DerivedDatasetSourceConflictError(
+        "Derived dataset views cannot reference themselves as a backing dataset.",
+      );
+    }
+
+    const normalizedFilters = normalizeSavedDatasetFilterState(input.filters);
+
+    if (!targetDataset.backingDatasetId && targetDataset.rowCount > 0) {
+      await archiveDatasetVersion(tx, targetDataset);
+    }
+
+    await tx.delete(datasetRows).where(eq(datasetRows.datasetId, targetDataset.id));
+
+    const [regions, sourceRows] = await Promise.all([
+      listFilterRegionsForDatasetCalculations(tx),
+      listDatasetRowsByDatasetId(sourceDataset.id, tx),
+    ]);
+    const now = new Date();
+    const [updated] = await tx
+      .update(datasets)
+      .set({
+        backingDatasetId: sourceDataset.id,
+        columns: sourceDataset.columns,
+        hiddenColumnKeys: normalizeDatasetHiddenColumnKeys(
+          targetDataset.hiddenColumnKeys,
+          sourceDataset.columns,
+        ),
+        defaultFilters: normalizedFilters,
+        isPrimary: false,
+        status: sourceDataset.status,
+        rowCount: countDatasetDefaultRows({
+          dataset: {
+            columns: sourceDataset.columns,
+            defaultFilters: normalizedFilters,
+            tags: normalizeDatasetTags(targetDataset.tags),
+          },
+          rows: sourceRows,
+          regions,
+        }),
+        error: sourceDataset.error,
+        updatedAt: now,
+      })
+      .where(eq(datasets.id, input.datasetId))
+      .returning();
+
+    await syncFieldDefinitionsForColumns({
+      columns: sourceDataset.columns,
+      executor: tx,
+    });
+
+    return updated ? toDatasetSummary(updated) : null;
+  });
+}
+
 export async function replaceDatasetContents(input: {
   datasetId: string;
   actorOwnerId: string;
@@ -509,7 +775,7 @@ export async function replaceDatasetContents(input: {
   sizeBytes: number;
   columns: CsvColumn[];
 }) {
-  return getDb().transaction(async (tx) => {
+  const replacement = await getDb().transaction(async (tx) => {
     const [existing] = await tx
       .select()
       .from(datasets)
@@ -545,6 +811,7 @@ export async function replaceDatasetContents(input: {
           existing.hiddenColumnKeys,
           input.columns,
         ),
+        defaultFilters: null,
         tags: existing.tags,
         status: "processing",
         rowCount: 0,
@@ -563,6 +830,14 @@ export async function replaceDatasetContents(input: {
       dataset: toDatasetSummary(updated),
     };
   });
+
+  if (!replacement) {
+    return null;
+  }
+
+  await refreshDerivedDatasetsForSource(replacement.dataset.id);
+
+  return replacement;
 }
 
 export async function revertDatasetVersion(input: {
@@ -571,7 +846,7 @@ export async function revertDatasetVersion(input: {
   actorOwnerId: string;
   actorEmail?: string | null;
 }) {
-  return getDb().transaction(async (tx) => {
+  const reverted = await getDb().transaction(async (tx) => {
     const [existing] = await tx
       .select()
       .from(datasets)
@@ -645,6 +920,14 @@ export async function revertDatasetVersion(input: {
       dataset: toDatasetSummary(updated),
     };
   });
+
+  if (!reverted) {
+    return null;
+  }
+
+  await refreshDerivedDatasetsForSource(reverted.dataset.id);
+
+  return reverted;
 }
 
 export async function deleteDataset(datasetId: string) {
@@ -769,7 +1052,13 @@ export async function insertDatasetRowBatch(input: {
     .where(eq(datasets.id, input.datasetId))
     .returning();
 
-  return toDatasetSummary(updated);
+  const summary = toDatasetSummary(updated);
+
+  if (input.isFinalBatch) {
+    await refreshDerivedDatasetsForSource(summary.id);
+  }
+
+  return summary;
 }
 
 export async function getDatasetRows(input: {

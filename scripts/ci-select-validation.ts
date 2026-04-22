@@ -3,6 +3,8 @@ import { pathToFileURL } from "node:url";
 
 import {
   resolveChangeImpact,
+  selectCiAppQualityTasks,
+  selectCiPreinstallValidation,
   shouldRunAppQualityOnCi,
   type VerificationCommandId,
 } from "../config/change-impact";
@@ -19,6 +21,9 @@ const uiSmokeCommandIds = new Set<VerificationCommandId>([
 export type CiValidationSelection = {
   changedFiles: string[];
   appQuality: boolean;
+  appLint: boolean;
+  appTest: boolean;
+  appBuild: boolean;
   databaseSecurity: boolean;
   dependencyAudit: boolean;
   uiSmoke: boolean;
@@ -46,17 +51,16 @@ function parseNullSeparatedPaths(output: string) {
     .filter(Boolean);
 }
 
-function normalizePath(filePath: string) {
-  return filePath.split("\\").join("/");
-}
-
 export function selectCiValidation(changedFiles: string[]): CiValidationSelection {
   const impact = resolveChangeImpact(changedFiles);
+  const preinstallSelection = selectCiPreinstallValidation(changedFiles);
+  const appTaskSelection = selectCiAppQualityTasks(changedFiles);
   const uiSmokeSelection = resolveUiSmokeSelection(changedFiles);
-  const normalizedChangedFiles = [...new Set(impact.changedFiles.map(normalizePath))];
   const uiSmokeContractRequired =
     impact.requiredCommands.some((commandId) => uiSmokeCommandIds.has(commandId));
-  const uiSmoke = uiSmokeContractRequired || uiSmokeSelection.mode !== "none";
+  const uiSmoke =
+    preinstallSelection.runUiSmoke &&
+    (uiSmokeContractRequired || uiSmokeSelection.mode !== "none");
   const uiSmokeMode = !uiSmoke
     ? "none"
     : impact.requiredCommands.includes("test:ui:smoke") || uiSmokeSelection.mode === "full"
@@ -66,12 +70,11 @@ export function selectCiValidation(changedFiles: string[]): CiValidationSelectio
   return {
     changedFiles: impact.changedFiles,
     appQuality: shouldRunAppQualityOnCi(impact.changedFiles),
-    databaseSecurity:
-      impact.requiredCommands.includes("db:security") ||
-      impact.requiredCommands.includes("db:check-migration-drift"),
-    dependencyAudit: normalizedChangedFiles.some((filePath) =>
-      filePath === "package.json" || filePath === "pnpm-lock.yaml"
-    ),
+    appLint: appTaskSelection.lint,
+    appTest: appTaskSelection.test,
+    appBuild: appTaskSelection.build,
+    databaseSecurity: preinstallSelection.runDatabaseSecurity,
+    dependencyAudit: preinstallSelection.runDependencyAudit,
     uiSmoke,
     uiSmokeMode,
     uiSmokeBrowser:
@@ -115,6 +118,9 @@ async function writeGitHubOutputs(selection: CiValidationSelection) {
 
   const lines = [
     `app_quality=${selection.appQuality}`,
+    `app_lint=${selection.appLint}`,
+    `app_test=${selection.appTest}`,
+    `app_build=${selection.appBuild}`,
     `database_security=${selection.databaseSecurity}`,
     `dependency_audit=${selection.dependencyAudit}`,
     `ui_smoke=${selection.uiSmoke}`,
@@ -133,6 +139,9 @@ async function main() {
 
   console.log(`Changed files: ${selection.changedFiles.length}`);
   console.log(`App Quality: ${selection.appQuality}`);
+  console.log(
+    `App Quality Tasks: lint=${selection.appLint} test=${selection.appTest} build=${selection.appBuild}`,
+  );
   console.log(`Database Security: ${selection.databaseSecurity}`);
   console.log(`Dependency Audit: ${selection.dependencyAudit}`);
   console.log(`UI Smoke: ${selection.uiSmokeMode}`);

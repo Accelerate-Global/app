@@ -6,6 +6,7 @@ import {
   CI_UI_SMOKE_SUPABASE_START_TIMEOUT_MS,
   DEFAULT_SUPABASE_PORT_RELEASE_WAIT,
   DEFAULT_UI_SMOKE_SUPABASE_START_TIMEOUT_MS,
+  getSmokeBootstrapArgs,
   getUiSmokeSupabaseStartTimeoutMs,
   parseRunUiSmokeArgs,
   resolveUiSmokeChangedFiles,
@@ -28,6 +29,7 @@ describe("run-ui-smoke", () => {
     expect(plan.suites[0]?.projectNames).toEqual(
       expect.arrayContaining(["desktop-admin", "desktop-viewer"]),
     );
+    expect(plan.bootstrapScope).toBe("datasets");
   });
 
   it("builds a full-only run plan by default", () => {
@@ -61,6 +63,7 @@ describe("run-ui-smoke", () => {
         projectNames: [],
       },
     ]);
+    expect(plan.bootstrapScope).toBe("full");
   });
 
   it("builds a smoke-check-only targeted plan when no routes match", () => {
@@ -72,6 +75,16 @@ describe("run-ui-smoke", () => {
 
     expect(plan.selection?.mode).toBe("none");
     expect(plan.suites).toEqual([]);
+  });
+
+  it("passes the selected bootstrap scope through the smoke bootstrap command", () => {
+    expect(getSmokeBootstrapArgs("datasets")).toEqual([
+      "run",
+      "smoke:bootstrap",
+      "--",
+      "--scope",
+      "datasets",
+    ]);
   });
 
   it("uses the longer Supabase port release wait by default", () => {

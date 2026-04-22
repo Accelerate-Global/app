@@ -146,4 +146,14 @@ describe("analytics helpers", () => {
       "hotspots_country_count",
     );
   });
+
+  it("exposes filtered dataset assignment analytics event property keys", () => {
+    expect(getAnalyticsEventPropertyKeys("dataset_assigned")).toEqual([
+      "source_dataset_id",
+      "target_dataset_id",
+      "assigned_row_count",
+      "filter_sections_enabled",
+      "sorting_count",
+    ]);
+  });
 });

@@ -256,6 +256,11 @@ export const rowBatchSchema = z.object({
   totalRows: z.number().int().nonnegative().optional(),
 });
 
+export const datasetAssignDerivedViewSchema = z.object({
+  sourceDatasetId: z.string().uuid(),
+  filters: savedDatasetFilterStateSchema,
+});
+
 export const datasetStatusPatchSchema = z.object({
   status: z.enum(["processing", "ready", "failed"]),
   error: z.string().max(1000).nullable().optional(),

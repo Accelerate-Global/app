@@ -547,3 +547,60 @@ test("admin can replace a dataset through the real upload flow", async ({ page }
     await expect(revertButtons).toHaveCount(revertCountBefore + 1);
   });
 });
+
+test("admin can assign a filtered dataset view to an admin dataset", async ({ page }, testInfo) => {
+  test.skip(skipUnlessDesktopAdmin(testInfo.project.name));
+
+  await runSmokeJourney(
+    "admin can assign a filtered dataset view to an admin dataset",
+    async () => {
+      const bootstrap = await readUiSmokeBootstrap();
+
+      await page.goto(`/dashboard/datasets/${bootstrap.datasets.primary.id}`);
+      await expect(page.locator('[data-smoke-page="dataset-detail"]')).toBeVisible();
+      await page.getByRole("button", { name: "Region filters" }).click();
+      await page.getByRole("switch", { name: "Toggle South Asia" }).click();
+      await expect(page.locator("[data-smoke-filtered-table-count]")).toHaveText("2");
+      await expect(page.getByText("Rana Tharu")).toBeVisible();
+      await expect(page.getByText("Tamang")).toBeVisible();
+      await expect(page.getByText("Ribeirinho")).toHaveCount(0);
+
+      await page
+        .locator('[data-smoke-trigger="dataset-assign-derived-view-sheet"]')
+        .click();
+      await expect(
+        page.locator('[data-smoke-ready="dataset-assign-derived-view-sheet"]'),
+      ).toBeVisible();
+      await page.locator("[data-smoke-assign-derived-view-target]").click();
+      await page
+        .getByRole("option", { name: bootstrap.datasets.secondary.fileName })
+        .click();
+      await page.locator("[data-smoke-assign-derived-view-submit]").click();
+      await expect(
+        page.getByText(
+          `Assigned filtered view to "${bootstrap.datasets.secondary.fileName}".`,
+        ),
+      ).toBeVisible();
+
+      await page
+        .locator("[data-smoke-assign-derived-view-open-target]")
+        .click();
+      await expect(page.locator('[data-smoke-page="dataset-detail"]')).toBeVisible();
+      await expect(
+        page.getByRole("heading", { name: bootstrap.datasets.secondary.fileName }),
+      ).toBeVisible();
+      await expect(page.locator("[data-smoke-filtered-table-count]")).toHaveText("2");
+      await page.getByRole("button", { name: "Region filters" }).click();
+      await expect(page.getByRole("switch", { name: "Toggle South Asia" })).toBeChecked();
+      await expect(page.getByText("Rana Tharu")).toBeVisible();
+      await expect(page.getByText("Tamang")).toBeVisible();
+      await expect(page.getByText("Ribeirinho")).toHaveCount(0);
+      await expect(
+        page.getByRole("button", { name: "Assign to dataset" }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole("button", { name: "Open preset" }),
+      ).toHaveCount(0);
+    },
+  );
+});

@@ -13,6 +13,7 @@ import { DEFAULT_POPULATION_BELIEVERS_RULE } from "@/lib/evangelical-population-
 import { DatasetDetailClient } from "./dataset-detail-client";
 
 const actionBarSpy = vi.fn();
+const assignDerivedViewSheetSpy = vi.fn();
 const datasetTableSpy = vi.fn();
 const openPresetSheetSpy = vi.fn();
 const useDatasetTableStateMock = vi.fn();
@@ -32,6 +33,13 @@ vi.mock("@/components/dashboard/dataset-table", () => ({
   DatasetTable: (props: unknown) => {
     datasetTableSpy(props);
     return <div data-testid="dataset-table" />;
+  },
+}));
+
+vi.mock("@/components/dashboard/dataset-assign-derived-view-sheet", () => ({
+  DatasetAssignDerivedViewSheet: (props: unknown) => {
+    assignDerivedViewSheetSpy(props);
+    return <div data-testid="dataset-assign-derived-view-sheet" />;
   },
 }));
 
@@ -78,6 +86,7 @@ const datasetBase = {
   rowCount: 2,
   sizeBytes: 512,
   hiddenColumnKeys: [],
+  defaultFilters: null,
   tags: [],
   error: null,
   createdAt: new Date().toISOString(),
@@ -191,6 +200,7 @@ function mockCountrySyncTableState(
 describe("DatasetDetailClient", () => {
   beforeEach(() => {
     actionBarSpy.mockReset();
+    assignDerivedViewSheetSpy.mockReset();
     datasetTableSpy.mockReset();
     openPresetSheetSpy.mockReset();
     useDatasetTableStateMock.mockReset();
@@ -235,6 +245,7 @@ describe("DatasetDetailClient", () => {
     const mainColumn = actionBar.parentElement;
     const actionBarProps = actionBarSpy.mock.calls[0]?.[0] as {
       onOpenFilters?: () => void;
+      onOpenAssignDerivedView?: () => void;
       onOpenOpenPreset?: () => void;
       analyticsContext: {
         route: string;
@@ -248,8 +259,10 @@ describe("DatasetDetailClient", () => {
     expect(stickyRail?.className).toContain("sticky");
     expect(mainColumn).toBe(screen.getByTestId("dataset-table").parentElement);
     expect(actionBarProps.onOpenFilters).toEqual(expect.any(Function));
+    expect(actionBarProps.onOpenAssignDerivedView).toBeUndefined();
     expect(actionBarProps.onOpenOpenPreset).toBeUndefined();
     expect(openPresetSheetSpy).not.toHaveBeenCalled();
+    expect(assignDerivedViewSheetSpy).not.toHaveBeenCalled();
     expect(actionBarProps.analyticsContext.route).toBe("dataset_detail");
     expect(trackAppEventMock).toHaveBeenCalledWith(
       "dataset_opened",
@@ -391,6 +404,65 @@ describe("DatasetDetailClient", () => {
     });
 
     const updatedSheetProps = openPresetSheetSpy.mock.lastCall?.[0] as {
+      open: boolean;
+    };
+
+    expect(updatedSheetProps.open).toBe(true);
+  });
+
+  it("wires the admin-only assign sheet from the action bar trigger", () => {
+    render(
+      <DatasetDetailClient
+        dataset={{
+          ...datasetBase,
+          columns: [
+            {
+              key: "geo_country_name",
+              label: "Geo_Country_Name",
+              sourceIndex: 0,
+            },
+          ],
+        }}
+        regions={[]}
+        fieldDefinitionPresentationByColumnKey={{}}
+        assignableDatasets={[
+          {
+            ...datasetBase,
+            id: "dataset-2",
+            fileName: "South Asia",
+            columns: [
+              {
+                key: "geo_country_name",
+                label: "Geo_Country_Name",
+                sourceIndex: 0,
+              },
+            ],
+          },
+        ]}
+      />,
+    );
+
+    const actionBarProps = actionBarSpy.mock.lastCall?.[0] as {
+      onOpenAssignDerivedView?: () => void;
+    };
+    const initialSheetProps = assignDerivedViewSheetSpy.mock.lastCall?.[0] as {
+      open: boolean;
+      sourceDatasetId: string;
+      assignableDatasets: Array<{ id: string }>;
+    };
+
+    expect(actionBarProps.onOpenAssignDerivedView).toEqual(expect.any(Function));
+    expect(initialSheetProps.open).toBe(false);
+    expect(initialSheetProps.sourceDatasetId).toBe("dataset-1");
+    expect(initialSheetProps.assignableDatasets).toEqual([
+      expect.objectContaining({ id: "dataset-2" }),
+    ]);
+
+    act(() => {
+      actionBarProps.onOpenAssignDerivedView?.();
+    });
+
+    const updatedSheetProps = assignDerivedViewSheetSpy.mock.lastCall?.[0] as {
       open: boolean;
     };
 

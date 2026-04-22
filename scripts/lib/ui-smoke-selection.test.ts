@@ -7,31 +7,22 @@ import {
 } from "./ui-smoke-selection";
 
 describe("ui-smoke-selection", () => {
-  it("targets dataset routes and admin journey for dataset UI changes", () => {
+  it("targets dataset edit routes without unrelated dataset journeys", () => {
     const selection = resolveUiSmokeSelection([
       "src/components/dashboard/dataset-edit-page-client.tsx",
     ]);
 
     expect(selection.mode).toBe("targeted");
-    expect(selection.routeIds).toEqual(
-      expect.arrayContaining([
-        "dashboard-viewer",
-        "dashboard-admin",
-        "dataset-detail-viewer",
-        "dataset-detail-admin",
-        "dataset-edit-viewer-redirect",
-        "dataset-edit-admin",
-      ]),
+    expect(selection.routeIds).toEqual([
+      "dataset-edit-viewer-redirect",
+      "dataset-edit-admin",
+    ]);
+    expect(selection.journeyTitles).toEqual(["admin can edit dataset details"]);
+    expect(selection.journeyTitles).not.toContain(
+      "authenticated user can save a filtered table",
     );
-    expect(selection.journeyTitles).toContain("admin can edit dataset details");
-    expect(selection.projectNames).toEqual(
-      expect.arrayContaining([
-        "desktop-viewer",
-        "mobile-viewer",
-        "desktop-admin",
-        "mobile-admin",
-      ]),
-    );
+    expect(selection.projectNames).toEqual(["desktop-viewer", "desktop-admin"]);
+    expect(selection.bootstrapScope).toBe("datasets");
   });
 
   it("returns no targeted browser smoke for migration-only changes", () => {
@@ -61,6 +52,33 @@ describe("ui-smoke-selection", () => {
     expect(selection.journeyTitles).toContain(
       "admin can create a source column and update a field source value",
     );
+    expect(selection.projectNames).toEqual(["desktop-viewer", "desktop-admin"]);
+    expect(selection.bootstrapScope).toBe("admin-config");
+  });
+
+  it("targets only the dataset detail routes for detail page changes", () => {
+    const selection = resolveUiSmokeSelection([
+      "src/components/dashboard/dataset-detail-client.tsx",
+    ]);
+
+    expect(selection.routeIds).toEqual([
+      "dataset-detail-viewer",
+      "dataset-detail-admin",
+    ]);
+    expect(selection.journeyTitles).toEqual([]);
+    expect(selection.projectNames).toEqual(["desktop-viewer", "desktop-admin"]);
+    expect(selection.bootstrapScope).toBe("datasets");
+  });
+
+  it("includes mobile smoke coverage for shared UI primitive changes", () => {
+    const selection = resolveUiSmokeSelection(["src/components/ui/button.tsx"]);
+
+    expect(selection.routeIds).toEqual(["smoke-components-anonymous"]);
+    expect(selection.projectNames).toEqual([
+      "desktop-anonymous",
+      "mobile-anonymous",
+    ]);
+    expect(selection.bootstrapScope).toBe("auth");
   });
 
   it("builds a grep pattern that matches Playwright full titles", () => {

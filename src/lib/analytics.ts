@@ -213,6 +213,14 @@ export type AppAnalyticsEventMap = {
     hidden_column_count: number;
     tag_count: number;
   };
+  dataset_assigned: AppAnalyticsEventBase & {
+    dataset_id: string;
+    source_dataset_id: string;
+    target_dataset_id: string;
+    assigned_row_count?: number;
+    filter_sections_enabled: string;
+    sorting_count: number;
+  };
   dataset_version_reverted: AppAnalyticsEventBase & {
     dataset_id: string;
     version_id: string;
@@ -344,6 +352,7 @@ export const APP_ANALYTICS_EVENT_NAMES = [
   "dataset_upload_failed",
   "dataset_replaced",
   "dataset_metadata_saved",
+  "dataset_assigned",
   "dataset_version_reverted",
   "dataset_deleted",
   "field_definition_search_used",
@@ -463,6 +472,13 @@ const APP_ANALYTICS_EVENT_PROPERTY_KEYS = {
     "primary_changed",
     "hidden_column_count",
     "tag_count",
+  ],
+  dataset_assigned: [
+    "source_dataset_id",
+    "target_dataset_id",
+    "assigned_row_count",
+    "filter_sections_enabled",
+    "sorting_count",
   ],
   dataset_version_reverted: ["version_id"],
   dataset_deleted: [],

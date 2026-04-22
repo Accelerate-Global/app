@@ -19,26 +19,58 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
-        with:
-          version: 10
-
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
           cache: pnpm
 
-      - run: pnpm install --frozen-lockfile
-      - id: selection
+      - id: preinstall_selection
+        run: node scripts/ci-preinstall-select.mjs --base "${{ github.event.pull_request.base.sha }}" --head "${{ github.event.pull_request.head.sha }}"
+
+      - if: steps.preinstall_selection.outputs.run_app_quality != 'true'
+        run: echo "No app-quality-relevant files changed."
+
+      - if: steps.preinstall_selection.outputs.run_app_quality == 'true'
+        uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+        with:
+          version: 10
+
+      - if: steps.preinstall_selection.outputs.run_app_quality == 'true'
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: .tmp/eslint
+          key: ${{ runner.os }}-eslint-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-eslint-
+
+      - if: steps.preinstall_selection.outputs.run_app_quality == 'true'
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: .next/cache
+          key: ${{ runner.os }}-next-cache-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-next-cache-
+
+      - if: steps.preinstall_selection.outputs.run_app_quality == 'true'
+        run: pnpm install --frozen-lockfile
+
+      - if: steps.preinstall_selection.outputs.run_app_quality == 'true'
+        id: selection
         run: node --import tsx scripts/ci-select-validation.ts --base "${{ github.event.pull_request.base.sha }}" --head "${{ github.event.pull_request.head.sha }}"
 
-      - if: steps.selection.outputs.app_quality == 'true'
+      - if: steps.preinstall_selection.outputs.run_app_quality == 'true' && (steps.selection.outputs.app_lint == 'true' || steps.selection.outputs.app_test == 'true' || steps.selection.outputs.app_build == 'true')
         run: pnpm run verify:test-delta
         env:
           VERIFY_TEST_DELTA_BASE_SHA: ${{ github.event.pull_request.base.sha }}
           VERIFY_TEST_DELTA_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-      - if: steps.selection.outputs.app_quality == 'true'
-        run: pnpm run verify:app
 
-      - if: steps.selection.outputs.app_quality != 'true'
-        run: echo "No app-quality-relevant files changed."
+      - if: steps.preinstall_selection.outputs.run_app_quality == 'true' && (steps.selection.outputs.app_lint == 'true' || steps.selection.outputs.app_test == 'true' || steps.selection.outputs.app_build == 'true')
+        run: |
+          args=()
+          [ "${{ steps.selection.outputs.app_lint }}" = "true" ] && args+=(--lint)
+          [ "${{ steps.selection.outputs.app_test }}" = "true" ] && args+=(--test)
+          [ "${{ steps.selection.outputs.app_build }}" = "true" ] && args+=(--build)
+          node --import tsx scripts/verify-app.ts "${args[@]}"
+
+      - if: steps.preinstall_selection.outputs.run_app_quality == 'true' && steps.selection.outputs.app_lint != 'true' && steps.selection.outputs.app_test != 'true' && steps.selection.outputs.app_build != 'true'
+        run: echo "No lint, test, or build subtasks were selected."

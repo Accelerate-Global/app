@@ -1,31 +1,20 @@
 import { getCurrentIdentity } from "@/lib/auth";
 import {
-  filterDatasetRowsByCountry,
-  filterDatasetRowsByHotspots,
-  filterDatasetRowsByRegion,
-  filterDatasetRowsByUupg,
-  filterDatasetRowsByWatchlist,
-} from "@/lib/dataset-region-filtering";
-import {
   getFilteredDatasetDownloadFileName,
   serializeDatasetRowsToCsv,
 } from "@/lib/dataset-download";
-import { getDatasetOpenPresetTag } from "@/lib/dataset-tags";
+import {
+  applyDatasetDefaultFilters,
+  getDatasetDefaultFilters,
+} from "@/lib/dataset-default-view";
 import { getSortedVisibleDatasetColumns } from "@/lib/dataset-table-columns";
 import { listFieldDefinitionPresentationByColumnKey } from "@/lib/field-definitions";
 import { jsonError } from "@/lib/http";
 import { logError } from "@/lib/error-logging";
-import {
-  getDatasetCountryFilterStateFromSavedView,
-  getDatasetHotspotsFilterStateFromSavedView,
-  getDatasetRegionFilterStateFromSavedView,
-  getDatasetUupgFilterStateFromSavedView,
-  getDatasetWatchlistFilterStateFromSavedView,
-  getSavedDatasetFilterStateFromOpenPreset,
-} from "@/lib/saved-dataset-filters";
 import { getAllDatasetRows, getDataset } from "@/lib/datasets";
 import { getDatasetStorageBucket } from "@/lib/dataset-storage";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { listFilterRegions } from "@/lib/filter-settings";
 
 type DatasetContext = {
   params: Promise<{
@@ -69,16 +58,15 @@ export async function GET(_request: Request, context: DatasetContext) {
     }
   }
 
-  const presetFilters = getSavedDatasetFilterStateFromOpenPreset(
-    getDatasetOpenPresetTag(dataset.tags)?.openPreset ?? null,
-  );
-  const [rowsResponse, fieldDefinitionPresentationByColumnKey] =
+  const defaultFilters = getDatasetDefaultFilters(dataset);
+  const [rowsResponse, fieldDefinitionPresentationByColumnKey, regions] =
     await Promise.all([
       getAllDatasetRows({
         datasetId: dataset.id,
         includeDisabled: identity.isDatasetAdmin,
       }),
       listFieldDefinitionPresentationByColumnKey(dataset.columns),
+      listFilterRegions(),
     ]);
 
   if (!rowsResponse) {
@@ -90,23 +78,12 @@ export async function GET(_request: Request, context: DatasetContext) {
     hiddenColumnKeys: dataset.hiddenColumnKeys,
     fieldDefinitionPresentationByColumnKey,
   });
-  const filteredRows = presetFilters
-    ? filterDatasetRowsByCountry(
-        filterDatasetRowsByUupg(
-          filterDatasetRowsByHotspots(
-            filterDatasetRowsByWatchlist(
-              filterDatasetRowsByRegion(
-                rowsResponse.rows,
-                getDatasetRegionFilterStateFromSavedView(dataset, presetFilters),
-              ),
-              getDatasetWatchlistFilterStateFromSavedView(dataset, presetFilters),
-            ),
-            getDatasetHotspotsFilterStateFromSavedView(dataset, presetFilters),
-          ),
-          getDatasetUupgFilterStateFromSavedView(dataset, presetFilters),
-        ),
-        getDatasetCountryFilterStateFromSavedView(dataset, presetFilters),
-      )
+  const filteredRows = defaultFilters
+    ? applyDatasetDefaultFilters({
+        dataset,
+        rows: rowsResponse.rows,
+        regions,
+      })
     : rowsResponse.rows;
   const csv = serializeDatasetRowsToCsv({
     rows: filteredRows,

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { DatasetAssignDerivedViewSheet } from "@/components/dashboard/dataset-assign-derived-view-sheet";
 import { DatasetOpenPresetSheet } from "@/components/dashboard/dataset-open-preset-sheet";
 import { DatasetTableActionBar } from "@/components/dashboard/dataset-table-action-bar";
 import { DatasetTable } from "@/components/dashboard/dataset-table";
@@ -74,6 +75,7 @@ type DatasetDetailClientProps = {
   initialFilters?: DatasetOpenPreset | null;
   initialSorting?: SavedDatasetSort[] | null;
   canManageOpenPresets?: boolean;
+  assignableDatasets?: DatasetSummary[];
   actorOwnerId?: string;
   workspaceRole?: AnalyticsWorkspaceRole;
   datasetSource?: DatasetOpenSource;
@@ -197,6 +199,7 @@ export function DatasetDetailClient({
   initialFilters = null,
   initialSorting = null,
   canManageOpenPresets = false,
+  assignableDatasets = [],
   actorOwnerId = "anonymous",
   workspaceRole = "anonymous",
   datasetSource = "dashboard",
@@ -322,6 +325,8 @@ export function DatasetDetailClient({
     initialState.hotspotsCountryCount,
   );
   const [isFiltersSheetOpen, setIsFiltersSheetOpen] = useState(false);
+  const [isAssignDerivedViewSheetOpen, setIsAssignDerivedViewSheetOpen] =
+    useState(false);
   const [isOpenPresetSheetOpen, setIsOpenPresetSheetOpen] = useState(false);
   const analyticsContext = useMemo(
     () =>
@@ -340,6 +345,7 @@ export function DatasetDetailClient({
     }),
     [analyticsContext, datasetSource],
   );
+  const sourceDatasetId = dataset.backingDatasetId ?? dataset.id;
 
   const selectedRegionCountryNames = useMemo(
     () => getSelectedRegionCountryNames(visibleRegions, selectedRegionIds),
@@ -618,6 +624,9 @@ export function DatasetDetailClient({
   }, []);
   const handleOpenOpenPreset = useCallback(() => {
     setIsOpenPresetSheetOpen(true);
+  }, []);
+  const handleOpenAssignDerivedView = useCallback(() => {
+    setIsAssignDerivedViewSheetOpen(true);
   }, []);
 
   useEffect(() => {
@@ -1033,6 +1042,11 @@ export function DatasetDetailClient({
             fieldDefinitionPresentationByColumnKey={fieldDefinitionPresentationByColumnKey}
             analyticsContext={analyticsContext}
             onOpenFilters={handleOpenFilters}
+            onOpenAssignDerivedView={
+              assignableDatasets.length > 0
+                ? handleOpenAssignDerivedView
+                : undefined
+            }
             onOpenOpenPreset={
               canManageOpenPresets
                 ? handleOpenOpenPreset
@@ -1061,6 +1075,18 @@ export function DatasetDetailClient({
           onSelectedTagIdChange={setSelectedOpenPresetTagId}
           onSave={handleSaveOpenPreset}
           onClear={handleClearOpenPreset}
+        />
+      ) : null}
+      {assignableDatasets.length > 0 ? (
+        <DatasetAssignDerivedViewSheet
+          open={isAssignDerivedViewSheetOpen}
+          onOpenChange={setIsAssignDerivedViewSheetOpen}
+          currentDataset={dataset}
+          sourceDatasetId={sourceDatasetId}
+          filters={savedFilters}
+          recordCount={datasetTable.recordCount}
+          assignableDatasets={assignableDatasets}
+          analyticsContext={analyticsContext}
         />
       ) : null}
       <Sheet open={isFiltersSheetOpen} onOpenChange={setIsFiltersSheetOpen}>
