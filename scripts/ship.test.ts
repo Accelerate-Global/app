@@ -3,6 +3,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const runCommandMock = vi.fn();
 const waitForPullRequestChecksMock = vi.fn();
 const waitForWorkflowRunMock = vi.fn();
+const getTrackedFileTreeShaMock = vi.fn();
+const loadVerificationReceiptMock = vi.fn();
+const isVerificationSatisfiedMock = vi.fn();
 let consoleLogMock: ReturnType<typeof vi.spyOn>;
 
 vi.mock("./lib/command", () => ({
@@ -12,6 +15,12 @@ vi.mock("./lib/command", () => ({
 vi.mock("./lib/release", () => ({
   waitForPullRequestChecks: waitForPullRequestChecksMock,
   waitForWorkflowRun: waitForWorkflowRunMock,
+}));
+
+vi.mock("./lib/verification-receipts", () => ({
+  getTrackedFileTreeSha: getTrackedFileTreeShaMock,
+  loadVerificationReceipt: loadVerificationReceiptMock,
+  isVerificationSatisfied: isVerificationSatisfiedMock,
 }));
 
 function buildPullRequest(overrides: Record<string, unknown> = {}) {
@@ -98,6 +107,20 @@ describe("ship", () => {
     runCommandMock.mockReset();
     waitForPullRequestChecksMock.mockReset();
     waitForWorkflowRunMock.mockReset();
+    getTrackedFileTreeShaMock.mockReset();
+    loadVerificationReceiptMock.mockReset();
+    isVerificationSatisfiedMock.mockReset();
+    getTrackedFileTreeShaMock.mockResolvedValue("tree-sha");
+    loadVerificationReceiptMock.mockResolvedValue({
+      treeSha: "tree-sha",
+      changedFiles: ["README.md"],
+      commands: {
+        "verify:ship:local": {
+          passedAt: "2026-04-22T00:00:00.000Z",
+        },
+      },
+    });
+    isVerificationSatisfiedMock.mockReturnValue(true);
     consoleLogMock = vi.spyOn(console, "log").mockImplementation(() => {});
   });
 
@@ -226,6 +249,55 @@ describe("ship", () => {
 
     expect(runCommandMock).toHaveBeenCalledTimes(1);
     expect(waitForPullRequestChecksMock).not.toHaveBeenCalled();
+  });
+
+  it("fails before merge work when the tracked tree lacks a verify:ship:local receipt", async () => {
+    const { shipPullRequest } = await import("./ship");
+
+    installShipCommandMock({
+      pullRequestViews: [buildPullRequest()],
+      pullRequestFiles: ["src/components/dashboard/dashboard-client.tsx"],
+    });
+    loadVerificationReceiptMock.mockResolvedValue(null);
+    isVerificationSatisfiedMock.mockReturnValue(false);
+
+    await expect(shipPullRequest({ prNumber: "46" })).rejects.toThrow(
+      "Ship requires a current `pnpm run verify:ship:local` pass on this tracked tree before merge work begins.",
+    );
+
+    expect(waitForPullRequestChecksMock).not.toHaveBeenCalled();
+    expect(runCommandMock).not.toHaveBeenCalledWith(
+      "pnpm",
+      ["run", "db:check-migration-drift"],
+      expect.anything(),
+    );
+  });
+
+  it("skips the verify:ship:local receipt gate when the PR is already merged", async () => {
+    const { shipPullRequest } = await import("./ship");
+
+    installShipCommandMock({
+      pullRequestViews: [
+        buildPullRequest({
+          mergeCommit: {
+            oid: "merge-sha",
+          },
+          state: "MERGED",
+        }),
+      ],
+      pullRequestFiles: ["README.md"],
+    });
+    waitForWorkflowRunMock.mockResolvedValue({
+      workflowName: "Release Health",
+    });
+
+    await shipPullRequest({ prNumber: "46" });
+
+    expect(loadVerificationReceiptMock).not.toHaveBeenCalled();
+    expect(waitForWorkflowRunMock).toHaveBeenCalledWith({
+      workflowName: "Release Health",
+      commitSha: "merge-sha",
+    });
   });
 
   it("surfaces merge command failures", async () => {

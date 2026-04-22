@@ -5,8 +5,10 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 
 import {
+  UI_SMOKE_BASE_URL,
   UI_SMOKE_TMP_DIR,
 } from "../tests/ui/support/smoke-data";
+import { formatUnknownError } from "./lib/format-error";
 import { parseGitStatusPorcelain } from "./lib/git-status";
 import {
   buildUiSmokeCommandEnv,
@@ -109,10 +111,16 @@ function runCommand(
   });
 }
 
-export function parseRunUiSmokeArgs(argv: string[]) {
+export function parseRunUiSmokeArgs(
+  argv: string[],
+  environment: NodeJS.ProcessEnv = process.env,
+) {
   const headed = argv.includes("--headed");
   const fullAfterTargeted = argv.includes("--targeted-and-full");
   const targeted = argv.includes("--targeted") || fullAfterTargeted;
+  const skipBuild =
+    argv.includes("--skip-build") ||
+    environment.UI_SMOKE_SKIP_BUILD === "1";
   const baseSha = (() => {
     const index = argv.indexOf("--base");
 
@@ -132,6 +140,7 @@ export function parseRunUiSmokeArgs(argv: string[]) {
     headed,
     fullAfterTargeted,
     targeted,
+    skipBuild,
     baseSha,
     headSha,
   };
@@ -144,6 +153,13 @@ function parseNullSeparatedPaths(output: string) {
     .filter(Boolean);
 }
 
+function parseLineSeparatedTokens(output: string) {
+  return output
+    .split("\n")
+    .map((token) => token.trim())
+    .filter(Boolean);
+}
+
 function sleep(milliseconds: number) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
@@ -152,12 +168,17 @@ export const DEFAULT_SUPABASE_PORT_RELEASE_WAIT = {
   maxAttempts: 30,
   retryDelayMs: 2_000,
 } as const;
+export const DEFAULT_UI_SMOKE_APP_PORT_RELEASE_WAIT = {
+  maxAttempts: 15,
+  retryDelayMs: 1_000,
+} as const;
 export const DEFAULT_SUPABASE_STATUS_OUTPUT_RETRY = {
   attempts: 5,
   retryDelayMs: 2_000,
 } as const;
 export const DEFAULT_UI_SMOKE_SUPABASE_START_TIMEOUT_MS = 120_000;
 export const CI_UI_SMOKE_SUPABASE_START_TIMEOUT_MS = 300_000;
+const UI_SMOKE_APP_PORT = Number(new URL(UI_SMOKE_BASE_URL).port || "3100");
 export const UI_SMOKE_DB_RESET_ARGS = [
   "db",
   "reset",
@@ -177,7 +198,7 @@ function createPipelineError(
   message: string,
   error: unknown,
 ) {
-  const detail = error instanceof Error ? error.message : String(error);
+  const detail = formatUnknownError(error);
   return new Error(`[${classification}] ${message}\n${detail}`);
 }
 
@@ -242,6 +263,110 @@ async function waitForSupabasePortsAvailable(options?: {
   throw lastError;
 }
 
+async function waitForPortAvailable(
+  port: number,
+  options?: {
+    maxAttempts?: number;
+    retryDelayMs?: number;
+  },
+) {
+  let lastError: unknown = null;
+  const maxAttempts = options?.maxAttempts ?? DEFAULT_UI_SMOKE_APP_PORT_RELEASE_WAIT.maxAttempts;
+  const retryDelayMs =
+    options?.retryDelayMs ?? DEFAULT_UI_SMOKE_APP_PORT_RELEASE_WAIT.retryDelayMs;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    if (await canListenOnPort(port)) {
+      return;
+    }
+
+    lastError = new Error(`Port ${port} is still in use.`);
+
+    if (attempt === maxAttempts) {
+      throw lastError;
+    }
+
+    await sleep(retryDelayMs);
+  }
+
+  throw lastError;
+}
+
+async function listListeningProcessIds(port: number) {
+  try {
+    return parseLineSeparatedTokens(
+      await runCommand(
+        "lsof",
+        ["-nP", `-iTCP:${port}`, "-sTCP:LISTEN", "-t"],
+        {
+          captureOutput: true,
+          timeoutMs: 30_000,
+        },
+      ),
+    );
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      error.message.includes("exited with code 1")
+    ) {
+      return [];
+    }
+
+    throw error;
+  }
+}
+
+async function ensureUiSmokeAppPortAvailable() {
+  if (await canListenOnPort(UI_SMOKE_APP_PORT)) {
+    return;
+  }
+
+  const processIds = await listListeningProcessIds(UI_SMOKE_APP_PORT);
+
+  if (processIds.length === 0) {
+    await waitForPortAvailable(UI_SMOKE_APP_PORT);
+    return;
+  }
+
+  console.warn(
+    `Port ${UI_SMOKE_APP_PORT} is already in use. Stopping stale UI smoke web server process(es): ${processIds.join(", ")}.`,
+  );
+
+  for (const processId of processIds) {
+    try {
+      process.kill(Number(processId), "SIGTERM");
+    } catch (error) {
+      if (
+        !(error instanceof Error) ||
+        !("code" in error) ||
+        error.code !== "ESRCH"
+      ) {
+        throw error;
+      }
+    }
+  }
+
+  try {
+    await waitForPortAvailable(UI_SMOKE_APP_PORT);
+  } catch {
+    for (const processId of processIds) {
+      try {
+        process.kill(Number(processId), "SIGKILL");
+      } catch (error) {
+        if (
+          !(error instanceof Error) ||
+          !("code" in error) ||
+          error.code !== "ESRCH"
+        ) {
+          throw error;
+        }
+      }
+    }
+
+    await waitForPortAvailable(UI_SMOKE_APP_PORT);
+  }
+}
+
 function isDockerPruneInProgressError(error: unknown) {
   return (
     error instanceof Error &&
@@ -254,6 +379,7 @@ function isSupabaseStartupRaceError(error: unknown) {
     error instanceof Error &&
     (
       error.message.includes("container is not ready: starting") ||
+      error.message.includes("error running container: exit 1") ||
       error.message.includes("error running container: exit 143") ||
       error.message.includes("timed out") ||
       error.message.includes("failed to inspect container health") ||
@@ -296,6 +422,13 @@ function isLocalStackNotReadyError(error: unknown) {
       error.message.includes("the database system is starting up") ||
       error.message.includes("connection refused")
     )
+  );
+}
+
+function isNextBuildAlreadyRunningError(error: unknown) {
+  return (
+    error instanceof Error &&
+    error.message.includes("Another next build process is already running")
   );
 }
 
@@ -502,6 +635,7 @@ export type UiSmokeSuitePlan = {
   kind: "targeted" | "full";
   grepPattern: string | null;
   projectNames: string[];
+  testPaths: string[];
 };
 
 export type UiSmokeRunPlan = {
@@ -548,6 +682,7 @@ export function buildUiSmokeRunPlan(input: {
           kind: "full",
           grepPattern: null,
           projectNames: [],
+          testPaths: [],
         },
       ],
       bootstrapScope: "full",
@@ -563,6 +698,7 @@ export function buildUiSmokeRunPlan(input: {
           kind: "full",
           grepPattern: null,
           projectNames: [],
+          testPaths: [],
         },
       ],
       bootstrapScope: "full",
@@ -576,6 +712,7 @@ export function buildUiSmokeRunPlan(input: {
       kind: "targeted",
       grepPattern,
       projectNames: selection.projectNames,
+      testPaths: selection.testPaths,
     },
   ];
 
@@ -584,6 +721,7 @@ export function buildUiSmokeRunPlan(input: {
       kind: "full",
       grepPattern: null,
       projectNames: [],
+      testPaths: [],
     });
   }
 
@@ -649,20 +787,24 @@ async function getChangedFilesForRunPlan(input: {
 }
 
 async function validateTargetedSelection(input: {
-  grepPattern: string;
+  grepPattern: string | null;
   projectNames: string[];
+  testPaths: string[];
   targetedSelection: NonNullable<ReturnType<typeof resolveUiSmokeSelection>>;
 }) {
   const playwrightArgs = [
     "exec",
     "playwright",
     "test",
+    ...input.testPaths,
     "-c",
     "playwright.smoke.config.ts",
     "--list",
-    "--grep",
-    input.grepPattern,
   ];
+
+  if (input.grepPattern) {
+    playwrightArgs.push("--grep", input.grepPattern);
+  }
 
   for (const projectName of input.projectNames) {
     playwrightArgs.push("--project", projectName);
@@ -683,7 +825,14 @@ async function validateTargetedSelection(input: {
 }
 
 async function main() {
-  const { headed, fullAfterTargeted, targeted, baseSha, headSha } =
+  const {
+    headed,
+    fullAfterTargeted,
+    targeted,
+    skipBuild,
+    baseSha,
+    headSha,
+  } =
     parseRunUiSmokeArgs(process.argv);
   const changedFiles = await getChangedFilesForRunPlan({
     targeted,
@@ -716,11 +865,13 @@ async function main() {
 
   if (
     runPlan.selection?.mode === "targeted" &&
-    targetedSuite?.grepPattern
+    targetedSuite &&
+    (targetedSuite.grepPattern || targetedSuite.testPaths.length > 0)
   ) {
     await validateTargetedSelection({
       grepPattern: targetedSuite.grepPattern,
       projectNames: targetedSuite.projectNames,
+      testPaths: targetedSuite.testPaths,
       targetedSelection: runPlan.selection,
     });
   }
@@ -788,15 +939,30 @@ async function main() {
     ["run", "smoke:check"],
     { env: smokeEnv },
   );
-  await runStage("product", "Next build failed before browser smoke.", "pnpm", ["build"], {
-    env: smokeEnv,
-  });
+
+  if (skipBuild) {
+    console.log("Skipping Next build before browser smoke because verify:app already passed on this tracked tree.");
+  } else {
+    await runStageWithRetry({
+      classification: "product",
+      message: "Next build failed before browser smoke.",
+      command: "pnpm",
+      args: ["build"],
+      env: smokeEnv,
+      attempts: 5,
+      retryDelayMs: 2_000,
+      shouldRetry: isNextBuildAlreadyRunningError,
+    });
+  }
+
+  await ensureUiSmokeAppPortAvailable();
 
   for (const suite of runPlan.suites) {
     const playwrightArgs = [
       "exec",
       "playwright",
       "test",
+      ...suite.testPaths,
       "-c",
       "playwright.smoke.config.ts",
     ];
@@ -833,7 +999,7 @@ function isMainModule(metaUrl: string) {
 
 if (isMainModule(import.meta.url)) {
   void main().catch((error) => {
-    console.error(error instanceof Error ? error.message : error);
+    console.error(formatUnknownError(error));
     process.exitCode = 1;
   });
 }

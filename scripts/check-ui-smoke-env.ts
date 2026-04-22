@@ -11,6 +11,7 @@ import {
   parseSupabaseEnvOutput,
 } from "./lib/ui-smoke-env";
 import { runCommand } from "./lib/command";
+import { formatUnknownError } from "./lib/format-error";
 
 async function resolveSmokeEnv() {
   try {
@@ -115,7 +116,6 @@ async function main() {
 }
 
 void main().catch((error) => {
-  const message = error instanceof Error ? error.message : String(error);
-  console.error(`[bootstrap] UI smoke preflight failed: ${message}`);
+  console.error(`[bootstrap] UI smoke preflight failed: ${formatUnknownError(error)}`);
   process.exitCode = 1;
 });

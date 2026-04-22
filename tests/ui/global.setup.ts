@@ -36,21 +36,47 @@ async function createSignedInStorageState(input: {
   storageStatePath: string;
 }) {
   const browser = await chromium.launch();
-  const page = await browser.newPage();
 
   try {
-    await page.goto(input.baseUrl);
-    await expect(page.locator('[data-smoke-page="home-sign-in"]')).toBeVisible();
-    await expect(
-      page.locator('[data-smoke-page-ready="home-sign-in"]'),
-    ).toBeVisible();
-    await page.getByLabel("Email").fill(input.email);
-    await page.getByLabel("Password").fill(input.password);
-    await page.getByRole("button", { name: "Sign in" }).click();
-    await page.waitForURL((url) => url.pathname === "/dashboard");
-    await expect(page.locator('[data-smoke-page="dashboard"]')).toBeVisible();
-    await expect(page.locator('[data-smoke-page-ready="dashboard"]')).toBeVisible();
-    await page.context().storageState({ path: input.storageStatePath });
+    let lastError: unknown = null;
+
+    for (let attempt = 1; attempt <= 5; attempt += 1) {
+      const page = await browser.newPage();
+
+      try {
+        await waitForBaseUrl(input.baseUrl);
+        await page.goto(input.baseUrl);
+        await expect(page.locator('[data-smoke-page="home-sign-in"]')).toBeVisible();
+        await expect(
+          page.locator('[data-smoke-page-ready="home-sign-in"]'),
+        ).toBeVisible();
+        await page.getByLabel("Email").fill(input.email);
+        await page.getByLabel("Password").fill(input.password);
+        await Promise.all([
+          page.waitForURL((url) => url.pathname === "/dashboard", {
+            timeout: 60_000,
+          }),
+          page.getByRole("button", { name: "Sign in" }).click(),
+        ]);
+        await expect(page.locator('[data-smoke-page="dashboard"]')).toBeVisible();
+        await expect(page.locator('[data-smoke-page-ready="dashboard"]')).toBeVisible();
+        await page.context().storageState({ path: input.storageStatePath });
+        return;
+      } catch (error) {
+        lastError = error;
+
+        if (attempt === 5) {
+          throw error;
+        }
+
+        await waitForBaseUrl(input.baseUrl);
+        await new Promise((resolve) => setTimeout(resolve, 2_000));
+      } finally {
+        await page.close();
+      }
+    }
+
+    throw lastError ?? new Error(`Could not sign in ${input.email}`);
   } finally {
     await browser.close();
   }
@@ -64,6 +90,7 @@ export default async function globalSetup(config: FullConfig) {
 
   const browser = await chromium.launch();
   const anonymousPage = await browser.newPage();
+  await waitForBaseUrl(baseUrl);
   await anonymousPage.goto(baseUrl);
   await anonymousPage.context().storageState({
     path: UI_SMOKE_STORAGE_STATES.anonymous,

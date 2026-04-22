@@ -6,6 +6,11 @@ import {
   waitForWorkflowRun,
 } from "./lib/release";
 import { runCommand } from "./lib/command";
+import {
+  getTrackedFileTreeSha,
+  isVerificationSatisfied,
+  loadVerificationReceipt,
+} from "./lib/verification-receipts";
 
 const GIT_COMMAND_TIMEOUT_MS = 30_000;
 const GH_COMMAND_TIMEOUT_MS = 30_000;
@@ -129,6 +134,22 @@ async function ensureCleanWorktree() {
   }
 }
 
+async function ensureShipLocalVerificationReceipt(changedFiles: string[]) {
+  const rootDir = process.cwd();
+  const treeSha = await getTrackedFileTreeSha(rootDir);
+  const receipt = await loadVerificationReceipt({
+    rootDir,
+    treeSha,
+    changedFiles,
+  });
+
+  if (!isVerificationSatisfied(receipt, "verify:ship:local")) {
+    throw new Error(
+      "Ship requires a current `pnpm run verify:ship:local` pass on this tracked tree before merge work begins.",
+    );
+  }
+}
+
 async function waitForMerge(prNumber: string) {
   const startedAt = Date.now();
 
@@ -166,6 +187,11 @@ export async function shipPullRequest(input: { prNumber: string }) {
 
   const pullRequestFiles = await listPullRequestFiles(prNumber);
   const needsRemoteFieldSourceSeed = shouldSeedRemoteFieldSourceRegistry(pullRequestFiles);
+
+  if (pullRequest.state !== "MERGED") {
+    logStage("Checking for a current verify:ship:local receipt...");
+    await ensureShipLocalVerificationReceipt(pullRequestFiles);
+  }
 
   logStage("Checking linked Supabase migration drift...");
   await runCommand("pnpm", ["run", "db:check-migration-drift"], {

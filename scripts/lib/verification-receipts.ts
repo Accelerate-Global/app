@@ -13,6 +13,7 @@ const receiptCommandIds = [
   "test:ui:smoke:targeted",
   "test:ui:smoke",
   "db:security",
+  "verify:ship:local",
 ] as const satisfies VerificationCommandId[];
 
 export type ReceiptCommandId = (typeof receiptCommandIds)[number];

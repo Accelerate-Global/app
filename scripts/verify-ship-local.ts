@@ -8,6 +8,7 @@ import { collectVerifyChangeReport, printVerifyChangeReport } from "./lib/verify
 import {
   getTrackedFileTreeSha,
   loadVerificationReceipt,
+  recordVerificationSuccess,
 } from "./lib/verification-receipts";
 
 export async function runVerifyShipLocal() {
@@ -43,6 +44,13 @@ export async function runVerifyShipLocal() {
     treeSha,
     changedFiles: collection.report.changedFiles,
     plan,
+  });
+
+  await recordVerificationSuccess({
+    rootDir,
+    treeSha,
+    changedFiles: collection.report.changedFiles,
+    commandIds: ["verify:ship:local"],
   });
 }
 

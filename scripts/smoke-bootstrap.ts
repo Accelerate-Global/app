@@ -16,6 +16,7 @@ import {
   getUiSmokeEnv,
   getUiSmokeStorageAdminKey,
 } from "./lib/ui-smoke-env";
+import { formatUnknownError } from "./lib/format-error";
 import {
   CANONICAL_FILTER_REGION_DEFINITIONS,
   type CanonicalFilterRegionKey,
@@ -911,7 +912,6 @@ async function main() {
 }
 
 void main().catch((error) => {
-  const message = error instanceof Error ? error.message : String(error);
-  console.error(`[bootstrap] ${message}`);
+  console.error(`[bootstrap] ${formatUnknownError(error)}`);
   process.exitCode = 1;
 });

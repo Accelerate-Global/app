@@ -69,4 +69,13 @@ describe("ci-select-validation", () => {
     expect(selection.appTest).toBe(true);
     expect(selection.appBuild).toBe(false);
   });
+
+  it("runs app quality without build for shared workflow bootstrap action changes", () => {
+    const selection = selectCiValidation([".github/actions/setup-pnpm-node/action.yml"]);
+
+    expect(selection.appQuality).toBe(true);
+    expect(selection.appLint).toBe(true);
+    expect(selection.appTest).toBe(true);
+    expect(selection.appBuild).toBe(false);
+  });
 });

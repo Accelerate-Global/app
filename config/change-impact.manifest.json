@@ -5,7 +5,9 @@
       "label": "Planner policy and agent workflow",
       "patterns": [
         "AGENTS.md",
+        ".github/actions/**",
         "config/**/*.ts",
+        "scripts/check-workflow-bootstrap.mjs",
         "scripts/verify-change.ts",
         "scripts/verify-change-run.ts",
         "scripts/check-test-delta.ts",
@@ -69,12 +71,12 @@
       "patterns": [
         ".github/workflows/ui-smoke.yml",
         "playwright.smoke.config.ts",
-        "scripts/check-ui-smoke.ts",
         "scripts/check-ui-smoke-env.ts",
         "scripts/run-ui-smoke.ts",
         "scripts/smoke-bootstrap.ts",
-        "tests/ui/**/*.ts",
-        "tests/ui/**/*.tsx"
+        "tests/ui/global.setup.ts",
+        "tests/ui/support/**/*.ts",
+        "tests/ui/support/**/*.tsx"
       ],
       "requiredCommands": ["smoke:check", "test:ui:smoke"],
       "recommendedCommands": [],
@@ -86,6 +88,28 @@
         "shared-ui-fixture",
         "smoke-surface-literals"
       ]
+    },
+    {
+      "id": "ui-smoke-contract",
+      "label": "UI smoke contract validation",
+      "patterns": ["scripts/check-ui-smoke.ts"],
+      "requiredCommands": ["smoke:check"],
+      "recommendedCommands": [],
+      "manualSteps": [],
+      "contractRequirements": []
+    },
+    {
+      "id": "ui-smoke-specs",
+      "label": "UI smoke route and journey specs",
+      "patterns": [
+        "tests/ui/00-route-sweep.spec.ts",
+        "tests/ui/10-journeys.spec.ts",
+        "tests/ui/route-registry.ts"
+      ],
+      "requiredCommands": ["smoke:check", "test:ui:smoke:targeted"],
+      "recommendedCommands": [],
+      "manualSteps": [],
+      "contractRequirements": []
     },
     {
       "id": "database-security",
@@ -127,14 +151,31 @@
       "patterns": [
         ".github/workflows/ui-smoke.yml",
         "playwright.smoke.config.ts",
-        "scripts/check-ui-smoke.ts",
         "scripts/check-ui-smoke-env.ts",
         "scripts/run-ui-smoke.ts",
         "scripts/smoke-bootstrap.ts",
-        "tests/ui/**/*.ts",
-        "tests/ui/**/*.tsx"
+        "tests/ui/global.setup.ts",
+        "tests/ui/support/**/*.ts",
+        "tests/ui/support/**/*.tsx"
       ],
       "forceFullSuite": true
+    },
+    {
+      "id": "route-sweep-spec",
+      "label": "Route sweep smoke spec",
+      "patterns": [
+        "tests/ui/00-route-sweep.spec.ts",
+        "tests/ui/route-registry.ts"
+      ],
+      "testPaths": ["tests/ui/00-route-sweep.spec.ts"],
+      "bootstrapScope": "full"
+    },
+    {
+      "id": "journeys-spec",
+      "label": "Journey smoke spec",
+      "patterns": ["tests/ui/10-journeys.spec.ts"],
+      "testPaths": ["tests/ui/10-journeys.spec.ts"],
+      "bootstrapScope": "full"
     },
     {
       "id": "auth-entry-routes",
@@ -344,10 +385,12 @@
   "ci": {
     "preinstallWorkflows": {
       "appQualityPatterns": [
+        ".github/actions/**",
         ".github/workflows/**",
         "package.json",
         "pnpm-lock.yaml",
         "config/**/*.ts",
+        "scripts/check-workflow-bootstrap.mjs",
         "scripts/**/*.ts",
         "src/**/*.ts",
         "src/**/*.tsx",
@@ -420,9 +463,11 @@
     },
     "appQualityTasks": {
       "lintPatterns": [
+        ".github/actions/**",
         "package.json",
         "pnpm-lock.yaml",
         "config/**/*.ts",
+        "scripts/check-workflow-bootstrap.mjs",
         "scripts/**/*.ts",
         "src/**/*.ts",
         "src/**/*.tsx",
@@ -436,9 +481,11 @@
         "vitest.config.ts"
       ],
       "testPatterns": [
+        ".github/actions/**",
         "package.json",
         "pnpm-lock.yaml",
         "config/**/*.ts",
+        "scripts/check-workflow-bootstrap.mjs",
         "scripts/**/*.ts",
         "src/**/*.ts",
         "src/**/*.tsx",
