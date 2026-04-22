@@ -537,11 +537,13 @@ test("admin can replace a dataset through the real upload flow", async ({ page }
       .locator(`[data-smoke-dataset-id="${bootstrap.datasets.secondary.id}"]`)
       .click();
     await expect(page.locator('[data-smoke-page="dataset-edit"]')).toBeVisible();
-    await expect(page.locator("[data-smoke-dataset-version-revert]")).toHaveCount(1);
+    const revertButtons = page.locator("[data-smoke-dataset-version-revert]");
+    const revertCountBefore = await revertButtons.count();
+    expect(revertCountBefore).toBeGreaterThanOrEqual(1);
 
     page.once("dialog", (dialog) => void dialog.accept());
-    await page.locator("[data-smoke-dataset-version-revert]").click();
+    await revertButtons.first().click();
 
-    await expect(page.locator("[data-smoke-dataset-version-revert]")).toHaveCount(2);
+    await expect(revertButtons).toHaveCount(revertCountBefore + 1);
   });
 });

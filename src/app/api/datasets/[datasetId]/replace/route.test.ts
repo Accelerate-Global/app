@@ -9,14 +9,6 @@ vi.mock("@/lib/auth", () => ({
 }));
 
 vi.mock("@/lib/datasets", () => ({
-  DerivedDatasetMutationError: class DerivedDatasetMutationError extends Error {
-    readonly status = 409;
-
-    constructor(message = "Derived dataset views cannot replace their backing data.") {
-      super(message);
-      this.name = "DerivedDatasetMutationError";
-    }
-  },
   replaceDatasetContents: vi.fn(),
 }));
 
@@ -151,29 +143,5 @@ describe("/api/datasets/[datasetId]/replace", () => {
     );
 
     expect(response.status).toBe(404);
-  });
-
-  it("rejects replacements for derived dataset views", async () => {
-    const { DerivedDatasetMutationError } = await import("@/lib/datasets");
-    replaceDatasetContentsMock.mockRejectedValue(
-      new DerivedDatasetMutationError(),
-    );
-
-    const response = await POST(
-      new Request("http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001/replace", {
-        method: "POST",
-        body: JSON.stringify({
-          blobPath: "datasets/csv/customers-v2.csv",
-          sizeBytes: 100,
-          columns: [{ key: "email", label: "Email", sourceIndex: 0 }],
-        }),
-      }),
-      context,
-    );
-
-    expect(response.status).toBe(409);
-    await expect(response.json()).resolves.toEqual({
-      error: "Derived dataset views cannot replace their backing data.",
-    });
   });
 });

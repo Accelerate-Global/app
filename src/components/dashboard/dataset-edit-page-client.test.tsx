@@ -203,11 +203,12 @@ describe("DatasetEditPageClient", () => {
     expect(pushMock).toHaveBeenCalledWith("/dashboard/upload?replace=dataset-1");
   });
 
-  it("routes derived dataset views to the backing dataset replacement flow", () => {
+  it("routes derived dataset views to replace themselves and explains the conversion", () => {
     render(
       <DatasetEditPageClient
         initialDataset={createDataset({
           backingDatasetId: "dataset-source-1",
+          fileName: "UUPG",
           isPrimary: false,
         })}
         backingDatasetName="All People Groups"
@@ -224,23 +225,21 @@ describe("DatasetEditPageClient", () => {
     );
 
     expect(
-      screen.getByText(/This dataset is a derived view backed by/i),
+      screen.getByText(/This dataset is currently a derived view backed by/i),
     ).toBeTruthy();
     expect(screen.getAllByText("All People Groups").length).toBeGreaterThan(0);
     expect(
       screen.getByText(
-        /Revert remains available only on/i,
+        /starts its own upload history/i,
       ),
     ).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Revert" })).toBeNull();
 
     fireEvent.click(
-      screen.getByRole("button", { name: "Replace All People Groups" }),
+      screen.getByRole("button", { name: "Replace UUPG" }),
     );
 
-    expect(pushMock).toHaveBeenCalledWith(
-      "/dashboard/upload?replace=dataset-source-1",
-    );
+    expect(pushMock).toHaveBeenCalledWith("/dashboard/upload?replace=dataset-1");
   });
 
   it("shows an error when a saved preset tag needs unsupported dataset filters", async () => {

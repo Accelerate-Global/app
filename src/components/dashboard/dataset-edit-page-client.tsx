@@ -406,9 +406,6 @@ function DatasetEditForm({
 }: DatasetEditFormProps) {
   const isDerivedView = dataset.backingDatasetId != null;
   const sourceDatasetLabel = backingDatasetName ?? "its source dataset";
-  const replaceButtonLabel = isDerivedView
-    ? `Replace ${sourceDatasetLabel}`
-    : "Replace dataset";
   const [fileName, setFileName] = useState(dataset.fileName);
   const [isPrimary, setIsPrimary] = useState(dataset.isPrimary);
   const [isPublic, setIsPublic] = useState(dataset.isPublic);
@@ -422,6 +419,10 @@ function DatasetEditForm({
   const nextTagIdRef = useRef(0);
 
   const trimmedFileName = fileName.trim();
+  const selectedDatasetLabel = trimmedFileName || dataset.fileName;
+  const replaceButtonLabel = isDerivedView
+    ? `Replace ${selectedDatasetLabel}`
+    : "Replace dataset";
   const normalizedTags = useMemo(() => normalizeDatasetTags(tags), [tags]);
   const normalizedHiddenColumnKeys = useMemo(
     () => normalizeDatasetHiddenColumnKeys(hiddenColumnKeys, dataset.columns),
@@ -690,14 +691,22 @@ function DatasetEditForm({
           </div>
           {isDerivedView ? (
             <p className="text-sm text-muted-foreground">
-              This dataset is a derived view backed by{" "}
+              This dataset is currently a derived view backed by{" "}
               <span className="font-medium text-foreground">
                 {sourceDatasetLabel}
               </span>
               . You can still edit its name, tags, displayed fields, and default
-              preset, but it cannot be primary and does not manage upload history
-              directly. Replacing {sourceDatasetLabel} will refresh this view and
-              any other derived views that share it.
+              preset, but it cannot be primary while it depends on another
+              dataset. Replacing{" "}
+              <span className="font-medium text-foreground">
+                {selectedDatasetLabel}
+              </span>{" "}
+              will convert it into its own source dataset with independent upload
+              history.{" "}
+              <span className="font-medium text-foreground">
+                {sourceDatasetLabel}
+              </span>{" "}
+              stays unchanged unless you replace it directly.
             </p>
           ) : null}
         </section>
@@ -901,7 +910,7 @@ function DatasetEditForm({
             <p className="text-sm font-medium text-foreground">Upload history</p>
             <p className="text-sm text-muted-foreground">
               {isDerivedView
-                ? "Derived dataset views reuse a backing dataset and do not keep their own upload history."
+                ? "Derived dataset views reuse a backing dataset until they are replaced with their own source CSV."
                 : "Review prior uploads and revert this dataset if needed."}
             </p>
           </div>
@@ -909,12 +918,16 @@ function DatasetEditForm({
           {isDerivedView ? (
             <div className="rounded-2xl border border-dashed border-border px-4 py-4 text-sm text-muted-foreground">
               Use <span className="font-medium text-foreground">{replaceButtonLabel}</span>{" "}
-              to upload a new source CSV for this view. Revert remains available
-              only on{" "}
+              to upload a new CSV for this dataset. This creates an independent
+              source dataset for{" "}
+              <span className="font-medium text-foreground">
+                {selectedDatasetLabel}
+              </span>
+              {" "}and starts its own upload history.{" "}
               <span className="font-medium text-foreground">
                 {sourceDatasetLabel}
-              </span>
-              .
+              </span>{" "}
+              stays unchanged unless you replace it separately.
             </div>
           ) : isLoadingVersions ? (
             <div className="rounded-2xl border border-border bg-card px-4 py-4 text-sm text-muted-foreground">
@@ -1267,7 +1280,7 @@ export function DatasetEditPageClient({
       onDeleteDataset={handleDeleteDataset}
       onReplaceDataset={() =>
         router.push(
-          `/dashboard/upload?replace=${dataset.backingDatasetId ?? dataset.id}`,
+          `/dashboard/upload?replace=${dataset.id}`,
         )
       }
       onRevertDatasetVersion={handleRevertDatasetVersion}

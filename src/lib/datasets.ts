@@ -520,19 +520,18 @@ export async function replaceDatasetContents(input: {
       return null;
     }
 
-    if (existing.backingDatasetId) {
-      throw new DerivedDatasetMutationError(
-        "Derived dataset views cannot replace their backing data.",
-      );
+    // Derived views do not own standalone row history yet, so materializing them
+    // starts a new physical dataset instead of archiving the inherited view state.
+    if (!existing.backingDatasetId) {
+      await archiveDatasetVersion(tx, existing);
     }
-
-    await archiveDatasetVersion(tx, existing);
     await tx.delete(datasetRows).where(eq(datasetRows.datasetId, input.datasetId));
 
     const now = new Date();
     const [updated] = await tx
       .update(datasets)
       .set({
+        backingDatasetId: null,
         fileName: existing.fileName,
         blobUrl: getDatasetStorageObjectUrl(input.blobPath),
         blobPath: input.blobPath,
