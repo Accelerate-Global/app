@@ -19,6 +19,12 @@ export const UI_SMOKE_STORAGE_STATES = {
 export const UI_SMOKE_PASSWORD = "SmokePass123!";
 export const UI_SMOKE_PASSWORD_RESET = "SmokePass456!";
 
+export type UiSmokeBootstrapScope =
+  | "full"
+  | "auth"
+  | "datasets"
+  | "admin-config";
+
 export const UI_SMOKE_USERS = {
   viewer: {
     email: "smoke-viewer@accelerate-global.test",
@@ -65,6 +71,7 @@ export const UI_SMOKE_USERS = {
 export type UiSmokeBootstrap = {
   generatedAt: string;
   baseUrl: string;
+  scope: UiSmokeBootstrapScope;
   aliases: {
     primaryDatasetId: string;
     secondaryDatasetId: string;

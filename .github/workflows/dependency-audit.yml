@@ -28,12 +28,14 @@ jobs:
           node-version: 22
           cache: pnpm
 
-      - run: pnpm install --frozen-lockfile
-      - id: selection
-        run: node --import tsx scripts/ci-select-validation.ts --base "${{ github.event.pull_request.base.sha }}" --head "${{ github.event.pull_request.head.sha }}"
+      - id: preinstall_selection
+        run: node scripts/ci-preinstall-select.mjs --base "${{ github.event.pull_request.base.sha }}" --head "${{ github.event.pull_request.head.sha }}"
 
-      - if: steps.selection.outputs.dependency_audit == 'true'
-        run: pnpm audit --audit-level=high
-
-      - if: steps.selection.outputs.dependency_audit != 'true'
+      - if: steps.preinstall_selection.outputs.run_dependency_audit != 'true'
         run: echo "No dependency-audit-relevant files changed."
+
+      - if: steps.preinstall_selection.outputs.run_dependency_audit == 'true'
+        run: pnpm install --frozen-lockfile
+
+      - if: steps.preinstall_selection.outputs.run_dependency_audit == 'true'
+        run: pnpm audit --audit-level=high

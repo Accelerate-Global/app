@@ -30,6 +30,7 @@ const dataset = {
   sizeBytes: 512,
   columns: [],
   hiddenColumnKeys: [],
+  defaultFilters: null,
   tags: [],
   error: null,
   createdAt: new Date().toISOString(),
@@ -151,6 +152,36 @@ describe("DatasetTableActionBar", () => {
     fireEvent.click(openPresetButton);
 
     expect(onOpenOpenPreset).toHaveBeenCalledTimes(1);
+  });
+
+  it("renders an admin-only assign trigger in the action row", () => {
+    const onOpenAssignDerivedView = vi.fn();
+
+    render(
+      <DatasetTableActionBar
+        dataset={dataset}
+        filters={filters}
+        recordCount={12507}
+        getSortedRows={() => []}
+        visibleColumns={[]}
+        isLoading={false}
+        hasError={false}
+        fieldDefinitionPresentationByColumnKey={{}}
+        onOpenAssignDerivedView={onOpenAssignDerivedView}
+      />,
+    );
+
+    const assignButton = screen.getByRole("button", {
+      name: "Assign to dataset",
+    });
+
+    expect(assignButton.getAttribute("data-smoke-trigger")).toBe(
+      "dataset-assign-derived-view-sheet",
+    );
+
+    fireEvent.click(assignButton);
+
+    expect(onOpenAssignDerivedView).toHaveBeenCalledTimes(1);
   });
 
   it("tracks saved table creation outcomes", async () => {

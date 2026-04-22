@@ -9,6 +9,7 @@ import {
   UI_SMOKE_PASSWORD_RESET,
   UI_SMOKE_TMP_DIR,
   UI_SMOKE_USERS,
+  type UiSmokeBootstrapScope,
   type UiSmokeBootstrap,
 } from "../tests/ui/support/smoke-data";
 import {
@@ -56,6 +57,41 @@ type SmokeColumn = {
 };
 
 type SmokeDatasetRow = Record<string, string>;
+
+const UI_SMOKE_BOOTSTRAP_SCOPES = [
+  "full",
+  "auth",
+  "datasets",
+  "admin-config",
+] as const satisfies readonly UiSmokeBootstrapScope[];
+
+export function parseSmokeBootstrapArgs(argv: string[]) {
+  const scopeFlagIndex = argv.indexOf("--scope");
+  const requestedScope =
+    scopeFlagIndex === -1 ? "full" : (argv[scopeFlagIndex + 1] ?? "full");
+
+  if (
+    !UI_SMOKE_BOOTSTRAP_SCOPES.includes(
+      requestedScope as UiSmokeBootstrapScope,
+    )
+  ) {
+    throw new Error(
+      `Unknown smoke bootstrap scope: ${requestedScope}. Expected one of ${UI_SMOKE_BOOTSTRAP_SCOPES.join(", ")}.`,
+    );
+  }
+
+  return {
+    scope: requestedScope as UiSmokeBootstrapScope,
+  };
+}
+
+function shouldSeedWorkspaceMetadata(scope: UiSmokeBootstrapScope) {
+  return scope !== "auth";
+}
+
+function shouldSeedDatasets(scope: UiSmokeBootstrapScope) {
+  return scope === "full" || scope === "datasets";
+}
 
 function normalizeHeaderIdentity(value: string, index = 0) {
   const normalized = value
@@ -662,6 +698,7 @@ async function insertFieldDefinitionSources(sql: postgres.Sql) {
 }
 
 async function main() {
+  const { scope } = parseSmokeBootstrapArgs(process.argv);
   const smokeEnv = getUiSmokeEnv();
   const storageAdmin = createClient(
     smokeEnv.supabaseUrl,
@@ -762,21 +799,27 @@ async function main() {
       workspaceRole: "viewer",
     });
 
-    await insertFieldSourceTypes(sql);
-    await insertFilterRegions(sql);
-    await insertDatasets({
-      sql,
-      ownerId: adminUser.id,
-      actorEmail: adminUser.email,
-      supabaseUrl: smokeEnv.supabaseUrl,
-      bucket: smokeEnv.storageBucket,
-    });
-    await insertFieldDefinitions(sql);
-    await insertFieldDefinitionSources(sql);
+    if (shouldSeedWorkspaceMetadata(scope)) {
+      await insertFieldSourceTypes(sql);
+      await insertFilterRegions(sql);
+      await insertFieldDefinitions(sql);
+      await insertFieldDefinitionSources(sql);
+    }
+
+    if (shouldSeedDatasets(scope)) {
+      await insertDatasets({
+        sql,
+        ownerId: adminUser.id,
+        actorEmail: adminUser.email,
+        supabaseUrl: smokeEnv.supabaseUrl,
+        bucket: smokeEnv.storageBucket,
+      });
+    }
 
     const payload: UiSmokeBootstrap = {
       generatedAt: new Date().toISOString(),
       baseUrl: UI_SMOKE_BASE_URL,
+      scope,
       aliases: {
         primaryDatasetId: PRIMARY_DATASET_ID,
         secondaryDatasetId: SECONDARY_DATASET_ID,
@@ -850,7 +893,7 @@ async function main() {
       `Bootstrapped UI smoke data for ${viewerUser.email}, ${adminUser.email}, ${recoveryUser.email}, ${forgotPasswordUser.email}, ${resetUser.email}, ${signOutUser.email}, and ${disableUser.email}.`,
     );
     console.log(
-      `Using publishable key length ${smokeEnv.supabasePublishableKey.length} against ${smokeEnv.supabaseUrl}.`,
+      `Using scope ${scope} with publishable key length ${smokeEnv.supabasePublishableKey.length} against ${smokeEnv.supabaseUrl}.`,
     );
   } finally {
     await sql.end({ timeout: 5 });

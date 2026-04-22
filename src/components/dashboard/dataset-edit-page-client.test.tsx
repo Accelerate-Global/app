@@ -48,6 +48,7 @@ function createDataset(overrides: Record<string, unknown> = {}) {
       },
     ],
     hiddenColumnKeys: [],
+    defaultFilters: null,
     tags: [
       {
         id: "tag-1",

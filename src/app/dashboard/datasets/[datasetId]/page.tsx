@@ -10,8 +10,11 @@ import {
   type DatasetOpenSource,
 } from "@/lib/analytics";
 import { getCurrentIdentity } from "@/lib/auth";
-import { getDataset } from "@/lib/datasets";
-import { getDatasetOpenPresetTag } from "@/lib/dataset-tags";
+import {
+  getDatasetDefaultOpenPreset,
+  getDatasetDefaultSorting,
+} from "@/lib/dataset-default-view";
+import { getDataset, listDatasets } from "@/lib/datasets";
 import { listFieldDefinitionPresentationByColumnKey } from "@/lib/field-definitions";
 import { getDatasetViewOption } from "@/lib/dataset-view-options";
 import { listFilterRegions } from "@/lib/filter-settings";
@@ -57,7 +60,6 @@ export default async function DatasetPage({
         });
   const sourceRowCount = sourceDataset?.rowCount ?? dataset.rowCount;
 
-  const openPresetTag = getDatasetOpenPresetTag(dataset.tags);
   const savedTable = savedTableId
     ? await getSavedDatasetTable({
         ownerId: identity.ownerId,
@@ -69,7 +71,11 @@ export default async function DatasetPage({
   const initialFilters =
     (matchingSavedTable
       ? buildDatasetOpenPreset(matchingSavedTable.filters)
-      : openPresetTag?.openPreset) ?? null;
+      : getDatasetDefaultOpenPreset(dataset)) ?? null;
+  const initialSorting =
+    matchingSavedTable?.filters.sorting ??
+    getDatasetDefaultSorting(dataset) ??
+    undefined;
   const datasetSource =
     source === "saved_table" ||
     source === "default_redirect" ||
@@ -79,15 +85,23 @@ export default async function DatasetPage({
   const detailKey = [
     dataset.id,
     matchingSavedTable?.id ?? null,
-    openPresetTag?.id ?? null,
+    JSON.stringify(dataset.defaultFilters ?? null),
+    JSON.stringify(dataset.tags),
     datasetSource,
   ].join(":");
 
-  const [regions, headerDescription, fieldDefinitionPresentationByColumnKey] = await Promise.all([
-    listFilterRegions(),
-    Promise.resolve(getDatasetViewOption(dataset.fileName)?.description),
-    listFieldDefinitionPresentationByColumnKey(dataset.columns),
-  ]);
+  const [regions, headerDescription, fieldDefinitionPresentationByColumnKey, allDatasets] =
+    await Promise.all([
+      listFilterRegions(),
+      Promise.resolve(getDatasetViewOption(dataset.fileName)?.description),
+      listFieldDefinitionPresentationByColumnKey(dataset.columns),
+      identity.isDatasetAdmin
+        ? listDatasets({ includeDisabled: true })
+        : Promise.resolve([]),
+    ]);
+  const assignableDatasets = identity.isDatasetAdmin
+    ? allDatasets.filter((candidate) => candidate.id !== sourceDataset?.id)
+    : [];
 
   return (
     <main
@@ -124,8 +138,11 @@ export default async function DatasetPage({
           regions={regions}
           fieldDefinitionPresentationByColumnKey={fieldDefinitionPresentationByColumnKey}
           initialFilters={initialFilters}
-          initialSorting={matchingSavedTable?.filters.sorting}
-          canManageOpenPresets={identity.isDatasetAdmin}
+          initialSorting={initialSorting}
+          canManageOpenPresets={
+            identity.isDatasetAdmin && dataset.backingDatasetId === null
+          }
+          assignableDatasets={assignableDatasets}
           actorOwnerId={identity.ownerId}
           workspaceRole={getAnalyticsWorkspaceRole(identity.isDatasetAdmin)}
           datasetSource={datasetSource}
@@ -137,7 +154,9 @@ export default async function DatasetPage({
               : null
           }
           initialPresetTagId={
-            matchingSavedTable ? null : openPresetTag?.id ?? null
+            matchingSavedTable || dataset.defaultFilters
+              ? null
+              : dataset.tags.find((tag) => tag.openPreset)?.id ?? null
           }
         />
       </div>

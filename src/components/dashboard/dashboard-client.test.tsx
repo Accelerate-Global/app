@@ -47,6 +47,7 @@ function createDataset() {
       },
     ],
     hiddenColumnKeys: [],
+    defaultFilters: null,
     tags: [
       {
         id: "tag-1",

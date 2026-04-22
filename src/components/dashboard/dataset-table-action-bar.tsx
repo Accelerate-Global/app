@@ -44,6 +44,7 @@ type DatasetTableActionBarProps = {
   >;
   analyticsContext?: AppAnalyticsContext;
   onOpenFilters?: () => void;
+  onOpenAssignDerivedView?: () => void;
   onOpenOpenPreset?: () => void;
 };
 
@@ -80,6 +81,7 @@ export function DatasetTableActionBar({
     workspaceRole: "anonymous",
   }),
   onOpenFilters,
+  onOpenAssignDerivedView,
   onOpenOpenPreset,
 }: DatasetTableActionBarProps) {
   const [isSavingSavedTable, setIsSavingSavedTable] = useState(false);
@@ -232,6 +234,18 @@ export function DatasetTableActionBar({
             <SaveIcon />
             {isSavingSavedTable ? "Saving..." : "Save to dashboard"}
           </Button>
+          {onOpenAssignDerivedView ? (
+            <Button
+              type="button"
+              variant="outline"
+              data-smoke-trigger="dataset-assign-derived-view-sheet"
+              data-smoke-write="safe"
+              onClick={onOpenAssignDerivedView}
+            >
+              <PanelRightOpenIcon />
+              Assign to dataset
+            </Button>
+          ) : null}
           {onOpenOpenPreset ? (
             <Button
               type="button"

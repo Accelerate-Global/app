@@ -1,8 +1,10 @@
 import path from "node:path";
 
-import { uiSmokeTargetRules } from "../../config/change-impact";
+import {
+  uiSmokeTargetRules,
+  type UiSmokeBootstrapScope,
+} from "../../config/change-impact";
 import { smokeRouteSpecs } from "../../tests/ui/route-registry";
-import type { SmokeRole, SmokeRouteSpec } from "../../tests/ui/types";
 
 export type UiSmokeSelection = {
   mode: "none" | "targeted" | "full";
@@ -10,6 +12,7 @@ export type UiSmokeSelection = {
   routeIds: string[];
   journeyTitles: string[];
   projectNames: string[];
+  bootstrapScope: UiSmokeBootstrapScope | null;
   command: string | null;
   summary: string[];
 };
@@ -30,6 +33,12 @@ const projectOrder = [
   "mobile-viewer",
   "mobile-admin",
 ] as const;
+const bootstrapScopeOrder: UiSmokeBootstrapScope[] = [
+  "auth",
+  "datasets",
+  "admin-config",
+  "full",
+] as const;
 
 function normalizePath(filePath: string) {
   return filePath.split(path.sep).join("/");
@@ -41,17 +50,39 @@ function matchesAnyPattern(filePath: string, patterns: string[]) {
   );
 }
 
-function dedupeInOrder(items: string[], order: readonly string[]) {
+function dedupeInOrder<T extends string>(items: T[], order: readonly T[]) {
   const present = new Set(items);
   return order.filter((item) => present.has(item));
 }
 
-function getProjectsForRole(role: SmokeRole) {
-  return projectOrder.filter((projectName) => projectName.endsWith(`-${role}`));
+function resolveBootstrapScope(
+  matchedRules: typeof uiSmokeTargetRules,
+): UiSmokeBootstrapScope {
+  const configuredScopes = dedupeInOrder(
+    matchedRules.map((rule) => rule.bootstrapScope ?? "full"),
+    bootstrapScopeOrder,
+  );
+
+  if (configuredScopes.length === 1) {
+    return configuredScopes[0] ?? "full";
+  }
+
+  return "full";
 }
 
-function getRouteJourneys(route: SmokeRouteSpec | undefined) {
-  return route?.journeys ?? [];
+function getDefaultProjectNames(routeIds: string[]) {
+  return dedupeInOrder(
+    routeIds.flatMap((routeId) => {
+      const route = routeById.get(routeId);
+
+      if (!route) {
+        return [];
+      }
+
+      return [`desktop-${route.role}`];
+    }),
+    projectOrder,
+  );
 }
 
 export function escapePlaywrightGrepPattern(value: string) {
@@ -102,6 +133,7 @@ export function resolveUiSmokeSelection(changedFiles: string[]): UiSmokeSelectio
       routeIds: [],
       journeyTitles: [],
       projectNames: [],
+      bootstrapScope: null,
       command: null,
       summary: [],
     };
@@ -118,6 +150,7 @@ export function resolveUiSmokeSelection(changedFiles: string[]): UiSmokeSelectio
       routeIds: [],
       journeyTitles: [],
       projectNames: [...projectOrder],
+      bootstrapScope: "full",
       command: "pnpm run test:ui:smoke",
       summary: [
         "Full suite required because the smoke harness or browser runner changed.",
@@ -129,17 +162,16 @@ export function resolveUiSmokeSelection(changedFiles: string[]): UiSmokeSelectio
     matchedRules.flatMap((rule) => rule.routeIds ?? []),
     routeIdOrder,
   );
-  const journeyTitles = [...new Set(routeIds.flatMap((routeId) => getRouteJourneys(routeById.get(routeId))))];
-  const projectNames = dedupeInOrder(
-    [
-      ...routeIds.flatMap((routeId) => {
-        const route = routeById.get(routeId);
-        return route ? getProjectsForRole(route.role) : [];
-      }),
-      ...(journeyTitles.length > 0 ? ["desktop-admin"] : []),
-    ],
+  const journeyTitles = [...new Set(matchedRules.flatMap((rule) => rule.journeyTitles ?? []))];
+  const explicitProjectNames = dedupeInOrder(
+    [...new Set(matchedRules.flatMap((rule) => rule.projectNames ?? []))],
     projectOrder,
   );
+  const projectNames =
+    explicitProjectNames.length > 0
+      ? explicitProjectNames
+      : getDefaultProjectNames(routeIds);
+  const bootstrapScope = resolveBootstrapScope(matchedRules);
 
   if (routeIds.length === 0 && journeyTitles.length === 0) {
     return {
@@ -148,6 +180,7 @@ export function resolveUiSmokeSelection(changedFiles: string[]): UiSmokeSelectio
       routeIds: [],
       journeyTitles: [],
       projectNames: [],
+      bootstrapScope: null,
       command: null,
       summary: [],
     };
@@ -171,12 +204,15 @@ export function resolveUiSmokeSelection(changedFiles: string[]): UiSmokeSelectio
     summary.push(`Projects: ${projectNames.join(", ")}`);
   }
 
+  summary.push(`Bootstrap scope: ${bootstrapScope}`);
+
   return {
     mode: "targeted",
     matchedRuleLabels: matchedRules.map((rule) => rule.label),
     routeIds,
     journeyTitles,
     projectNames,
+    bootstrapScope,
     command: "pnpm run test:ui:smoke:targeted",
     summary,
   };

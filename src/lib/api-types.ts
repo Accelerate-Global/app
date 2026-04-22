@@ -40,6 +40,7 @@ export type DatasetSummary = {
   sizeBytes: number;
   columns: CsvColumn[];
   hiddenColumnKeys: string[];
+  defaultFilters: SavedDatasetFilterState | null;
   tags: DatasetTag[];
   error: string | null;
   createdAt: string;
@@ -121,7 +122,7 @@ export type SavedDatasetFilterState = {
     evangelicalPercentEnabled?: boolean;
     evangelicalPercentThreshold?: number;
     frontierGroupEnabled?: boolean;
-    frontierGroupValue: boolean;
+    frontierGroupValue?: boolean;
   };
   uupg: {
     enabled: boolean;

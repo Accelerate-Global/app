@@ -178,7 +178,7 @@ const savedDatasetWatchlistFilterStateSchema = z.object({
   evangelicalPercentEnabled: z.boolean().optional(),
   evangelicalPercentThreshold: z.number().min(0).max(100).optional(),
   frontierGroupEnabled: z.boolean().optional().default(true),
-  frontierGroupValue: z.boolean(),
+  frontierGroupValue: z.boolean().optional().default(true),
 });
 
 const savedDatasetHotspotsFilterStateSchema = z.object({
@@ -254,6 +254,11 @@ export const rowBatchSchema = z.object({
   rows: z.array(z.record(z.string(), z.string())).max(ROW_BATCH_SIZE),
   isFinalBatch: z.boolean().default(false),
   totalRows: z.number().int().nonnegative().optional(),
+});
+
+export const datasetAssignDerivedViewSchema = z.object({
+  sourceDatasetId: z.string().uuid(),
+  filters: savedDatasetFilterStateSchema,
 });
 
 export const datasetStatusPatchSchema = z.object({

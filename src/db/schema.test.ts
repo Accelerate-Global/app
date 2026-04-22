@@ -22,6 +22,7 @@ describe("datasets schema", () => {
     expect(datasets.currentVersionCreatedAt.name).toBe("current_version_created_at");
     expect(datasets.backingDatasetId.name).toBe("backing_dataset_id");
     expect(datasets.isPublic.name).toBe("is_public");
+    expect(datasets.defaultFilters.name).toBe("default_filters");
   });
 
   it("creates the dataset upload versions migration", async () => {
@@ -76,6 +77,19 @@ describe("datasets schema", () => {
     );
     expect(migration).toContain(
       'create policy "authenticated users can read shared dataset rows"',
+    );
+  });
+
+  it("creates the dataset default filters migration", async () => {
+    const migrationPath = path.join(
+      process.cwd(),
+      "supabase/migrations/20260422155055_dataset_default_filters_and_assignment.sql",
+    );
+
+    const migration = await readFile(migrationPath, "utf8");
+
+    expect(migration).toContain(
+      'add column if not exists default_filters jsonb',
     );
   });
 });

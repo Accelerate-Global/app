@@ -9,6 +9,9 @@ describe("ci-select-validation", () => {
     ]);
 
     expect(selection.appQuality).toBe(true);
+    expect(selection.appLint).toBe(true);
+    expect(selection.appTest).toBe(true);
+    expect(selection.appBuild).toBe(true);
     expect(selection.databaseSecurity).toBe(false);
     expect(selection.uiSmoke).toBe(true);
     expect(selection.uiSmokeMode).toBe("targeted");
@@ -40,9 +43,30 @@ describe("ci-select-validation", () => {
     const selection = selectCiValidation(["docs/release.md"]);
 
     expect(selection.appQuality).toBe(false);
+    expect(selection.appLint).toBe(false);
+    expect(selection.appTest).toBe(false);
+    expect(selection.appBuild).toBe(false);
     expect(selection.databaseSecurity).toBe(false);
     expect(selection.dependencyAudit).toBe(false);
     expect(selection.uiSmokeMode).toBe("none");
     expect(selection.uiSmokeBrowser).toBe(false);
+  });
+
+  it("keeps build off for script-only changes", () => {
+    const selection = selectCiValidation(["scripts/ship.ts"]);
+
+    expect(selection.appQuality).toBe(true);
+    expect(selection.appLint).toBe(true);
+    expect(selection.appTest).toBe(true);
+    expect(selection.appBuild).toBe(false);
+  });
+
+  it("keeps build off for test-only changes", () => {
+    const selection = selectCiValidation(["scripts/ci-select-validation.test.ts"]);
+
+    expect(selection.appQuality).toBe(true);
+    expect(selection.appLint).toBe(true);
+    expect(selection.appTest).toBe(true);
+    expect(selection.appBuild).toBe(false);
   });
 });

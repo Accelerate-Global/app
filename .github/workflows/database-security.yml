@@ -29,21 +29,22 @@ jobs:
           node-version: 22
           cache: pnpm
 
-      - run: pnpm install --frozen-lockfile
+      - id: preinstall_selection
+        run: node scripts/ci-preinstall-select.mjs --base "${{ github.event.pull_request.base.sha }}" --head "${{ github.event.pull_request.head.sha }}"
 
-      - id: selection
-        run: node --import tsx scripts/ci-select-validation.ts --base "${{ github.event.pull_request.base.sha }}" --head "${{ github.event.pull_request.head.sha }}"
+      - if: steps.preinstall_selection.outputs.run_database_security != 'true'
+        run: echo "No database or security-relevant files changed."
+
+      - if: steps.preinstall_selection.outputs.run_database_security == 'true'
+        run: pnpm install --frozen-lockfile
 
       - uses: supabase/setup-cli@b60b5899c73b63a2d2d651b1e90db8d4c9392f51 # v1
-        if: steps.selection.outputs.database_security == 'true'
+        if: steps.preinstall_selection.outputs.run_database_security == 'true'
         with:
           version: 2.75.0
 
-      - if: steps.selection.outputs.database_security == 'true'
+      - if: steps.preinstall_selection.outputs.run_database_security == 'true'
         run: supabase start
 
-      - if: steps.selection.outputs.database_security == 'true'
+      - if: steps.preinstall_selection.outputs.run_database_security == 'true'
         run: pnpm run db:security:started
-
-      - if: steps.selection.outputs.database_security != 'true'
-        run: echo "No database or security-relevant files changed."

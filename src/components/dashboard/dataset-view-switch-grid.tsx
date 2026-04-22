@@ -102,10 +102,6 @@ type DatasetViewSwitchGridProps = {
     populationBelieversRuleDefinition: string;
     populationBelieversRuleEnabled: boolean;
     populationBelieversRule: PopulationBelieversRule;
-    frontierGroupLabel: string;
-    frontierGroupDefinition: string;
-    frontierGroupEnabled: boolean;
-    frontierGroupValue: boolean;
     onEnabledChange: (checked: boolean) => void;
     onThresholdEnabledChange: (checked: boolean) => void;
     onThresholdChange: (value: number) => void;
@@ -113,8 +109,6 @@ type DatasetViewSwitchGridProps = {
     onEngagementPhaseThresholdChange: (value: number) => void;
     onPopulationBelieversRuleEnabledChange: (checked: boolean) => void;
     onPopulationBelieversRuleChange: (rule: PopulationBelieversRule) => void;
-    onFrontierGroupEnabledChange: (checked: boolean) => void;
-    onFrontierGroupValueChange: (value: boolean) => void;
   };
   uupgCard: {
     enabled: boolean;
@@ -495,14 +489,6 @@ function getWatchlistSummary(
 
   if (watchlistCard.thresholdEnabled) {
     summary.push(`${watchlistCard.thresholdLabel} <= ${watchlistCard.threshold}`);
-  }
-
-  if (watchlistCard.frontierGroupEnabled) {
-    summary.push(
-      `${watchlistCard.frontierGroupLabel}: ${
-        watchlistCard.frontierGroupValue ? "True" : "False"
-      }`,
-    );
   }
 
   if (watchlistCard.populationBelieversRuleEnabled) {
@@ -928,58 +914,6 @@ function DatasetViewSwitchGridInner({
                   disabled={!watchlistCard.enabled || !watchlistCard.thresholdEnabled}
                   onValueChange={watchlistCard.onThresholdChange}
                 />
-              </DatasetFilterRow>
-              <DatasetFilterRow
-                label={watchlistCard.frontierGroupLabel}
-                definition={watchlistCard.frontierGroupDefinition}
-                controlClassName="max-w-[8.75rem]"
-                toggleControl={
-                  <Switch
-                    size="sm"
-                    checked={watchlistCard.frontierGroupEnabled}
-                    disabled={!watchlistCard.enabled}
-                    onCheckedChange={watchlistCard.onFrontierGroupEnabledChange}
-                    aria-label={`Toggle Watchlist ${watchlistCard.frontierGroupLabel}`}
-                  />
-                }
-              >
-                <ButtonGroup
-                  aria-label={`Watchlist ${watchlistCard.frontierGroupLabel} value`}
-                  className="w-full rounded-xl border border-border/70 bg-background/80 p-0.5 shadow-xs shadow-black/5"
-                >
-                  {[
-                    { label: "TRUE", value: true },
-                    { label: "FALSE", value: false },
-                  ].map((option) => {
-                    const isActive =
-                      watchlistCard.frontierGroupValue === option.value;
-
-                    return (
-                      <Button
-                        key={option.label}
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        disabled={
-                          !watchlistCard.enabled || !watchlistCard.frontierGroupEnabled
-                        }
-                        aria-pressed={isActive}
-                        aria-label={`Set Watchlist ${watchlistCard.frontierGroupLabel} value to ${option.label}`}
-                        className={cn(
-                          "min-w-0 flex-1 rounded-lg border-0 px-2.5 text-[0.72rem] font-semibold tracking-[0.08em] uppercase shadow-none",
-                          isActive
-                            ? "bg-foreground text-background hover:bg-foreground/90 hover:text-background"
-                            : "text-muted-foreground hover:bg-accent/40 hover:text-foreground",
-                        )}
-                        onClick={() =>
-                          watchlistCard.onFrontierGroupValueChange(option.value)
-                        }
-                      >
-                        {option.label}
-                      </Button>
-                    );
-                  })}
-                </ButtonGroup>
               </DatasetFilterRow>
               <DatasetFilterRow
                 label={watchlistCard.populationBelieversRuleLabel}

@@ -191,6 +191,17 @@ async function exerciseSmokeSurface(page: Page, triggerId: string) {
 
   await trigger.scrollIntoViewIfNeeded();
 
+  if ((await trigger.getAttribute("data-smoke-await-ready")) === "true") {
+    await runSmokeStep({
+      classification: "harness",
+      context: `Smoke surface ${triggerId} trigger readiness`,
+      action: () =>
+        expect(trigger).toHaveAttribute("data-smoke-trigger-ready", triggerId, {
+          timeout: 5_000,
+        }),
+    });
+  }
+
   try {
     await trigger.click({ timeout: 5_000 });
     await expect(surface).toBeVisible({ timeout: 1_500 });

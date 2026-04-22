@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { resolveChangeImpact, shouldRunAppQualityOnCi } from "./change-impact";
+import {
+  resolveChangeImpact,
+  selectCiAppQualityTasks,
+  selectCiPreinstallValidation,
+  shouldRunAppQualityOnCi,
+} from "./change-impact";
 
 describe("change-impact", () => {
   it("requires smoke:check for shared UI primitive changes", () => {
@@ -64,5 +69,39 @@ describe("change-impact", () => {
 
   it("skips app quality on CI for docs-only changes", () => {
     expect(shouldRunAppQualityOnCi(["docs/testing/ui-smoke.md"])).toBe(false);
+  });
+
+  it("skips all preinstall workflows for docs-only changes", () => {
+    expect(selectCiPreinstallValidation(["docs/testing/ui-smoke.md"])).toEqual({
+      runAppQuality: false,
+      runUiSmoke: false,
+      runDatabaseSecurity: false,
+      runDependencyAudit: false,
+    });
+  });
+
+  it("selects lint and test without build for script-only changes", () => {
+    expect(selectCiAppQualityTasks(["scripts/ship.ts"])).toEqual({
+      lint: true,
+      test: true,
+      build: false,
+    });
+  });
+
+  it("selects lint and test without build for test-only changes", () => {
+    expect(selectCiAppQualityTasks(["scripts/ci-select-validation.test.ts"])).toEqual({
+      lint: true,
+      test: true,
+      build: false,
+    });
+  });
+
+  it("selects build for app runtime changes", () => {
+    expect(selectCiAppQualityTasks(["src/components/dashboard/dataset-detail-client.tsx"]))
+      .toEqual({
+        lint: true,
+        test: true,
+        build: true,
+      });
   });
 });

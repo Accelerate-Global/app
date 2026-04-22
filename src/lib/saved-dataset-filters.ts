@@ -68,8 +68,6 @@ export type InitialDatasetDetailState = {
   watchlistEngagementPhaseThreshold: number;
   watchlistPopulationBelieversRuleEnabled: boolean;
   watchlistPopulationBelieversRule: PopulationBelieversRule;
-  watchlistFrontierGroupEnabled: boolean;
-  watchlistFrontierGroupValue: boolean;
   uupgEnabled: boolean;
   hotspotsEnabled: boolean;
   hotspotsMetric: DatasetHotspotsMetric;
@@ -233,8 +231,6 @@ export function buildSavedDatasetFilterState(input: {
   watchlistEngagementPhaseThreshold: number;
   watchlistPopulationBelieversRuleEnabled: boolean;
   watchlistPopulationBelieversRule: PopulationBelieversRule;
-  watchlistFrontierGroupEnabled: boolean;
-  watchlistFrontierGroupValue: boolean;
   uupgEnabled: boolean;
   hotspotsEnabled: boolean;
   hotspotsMetric: DatasetHotspotsMetric;
@@ -289,8 +285,6 @@ export function buildSavedDatasetFilterState(input: {
       evangelicalPopulationBelieversRule: sanitizePopulationBelieversRule(
         input.watchlistPopulationBelieversRule,
       ),
-      frontierGroupEnabled: input.watchlistFrontierGroupEnabled,
-      frontierGroupValue: input.watchlistFrontierGroupValue,
     },
     uupg: {
       enabled: input.uupgEnabled,
@@ -436,8 +430,6 @@ export function getInitialDatasetDetailState(input: {
     watchlistEngagementPhaseThreshold: 6,
     watchlistPopulationBelieversRuleEnabled: true,
     watchlistPopulationBelieversRule: createDefaultPopulationBelieversRule(),
-    watchlistFrontierGroupEnabled: true,
-    watchlistFrontierGroupValue: true,
     uupgEnabled: false,
     hotspotsEnabled: false,
     hotspotsMetric: DEFAULT_HOTSPOTS_METRIC,
@@ -503,12 +495,6 @@ export function getInitialDatasetDetailState(input: {
     watchlistPopulationBelieversRule: supportsWatchlistFiltering
       ? getNormalizedPopulationBelieversRuleState(normalizedPreset.watchlist).rule
       : defaultState.watchlistPopulationBelieversRule,
-    watchlistFrontierGroupEnabled: supportsWatchlistFiltering
-      ? normalizedPreset.watchlist.frontierGroupEnabled ?? true
-      : defaultState.watchlistFrontierGroupEnabled,
-    watchlistFrontierGroupValue: supportsWatchlistFiltering
-      ? normalizedPreset.watchlist.frontierGroupValue
-      : defaultState.watchlistFrontierGroupValue,
     uupgEnabled: supportsUupgFiltering && normalizedPreset.uupg.enabled,
     hotspotsEnabled:
       supportsHotspotsFiltering && (normalizedPreset.hotspots?.enabled ?? false),
@@ -569,7 +555,7 @@ export function normalizeSavedDatasetFilterState(filters: SavedDatasetFilterStat
               filters.watchlist.evangelicalPercentThreshold,
           }),
       frontierGroupEnabled: filters.watchlist.frontierGroupEnabled ?? true,
-      frontierGroupValue: filters.watchlist.frontierGroupValue,
+      frontierGroupValue: filters.watchlist.frontierGroupValue ?? true,
     },
     uupg: {
       enabled: filters.uupg?.enabled ?? false,
@@ -640,7 +626,7 @@ export function getDatasetWatchlistFilterStateFromSavedView(
       normalizedFilters.watchlist.evangelicalPercentThreshold,
     frontierGroupEnabled:
       normalizedFilters.watchlist.frontierGroupEnabled ?? true,
-    frontierGroupValue: normalizedFilters.watchlist.frontierGroupValue,
+    frontierGroupValue: normalizedFilters.watchlist.frontierGroupValue ?? true,
   };
 }
 

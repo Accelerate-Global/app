@@ -68,6 +68,7 @@ function createTargetDataset() {
       },
     ],
     hiddenColumnKeys: [],
+    defaultFilters: null,
     tags: [],
     error: null,
     createdAt: new Date("2026-04-15T16:00:00.000Z").toISOString(),

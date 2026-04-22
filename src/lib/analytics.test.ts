@@ -146,4 +146,23 @@ describe("analytics helpers", () => {
       "hotspots_country_count",
     );
   });
+
+  it("does not expose legacy frontier-group analytics event property keys", () => {
+    expect(getAnalyticsEventPropertyKeys("dataset_filters_applied")).not.toContain(
+      "watchlist_frontier_group_enabled",
+    );
+    expect(getAnalyticsEventPropertyKeys("dataset_filters_applied")).not.toContain(
+      "watchlist_frontier_group_value",
+    );
+  });
+
+  it("exposes filtered dataset assignment analytics event property keys", () => {
+    expect(getAnalyticsEventPropertyKeys("dataset_assigned")).toEqual([
+      "source_dataset_id",
+      "target_dataset_id",
+      "assigned_row_count",
+      "filter_sections_enabled",
+      "sorting_count",
+    ]);
+  });
 });

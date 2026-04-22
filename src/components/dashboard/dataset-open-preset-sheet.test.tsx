@@ -29,6 +29,7 @@ const dataset = {
   sizeBytes: 512,
   columns: [],
   hiddenColumnKeys: [],
+  defaultFilters: null,
   tags: [],
   error: null,
   createdAt: new Date().toISOString(),

@@ -187,4 +187,46 @@ describe("SavedTableDetailSheet", () => {
 
     expect(screen.getByText("Top 10 countries by UUPG population")).toBeTruthy();
   });
+
+  it("omits the legacy frontier-group summary from watchlist details", () => {
+    render(
+      <SavedTableDetailSheet
+        savedTable={createSavedTable({
+          filters: {
+            region: {
+              enabled: false,
+              selectedRegionIds: [],
+              selectedRegionNames: [],
+              enabledCountryNames: [],
+            },
+            country: {
+              enabled: false,
+              selectedCountryNames: [],
+            },
+            watchlist: {
+              enabled: true,
+              threshold: 2,
+              engagementPhaseThreshold: 6,
+              frontierGroupValue: false,
+            },
+            uupg: {
+              enabled: false,
+            },
+            sorting: [],
+          },
+        })}
+        dataset={null}
+        open
+        isSaving={false}
+        isDeleting={false}
+        onOpenChange={vi.fn()}
+        onSaveSavedTable={vi.fn()}
+        onDeleteSavedTable={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText(/Christianity: GSEC <= 2/)).toBeTruthy();
+    expect(screen.getByText(/Engage: 8 Phases >= 6/)).toBeTruthy();
+    expect(screen.queryByText(/Frontier Group/)).toBeNull();
+  });
 });

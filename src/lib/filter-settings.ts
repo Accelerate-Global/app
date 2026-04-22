@@ -2,6 +2,7 @@ import { and, asc, eq, ne, sql } from "drizzle-orm";
 
 import { getDb } from "@/db";
 import { filterRegionCountries, filterRegions } from "@/db/schema";
+import { refreshAllDerivedDatasets } from "@/lib/datasets";
 import type { FilterRegion } from "@/lib/api-types";
 import { REGION_COUNTRY_OPTIONS } from "@/lib/region-country-options";
 
@@ -141,7 +142,7 @@ export async function createFilterRegion(input: {
     throw new FilterRegionConflictError("A region with that name already exists.");
   }
 
-  return getDb().transaction(async (tx) => {
+  const region = await getDb().transaction(async (tx) => {
     const [createdRegion] = await tx
       .insert(filterRegions)
       .values({
@@ -168,6 +169,10 @@ export async function createFilterRegion(input: {
       updatedAt: createdRegion.updatedAt,
     });
   });
+
+  await refreshAllDerivedDatasets();
+
+  return region;
 }
 
 export async function updateFilterRegion(input: {
@@ -189,7 +194,7 @@ export async function updateFilterRegion(input: {
     throw new FilterRegionConflictError("A region with that name already exists.");
   }
 
-  return getDb().transaction(async (tx) => {
+  const region = await getDb().transaction(async (tx) => {
     const [updatedRegion] = await tx
       .update(filterRegions)
       .set({
@@ -226,6 +231,14 @@ export async function updateFilterRegion(input: {
       updatedAt: updatedRegion.updatedAt,
     });
   });
+
+  if (!region) {
+    return null;
+  }
+
+  await refreshAllDerivedDatasets();
+
+  return region;
 }
 
 export async function deleteFilterRegion(regionId: string) {
@@ -233,6 +246,10 @@ export async function deleteFilterRegion(regionId: string) {
     .delete(filterRegions)
     .where(eq(filterRegions.id, regionId))
     .returning({ id: filterRegions.id });
+
+  if (deletedRegion) {
+    await refreshAllDerivedDatasets();
+  }
 
   return deletedRegion ?? null;
 }

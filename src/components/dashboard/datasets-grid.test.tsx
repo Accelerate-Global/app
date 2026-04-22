@@ -33,6 +33,7 @@ const dataset = {
     },
   ],
   hiddenColumnKeys: [],
+  defaultFilters: null,
   tags: [
     {
       id: "tag-pgac",

@@ -70,6 +70,7 @@ const dataset = {
     },
   ],
   hiddenColumnKeys: [],
+  defaultFilters: null,
   tags: [],
   error: null,
   createdAt: new Date().toISOString(),

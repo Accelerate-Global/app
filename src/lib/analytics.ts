@@ -125,8 +125,6 @@ export type AppAnalyticsEventMap = {
     watchlist_threshold: number | null;
     watchlist_population_believers_rule_enabled: boolean;
     watchlist_population_believers_rule_tier_count: number | null;
-    watchlist_frontier_group_enabled: boolean;
-    watchlist_frontier_group_value: boolean | null;
     watchlist_engagement_phase_enabled: boolean;
     watchlist_engagement_phase_threshold: number | null;
     uupg_enabled: boolean;
@@ -212,6 +210,14 @@ export type AppAnalyticsEventMap = {
     primary_changed: boolean;
     hidden_column_count: number;
     tag_count: number;
+  };
+  dataset_assigned: AppAnalyticsEventBase & {
+    dataset_id: string;
+    source_dataset_id: string;
+    target_dataset_id: string;
+    assigned_row_count?: number;
+    filter_sections_enabled: string;
+    sorting_count: number;
   };
   dataset_version_reverted: AppAnalyticsEventBase & {
     dataset_id: string;
@@ -344,6 +350,7 @@ export const APP_ANALYTICS_EVENT_NAMES = [
   "dataset_upload_failed",
   "dataset_replaced",
   "dataset_metadata_saved",
+  "dataset_assigned",
   "dataset_version_reverted",
   "dataset_deleted",
   "field_definition_search_used",
@@ -423,8 +430,6 @@ const APP_ANALYTICS_EVENT_PROPERTY_KEYS = {
     "watchlist_threshold",
     "watchlist_population_believers_rule_enabled",
     "watchlist_population_believers_rule_tier_count",
-    "watchlist_frontier_group_enabled",
-    "watchlist_frontier_group_value",
     "watchlist_engagement_phase_enabled",
     "watchlist_engagement_phase_threshold",
     "uupg_enabled",
@@ -463,6 +468,13 @@ const APP_ANALYTICS_EVENT_PROPERTY_KEYS = {
     "primary_changed",
     "hidden_column_count",
     "tag_count",
+  ],
+  dataset_assigned: [
+    "source_dataset_id",
+    "target_dataset_id",
+    "assigned_row_count",
+    "filter_sections_enabled",
+    "sorting_count",
   ],
   dataset_version_reverted: ["version_id"],
   dataset_deleted: [],

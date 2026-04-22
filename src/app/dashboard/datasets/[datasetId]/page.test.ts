@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { notFound, redirect } from "next/navigation";
 
 import { getCurrentIdentity } from "@/lib/auth";
-import { getDataset } from "@/lib/datasets";
+import { getDataset, listDatasets } from "@/lib/datasets";
 import { listFieldDefinitionPresentationByColumnKey } from "@/lib/field-definitions";
 import { getDatasetViewOption } from "@/lib/dataset-view-options";
 import { listFilterRegions } from "@/lib/filter-settings";
@@ -30,6 +30,7 @@ vi.mock("@/lib/auth", () => ({
 
 vi.mock("@/lib/datasets", () => ({
   getDataset: vi.fn(),
+  listDatasets: vi.fn(),
 }));
 
 vi.mock("@/lib/field-definitions", () => ({
@@ -61,6 +62,7 @@ vi.mock("@/components/dashboard/dataset-detail-client", () => ({
 
 const getCurrentIdentityMock = vi.mocked(getCurrentIdentity);
 const getDatasetMock = vi.mocked(getDataset);
+const listDatasetsMock = vi.mocked(listDatasets);
 const listFieldDefinitionPresentationByColumnKeyMock = vi.mocked(
   listFieldDefinitionPresentationByColumnKey,
 );
@@ -91,6 +93,7 @@ function createDataset() {
       },
     ],
     hiddenColumnKeys: [],
+    defaultFilters: null,
     tags: [
       {
         id: "tag-1",
@@ -140,6 +143,7 @@ describe("/dashboard/datasets/[datasetId]", () => {
       mode: "supabase",
     });
     getDatasetMock.mockResolvedValue(createDataset());
+    listDatasetsMock.mockResolvedValue([createDataset()]);
     listFieldDefinitionPresentationByColumnKeyMock.mockResolvedValue({});
     getDatasetViewOptionMock.mockReturnValue({
       id: "global",
@@ -218,6 +222,7 @@ describe("/dashboard/datasets/[datasetId]", () => {
       initialFilters: unknown;
       initialSorting?: unknown;
       canManageOpenPresets?: boolean;
+      assignableDatasets?: Array<{ id: string }>;
       actorOwnerId: string;
       workspaceRole: string;
       datasetSource: string;
@@ -262,6 +267,7 @@ describe("/dashboard/datasets/[datasetId]", () => {
       },
     ]);
     expect(props.canManageOpenPresets).toBe(true);
+    expect(props.assignableDatasets).toEqual([]);
     expect(props.actorOwnerId).toBe("owner-1");
     expect(props.workspaceRole).toBe("admin");
     expect(props.datasetSource).toBe("dashboard");
@@ -289,12 +295,14 @@ describe("/dashboard/datasets/[datasetId]", () => {
     const props = datasetDetailClientSpy.mock.lastCall?.[0] as {
       initialFilters: { watchlist: { enabled: boolean } };
       canManageOpenPresets?: boolean;
+      assignableDatasets?: Array<{ id: string }>;
       workspaceRole: string;
       initialPresetTagId: string | null;
     };
 
     expect(props.initialFilters.watchlist.enabled).toBe(true);
     expect(props.canManageOpenPresets).toBe(false);
+    expect(props.assignableDatasets).toEqual([]);
     expect(props.workspaceRole).toBe("viewer");
     expect(props.initialPresetTagId).toBe("tag-1");
     expect(getDatasetMock).toHaveBeenCalledWith("dataset-1", {
@@ -320,6 +328,30 @@ describe("/dashboard/datasets/[datasetId]", () => {
   });
 
   it("passes the backing source row count to the dataset detail client for derived datasets", async () => {
+    listDatasetsMock.mockResolvedValue([
+      {
+        ...createDataset(),
+        id: "dataset-derived",
+        backingDatasetId: "dataset-source",
+        fileName: "South Asia",
+        rowCount: 128,
+        isPrimary: false,
+      },
+      {
+        ...createDataset(),
+        id: "dataset-source",
+        backingDatasetId: null,
+        fileName: "All People Groups",
+        rowCount: 12507,
+      },
+      {
+        ...createDataset(),
+        id: "dataset-target",
+        backingDatasetId: null,
+        fileName: "Latin America",
+        isPrimary: false,
+      },
+    ]);
     getDatasetMock
       .mockResolvedValueOnce({
         ...createDataset(),
@@ -345,12 +377,17 @@ describe("/dashboard/datasets/[datasetId]", () => {
     const props = datasetDetailClientSpy.mock.lastCall?.[0] as {
       sourceRowCount: number;
       dataset: { id: string; backingDatasetId: string | null };
+      assignableDatasets: Array<{ id: string }>;
     };
 
     expect(props.dataset).toMatchObject({
       id: "dataset-derived",
       backingDatasetId: "dataset-source",
     });
+    expect(props.assignableDatasets).toEqual([
+      expect.objectContaining({ id: "dataset-derived" }),
+      expect.objectContaining({ id: "dataset-target" }),
+    ]);
     expect(props.sourceRowCount).toBe(12507);
     expect(getDatasetMock).toHaveBeenNthCalledWith(1, "dataset-derived", {
       includeDisabled: true,
@@ -411,6 +448,80 @@ describe("/dashboard/datasets/[datasetId]", () => {
 
     expect(props.initialFilters.watchlist.enabled).toBe(true);
     expect(props.initialSorting).toBeUndefined();
+  });
+
+  it("prefers dataset default filters and sorting over the legacy tag preset", async () => {
+    getDatasetMock.mockResolvedValue({
+      ...createDataset(),
+      defaultFilters: {
+        region: {
+          enabled: true,
+          selectedRegionIds: ["region-1"],
+          selectedRegionNames: ["South Asia"],
+          enabledCountryNames: ["India", "Nepal"],
+        },
+        country: {
+          enabled: false,
+          selectedCountryNames: [],
+          includeAlternateCountries: false,
+        },
+        watchlist: {
+          enabled: false,
+          thresholdEnabled: true,
+          threshold: 2,
+          engagementPhaseEnabled: true,
+          engagementPhaseThreshold: 6,
+          evangelicalPopulationBelieversRuleEnabled: true,
+          evangelicalPopulationBelieversRule: {
+            tiers: [
+              {
+                minPopulation: 0,
+                maxPopulation: null,
+                minBelievers: 50,
+              },
+            ],
+          },
+          frontierGroupEnabled: true,
+          frontierGroupValue: true,
+        },
+        uupg: {
+          enabled: false,
+        },
+        hotspots: {
+          enabled: false,
+          metric: "unique_uupgs",
+          countryCount: 10,
+        },
+        sorting: [
+          {
+            id: "geo_country_name",
+            desc: true,
+          },
+        ],
+      },
+    });
+
+    render(
+      await DatasetPage({
+        params: Promise.resolve({ datasetId: "dataset-1" }),
+        searchParams: Promise.resolve({}),
+      }),
+    );
+
+    const props = datasetDetailClientSpy.mock.lastCall?.[0] as {
+      initialFilters: { region: { enabled: boolean } };
+      initialSorting?: Array<{ id: string; desc: boolean }>;
+      initialPresetTagId: string | null;
+    };
+
+    expect(props.initialFilters.region.enabled).toBe(true);
+    expect(props.initialSorting).toEqual([
+      {
+        id: "geo_country_name",
+        desc: true,
+      },
+    ]);
+    expect(props.initialPresetTagId).toBeNull();
   });
 
   it("renders not found when the dataset does not exist", async () => {

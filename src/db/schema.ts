@@ -62,6 +62,7 @@ export const datasets = pgTable(
       .$type<string[]>()
       .notNull()
       .default(sql`'[]'::jsonb`),
+    defaultFilters: jsonb("default_filters").$type<SavedDatasetFilterState | null>(),
     tags: jsonb("tags").$type<DatasetTag[]>().notNull().default(sql`'[]'::jsonb`),
     error: text("error"),
     createdAt: timestamp("created_at", { withTimezone: true })

@@ -88,6 +88,9 @@ describe("AccountControl", () => {
       />,
     );
 
+    expect(screen.getByRole("button").getAttribute("data-smoke-trigger-ready")).toBe(
+      "account-menu",
+    );
     const menu = openMenu();
 
     expect(screen.getAllByText("Blake Lewis").length).toBeGreaterThan(0);
@@ -123,6 +126,9 @@ describe("AccountControl", () => {
     );
 
     expect(screen.getByRole("button").textContent).toContain("viewer");
+    expect(screen.getByRole("button").getAttribute("data-smoke-await-ready")).toBe(
+      "true",
+    );
     const menu = openMenu();
     expect(screen.getByText("viewer@example.com")).toBeTruthy();
     expect(screen.queryByText("Field Sources")).toBeNull();
@@ -203,5 +209,25 @@ describe("AccountControl", () => {
         to_theme: "dark",
       }),
     );
+  });
+
+  it("marks the account menu trigger as ready after hydration", async () => {
+    render(
+      <AccountControl
+        identity={{
+          ownerId: "owner-1",
+          email: "viewer@example.com",
+          fullName: null,
+          isDatasetAdmin: false,
+          mode: "supabase",
+        }}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole("button").getAttribute("data-smoke-trigger-ready")).toBe(
+        "account-menu",
+      );
+    });
   });
 });

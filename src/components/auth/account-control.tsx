@@ -15,7 +15,7 @@ import {
   UsersIcon,
 } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 
 import {
   applyDocumentTheme,
@@ -46,10 +46,19 @@ type AccountControlProps = {
   identity: CurrentIdentity;
 };
 
+function subscribeToHydration() {
+  return () => undefined;
+}
+
 export function AccountControl({ identity }: AccountControlProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const isTriggerReady = useSyncExternalStore(
+    subscribeToHydration,
+    () => true,
+    () => false,
+  );
   const [theme, setTheme] = useState<AppTheme>(() =>
     typeof document === "undefined" ? "light" : getDocumentTheme(),
   );
@@ -123,6 +132,8 @@ export function AccountControl({ identity }: AccountControlProps) {
           <button
             type="button"
             data-smoke-trigger="account-menu"
+            data-smoke-await-ready="true"
+            data-smoke-trigger-ready={isTriggerReady ? "account-menu" : undefined}
             className="inline-flex h-14 w-fit max-w-full items-center gap-3 rounded-[1.25rem] border border-border bg-background px-4 text-left shadow-none transition-colors hover:bg-accent/35"
           />
         }

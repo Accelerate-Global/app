@@ -5,7 +5,9 @@ import {
   buildUiSmokeRunPlan,
   CI_UI_SMOKE_SUPABASE_START_TIMEOUT_MS,
   DEFAULT_SUPABASE_PORT_RELEASE_WAIT,
+  DEFAULT_SUPABASE_STATUS_OUTPUT_RETRY,
   DEFAULT_UI_SMOKE_SUPABASE_START_TIMEOUT_MS,
+  getSmokeBootstrapArgs,
   getUiSmokeSupabaseStartTimeoutMs,
   parseRunUiSmokeArgs,
   resolveUiSmokeChangedFiles,
@@ -28,6 +30,7 @@ describe("run-ui-smoke", () => {
     expect(plan.suites[0]?.projectNames).toEqual(
       expect.arrayContaining(["desktop-admin", "desktop-viewer"]),
     );
+    expect(plan.bootstrapScope).toBe("datasets");
   });
 
   it("builds a full-only run plan by default", () => {
@@ -61,6 +64,7 @@ describe("run-ui-smoke", () => {
         projectNames: [],
       },
     ]);
+    expect(plan.bootstrapScope).toBe("full");
   });
 
   it("builds a smoke-check-only targeted plan when no routes match", () => {
@@ -74,9 +78,26 @@ describe("run-ui-smoke", () => {
     expect(plan.suites).toEqual([]);
   });
 
+  it("passes the selected bootstrap scope through the smoke bootstrap command", () => {
+    expect(getSmokeBootstrapArgs("datasets")).toEqual([
+      "run",
+      "smoke:bootstrap",
+      "--",
+      "--scope",
+      "datasets",
+    ]);
+  });
+
   it("uses the longer Supabase port release wait by default", () => {
     expect(DEFAULT_SUPABASE_PORT_RELEASE_WAIT).toEqual({
       maxAttempts: 30,
+      retryDelayMs: 2_000,
+    });
+  });
+
+  it("retries incomplete Supabase status env output a bounded number of times", () => {
+    expect(DEFAULT_SUPABASE_STATUS_OUTPUT_RETRY).toEqual({
+      attempts: 5,
       retryDelayMs: 2_000,
     });
   });
@@ -153,5 +174,14 @@ API_URL="http://127.0.0.1:54321"
 PUBLISHABLE_KEY="sb_publishable_test"
       `),
     ).toBe(false);
+
+    expect(
+      hasUsableSupabaseStatusOutput(`
+export API_URL="http://127.0.0.1:54321"
+export DB_URL="postgresql://postgres:postgres@127.0.0.1:54322/postgres"
+export PUBLISHABLE_KEY="sb_publishable_test"
+export SERVICE_ROLE_KEY="service-role"
+      `),
+    ).toBe(true);
   });
 });
