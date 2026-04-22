@@ -172,6 +172,7 @@ describe("/dashboard/datasets/[datasetId]/edit", () => {
 
     const props = datasetEditPageClientSpy.mock.lastCall?.[0] as {
       initialDataset: ReturnType<typeof createDataset>;
+      backingDatasetName: string | null;
       availableTags: Array<{ label: string }>;
       initialVersions: ReturnType<typeof createVersion>[];
       actorOwnerId: string;
@@ -186,6 +187,7 @@ describe("/dashboard/datasets/[datasetId]/edit", () => {
     });
     expect(listDatasetVersionsMock).toHaveBeenCalledWith("dataset-1");
     expect(props.initialDataset.fileName).toBe("Global");
+    expect(props.backingDatasetName).toBeNull();
     expect(props.initialVersions).toEqual([createVersion()]);
     expect(props.availableTags.map((tag) => tag.label)).toEqual([
       "Primary",
@@ -202,6 +204,18 @@ describe("/dashboard/datasets/[datasetId]/edit", () => {
         isPrimary: false,
       }),
     );
+    listDatasetsMock.mockResolvedValue([
+      createDataset({
+        id: "dataset-source-1",
+        fileName: "All People Groups",
+      }),
+      createDataset({
+        id: "dataset-1",
+        backingDatasetId: "dataset-source-1",
+        fileName: "UUPG",
+        isPrimary: false,
+      }),
+    ]);
 
     render(
       await DatasetEditPage({
@@ -211,8 +225,10 @@ describe("/dashboard/datasets/[datasetId]/edit", () => {
 
     expect(listDatasetVersionsMock).not.toHaveBeenCalled();
     const props = datasetEditPageClientSpy.mock.lastCall?.[0] as {
+      backingDatasetName: string | null;
       initialVersions: ReturnType<typeof createVersion>[];
     };
+    expect(props.backingDatasetName).toBe("All People Groups");
     expect(props.initialVersions).toEqual([]);
   });
 

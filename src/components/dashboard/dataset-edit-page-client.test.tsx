@@ -210,6 +210,7 @@ describe("DatasetEditPageClient", () => {
           backingDatasetId: "dataset-source-1",
           isPrimary: false,
         })}
+        backingDatasetName="All People Groups"
         availableTags={[]}
         initialVersions={[
           createVersion({
@@ -223,17 +224,18 @@ describe("DatasetEditPageClient", () => {
     );
 
     expect(
-      screen.getByText(/This dataset is a derived view backed by another dataset/i),
+      screen.getByText(/This dataset is a derived view backed by/i),
     ).toBeTruthy();
+    expect(screen.getAllByText("All People Groups").length).toBeGreaterThan(0);
     expect(
       screen.getByText(
-        /Revert remains available only on the backing source dataset/i,
+        /Revert remains available only on/i,
       ),
     ).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Revert" })).toBeNull();
 
     fireEvent.click(
-      screen.getByRole("button", { name: "Replace backing dataset" }),
+      screen.getByRole("button", { name: "Replace All People Groups" }),
     );
 
     expect(pushMock).toHaveBeenCalledWith(
