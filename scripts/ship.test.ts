@@ -6,6 +6,7 @@ const waitForWorkflowRunMock = vi.fn();
 const getTrackedFileTreeShaMock = vi.fn();
 const loadVerificationReceiptMock = vi.fn();
 const isVerificationSatisfiedMock = vi.fn();
+const recordVerificationTimingMock = vi.fn();
 let consoleLogMock: ReturnType<typeof vi.spyOn>;
 
 vi.mock("./lib/command", () => ({
@@ -21,6 +22,10 @@ vi.mock("./lib/verification-receipts", () => ({
   getTrackedFileTreeSha: getTrackedFileTreeShaMock,
   loadVerificationReceipt: loadVerificationReceiptMock,
   isVerificationSatisfied: isVerificationSatisfiedMock,
+}));
+
+vi.mock("./lib/verification-timing", () => ({
+  recordVerificationTiming: recordVerificationTimingMock,
 }));
 
 function buildPullRequest(overrides: Record<string, unknown> = {}) {
@@ -44,6 +49,8 @@ function buildPullRequestFiles(filePaths: string[]) {
 function installShipCommandMock(input: {
   pullRequestViews: Array<Record<string, unknown>>;
   pullRequestFiles?: string[];
+  shipLocalChangedFiles?: string[];
+  verifyShipLocalError?: string;
   mergeError?: string;
 }) {
   let pullRequestViewCalls = 0;
@@ -58,6 +65,33 @@ function installShipCommandMock(input: {
     }
 
     if (command === "pnpm" && args.join(" ") === "run field-sources:seed:remote") {
+      return { stdout: "", stderr: "", exitCode: 0 };
+    }
+
+    if (
+      command === "git" &&
+      args.join(" ") === "fetch --quiet --no-tags origin refs/heads/main:refs/remotes/origin/main"
+    ) {
+      return { stdout: "", stderr: "", exitCode: 0 };
+    }
+
+    if (
+      command === "git" &&
+      args.join(" ") === "diff --name-only -z origin/main...HEAD"
+    ) {
+      const changedFiles = input.shipLocalChangedFiles ?? input.pullRequestFiles ?? [];
+      return {
+        stdout: changedFiles.map((filePath) => `${filePath}\0`).join(""),
+        stderr: "",
+        exitCode: 0,
+      };
+    }
+
+    if (command === "pnpm" && args.join(" ") === "run verify:ship:local") {
+      if (input.verifyShipLocalError) {
+        throw new Error(input.verifyShipLocalError);
+      }
+
       return { stdout: "", stderr: "", exitCode: 0 };
     }
 
@@ -110,6 +144,7 @@ describe("ship", () => {
     getTrackedFileTreeShaMock.mockReset();
     loadVerificationReceiptMock.mockReset();
     isVerificationSatisfiedMock.mockReset();
+    recordVerificationTimingMock.mockReset();
     getTrackedFileTreeShaMock.mockResolvedValue("tree-sha");
     loadVerificationReceiptMock.mockResolvedValue({
       treeSha: "tree-sha",
@@ -121,6 +156,7 @@ describe("ship", () => {
       },
     });
     isVerificationSatisfiedMock.mockReturnValue(true);
+    recordVerificationTimingMock.mockResolvedValue(undefined);
     consoleLogMock = vi.spyOn(console, "log").mockImplementation(() => {});
   });
 
@@ -141,6 +177,7 @@ describe("ship", () => {
           state: "MERGED",
         }),
       ],
+      shipLocalChangedFiles: ["scripts/ship.ts"],
       pullRequestFiles: ["src/data/field-sources/aggregate-1-field-mapping.csv"],
     });
     waitForPullRequestChecksMock.mockResolvedValue([]);
@@ -159,6 +196,30 @@ describe("ship", () => {
         "Dependency Audit",
       ],
     });
+    expect(loadVerificationReceiptMock).toHaveBeenCalledWith({
+      rootDir: process.cwd(),
+      treeSha: "tree-sha",
+      changedFiles: ["scripts/ship.ts"],
+    });
+    expect(runCommandMock).toHaveBeenCalledWith(
+      "git",
+      [
+        "fetch",
+        "--quiet",
+        "--no-tags",
+        "origin",
+        "refs/heads/main:refs/remotes/origin/main",
+      ],
+      expect.objectContaining({
+        quiet: true,
+        stdinMode: "ignore",
+      }),
+    );
+    expect(runCommandMock).not.toHaveBeenCalledWith(
+      "pnpm",
+      ["run", "verify:ship:local"],
+      expect.anything(),
+    );
     expect(runCommandMock).toHaveBeenCalledWith(
       "pnpm",
       ["run", "field-sources:seed:remote"],
@@ -187,6 +248,14 @@ describe("ship", () => {
       workflowName: "Release Health",
       commitSha: "merge-sha",
     });
+    expect(recordVerificationTimingMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        rootDir: process.cwd(),
+        scope: "ship-run",
+        name: "pnpm ship",
+        status: "passed",
+      }),
+    );
 
     const stageMessages = consoleLogMock.mock.calls.map(
       (call: [unknown, ...unknown[]]) => String(call[0]),
@@ -251,25 +320,89 @@ describe("ship", () => {
     expect(waitForPullRequestChecksMock).not.toHaveBeenCalled();
   });
 
-  it("fails before merge work when the tracked tree lacks a verify:ship:local receipt", async () => {
+  it("runs verify:ship:local inline when the tracked tree lacks a current receipt", async () => {
+    const { shipPullRequest } = await import("./ship");
+
+    installShipCommandMock({
+      pullRequestViews: [
+        buildPullRequest(),
+        buildPullRequest({
+          mergeCommit: {
+            oid: "merge-sha",
+          },
+          state: "MERGED",
+        }),
+      ],
+      shipLocalChangedFiles: ["scripts/ship.ts"],
+      pullRequestFiles: ["src/components/dashboard/dashboard-client.tsx"],
+    });
+    loadVerificationReceiptMock.mockResolvedValue(null);
+    isVerificationSatisfiedMock.mockReturnValue(false);
+    waitForPullRequestChecksMock.mockResolvedValue([]);
+    waitForWorkflowRunMock.mockResolvedValue({
+      workflowName: "Release Health",
+    });
+
+    await shipPullRequest({ prNumber: "46" });
+
+    expect(runCommandMock).toHaveBeenCalledWith(
+      "pnpm",
+      ["run", "verify:ship:local"],
+      expect.objectContaining({
+        stdinMode: "ignore",
+        timeoutMs: 1_800_000,
+      }),
+    );
+    expect(waitForPullRequestChecksMock).toHaveBeenCalledWith({
+      prNumber: "46",
+      workflowNames: [
+        "App Quality",
+        "UI Smoke",
+        "Database Security",
+        "Dependency Audit",
+      ],
+    });
+    expect(runCommandMock).toHaveBeenCalledWith(
+      "pnpm",
+      ["run", "db:check-migration-drift"],
+      expect.anything(),
+    );
+  });
+
+  it("fails before merge work when inline verify:ship:local fails", async () => {
     const { shipPullRequest } = await import("./ship");
 
     installShipCommandMock({
       pullRequestViews: [buildPullRequest()],
+      shipLocalChangedFiles: ["scripts/ship.ts"],
       pullRequestFiles: ["src/components/dashboard/dashboard-client.tsx"],
+      verifyShipLocalError: "ship local failed",
     });
     loadVerificationReceiptMock.mockResolvedValue(null);
     isVerificationSatisfiedMock.mockReturnValue(false);
 
     await expect(shipPullRequest({ prNumber: "46" })).rejects.toThrow(
-      "Ship requires a current `pnpm run verify:ship:local` pass on this tracked tree before merge work begins.",
+      "ship local failed",
     );
 
     expect(waitForPullRequestChecksMock).not.toHaveBeenCalled();
     expect(runCommandMock).not.toHaveBeenCalledWith(
+      "gh",
+      ["api", "repos/{owner}/{repo}/pulls/46/files", "--paginate", "--slurp"],
+      expect.anything(),
+    );
+    expect(runCommandMock).not.toHaveBeenCalledWith(
       "pnpm",
       ["run", "db:check-migration-drift"],
       expect.anything(),
+    );
+    expect(recordVerificationTimingMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        rootDir: process.cwd(),
+        scope: "ship-run",
+        name: "pnpm ship",
+        status: "failed",
+      }),
     );
   });
 

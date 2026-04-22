@@ -1,7 +1,6 @@
 import type { CSSProperties } from "react";
 
 import type { DatasetTag } from "@/lib/api-types";
-import { normalizeDatasetOpenPreset } from "@/lib/saved-dataset-filters";
 
 export const DATASET_TAG_COLOR_OPTIONS = [
   {
@@ -52,19 +51,12 @@ export function normalizeDatasetTags(tags: DatasetTag[]): DatasetTag[] {
       id: tag.id.trim(),
       label: tag.label.trim(),
       color: normalizeDatasetTagColor(tag.color),
-      openPreset: normalizeDatasetOpenPreset(tag.openPreset) ?? undefined,
     }))
     .filter((tag) => tag.id.length > 0 && tag.label.length > 0);
 }
 
-export function getDatasetTagIdentity(
-  tag: Pick<DatasetTag, "label" | "color" | "openPreset">,
-) {
-  const openPresetIdentity = JSON.stringify(
-    normalizeDatasetOpenPreset(tag.openPreset) ?? null,
-  );
-
-  return `${tag.label.trim().toLowerCase()}::${normalizeDatasetTagColor(tag.color)}::${openPresetIdentity}`;
+export function getDatasetTagIdentity(tag: Pick<DatasetTag, "label" | "color">) {
+  return `${tag.label.trim().toLowerCase()}::${normalizeDatasetTagColor(tag.color)}`;
 }
 
 export function getReusableDatasetTags(tags: DatasetTag[]) {
@@ -82,14 +74,6 @@ export function getReusableDatasetTags(tags: DatasetTag[]) {
       return true;
     })
     .sort((left, right) => left.label.localeCompare(right.label));
-}
-
-export function getDatasetOpenPresetTag(tags: DatasetTag[]) {
-  const presetTags = normalizeDatasetTags(tags).filter(
-    (tag) => tag.openPreset !== undefined,
-  );
-
-  return presetTags.length === 1 ? presetTags[0] : null;
 }
 
 function hexToRgb(value: string) {

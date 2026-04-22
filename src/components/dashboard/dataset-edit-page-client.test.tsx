@@ -243,58 +243,6 @@ describe("DatasetEditPageClient", () => {
     expect(pushMock).toHaveBeenCalledWith("/dashboard/upload?replace=dataset-1");
   });
 
-  it("shows an error when a saved preset tag needs unsupported dataset filters", async () => {
-    render(
-      <DatasetEditPageClient
-        initialDataset={createDataset()}
-        availableTags={[
-          {
-            id: "tag-2",
-            label: "North Africa preset",
-            color: "#078bc9",
-            openPreset: {
-              region: {
-                enabled: true,
-                selectedRegionIds: ["region-1"],
-                selectedRegionNames: ["North Africa"],
-                enabledCountryNames: ["Egypt"],
-              },
-              country: {
-                enabled: false,
-                selectedCountryNames: [],
-              },
-              watchlist: {
-                enabled: false,
-                thresholdEnabled: true,
-                threshold: 2,
-                engagementPhaseEnabled: true,
-                engagementPhaseThreshold: 6,
-                evangelicalBelieversEnabled: true,
-                evangelicalBelieversThreshold: 1000,
-                evangelicalPercentEnabled: true,
-                evangelicalPercentThreshold: 0.05,
-                frontierGroupEnabled: true,
-                frontierGroupValue: true,
-              },
-              uupg: {
-                enabled: false,
-              },
-            },
-          },
-        ]}
-        initialVersions={[]}
-      />,
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: "North Africa preset" }));
-
-    expect(
-      screen.getByText(
-        'The "North Africa preset" tag preset needs Region filtering support on this dataset.',
-      ),
-    ).toBeTruthy();
-  });
-
   it("saves dataset visibility changes and returns to the dashboard", async () => {
     fetchMock.mockResolvedValue(
       buildJsonResponse({

@@ -1,6 +1,5 @@
 import { getCurrentIdentity } from "@/lib/auth";
 import {
-  DatasetOpenPresetCompatibilityError,
   DatasetDeleteConflictError,
   DerivedDatasetMutationError,
   deleteDataset,
@@ -76,10 +75,7 @@ export async function PATCH(request: Request, context: DatasetContext) {
             hiddenColumnKeys: parsed.data.hiddenColumnKeys,
           });
   } catch (error) {
-    if (
-      error instanceof DatasetOpenPresetCompatibilityError ||
-      error instanceof DerivedDatasetMutationError
-    ) {
+    if (error instanceof DerivedDatasetMutationError) {
       return jsonError(error.message, error.status);
     }
 

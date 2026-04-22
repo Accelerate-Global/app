@@ -13,7 +13,6 @@ export type DatasetTag = {
   id: string;
   label: string;
   color: string;
-  openPreset?: DatasetOpenPreset;
 };
 
 export type FilterRegion = {

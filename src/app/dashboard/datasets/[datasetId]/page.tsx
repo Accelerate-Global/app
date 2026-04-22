@@ -139,9 +139,6 @@ export default async function DatasetPage({
           fieldDefinitionPresentationByColumnKey={fieldDefinitionPresentationByColumnKey}
           initialFilters={initialFilters}
           initialSorting={initialSorting}
-          canManageOpenPresets={
-            identity.isDatasetAdmin && dataset.backingDatasetId === null
-          }
           assignableDatasets={assignableDatasets}
           actorOwnerId={identity.ownerId}
           workspaceRole={getAnalyticsWorkspaceRole(identity.isDatasetAdmin)}
@@ -152,11 +149,6 @@ export default async function DatasetPage({
             matchingSavedTable
               ? matchingSavedTable.filters
               : null
-          }
-          initialPresetTagId={
-            matchingSavedTable || dataset.defaultFilters
-              ? null
-              : dataset.tags.find((tag) => tag.openPreset)?.id ?? null
           }
         />
       </div>

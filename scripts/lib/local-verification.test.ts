@@ -7,9 +7,10 @@ import {
 } from "./local-verification";
 import type { VerificationReceipt } from "./verification-receipts";
 
-const { runCommandMock, recordVerificationSuccessMock } = vi.hoisted(() => ({
+const { runCommandMock, recordVerificationSuccessMock, recordVerificationTimingMock } = vi.hoisted(() => ({
   runCommandMock: vi.fn(),
   recordVerificationSuccessMock: vi.fn(),
+  recordVerificationTimingMock: vi.fn(),
 }));
 
 vi.mock("./command", () => ({
@@ -26,6 +27,10 @@ vi.mock("./verification-receipts", async () => {
     recordVerificationSuccess: recordVerificationSuccessMock,
   };
 });
+
+vi.mock("./verification-timing", () => ({
+  recordVerificationTiming: recordVerificationTimingMock,
+}));
 
 const passingTestDelta = {
   changedFiles: [],
@@ -78,12 +83,14 @@ describe("local-verification", () => {
   beforeEach(() => {
     runCommandMock.mockReset();
     recordVerificationSuccessMock.mockReset();
+    recordVerificationTimingMock.mockReset();
     runCommandMock.mockResolvedValue({
       stdout: "",
       stderr: "",
       exitCode: 0,
     });
     recordVerificationSuccessMock.mockResolvedValue(undefined);
+    recordVerificationTimingMock.mockResolvedValue(undefined);
   });
 
   it("skips an explicit smoke:check run when targeted smoke will run in the same pass", () => {
@@ -262,7 +269,7 @@ describe("local-verification", () => {
     expect(plan.steps).toEqual([]);
   });
 
-  it("does not pre-start Supabase for self-managed db:security and prunes once at the end", async () => {
+  it("does not pre-start Supabase for self-managed db:security on the success path", async () => {
     await executeLocalVerificationPlan({
       rootDir: "/repo",
       treeSha: "tree-sha",
@@ -282,7 +289,6 @@ describe("local-verification", () => {
       ["supabase", ["stop"]],
       ["pnpm", ["run", "db:security"]],
       ["supabase", ["stop"]],
-      ["docker", ["container", "prune", "-f"]],
     ]);
     expect(runCommandMock).not.toHaveBeenCalledWith(
       "supabase",
@@ -294,6 +300,84 @@ describe("local-verification", () => {
       changedFiles: ["supabase/tests/database-security.test.sql"],
       commandIds: ["db:security"],
     });
+    expect(recordVerificationTimingMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        rootDir: "/repo",
+        treeSha: "tree-sha",
+        changedFiles: ["supabase/tests/database-security.test.sql"],
+        scope: "command",
+        name: "db:security",
+        status: "passed",
+      }),
+    );
+  });
+
+  it("passes explicit base and head refs to the combined smoke step when provided", async () => {
+    await executeLocalVerificationPlan({
+      rootDir: "/repo",
+      treeSha: "tree-sha",
+      changedFiles: ["src/components/dashboard/dataset-table.tsx"],
+      plan: {
+        reusedCommands: [],
+        steps: [
+          {
+            kind: "combined-ui-smoke",
+          },
+        ],
+      },
+      uiSmokeDiff: {
+        baseRef: "origin/main",
+        headRef: "HEAD",
+      },
+    });
+
+    expect(runCommandMock.mock.calls).toEqual([
+      ["supabase", ["stop"]],
+      [
+        "node",
+        [
+          "--import",
+          "tsx",
+          "scripts/run-ui-smoke.ts",
+          "--targeted-and-full",
+          "--base",
+          "origin/main",
+          "--head",
+          "HEAD",
+        ],
+      ],
+      ["supabase", ["stop"]],
+    ]);
+  });
+
+  it("keeps the combined smoke step on git-status mode when no explicit refs are provided", async () => {
+    await executeLocalVerificationPlan({
+      rootDir: "/repo",
+      treeSha: "tree-sha",
+      changedFiles: ["src/components/dashboard/dataset-table.tsx"],
+      plan: {
+        reusedCommands: [],
+        steps: [
+          {
+            kind: "combined-ui-smoke",
+          },
+        ],
+      },
+    });
+
+    expect(runCommandMock.mock.calls).toEqual([
+      ["supabase", ["stop"]],
+      [
+        "node",
+        [
+          "--import",
+          "tsx",
+          "scripts/run-ui-smoke.ts",
+          "--targeted-and-full",
+        ],
+      ],
+      ["supabase", ["stop"]],
+    ]);
   });
 
   it("prunes after a Supabase-backed failure and does not record a receipt for the failed step", async () => {
@@ -333,5 +417,15 @@ describe("local-verification", () => {
       ["docker", ["container", "prune", "-f"]],
     ]);
     expect(recordVerificationSuccessMock).not.toHaveBeenCalled();
+    expect(recordVerificationTimingMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        rootDir: "/repo",
+        treeSha: "tree-sha",
+        changedFiles: ["src/components/dashboard/dataset-table.tsx"],
+        scope: "command",
+        name: "test:ui:smoke",
+        status: "failed",
+      }),
+    );
   });
 });

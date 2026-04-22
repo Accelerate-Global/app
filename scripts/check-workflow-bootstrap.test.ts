@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  findMissingRequiredWorkflowIssues,
+  findSharedBootstrapActionIssues,
   findWorkflowBootstrapIssues,
 } from "./check-workflow-bootstrap.mjs";
 
@@ -39,9 +41,56 @@ jobs:
     ]);
 
     expect(issues).toEqual([
-      "ui-smoke.yml: runs pnpm commands but does not use ./.github/actions/setup-pnpm-node.",
+      "ui-smoke.yml: must use ./.github/actions/setup-pnpm-node.",
       "ui-smoke.yml: must not call pnpm/action-setup directly; use ./.github/actions/setup-pnpm-node instead.",
       "ui-smoke.yml: must not call actions/setup-node directly; use ./.github/actions/setup-pnpm-node instead.",
+    ]);
+  });
+
+  it("flags required workflow files that are missing", () => {
+    const issues = findMissingRequiredWorkflowIssues([
+      { name: "app-quality.yml", content: "" },
+      { name: "ui-smoke.yml", content: "" },
+    ]);
+
+    expect(issues).toEqual([
+      "database-security.yml: required workflow file is missing.",
+      "dependency-audit.yml: required workflow file is missing.",
+    ]);
+  });
+
+  it("flags unpinned remote action refs in required workflows", () => {
+    const issues = findWorkflowBootstrapIssues([
+      {
+        name: "dependency-audit.yml",
+        content: `
+jobs:
+  dependency-audit:
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-pnpm-node
+      - run: pnpm audit --audit-level=high
+`,
+      },
+    ]);
+
+    expect(issues).toEqual([
+      "dependency-audit.yml: action ref actions/checkout@v4 must be pinned to a full commit SHA.",
+    ]);
+  });
+
+  it("flags unpinned or misordered shared bootstrap steps", () => {
+    const issues = findSharedBootstrapActionIssues(`
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v4
+    - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa
+`);
+
+    expect(issues).toEqual([
+      ".github/actions/setup-pnpm-node/action.yml: action ref actions/setup-node@v4 must be pinned to a full commit SHA.",
+      ".github/actions/setup-pnpm-node/action.yml: must configure pnpm/action-setup before actions/setup-node.",
     ]);
   });
 

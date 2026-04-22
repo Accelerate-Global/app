@@ -99,30 +99,6 @@ function createDataset() {
         id: "tag-1",
         label: "Watchlist",
         color: "#262531",
-        openPreset: {
-          region: {
-            enabled: false,
-            selectedRegionIds: [],
-            selectedRegionNames: [],
-            enabledCountryNames: [],
-          },
-            country: {
-              enabled: false,
-              selectedCountryNames: [],
-              includeAlternateCountries: false,
-            },
-          watchlist: {
-            enabled: true,
-            threshold: 2,
-            engagementPhaseThreshold: 6,
-            evangelicalBelieversThreshold: 50,
-            evangelicalPercentThreshold: 0.05,
-            frontierGroupValue: true,
-          },
-          uupg: {
-            enabled: false,
-          },
-        },
       },
     ],
     error: null,
@@ -221,7 +197,6 @@ describe("/dashboard/datasets/[datasetId]", () => {
     const props = datasetDetailClientSpy.mock.lastCall?.[0] as {
       initialFilters: unknown;
       initialSorting?: unknown;
-      canManageOpenPresets?: boolean;
       assignableDatasets?: Array<{ id: string }>;
       actorOwnerId: string;
       workspaceRole: string;
@@ -266,7 +241,6 @@ describe("/dashboard/datasets/[datasetId]", () => {
         desc: true,
       },
     ]);
-    expect(props.canManageOpenPresets).toBe(true);
     expect(props.assignableDatasets).toEqual([]);
     expect(props.actorOwnerId).toBe("owner-1");
     expect(props.workspaceRole).toBe("admin");
@@ -276,7 +250,7 @@ describe("/dashboard/datasets/[datasetId]", () => {
     expect(props.initialSavedTableRowCount).toBe(10);
   });
 
-  it("keeps tag preset hydration for viewers while hiding open preset management", async () => {
+  it("does not hydrate default filters for viewers when none are configured", async () => {
     getCurrentIdentityMock.mockResolvedValue({
       ownerId: "viewer-1",
       email: "viewer@example.com",
@@ -293,18 +267,14 @@ describe("/dashboard/datasets/[datasetId]", () => {
     );
 
     const props = datasetDetailClientSpy.mock.lastCall?.[0] as {
-      initialFilters: { watchlist: { enabled: boolean } };
-      canManageOpenPresets?: boolean;
+      initialFilters: unknown;
       assignableDatasets?: Array<{ id: string }>;
       workspaceRole: string;
-      initialPresetTagId: string | null;
     };
 
-    expect(props.initialFilters.watchlist.enabled).toBe(true);
-    expect(props.canManageOpenPresets).toBe(false);
+    expect(props.initialFilters).toBeNull();
     expect(props.assignableDatasets).toEqual([]);
     expect(props.workspaceRole).toBe("viewer");
-    expect(props.initialPresetTagId).toBe("tag-1");
     expect(getDatasetMock).toHaveBeenCalledWith("dataset-1", {
       includeDisabled: false,
     });
@@ -320,11 +290,9 @@ describe("/dashboard/datasets/[datasetId]", () => {
 
     const props = datasetDetailClientSpy.mock.lastCall?.[0] as {
       datasetSource: string;
-      initialPresetTagId: string | null;
     };
 
     expect(props.datasetSource).toBe("default_redirect");
-    expect(props.initialPresetTagId).toBe("tag-1");
   });
 
   it("passes the backing source row count to the dataset detail client for derived datasets", async () => {
@@ -397,7 +365,7 @@ describe("/dashboard/datasets/[datasetId]", () => {
     });
   });
 
-  it("falls back to the dataset tag preset when the saved table targets another dataset", async () => {
+  it("ignores a saved table from another dataset when no dataset defaults exist", async () => {
     getSavedDatasetTableMock.mockResolvedValue({
       id: "saved-table-1",
       datasetId: "dataset-2",
@@ -442,15 +410,15 @@ describe("/dashboard/datasets/[datasetId]", () => {
     );
 
     const props = datasetDetailClientSpy.mock.lastCall?.[0] as {
-      initialFilters: { watchlist: { enabled: boolean } };
+      initialFilters: unknown;
       initialSorting?: unknown;
     };
 
-    expect(props.initialFilters.watchlist.enabled).toBe(true);
+    expect(props.initialFilters).toBeNull();
     expect(props.initialSorting).toBeUndefined();
   });
 
-  it("prefers dataset default filters and sorting over the legacy tag preset", async () => {
+  it("passes dataset default filters and sorting through to the detail client", async () => {
     getDatasetMock.mockResolvedValue({
       ...createDataset(),
       defaultFilters: {
@@ -511,7 +479,6 @@ describe("/dashboard/datasets/[datasetId]", () => {
     const props = datasetDetailClientSpy.mock.lastCall?.[0] as {
       initialFilters: { region: { enabled: boolean } };
       initialSorting?: Array<{ id: string; desc: boolean }>;
-      initialPresetTagId: string | null;
     };
 
     expect(props.initialFilters.region.enabled).toBe(true);
@@ -521,7 +488,6 @@ describe("/dashboard/datasets/[datasetId]", () => {
         desc: true,
       },
     ]);
-    expect(props.initialPresetTagId).toBeNull();
   });
 
   it("renders not found when the dataset does not exist", async () => {

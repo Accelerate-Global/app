@@ -105,52 +105,48 @@ const derivedDataset = {
   id: "f0000000-0000-4000-8000-000000000099",
   backingDatasetId: physicalDataset.id,
   fileName: "Watchlist.csv",
-  tags: [
-    {
-      id: "tag-1",
-      label: "Watchlist",
-      color: "#262531",
-      openPreset: {
-        region: {
-          enabled: false,
-          selectedRegionIds: [],
-          selectedRegionNames: [],
-          enabledCountryNames: [],
-        },
-        country: {
-          enabled: true,
-          selectedCountryNames: ["Egypt"],
-        },
-        watchlist: {
-          enabled: false,
-          thresholdEnabled: true,
-          threshold: 2,
-          engagementPhaseEnabled: true,
-          engagementPhaseThreshold: 6,
-          evangelicalPopulationBelieversRuleEnabled: true,
-          evangelicalPopulationBelieversRule: {
-            tiers: [
-              {
-                minPopulation: 0,
-                maxPopulation: null,
-                minBelievers: 50,
-              },
-            ],
-          },
-          frontierGroupEnabled: true,
-          frontierGroupValue: true,
-        },
-        uupg: {
-          enabled: false,
-        },
-        hotspots: {
-          enabled: false,
-          metric: "unique_uupgs" as const,
-          countryCount: 10,
-        },
-      },
+  defaultFilters: {
+    region: {
+      enabled: false,
+      selectedRegionIds: [],
+      selectedRegionNames: [],
+      enabledCountryNames: [],
     },
-  ],
+    country: {
+      enabled: true,
+      selectedCountryNames: ["Egypt"],
+      includeAlternateCountries: false,
+    },
+    watchlist: {
+      enabled: false,
+      thresholdEnabled: true,
+      threshold: 2,
+      engagementPhaseEnabled: true,
+      engagementPhaseThreshold: 6,
+      evangelicalPopulationBelieversRuleEnabled: true,
+      evangelicalPopulationBelieversRule: {
+        tiers: [
+          {
+            minPopulation: 0,
+            maxPopulation: null,
+            minBelievers: 50,
+          },
+        ],
+      },
+      frontierGroupEnabled: true,
+      frontierGroupValue: true,
+    },
+    uupg: {
+      enabled: false,
+    },
+    hotspots: {
+      enabled: false,
+      metric: "unique_uupgs" as const,
+      countryCount: 10,
+    },
+    sorting: [],
+  },
+  tags: [],
 };
 
 describe("/api/datasets/[datasetId]/download", () => {
@@ -354,52 +350,19 @@ describe("/api/datasets/[datasetId]/download", () => {
         { key: "pg_population", label: "PG_Population", sourceIndex: 3 },
         { key: "pg_peid", label: "PG_PEID", sourceIndex: 4 },
       ],
-      tags: [
-        {
-          id: "tag-1",
-          label: "Hotspots",
-          color: "#262531",
-          openPreset: {
-            region: {
-              enabled: false,
-              selectedRegionIds: [],
-              selectedRegionNames: [],
-              enabledCountryNames: [],
-            },
-            country: {
-              enabled: false,
-              selectedCountryNames: [],
-            },
-            watchlist: {
-              enabled: false,
-              thresholdEnabled: true,
-              threshold: 2,
-              engagementPhaseEnabled: true,
-              engagementPhaseThreshold: 6,
-              evangelicalPopulationBelieversRuleEnabled: true,
-              evangelicalPopulationBelieversRule: {
-                tiers: [
-                  {
-                    minPopulation: 0,
-                    maxPopulation: null,
-                    minBelievers: 50,
-                  },
-                ],
-              },
-              frontierGroupEnabled: true,
-              frontierGroupValue: true,
-            },
-            uupg: {
-              enabled: false,
-            },
-            hotspots: {
-              enabled: true,
-              metric: "unique_uupgs" as const,
-              countryCount: 1,
-            },
-          },
+      defaultFilters: {
+        ...derivedDataset.defaultFilters,
+        country: {
+          enabled: false,
+          selectedCountryNames: [],
+          includeAlternateCountries: false,
         },
-      ],
+        hotspots: {
+          enabled: true,
+          metric: "unique_uupgs" as const,
+          countryCount: 1,
+        },
+      },
     });
     getAllDatasetRowsMock.mockResolvedValue({
       sourceDatasetId: physicalDataset.id,
@@ -473,7 +436,7 @@ describe("/api/datasets/[datasetId]/download", () => {
     expect(csv).not.toContain("skip@example.com");
   });
 
-  it("prefers dataset default filters and sorting over the legacy tag preset", async () => {
+  it("applies dataset default filters and sorting to derived downloads", async () => {
     getDatasetMock.mockResolvedValue({
       ...derivedDataset,
       columns: [

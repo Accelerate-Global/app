@@ -12,8 +12,13 @@ import {
   type ReceiptCommandId,
   type VerificationReceipt,
 } from "./verification-receipts";
+import { recordVerificationTiming } from "./verification-timing";
 
 export type LocalVerificationMode = "change-run" | "ship-local";
+export type UiSmokeDiffRefs = {
+  baseRef: string;
+  headRef: string;
+};
 
 export type VerificationStep =
   | {
@@ -222,21 +227,48 @@ function getStepLabel(step: VerificationStep) {
 
 function getStepSupabaseLifecycle(step: VerificationStep): SupabaseLifecycle {
   if (step.kind === "combined-ui-smoke") {
-    return "runner-managed";
+    return "prestart-required";
   }
 
   return verificationCommandCatalog[step.commandId].supabaseLifecycle;
 }
 
-async function runVerificationStep(step: VerificationStep) {
+function getStepTimingName(step: VerificationStep) {
   if (step.kind === "combined-ui-smoke") {
-    console.log(`\nRunning ${getStepLabel(step)}`);
-    await runCommand("node", [
-      "--import",
-      "tsx",
-      "scripts/run-ui-smoke.ts",
-      "--targeted-and-full",
-    ]);
+    return "test:ui:smoke:targeted+full";
+  }
+
+  return step.commandId;
+}
+
+function getCombinedUiSmokeCommandArgs(uiSmokeDiff?: UiSmokeDiffRefs) {
+  const args = [
+    "--import",
+    "tsx",
+    "scripts/run-ui-smoke.ts",
+    "--targeted-and-full",
+  ];
+
+  if (uiSmokeDiff) {
+    args.push("--base", uiSmokeDiff.baseRef, "--head", uiSmokeDiff.headRef);
+  }
+
+  return args;
+}
+
+function getCombinedUiSmokeLabel(uiSmokeDiff?: UiSmokeDiffRefs) {
+  return `node ${getCombinedUiSmokeCommandArgs(uiSmokeDiff).join(" ")}`;
+}
+
+async function runVerificationStep(
+  step: VerificationStep,
+  options?: {
+    uiSmokeDiff?: UiSmokeDiffRefs;
+  },
+) {
+  if (step.kind === "combined-ui-smoke") {
+    console.log(`\nRunning ${getCombinedUiSmokeLabel(options?.uiSmokeDiff)}`);
+    await runCommand("node", getCombinedUiSmokeCommandArgs(options?.uiSmokeDiff));
     return;
   }
 
@@ -257,9 +289,9 @@ export async function executeLocalVerificationPlan(input: {
   treeSha: string;
   changedFiles: string[];
   plan: LocalVerificationPlan;
+  uiSmokeDiff?: UiSmokeDiffRefs;
 }) {
   const shortTreeSha = input.treeSha.slice(0, 12);
-  let shouldPruneStoppedContainers = false;
 
   for (const commandId of input.plan.reusedCommands) {
     console.log(
@@ -275,16 +307,18 @@ export async function executeLocalVerificationPlan(input: {
   for (const step of input.plan.steps) {
     const supabaseLifecycle = getStepSupabaseLifecycle(step);
     const needsLocalSupabase = supabaseLifecycle !== "none";
+    const stepStartedAt = Date.now();
 
     if (needsLocalSupabase) {
-      shouldPruneStoppedContainers = true;
       await stopLocalSupabaseStack(`before ${getStepLabel(step)}`);
     }
 
     let stepError: unknown = null;
 
     try {
-      await runVerificationStep(step);
+      await runVerificationStep(step, {
+        uiSmokeDiff: input.uiSmokeDiff,
+      });
     } catch (error) {
       stepError = error;
     } finally {
@@ -294,12 +328,32 @@ export async function executeLocalVerificationPlan(input: {
     }
 
     if (stepError) {
+      await recordVerificationTiming({
+        rootDir: input.rootDir,
+        treeSha: input.treeSha,
+        changedFiles: input.changedFiles,
+        scope: "command",
+        name: getStepTimingName(step),
+        durationMs: Date.now() - stepStartedAt,
+        status: "failed",
+      });
+
       if (needsLocalSupabase) {
         await pruneStoppedDockerContainers(`after ${getStepLabel(step)} failed`);
       }
 
       throw stepError;
     }
+
+    await recordVerificationTiming({
+      rootDir: input.rootDir,
+      treeSha: input.treeSha,
+      changedFiles: input.changedFiles,
+      scope: "command",
+      name: getStepTimingName(step),
+      durationMs: Date.now() - stepStartedAt,
+      status: "passed",
+    });
 
     const successfulCommandIds = getReceiptCommandIdsForSuccessfulStep(step);
 
@@ -311,9 +365,5 @@ export async function executeLocalVerificationPlan(input: {
         commandIds: successfulCommandIds,
       });
     }
-  }
-
-  if (shouldPruneStoppedContainers) {
-    await pruneStoppedDockerContainers("after local verification");
   }
 }

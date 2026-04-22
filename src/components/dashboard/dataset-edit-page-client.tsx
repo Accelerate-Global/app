@@ -37,10 +37,6 @@ import {
   normalizeDatasetTagColor,
   normalizeDatasetTags,
 } from "@/lib/dataset-tags";
-import {
-  getUnsupportedDatasetOpenPresetSections,
-  type DatasetOpenPresetSection,
-} from "@/lib/saved-dataset-filters";
 
 type DatasetResponse = {
   dataset: DatasetSummary;
@@ -199,20 +195,6 @@ function getDatasetTagColorOption(value: string | undefined) {
     DATASET_TAG_COLOR_OPTIONS.find((option) => option.color === normalizedValue) ??
     DATASET_TAG_COLOR_OPTIONS[0]
   );
-}
-
-function formatDatasetOpenPresetSection(
-  section: DatasetOpenPresetSection,
-) {
-  if (section === "uupg") {
-    return "UUPG";
-  }
-
-  if (section === "watchlist") {
-    return "Watchlist";
-  }
-
-  return `${section.charAt(0).toUpperCase()}${section.slice(1)}`;
 }
 
 function DatasetTagColorMenu({
@@ -527,45 +509,17 @@ function DatasetEditForm({
       return;
     }
 
-    if (normalizedTag.openPreset) {
-      const unsupportedSections = getUnsupportedDatasetOpenPresetSections(
-        dataset,
-        normalizedTag.openPreset,
-      );
-
-      if (unsupportedSections.length > 0) {
-        setErrorMessage(
-          `The "${normalizedTag.label}" tag preset needs ${unsupportedSections
-            .map(formatDatasetOpenPresetSection)
-            .join(", ")} filtering support on this dataset.`,
-        );
-        return;
-      }
-    }
-
     if (currentTagIdentities.has(getDatasetTagIdentity(normalizedTag))) {
       return;
     }
 
     setTags((current) => {
-      const nextCurrent = normalizedTag.openPreset
-        ? current.map((currentTag) =>
-            currentTag.openPreset !== undefined
-              ? {
-                  ...currentTag,
-                  openPreset: undefined,
-                }
-              : currentTag,
-          )
-        : current;
-
       return [
-        ...nextCurrent,
+        ...current,
         {
           id: createTagId(),
           label: normalizedTag.label,
           color: normalizedTag.color,
-          openPreset: normalizedTag.openPreset,
         },
       ];
     });

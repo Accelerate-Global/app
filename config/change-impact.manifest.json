@@ -155,8 +155,10 @@
         "scripts/run-ui-smoke.ts",
         "scripts/smoke-bootstrap.ts",
         "tests/ui/global.setup.ts",
-        "tests/ui/support/**/*.ts",
-        "tests/ui/support/**/*.tsx"
+        "tests/ui/support/bootstrap.ts",
+        "tests/ui/support/project-context.ts",
+        "tests/ui/support/smoke-data.ts",
+        "tests/ui/support/smoke-helpers.ts"
       ],
       "forceFullSuite": true
     },
