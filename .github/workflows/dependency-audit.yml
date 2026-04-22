@@ -19,6 +19,10 @@ jobs:
         with:
           fetch-depth: 0
 
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+        with:
+          version: 10
+
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
@@ -29,11 +33,6 @@ jobs:
 
       - if: steps.preinstall_selection.outputs.run_dependency_audit != 'true'
         run: echo "No dependency-audit-relevant files changed."
-
-      - if: steps.preinstall_selection.outputs.run_dependency_audit == 'true'
-        uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
-        with:
-          version: 10
 
       - if: steps.preinstall_selection.outputs.run_dependency_audit == 'true'
         run: pnpm install --frozen-lockfile

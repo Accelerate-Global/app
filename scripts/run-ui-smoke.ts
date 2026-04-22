@@ -152,6 +152,10 @@ export const DEFAULT_SUPABASE_PORT_RELEASE_WAIT = {
   maxAttempts: 30,
   retryDelayMs: 2_000,
 } as const;
+export const DEFAULT_SUPABASE_STATUS_OUTPUT_RETRY = {
+  attempts: 5,
+  retryDelayMs: 2_000,
+} as const;
 export const DEFAULT_UI_SMOKE_SUPABASE_START_TIMEOUT_MS = 120_000;
 export const CI_UI_SMOKE_SUPABASE_START_TIMEOUT_MS = 300_000;
 export const UI_SMOKE_DB_RESET_ARGS = [
@@ -409,6 +413,47 @@ async function hasUsableLocalSupabaseStatus() {
   } catch {
     return false;
   }
+}
+
+async function getLocalSupabaseStatusOutput() {
+  let lastOutput = "";
+
+  for (
+    let attempt = 1;
+    attempt <= DEFAULT_SUPABASE_STATUS_OUTPUT_RETRY.attempts;
+    attempt += 1
+  ) {
+    const statusOutput = await runStage(
+      "bootstrap",
+      "supabase status failed.",
+      "supabase",
+      ["status", "-o", "env"],
+      { captureOutput: true },
+    );
+
+    if (hasUsableSupabaseStatusOutput(statusOutput)) {
+      return statusOutput;
+    }
+
+    lastOutput = statusOutput;
+
+    if (attempt === DEFAULT_SUPABASE_STATUS_OUTPUT_RETRY.attempts) {
+      break;
+    }
+
+    console.warn(
+      "supabase status env output was incomplete. Retrying in " +
+        `${DEFAULT_SUPABASE_STATUS_OUTPUT_RETRY.retryDelayMs}ms ` +
+        `(${attempt}/${DEFAULT_SUPABASE_STATUS_OUTPUT_RETRY.attempts - 1}).`,
+    );
+    await sleep(DEFAULT_SUPABASE_STATUS_OUTPUT_RETRY.retryDelayMs);
+  }
+
+  throw createPipelineError(
+    "bootstrap",
+    "supabase status env output was incomplete.",
+    new Error(lastOutput || "No Supabase status env output was returned."),
+  );
 }
 
 async function startLocalSupabaseStack() {
@@ -707,13 +752,7 @@ async function main() {
       await startLocalSupabaseStack();
     },
   });
-  const statusOutput = await runStage(
-    "bootstrap",
-    "supabase status failed.",
-    "supabase",
-    ["status", "-o", "env"],
-    { captureOutput: true },
-  );
+  const statusOutput = await getLocalSupabaseStatusOutput();
   const playwrightTmpDir = path.join(UI_SMOKE_TMP_DIR, "playwright-tmp");
 
   await mkdir(playwrightTmpDir, { recursive: true });

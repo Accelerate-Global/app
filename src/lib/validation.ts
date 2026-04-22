@@ -178,7 +178,7 @@ const savedDatasetWatchlistFilterStateSchema = z.object({
   evangelicalPercentEnabled: z.boolean().optional(),
   evangelicalPercentThreshold: z.number().min(0).max(100).optional(),
   frontierGroupEnabled: z.boolean().optional().default(true),
-  frontierGroupValue: z.boolean(),
+  frontierGroupValue: z.boolean().optional().default(true),
 });
 
 const savedDatasetHotspotsFilterStateSchema = z.object({

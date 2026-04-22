@@ -1784,24 +1784,19 @@ describe("DatasetDetailClient", () => {
               sourceIndex: 0,
             },
             {
-              key: "christianity_frontier_group",
-              label: "Christianity_Frontier_Group",
-              sourceIndex: 1,
-            },
-            {
               key: "engage_8_phases_of_engagement",
               label: "Engage_8_Phases_of_Engagement",
-              sourceIndex: 2,
+              sourceIndex: 1,
             },
             {
               key: "pg_population",
               label: "PG_Population",
-              sourceIndex: 3,
+              sourceIndex: 2,
             },
             {
               key: "percent_evangelical_pgac",
               label: "Percent_Evangelical_PGAC",
-              sourceIndex: 4,
+              sourceIndex: 3,
             },
           ],
         }}
@@ -1811,12 +1806,6 @@ describe("DatasetDetailClient", () => {
             definition: "Watchlist status definition",
             displayLabel: "Christianity: GSEC",
             effectiveLabel: "Christianity: GSEC",
-            linkedSources: [],
-          },
-          christianity_frontier_group: {
-            definition: "Frontier group definition",
-            displayLabel: "Christianity: Frontier Group Y/N",
-            effectiveLabel: "Christianity: Frontier Group Y/N",
             linkedSources: [],
           },
           engage_8_phases_of_engagement: {
@@ -1865,10 +1854,6 @@ describe("DatasetDetailClient", () => {
             minBelievers: number;
           }>;
         };
-        frontierGroupLabel: string;
-        frontierGroupDefinition: string;
-        frontierGroupEnabled: boolean;
-        frontierGroupValue: boolean;
       };
     };
     const datasetTableStateProps = useDatasetTableStateMock.mock.calls[0]?.[0] as {
@@ -1887,8 +1872,6 @@ describe("DatasetDetailClient", () => {
             minBelievers: number;
           }>;
         };
-        frontierGroupEnabled: boolean;
-        frontierGroupValue: boolean;
       };
     };
     const actionBarProps = actionBarSpy.mock.calls[0]?.[0] as {
@@ -1907,8 +1890,6 @@ describe("DatasetDetailClient", () => {
               minBelievers: number;
             }>;
           };
-          frontierGroupEnabled?: boolean;
-          frontierGroupValue: boolean;
         };
         sorting: Array<{ id: string; desc: boolean }>;
       };
@@ -1933,11 +1914,11 @@ describe("DatasetDetailClient", () => {
         "Build a tiered minimum-believers rule by population. Actual believers are calculated as People Group: Population * (Percent Evangelical PGAC / 100), and the implied percentage is shown live for context.",
       populationBelieversRuleEnabled: true,
       populationBelieversRule: DEFAULT_POPULATION_BELIEVERS_RULE,
-      frontierGroupLabel: "Christianity: Frontier Group Y/N",
-      frontierGroupDefinition: "Frontier group definition",
-      frontierGroupEnabled: true,
-      frontierGroupValue: true,
     });
+    expect(viewSwitchGridProps.watchlistCard).not.toHaveProperty("frontierGroupLabel");
+    expect(viewSwitchGridProps.watchlistCard).not.toHaveProperty("frontierGroupDefinition");
+    expect(viewSwitchGridProps.watchlistCard).not.toHaveProperty("frontierGroupEnabled");
+    expect(viewSwitchGridProps.watchlistCard).not.toHaveProperty("frontierGroupValue");
     expect(datasetTableStateProps.watchlistFilter).toEqual({
       enabled: false,
       isSupported: true,
@@ -1947,8 +1928,6 @@ describe("DatasetDetailClient", () => {
       engagementPhaseThreshold: 6,
       evangelicalPopulationBelieversRuleEnabled: true,
       evangelicalPopulationBelieversRule: DEFAULT_POPULATION_BELIEVERS_RULE,
-      frontierGroupEnabled: true,
-      frontierGroupValue: true,
     });
     expect(actionBarProps.filters.watchlist).toEqual({
       enabled: false,
@@ -1958,8 +1937,6 @@ describe("DatasetDetailClient", () => {
       engagementPhaseThreshold: 6,
       evangelicalPopulationBelieversRuleEnabled: true,
       evangelicalPopulationBelieversRule: DEFAULT_POPULATION_BELIEVERS_RULE,
-      frontierGroupEnabled: true,
-      frontierGroupValue: true,
     });
     expect(actionBarProps.filters.sorting).toEqual([
       {

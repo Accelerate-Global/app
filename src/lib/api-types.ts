@@ -122,7 +122,7 @@ export type SavedDatasetFilterState = {
     evangelicalPercentEnabled?: boolean;
     evangelicalPercentThreshold?: number;
     frontierGroupEnabled?: boolean;
-    frontierGroupValue: boolean;
+    frontierGroupValue?: boolean;
   };
   uupg: {
     enabled: boolean;

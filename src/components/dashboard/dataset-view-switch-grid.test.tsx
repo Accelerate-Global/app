@@ -54,10 +54,6 @@ const baseWatchlistCard = {
     "Build a tiered minimum-believers rule by population.",
   populationBelieversRuleEnabled: true,
   populationBelieversRule: DEFAULT_POPULATION_BELIEVERS_RULE,
-  frontierGroupLabel: "Christianity: Frontier Group Y/N",
-  frontierGroupDefinition: "Frontier group definition",
-  frontierGroupEnabled: true,
-  frontierGroupValue: true,
   onEnabledChange: vi.fn(),
   onThresholdEnabledChange: vi.fn(),
   onThresholdChange: vi.fn(),
@@ -65,8 +61,6 @@ const baseWatchlistCard = {
   onEngagementPhaseThresholdChange: vi.fn(),
   onPopulationBelieversRuleEnabledChange: vi.fn(),
   onPopulationBelieversRuleChange: vi.fn(),
-  onFrontierGroupEnabledChange: vi.fn(),
-  onFrontierGroupValueChange: vi.fn(),
 };
 
 const baseUupgCard = {
@@ -142,13 +136,11 @@ describe("DatasetViewSwitchGrid", () => {
     expect(
       screen.getByText("Christianity: GSEC <= 2"),
     ).toBeTruthy();
-    expect(
-      screen.getByText("Christianity: Frontier Group Y/N: True"),
-    ).toBeTruthy();
     expect(screen.getByText("Under 5,000 -> at least 50 believers")).toBeTruthy();
     expect(screen.getByText("5,000-10,000 -> at least 75 believers")).toBeTruthy();
     expect(screen.getByText("Over 10,000 -> at least 100 believers")).toBeTruthy();
     expect(screen.getByText("Engage: 8 Phases of Engagement >= 6")).toBeTruthy();
+    expect(screen.queryByText(/Frontier Group/)).toBeNull();
   });
 
   it("shows Global, normalizes South Asia, and keeps region controls interactive", () => {
@@ -374,8 +366,6 @@ describe("DatasetViewSwitchGrid", () => {
         watchlistCard={{
           ...baseWatchlistCard,
           thresholdDefinition: "Global Status of Evangelical Christianity.",
-          frontierGroupDefinition:
-            "<.1% Christian Adherents and no confirmed sustained movement.",
         }}
         uupgCard={baseUupgCard}
         hotspotsCard={baseHotspotsCard}
@@ -396,7 +386,6 @@ describe("DatasetViewSwitchGrid", () => {
       "Christianity: GSEC",
     ) as HTMLInputElement;
     const thresholdLabel = screen.getByText("Christianity: GSEC");
-    const frontierLabel = screen.getByText("Christianity: Frontier Group Y/N");
     const ruleLabel = screen.getByText("Population vs Evangelical Believers");
     const engagementLabel = screen.getByText("Engage: 8 Phases of Engagement");
     const thresholdInfo = screen.getByLabelText(
@@ -445,17 +434,14 @@ describe("DatasetViewSwitchGrid", () => {
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
     expect(
-      thresholdLabel.compareDocumentPosition(frontierLabel) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
-    expect(
-      frontierLabel.compareDocumentPosition(ruleLabel) &
+      thresholdLabel.compareDocumentPosition(ruleLabel) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
     expect(
       ruleLabel.compareDocumentPosition(engagementLabel) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
+    expect(screen.queryByText("Christianity: Frontier Group Y/N")).toBeNull();
     expect(screen.getByText("Configured rule")).toBeTruthy();
     expect(
       (
@@ -553,10 +539,8 @@ describe("DatasetViewSwitchGrid", () => {
     ).toBeNull();
   });
 
-  it("keeps the watchlist segmented control interactive when the section is expanded", () => {
-    const onFrontierGroupValueChange = vi.fn();
+  it("keeps the watchlist threshold toggle interactive and omits the legacy frontier row", () => {
     const onThresholdEnabledChange = vi.fn();
-    const onFrontierGroupEnabledChange = vi.fn();
 
     render(
       <DatasetViewSwitchGrid
@@ -566,8 +550,6 @@ describe("DatasetViewSwitchGrid", () => {
           ...baseWatchlistCard,
           enabled: true,
           onThresholdEnabledChange,
-          onFrontierGroupEnabledChange,
-          onFrontierGroupValueChange,
         }}
         uupgCard={baseUupgCard}
         hotspotsCard={baseHotspotsCard}
@@ -576,33 +558,14 @@ describe("DatasetViewSwitchGrid", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Watchlist filters" }));
 
-    const frontierLabel = screen.getByText("Christianity: Frontier Group Y/N");
-    const frontierInfo = screen.getByLabelText(
-      "View definition for Christianity: Frontier Group Y/N",
-    );
-    const falseButton = screen.getByRole("button", {
-      name: "Set Watchlist Christianity: Frontier Group Y/N value to FALSE",
-    });
     const thresholdToggle = screen.getByLabelText(
       "Toggle Watchlist Christianity: GSEC",
     );
-    const frontierToggle = screen.getByLabelText(
-      "Toggle Watchlist Christianity: Frontier Group Y/N",
-    );
-
-    expect(
-      frontierLabel.compareDocumentPosition(frontierInfo) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
-    expect(screen.queryByText("=")).toBeNull();
 
     fireEvent.click(thresholdToggle);
-    fireEvent.click(frontierToggle);
-    fireEvent.click(falseButton);
 
     expect(onThresholdEnabledChange.mock.calls[0]?.[0]).toBe(false);
-    expect(onFrontierGroupEnabledChange.mock.calls[0]?.[0]).toBe(false);
-    expect(onFrontierGroupValueChange).toHaveBeenCalledWith(false);
+    expect(screen.queryByText("Christianity: Frontier Group Y/N")).toBeNull();
   });
 
   it("opens the population-believers editor in a dialog and closes it with Done", () => {

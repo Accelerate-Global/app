@@ -205,31 +205,26 @@ describe("dataset-region-filtering", () => {
             sourceIndex: 0,
           },
           {
-            key: "watchlist_frontier",
-            label: "Christianity_Frontier_Group",
-            sourceIndex: 1,
-          },
-          {
             key: "watchlist_engagement_phase",
             label: "Engage_8_Phases_of_Engagement",
-            sourceIndex: 2,
+            sourceIndex: 1,
           },
           {
             key: "watchlist_population",
             label: "PG_Population",
-            sourceIndex: 3,
+            sourceIndex: 2,
           },
           {
             key: "watchlist_percent_evangelical",
             label: "Percent_Evangelical_PGAC",
-            sourceIndex: 4,
+            sourceIndex: 3,
           },
         ],
       }),
     ).toBe(true);
   });
 
-  it("detects watchlist support when the frontier field uses the alias key", () => {
+  it("detects watchlist support when the frontier field is absent", () => {
     expect(
       datasetSupportsWatchlistFiltering({
         ...dataset,
@@ -240,24 +235,19 @@ describe("dataset-region-filtering", () => {
             sourceIndex: 0,
           },
           {
-            key: "frontier_group",
-            label: "Frontier_Group",
-            sourceIndex: 1,
-          },
-          {
             key: "engage_8_phases_of_engagement",
             label: "Engage_8_Phases_of_Engagement",
-            sourceIndex: 2,
+            sourceIndex: 1,
           },
           {
             key: "pg_population",
             label: "PG_Population",
-            sourceIndex: 3,
+            sourceIndex: 2,
           },
           {
             key: "percent_evangelical_pgac",
             label: "Percent_Evangelical_PGAC",
-            sourceIndex: 4,
+            sourceIndex: 3,
           },
         ],
       }),
@@ -900,7 +890,7 @@ describe("dataset-region-filtering", () => {
     ]);
   });
 
-  it("excludes blank and non-numeric watchlist values when filtering is enabled", () => {
+  it("keeps blank or missing watchlist values while still excluding invalid or above-threshold values", () => {
     const filteredRows = filterDatasetRowsByWatchlist(
       [
         {
@@ -909,13 +899,24 @@ describe("dataset-region-filtering", () => {
           data: {
             christianity_gsec: "",
             engage_8_phases_of_engagement: "6",
+            christianity_frontier_group: "TRUE",
+            pg_population: "10000",
+            percent_evangelical_pgac: "5",
+          },
+        },
+        {
+          id: "row-missing",
+          rowIndex: 1,
+          data: {
+            engage_8_phases_of_engagement: "6",
+            christianity_frontier_group: "TRUE",
             pg_population: "10000",
             percent_evangelical_pgac: "5",
           },
         },
         {
           id: "row-nonnumeric",
-          rowIndex: 1,
+          rowIndex: 2,
           data: {
             christianity_gsec: "unknown",
             engage_8_phases_of_engagement: "6",
@@ -926,7 +927,7 @@ describe("dataset-region-filtering", () => {
         },
         {
           id: "row-match",
-          rowIndex: 2,
+          rowIndex: 3,
           data: {
             christianity_gsec: "2",
             engage_8_phases_of_engagement: "6",
@@ -936,8 +937,19 @@ describe("dataset-region-filtering", () => {
           },
         },
         {
+          id: "row-threshold-miss",
+          rowIndex: 4,
+          data: {
+            christianity_gsec: "3",
+            engage_8_phases_of_engagement: "6",
+            christianity_frontier_group: "TRUE",
+            pg_population: "10000",
+            percent_evangelical_pgac: "5",
+          },
+        },
+        {
           id: "row-frontier-false",
-          rowIndex: 3,
+          rowIndex: 5,
           data: {
             christianity_gsec: "1",
             engage_8_phases_of_engagement: "6",
@@ -960,10 +972,15 @@ describe("dataset-region-filtering", () => {
       },
     );
 
-    expect(filteredRows.map((row) => row.id)).toEqual(["row-match"]);
+    expect(filteredRows.map((row) => row.id)).toEqual([
+      "row-blank",
+      "row-missing",
+      "row-match",
+      "row-frontier-false",
+    ]);
   });
 
-  it("keeps only rows whose frontier group value matches false", () => {
+  it("ignores frontier group values when filtering watchlist rows", () => {
     const filteredRows = filterDatasetRowsByWatchlist(
       [
         {
@@ -1009,14 +1026,13 @@ describe("dataset-region-filtering", () => {
         evangelicalBelieversThreshold: 1000,
         evangelicalPercentEnabled: false,
         evangelicalPercentThreshold: 0.05,
-        frontierGroupValue: false,
       },
     );
 
-    expect(filteredRows.map((row) => row.id)).toEqual(["row-false"]);
+    expect(filteredRows.map((row) => row.id)).toEqual(["row-true", "row-false"]);
   });
 
-  it("falls back to the frontier alias key when filtering watchlist rows", () => {
+  it("ignores frontier alias values when filtering watchlist rows", () => {
     const filteredRows = filterDatasetRowsByWatchlist(
       [
         {
@@ -1051,11 +1067,13 @@ describe("dataset-region-filtering", () => {
         evangelicalBelieversThreshold: 1000,
         evangelicalPercentEnabled: false,
         evangelicalPercentThreshold: 0.05,
-        frontierGroupValue: false,
       },
     );
 
-    expect(filteredRows.map((row) => row.id)).toEqual(["row-alias-false"]);
+    expect(filteredRows.map((row) => row.id)).toEqual([
+      "row-alias-true",
+      "row-alias-false",
+    ]);
   });
 
   it("keeps only rows whose evangelical believers count meets the minimum threshold", () => {
@@ -1406,6 +1424,9 @@ describe("dataset-region-filtering", () => {
       isSupported: true,
     });
 
-    expect(filteredRows.map((row) => row.id)).toEqual(["row-india-false"]);
+    expect(filteredRows.map((row) => row.id)).toEqual([
+      "row-india-false",
+      "row-india-frontier-false",
+    ]);
   });
 });

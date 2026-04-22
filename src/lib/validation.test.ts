@@ -276,6 +276,40 @@ describe("datasetAssignDerivedViewSchema", () => {
     expect(result.data.filters.country.includeAlternateCountries).toBe(false);
   });
 
+  it("defaults a missing watchlist frontier-group value to true", () => {
+    const result = datasetAssignDerivedViewSchema.safeParse({
+      sourceDatasetId: "f0000000-0000-4000-8000-000000000099",
+      filters: {
+        region: {
+          enabled: false,
+          selectedRegionIds: [],
+          selectedRegionNames: [],
+          enabledCountryNames: [],
+        },
+        country: {
+          enabled: false,
+          selectedCountryNames: [],
+        },
+        watchlist: {
+          enabled: false,
+          threshold: 2,
+          engagementPhaseThreshold: 6,
+        },
+        uupg: {
+          enabled: false,
+        },
+        sorting: [],
+      },
+    });
+
+    expect(result.success).toBe(true);
+    if (!result.success) {
+      return;
+    }
+
+    expect(result.data.filters.watchlist.frontierGroupValue).toBe(true);
+  });
+
   it("rejects invalid region ids inside the saved filter state", () => {
     const result = datasetAssignDerivedViewSchema.safeParse({
       sourceDatasetId: "f0000000-0000-4000-8000-000000000099",

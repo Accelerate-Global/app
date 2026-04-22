@@ -5,6 +5,7 @@ import {
   buildUiSmokeRunPlan,
   CI_UI_SMOKE_SUPABASE_START_TIMEOUT_MS,
   DEFAULT_SUPABASE_PORT_RELEASE_WAIT,
+  DEFAULT_SUPABASE_STATUS_OUTPUT_RETRY,
   DEFAULT_UI_SMOKE_SUPABASE_START_TIMEOUT_MS,
   getSmokeBootstrapArgs,
   getUiSmokeSupabaseStartTimeoutMs,
@@ -94,6 +95,13 @@ describe("run-ui-smoke", () => {
     });
   });
 
+  it("retries incomplete Supabase status env output a bounded number of times", () => {
+    expect(DEFAULT_SUPABASE_STATUS_OUTPUT_RETRY).toEqual({
+      attempts: 5,
+      retryDelayMs: 2_000,
+    });
+  });
+
   it("resets the local Supabase database without seeding smoke fixtures", () => {
     expect(UI_SMOKE_DB_RESET_ARGS).toEqual([
       "db",
@@ -166,5 +174,14 @@ API_URL="http://127.0.0.1:54321"
 PUBLISHABLE_KEY="sb_publishable_test"
       `),
     ).toBe(false);
+
+    expect(
+      hasUsableSupabaseStatusOutput(`
+export API_URL="http://127.0.0.1:54321"
+export DB_URL="postgresql://postgres:postgres@127.0.0.1:54322/postgres"
+export PUBLISHABLE_KEY="sb_publishable_test"
+export SERVICE_ROLE_KEY="service-role"
+      `),
+    ).toBe(true);
   });
 });

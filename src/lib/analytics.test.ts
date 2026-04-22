@@ -147,6 +147,15 @@ describe("analytics helpers", () => {
     );
   });
 
+  it("does not expose legacy frontier-group analytics event property keys", () => {
+    expect(getAnalyticsEventPropertyKeys("dataset_filters_applied")).not.toContain(
+      "watchlist_frontier_group_enabled",
+    );
+    expect(getAnalyticsEventPropertyKeys("dataset_filters_applied")).not.toContain(
+      "watchlist_frontier_group_value",
+    );
+  });
+
   it("exposes filtered dataset assignment analytics event property keys", () => {
     expect(getAnalyticsEventPropertyKeys("dataset_assigned")).toEqual([
       "source_dataset_id",

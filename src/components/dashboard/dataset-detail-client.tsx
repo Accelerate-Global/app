@@ -39,7 +39,6 @@ import {
   UUPG_DATASET_COLUMN_KEY,
   WATCHLIST_DATASET_COLUMN_KEY,
   WATCHLIST_ENGAGEMENT_PHASES_DATASET_COLUMN_KEY,
-  WATCHLIST_FRONTIER_GROUP_DATASET_COLUMN_KEY,
   WATCHLIST_PERCENT_EVANGELICAL_DATASET_COLUMN_KEY,
   WATCHLIST_POPULATION_DATASET_COLUMN_KEY,
 } from "@/lib/dataset-region-constants";
@@ -231,14 +230,6 @@ export function DatasetDetailClient({
       WATCHLIST_PERCENT_EVANGELICAL_DATASET_COLUMN_KEY
     ]?.effectiveLabel ?? "Percent_Evangelical_PGAC";
   const watchlistPopulationBelieversRuleDefinition = `Build a tiered minimum-believers rule by population. Actual believers are calculated as ${watchlistPopulationLabel} * (${watchlistPercentEvangelicalLabel} / 100), and the implied percentage is shown live for context.`;
-  const watchlistFrontierGroupLabel =
-    fieldDefinitionPresentationByColumnKey[
-      WATCHLIST_FRONTIER_GROUP_DATASET_COLUMN_KEY
-    ]?.effectiveLabel ?? "Christianity_Frontier_Group";
-  const watchlistFrontierGroupDefinition =
-    fieldDefinitionPresentationByColumnKey[
-      WATCHLIST_FRONTIER_GROUP_DATASET_COLUMN_KEY
-    ]?.definition ?? "";
   const uupgFieldLabel =
     fieldDefinitionPresentationByColumnKey[UUPG_DATASET_COLUMN_KEY]
       ?.effectiveLabel ?? "Engage_Global_Engagement_Anywhere";
@@ -296,8 +287,6 @@ export function DatasetDetailClient({
   const [watchlistThresholdEnabled, setWatchlistThresholdEnabled] = useState(
     initialState.watchlistThresholdEnabled,
   );
-  const [watchlistFrontierGroupEnabled, setWatchlistFrontierGroupEnabled] =
-    useState(initialState.watchlistFrontierGroupEnabled);
   const [
     watchlistPopulationBelieversRuleEnabled,
     setWatchlistPopulationBelieversRuleEnabled,
@@ -311,9 +300,6 @@ export function DatasetDetailClient({
     watchlistPopulationBelieversRule,
     setWatchlistPopulationBelieversRule,
   ] = useState(initialState.watchlistPopulationBelieversRule);
-  const [watchlistFrontierGroupValue, setWatchlistFrontierGroupValue] = useState(
-    initialState.watchlistFrontierGroupValue,
-  );
   const [uupgEnabled, setUupgEnabled] = useState(initialState.uupgEnabled);
   const [hotspotsEnabled, setHotspotsEnabled] = useState(
     initialState.hotspotsEnabled,
@@ -401,16 +387,12 @@ export function DatasetDetailClient({
       evangelicalPopulationBelieversRuleEnabled:
         watchlistPopulationBelieversRuleEnabled,
       evangelicalPopulationBelieversRule: watchlistPopulationBelieversRule,
-      frontierGroupEnabled: watchlistFrontierGroupEnabled,
-      frontierGroupValue: watchlistFrontierGroupValue,
     }),
     [
       supportsWatchlistFiltering,
       watchlistEnabled,
       watchlistEngagementPhaseEnabled,
       watchlistEngagementPhaseThreshold,
-      watchlistFrontierGroupEnabled,
-      watchlistFrontierGroupValue,
       watchlistPopulationBelieversRule,
       watchlistPopulationBelieversRuleEnabled,
       watchlistThreshold,
@@ -483,8 +465,6 @@ export function DatasetDetailClient({
         watchlistEngagementPhaseThreshold,
         watchlistPopulationBelieversRuleEnabled,
         watchlistPopulationBelieversRule,
-        watchlistFrontierGroupEnabled,
-        watchlistFrontierGroupValue,
         uupgEnabled,
         hotspotsEnabled,
         hotspotsMetric,
@@ -506,11 +486,9 @@ export function DatasetDetailClient({
       watchlistEngagementPhaseEnabled,
       watchlistEnabled,
       watchlistPopulationBelieversRuleEnabled,
-      watchlistFrontierGroupEnabled,
       watchlistThresholdEnabled,
       watchlistEngagementPhaseThreshold,
       watchlistPopulationBelieversRule,
-      watchlistFrontierGroupValue,
       watchlistThreshold,
     ],
   );
@@ -696,8 +674,6 @@ export function DatasetDetailClient({
         watchlistEngagementPhaseThreshold,
         watchlistPopulationBelieversRuleEnabled,
         watchlistPopulationBelieversRule,
-        watchlistFrontierGroupEnabled,
-        watchlistFrontierGroupValue,
         uupgEnabled,
         hotspotsEnabled,
         hotspotsMetric,
@@ -720,8 +696,6 @@ export function DatasetDetailClient({
       watchlistEngagementPhaseThreshold,
       watchlistPopulationBelieversRuleEnabled,
       watchlistPopulationBelieversRule,
-      watchlistFrontierGroupEnabled,
-      watchlistFrontierGroupValue,
       watchlistThreshold,
       watchlistThresholdEnabled,
     ],
@@ -762,10 +736,6 @@ export function DatasetDetailClient({
             watchlistPopulationBelieversRuleEnabled
               ? watchlistPopulationBelieversRule.tiers.length
               : null,
-          watchlist_frontier_group_enabled: watchlistFrontierGroupEnabled,
-          watchlist_frontier_group_value: watchlistFrontierGroupEnabled
-            ? watchlistFrontierGroupValue
-            : null,
           watchlist_engagement_phase_enabled: watchlistEngagementPhaseEnabled,
           watchlist_engagement_phase_threshold: watchlistEngagementPhaseEnabled
             ? watchlistEngagementPhaseThreshold
@@ -804,8 +774,6 @@ export function DatasetDetailClient({
     watchlistEngagementPhaseThreshold,
     watchlistPopulationBelieversRuleEnabled,
     watchlistPopulationBelieversRule,
-    watchlistFrontierGroupEnabled,
-    watchlistFrontierGroupValue,
     watchlistThreshold,
     watchlistThresholdEnabled,
   ]);
@@ -938,10 +906,6 @@ export function DatasetDetailClient({
         populationBelieversRuleEnabled:
           watchlistPopulationBelieversRuleEnabled,
         populationBelieversRule: watchlistPopulationBelieversRule,
-        frontierGroupLabel: watchlistFrontierGroupLabel,
-        frontierGroupDefinition: watchlistFrontierGroupDefinition,
-        frontierGroupEnabled: watchlistFrontierGroupEnabled,
-        frontierGroupValue: watchlistFrontierGroupValue,
         onEnabledChange: setWatchlistEnabled,
         onThresholdEnabledChange: setWatchlistThresholdEnabled,
         onThresholdChange: handleWatchlistThresholdChange,
@@ -952,8 +916,6 @@ export function DatasetDetailClient({
           setWatchlistPopulationBelieversRuleEnabled,
         onPopulationBelieversRuleChange:
           handleWatchlistPopulationBelieversRuleChange,
-        onFrontierGroupEnabledChange: setWatchlistFrontierGroupEnabled,
-        onFrontierGroupValueChange: setWatchlistFrontierGroupValue,
       },
       uupgCard: {
         enabled: uupgEnabled,
@@ -1008,10 +970,6 @@ export function DatasetDetailClient({
       watchlistEngagementPhaseEnabled,
       watchlistEngagementPhaseLabel,
       watchlistEngagementPhaseThreshold,
-      watchlistFrontierGroupDefinition,
-      watchlistFrontierGroupEnabled,
-      watchlistFrontierGroupLabel,
-      watchlistFrontierGroupValue,
       watchlistPopulationBelieversRule,
       watchlistPopulationBelieversRuleDefinition,
       watchlistPopulationBelieversRuleEnabled,

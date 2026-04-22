@@ -71,14 +71,6 @@ function getWatchlistSummary(savedTable: SavedDatasetTable) {
     summary.push(`Christianity: GSEC <= ${normalizedFilters.watchlist.threshold}`);
   }
 
-  if (normalizedFilters.watchlist.frontierGroupEnabled ?? true) {
-    summary.push(
-      `Frontier Group = ${
-        normalizedFilters.watchlist.frontierGroupValue ? "True" : "False"
-      }`,
-    );
-  }
-
   if (normalizedFilters.watchlist.evangelicalPopulationBelieversRuleEnabled) {
     summary.push(
       ...buildPopulationBelieversRuleSummaryLines(
