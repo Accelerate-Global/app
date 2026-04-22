@@ -39,6 +39,7 @@ import {
   UUPG_DATASET_COLUMN_KEY,
   WATCHLIST_DATASET_COLUMN_KEY,
   WATCHLIST_ENGAGEMENT_PHASES_DATASET_COLUMN_KEY,
+  WATCHLIST_FRONTIER_GROUP_DATASET_COLUMN_KEY,
   WATCHLIST_PERCENT_EVANGELICAL_DATASET_COLUMN_KEY,
   WATCHLIST_POPULATION_DATASET_COLUMN_KEY,
 } from "@/lib/dataset-region-constants";
@@ -54,6 +55,7 @@ import {
   getMatchingRegionIdsForCountries,
   getSelectedRegionCountryNames,
 } from "@/lib/dataset-region-filtering";
+import { getFieldDefinitionCanonicalKeyLookupKeys } from "@/lib/field-definition-canonical";
 import { isGlobalRegionName } from "@/lib/region-display";
 import {
   buildDatasetOpenPreset,
@@ -88,6 +90,45 @@ const WATCHLIST_THRESHOLD_MIN = 0;
 const WATCHLIST_THRESHOLD_MAX = 6;
 const WATCHLIST_ENGAGEMENT_PHASE_MIN = 0;
 const WATCHLIST_ENGAGEMENT_PHASE_MAX = 7;
+const UUPG_FRONTIER_LOOKUP_KEYS = getFieldDefinitionCanonicalKeyLookupKeys(
+  WATCHLIST_FRONTIER_GROUP_DATASET_COLUMN_KEY,
+);
+
+function normalizeDatasetColumnIdentity(value: string | null | undefined) {
+  return value
+    ?.trim()
+    .toLowerCase()
+    .replace(/\s+/g, "_")
+    .replace(/[^a-z0-9_]/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_|_$/g, "") ?? "";
+}
+
+function getFieldPresentationForDatasetColumn(input: {
+  columns: DatasetSummary["columns"];
+  fieldDefinitionPresentationByColumnKey: Record<string, FieldDefinitionPresentation>;
+  lookupKeys: readonly string[];
+  fallbackLabel: string;
+}) {
+  const normalizedLookupKeys = new Set(
+    input.lookupKeys.map((key) => normalizeDatasetColumnIdentity(key)),
+  );
+  const matchingColumn =
+    input.columns.find(
+      (column) =>
+        normalizedLookupKeys.has(normalizeDatasetColumnIdentity(column.key)) ||
+        normalizedLookupKeys.has(normalizeDatasetColumnIdentity(column.label)),
+    ) ?? null;
+  const presentation = matchingColumn
+    ? input.fieldDefinitionPresentationByColumnKey[matchingColumn.key]
+    : null;
+
+  return {
+    definition: presentation?.definition ?? "",
+    effectiveLabel:
+      presentation?.effectiveLabel ?? matchingColumn?.label ?? input.fallbackLabel,
+  };
+}
 const HOTSPOTS_COUNTRY_COUNT_MIN = 1;
 const WATCHLIST_POPULATION_BELIEVERS_RULE_LABEL =
   "Population vs Evangelical Believers";
@@ -230,12 +271,22 @@ export function DatasetDetailClient({
       WATCHLIST_PERCENT_EVANGELICAL_DATASET_COLUMN_KEY
     ]?.effectiveLabel ?? "Percent_Evangelical_PGAC";
   const watchlistPopulationBelieversRuleDefinition = `Build a tiered minimum-believers rule by population. Actual believers are calculated as ${watchlistPopulationLabel} * (${watchlistPercentEvangelicalLabel} / 100), and the implied percentage is shown live for context.`;
-  const uupgFieldLabel =
-    fieldDefinitionPresentationByColumnKey[UUPG_DATASET_COLUMN_KEY]
-      ?.effectiveLabel ?? "Engage_Global_Engagement_Anywhere";
-  const uupgFieldDefinition =
-    fieldDefinitionPresentationByColumnKey[UUPG_DATASET_COLUMN_KEY]
-      ?.definition ?? "";
+  const uupgFieldPresentation = getFieldPresentationForDatasetColumn({
+    columns: dataset.columns,
+    fieldDefinitionPresentationByColumnKey,
+    lookupKeys: [UUPG_DATASET_COLUMN_KEY],
+    fallbackLabel: "Engage_Global_Engagement_Anywhere",
+  });
+  const uupgFieldLabel = uupgFieldPresentation.effectiveLabel;
+  const uupgFieldDefinition = uupgFieldPresentation.definition;
+  const uupgFrontierFieldPresentation = getFieldPresentationForDatasetColumn({
+    columns: dataset.columns,
+    fieldDefinitionPresentationByColumnKey,
+    lookupKeys: UUPG_FRONTIER_LOOKUP_KEYS,
+    fallbackLabel: "Christianity_Frontier_Group",
+  });
+  const uupgFrontierFieldLabel = uupgFrontierFieldPresentation.effectiveLabel;
+  const uupgFrontierFieldDefinition = uupgFrontierFieldPresentation.definition;
   const supportsAlternateCountryFiltering =
     datasetSupportsAlternateCountryFiltering(dataset);
   const supportsCountryFiltering = datasetSupportsCountryFiltering(dataset);
@@ -920,8 +971,16 @@ export function DatasetDetailClient({
       uupgCard: {
         enabled: uupgEnabled,
         supported: supportsUupgFiltering,
-        fieldLabel: uupgFieldLabel,
-        fieldDefinition: uupgFieldDefinition,
+        fields: [
+          {
+            label: uupgFieldLabel,
+            definition: uupgFieldDefinition,
+          },
+          {
+            label: uupgFrontierFieldLabel,
+            definition: uupgFrontierFieldDefinition,
+          },
+        ],
         onEnabledChange: setUupgEnabled,
       },
       hotspotsCard: {
@@ -965,6 +1024,8 @@ export function DatasetDetailClient({
       uupgEnabled,
       uupgFieldDefinition,
       uupgFieldLabel,
+      uupgFrontierFieldDefinition,
+      uupgFrontierFieldLabel,
       watchlistEnabled,
       watchlistEngagementPhaseDefinition,
       watchlistEngagementPhaseEnabled,

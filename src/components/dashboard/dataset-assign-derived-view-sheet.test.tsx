@@ -48,7 +48,7 @@ const filters: SavedDatasetFilterState = {
   region: {
     enabled: true,
     selectedRegionIds: ["region-1"],
-    selectedRegionNames: ["South Asia"],
+    selectedRegionNames: ["Asia, South"],
     enabledCountryNames: ["India", "Nepal"],
   },
   country: {

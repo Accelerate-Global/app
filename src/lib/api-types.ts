@@ -164,18 +164,6 @@ export type DatasetUploadAuthorizationResponse = {
   token: string;
 };
 
-export type FilterRegionsResponse = {
-  regions: FilterRegion[];
-};
-
-export type FilterRegionResponse = {
-  region: FilterRegion;
-};
-
-export type FilterRegionCountryOptionsResponse = {
-  countries: string[];
-};
-
 export type FieldDefinitionLinkedDataset = {
   id: string;
   fileName: string;

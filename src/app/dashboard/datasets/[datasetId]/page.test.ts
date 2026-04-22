@@ -180,7 +180,7 @@ describe("/dashboard/datasets/[datasetId]", () => {
         region: {
           enabled: true,
           selectedRegionIds: ["region-1"],
-          selectedRegionNames: ["South Asia"],
+          selectedRegionNames: ["Asia, South"],
           enabledCountryNames: ["India"],
         },
           country: {
@@ -239,7 +239,7 @@ describe("/dashboard/datasets/[datasetId]", () => {
       region: {
         enabled: true,
         selectedRegionIds: ["region-1"],
-        selectedRegionNames: ["South Asia"],
+        selectedRegionNames: ["Asia, South"],
         enabledCountryNames: ["India"],
       },
       country: {
@@ -408,7 +408,7 @@ describe("/dashboard/datasets/[datasetId]", () => {
         region: {
           enabled: true,
           selectedRegionIds: ["region-1"],
-          selectedRegionNames: ["South Asia"],
+          selectedRegionNames: ["Asia, South"],
           enabledCountryNames: ["India"],
         },
         country: {
@@ -457,7 +457,7 @@ describe("/dashboard/datasets/[datasetId]", () => {
         region: {
           enabled: true,
           selectedRegionIds: ["region-1"],
-          selectedRegionNames: ["South Asia"],
+          selectedRegionNames: ["Asia, South"],
           enabledCountryNames: ["India", "Nepal"],
         },
         country: {

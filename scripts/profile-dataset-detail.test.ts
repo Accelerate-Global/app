@@ -1,3 +1,6 @@
+import { readFile } from "node:fs/promises";
+import path from "node:path";
+
 import { describe, expect, it } from "vitest";
 
 import {
@@ -158,5 +161,19 @@ describe("summarizeSortTrace", () => {
         tokenBuildDurationMs: 0,
       },
     ]);
+  });
+});
+
+describe("profileWarmRegionToggle", () => {
+  it("warms the canonical Asia, South region toggle", async () => {
+    const scriptPath = path.join(
+      process.cwd(),
+      "scripts/profile-dataset-detail.ts",
+    );
+
+    const script = await readFile(scriptPath, "utf8");
+
+    expect(script).toContain('name: "Toggle Asia, South"');
+    expect(script).not.toContain('name: "Toggle South Asia"');
   });
 });

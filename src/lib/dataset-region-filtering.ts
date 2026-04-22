@@ -11,11 +11,13 @@ import {
   getRequiredBelieversForPopulation,
   sanitizePopulationBelieversRule,
 } from "@/lib/evangelical-population-believers-rule";
+import { getFieldDefinitionCanonicalKeyLookupKeys } from "@/lib/field-definition-canonical";
 import {
   HOTSPOTS_UNIQUE_GROUP_DATASET_COLUMN_KEY,
   COUNTRY_ALTERNATE_DATASET_COLUMN_KEY,
   REGION_DATASET_COLUMN_KEY,
   WATCHLIST_ENGAGEMENT_PHASES_DATASET_COLUMN_KEY,
+  WATCHLIST_FRONTIER_GROUP_DATASET_COLUMN_KEY,
   WATCHLIST_PERCENT_EVANGELICAL_DATASET_COLUMN_KEY,
   WATCHLIST_POPULATION_DATASET_COLUMN_KEY,
   WATCHLIST_DATASET_COLUMN_KEY,
@@ -24,6 +26,15 @@ import {
 import { isGlobalRegionName } from "@/lib/region-display";
 
 type DatasetRow = DatasetRowsResponse["rows"][number];
+const WATCHLIST_FRONTIER_GROUP_DATASET_COLUMN_KEYS =
+  getFieldDefinitionCanonicalKeyLookupKeys(
+    WATCHLIST_FRONTIER_GROUP_DATASET_COLUMN_KEY,
+  );
+const WATCHLIST_FRONTIER_GROUP_DATASET_COLUMN_KEY_SET = new Set(
+  WATCHLIST_FRONTIER_GROUP_DATASET_COLUMN_KEYS.map((key) =>
+    normalizeDatasetColumnKey(key),
+  ),
+);
 const datasetRowFilterFacetsCache = new WeakMap<
   DatasetRow,
   DatasetRowFilterFacets
@@ -38,6 +49,7 @@ type DatasetRowFilterFacets = {
   uniqueGroupId: string;
   hasWatchlistValue: boolean;
   watchlistValue: number | null;
+  watchlistFrontierGroupValue: string;
   watchlistPopulation: number | null;
   watchlistPercentEvangelical: number | null;
   watchlistEngagementPhase: number | null;
@@ -167,6 +179,7 @@ function getDatasetRowFilterFacets(row: DatasetRow) {
   let uniqueGroupId = "";
   let hasWatchlistValue = false;
   let watchlistValue: number | null = null;
+  let watchlistFrontierGroupValue = "";
   let watchlistPopulation: number | null = null;
   let watchlistPercentEvangelical: number | null = null;
   let watchlistEngagementPhase: number | null = null;
@@ -209,6 +222,14 @@ function getDatasetRowFilterFacets(row: DatasetRow) {
     }
 
     if (
+      !watchlistFrontierGroupValue &&
+      WATCHLIST_FRONTIER_GROUP_DATASET_COLUMN_KEY_SET.has(normalizedKey)
+    ) {
+      watchlistFrontierGroupValue = normalizeDatasetCellValue(value);
+      continue;
+    }
+
+    if (
       watchlistPopulation === null &&
       normalizedKey === WATCHLIST_POPULATION_DATASET_COLUMN_KEY
     ) {
@@ -241,6 +262,7 @@ function getDatasetRowFilterFacets(row: DatasetRow) {
     uniqueGroupId,
     hasWatchlistValue,
     watchlistValue,
+    watchlistFrontierGroupValue,
     watchlistPopulation,
     watchlistPercentEvangelical,
     watchlistEngagementPhase,
@@ -736,8 +758,20 @@ export function filterDatasetRowsByUupg(
   return rows.filter((row) => isUupgDatasetRow(getDatasetRowFilterFacets(row)));
 }
 
-function isUupgDatasetRow(row: Pick<DatasetRowFilterFacets, "uupgValue">) {
-  return row.uupgValue === "false";
+function matchesExpectedBooleanOrBlank(
+  value: string,
+  expectedValue: "false" | "true",
+) {
+  return value.length === 0 || value === expectedValue;
+}
+
+function isUupgDatasetRow(
+  row: Pick<DatasetRowFilterFacets, "uupgValue" | "watchlistFrontierGroupValue">,
+) {
+  return (
+    matchesExpectedBooleanOrBlank(row.uupgValue, "false") &&
+    matchesExpectedBooleanOrBlank(row.watchlistFrontierGroupValue, "true")
+  );
 }
 
 export function filterDatasetRowsByHotspots(

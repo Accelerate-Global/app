@@ -82,11 +82,11 @@ describe("test-impact", () => {
 
   it("does not require a test delta when no direct same-stem test exists", async () => {
     const rootDir = await createTempRepo();
-    await writeRepoFile(rootDir, "src/components/dashboard/filter-settings-client.tsx");
+    await writeRepoFile(rootDir, "src/components/dashboard/dataset-view-switch-grid.tsx");
 
     const report = await evaluateTestImpact({
       rootDir,
-      changedFiles: ["src/components/dashboard/filter-settings-client.tsx"],
+      changedFiles: ["src/components/dashboard/dataset-view-switch-grid.tsx"],
     });
 
     expect(report.exitCode).toBe(0);

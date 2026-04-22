@@ -20,7 +20,6 @@ export const APP_ANALYTICS_ROUTES = [
   "profile",
   "field_definitions",
   "field_sources",
-  "filter_settings",
   "analytics",
 ] as const;
 
@@ -249,21 +248,6 @@ export type AppAnalyticsEventMap = {
     source_type_id?: string;
     label_length: number;
   };
-  filter_region_created: AppAnalyticsEventBase & {
-    region_id?: string;
-    country_count: number;
-    sort_order: number;
-  };
-  filter_region_updated: AppAnalyticsEventBase & {
-    region_id: string;
-    country_count: number;
-    sort_order: number;
-  };
-  filter_region_deleted: AppAnalyticsEventBase & {
-    region_id: string;
-    country_count: number;
-    sort_order: number;
-  };
   profile_name_updated: AppAnalyticsEventBase;
   email_change_started: AppAnalyticsEventBase;
   account_disabled_self: AppAnalyticsEventBase;
@@ -358,9 +342,6 @@ export const APP_ANALYTICS_EVENT_NAMES = [
   "field_definition_updated",
   "field_source_value_saved",
   "field_source_type_created",
-  "filter_region_created",
-  "filter_region_updated",
-  "filter_region_deleted",
   "profile_name_updated",
   "email_change_started",
   "account_disabled_self",
@@ -495,9 +476,6 @@ const APP_ANALYTICS_EVENT_PROPERTY_KEYS = {
     "has_value",
   ],
   field_source_type_created: ["source_type_id", "label_length"],
-  filter_region_created: ["region_id", "country_count", "sort_order"],
-  filter_region_updated: ["region_id", "country_count", "sort_order"],
-  filter_region_deleted: ["region_id", "country_count", "sort_order"],
   profile_name_updated: [],
   email_change_started: [],
   account_disabled_self: [],
@@ -613,10 +591,6 @@ export function getAnalyticsRouteFromPathname(
 
   if (pathname === "/dashboard/field-sources") {
     return "field_sources";
-  }
-
-  if (pathname === "/dashboard/filter-settings") {
-    return "filter_settings";
   }
 
   if (pathname === "/dashboard/analytics") {

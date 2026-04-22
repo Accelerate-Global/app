@@ -1,22 +1,8 @@
-import { and, asc, eq, ne, sql } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 
 import { getDb } from "@/db";
 import { filterRegionCountries, filterRegions } from "@/db/schema";
-import { refreshAllDerivedDatasets } from "@/lib/datasets";
 import type { FilterRegion } from "@/lib/api-types";
-import { REGION_COUNTRY_OPTIONS } from "@/lib/region-country-options";
-
-function normalizeRegionName(name: string) {
-  return name.trim();
-}
-
-function normalizeRegionDescription(description: string) {
-  return description.trim();
-}
-
-function normalizeCountryName(country: string) {
-  return country.trim();
-}
 
 function toFilterRegion(input: {
   id: string;
@@ -38,34 +24,6 @@ function toFilterRegion(input: {
     createdAt: input.createdAt.toISOString(),
     updatedAt: input.updatedAt.toISOString(),
   };
-}
-
-export class FilterRegionConflictError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "FilterRegionConflictError";
-  }
-}
-
-async function findExistingRegionByName(input: {
-  name: string;
-  excludeRegionId?: string;
-}) {
-  const predicates = [
-    sql`lower(btrim(${filterRegions.name})) = lower(${normalizeRegionName(input.name)})`,
-  ];
-
-  if (input.excludeRegionId) {
-    predicates.push(ne(filterRegions.id, input.excludeRegionId));
-  }
-
-  const [region] = await getDb()
-    .select({ id: filterRegions.id })
-    .from(filterRegions)
-    .where(and(...predicates))
-    .limit(1);
-
-  return region ?? null;
 }
 
 export async function listFilterRegions() {
@@ -124,136 +82,4 @@ export async function listFilterRegions() {
   }
 
   return Array.from(regions.values()).map(toFilterRegion);
-}
-
-export async function createFilterRegion(input: {
-  name: string;
-  description: string;
-  sortOrder: number;
-  countries: string[];
-}) {
-  const normalizedName = normalizeRegionName(input.name);
-  const normalizedDescription = normalizeRegionDescription(input.description);
-  const normalizedCountries = input.countries.map(normalizeCountryName);
-
-  const existingRegion = await findExistingRegionByName({ name: normalizedName });
-
-  if (existingRegion) {
-    throw new FilterRegionConflictError("A region with that name already exists.");
-  }
-
-  const region = await getDb().transaction(async (tx) => {
-    const [createdRegion] = await tx
-      .insert(filterRegions)
-      .values({
-        name: normalizedName,
-        description: normalizedDescription,
-        sortOrder: input.sortOrder,
-      })
-      .returning();
-
-    await tx.insert(filterRegionCountries).values(
-      normalizedCountries.map((countryName) => ({
-        regionId: createdRegion.id,
-        countryName,
-      })),
-    );
-
-    return toFilterRegion({
-      id: createdRegion.id,
-      name: createdRegion.name,
-      description: createdRegion.description,
-      sortOrder: createdRegion.sortOrder,
-      countries: normalizedCountries,
-      createdAt: createdRegion.createdAt,
-      updatedAt: createdRegion.updatedAt,
-    });
-  });
-
-  await refreshAllDerivedDatasets();
-
-  return region;
-}
-
-export async function updateFilterRegion(input: {
-  regionId: string;
-  name: string;
-  description: string;
-  sortOrder: number;
-  countries: string[];
-}) {
-  const normalizedName = normalizeRegionName(input.name);
-  const normalizedDescription = normalizeRegionDescription(input.description);
-  const normalizedCountries = input.countries.map(normalizeCountryName);
-  const existingRegion = await findExistingRegionByName({
-    name: normalizedName,
-    excludeRegionId: input.regionId,
-  });
-
-  if (existingRegion) {
-    throw new FilterRegionConflictError("A region with that name already exists.");
-  }
-
-  const region = await getDb().transaction(async (tx) => {
-    const [updatedRegion] = await tx
-      .update(filterRegions)
-      .set({
-        name: normalizedName,
-        description: normalizedDescription,
-        sortOrder: input.sortOrder,
-        updatedAt: new Date(),
-      })
-      .where(eq(filterRegions.id, input.regionId))
-      .returning();
-
-    if (!updatedRegion) {
-      return null;
-    }
-
-    await tx
-      .delete(filterRegionCountries)
-      .where(eq(filterRegionCountries.regionId, input.regionId));
-
-    await tx.insert(filterRegionCountries).values(
-      normalizedCountries.map((countryName) => ({
-        regionId: input.regionId,
-        countryName,
-      })),
-    );
-
-    return toFilterRegion({
-      id: updatedRegion.id,
-      name: updatedRegion.name,
-      description: updatedRegion.description,
-      sortOrder: updatedRegion.sortOrder,
-      countries: normalizedCountries,
-      createdAt: updatedRegion.createdAt,
-      updatedAt: updatedRegion.updatedAt,
-    });
-  });
-
-  if (!region) {
-    return null;
-  }
-
-  await refreshAllDerivedDatasets();
-
-  return region;
-}
-
-export async function deleteFilterRegion(regionId: string) {
-  const [deletedRegion] = await getDb()
-    .delete(filterRegions)
-    .where(eq(filterRegions.id, regionId))
-    .returning({ id: filterRegions.id });
-
-  if (deletedRegion) {
-    await refreshAllDerivedDatasets();
-  }
-
-  return deletedRegion ?? null;
-}
-
-export async function listRegionCountryOptions() {
-  return [...REGION_COUNTRY_OPTIONS];
 }

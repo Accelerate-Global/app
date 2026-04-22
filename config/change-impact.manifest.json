@@ -309,20 +309,6 @@
       "bootstrapScope": "admin-config"
     },
     {
-      "id": "filter-settings",
-      "label": "Filter Settings routes and region editing flow",
-      "patterns": [
-        "src/app/dashboard/filter-settings/**",
-        "src/components/dashboard/filter-settings-client.tsx",
-        "src/lib/filter-settings.ts",
-        "src/app/api/filter-settings/**"
-      ],
-      "routeIds": ["filter-settings-viewer-redirect", "filter-settings-admin"],
-      "journeyTitles": ["admin can create and update filter settings"],
-      "projectNames": ["desktop-viewer", "desktop-admin"],
-      "bootstrapScope": "admin-config"
-    },
-    {
       "id": "profile",
       "label": "Profile and account settings",
       "patterns": [
@@ -413,8 +399,7 @@
         "src/app/api/datasets/**",
         "src/app/api/field-definitions/**",
         "src/app/api/field-source-types/**",
-        "src/app/api/field-sources/**",
-        "src/app/api/filter-settings/**"
+        "src/app/api/field-sources/**"
       ],
       "databaseSecurityPatterns": [
         ".github/workflows/database-security.yml",

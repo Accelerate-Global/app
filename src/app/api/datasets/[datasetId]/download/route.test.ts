@@ -198,7 +198,7 @@ describe("/api/datasets/[datasetId]/download", () => {
       },
       {
         id: "region-south-asia",
-        name: "South Asia",
+        name: "Asia, South",
         description: "",
         sortOrder: 2,
         countries: ["India", "Nepal"],
@@ -484,7 +484,7 @@ describe("/api/datasets/[datasetId]/download", () => {
         region: {
           enabled: true,
           selectedRegionIds: ["region-south-asia"],
-          selectedRegionNames: ["South Asia"],
+          selectedRegionNames: ["Asia, South"],
           enabledCountryNames: ["India", "Nepal"],
         },
         country: {

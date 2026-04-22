@@ -15,20 +15,22 @@ describe("region-display", () => {
     expect(isGlobeRegionName("South Asia")).toBe(false);
   });
 
-  it("normalizes legacy Globe and South East Asia region names for display", () => {
+  it("normalizes legacy Globe and South region aliases for display", () => {
     expect(normalizeRegionDisplayName("Globe")).toBe("Global");
-    expect(normalizeRegionDisplayName("South East Asia")).toBe("South Asia");
+    expect(normalizeRegionDisplayName("South Asia")).toBe("Asia, South");
+    expect(normalizeRegionDisplayName("South East Asia")).toBe("Asia, Southeast");
     expect(normalizeRegionDisplayName("North Africa")).toBe("North Africa");
   });
 
   it("normalizes region names for matching", () => {
     expect(normalizeRegionMatchName(" Globe ")).toBe("global");
-    expect(normalizeRegionMatchName("South East Asia")).toBe("south asia");
+    expect(normalizeRegionMatchName("South Asia")).toBe("asia, south");
+    expect(normalizeRegionMatchName("South East Asia")).toBe("asia, southeast");
   });
 
-  it("normalizes legacy Globe and South East Asia in product-facing copy", () => {
+  it("normalizes legacy Globe and South region aliases in product-facing copy", () => {
     expect(
-      normalizeRegionDisplayText("Globe coverage across South East Asia."),
-    ).toBe("Global coverage across South Asia.");
+      normalizeRegionDisplayText("Globe coverage across South Asia and South East Asia."),
+    ).toBe("Global coverage across Asia, South and Asia, Southeast.");
   });
 });

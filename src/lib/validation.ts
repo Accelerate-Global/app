@@ -351,27 +351,6 @@ export const savedDatasetTableUpdateSchema = z
     }
   });
 
-export const filterRegionPayloadSchema = z
-  .object({
-    name: z.string().trim().min(1).max(80),
-    description: z.string().trim().max(300),
-    sortOrder: z.number().int().min(1).max(9999),
-    countries: z.array(filterRegionCountrySchema).min(1).max(500),
-  })
-  .superRefine((value, ctx) => {
-    const normalizedCountries = value.countries.map((country) =>
-      country.trim().toLowerCase(),
-    );
-
-    if (new Set(normalizedCountries).size !== normalizedCountries.length) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["countries"],
-        message: "Each country can only be selected once.",
-      });
-    }
-  });
-
 export const fieldDefinitionPatchSchema = z.object({
   displayLabel: z.string().trim().max(256),
   definition: z.string().trim().max(1000),

@@ -73,7 +73,7 @@ const regions: FilterRegion[] = [
   },
   {
     id: "region-south-asia",
-    name: "South Asia",
+    name: "Asia, South",
     description: "",
     sortOrder: 2,
     countries: ["India", "Nepal"],
@@ -90,7 +90,7 @@ describe("dataset-default-view", () => {
         region: {
           enabled: true,
           selectedRegionIds: ["region-south-asia"],
-          selectedRegionNames: ["South Asia"],
+          selectedRegionNames: ["Asia, South"],
           enabledCountryNames: ["India", "Nepal"],
         },
         country: {
@@ -177,13 +177,13 @@ describe("dataset-default-view", () => {
     } satisfies DatasetSummary;
 
     expect(getDatasetDefaultFilters(dataset)?.region.selectedRegionNames).toEqual([
-      "South Asia",
+      "Asia, South",
     ]);
     expect(getDatasetDefaultSorting(dataset)).toEqual([
       { id: "people_name", desc: true },
     ]);
     expect(getDatasetDefaultOpenPreset(dataset)?.region.selectedRegionNames).toEqual([
-      "South Asia",
+      "Asia, South",
     ]);
   });
 
@@ -252,7 +252,7 @@ describe("dataset-default-view", () => {
         region: {
           enabled: true,
           selectedRegionIds: ["region-south-asia"],
-          selectedRegionNames: ["South Asia"],
+          selectedRegionNames: ["Asia, South"],
           enabledCountryNames: ["India", "Nepal"],
         },
         country: {

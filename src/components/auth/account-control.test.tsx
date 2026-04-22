@@ -103,7 +103,6 @@ describe("AccountControl", () => {
       "Dark mode",
       "separator",
       "Field Sources",
-      "Filter Settings",
       "Analytics",
       "User Management",
       "Upload",
@@ -132,7 +131,6 @@ describe("AccountControl", () => {
     const menu = openMenu();
     expect(screen.getByText("viewer@example.com")).toBeTruthy();
     expect(screen.queryByText("Field Sources")).toBeNull();
-    expect(screen.queryByText("Filter Settings")).toBeNull();
     expect(screen.queryByText("Upload")).toBeNull();
     expect(getMenuStructure(menu)).toEqual([
       "separator",

@@ -78,8 +78,6 @@ export type UiSmokeBootstrap = {
     derivedDatasetId: string;
     editableFieldDefinitionId: string;
     editableFieldSourceTypeId: string;
-    southAsiaRegionId: string;
-    latinAmericaRegionId: string;
   };
   users: {
     viewer: {
@@ -154,16 +152,6 @@ export type UiSmokeBootstrap = {
       id: string;
       key: string;
       label: string;
-    };
-  };
-  filterRegions: {
-    southAsia: {
-      id: string;
-      name: string;
-    };
-    latinAmerica: {
-      id: string;
-      name: string;
     };
   };
 };

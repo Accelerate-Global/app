@@ -279,7 +279,7 @@ describe("dataset-region-filtering", () => {
       [
         {
           id: "region-1",
-          name: "South Asia",
+          name: "Asia, South",
           description: "",
           sortOrder: 1,
           countries: ["India", "Nepal"],
@@ -310,7 +310,7 @@ describe("dataset-region-filtering", () => {
       [
         {
           id: "region-1",
-          name: "South Asia",
+          name: "Asia, South",
           description: "",
           sortOrder: 1,
           countries: ["India", "Nepal"],
@@ -350,7 +350,7 @@ describe("dataset-region-filtering", () => {
         },
         {
           id: "region-south-asia",
-          name: "South Asia",
+          name: "Asia, South",
           description: "",
           sortOrder: 2,
           countries: ["India", "Nepal"],
@@ -381,7 +381,7 @@ describe("dataset-region-filtering", () => {
         },
         {
           id: "region-south-asia",
-          name: "South Asia",
+          name: "Asia, South",
           description: "",
           sortOrder: 2,
           countries: ["India", "Nepal"],
@@ -431,7 +431,7 @@ describe("dataset-region-filtering", () => {
         },
         {
           id: "region-south-asia",
-          name: "South Asia",
+          name: "Asia, South",
           description: "",
           sortOrder: 2,
           countries: ["India", "Nepal"],
@@ -440,7 +440,7 @@ describe("dataset-region-filtering", () => {
         },
         {
           id: "region-latin-america",
-          name: "Latin America",
+          name: "America, Latin",
           description: "",
           sortOrder: 3,
           countries: ["Brazil", "Peru"],
@@ -481,7 +481,7 @@ describe("dataset-region-filtering", () => {
         },
         {
           id: "region-south-asia",
-          name: "South Asia",
+          name: "Asia, South",
           description: "",
           sortOrder: 2,
           countries: ["India", "Nepal"],
@@ -619,6 +619,7 @@ describe("dataset-region-filtering", () => {
             pg_peid: "PG-INDIA-1",
             pg_population: "100",
             engage_global_engagement_anywhere: "FALSE",
+            christianity_frontier_group: "TRUE",
           },
         },
         {
@@ -628,7 +629,8 @@ describe("dataset-region-filtering", () => {
             geo_country_name: "India",
             pg_peid: "PG-INDIA-2",
             pg_population: "250",
-            engage_global_engagement_anywhere: "FALSE",
+            engage_global_engagement_anywhere: "",
+            christianity_frontier_group: "TRUE",
           },
         },
         {
@@ -639,6 +641,7 @@ describe("dataset-region-filtering", () => {
             pg_peid: "PG-NEPAL-1",
             pg_population: "500",
             engage_global_engagement_anywhere: "FALSE",
+            christianity_frontier_group: "TRUE",
           },
         },
         {
@@ -648,7 +651,8 @@ describe("dataset-region-filtering", () => {
             geo_country_name: "India",
             pg_peid: "PG-INDIA-3",
             pg_population: "999",
-            engage_global_engagement_anywhere: "TRUE",
+            engage_global_engagement_anywhere: "FALSE",
+            christianity_frontier_group: "FALSE",
           },
         },
       ],
@@ -674,6 +678,7 @@ describe("dataset-region-filtering", () => {
             pg_peid: "PG-BRAZIL-1",
             pg_population: "300",
             engage_global_engagement_anywhere: "FALSE",
+            christianity_frontier_group: "TRUE",
           },
         },
         {
@@ -684,6 +689,7 @@ describe("dataset-region-filtering", () => {
             pg_peid: "PG-INDIA-1",
             pg_population: "300",
             engage_global_engagement_anywhere: "FALSE",
+            christianity_frontier_group: "TRUE",
           },
         },
       ],
@@ -696,6 +702,68 @@ describe("dataset-region-filtering", () => {
     );
 
     expect(filteredRows.map((row) => row.id)).toEqual(["row-brazil"]);
+  });
+
+  it("keeps hotspots aligned with the composite UUPG rule", () => {
+    const filteredRows = filterDatasetRowsByHotspots(
+      [
+        {
+          id: "row-india-match",
+          rowIndex: 0,
+          data: {
+            geo_country_name: "India",
+            pg_peid: "PG-INDIA-1",
+            pg_population: "100",
+            engage_global_engagement_anywhere: "FALSE",
+            frontier_group: "TRUE",
+          },
+        },
+        {
+          id: "row-india-blank-gea",
+          rowIndex: 1,
+          data: {
+            geo_country_name: "India",
+            pg_peid: "PG-INDIA-2",
+            pg_population: "200",
+            engage_global_engagement_anywhere: "",
+            christianity_frontier_group: "TRUE",
+          },
+        },
+        {
+          id: "row-nepal-frontier-false",
+          rowIndex: 2,
+          data: {
+            geo_country_name: "Nepal",
+            pg_peid: "PG-NEPAL-1",
+            pg_population: "300",
+            engage_global_engagement_anywhere: "FALSE",
+            christianity_frontier_group: "FALSE",
+          },
+        },
+        {
+          id: "row-nepal-gea-true",
+          rowIndex: 3,
+          data: {
+            geo_country_name: "Nepal",
+            pg_peid: "PG-NEPAL-2",
+            pg_population: "400",
+            engage_global_engagement_anywhere: "TRUE",
+            christianity_frontier_group: "TRUE",
+          },
+        },
+      ],
+      {
+        enabled: true,
+        isSupported: true,
+        metric: "unique_uupgs",
+        countryCount: 1,
+      },
+    );
+
+    expect(filteredRows.map((row) => row.id)).toEqual([
+      "row-india-match",
+      "row-india-blank-gea",
+    ]);
   });
 
   it("still reads legacy row keys that use the raw header casing", () => {
@@ -765,7 +833,7 @@ describe("dataset-region-filtering", () => {
       [
         {
           id: "region-1",
-          name: "South Asia",
+          name: "Asia, South",
           description: "",
           sortOrder: 1,
           countries: ["India", "Nepal"],
@@ -1214,7 +1282,7 @@ describe("dataset-region-filtering", () => {
     expect(filteredRows).toHaveLength(3);
   });
 
-  it("keeps only rows whose UUPG field normalizes to false", () => {
+  it("keeps rows when UUPG values match the composite null-preserving rule", () => {
     const filteredRows = filterDatasetRowsByUupg(
       [
         {
@@ -1222,6 +1290,7 @@ describe("dataset-region-filtering", () => {
           rowIndex: 0,
           data: {
             engage_global_engagement_anywhere: "FALSE",
+            christianity_frontier_group: "TRUE",
           },
         },
         {
@@ -1229,32 +1298,69 @@ describe("dataset-region-filtering", () => {
           rowIndex: 1,
           data: {
             Engage_Global_Engagement_Anywhere: " false ",
+            frontier_group: " true ",
+          },
+        },
+        {
+          id: "row-blank-gea",
+          rowIndex: 2,
+          data: {
+            engage_global_engagement_anywhere: "",
+            christianity_frontier_group: "TRUE",
+          },
+        },
+        {
+          id: "row-missing-gea",
+          rowIndex: 3,
+          data: {
+            christianity_frontier_group: "TRUE",
+          },
+        },
+        {
+          id: "row-blank-frontier",
+          rowIndex: 4,
+          data: {
+            engage_global_engagement_anywhere: "FALSE",
+            christianity_frontier_group: "",
+          },
+        },
+        {
+          id: "row-missing-frontier",
+          rowIndex: 5,
+          data: {
+            engage_global_engagement_anywhere: "FALSE",
           },
         },
         {
           id: "row-true",
-          rowIndex: 2,
+          rowIndex: 6,
           data: {
             engage_global_engagement_anywhere: "TRUE",
+            christianity_frontier_group: "TRUE",
           },
         },
         {
-          id: "row-blank",
-          rowIndex: 3,
+          id: "row-frontier-false",
+          rowIndex: 7,
           data: {
-            engage_global_engagement_anywhere: "",
+            engage_global_engagement_anywhere: "FALSE",
+            christianity_frontier_group: "FALSE",
           },
         },
         {
-          id: "row-missing",
-          rowIndex: 4,
-          data: {},
+          id: "row-frontier-other",
+          rowIndex: 8,
+          data: {
+            engage_global_engagement_anywhere: "FALSE",
+            christianity_frontier_group: "unknown",
+          },
         },
         {
           id: "row-other",
-          rowIndex: 5,
+          rowIndex: 9,
           data: {
             engage_global_engagement_anywhere: "unknown",
+            christianity_frontier_group: "TRUE",
           },
         },
       ],
@@ -1267,10 +1373,14 @@ describe("dataset-region-filtering", () => {
     expect(filteredRows.map((row) => row.id)).toEqual([
       "row-false-uppercase",
       "row-false-trimmed",
+      "row-blank-gea",
+      "row-missing-gea",
+      "row-blank-frontier",
+      "row-missing-frontier",
     ]);
   });
 
-  it("supports mixed normalized and raw UUPG keys in the same batch", () => {
+  it("supports mixed normalized and raw UUPG and frontier keys in the same batch", () => {
     const filteredRows = filterDatasetRowsByUupg(
       [
         {
@@ -1278,13 +1388,31 @@ describe("dataset-region-filtering", () => {
           rowIndex: 0,
           data: {
             Engage_Global_Engagement_Anywhere: "FALSE",
+            frontier_group: "TRUE",
+          },
+        },
+        {
+          id: "row-uupg-frontier-mixed-match",
+          rowIndex: 1,
+          data: {
+            engage_global_engagement_anywhere: "FALSE",
+            Christianity_Frontier_Group: "TRUE",
           },
         },
         {
           id: "row-uupg-mixed-miss",
-          rowIndex: 1,
+          rowIndex: 2,
           data: {
             engage_global_engagement_anywhere: "TRUE",
+            christianity_frontier_group: "TRUE",
+          },
+        },
+        {
+          id: "row-frontier-mixed-miss",
+          rowIndex: 3,
+          data: {
+            Engage_Global_Engagement_Anywhere: "FALSE",
+            frontier_group: "FALSE",
           },
         },
       ],
@@ -1296,6 +1424,7 @@ describe("dataset-region-filtering", () => {
 
     expect(filteredRows.map((row) => row.id)).toEqual([
       "row-uupg-mixed-match",
+      "row-uupg-frontier-mixed-match",
     ]);
   });
 
@@ -1338,8 +1467,21 @@ describe("dataset-region-filtering", () => {
           },
         },
         {
-          id: "row-nepal-false",
+          id: "row-india-blank-gea",
           rowIndex: 2,
+          data: {
+            geo_country_name: "India",
+            christianity_gsec: "2",
+            engage_8_phases_of_engagement: "6",
+            christianity_frontier_group: "TRUE",
+            pg_population: "20000",
+            percent_evangelical_pgac: "5",
+            engage_global_engagement_anywhere: "",
+          },
+        },
+        {
+          id: "row-nepal-false",
+          rowIndex: 3,
           data: {
             geo_country_name: "Nepal",
             christianity_gsec: "2",
@@ -1352,7 +1494,7 @@ describe("dataset-region-filtering", () => {
         },
         {
           id: "row-india-threshold-miss",
-          rowIndex: 3,
+          rowIndex: 4,
           data: {
             geo_country_name: "India",
             christianity_gsec: "3",
@@ -1365,7 +1507,7 @@ describe("dataset-region-filtering", () => {
         },
         {
           id: "row-india-frontier-false",
-          rowIndex: 4,
+          rowIndex: 5,
           data: {
             geo_country_name: "India",
             christianity_gsec: "1",
@@ -1378,7 +1520,7 @@ describe("dataset-region-filtering", () => {
         },
         {
           id: "row-india-evangelical-believers-miss",
-          rowIndex: 5,
+          rowIndex: 6,
           data: {
             geo_country_name: "India",
             christianity_gsec: "2",
@@ -1391,7 +1533,7 @@ describe("dataset-region-filtering", () => {
         },
         {
           id: "row-india-engagement-phase-miss",
-          rowIndex: 6,
+          rowIndex: 7,
           data: {
             geo_country_name: "India",
             christianity_gsec: "2",
@@ -1426,7 +1568,7 @@ describe("dataset-region-filtering", () => {
 
     expect(filteredRows.map((row) => row.id)).toEqual([
       "row-india-false",
-      "row-india-frontier-false",
+      "row-india-blank-gea",
     ]);
   });
 });

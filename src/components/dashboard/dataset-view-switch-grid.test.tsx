@@ -66,8 +66,16 @@ const baseWatchlistCard = {
 const baseUupgCard = {
   enabled: false,
   supported: true,
-  fieldLabel: "Global Engagement Anywhere",
-  fieldDefinition: "UUPG definition",
+  fields: [
+    {
+      label: "Global Engagement Anywhere",
+      definition: "UUPG definition",
+    },
+    {
+      label: "Christianity: Frontier Group Y/N",
+      definition: "Frontier definition",
+    },
+  ],
   onEnabledChange: vi.fn(),
 };
 
@@ -143,7 +151,7 @@ describe("DatasetViewSwitchGrid", () => {
     expect(screen.queryByText(/Frontier Group/)).toBeNull();
   });
 
-  it("shows Global, normalizes South Asia, and keeps region controls interactive", () => {
+  it("shows canonical region labels and keeps region controls interactive", () => {
     const onSelectorChange = vi.fn();
 
     render(
@@ -183,9 +191,9 @@ describe("DatasetViewSwitchGrid", () => {
     expect(screen.getAllByText("Global")).toHaveLength(2);
     expect(screen.queryByText("Globe")).toBeNull();
     expect(screen.queryByText("South East Asia")).toBeNull();
-    expect(screen.getByText("South Asia")).toBeTruthy();
+    expect(screen.getByText("Asia, Southeast")).toBeTruthy();
 
-    fireEvent.click(screen.getByLabelText("Toggle South Asia"));
+    fireEvent.click(screen.getByLabelText("Toggle Asia, Southeast"));
 
     expect(onSelectorChange).toHaveBeenCalledWith("sea", false);
   });
@@ -205,7 +213,7 @@ describe("DatasetViewSwitchGrid", () => {
             },
             {
               id: "region-1",
-              label: "South Asia",
+              label: "Asia, South",
               checked: false,
               description: "",
               countries: ["India"],
@@ -238,14 +246,14 @@ describe("DatasetViewSwitchGrid", () => {
           selectors: [
             {
               id: "region-1",
-              label: "South Asia",
+              label: "Asia, South",
               checked: true,
               description: "",
               countries: ["India"],
             },
             {
               id: "region-2",
-              label: "Latin America",
+              label: "America, Latin",
               checked: false,
               description: "",
               countries: ["Brazil"],
@@ -288,7 +296,7 @@ describe("DatasetViewSwitchGrid", () => {
           selectors: [
             {
               id: "region-1",
-              label: "South Asia",
+              label: "Asia, South",
               checked: false,
               description: "",
               countries: ["India"],
@@ -311,7 +319,7 @@ describe("DatasetViewSwitchGrid", () => {
       selectors: [
         {
           id: "region-1",
-          label: "South Asia",
+          label: "Asia, South",
           checked: false,
           description: "",
           countries: ["India"],
@@ -676,8 +684,16 @@ describe("DatasetViewSwitchGrid", () => {
         uupgCard={{
           ...baseUupgCard,
           enabled: true,
-          fieldLabel: "Engage: Global Engagement Anywhere? (Y/N)",
-          fieldDefinition: "Tracks whether engagement exists anywhere.",
+          fields: [
+            {
+              label: "Engage: Global Engagement Anywhere? (Y/N)",
+              definition: "Tracks whether engagement exists anywhere.",
+            },
+            {
+              label: "Christianity: Frontier Group Y/N",
+              definition: "Tracks whether the group is classified as frontier.",
+            },
+          ],
         }}
         hotspotsCard={baseHotspotsCard}
       />,
@@ -699,6 +715,12 @@ describe("DatasetViewSwitchGrid", () => {
     expect(
       screen.getByLabelText(
         "View definition for Engage: Global Engagement Anywhere? (Y/N)",
+      ),
+    ).toBeTruthy();
+    expect(screen.getByText("Christianity: Frontier Group Y/N")).toBeTruthy();
+    expect(
+      screen.getByLabelText(
+        "View definition for Christianity: Frontier Group Y/N",
       ),
     ).toBeTruthy();
   });
