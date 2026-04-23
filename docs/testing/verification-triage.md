@@ -18,6 +18,20 @@ First response:
 2. rerun only the blocked command
 3. return to `pnpm run verify:change:run` after the blocked command passes
 
+### Test Gap
+
+Examples:
+
+- `pnpm run verify:test-delta` failures
+- missing mapped repo-local test updates
+- `No tests found` for a command that the current diff requires
+
+First response:
+
+1. add or update the smallest direct test that proves the touched behavior
+2. rerun only the failing test-oriented command
+3. return to `pnpm run verify:change:run` after the narrow command passes
+
 ### Contract / Harness
 
 Examples:
@@ -47,11 +61,11 @@ First response:
 2. rerun the narrow failing command
 3. return to `pnpm run verify:change:run`
 
-## Active Pilot Rule
+## Default Rerun Rule
 
-During the active 3-task UI/admin pilot:
+For repo verification work:
 
-1. write down the failure class before any rerun: `environment`, `contract / harness`, or `product`
+1. write down the failure class before any rerun: `environment`, `test gap`, `contract / harness`, or `product`
 2. rerun only the narrow failing command for that class
 3. return to `pnpm run verify:change:run` after the narrow command passes
 

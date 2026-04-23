@@ -56,7 +56,7 @@ describe("verify-change-report", () => {
     expect(sections.find((section) => section.title === "Planning commands")?.items).toEqual(
       expect.arrayContaining([
         expect.stringContaining(
-          "[planning] pnpm run task:kickoff -- --scope <path-or-glob>: Record the kickoff brief for the current task, including unrelated dirty files when scope is provided. Required during the active 3-task UI/admin pilot.",
+          "[planning] pnpm run task:kickoff -- --scope <path-or-glob>: Record the kickoff brief for the current task, including unrelated dirty files, verification lane, local Supabase need, and the terminal gate.",
         ),
       ]),
     );
@@ -70,6 +70,7 @@ describe("verify-change-report", () => {
     expect(sections.find((section) => section.title === "Workflow warnings")?.items).toEqual(
       [
         "Do not run pnpm run test:ui:smoke manually before pnpm run verify:change:run unless you are isolating a browser-specific failure after targeted smoke or the terminal gate fails.",
+        "Before rerunning a failed check, classify it as environment, test gap, contract / harness, or product and follow docs/testing/verification-triage.md.",
       ],
     );
   });

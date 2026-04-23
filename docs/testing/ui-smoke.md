@@ -43,7 +43,7 @@ Plan the current worktree and required verification commands:
 pnpm run verify:change
 ```
 
-Record the kickoff brief for an AI-agent task and classify unrelated dirty files:
+Record the kickoff brief for an AI-agent task and classify unrelated dirty files, verification lane, and local Supabase need:
 
 ```bash
 pnpm run task:kickoff -- --scope src/app/dashboard/** --scope src/components/auth/**
@@ -103,7 +103,7 @@ pnpm run test:ui:smoke:headed
 
 Use the smoke pipeline in this order:
 
-1. `pnpm run task:kickoff -- --scope <owned-path-or-glob>` when you want a task brief with unrelated dirty paths
+1. `pnpm run task:kickoff -- --scope <owned-path-or-glob>` before editing AI-agent UI, admin, DB, or verification-tooling work
 2. `pnpm run verify:change`
 3. direct tests plus `pnpm run smoke:check` while coding
 4. `pnpm run test:ui:smoke:targeted` only when a browser-specific issue needs debugging
@@ -119,15 +119,17 @@ Failure prefixes are intentional:
 - `[bootstrap]`: local Supabase, auth, storage, or bootstrap preflight problems
 - `[product]`: app behavior, build, or runtime regressions
 
-## Active Pilot Window
+## Verification-First Workflow
 
-The next 3 AI-agent UI and admin tasks are the rollout pilot for this workflow.
+This is the default repo workflow for AI-agent UI, admin, DB, and verification-tooling tasks.
 
 - Run `pnpm run task:kickoff -- --scope <owned-path-or-glob>` before editing so the task starts with an explicit ownership and verification brief.
+- Keep the brief focused on: unrelated dirty paths, verification lane, required commands, targeted smoke subset, and local Supabase need.
 - Use direct tests and `pnpm run smoke:check` while coding; keep `pnpm run test:ui:smoke:targeted` for browser-only debugging.
-- Before rerunning a failed verification command, classify it as `environment`, `contract / harness`, or `product`.
+- Before rerunning a failed verification command, classify it as `environment`, `test gap`, `contract / harness`, or `product`.
 - Rerun only the narrow failing command after classification, then return to `pnpm run verify:change:run`.
 - Keep `pnpm run verify:change:run` as the single terminal gate for the current candidate tracked tree.
+- Use [/Users/blake/Documents/accelerate-global/online/docs/testing/verification-first-delivery.md](/Users/blake/Documents/accelerate-global/online/docs/testing/verification-first-delivery.md) for the full verification-first loop outside smoke-specific rules.
 
 ## Required Contracts
 
@@ -244,11 +246,12 @@ When you add a new shared primitive under `src/components/ui`:
 
 ## Verification Intent
 
-At the start of any UI, DB, or migration task, write a short verification intent before coding:
+At the start of any UI, DB, migration, or verification-tooling task, write a short verification intent before coding:
 
 - changed area
 - required commands from `pnpm run verify:change`
 - targeted smoke subset from `pnpm run verify:change`
+- whether local Supabase is needed
 
 For AI-agent work, prefer the thin-slice loop:
 
@@ -260,7 +263,7 @@ For AI-agent work, prefer the thin-slice loop:
 
 Use `pnpm run verify:ship:local` as the final local merge or release gate. It reuses prior local receipts on the same tracked tree and, when both targeted and full browser smoke are still needed, runs them against one Supabase/bootstrap/build session. Do not finalize work if `verify:change` reports missing required test updates or if targeted smoke cannot select any real Playwright tests.
 
-Do not run `pnpm run test:ui:smoke` manually before `pnpm run verify:change:run` unless you are isolating a browser-specific failure after targeted smoke or the terminal gate fails. Use [/Users/blake/Documents/accelerate-global/online/docs/testing/verification-triage.md](/Users/blake/Documents/accelerate-global/online/docs/testing/verification-triage.md) for first-response steps by failure class.
+Do not run `pnpm run test:ui:smoke` manually before `pnpm run verify:change:run` unless you are isolating a browser-specific failure after targeted smoke or the terminal gate fails. Use [/Users/blake/Documents/accelerate-global/online/docs/testing/verification-triage.md](/Users/blake/Documents/accelerate-global/online/docs/testing/verification-triage.md) for first-response steps by failure class and [/Users/blake/Documents/accelerate-global/online/docs/testing/verification-first-delivery.md](/Users/blake/Documents/accelerate-global/online/docs/testing/verification-first-delivery.md) for the repo-wide delivery loop.
 
 ## CI
 

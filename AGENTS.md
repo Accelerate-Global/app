@@ -83,17 +83,17 @@ Full rules and examples live in [/Users/blake/Documents/accelerate-global/online
 Treat `pnpm run verify:change` as the local planning gate for repo-tracked edits.
 
 - After initial exploration, run `pnpm run verify:change` before writing code.
-- For AI-agent UI and admin tasks, prefer `pnpm run task:kickoff -- --scope <owned-path-or-glob>` right after exploration so the kickoff brief captures owned paths, unrelated dirty paths, required commands, targeted smoke subset, and the terminal gate.
-- During the active 3-task UI/admin pilot, treat `pnpm run task:kickoff -- --scope <owned-path-or-glob>` as required before editing, not optional.
+- For AI-agent UI, admin, DB, and verification-tooling tasks, run `pnpm run task:kickoff -- --scope <owned-path-or-glob>` right after exploration so the kickoff brief captures owned paths, unrelated dirty paths, verification lane, local Supabase need, required commands, targeted smoke subset, and the terminal gate.
 - Treat the repo definition of done as blocking policy:
   - if a changed repo file already has a direct same-stem repo-local test, at least one mapped test file must be created or updated in the same diff
   - every command listed under `pnpm run verify:change` “Required commands” must run and pass locally before the agent finalizes
   - `No tests found`, skipped required checks, missing test deltas, and failing required checks are blockers
   - if repo-owned verification tooling fails, the agent must fix that tooling failure instead of stopping at “implementation complete”
-- For UI, DB, or migration tasks, state a short verification intent before coding:
+- For UI, DB, migration, or verification-tooling tasks, state a short verification intent before coding:
   - changed area
   - required commands from `pnpm run verify:change`
   - targeted smoke subset from `pnpm run verify:change`
+  - whether local Supabase is needed
 - Prefer the thin-slice loop while coding:
   - direct tests for touched units or components first
   - `pnpm run smoke:check` when UI contracts changed
@@ -105,9 +105,10 @@ Treat `pnpm run verify:change` as the local planning gate for repo-tracked edits
 - Use `pnpm run verify:ship:local` as the single pre-ship local gate. It reuses prior passes on the same tracked tree and runs any remaining release-only smoke work before `pnpm ship --pr <number>`.
 - Use standalone `pnpm run test:ui:smoke:targeted` and `pnpm run test:ui:smoke` only for focused debugging, ad hoc verification, or when `pnpm run verify:change` explicitly requires them.
 - Do not run `pnpm run test:ui:smoke` manually before `pnpm run verify:change:run` unless targeted smoke or the terminal gate already proved the failure is browser-specific.
-- During the active 3-task UI/admin pilot, classify every failed verification rerun as `environment`, `contract / harness`, or `product` before rerunning the narrow failing command and returning to `pnpm run verify:change:run`.
+- Classify every failed verification rerun as `environment`, `test gap`, `contract / harness`, or `product` before rerunning the narrow failing command and returning to `pnpm run verify:change:run`.
 - If `pnpm run test:ui:smoke`, `pnpm run db:security`, or `pnpm run verify:change:run` is blocked by an already-running repo-local Supabase stack, stop or reset that stack first and then continue the required command instead of stopping to ask.
 - Use [/Users/blake/Documents/accelerate-global/online/config/change-impact.ts](/Users/blake/Documents/accelerate-global/online/config/change-impact.ts) as the canonical rule set for impacted domains and verification commands.
+- Use [/Users/blake/Documents/accelerate-global/online/docs/testing/verification-first-delivery.md](/Users/blake/Documents/accelerate-global/online/docs/testing/verification-first-delivery.md) as the default repo workflow for verification-first delivery.
 - Use [/Users/blake/Documents/accelerate-global/online/docs/testing/ui-smoke.md](/Users/blake/Documents/accelerate-global/online/docs/testing/ui-smoke.md) for the detailed smoke contract and examples.
 - Use [/Users/blake/Documents/accelerate-global/online/docs/testing/verification-triage.md](/Users/blake/Documents/accelerate-global/online/docs/testing/verification-triage.md) for the fastest next step when verification fails.
 

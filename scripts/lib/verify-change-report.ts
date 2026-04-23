@@ -16,7 +16,7 @@ export type ReportSection = {
 };
 
 const planningCommands = [
-  "[planning] pnpm run task:kickoff -- --scope <path-or-glob>: Record the kickoff brief for the current task, including unrelated dirty files when scope is provided. Required during the active 3-task UI/admin pilot.",
+  "[planning] pnpm run task:kickoff -- --scope <path-or-glob>: Record the kickoff brief for the current task, including unrelated dirty files, verification lane, local Supabase need, and the terminal gate.",
   "[planning] pnpm run verify:change: Plan the current worktree and required verification commands before editing.",
 ] as const;
 
@@ -27,6 +27,7 @@ const terminalGuidance = [
 
 const workflowWarnings = [
   "Do not run pnpm run test:ui:smoke manually before pnpm run verify:change:run unless you are isolating a browser-specific failure after targeted smoke or the terminal gate fails.",
+  "Before rerunning a failed check, classify it as environment, test gap, contract / harness, or product and follow docs/testing/verification-triage.md.",
 ] as const;
 
 export function printSection(title: string, items: string[]) {
