@@ -343,7 +343,7 @@ function DatasetFilterNumberControl({
       onValueChange={(nextValue) => onValueChange(nextValue ?? min)}
       className={cn("w-full sm:w-[10rem]", className)}
     >
-      <NumberFieldGroup className="h-10 overflow-hidden rounded-xl border-border/70 bg-background/80 text-foreground shadow-xs shadow-black/5 focus-within:border-foreground/20 focus-within:ring-foreground/10">
+      <NumberFieldGroup className="h-10 items-stretch justify-start overflow-hidden rounded-xl border-border/70 bg-background/80 text-foreground shadow-xs shadow-black/5 focus-within:border-foreground/20 focus-within:ring-foreground/10">
         <span
           aria-hidden="true"
           data-slot="number-field-operator"
@@ -356,8 +356,9 @@ function DatasetFilterNumberControl({
           aria-label={`Decrease ${label}`}
         />
         <NumberFieldInput
-          className="border-r border-border/70 px-3 text-center text-sm font-semibold tracking-[-0.02em] text-foreground"
+          className="min-w-[3ch] border-r border-border/70 bg-background/35 px-3 text-center text-sm font-semibold leading-none tracking-[-0.02em] text-foreground caret-foreground"
           aria-label={label}
+          style={{ WebkitTextFillColor: "currentColor" }}
         />
         <NumberFieldIncrement
           className="rounded-none border-0 text-muted-foreground hover:bg-accent/40 hover:text-foreground"
@@ -961,7 +962,7 @@ function DatasetViewSwitchGridInner({
                   <p className="text-[0.72rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
                     Phase range
                   </p>
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <div className="flex flex-col items-start gap-2">
                     <DatasetFilterNumberControl
                       label="Watchlist engagement min phase"
                       value={watchlistCard.engagementPhaseRule.minPhase}
@@ -975,9 +976,9 @@ function DatasetViewSwitchGridInner({
                           minPhase,
                         })
                       }
-                      className="sm:w-full"
+                      className="sm:w-[12rem]"
                     />
-                    <span className="text-sm font-medium text-muted-foreground">
+                    <span className="pl-1 text-sm font-medium text-muted-foreground">
                       to
                     </span>
                     <DatasetFilterNumberControl
@@ -993,7 +994,7 @@ function DatasetViewSwitchGridInner({
                           maxPhase,
                         })
                       }
-                      className="sm:w-full"
+                      className="sm:w-[12rem]"
                     />
                   </div>
                 </div>

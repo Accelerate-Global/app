@@ -747,6 +747,35 @@ describe("DatasetViewSwitchGrid", () => {
     expect(onEngagementPhaseRuleReset).toHaveBeenCalledTimes(1);
   });
 
+  it("stacks the engagement phase range controls and keeps the values visible", () => {
+    render(
+      <DatasetViewSwitchGrid
+        regionCard={baseRegionCard}
+        countryCard={baseCountryCard}
+        watchlistCard={{ ...baseWatchlistCard, enabled: true }}
+        uupgCard={baseUupgCard}
+        hotspotsCard={baseHotspotsCard}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Watchlist filters" }));
+
+    const phaseRangeControls = screen.getByText("Phase range").nextElementSibling;
+    const minPhaseInput = screen.getByLabelText(
+      "Watchlist engagement min phase",
+    ) as HTMLInputElement;
+    const maxPhaseInput = screen.getByLabelText(
+      "Watchlist engagement max phase",
+    ) as HTMLInputElement;
+
+    expect(phaseRangeControls?.className).toContain("flex-col");
+    expect(phaseRangeControls?.className).not.toContain("sm:flex-row");
+    expect(minPhaseInput.value).toBe("2");
+    expect(maxPhaseInput.value).toBe("5");
+    expect(minPhaseInput.style.webkitTextFillColor).toBe("currentcolor");
+    expect(maxPhaseInput.style.webkitTextFillColor).toBe("currentcolor");
+  });
+
   it("uses an auto-fit layout for the JP-only rule controls", () => {
     render(
       <DatasetViewSwitchGrid
