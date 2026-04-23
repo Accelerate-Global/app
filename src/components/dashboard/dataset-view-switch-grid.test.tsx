@@ -41,14 +41,10 @@ const baseWatchlistCard = {
   thresholdDefinition: "GSEC definition",
   thresholdEnabled: true,
   threshold: 2,
-  minThreshold: 0,
-  maxThreshold: 6,
   engagementPhaseLabel: "Engage: 8 Phases of Engagement",
-  engagementPhaseDefinition: "Engagement phase definition",
-  engagementPhaseEnabled: true,
-  engagementPhaseThreshold: 6,
-  minEngagementPhaseThreshold: 0,
-  maxEngagementPhaseThreshold: 7,
+  engagementPhaseDefinition:
+    "Engagement phase definition\n\nWatchlist hardcodes this filter to keep only values 2-5.",
+  engagementPhaseSummary: "Engage: 8 Phases of Engagement 2-5 only",
   populationBelieversRuleLabel: "Population vs Evangelical Believers",
   populationBelieversRuleDefinition:
     "Build a tiered minimum-believers rule by population.",
@@ -56,9 +52,6 @@ const baseWatchlistCard = {
   populationBelieversRule: DEFAULT_POPULATION_BELIEVERS_RULE,
   onEnabledChange: vi.fn(),
   onThresholdEnabledChange: vi.fn(),
-  onThresholdChange: vi.fn(),
-  onEngagementPhaseEnabledChange: vi.fn(),
-  onEngagementPhaseThresholdChange: vi.fn(),
   onPopulationBelieversRuleEnabledChange: vi.fn(),
   onPopulationBelieversRuleChange: vi.fn(),
 };
@@ -147,7 +140,7 @@ describe("DatasetViewSwitchGrid", () => {
     expect(screen.getByText("Under 5,000 -> at least 50 believers")).toBeTruthy();
     expect(screen.getByText("5,000-10,000 -> at least 75 believers")).toBeTruthy();
     expect(screen.getByText("Over 10,000 -> at least 100 believers")).toBeTruthy();
-    expect(screen.getByText("Engage: 8 Phases of Engagement >= 6")).toBeTruthy();
+    expect(screen.getByText("Engage: 8 Phases of Engagement 2-5 only")).toBeTruthy();
     expect(screen.queryByText(/Frontier Group/)).toBeNull();
   });
 
@@ -366,7 +359,7 @@ describe("DatasetViewSwitchGrid", () => {
     expect(screen.queryByLabelText("Toggle Country")).toBeNull();
   });
 
-  it("reveals watchlist descriptions and controls only when expanded", () => {
+  it("reveals watchlist descriptions and keeps phases of engagement read-only", () => {
     render(
       <DatasetViewSwitchGrid
         regionCard={baseRegionCard}
@@ -387,26 +380,17 @@ describe("DatasetViewSwitchGrid", () => {
     expect(
       screen.queryByLabelText("Christianity: GSEC"),
     ).toBeNull();
+    expect(
+      screen.queryByText("Keep only values 2-5."),
+    ).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "Watchlist filters" }));
 
-    const thresholdInput = screen.getByLabelText(
-      "Christianity: GSEC",
-    ) as HTMLInputElement;
     const thresholdLabel = screen.getByText("Christianity: GSEC");
     const ruleLabel = screen.getByText("Population vs Evangelical Believers");
     const engagementLabel = screen.getByText("Engage: 8 Phases of Engagement");
     const thresholdInfo = screen.getByLabelText(
       "View definition for Christianity: GSEC",
-    );
-    const thresholdControl = thresholdInput.closest(
-      "[data-slot='number-field-group']",
-    );
-    const thresholdOperator = thresholdControl?.querySelector(
-      "[data-slot='number-field-operator']",
-    ) as HTMLElement | null;
-    const thresholdDecrement = screen.getByLabelText(
-      "Decrease Christianity: GSEC",
     );
 
     expect(
@@ -420,25 +404,11 @@ describe("DatasetViewSwitchGrid", () => {
         "These filters can return incorrect results while the Watchlist logic is being fixed. Do not rely on this section yet.",
       ),
     ).toBeTruthy();
-    expect(thresholdInput.value).toBe("2");
-    expect(thresholdInput.disabled).toBe(true);
+    expect(screen.getByText("<= 2")).toBeTruthy();
+    expect(screen.queryByLabelText("Christianity: GSEC")).toBeNull();
+    expect(screen.queryByLabelText("Decrease Christianity: GSEC")).toBeNull();
     expect(
       thresholdLabel.compareDocumentPosition(thresholdInfo) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
-    expect(
-      thresholdOperator?.textContent,
-    ).toBe("<=");
-    expect(thresholdOperator).toBeTruthy();
-    if (!thresholdOperator) {
-      throw new Error("Expected threshold operator to render inside the control");
-    }
-    expect(
-      thresholdOperator.compareDocumentPosition(thresholdDecrement) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
-    expect(
-      thresholdDecrement.compareDocumentPosition(thresholdInput) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
     expect(
@@ -463,7 +433,15 @@ describe("DatasetViewSwitchGrid", () => {
         "Open the popup editor to adjust breakpoints, minimum believers, and the scenario test dot.",
       ),
     ).toBeTruthy();
-    expect(screen.getByLabelText("Engage: 8 Phases of Engagement")).toBeTruthy();
+    expect(screen.getByText("Keep only values 2-5.")).toBeTruthy();
+    expect(
+      screen.queryByLabelText("Engage: 8 Phases of Engagement"),
+    ).toBeNull();
+    expect(
+      screen.queryByLabelText(
+        "Toggle Watchlist Engage: 8 Phases of Engagement",
+      ),
+    ).toBeNull();
   });
 
   it("keeps country search interactive and auto-enables the filter on selection", () => {

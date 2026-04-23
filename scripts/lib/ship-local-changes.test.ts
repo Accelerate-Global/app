@@ -30,10 +30,11 @@ describe("ship-local-changes", () => {
 
       if (
         command === "git" &&
-        args.join(" ") === "diff --name-only -z origin/main...HEAD"
+        args.join(" ") === "diff --name-status -z origin/main...HEAD"
       ) {
         return {
-          stdout: "scripts/ship.ts\0scripts/verify-ship-local.ts\0",
+          stdout:
+            "M\0scripts/ship.ts\0A\0scripts/verify-ship-local.ts\0D\0scripts/legacy-ship.ts\0R100\0scripts/old.ts\0scripts/new.ts\0",
           stderr: "",
           exitCode: 0,
         };
@@ -45,7 +46,34 @@ describe("ship-local-changes", () => {
     await expect(getShipLocalDiff()).resolves.toEqual({
       baseRef: "origin/main",
       headRef: "HEAD",
-      changedFiles: ["scripts/ship.ts", "scripts/verify-ship-local.ts"],
+      changedFiles: [
+        "scripts/ship.ts",
+        "scripts/verify-ship-local.ts",
+        "scripts/legacy-ship.ts",
+        "scripts/new.ts",
+      ],
+      changedEntries: [
+        {
+          path: "scripts/ship.ts",
+          status: "M",
+          displayPath: "scripts/ship.ts",
+        },
+        {
+          path: "scripts/verify-ship-local.ts",
+          status: "A",
+          displayPath: "scripts/verify-ship-local.ts",
+        },
+        {
+          path: "scripts/legacy-ship.ts",
+          status: "D",
+          displayPath: "scripts/legacy-ship.ts",
+        },
+        {
+          path: "scripts/new.ts",
+          status: "R100",
+          displayPath: "scripts/new.ts (from scripts/old.ts)",
+        },
+      ],
     });
     expect(runCommandMock.mock.calls).toEqual([
       [
@@ -65,7 +93,7 @@ describe("ship-local-changes", () => {
       ],
       [
         "git",
-        ["diff", "--name-only", "-z", "origin/main...HEAD"],
+        ["diff", "--name-status", "-z", "origin/main...HEAD"],
         expect.objectContaining({
           quiet: true,
           stdinMode: "ignore",
@@ -101,7 +129,7 @@ describe("ship-local-changes", () => {
 
       if (
         command === "git" &&
-        args.join(" ") === "diff --name-only -z origin/main...HEAD"
+        args.join(" ") === "diff --name-status -z origin/main...HEAD"
       ) {
         throw new Error("diff failed");
       }

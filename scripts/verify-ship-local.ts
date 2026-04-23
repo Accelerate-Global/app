@@ -4,7 +4,6 @@ import {
   buildLocalVerificationPlan,
   executeLocalVerificationPlan,
 } from "./lib/local-verification";
-import { type GitChangedFile } from "./lib/git-status";
 import { getShipLocalDiff } from "./lib/ship-local-changes";
 import { evaluateTestImpact } from "./lib/test-impact";
 import { analyzeUiSmokeContracts } from "./lib/ui-smoke-contract";
@@ -35,11 +34,7 @@ export async function collectShipLocalVerificationReport() {
 
   return {
     shipLocalDiff,
-    changedFiles: changedFiles.map((filePath) => ({
-      path: filePath,
-      status: "M",
-      displayPath: filePath,
-    })) satisfies GitChangedFile[],
+    changedFiles: shipLocalDiff.changedEntries,
     report,
   };
 }

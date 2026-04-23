@@ -30,6 +30,7 @@ export type DatasetSummary = {
   backingDatasetId: string | null;
   sortOrder: number;
   fileName: string;
+  sourceOrganizationName?: string | null;
   blobUrl: string;
   blobPath: string;
   isPrimary: boolean;
@@ -44,6 +45,17 @@ export type DatasetSummary = {
   error: string | null;
   createdAt: string;
   updatedAt: string;
+};
+
+export type DataLakeSource = {
+  datasetId: string;
+  displayName: string;
+  sourceOrganizationName: string | null;
+  datasetFileName: string;
+  lastUploadAt: string;
+  status: DatasetStatus;
+  rowCount: number;
+  isPublic: boolean;
 };
 
 export type DatasetVersionSummary = {

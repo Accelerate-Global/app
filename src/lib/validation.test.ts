@@ -79,6 +79,32 @@ describe("datasetMetadataPatchSchema", () => {
       },
     ]);
   });
+
+  it("accepts an explicit source organization name", () => {
+    const result = datasetMetadataPatchSchema.safeParse({
+      sourceOrganizationName: " Joshua Project ",
+    });
+
+    expect(result.success).toBe(true);
+    if (!result.success) {
+      return;
+    }
+
+    expect(result.data.sourceOrganizationName).toBe("Joshua Project");
+  });
+
+  it("allows admins to clear a source organization name", () => {
+    const result = datasetMetadataPatchSchema.safeParse({
+      sourceOrganizationName: null,
+    });
+
+    expect(result.success).toBe(true);
+    if (!result.success) {
+      return;
+    }
+
+    expect(result.data.sourceOrganizationName).toBeNull();
+  });
 });
 
 describe("datasetAssignDerivedViewSchema", () => {

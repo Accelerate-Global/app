@@ -2,8 +2,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getDb } from "@/db";
 import {
+  buildAnalyticsFailureFingerprint,
   createStoredAnalyticsEventRecord,
   getAnalyticsDashboardData,
+  isActionableAnalyticsFailure,
+  resolveAnalyticsFailure,
   resolveAnalyticsDashboardFilters,
 } from "@/lib/analytics-store";
 
@@ -85,6 +88,62 @@ describe("analytics-store payload shaping", () => {
     expect(record.actorOwnerId).toBe("owner-1");
     expect(record.workspaceRole).toBe("admin");
   });
+
+  it("builds stable analytics failure fingerprints", () => {
+    expect(
+      buildAnalyticsFailureFingerprint({
+        eventName: "dataset_upload_failed",
+        route: "upload",
+        sourceSurface: "dataset_upload",
+        errorCode: "authorize_failed",
+      }),
+    ).toBe("dataset_upload_failed|authorize_failed|upload|dataset_upload");
+  });
+
+  it("treats invalid sign-in credentials as non-actionable", () => {
+    expect(
+      isActionableAnalyticsFailure({
+        eventName: "auth_sign_in_failed",
+        errorCode: "invalid_credentials",
+      }),
+    ).toBe(false);
+    expect(
+      isActionableAnalyticsFailure({
+        eventName: "dataset_upload_failed",
+        errorCode: "authorize_failed",
+      }),
+    ).toBe(true);
+  });
+});
+
+describe("analytics-store failure resolution writes", () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+  });
+
+  it("upserts the latest analytics failure resolution", async () => {
+    const onConflictDoUpdate = vi.fn();
+    const values = vi.fn(() => ({ onConflictDoUpdate }));
+    const insert = vi.fn(() => ({ values }));
+
+    getDbMock.mockReturnValue({
+      insert,
+    } as never);
+
+    await resolveAnalyticsFailure({
+      fingerprint: "dataset_upload_failed|authorize_failed|upload|dataset_upload",
+      resolvedByOwnerId: "admin-1",
+      resolvedAt: new Date("2026-04-22T22:00:00.000Z"),
+    });
+
+    expect(insert).toHaveBeenCalledTimes(1);
+    expect(values).toHaveBeenCalledWith({
+      fingerprint: "dataset_upload_failed|authorize_failed|upload|dataset_upload",
+      resolvedByOwnerId: "admin-1",
+      resolvedAt: new Date("2026-04-22T22:00:00.000Z"),
+    });
+    expect(onConflictDoUpdate).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("analytics-store dashboard queries", () => {
@@ -127,6 +186,35 @@ describe("analytics-store dashboard queries", () => {
         createdAt: new Date("2026-04-18T15:00:00.000Z"),
       },
     ]);
+    const knownFailuresQuery = createQueryMock([
+      {
+        fingerprint: "dataset_upload_failed|authorize_failed|upload|dataset_upload",
+        eventName: "dataset_upload_failed",
+        route: "upload",
+        sourceSurface: "dataset_upload",
+        errorCode: "authorize_failed",
+        occurrenceCount: "2",
+        firstSeenAt: new Date("2026-04-18T15:00:00.000Z"),
+        lastSeenAt: new Date("2026-04-18T17:00:00.000Z"),
+      },
+      {
+        fingerprint: "auth_sign_in_failed|invalid_credentials|sign_in|auth_form",
+        eventName: "auth_sign_in_failed",
+        route: "sign_in",
+        sourceSurface: "auth_form",
+        errorCode: "invalid_credentials",
+        occurrenceCount: "4",
+        firstSeenAt: new Date("2026-04-18T14:00:00.000Z"),
+        lastSeenAt: new Date("2026-04-18T18:00:00.000Z"),
+      },
+    ]);
+    const knownFailureResolutionsQuery = createQueryMock([
+      {
+        fingerprint: "dataset_upload_failed|authorize_failed|upload|dataset_upload",
+        resolvedByOwnerId: "admin-1",
+        resolvedAt: new Date("2026-04-18T16:00:00.000Z"),
+      },
+    ]);
     const rowsQuery = createQueryMock([
       {
         id: "event-2",
@@ -153,6 +241,8 @@ describe("analytics-store dashboard queries", () => {
         .mockReturnValueOnce(eventBreakdownQuery)
         .mockReturnValueOnce(routeBreakdownQuery)
         .mockReturnValueOnce(failureQuery)
+        .mockReturnValueOnce(knownFailuresQuery)
+        .mockReturnValueOnce(knownFailureResolutionsQuery)
         .mockReturnValueOnce(rowsQuery),
     } as never);
 
@@ -181,6 +271,18 @@ describe("analytics-store dashboard queries", () => {
     expect(result.routeBreakdown).toEqual([
       { key: "dashboard", count: 34 },
       { key: "analytics", count: 17 },
+    ]);
+    expect(result.knownFailures).toEqual([
+      {
+        fingerprint: "dataset_upload_failed|authorize_failed|upload|dataset_upload",
+        eventName: "dataset_upload_failed",
+        route: "upload",
+        sourceSurface: "dataset_upload",
+        errorCode: "authorize_failed",
+        occurrenceCount: 2,
+        firstSeenAt: "2026-04-18T15:00:00.000Z",
+        lastSeenAt: "2026-04-18T17:00:00.000Z",
+      },
     ]);
     expect(result.recentFailures[0]?.createdAt).toBe("2026-04-18T15:00:00.000Z");
     expect(result.events[0]?.createdAt).toBe("2026-04-18T16:00:00.000Z");

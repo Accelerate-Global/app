@@ -24,6 +24,7 @@ import {
   UUPG_DATASET_COLUMN_KEY,
 } from "@/lib/dataset-region-constants";
 import { isGlobalRegionName } from "@/lib/region-display";
+import { isWatchlistEngagementPhaseMatch } from "@/lib/watchlist-engagement-phase";
 
 type DatasetRow = DatasetRowsResponse["rows"][number];
 const WATCHLIST_FRONTIER_GROUP_DATASET_COLUMN_KEYS =
@@ -864,7 +865,6 @@ export function filterDatasetRowsByWatchlist(
   }
 
   const thresholdEnabled = watchlistFilter.thresholdEnabled ?? true;
-  const engagementPhaseEnabled = watchlistFilter.engagementPhaseEnabled ?? true;
   const hasTieredPopulationBelieversRule = Boolean(
     watchlistFilter.evangelicalPopulationBelieversRule,
   );
@@ -889,16 +889,6 @@ export function filterDatasetRowsByWatchlist(
             )
           : null
       : null;
-  const hasEnabledCriteria =
-    thresholdEnabled ||
-    engagementPhaseEnabled ||
-    Boolean(populationBelieversRule) ||
-    evangelicalBelieversEnabled ||
-    evangelicalPercentEnabled;
-
-  if (!hasEnabledCriteria) {
-    return rows;
-  }
 
   return rows.filter((row) => {
     const facets = getDatasetRowFilterFacets(row);
@@ -914,15 +904,8 @@ export function filterDatasetRowsByWatchlist(
       }
     }
 
-    if (engagementPhaseEnabled) {
-      const engagementPhase = facets.watchlistEngagementPhase;
-
-      if (
-        engagementPhase === null ||
-        engagementPhase < watchlistFilter.engagementPhaseThreshold
-      ) {
-        return false;
-      }
+    if (!isWatchlistEngagementPhaseMatch(facets.watchlistEngagementPhase)) {
+      return false;
     }
 
     if (

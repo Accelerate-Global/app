@@ -226,7 +226,7 @@ describe("SavedTableDetailSheet", () => {
     );
 
     expect(screen.getByText(/Christianity: GSEC <= 2/)).toBeTruthy();
-    expect(screen.getByText(/Engage: 8 Phases >= 6/)).toBeTruthy();
+    expect(screen.getByText(/Engage: 8 Phases 2-5 only/)).toBeTruthy();
     expect(screen.queryByText(/Frontier Group/)).toBeNull();
   });
 });

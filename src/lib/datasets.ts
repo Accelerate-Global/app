@@ -48,6 +48,7 @@ function toDatasetSummary(row: DatasetRecord): DatasetSummary {
     backingDatasetId: row.backingDatasetId,
     sortOrder: row.sortOrder,
     fileName: row.fileName,
+    sourceOrganizationName: row.sourceOrganizationName?.trim() || null,
     blobUrl: row.blobUrl,
     blobPath: row.blobPath,
     isPrimary: row.isPrimary,
@@ -581,6 +582,7 @@ export async function updateDatasetStatus(input: {
 export async function updateDatasetDetails(input: {
   datasetId: string;
   fileName?: string;
+  sourceOrganizationName?: string | null;
   tags?: DatasetTag[];
   isPrimary?: boolean;
   isPublic?: boolean;
@@ -603,6 +605,16 @@ export async function updateDatasetDetails(input: {
 
     if (input.fileName !== undefined) {
       updates.fileName = input.fileName;
+    }
+
+    if (input.sourceOrganizationName !== undefined) {
+      if (existingDataset.backingDatasetId) {
+        throw new DerivedDatasetMutationError(
+          "Derived dataset views cannot define a source organization.",
+        );
+      }
+
+      updates.sourceOrganizationName = input.sourceOrganizationName?.trim() || null;
     }
 
     if (input.tags !== undefined) {
@@ -712,6 +724,7 @@ export async function assignDatasetDerivedView(input: {
           sourceDataset.columns,
         ),
         defaultFilters: normalizedFilters,
+        sourceOrganizationName: null,
         isPrimary: false,
         status: sourceDataset.status,
         rowCount: countDatasetDefaultRows({

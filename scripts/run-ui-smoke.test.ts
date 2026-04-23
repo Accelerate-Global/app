@@ -9,6 +9,7 @@ import {
   DEFAULT_UI_SMOKE_SUPABASE_START_TIMEOUT_MS,
   getSmokeBootstrapArgs,
   getUiSmokeSupabaseStartTimeoutMs,
+  isSupabaseStartRetryableError,
   parseRunUiSmokeArgs,
   resolveUiSmokeChangedFiles,
   UI_SMOKE_DB_RESET_ARGS,
@@ -152,6 +153,23 @@ describe("run-ui-smoke", () => {
         NODE_ENV: "test",
       } as unknown as NodeJS.ProcessEnv),
     ).toBe(DEFAULT_UI_SMOKE_SUPABASE_START_TIMEOUT_MS);
+  });
+
+  it("retries Supabase start for Docker prune and network races", () => {
+    expect(
+      isSupabaseStartRetryableError(
+        new Error(
+          "failed to prune containers: Error response from daemon: a prune operation is already running",
+        ),
+      ),
+    ).toBe(true);
+    expect(
+      isSupabaseStartRetryableError(
+        new Error(
+          "failed to start docker container: Error response from daemon: failed to set up container networking: network supabase_network_online not found",
+        ),
+      ),
+    ).toBe(true);
   });
 
   it("parses explicit base and head refs for CI-targeted smoke", () => {

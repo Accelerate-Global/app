@@ -77,11 +77,11 @@ function installShipCommandMock(input: {
 
     if (
       command === "git" &&
-      args.join(" ") === "diff --name-only -z origin/main...HEAD"
+      args.join(" ") === "diff --name-status -z origin/main...HEAD"
     ) {
       const changedFiles = input.shipLocalChangedFiles ?? input.pullRequestFiles ?? [];
       return {
-        stdout: changedFiles.map((filePath) => `${filePath}\0`).join(""),
+        stdout: changedFiles.map((filePath) => `M\0${filePath}\0`).join(""),
         stderr: "",
         exitCode: 0,
       };
@@ -240,6 +240,16 @@ describe("ship", () => {
         "head-sha",
       ],
       expect.objectContaining({
+        stdinMode: "ignore",
+        timeoutMs: 30_000,
+      }),
+    );
+    expect(runCommandMock).toHaveBeenCalledWith(
+      "git",
+      ["branch", "-d", "codex/test-branch"],
+      expect.objectContaining({
+        allowFailure: true,
+        quiet: true,
         stdinMode: "ignore",
         timeoutMs: 30_000,
       }),

@@ -274,6 +274,7 @@ export async function shipPullRequest(input: { prNumber: string }) {
     });
     await runCommand("git", ["branch", "-d", pullRequest.headRefName], {
       allowFailure: true,
+      quiet: true,
       stdinMode: "ignore",
       timeoutMs: GIT_COMMAND_TIMEOUT_MS,
     });

@@ -13,6 +13,7 @@ export const APP_ANALYTICS_ROUTES = [
   "forgot_password",
   "reset_password",
   "dashboard",
+  "data_lake",
   "dataset_detail",
   "dataset_edit",
   "upload",
@@ -556,6 +557,10 @@ export function getAnalyticsRouteFromPathname(
 
   if (pathname === "/dashboard/profile") {
     return "profile";
+  }
+
+  if (pathname === "/dashboard/data-lake") {
+    return "data_lake";
   }
 
   if (pathname === "/dashboard/upload") {

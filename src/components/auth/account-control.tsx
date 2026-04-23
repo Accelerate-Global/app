@@ -177,6 +177,10 @@ export function AccountControl({ identity }: AccountControlProps) {
             <LayoutDashboardIcon aria-hidden="true" />
             Dashboard
           </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => navigateTo("/dashboard/data-lake")}>
+            <DatabaseIcon aria-hidden="true" />
+            Data Partners
+          </DropdownMenuItem>
           <DropdownMenuItem onClick={() => navigateTo("/dashboard/field-definitions")}>
             <BookTextIcon aria-hidden="true" />
             Definitions

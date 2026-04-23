@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   analyticsEvents,
+  analyticsFailureResolutions,
   datasetVersionRows,
   datasetVersions,
   datasets,
@@ -21,6 +22,7 @@ describe("datasets schema", () => {
     expect(datasets.currentVersionActorEmail.name).toBe("current_version_actor_email");
     expect(datasets.currentVersionCreatedAt.name).toBe("current_version_created_at");
     expect(datasets.backingDatasetId.name).toBe("backing_dataset_id");
+    expect(datasets.sourceOrganizationName.name).toBe("source_organization_name");
     expect(datasets.isPublic.name).toBe("is_public");
     expect(datasets.defaultFilters.name).toBe("default_filters");
   });
@@ -90,6 +92,19 @@ describe("datasets schema", () => {
 
     expect(migration).toContain(
       'add column if not exists default_filters jsonb',
+    );
+  });
+
+  it("creates the dataset source organization migration", async () => {
+    const migrationPath = path.join(
+      process.cwd(),
+      "supabase/migrations/20260422224014_add_dataset_source_organization_name.sql",
+    );
+
+    const migration = await readFile(migrationPath, "utf8");
+
+    expect(migration).toContain(
+      "add column if not exists source_organization_name text",
     );
   });
 
@@ -194,5 +209,32 @@ describe("analyticsEvents schema", () => {
     expect(migration).toContain("create table if not exists private.analytics_events");
     expect(migration).toContain("enable row level security");
     expect(migration).toContain("create index if not exists analytics_events_created_at_idx");
+  });
+});
+
+describe("analyticsFailureResolutions schema", () => {
+  it("declares the private analytics failure resolution columns", () => {
+    expect(analyticsFailureResolutions.fingerprint.name).toBe("fingerprint");
+    expect(analyticsFailureResolutions.resolvedByOwnerId.name).toBe(
+      "resolved_by_owner_id",
+    );
+    expect(analyticsFailureResolutions.resolvedAt.name).toBe("resolved_at");
+  });
+
+  it("creates the private analytics failure resolutions migration", async () => {
+    const migrationPath = path.join(
+      process.cwd(),
+      "supabase/migrations/20260422221300_analytics_failure_resolutions.sql",
+    );
+
+    const migration = await readFile(migrationPath, "utf8");
+
+    expect(migration).toContain(
+      "create table if not exists private.analytics_failure_resolutions",
+    );
+    expect(migration).toContain("enable row level security");
+    expect(migration).toContain(
+      "create index if not exists analytics_failure_resolutions_resolved_at_idx",
+    );
   });
 });

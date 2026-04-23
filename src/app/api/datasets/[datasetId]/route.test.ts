@@ -78,6 +78,7 @@ const dataset = {
   backingDatasetId: null,
   sortOrder: 0,
   fileName: "customers.csv",
+  sourceOrganizationName: null,
   blobUrl:
     "https://example.supabase.co/storage/v1/object/datasets/datasets/csv/customers.csv",
   blobPath: "datasets/csv/customers.csv",
@@ -189,6 +190,7 @@ describe("/api/datasets/[datasetId]", () => {
     expect(updateDatasetDetailsMock).toHaveBeenCalledWith({
       datasetId: dataset.id,
       fileName: "renamed.csv",
+      sourceOrganizationName: undefined,
       isPrimary: true,
       tags: [
         {
@@ -201,6 +203,32 @@ describe("/api/datasets/[datasetId]", () => {
       hiddenColumnKeys: ["email"],
     });
     expect(updateDatasetStatusMock).not.toHaveBeenCalled();
+  });
+
+  it("updates dataset source organization labels for the configured admin", async () => {
+    updateDatasetDetailsMock.mockResolvedValue({
+      ...dataset,
+      sourceOrganizationName: "Joshua Project",
+    });
+
+    const response = await PATCH(
+      new Request("http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001", {
+        method: "PATCH",
+        body: JSON.stringify({ sourceOrganizationName: "Joshua Project" }),
+      }),
+      context,
+    );
+
+    expect(response.status).toBe(200);
+    expect(updateDatasetDetailsMock).toHaveBeenCalledWith({
+      datasetId: dataset.id,
+      fileName: undefined,
+      sourceOrganizationName: "Joshua Project",
+      tags: undefined,
+      isPrimary: undefined,
+      isPublic: undefined,
+      hiddenColumnKeys: undefined,
+    });
   });
 
   it("updates the primary dataset flag for the configured admin", async () => {
@@ -221,6 +249,7 @@ describe("/api/datasets/[datasetId]", () => {
     expect(updateDatasetDetailsMock).toHaveBeenCalledWith({
       datasetId: dataset.id,
       fileName: undefined,
+      sourceOrganizationName: undefined,
       tags: undefined,
       isPrimary: true,
       isPublic: undefined,
@@ -247,6 +276,7 @@ describe("/api/datasets/[datasetId]", () => {
     expect(updateDatasetDetailsMock).toHaveBeenCalledWith({
       datasetId: dataset.id,
       fileName: undefined,
+      sourceOrganizationName: undefined,
       tags: undefined,
       isPrimary: undefined,
       isPublic: false,
@@ -272,6 +302,7 @@ describe("/api/datasets/[datasetId]", () => {
     expect(updateDatasetDetailsMock).toHaveBeenCalledWith({
       datasetId: dataset.id,
       fileName: undefined,
+      sourceOrganizationName: undefined,
       tags: undefined,
       isPrimary: undefined,
       isPublic: undefined,

@@ -258,6 +258,9 @@ export const datasetRenamePatchSchema = z.object({
 export const datasetMetadataPatchSchema = z
   .object({
     fileName: z.string().trim().min(1).max(255).optional(),
+    sourceOrganizationName: z
+      .union([z.string().trim().min(1).max(255), z.null()])
+      .optional(),
     tags: z.array(datasetTagSchema).max(24).optional(),
     isPrimary: z.boolean().optional(),
     isPublic: z.boolean().optional(),
@@ -266,6 +269,7 @@ export const datasetMetadataPatchSchema = z
   .superRefine((value, ctx) => {
     if (
       value.fileName === undefined &&
+      value.sourceOrganizationName === undefined &&
       value.tags === undefined &&
       value.isPrimary === undefined &&
       value.isPublic === undefined &&
@@ -274,7 +278,7 @@ export const datasetMetadataPatchSchema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message:
-          "A dataset update must include a name, tags, primary flag, public visibility, or visible fields.",
+          "A dataset update must include a name, organization label, tags, primary flag, public visibility, or visible fields.",
       });
     }
 
