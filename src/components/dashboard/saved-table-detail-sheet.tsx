@@ -69,7 +69,7 @@ function getWatchlistSummary(savedTable: SavedDatasetTable) {
   const summary: string[] = [];
 
   if (normalizedFilters.watchlist.thresholdEnabled ?? true) {
-    summary.push(`Christianity: GSEC <= ${normalizedFilters.watchlist.threshold}`);
+    summary.push(`GSEC (IMB-only) <= ${normalizedFilters.watchlist.threshold}`);
   }
 
   if (normalizedFilters.watchlist.evangelicalPopulationBelieversRuleEnabled) {

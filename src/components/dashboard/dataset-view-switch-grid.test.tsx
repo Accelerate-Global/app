@@ -37,7 +37,6 @@ const baseCountryCard = {
 const baseWatchlistCard = {
   enabled: false,
   supported: true,
-  thresholdLabel: "Christianity: GSEC",
   thresholdDefinition: "GSEC definition",
   thresholdEnabled: true,
   threshold: 2,
@@ -135,7 +134,7 @@ describe("DatasetViewSwitchGrid", () => {
     );
 
     expect(
-      screen.getByText("Christianity: GSEC <= 2"),
+      screen.getByText("GSEC (IMB-only) <= 2"),
     ).toBeTruthy();
     expect(screen.getByText("Under 5,000 -> at least 50 believers")).toBeTruthy();
     expect(screen.getByText("5,000-10,000 -> at least 75 believers")).toBeTruthy();
@@ -378,7 +377,7 @@ describe("DatasetViewSwitchGrid", () => {
       screen.queryByText("Watchlist is not working correctly yet"),
     ).toBeNull();
     expect(
-      screen.queryByLabelText("Christianity: GSEC"),
+      screen.queryByLabelText("GSEC (IMB-only)"),
     ).toBeNull();
     expect(
       screen.queryByText("Keep only values 2-5."),
@@ -386,11 +385,11 @@ describe("DatasetViewSwitchGrid", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Watchlist filters" }));
 
-    const thresholdLabel = screen.getByText("Christianity: GSEC");
+    const thresholdLabel = screen.getByText("GSEC (IMB-only)");
     const ruleLabel = screen.getByText("Population vs Evangelical Believers");
     const engagementLabel = screen.getByText("Engage: 8 Phases of Engagement");
     const thresholdInfo = screen.getByLabelText(
-      "View definition for Christianity: GSEC",
+      "View definition for GSEC (IMB-only)",
     );
 
     expect(
@@ -404,9 +403,9 @@ describe("DatasetViewSwitchGrid", () => {
         "These filters can return incorrect results while the Watchlist logic is being fixed. Do not rely on this section yet.",
       ),
     ).toBeTruthy();
-    expect(screen.getByText("<= 2")).toBeTruthy();
-    expect(screen.queryByLabelText("Christianity: GSEC")).toBeNull();
-    expect(screen.queryByLabelText("Decrease Christianity: GSEC")).toBeNull();
+    expect(screen.queryByText("<= 2")).toBeNull();
+    expect(screen.queryByLabelText("GSEC (IMB-only)")).toBeNull();
+    expect(screen.queryByLabelText("Decrease GSEC (IMB-only)")).toBeNull();
     expect(
       thresholdLabel.compareDocumentPosition(thresholdInfo) &
         Node.DOCUMENT_POSITION_FOLLOWING,
@@ -433,7 +432,7 @@ describe("DatasetViewSwitchGrid", () => {
         "Open the popup editor to adjust breakpoints, minimum believers, and the scenario test dot.",
       ),
     ).toBeTruthy();
-    expect(screen.getByText("Keep only values 2-5.")).toBeTruthy();
+    expect(screen.queryByText("Keep only values 2-5.")).toBeNull();
     expect(
       screen.queryByLabelText("Engage: 8 Phases of Engagement"),
     ).toBeNull();
@@ -545,7 +544,7 @@ describe("DatasetViewSwitchGrid", () => {
     fireEvent.click(screen.getByRole("button", { name: "Watchlist filters" }));
 
     const thresholdToggle = screen.getByLabelText(
-      "Toggle Watchlist Christianity: GSEC",
+      "Toggle Watchlist GSEC (IMB-only)",
     );
 
     fireEvent.click(thresholdToggle);
