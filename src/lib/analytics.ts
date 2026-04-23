@@ -13,7 +13,6 @@ export const APP_ANALYTICS_ROUTES = [
   "forgot_password",
   "reset_password",
   "dashboard",
-  "data_lake",
   "dataset_detail",
   "dataset_edit",
   "upload",
@@ -123,11 +122,16 @@ export type AppAnalyticsEventMap = {
     watchlist_enabled: boolean;
     watchlist_threshold_enabled: boolean;
     watchlist_threshold: number | null;
-    watchlist_population_believers_rule_enabled: boolean;
-    watchlist_population_believers_rule_tier_count: number | null;
+    watchlist_jp_only_evangelical_enabled: boolean;
+    watchlist_jp_only_min_believers: number | null;
+    watchlist_jp_only_max_believers: number | null;
+    watchlist_jp_only_max_percent_evangelical: number | null;
     watchlist_engagement_phase_enabled: boolean;
+    watchlist_engagement_phase_min: number | null;
     watchlist_engagement_phase_threshold: number | null;
     uupg_enabled: boolean;
+    uupg_global_engagement_anywhere_enabled: boolean;
+    uupg_frontier_group_enabled: boolean;
     hotspots_enabled: boolean;
     hotspots_metric: DatasetHotspotsMetric | null;
     hotspots_country_count: number | null;
@@ -383,11 +387,16 @@ const APP_ANALYTICS_EVENT_PROPERTY_KEYS = {
     "watchlist_enabled",
     "watchlist_threshold_enabled",
     "watchlist_threshold",
-    "watchlist_population_believers_rule_enabled",
-    "watchlist_population_believers_rule_tier_count",
+    "watchlist_jp_only_evangelical_enabled",
+    "watchlist_jp_only_min_believers",
+    "watchlist_jp_only_max_believers",
+    "watchlist_jp_only_max_percent_evangelical",
     "watchlist_engagement_phase_enabled",
+    "watchlist_engagement_phase_min",
     "watchlist_engagement_phase_threshold",
     "uupg_enabled",
+    "uupg_global_engagement_anywhere_enabled",
+    "uupg_frontier_group_enabled",
     "hotspots_enabled",
     "hotspots_metric",
     "hotspots_country_count",
@@ -540,10 +549,6 @@ export function getAnalyticsRouteFromPathname(
 
   if (pathname === "/dashboard/profile") {
     return "profile";
-  }
-
-  if (pathname === "/dashboard/data-lake") {
-    return "data_lake";
   }
 
   if (pathname === "/dashboard/upload") {

@@ -14,9 +14,10 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import type { DatasetSummary, SavedDatasetTable } from "@/lib/api-types";
-import { buildPopulationBelieversRuleSummaryLines } from "@/lib/evangelical-population-believers-rule";
+import { datasetSupportsUupgFrontierFiltering } from "@/lib/dataset-region-filtering";
 import { normalizeRegionDisplayName } from "@/lib/region-display";
 import { normalizeSavedDatasetFilterState } from "@/lib/saved-dataset-filters";
+import { formatWatchlistJpOnlyEvangelicalSummary } from "@/lib/watchlist-jp-only-evangelical";
 import { formatWatchlistEngagementPhaseSummary } from "@/lib/watchlist-engagement-phase";
 
 type SavedTableDetailSheetProps = {
@@ -72,19 +73,22 @@ function getWatchlistSummary(savedTable: SavedDatasetTable) {
     summary.push(`GSEC (IMB-only) <= ${normalizedFilters.watchlist.threshold}`);
   }
 
-  if (normalizedFilters.watchlist.evangelicalPopulationBelieversRuleEnabled) {
+  if (normalizedFilters.watchlist.jpOnlyEvangelicalCriteriaEnabled ?? true) {
     summary.push(
-      ...buildPopulationBelieversRuleSummaryLines(
-        normalizedFilters.watchlist.evangelicalPopulationBelieversRule,
+      formatWatchlistJpOnlyEvangelicalSummary(
+        normalizedFilters.watchlist.jpOnlyEvangelicalRule,
       ),
-    );
-  } else if (normalizedFilters.watchlist.evangelicalPercentEnabled ?? false) {
-    summary.push(
-      `Min. Evangelical % >= ${normalizedFilters.watchlist.evangelicalPercentThreshold}`,
     );
   }
 
-  summary.push(formatWatchlistEngagementPhaseSummary("Engage: 8 Phases"));
+  if (normalizedFilters.watchlist.engagementPhaseEnabled ?? true) {
+    summary.push(
+      formatWatchlistEngagementPhaseSummary(
+        "Engage: 8 Phases",
+        normalizedFilters.watchlist.engagementPhaseRule,
+      ),
+    );
+  }
 
   return summary.length > 0 ? summary.join("; ") : "No criteria selected";
 }
@@ -97,7 +101,7 @@ function getCountrySummary(savedTable: SavedDatasetTable) {
   }
 
   if (normalizedFilters.country.selectedCountryNames.length === 0) {
-    return "All countries";
+    return "No countries selected";
   }
 
   return normalizedFilters.country.selectedCountryNames.join(", ");
@@ -115,6 +119,32 @@ function getHotspotsSummary(savedTable: SavedDatasetTable) {
       ? "UUPG population"
       : "unique UUPGs"
   }`;
+}
+
+function getUupgSummary(
+  savedTable: SavedDatasetTable,
+  dataset: DatasetSummary | null,
+) {
+  const normalizedFilters = normalizeSavedDatasetFilterState(savedTable.filters);
+
+  if (!normalizedFilters.uupg.enabled) {
+    return "Off";
+  }
+
+  const summary: string[] = [];
+
+  if (normalizedFilters.uupg.globalEngagementAnywhereEnabled ?? true) {
+    summary.push("Global Engagement Anywhere");
+  }
+
+  if (
+    (normalizedFilters.uupg.frontierGroupEnabled ?? true) &&
+    (dataset ? datasetSupportsUupgFrontierFiltering(dataset) : true)
+  ) {
+    summary.push("Frontier Group");
+  }
+
+  return summary.length > 0 ? summary.join("; ") : "No criteria selected";
 }
 
 function getSortingSummary(savedTable: SavedDatasetTable, dataset: DatasetSummary | null) {
@@ -302,9 +332,7 @@ export function SavedTableDetailSheet({
                 <div className="space-y-1">
                   <dt className="text-sm font-medium text-foreground">UUPG</dt>
                   <dd className="text-sm text-muted-foreground">
-                    {normalizeSavedDatasetFilterState(savedTable.filters).uupg.enabled
-                      ? "Enabled"
-                      : "Off"}
+                    {getUupgSummary(savedTable, dataset)}
                   </dd>
                 </div>
                 <div className="space-y-1">

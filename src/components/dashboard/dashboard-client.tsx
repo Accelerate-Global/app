@@ -2,7 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-import { ensureDatasetRowsCache, getDatasetRowsCacheSnapshot } from "@/components/dashboard/dataset-row-cache";
+import {
+  ensureDatasetRowsCache,
+  getDatasetRowsCacheSnapshot,
+  isDatasetRowsRequestCancelled,
+} from "@/components/dashboard/dataset-row-cache";
 import { DatasetsGrid } from "@/components/dashboard/datasets-grid";
 import { SavedTableDetailSheet } from "@/components/dashboard/saved-table-detail-sheet";
 import { SavedTablesGrid } from "@/components/dashboard/saved-tables-grid";
@@ -183,7 +187,11 @@ export function DashboardClient({
           }),
         );
       })
-      .catch(() => {
+      .catch((error) => {
+        if (isDatasetRowsRequestCancelled(error)) {
+          return;
+        }
+
         trackAppEvent(
           "dataset_preload_failed",
           withAnalyticsContext(analyticsContext, {

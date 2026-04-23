@@ -219,6 +219,55 @@ describe("DashboardClient", () => {
     });
   });
 
+  it("does not track preload failures for cancelled row requests", async () => {
+    const abortError = new Error("The user aborted a request.");
+    abortError.name = "AbortError";
+
+    fetchMock.mockImplementation(async (input, init) => {
+      if (
+        input === "/api/datasets/dataset-1/rows?all=true" &&
+        (init?.method === undefined || init.method === "GET")
+      ) {
+        throw abortError;
+      }
+
+      throw new Error(`Unexpected fetch: ${String(input)} ${init?.method ?? "GET"}`);
+    });
+
+    render(
+      <DashboardClient
+        initialDatasets={[createDataset()]}
+        initialSavedTables={[]}
+        canManageDatasets={false}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/datasets/dataset-1/rows?all=true",
+      );
+    });
+
+    await waitFor(() => {
+      expect(trackAppEventMock).toHaveBeenCalledWith(
+        "dataset_preload_started",
+        expect.objectContaining({
+          source_surface: "dashboard_page",
+          success: true,
+          dataset_id: "dataset-1",
+          source_dataset_id: "dataset-1",
+        }),
+      );
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(trackAppEventMock).not.toHaveBeenCalledWith(
+      "dataset_preload_failed",
+      expect.anything(),
+    );
+  });
+
   it("opens the saved table details sheet and persists saved table edits", async () => {
     render(
       <DashboardClient

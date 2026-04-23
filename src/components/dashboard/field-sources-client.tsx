@@ -153,36 +153,27 @@ export function FieldSourcesClient({
 
   const hasFieldSources = fieldSources.length > 0;
 
-  return (
-    <div className="grid gap-6">
-      <section className="rounded-2xl border border-border/80 bg-card px-4 py-4 text-sm text-muted-foreground sm:px-5">
-        Review which source fields currently map to each shared workspace field.
-        These mappings are available here as read-only reference data.
-      </section>
-
-      {hasFieldSources ? (
-        <DataGrid
-          table={table}
-          recordCount={fieldSources.length}
-          tableLayout={{
-            columnsPinnable: true,
-            columnsResizable: true,
-            headerSticky: true,
-          }}
-          tableClassNames={{
-            headerSticky: "sticky top-0 z-10 bg-muted/90 backdrop-blur-xs",
-            bodyRow: "[&>td]:align-top [&>td]:py-2.5",
-          }}
-        >
-          <DataGridContainer>
-            <DataGridScrollArea className="h-[560px]">
-              <DataGridTable />
-            </DataGridScrollArea>
-          </DataGridContainer>
-        </DataGrid>
-      ) : (
-        <FieldSourcesEmptyState />
-      )}
-    </div>
+  return hasFieldSources ? (
+    <DataGrid
+      table={table}
+      recordCount={fieldSources.length}
+      tableLayout={{
+        columnsPinnable: true,
+        columnsResizable: true,
+        headerSticky: true,
+      }}
+      tableClassNames={{
+        headerSticky: "sticky top-0 z-10 bg-muted/90 backdrop-blur-xs",
+        bodyRow: "[&>td]:align-top [&>td]:py-2.5",
+      }}
+    >
+      <DataGridContainer>
+        <DataGridScrollArea className="h-[560px]">
+          <DataGridTable />
+        </DataGridScrollArea>
+      </DataGridContainer>
+    </DataGrid>
+  ) : (
+    <FieldSourcesEmptyState />
   );
 }

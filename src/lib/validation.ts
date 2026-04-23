@@ -10,6 +10,15 @@ import {
   POPULATION_BELIEVERS_RULE_MAX_TIERS,
   POPULATION_BELIEVERS_RULE_MIN_TIERS,
 } from "@/lib/evangelical-population-believers-rule";
+import {
+  WATCHLIST_JP_ONLY_EVANGELICAL_RULE_MAX_BELIEVERS,
+  WATCHLIST_JP_ONLY_EVANGELICAL_RULE_MAX_PERCENT_EVANGELICAL,
+} from "@/lib/watchlist-jp-only-evangelical";
+import { WATCHLIST_THRESHOLD_RULE_VERSION } from "@/lib/saved-dataset-filters";
+import {
+  WATCHLIST_ENGAGEMENT_PHASE_RULE_MAX,
+  WATCHLIST_ENGAGEMENT_PHASE_RULE_MIN,
+} from "@/lib/watchlist-engagement-phase";
 import { WORKSPACE_ROLES } from "@/lib/workspace-role";
 
 export const csvColumnSchema = z.object({
@@ -165,12 +174,68 @@ const populationBelieversRuleSchema = z
     });
   });
 
+const watchlistJpOnlyEvangelicalRuleSchema = z
+  .object({
+    minBelievers: z
+      .number()
+      .int()
+      .min(0)
+      .max(WATCHLIST_JP_ONLY_EVANGELICAL_RULE_MAX_BELIEVERS),
+    maxBelievers: z
+      .number()
+      .int()
+      .min(0)
+      .max(WATCHLIST_JP_ONLY_EVANGELICAL_RULE_MAX_BELIEVERS),
+    maxPercentEvangelical: z
+      .number()
+      .min(0)
+      .max(WATCHLIST_JP_ONLY_EVANGELICAL_RULE_MAX_PERCENT_EVANGELICAL),
+  })
+  .superRefine((value, ctx) => {
+    if (value.maxBelievers < value.minBelievers) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["maxBelievers"],
+        message:
+          "The JP-only maximum believers threshold must be greater than or equal to the minimum believers threshold.",
+      });
+    }
+  });
+
+const watchlistEngagementPhaseRuleSchema = z
+  .object({
+    minPhase: z
+      .number()
+      .int()
+      .min(WATCHLIST_ENGAGEMENT_PHASE_RULE_MIN)
+      .max(WATCHLIST_ENGAGEMENT_PHASE_RULE_MAX),
+    maxPhase: z
+      .number()
+      .int()
+      .min(WATCHLIST_ENGAGEMENT_PHASE_RULE_MIN)
+      .max(WATCHLIST_ENGAGEMENT_PHASE_RULE_MAX),
+  })
+  .superRefine((value, ctx) => {
+    if (value.maxPhase < value.minPhase) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["maxPhase"],
+        message:
+          "The maximum engagement phase must be greater than or equal to the minimum engagement phase.",
+      });
+    }
+  });
+
 const savedDatasetWatchlistFilterStateSchema = z.object({
   enabled: z.boolean(),
   thresholdEnabled: z.boolean().optional().default(true),
+  thresholdRuleVersion: z.literal(WATCHLIST_THRESHOLD_RULE_VERSION).optional(),
   threshold: z.number().int().min(0).max(6),
   engagementPhaseEnabled: z.boolean().optional().default(true),
   engagementPhaseThreshold: z.number().int().min(0).max(7),
+  engagementPhaseRule: watchlistEngagementPhaseRuleSchema.optional(),
+  jpOnlyEvangelicalCriteriaEnabled: z.boolean().optional().default(true),
+  jpOnlyEvangelicalRule: watchlistJpOnlyEvangelicalRuleSchema.optional(),
   evangelicalPopulationBelieversRuleEnabled: z.boolean().optional().default(true),
   evangelicalPopulationBelieversRule: populationBelieversRuleSchema.optional(),
   evangelicalBelieversEnabled: z.boolean().optional(),
@@ -208,6 +273,8 @@ export const savedDatasetFilterStateSchema = z.object({
   watchlist: savedDatasetWatchlistFilterStateSchema,
   uupg: z.object({
     enabled: z.boolean(),
+    globalEngagementAnywhereEnabled: z.boolean().optional().default(true),
+    frontierGroupEnabled: z.boolean().optional().default(true),
   }),
   hotspots: savedDatasetHotspotsFilterStateSchema.optional().default({
     enabled: false,

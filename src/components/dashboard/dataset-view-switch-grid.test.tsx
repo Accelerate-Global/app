@@ -3,12 +3,16 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import { DEFAULT_POPULATION_BELIEVERS_RULE } from "@/lib/evangelical-population-believers-rule";
-
 import {
   DatasetViewSwitchGrid,
   getRegionTooltipText,
 } from "./dataset-view-switch-grid";
+
+const defaultJpOnlyEvangelicalRule = {
+  minBelievers: 75,
+  maxBelievers: 249_999,
+  maxPercentEvangelical: 2,
+};
 
 const baseRegionCard = {
   supported: true,
@@ -40,35 +44,51 @@ const baseWatchlistCard = {
   thresholdDefinition: "GSEC definition",
   thresholdEnabled: true,
   threshold: 2,
+  thresholdIsDefault: true,
+  jpOnlyEvangelicalCriteriaEnabled: true,
+  jpOnlyEvangelicalCriteriaSupported: true,
+  jpOnlyEvangelicalCriteriaLabel: "Evangelical Believers (JP-only)",
+  jpOnlyEvangelicalCriteriaDefinition:
+    "Applies only to JP-only rows (JP_Source = true; IMB_Source = false; AX_Source = false; ETNO_Source = false; WCD_Source = false) and keeps rows with under 75 evangelical believers regardless of evangelical percent, plus rows with 75-249,999 evangelical believers and <= 2% evangelical.",
+  jpOnlyEvangelicalCriteriaSummary:
+    "JP-only: < 75 believers, or 75-249,999 believers and <= 2% evangelical",
+  jpOnlyEvangelicalRule: defaultJpOnlyEvangelicalRule,
+  jpOnlyEvangelicalRuleIsDefault: true,
+  engagementPhaseEnabled: true,
   engagementPhaseLabel: "Engage: 8 Phases of Engagement",
   engagementPhaseDefinition:
-    "Engagement phase definition\n\nWatchlist hardcodes this filter to keep only values 2-5.",
+    "Engagement phase definition\n\nWhen enabled, Watchlist keeps only AX rows with values 2-5. If AX_Source is missing or invalid, Watchlist treats the row as AX and still applies the 2-5 rule.",
+  engagementPhaseRule: {
+    minPhase: 2,
+    maxPhase: 5,
+  },
+  engagementPhaseRuleIsDefault: true,
   engagementPhaseSummary: "Engage: 8 Phases of Engagement 2-5 only",
-  populationBelieversRuleLabel: "Population vs Evangelical Believers",
-  populationBelieversRuleDefinition:
-    "Build a tiered minimum-believers rule by population.",
-  populationBelieversRuleEnabled: true,
-  populationBelieversRule: DEFAULT_POPULATION_BELIEVERS_RULE,
   onEnabledChange: vi.fn(),
   onThresholdEnabledChange: vi.fn(),
-  onPopulationBelieversRuleEnabledChange: vi.fn(),
-  onPopulationBelieversRuleChange: vi.fn(),
+  onThresholdChange: vi.fn(),
+  onThresholdReset: vi.fn(),
+  onEngagementPhaseEnabledChange: vi.fn(),
+  onEngagementPhaseRuleChange: vi.fn(),
+  onEngagementPhaseRuleReset: vi.fn(),
+  onJpOnlyEvangelicalCriteriaEnabledChange: vi.fn(),
+  onJpOnlyEvangelicalRuleChange: vi.fn(),
+  onJpOnlyEvangelicalRuleReset: vi.fn(),
 };
 
 const baseUupgCard = {
   enabled: false,
   supported: true,
-  fields: [
-    {
-      label: "Global Engagement Anywhere",
-      definition: "UUPG definition",
-    },
-    {
-      label: "Christianity: Frontier Group Y/N",
-      definition: "Frontier definition",
-    },
-  ],
+  globalEngagementAnywhereLabel: "Global Engagement Anywhere",
+  globalEngagementAnywhereDefinition: "UUPG definition",
+  globalEngagementAnywhereEnabled: true,
+  frontierGroupSupported: true,
+  frontierGroupLabel: "Christianity: Frontier Group Y/N",
+  frontierGroupDefinition: "Frontier definition",
+  frontierGroupEnabled: true,
   onEnabledChange: vi.fn(),
+  onGlobalEngagementAnywhereEnabledChange: vi.fn(),
+  onFrontierGroupEnabledChange: vi.fn(),
 };
 
 const baseHotspotsCard = {
@@ -136,11 +156,36 @@ describe("DatasetViewSwitchGrid", () => {
     expect(
       screen.getByText("GSEC (IMB-only) <= 2"),
     ).toBeTruthy();
-    expect(screen.getByText("Under 5,000 -> at least 50 believers")).toBeTruthy();
-    expect(screen.getByText("5,000-10,000 -> at least 75 believers")).toBeTruthy();
-    expect(screen.getByText("Over 10,000 -> at least 100 believers")).toBeTruthy();
+    expect(
+      screen.getByText(
+        "JP-only: < 75 believers, or 75-249,999 believers and <= 2% evangelical",
+      ),
+    ).toBeTruthy();
     expect(screen.getByText("Engage: 8 Phases of Engagement 2-5 only")).toBeTruthy();
     expect(screen.queryByText(/Frontier Group/)).toBeNull();
+    expect(
+      screen.queryByText("Population vs Evangelical Believers"),
+    ).toBeNull();
+  });
+
+  it("omits the phases-of-engagement summary when that toggle is off", () => {
+    render(
+      <DatasetViewSwitchGrid
+        regionCard={baseRegionCard}
+        countryCard={baseCountryCard}
+        watchlistCard={{
+          ...baseWatchlistCard,
+          enabled: true,
+          engagementPhaseEnabled: false,
+        }}
+        uupgCard={baseUupgCard}
+        hotspotsCard={baseHotspotsCard}
+      />,
+    );
+
+    expect(
+      screen.queryByText("Engage: 8 Phases of Engagement 2-5 only"),
+    ).toBeNull();
   });
 
   it("shows canonical region labels and keeps region controls interactive", () => {
@@ -358,7 +403,7 @@ describe("DatasetViewSwitchGrid", () => {
     expect(screen.queryByLabelText("Toggle Country")).toBeNull();
   });
 
-  it("reveals watchlist descriptions and keeps phases of engagement read-only", () => {
+  it("reveals watchlist descriptions and exposes an engagement-phase toggle", () => {
     render(
       <DatasetViewSwitchGrid
         regionCard={baseRegionCard}
@@ -372,7 +417,7 @@ describe("DatasetViewSwitchGrid", () => {
       />,
     );
 
-    expect(screen.getByText("Warning")).toBeTruthy();
+    expect(screen.queryByText("Warning")).toBeNull();
     expect(
       screen.queryByText("Watchlist is not working correctly yet"),
     ).toBeNull();
@@ -380,13 +425,13 @@ describe("DatasetViewSwitchGrid", () => {
       screen.queryByLabelText("GSEC (IMB-only)"),
     ).toBeNull();
     expect(
-      screen.queryByText("Keep only values 2-5."),
+      screen.queryByText("Keep only AX rows with values 2-5."),
     ).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "Watchlist filters" }));
 
     const thresholdLabel = screen.getByText("GSEC (IMB-only)");
-    const ruleLabel = screen.getByText("Population vs Evangelical Believers");
+    const jpOnlyLabel = screen.getByText("Evangelical Believers (JP-only)");
     const engagementLabel = screen.getByText("Engage: 8 Phases of Engagement");
     const thresholdInfo = screen.getByLabelText(
       "View definition for GSEC (IMB-only)",
@@ -397,12 +442,14 @@ describe("DatasetViewSwitchGrid", () => {
         "People groups unengaged or would be unengaged if the current mission work stopped today.",
       ),
     ).toBeTruthy();
-    expect(screen.getByText("Watchlist is not working correctly yet")).toBeTruthy();
     expect(
-      screen.getByText(
+      screen.queryByText("Watchlist is not working correctly yet"),
+    ).toBeNull();
+    expect(
+      screen.queryByText(
         "These filters can return incorrect results while the Watchlist logic is being fixed. Do not rely on this section yet.",
       ),
-    ).toBeTruthy();
+    ).toBeNull();
     expect(screen.queryByText("<= 2")).toBeNull();
     expect(screen.queryByLabelText("GSEC (IMB-only)")).toBeNull();
     expect(screen.queryByLabelText("Decrease GSEC (IMB-only)")).toBeNull();
@@ -411,36 +458,30 @@ describe("DatasetViewSwitchGrid", () => {
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
     expect(
-      thresholdLabel.compareDocumentPosition(ruleLabel) &
+      thresholdLabel.compareDocumentPosition(engagementLabel) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
     expect(
-      ruleLabel.compareDocumentPosition(engagementLabel) &
+      thresholdLabel.compareDocumentPosition(jpOnlyLabel) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      jpOnlyLabel.compareDocumentPosition(engagementLabel) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
     expect(screen.queryByText("Christianity: Frontier Group Y/N")).toBeNull();
-    expect(screen.getByText("Configured rule")).toBeTruthy();
     expect(
-      (
-        screen.getByRole("button", {
-          name: "Edit rule",
-        }) as HTMLButtonElement
-      ).disabled,
-    ).toBe(true);
-    expect(
-      screen.getByText(
-        "Open the popup editor to adjust breakpoints, minimum believers, and the scenario test dot.",
-      ),
-    ).toBeTruthy();
-    expect(screen.queryByText("Keep only values 2-5.")).toBeNull();
+      screen.queryByText("Population vs Evangelical Believers"),
+    ).toBeNull();
+    expect(screen.queryByText("Keep only AX rows with values 2-5.")).toBeNull();
     expect(
       screen.queryByLabelText("Engage: 8 Phases of Engagement"),
     ).toBeNull();
     expect(
-      screen.queryByLabelText(
+      screen.getByLabelText(
         "Toggle Watchlist Engage: 8 Phases of Engagement",
       ),
-    ).toBeNull();
+    ).toBeTruthy();
   });
 
   it("keeps country search interactive and auto-enables the filter on selection", () => {
@@ -480,7 +521,7 @@ describe("DatasetViewSwitchGrid", () => {
 
     expect(screen.getByText("2 visible countries")).toBeTruthy();
     expect(screen.queryByText("2 visible")).toBeNull();
-    expect(screen.queryByRole("button", { name: "Clear visible" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Deselect all" })).toBeTruthy();
 
     const searchInput = screen.getByLabelText("Search countries");
 
@@ -491,6 +532,7 @@ describe("DatasetViewSwitchGrid", () => {
       screen.getByLabelText("Toggle Alternate-country matching"),
     );
     fireEvent.click(screen.getByRole("button", { name: "Select all" }));
+    fireEvent.click(screen.getByRole("button", { name: "Deselect all" }));
     fireEvent.click(screen.getByLabelText("Include Jordan"));
 
     expect(screen.queryByText("Egypt")).toBeNull();
@@ -498,8 +540,13 @@ describe("DatasetViewSwitchGrid", () => {
     expect(onSearchChange).toHaveBeenCalledWith("eg");
     expect(onIncludeAlternateCountriesChange.mock.calls[0]?.[0]).toBe(true);
     expect(onSelectVisible).toHaveBeenCalledWith(["Egypt", "Jordan", "Turkey"]);
-    expect(onClearVisible).not.toHaveBeenCalled();
+    expect(onClearVisible).toHaveBeenCalledWith([
+      "Egypt",
+      "Jordan",
+      "Turkey",
+    ]);
     expect(onToggleCountry).toHaveBeenCalledWith("Jordan", true);
+    expect(onEnabledChange).toHaveBeenCalledTimes(3);
     expect(onEnabledChange).toHaveBeenCalledWith(true);
   });
 
@@ -526,6 +573,8 @@ describe("DatasetViewSwitchGrid", () => {
 
   it("keeps the watchlist threshold toggle interactive and omits the legacy frontier row", () => {
     const onThresholdEnabledChange = vi.fn();
+    const onEngagementPhaseEnabledChange = vi.fn();
+    const onJpOnlyEvangelicalCriteriaEnabledChange = vi.fn();
 
     render(
       <DatasetViewSwitchGrid
@@ -535,6 +584,8 @@ describe("DatasetViewSwitchGrid", () => {
           ...baseWatchlistCard,
           enabled: true,
           onThresholdEnabledChange,
+          onEngagementPhaseEnabledChange,
+          onJpOnlyEvangelicalCriteriaEnabledChange,
         }}
         uupgCard={baseUupgCard}
         hotspotsCard={baseHotspotsCard}
@@ -546,70 +597,29 @@ describe("DatasetViewSwitchGrid", () => {
     const thresholdToggle = screen.getByLabelText(
       "Toggle Watchlist GSEC (IMB-only)",
     );
+    const engagementPhaseToggle = screen.getByLabelText(
+      "Toggle Watchlist Engage: 8 Phases of Engagement",
+    );
+    const jpOnlyToggle = screen.getByLabelText(
+      "Toggle Watchlist Evangelical Believers (JP-only)",
+    );
 
     fireEvent.click(thresholdToggle);
+    fireEvent.click(engagementPhaseToggle);
+    fireEvent.click(jpOnlyToggle);
 
     expect(onThresholdEnabledChange.mock.calls[0]?.[0]).toBe(false);
+    expect(onEngagementPhaseEnabledChange.mock.calls[0]?.[0]).toBe(false);
+    expect(onJpOnlyEvangelicalCriteriaEnabledChange.mock.calls[0]?.[0]).toBe(
+      false,
+    );
     expect(screen.queryByText("Christianity: Frontier Group Y/N")).toBeNull();
   });
 
-  it("opens the population-believers editor in a dialog and closes it with Done", () => {
-    render(
-      <DatasetViewSwitchGrid
-        regionCard={baseRegionCard}
-        countryCard={baseCountryCard}
-        watchlistCard={{ ...baseWatchlistCard, enabled: true }}
-        uupgCard={baseUupgCard}
-        hotspotsCard={baseHotspotsCard}
-      />,
-    );
+  it("lets users edit the JP-only rule inline and reset it to defaults", () => {
+    const onJpOnlyEvangelicalRuleChange = vi.fn();
+    const onJpOnlyEvangelicalRuleReset = vi.fn();
 
-    fireEvent.click(screen.getByRole("button", { name: "Watchlist filters" }));
-    fireEvent.click(screen.getByRole("button", { name: "Edit rule" }));
-
-    expect(
-      screen.getByRole("dialog", { name: "Population vs Evangelical Believers" }),
-    ).toBeTruthy();
-    expect(screen.getByText("Scenario result")).toBeTruthy();
-    expect(screen.getByText("Test scenario")).toBeTruthy();
-
-    fireEvent.click(screen.getByRole("button", { name: "Done" }));
-
-    expect(
-      screen.queryByRole("dialog", {
-        name: "Population vs Evangelical Believers",
-      }),
-    ).toBeNull();
-  });
-
-  it("closes the population-believers editor with Escape", () => {
-    render(
-      <DatasetViewSwitchGrid
-        regionCard={baseRegionCard}
-        countryCard={baseCountryCard}
-        watchlistCard={{ ...baseWatchlistCard, enabled: true }}
-        uupgCard={baseUupgCard}
-        hotspotsCard={baseHotspotsCard}
-      />,
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: "Watchlist filters" }));
-    fireEvent.click(screen.getByRole("button", { name: "Edit rule" }));
-
-    expect(
-      screen.getByRole("dialog", { name: "Population vs Evangelical Believers" }),
-    ).toBeTruthy();
-
-    fireEvent.keyDown(document, { key: "Escape" });
-
-    expect(
-      screen.queryByRole("dialog", {
-        name: "Population vs Evangelical Believers",
-      }),
-    ).toBeNull();
-  });
-
-  it("shows only the first three inline rule lines and a remainder count", () => {
     render(
       <DatasetViewSwitchGrid
         regionCard={baseRegionCard}
@@ -617,14 +627,150 @@ describe("DatasetViewSwitchGrid", () => {
         watchlistCard={{
           ...baseWatchlistCard,
           enabled: true,
-          populationBelieversRule: {
-            tiers: [
-              { minPopulation: 0, maxPopulation: 999, minBelievers: 10 },
-              { minPopulation: 1_000, maxPopulation: 4_999, minBelievers: 25 },
-              { minPopulation: 5_000, maxPopulation: 9_999, minBelievers: 50 },
-              { minPopulation: 10_000, maxPopulation: null, minBelievers: 75 },
-            ],
+          jpOnlyEvangelicalRule: {
+            minBelievers: 80,
+            maxBelievers: 300_000,
+            maxPercentEvangelical: 2.5,
           },
+          jpOnlyEvangelicalRuleIsDefault: false,
+          jpOnlyEvangelicalCriteriaSummary:
+            "JP-only: < 80 believers, or 80-300,000 believers and <= 2.5% evangelical",
+          onJpOnlyEvangelicalRuleChange,
+          onJpOnlyEvangelicalRuleReset,
+        }}
+        uupgCard={baseUupgCard}
+        hotspotsCard={baseHotspotsCard}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Watchlist filters" }));
+    fireEvent.change(screen.getByLabelText("JP-only believer floor"), {
+      target: { value: "90" },
+    });
+    fireEvent.change(screen.getByLabelText("JP-only believer ceiling"), {
+      target: { value: "320000" },
+    });
+    fireEvent.change(screen.getByLabelText("JP-only max evangelical percent"), {
+      target: { value: "3.25" },
+    });
+    fireEvent.click(screen.getAllByRole("button", { name: "Reset defaults" })[1]!);
+
+    expect(onJpOnlyEvangelicalRuleChange).toHaveBeenNthCalledWith(1, {
+      minBelievers: 90,
+      maxBelievers: 300_000,
+      maxPercentEvangelical: 2.5,
+    });
+    expect(onJpOnlyEvangelicalRuleChange).toHaveBeenNthCalledWith(2, {
+      minBelievers: 80,
+      maxBelievers: 320_000,
+      maxPercentEvangelical: 2.5,
+    });
+    expect(onJpOnlyEvangelicalRuleChange).toHaveBeenNthCalledWith(3, {
+      minBelievers: 80,
+      maxBelievers: 300_000,
+      maxPercentEvangelical: 3.25,
+    });
+    expect(onJpOnlyEvangelicalRuleReset).toHaveBeenCalledTimes(1);
+    expect(
+      screen.getAllByText(
+        "JP-only: < 80 believers, or 80-300,000 believers and <= 2.5% evangelical",
+      ),
+    ).toHaveLength(2);
+  });
+
+  it("lets users edit the GSEC and engagement-phase rules inline and reset them", () => {
+    const onThresholdChange = vi.fn();
+    const onThresholdReset = vi.fn();
+    const onEngagementPhaseRuleChange = vi.fn();
+    const onEngagementPhaseRuleReset = vi.fn();
+
+    render(
+      <DatasetViewSwitchGrid
+        regionCard={baseRegionCard}
+        countryCard={baseCountryCard}
+        watchlistCard={{
+          ...baseWatchlistCard,
+          enabled: true,
+          threshold: 4,
+          thresholdIsDefault: false,
+          engagementPhaseRule: {
+            minPhase: 1,
+            maxPhase: 4,
+          },
+          engagementPhaseRuleIsDefault: false,
+          engagementPhaseDefinition:
+            "Engagement phase definition\n\nWhen enabled, Watchlist keeps only AX rows with values 1-4. If AX_Source is missing or invalid, Watchlist treats the row as AX and still applies the 1-4 rule.",
+          engagementPhaseSummary: "Engage: 8 Phases of Engagement 1-4 only",
+          onThresholdChange,
+          onThresholdReset,
+          onEngagementPhaseRuleChange,
+          onEngagementPhaseRuleReset,
+        }}
+        uupgCard={baseUupgCard}
+        hotspotsCard={baseHotspotsCard}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Watchlist filters" }));
+    fireEvent.change(screen.getByLabelText("Watchlist GSEC max"), {
+      target: { value: "5" },
+    });
+    fireEvent.change(screen.getByLabelText("Watchlist engagement min phase"), {
+      target: { value: "2" },
+    });
+    fireEvent.change(screen.getByLabelText("Watchlist engagement max phase"), {
+      target: { value: "6" },
+    });
+
+    const resetButtons = screen.getAllByRole("button", { name: "Reset defaults" });
+
+    fireEvent.click(resetButtons[0]!);
+    fireEvent.click(resetButtons[2]!);
+
+    expect(onThresholdChange).toHaveBeenCalledWith(5);
+    expect(onEngagementPhaseRuleChange).toHaveBeenNthCalledWith(1, {
+      minPhase: 2,
+      maxPhase: 4,
+    });
+    expect(onEngagementPhaseRuleChange).toHaveBeenNthCalledWith(2, {
+      minPhase: 1,
+      maxPhase: 6,
+    });
+    expect(onThresholdReset).toHaveBeenCalledTimes(1);
+    expect(onEngagementPhaseRuleReset).toHaveBeenCalledTimes(1);
+  });
+
+  it("uses an auto-fit layout for the JP-only rule controls", () => {
+    render(
+      <DatasetViewSwitchGrid
+        regionCard={baseRegionCard}
+        countryCard={baseCountryCard}
+        watchlistCard={{ ...baseWatchlistCard, enabled: true }}
+        uupgCard={baseUupgCard}
+        hotspotsCard={baseHotspotsCard}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Watchlist filters" }));
+
+    const jpOnlyRuleGrid =
+      screen.getByText("Auto-keep below").parentElement?.parentElement;
+
+    expect(jpOnlyRuleGrid?.className).toContain(
+      "grid-cols-[repeat(auto-fit,minmax(min(100%,11rem),1fr))]",
+    );
+    expect(jpOnlyRuleGrid?.className).not.toContain("lg:grid-cols-3");
+  });
+
+  it("disables the JP-only rule inputs when the criterion is off", () => {
+    render(
+      <DatasetViewSwitchGrid
+        regionCard={baseRegionCard}
+        countryCard={baseCountryCard}
+        watchlistCard={{
+          ...baseWatchlistCard,
+          enabled: true,
+          jpOnlyEvangelicalCriteriaEnabled: false,
         }}
         uupgCard={baseUupgCard}
         hotspotsCard={baseHotspotsCard}
@@ -633,26 +779,45 @@ describe("DatasetViewSwitchGrid", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Watchlist filters" }));
 
-    const configuredRuleCard = screen.getByText("Configured rule").closest("div");
-
-    expect(configuredRuleCard).toBeTruthy();
-    if (!configuredRuleCard) {
-      throw new Error("Expected configured rule card to render");
-    }
-
     expect(
-      within(configuredRuleCard).getByText("Under 1,000 -> at least 10 believers"),
-    ).toBeTruthy();
+      screen.getByLabelText("JP-only believer floor").getAttribute("disabled"),
+    ).not.toBeNull();
     expect(
-      within(configuredRuleCard).getByText("1,000-4,999 -> at least 25 believers"),
-    ).toBeTruthy();
+      screen.getByLabelText("JP-only believer ceiling").getAttribute("disabled"),
+    ).not.toBeNull();
     expect(
-      within(configuredRuleCard).getByText("5,000-9,999 -> at least 50 believers"),
-    ).toBeTruthy();
-    expect(within(configuredRuleCard).getByText("+1 more tiers")).toBeTruthy();
+      screen
+        .getByLabelText("JP-only max evangelical percent")
+        .getAttribute("disabled"),
+    ).not.toBeNull();
   });
 
-  it("reveals the UUPG field metadata when expanded while keeping the toggle in the section header", () => {
+  it("hides the JP-only row when the dataset does not expose the source flags", () => {
+    render(
+      <DatasetViewSwitchGrid
+        regionCard={baseRegionCard}
+        countryCard={baseCountryCard}
+        watchlistCard={{
+          ...baseWatchlistCard,
+          enabled: true,
+          jpOnlyEvangelicalCriteriaSupported: false,
+        }}
+        uupgCard={baseUupgCard}
+        hotspotsCard={baseHotspotsCard}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Watchlist filters" }));
+
+    expect(screen.queryByText("Evangelical Believers (JP-only)")).toBeNull();
+    expect(
+      screen.queryByText(
+        "JP-only: < 75 believers, or 75-249,999 believers and <= 2% evangelical",
+      ),
+    ).toBeNull();
+  });
+
+  it("reveals the UUPG criteria when expanded while keeping the master toggle in the section header", () => {
     render(
       <DatasetViewSwitchGrid
         regionCard={baseRegionCard}
@@ -661,22 +826,18 @@ describe("DatasetViewSwitchGrid", () => {
         uupgCard={{
           ...baseUupgCard,
           enabled: true,
-          fields: [
-            {
-              label: "Engage: Global Engagement Anywhere? (Y/N)",
-              definition: "Tracks whether engagement exists anywhere.",
-            },
-            {
-              label: "Christianity: Frontier Group Y/N",
-              definition: "Tracks whether the group is classified as frontier.",
-            },
-          ],
+          globalEngagementAnywhereLabel:
+            "Engage: Global Engagement Anywhere? (Y/N)",
+          globalEngagementAnywhereDefinition:
+            "Tracks whether engagement exists anywhere.",
+          frontierGroupLabel: "Christianity: Frontier Group Y/N",
+          frontierGroupDefinition:
+            "Tracks whether the group is classified as frontier.",
         }}
         hotspotsCard={baseHotspotsCard}
       />,
     );
 
-    expect(screen.getByText("On")).toBeTruthy();
     expect(screen.getByLabelText("Toggle UUPG")).toBeTruthy();
     expect(
       screen.queryByLabelText(
@@ -687,19 +848,108 @@ describe("DatasetViewSwitchGrid", () => {
     fireEvent.click(screen.getByRole("button", { name: "UUPG filters" }));
 
     expect(
-      screen.getByText("Engage: Global Engagement Anywhere? (Y/N)"),
-    ).toBeTruthy();
+      screen.getAllByText("Engage: Global Engagement Anywhere? (Y/N)"),
+    ).toHaveLength(2);
     expect(
       screen.getByLabelText(
         "View definition for Engage: Global Engagement Anywhere? (Y/N)",
       ),
     ).toBeTruthy();
-    expect(screen.getByText("Christianity: Frontier Group Y/N")).toBeTruthy();
+    expect(
+      screen.getAllByText("Christianity: Frontier Group Y/N"),
+    ).toHaveLength(2);
     expect(
       screen.getByLabelText(
         "View definition for Christianity: Frontier Group Y/N",
       ),
     ).toBeTruthy();
+  });
+
+  it("exposes separate UUPG child toggles when expanded", () => {
+    const onGlobalEngagementAnywhereEnabledChange = vi.fn();
+    const onFrontierGroupEnabledChange = vi.fn();
+
+    render(
+      <DatasetViewSwitchGrid
+        regionCard={baseRegionCard}
+        countryCard={baseCountryCard}
+        watchlistCard={baseWatchlistCard}
+        uupgCard={{
+          ...baseUupgCard,
+          enabled: true,
+          onGlobalEngagementAnywhereEnabledChange,
+          onFrontierGroupEnabledChange,
+        }}
+        hotspotsCard={baseHotspotsCard}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "UUPG filters" }));
+    fireEvent.click(
+      screen.getByLabelText("Toggle UUPG Global Engagement Anywhere"),
+    );
+    fireEvent.click(
+      screen.getByLabelText("Toggle UUPG Christianity: Frontier Group Y/N"),
+    );
+
+    expect(onGlobalEngagementAnywhereEnabledChange).toHaveBeenCalledWith(
+      false,
+      expect.anything(),
+    );
+    expect(onFrontierGroupEnabledChange).toHaveBeenCalledWith(
+      false,
+      expect.anything(),
+    );
+  });
+
+  it("disables the last active UUPG child toggle while the master toggle remains on", () => {
+    render(
+      <DatasetViewSwitchGrid
+        regionCard={baseRegionCard}
+        countryCard={baseCountryCard}
+        watchlistCard={baseWatchlistCard}
+        uupgCard={{
+          ...baseUupgCard,
+          enabled: true,
+          frontierGroupEnabled: false,
+        }}
+        hotspotsCard={baseHotspotsCard}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "UUPG filters" }));
+
+    expect(
+      screen
+        .getByLabelText("Toggle UUPG Global Engagement Anywhere")
+        .hasAttribute("data-disabled"),
+    ).toBe(true);
+    expect(
+      screen
+        .getByLabelText("Toggle UUPG Christianity: Frontier Group Y/N")
+        .hasAttribute("data-disabled"),
+    ).toBe(false);
+  });
+
+  it("omits the frontier UUPG row when the dataset does not support it", () => {
+    render(
+      <DatasetViewSwitchGrid
+        regionCard={baseRegionCard}
+        countryCard={baseCountryCard}
+        watchlistCard={baseWatchlistCard}
+        uupgCard={{
+          ...baseUupgCard,
+          enabled: true,
+          frontierGroupSupported: false,
+        }}
+        hotspotsCard={baseHotspotsCard}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "UUPG filters" }));
+
+    expect(screen.getAllByText("Global Engagement Anywhere")).toHaveLength(2);
+    expect(screen.queryByText("Christianity: Frontier Group Y/N")).toBeNull();
   });
 
   it("summarizes and edits hotspots controls when the section is enabled", () => {

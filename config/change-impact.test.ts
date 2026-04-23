@@ -145,4 +145,11 @@ describe("change-impact", () => {
       "none",
     );
   });
+
+  it("labels verification commands by workflow usage", () => {
+    expect(verificationCommandCatalog.typecheck.usage).toBe("terminal");
+    expect(verificationCommandCatalog["smoke:check"].usage).toBe("debug");
+    expect(verificationCommandCatalog["test:ui:smoke:targeted"].usage).toBe("debug");
+    expect(verificationCommandCatalog["test:ui:smoke"].usage).toBe("terminal");
+  });
 });

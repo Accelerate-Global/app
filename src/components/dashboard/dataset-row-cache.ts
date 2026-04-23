@@ -30,6 +30,41 @@ const DATASET_ROWS_PAGE_SIZE = 1000;
 const DATASET_ROWS_SINGLE_FETCH_MAX = 20_000;
 const datasetRowsCache = new Map<string, DatasetRowsCacheEntry>();
 
+export class DatasetRowsRequestCancelledError extends Error {
+  constructor(message = "Dataset rows request was cancelled.") {
+    super(message);
+    this.name = "DatasetRowsRequestCancelledError";
+  }
+}
+
+function isNativeDatasetRowsRequestCancelled(error: unknown) {
+  if (
+    typeof DOMException !== "undefined" &&
+    error instanceof DOMException
+  ) {
+    return error.name === "AbortError";
+  }
+
+  if (error instanceof Error) {
+    return (
+      error.name === "AbortError" ||
+      /ERR_ABORTED/u.test(error.message) ||
+      /\b(aborted|canceled|cancelled)\b/u.test(error.message)
+    );
+  }
+
+  return false;
+}
+
+export function isDatasetRowsRequestCancelled(
+  error: unknown,
+): error is DatasetRowsRequestCancelledError {
+  return (
+    error instanceof DatasetRowsRequestCancelledError ||
+    isNativeDatasetRowsRequestCancelled(error)
+  );
+}
+
 function createEntry(sourceDatasetId: string): DatasetRowsCacheEntry {
   return {
     sourceDatasetId,
@@ -85,22 +120,32 @@ async function fetchDatasetRows(input:
       datasetId: string;
       readAll: true;
     }) {
-  const params = new URLSearchParams();
+  try {
+    const params = new URLSearchParams();
 
-  if (input.readAll) {
-    params.set("all", "true");
-  } else {
-    params.set("page", String(input.page));
-    params.set("pageSize", String(input.pageSize));
+    if (input.readAll) {
+      params.set("all", "true");
+    } else {
+      params.set("page", String(input.page));
+      params.set("pageSize", String(input.pageSize));
+    }
+
+    const response = await fetch(
+      `/api/datasets/${input.datasetId}/rows?${params.toString()}`,
+    );
+
+    if (!response.ok) {
+      throw new Error("Rows could not be loaded.");
+    }
+
+    return (await response.json()) as DatasetRowsResponse;
+  } catch (error) {
+    if (isDatasetRowsRequestCancelled(error)) {
+      throw new DatasetRowsRequestCancelledError();
+    }
+
+    throw error;
   }
-
-  const response = await fetch(`/api/datasets/${input.datasetId}/rows?${params.toString()}`);
-
-  if (!response.ok) {
-    throw new Error("Rows could not be loaded.");
-  }
-
-  return (await response.json()) as DatasetRowsResponse;
 }
 
 async function fetchDatasetRowsPage(input: {
@@ -234,6 +279,15 @@ export function ensureDatasetRowsCache(input: {
     expectedRowCount: input.expectedRowCount,
   })
     .catch((error) => {
+      if (isDatasetRowsRequestCancelled(error)) {
+        entry.rows = [];
+        entry.totalRows = null;
+        entry.status = "idle";
+        entry.error = null;
+        notifyListeners(entry);
+        throw error;
+      }
+
       entry.status = "error";
       entry.error =
         error instanceof Error ? error.message : "Rows could not be loaded.";

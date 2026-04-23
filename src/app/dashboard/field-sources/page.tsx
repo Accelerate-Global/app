@@ -30,7 +30,7 @@ export default async function FieldSourcesPage() {
     >
       <SiteHeader identity={identity} />
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 py-10 sm:px-6 lg:px-8">
-        <section className="space-y-2">
+        <section className="space-y-3">
           <Link
             href="/dashboard"
             className={cn(
@@ -45,9 +45,14 @@ export default async function FieldSourcesPage() {
             Field Sources
           </h1>
           <p className="max-w-3xl text-base leading-7 text-muted-foreground sm:text-lg">
-            Review which databases map to each shared field. These source
-            relationships remain visible throughout the workspace as read-only
-            reference data.
+            Field Sources gives the workspace a dedicated home for
+            understanding where shared field data originates and how those
+            source relationships are managed.
+          </p>
+          <p className="max-w-3xl text-base leading-7 text-muted-foreground sm:text-lg">
+            Review which source fields currently map to each shared workspace
+            field. These mappings are available here as read-only reference
+            data.
           </p>
         </section>
         <FieldSourcesClient

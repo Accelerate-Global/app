@@ -1,7 +1,6 @@
 import { mkdir } from "node:fs/promises";
 
 import { chromium, expect, type FullConfig } from "@playwright/test";
-
 import {
   UI_SMOKE_AUTH_DIR,
   UI_SMOKE_BASE_URL,
@@ -28,7 +27,6 @@ async function waitForBaseUrl(baseUrl: string) {
 
   throw new Error(`Timed out waiting for ${baseUrl}`);
 }
-
 async function createSignedInStorageState(input: {
   baseUrl: string;
   email: string;

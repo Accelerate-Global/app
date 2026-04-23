@@ -228,6 +228,8 @@ describe("/dashboard/datasets/[datasetId]", () => {
       }),
       uupg: {
         enabled: false,
+        globalEngagementAnywhereEnabled: true,
+        frontierGroupEnabled: true,
       },
       hotspots: {
         enabled: false,

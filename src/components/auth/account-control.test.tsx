@@ -91,6 +91,9 @@ describe("AccountControl", () => {
     expect(screen.getByRole("button").getAttribute("data-smoke-trigger-ready")).toBe(
       "account-menu",
     );
+    expect(screen.getByRole("button").getAttribute("data-smoke-close")).toBe(
+      "account-menu",
+    );
     const menu = openMenu();
 
     expect(screen.getAllByText("Blake Lewis").length).toBeGreaterThan(0);
@@ -99,7 +102,6 @@ describe("AccountControl", () => {
       "separator",
       "Profile",
       "Dashboard",
-      "Field Sources",
       "Definitions",
       "Dark mode",
       "separator",
@@ -133,11 +135,11 @@ describe("AccountControl", () => {
     expect(screen.getByText("viewer@example.com")).toBeTruthy();
     expect(screen.queryByText("Manage Field Sources")).toBeNull();
     expect(screen.queryByText("Upload")).toBeNull();
+    expect(screen.queryByText("Field Sources")).toBeNull();
     expect(getMenuStructure(menu)).toEqual([
       "separator",
       "Profile",
       "Dashboard",
-      "Field Sources",
       "Definitions",
       "Dark mode",
       "separator",

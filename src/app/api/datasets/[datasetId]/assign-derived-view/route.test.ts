@@ -71,6 +71,7 @@ const dataset = {
       threshold: 2,
       engagementPhaseEnabled: true,
       engagementPhaseThreshold: 6,
+      jpOnlyEvangelicalCriteriaEnabled: true,
       evangelicalPopulationBelieversRuleEnabled: true,
       evangelicalPopulationBelieversRule: {
         tiers: [
@@ -86,6 +87,8 @@ const dataset = {
     },
     uupg: {
       enabled: false,
+      globalEngagementAnywhereEnabled: true,
+      frontierGroupEnabled: true,
     },
     hotspots: {
       enabled: false,

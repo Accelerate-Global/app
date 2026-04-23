@@ -3,6 +3,8 @@ import type {
   DatasetRowsResponse,
   DatasetSummary,
   FilterRegion,
+  WatchlistEngagementPhaseRule,
+  WatchlistJpOnlyEvangelicalRule,
 } from "@/lib/api-types";
 import type { PopulationBelieversRule } from "@/lib/api-types";
 import {
@@ -14,17 +16,28 @@ import {
 import { getFieldDefinitionCanonicalKeyLookupKeys } from "@/lib/field-definition-canonical";
 import {
   HOTSPOTS_UNIQUE_GROUP_DATASET_COLUMN_KEY,
+  WATCHLIST_AX_SOURCE_DATASET_COLUMN_KEY,
   COUNTRY_ALTERNATE_DATASET_COLUMN_KEY,
   REGION_DATASET_COLUMN_KEY,
   WATCHLIST_ENGAGEMENT_PHASES_DATASET_COLUMN_KEY,
   WATCHLIST_FRONTIER_GROUP_DATASET_COLUMN_KEY,
+  WATCHLIST_IMB_SOURCE_DATASET_COLUMN_KEY,
+  WATCHLIST_ETNO_SOURCE_DATASET_COLUMN_KEY,
+  WATCHLIST_JP_SOURCE_DATASET_COLUMN_KEY,
   WATCHLIST_PERCENT_EVANGELICAL_DATASET_COLUMN_KEY,
   WATCHLIST_POPULATION_DATASET_COLUMN_KEY,
   WATCHLIST_DATASET_COLUMN_KEY,
+  WATCHLIST_WCD_SOURCE_DATASET_COLUMN_KEY,
   UUPG_DATASET_COLUMN_KEY,
 } from "@/lib/dataset-region-constants";
 import { isGlobalRegionName } from "@/lib/region-display";
-import { isWatchlistEngagementPhaseMatch } from "@/lib/watchlist-engagement-phase";
+import {
+  normalizeWatchlistJpOnlyEvangelicalRule,
+} from "@/lib/watchlist-jp-only-evangelical";
+import {
+  isWatchlistEngagementPhaseMatch,
+  normalizeWatchlistEngagementPhaseRule,
+} from "@/lib/watchlist-engagement-phase";
 
 type DatasetRow = DatasetRowsResponse["rows"][number];
 const WATCHLIST_FRONTIER_GROUP_DATASET_COLUMN_KEYS =
@@ -54,6 +67,11 @@ type DatasetRowFilterFacets = {
   watchlistPopulation: number | null;
   watchlistPercentEvangelical: number | null;
   watchlistEngagementPhase: number | null;
+  watchlistJpSource: boolean | null;
+  watchlistImbSource: boolean | null;
+  watchlistAxSource: boolean | null;
+  watchlistEtnoSource: boolean | null;
+  watchlistWcdSource: boolean | null;
 };
 
 export type DatasetRegionFilterState = {
@@ -73,6 +91,9 @@ export type DatasetCountryFilterState = {
 export type DatasetUupgFilterState = {
   enabled: boolean;
   isSupported: boolean;
+  globalEngagementAnywhereEnabled: boolean;
+  frontierGroupEnabled: boolean;
+  frontierGroupSupported: boolean;
 };
 
 export type DatasetHotspotsFilterState = {
@@ -89,6 +110,9 @@ export type DatasetWatchlistFilterState = {
   threshold: number;
   engagementPhaseEnabled?: boolean;
   engagementPhaseThreshold: number;
+  engagementPhaseRule?: WatchlistEngagementPhaseRule;
+  jpOnlyEvangelicalCriteriaEnabled?: boolean;
+  jpOnlyEvangelicalRule?: WatchlistJpOnlyEvangelicalRule;
   evangelicalPopulationBelieversRuleEnabled?: boolean;
   evangelicalPopulationBelieversRule?: PopulationBelieversRule;
   evangelicalBelieversEnabled?: boolean;
@@ -135,6 +159,20 @@ function normalizeDatasetNumericValue(value: string | null | undefined) {
 
   const parsedValue = Number(trimmedValue);
   return Number.isFinite(parsedValue) ? parsedValue : null;
+}
+
+function normalizeDatasetBooleanValue(value: string | null | undefined) {
+  const trimmedValue = normalizeDatasetCellValue(value);
+
+  if (trimmedValue === "true") {
+    return true;
+  }
+
+  if (trimmedValue === "false") {
+    return false;
+  }
+
+  return null;
 }
 
 export const DEFAULT_HOTSPOTS_METRIC = "unique_uupgs" as const;
@@ -184,6 +222,11 @@ function getDatasetRowFilterFacets(row: DatasetRow) {
   let watchlistPopulation: number | null = null;
   let watchlistPercentEvangelical: number | null = null;
   let watchlistEngagementPhase: number | null = null;
+  let watchlistJpSource: boolean | null = null;
+  let watchlistImbSource: boolean | null = null;
+  let watchlistAxSource: boolean | null = null;
+  let watchlistEtnoSource: boolean | null = null;
+  let watchlistWcdSource: boolean | null = null;
 
   // Scan row.data once and cache the normalized filter fields for future passes.
   for (const [key, value] of Object.entries(row.data)) {
@@ -251,6 +294,46 @@ function getDatasetRowFilterFacets(row: DatasetRow) {
       normalizedKey === WATCHLIST_ENGAGEMENT_PHASES_DATASET_COLUMN_KEY
     ) {
       watchlistEngagementPhase = normalizeDatasetNumericValue(value);
+      continue;
+    }
+
+    if (
+      watchlistJpSource === null &&
+      normalizedKey === WATCHLIST_JP_SOURCE_DATASET_COLUMN_KEY
+    ) {
+      watchlistJpSource = normalizeDatasetBooleanValue(value);
+      continue;
+    }
+
+    if (
+      watchlistImbSource === null &&
+      normalizedKey === WATCHLIST_IMB_SOURCE_DATASET_COLUMN_KEY
+    ) {
+      watchlistImbSource = normalizeDatasetBooleanValue(value);
+      continue;
+    }
+
+    if (
+      watchlistAxSource === null &&
+      normalizedKey === WATCHLIST_AX_SOURCE_DATASET_COLUMN_KEY
+    ) {
+      watchlistAxSource = normalizeDatasetBooleanValue(value);
+      continue;
+    }
+
+    if (
+      watchlistEtnoSource === null &&
+      normalizedKey === WATCHLIST_ETNO_SOURCE_DATASET_COLUMN_KEY
+    ) {
+      watchlistEtnoSource = normalizeDatasetBooleanValue(value);
+      continue;
+    }
+
+    if (
+      watchlistWcdSource === null &&
+      normalizedKey === WATCHLIST_WCD_SOURCE_DATASET_COLUMN_KEY
+    ) {
+      watchlistWcdSource = normalizeDatasetBooleanValue(value);
     }
   }
 
@@ -267,6 +350,11 @@ function getDatasetRowFilterFacets(row: DatasetRow) {
     watchlistPopulation,
     watchlistPercentEvangelical,
     watchlistEngagementPhase,
+    watchlistJpSource,
+    watchlistImbSource,
+    watchlistAxSource,
+    watchlistEtnoSource,
+    watchlistWcdSource,
   } satisfies DatasetRowFilterFacets;
   datasetRowFilterFacetsCache.set(row, facets);
 
@@ -311,6 +399,15 @@ export function datasetSupportsUupgFiltering(
   return datasetSupportsColumnFiltering(dataset, UUPG_DATASET_COLUMN_KEY);
 }
 
+export function datasetSupportsUupgFrontierFiltering(
+  dataset: Pick<DatasetSummary, "columns">,
+) {
+  return datasetSupportsColumnFiltering(
+    dataset,
+    WATCHLIST_FRONTIER_GROUP_DATASET_COLUMN_KEY,
+  );
+}
+
 export function datasetSupportsHotspotsFiltering(
   dataset: Pick<DatasetSummary, "columns">,
 ) {
@@ -332,6 +429,22 @@ export function datasetSupportsWatchlistFiltering(
     WATCHLIST_POPULATION_DATASET_COLUMN_KEY,
     WATCHLIST_PERCENT_EVANGELICAL_DATASET_COLUMN_KEY,
     WATCHLIST_ENGAGEMENT_PHASES_DATASET_COLUMN_KEY,
+  ].every((expectedKey) =>
+    datasetSupportsColumnFiltering(dataset, expectedKey),
+  );
+}
+
+export function datasetSupportsWatchlistJpOnlyFiltering(
+  dataset: Pick<DatasetSummary, "columns">,
+) {
+  return [
+    WATCHLIST_POPULATION_DATASET_COLUMN_KEY,
+    WATCHLIST_PERCENT_EVANGELICAL_DATASET_COLUMN_KEY,
+    WATCHLIST_JP_SOURCE_DATASET_COLUMN_KEY,
+    WATCHLIST_IMB_SOURCE_DATASET_COLUMN_KEY,
+    WATCHLIST_AX_SOURCE_DATASET_COLUMN_KEY,
+    WATCHLIST_ETNO_SOURCE_DATASET_COLUMN_KEY,
+    WATCHLIST_WCD_SOURCE_DATASET_COLUMN_KEY,
   ].every((expectedKey) =>
     datasetSupportsColumnFiltering(dataset, expectedKey),
   );
@@ -649,11 +762,11 @@ export function getEffectiveCountrySelection(input: {
   );
   const hasExplicitSelection =
     input.countryFilterEnabled &&
-    selectedCountryNames.length > 0 &&
-    !areCountryKeySetsEqual(
-      createCountryKeySet(selectedCountryNames),
-      createCountryKeySet(baselineSelectedCountryNames),
-    );
+    (selectedCountryNames.length === 0 ||
+      !areCountryKeySetsEqual(
+        createCountryKeySet(selectedCountryNames),
+        createCountryKeySet(baselineSelectedCountryNames),
+      ));
 
   return {
     selectedCountryNames: hasExplicitSelection
@@ -718,10 +831,13 @@ export function filterDatasetRowsByCountry(
   if (
     !countryFilter ||
     !countryFilter.enabled ||
-    !countryFilter.isSupported ||
-    countryFilter.selectedCountryNames.length === 0
+    !countryFilter.isSupported
   ) {
     return rows;
+  }
+
+  if (countryFilter.selectedCountryNames.length === 0) {
+    return [];
   }
 
   const allowedCountryNames = new Set(
@@ -756,7 +872,9 @@ export function filterDatasetRowsByUupg(
     return rows;
   }
 
-  return rows.filter((row) => isUupgDatasetRow(getDatasetRowFilterFacets(row)));
+  return rows.filter((row) =>
+    matchesUupgDatasetRow(getDatasetRowFilterFacets(row), uupgFilter),
+  );
 }
 
 function matchesExpectedBooleanOrBlank(
@@ -766,18 +884,127 @@ function matchesExpectedBooleanOrBlank(
   return value.length === 0 || value === expectedValue;
 }
 
-function isUupgDatasetRow(
+export function normalizeDatasetUupgCriteriaState(
+  uupgFilter:
+    | Pick<
+        DatasetUupgFilterState,
+        | "globalEngagementAnywhereEnabled"
+        | "frontierGroupEnabled"
+        | "frontierGroupSupported"
+      >
+    | null
+    | undefined,
+) {
+  const globalEngagementAnywhereEnabled =
+    uupgFilter?.globalEngagementAnywhereEnabled ?? true;
+  const frontierGroupSupported = uupgFilter?.frontierGroupSupported ?? true;
+  const frontierGroupEnabled =
+    frontierGroupSupported && (uupgFilter?.frontierGroupEnabled ?? true);
+
+  if (globalEngagementAnywhereEnabled || frontierGroupEnabled) {
+    return {
+      globalEngagementAnywhereEnabled,
+      frontierGroupEnabled,
+      frontierGroupSupported,
+    };
+  }
+
+  return {
+    globalEngagementAnywhereEnabled: true,
+    frontierGroupEnabled: frontierGroupSupported,
+    frontierGroupSupported,
+  };
+}
+
+function matchesUupgDatasetRow(
   row: Pick<DatasetRowFilterFacets, "uupgValue" | "watchlistFrontierGroupValue">,
+  uupgFilter:
+    | Pick<
+        DatasetUupgFilterState,
+        | "globalEngagementAnywhereEnabled"
+        | "frontierGroupEnabled"
+        | "frontierGroupSupported"
+      >
+    | null
+    | undefined,
+) {
+  const normalizedCriteria = normalizeDatasetUupgCriteriaState(uupgFilter);
+
+  return (
+    (!normalizedCriteria.globalEngagementAnywhereEnabled ||
+      matchesExpectedBooleanOrBlank(row.uupgValue, "false")) &&
+    (!normalizedCriteria.frontierGroupEnabled ||
+      matchesExpectedBooleanOrBlank(row.watchlistFrontierGroupValue, "true"))
+  );
+}
+
+function isJpOnlyDatasetRow(
+  row: Pick<
+    DatasetRowFilterFacets,
+    | "watchlistJpSource"
+    | "watchlistImbSource"
+    | "watchlistAxSource"
+    | "watchlistEtnoSource"
+    | "watchlistWcdSource"
+  >,
 ) {
   return (
-    matchesExpectedBooleanOrBlank(row.uupgValue, "false") &&
-    matchesExpectedBooleanOrBlank(row.watchlistFrontierGroupValue, "true")
+    row.watchlistJpSource === true &&
+    row.watchlistImbSource === false &&
+    row.watchlistAxSource === false &&
+    row.watchlistEtnoSource === false &&
+    row.watchlistWcdSource === false
+  );
+}
+
+function isJpOnlyEvangelicalWatchlistMatch(
+  row: Pick<
+    DatasetRowFilterFacets,
+    | "watchlistJpSource"
+    | "watchlistImbSource"
+    | "watchlistAxSource"
+    | "watchlistEtnoSource"
+    | "watchlistWcdSource"
+    | "watchlistPopulation"
+    | "watchlistPercentEvangelical"
+  >,
+  rule: WatchlistJpOnlyEvangelicalRule,
+) {
+  if (!isJpOnlyDatasetRow(row)) {
+    return false;
+  }
+
+  const population = row.watchlistPopulation;
+  const percentEvangelical = row.watchlistPercentEvangelical;
+
+  if (population === null || percentEvangelical === null) {
+    return false;
+  }
+
+  const actualBelievers = calculateActualBelievers(population, percentEvangelical);
+
+  if (actualBelievers === null) {
+    return false;
+  }
+
+  if (actualBelievers < rule.minBelievers) {
+    return true;
+  }
+
+  if (percentEvangelical > rule.maxPercentEvangelical) {
+    return false;
+  }
+
+  return (
+    actualBelievers >= rule.minBelievers &&
+    actualBelievers <= rule.maxBelievers
   );
 }
 
 export function filterDatasetRowsByHotspots(
   rows: DatasetRow[],
   hotspotsFilter: DatasetHotspotsFilterState | null | undefined,
+  uupgFilter?: DatasetUupgFilterState | null,
 ) {
   if (
     !hotspotsFilter ||
@@ -799,7 +1026,7 @@ export function filterDatasetRowsByHotspots(
   for (const row of rows) {
     const facets = getDatasetRowFilterFacets(row);
 
-    if (!facets.primaryCountryName || !isUupgDatasetRow(facets)) {
+    if (!facets.primaryCountryName || !matchesUupgDatasetRow(facets, uupgFilter)) {
       continue;
     }
 
@@ -847,7 +1074,7 @@ export function filterDatasetRowsByHotspots(
     return (
       facets.primaryCountryKey.length > 0 &&
       hotspotCountryKeys.has(facets.primaryCountryKey) &&
-      isUupgDatasetRow(facets)
+      matchesUupgDatasetRow(facets, uupgFilter)
     );
   });
 }
@@ -865,6 +1092,15 @@ export function filterDatasetRowsByWatchlist(
   }
 
   const thresholdEnabled = watchlistFilter.thresholdEnabled ?? true;
+  const engagementPhaseEnabled = watchlistFilter.engagementPhaseEnabled ?? true;
+  const engagementPhaseRule = normalizeWatchlistEngagementPhaseRule(
+    watchlistFilter.engagementPhaseRule,
+  );
+  const jpOnlyEvangelicalCriteriaEnabled =
+    watchlistFilter.jpOnlyEvangelicalCriteriaEnabled ?? true;
+  const jpOnlyEvangelicalRule = normalizeWatchlistJpOnlyEvangelicalRule(
+    watchlistFilter.jpOnlyEvangelicalRule,
+  );
   const hasTieredPopulationBelieversRule = Boolean(
     watchlistFilter.evangelicalPopulationBelieversRule,
   );
@@ -893,6 +1129,10 @@ export function filterDatasetRowsByWatchlist(
   return rows.filter((row) => {
     const facets = getDatasetRowFilterFacets(row);
 
+    if (jpOnlyEvangelicalCriteriaEnabled && isJpOnlyDatasetRow(facets)) {
+      return isJpOnlyEvangelicalWatchlistMatch(facets, jpOnlyEvangelicalRule);
+    }
+
     if (thresholdEnabled) {
       const value = facets.watchlistValue;
 
@@ -904,7 +1144,14 @@ export function filterDatasetRowsByWatchlist(
       }
     }
 
-    if (!isWatchlistEngagementPhaseMatch(facets.watchlistEngagementPhase)) {
+    if (
+      engagementPhaseEnabled &&
+      facets.watchlistAxSource !== false &&
+      !isWatchlistEngagementPhaseMatch(
+        facets.watchlistEngagementPhase,
+        engagementPhaseRule,
+      )
+    ) {
       return false;
     }
 

@@ -82,7 +82,12 @@ describe("/dashboard/field-sources", () => {
     expect(listFieldSourceGridDataMock).toHaveBeenCalledWith();
     expect(
       screen.getByText(
-        "Review which databases map to each shared field. These source relationships remain visible throughout the workspace as read-only reference data.",
+        "Field Sources gives the workspace a dedicated home for understanding where shared field data originates and how those source relationships are managed.",
+      ),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(
+        "Review which source fields currently map to each shared workspace field. These mappings are available here as read-only reference data.",
       ),
     ).toBeTruthy();
     expect(fieldSourcesClientMock).toHaveBeenCalledWith(
