@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { render } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { notFound, redirect } from "next/navigation";
@@ -295,6 +295,27 @@ describe("/dashboard/datasets/[datasetId]", () => {
     };
 
     expect(props.datasetSource).toBe("default_redirect");
+  });
+
+  it("renders a static page heading regardless of the dataset name", async () => {
+    getDatasetMock.mockResolvedValue({
+      ...createDataset(),
+      fileName: "All People Groups",
+    });
+
+    render(
+      await DatasetPage({
+        params: Promise.resolve({ datasetId: "dataset-1" }),
+        searchParams: Promise.resolve({}),
+      }),
+    );
+
+    expect(
+      screen.getByRole("heading", { level: 1, name: "PGAC Dataset" }),
+    ).toBeTruthy();
+    expect(
+      screen.queryByRole("heading", { level: 1, name: "All People Groups" }),
+    ).toBeNull();
   });
 
   it("passes the backing source row count to the dataset detail client for derived datasets", async () => {
