@@ -49,6 +49,7 @@ import {
   normalizeRegionDisplayName,
   normalizeRegionDisplayText,
 } from "@/lib/region-display";
+import { getWatchlistEngagementPhaseCriterionText } from "@/lib/watchlist-engagement-phase";
 import { cn } from "@/lib/utils";
 
 type RegionSelector = {
@@ -90,23 +91,15 @@ type DatasetViewSwitchGridProps = {
     thresholdDefinition: string;
     thresholdEnabled: boolean;
     threshold: number;
-    minThreshold: number;
-    maxThreshold: number;
     engagementPhaseLabel: string;
     engagementPhaseDefinition: string;
-    engagementPhaseEnabled: boolean;
-    engagementPhaseThreshold: number;
-    minEngagementPhaseThreshold: number;
-    maxEngagementPhaseThreshold: number;
+    engagementPhaseSummary: string;
     populationBelieversRuleLabel: string;
     populationBelieversRuleDefinition: string;
     populationBelieversRuleEnabled: boolean;
     populationBelieversRule: PopulationBelieversRule;
     onEnabledChange: (checked: boolean) => void;
     onThresholdEnabledChange: (checked: boolean) => void;
-    onThresholdChange: (value: number) => void;
-    onEngagementPhaseEnabledChange: (checked: boolean) => void;
-    onEngagementPhaseThresholdChange: (value: number) => void;
     onPopulationBelieversRuleEnabledChange: (checked: boolean) => void;
     onPopulationBelieversRuleChange: (rule: PopulationBelieversRule) => void;
   };
@@ -502,11 +495,7 @@ function getWatchlistSummary(
     );
   }
 
-  if (watchlistCard.engagementPhaseEnabled) {
-    summary.push(
-      `${watchlistCard.engagementPhaseLabel} >= ${watchlistCard.engagementPhaseThreshold}`,
-    );
-  }
+  summary.push(watchlistCard.engagementPhaseSummary);
 
   return summary.length > 0 ? summary : ["No criteria selected"];
 }
@@ -615,6 +604,25 @@ function WatchlistPopulationBelieversControl({
           </DialogContent>
         </Dialog>
       </div>
+    </div>
+  );
+}
+
+function WatchlistReadOnlyCriterion({
+  value,
+  disabled,
+}: {
+  value: string;
+  disabled: boolean;
+}) {
+  return (
+    <div
+      className={cn(
+        "rounded-xl border border-border/70 bg-background/80 px-3 py-2 text-sm font-medium tracking-[-0.02em] text-foreground shadow-xs shadow-black/5",
+        disabled && "opacity-70",
+      )}
+    >
+      {value}
     </div>
   );
 }
@@ -910,14 +918,9 @@ function DatasetViewSwitchGridInner({
                   />
                 }
               >
-                <DatasetFilterNumberControl
-                  label={watchlistCard.thresholdLabel}
-                  value={watchlistCard.threshold}
-                  min={watchlistCard.minThreshold}
-                  max={watchlistCard.maxThreshold}
-                  operator="<="
+                <WatchlistReadOnlyCriterion
+                  value={`<= ${watchlistCard.threshold}`}
                   disabled={!watchlistCard.enabled || !watchlistCard.thresholdEnabled}
-                  onValueChange={watchlistCard.onThresholdChange}
                 />
               </DatasetFilterRow>
               <DatasetFilterRow
@@ -941,26 +944,10 @@ function DatasetViewSwitchGridInner({
                 label={watchlistCard.engagementPhaseLabel}
                 definition={watchlistCard.engagementPhaseDefinition}
                 controlClassName="max-w-[10rem]"
-                toggleControl={
-                  <Switch
-                    size="sm"
-                    checked={watchlistCard.engagementPhaseEnabled}
-                    disabled={!watchlistCard.enabled}
-                    onCheckedChange={watchlistCard.onEngagementPhaseEnabledChange}
-                    aria-label={`Toggle Watchlist ${watchlistCard.engagementPhaseLabel}`}
-                  />
-                }
               >
-                <DatasetFilterNumberControl
-                  label={watchlistCard.engagementPhaseLabel}
-                  value={watchlistCard.engagementPhaseThreshold}
-                  min={watchlistCard.minEngagementPhaseThreshold}
-                  max={watchlistCard.maxEngagementPhaseThreshold}
-                  operator=">="
-                  disabled={
-                    !watchlistCard.enabled || !watchlistCard.engagementPhaseEnabled
-                  }
-                  onValueChange={watchlistCard.onEngagementPhaseThresholdChange}
+                <WatchlistReadOnlyCriterion
+                  value={getWatchlistEngagementPhaseCriterionText()}
+                  disabled={!watchlistCard.enabled}
                 />
               </DatasetFilterRow>
             </div>

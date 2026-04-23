@@ -28,7 +28,7 @@ const rows: DatasetRowsResponse["rows"] = [
       geo_country_name: "India",
       alternate_countries: "Bhutan; Nepal",
       christianity_gsec: "2",
-      engage_8_phases_of_engagement: "6",
+      engage_8_phases_of_engagement: "5",
       christianity_frontier_group: "TRUE",
       pg_population: "20000",
       percent_evangelical_pgac: "5",
@@ -43,7 +43,7 @@ const rows: DatasetRowsResponse["rows"] = [
       geo_country_name: "Nepal",
       alternate_countries: "India ; Tibet",
       christianity_gsec: "3",
-      engage_8_phases_of_engagement: "6",
+      engage_8_phases_of_engagement: "5",
       christianity_frontier_group: "TRUE",
       pg_population: "40000",
       percent_evangelical_pgac: "5",
@@ -890,7 +890,7 @@ describe("dataset-region-filtering", () => {
           rowIndex: 0,
           data: {
             Christianity_GSEC: "1",
-            Engage_8_Phases_of_Engagement: "6",
+            Engage_8_Phases_of_Engagement: "5",
             Christianity_Frontier_Group: "TRUE",
             PG_Population: "10000",
             Percent_Evangelical_PGAC: "5",
@@ -922,7 +922,7 @@ describe("dataset-region-filtering", () => {
           rowIndex: 0,
           data: {
             Christianity_GSEC: "2",
-            engage_8_phases_of_engagement: "6",
+            engage_8_phases_of_engagement: "5",
             frontier_group: "TRUE",
             PG_Population: "10000",
             percent_evangelical_pgac: "5",
@@ -933,7 +933,7 @@ describe("dataset-region-filtering", () => {
           rowIndex: 1,
           data: {
             Christianity_GSEC: "3",
-            engage_8_phases_of_engagement: "6",
+            engage_8_phases_of_engagement: "5",
             frontier_group: "TRUE",
             PG_Population: "10000",
             percent_evangelical_pgac: "5",
@@ -966,7 +966,7 @@ describe("dataset-region-filtering", () => {
           rowIndex: 0,
           data: {
             christianity_gsec: "",
-            engage_8_phases_of_engagement: "6",
+            engage_8_phases_of_engagement: "5",
             christianity_frontier_group: "TRUE",
             pg_population: "10000",
             percent_evangelical_pgac: "5",
@@ -976,7 +976,7 @@ describe("dataset-region-filtering", () => {
           id: "row-missing",
           rowIndex: 1,
           data: {
-            engage_8_phases_of_engagement: "6",
+            engage_8_phases_of_engagement: "5",
             christianity_frontier_group: "TRUE",
             pg_population: "10000",
             percent_evangelical_pgac: "5",
@@ -987,7 +987,7 @@ describe("dataset-region-filtering", () => {
           rowIndex: 2,
           data: {
             christianity_gsec: "unknown",
-            engage_8_phases_of_engagement: "6",
+            engage_8_phases_of_engagement: "5",
             christianity_frontier_group: "TRUE",
             pg_population: "10000",
             percent_evangelical_pgac: "5",
@@ -998,7 +998,7 @@ describe("dataset-region-filtering", () => {
           rowIndex: 3,
           data: {
             christianity_gsec: "2",
-            engage_8_phases_of_engagement: "6",
+            engage_8_phases_of_engagement: "5",
             christianity_frontier_group: "TRUE",
             pg_population: "10000",
             percent_evangelical_pgac: "5",
@@ -1009,7 +1009,7 @@ describe("dataset-region-filtering", () => {
           rowIndex: 4,
           data: {
             christianity_gsec: "3",
-            engage_8_phases_of_engagement: "6",
+            engage_8_phases_of_engagement: "5",
             christianity_frontier_group: "TRUE",
             pg_population: "10000",
             percent_evangelical_pgac: "5",
@@ -1020,7 +1020,7 @@ describe("dataset-region-filtering", () => {
           rowIndex: 5,
           data: {
             christianity_gsec: "1",
-            engage_8_phases_of_engagement: "6",
+            engage_8_phases_of_engagement: "5",
             christianity_frontier_group: "FALSE",
             pg_population: "10000",
             percent_evangelical_pgac: "5",
@@ -1056,7 +1056,7 @@ describe("dataset-region-filtering", () => {
           rowIndex: 0,
           data: {
             christianity_gsec: "1",
-            engage_8_phases_of_engagement: "6",
+            engage_8_phases_of_engagement: "5",
             christianity_frontier_group: "TRUE",
             pg_population: "10000",
             percent_evangelical_pgac: "5",
@@ -1067,7 +1067,7 @@ describe("dataset-region-filtering", () => {
           rowIndex: 1,
           data: {
             christianity_gsec: "2",
-            engage_8_phases_of_engagement: "6",
+            engage_8_phases_of_engagement: "5",
             christianity_frontier_group: "FALSE",
             pg_population: "10000",
             percent_evangelical_pgac: "5",
@@ -1078,7 +1078,7 @@ describe("dataset-region-filtering", () => {
           rowIndex: 2,
           data: {
             christianity_gsec: "3",
-            engage_8_phases_of_engagement: "6",
+            engage_8_phases_of_engagement: "5",
             christianity_frontier_group: "FALSE",
             pg_population: "10000",
             percent_evangelical_pgac: "5",
@@ -1108,7 +1108,7 @@ describe("dataset-region-filtering", () => {
           rowIndex: 0,
           data: {
             christianity_gsec: "1",
-            engage_8_phases_of_engagement: "6",
+            engage_8_phases_of_engagement: "5",
             frontier_group: "TRUE",
             pg_population: "10000",
             percent_evangelical_pgac: "5",
@@ -1119,7 +1119,7 @@ describe("dataset-region-filtering", () => {
           rowIndex: 1,
           data: {
             christianity_gsec: "2",
-            engage_8_phases_of_engagement: "6",
+            engage_8_phases_of_engagement: "5",
             frontier_group: "FALSE",
             pg_population: "10000",
             percent_evangelical_pgac: "5",
@@ -1152,7 +1152,7 @@ describe("dataset-region-filtering", () => {
           rowIndex: 0,
           data: {
             christianity_gsec: "2",
-            engage_8_phases_of_engagement: "6",
+            engage_8_phases_of_engagement: "5",
             christianity_frontier_group: "TRUE",
             pg_population: "10000",
             percent_evangelical_pgac: "20",
@@ -1163,7 +1163,7 @@ describe("dataset-region-filtering", () => {
           rowIndex: 1,
           data: {
             christianity_gsec: "2",
-            engage_8_phases_of_engagement: "6",
+            engage_8_phases_of_engagement: "5",
             christianity_frontier_group: "TRUE",
             pg_population: "20000",
             percent_evangelical_pgac: "5",
@@ -1193,7 +1193,7 @@ describe("dataset-region-filtering", () => {
           rowIndex: 0,
           data: {
             christianity_gsec: "2",
-            engage_8_phases_of_engagement: "6",
+            engage_8_phases_of_engagement: "5",
             christianity_frontier_group: "TRUE",
             pg_population: "50000",
             percent_evangelical_pgac: "0.05",
@@ -1204,7 +1204,7 @@ describe("dataset-region-filtering", () => {
           rowIndex: 1,
           data: {
             christianity_gsec: "2",
-            engage_8_phases_of_engagement: "6",
+            engage_8_phases_of_engagement: "5",
             christianity_frontier_group: "TRUE",
             pg_population: "50000",
             percent_evangelical_pgac: "0.04",
@@ -1226,12 +1226,45 @@ describe("dataset-region-filtering", () => {
     expect(filteredRows.map((row) => row.id)).toEqual(["row-match"]);
   });
 
-  it("keeps only rows whose engagement phase is greater than or equal to the threshold", () => {
+  it("keeps only rows whose engagement phase is within the hardcoded 2-5 range", () => {
     const filteredRows = filterDatasetRowsByWatchlist(
       [
         {
-          id: "row-match",
+          id: "row-phase-2",
           rowIndex: 0,
+          data: {
+            christianity_gsec: "2",
+            engage_8_phases_of_engagement: "2",
+            christianity_frontier_group: "TRUE",
+            pg_population: "10000",
+            percent_evangelical_pgac: "10",
+          },
+        },
+        {
+          id: "row-phase-5",
+          rowIndex: 1,
+          data: {
+            christianity_gsec: "2",
+            engage_8_phases_of_engagement: "5",
+            christianity_frontier_group: "TRUE",
+            pg_population: "10000",
+            percent_evangelical_pgac: "10",
+          },
+        },
+        {
+          id: "row-phase-1",
+          rowIndex: 2,
+          data: {
+            christianity_gsec: "2",
+            engage_8_phases_of_engagement: "1",
+            christianity_frontier_group: "TRUE",
+            pg_population: "10000",
+            percent_evangelical_pgac: "10",
+          },
+        },
+        {
+          id: "row-phase-6",
+          rowIndex: 3,
           data: {
             christianity_gsec: "2",
             engage_8_phases_of_engagement: "6",
@@ -1241,11 +1274,10 @@ describe("dataset-region-filtering", () => {
           },
         },
         {
-          id: "row-miss",
-          rowIndex: 1,
+          id: "row-phase-missing",
+          rowIndex: 4,
           data: {
             christianity_gsec: "2",
-            engage_8_phases_of_engagement: "5",
             christianity_frontier_group: "TRUE",
             pg_population: "10000",
             percent_evangelical_pgac: "10",
@@ -1265,7 +1297,10 @@ describe("dataset-region-filtering", () => {
       },
     );
 
-    expect(filteredRows.map((row) => row.id)).toEqual(["row-match"]);
+    expect(filteredRows.map((row) => row.id)).toEqual([
+      "row-phase-2",
+      "row-phase-5",
+    ]);
   });
 
   it("keeps all rows when watchlist filtering is disabled", () => {
@@ -1446,7 +1481,7 @@ describe("dataset-region-filtering", () => {
           data: {
             geo_country_name: "India",
             christianity_gsec: "2",
-            engage_8_phases_of_engagement: "6",
+            engage_8_phases_of_engagement: "5",
             christianity_frontier_group: "TRUE",
             pg_population: "20000",
             percent_evangelical_pgac: "5",
@@ -1459,7 +1494,7 @@ describe("dataset-region-filtering", () => {
           data: {
             geo_country_name: "India",
             christianity_gsec: "2",
-            engage_8_phases_of_engagement: "6",
+            engage_8_phases_of_engagement: "5",
             christianity_frontier_group: "TRUE",
             pg_population: "20000",
             percent_evangelical_pgac: "5",
@@ -1472,7 +1507,7 @@ describe("dataset-region-filtering", () => {
           data: {
             geo_country_name: "India",
             christianity_gsec: "2",
-            engage_8_phases_of_engagement: "6",
+            engage_8_phases_of_engagement: "5",
             christianity_frontier_group: "TRUE",
             pg_population: "20000",
             percent_evangelical_pgac: "5",
@@ -1485,7 +1520,7 @@ describe("dataset-region-filtering", () => {
           data: {
             geo_country_name: "Nepal",
             christianity_gsec: "2",
-            engage_8_phases_of_engagement: "6",
+            engage_8_phases_of_engagement: "5",
             christianity_frontier_group: "TRUE",
             pg_population: "20000",
             percent_evangelical_pgac: "5",
@@ -1498,7 +1533,7 @@ describe("dataset-region-filtering", () => {
           data: {
             geo_country_name: "India",
             christianity_gsec: "3",
-            engage_8_phases_of_engagement: "6",
+            engage_8_phases_of_engagement: "5",
             christianity_frontier_group: "TRUE",
             pg_population: "20000",
             percent_evangelical_pgac: "5",
@@ -1511,7 +1546,7 @@ describe("dataset-region-filtering", () => {
           data: {
             geo_country_name: "India",
             christianity_gsec: "1",
-            engage_8_phases_of_engagement: "6",
+            engage_8_phases_of_engagement: "5",
             christianity_frontier_group: "FALSE",
             pg_population: "20000",
             percent_evangelical_pgac: "5",
@@ -1524,7 +1559,7 @@ describe("dataset-region-filtering", () => {
           data: {
             geo_country_name: "India",
             christianity_gsec: "2",
-            engage_8_phases_of_engagement: "6",
+            engage_8_phases_of_engagement: "5",
             christianity_frontier_group: "TRUE",
             pg_population: "50000",
             percent_evangelical_pgac: "1",
@@ -1537,7 +1572,7 @@ describe("dataset-region-filtering", () => {
           data: {
             geo_country_name: "India",
             christianity_gsec: "2",
-            engage_8_phases_of_engagement: "5",
+            engage_8_phases_of_engagement: "6",
             christianity_frontier_group: "TRUE",
             pg_population: "20000",
             percent_evangelical_pgac: "5",

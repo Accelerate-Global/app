@@ -101,6 +101,13 @@ export function DatasetAssignDerivedViewSheet({
   const [messageTone, setMessageTone] = useState<"default" | "destructive">(
     "default",
   );
+  const datasetNameById = useMemo(
+    () =>
+      new Map(
+        assignableDatasets.map((dataset) => [dataset.id, dataset.fileName]),
+      ),
+    [assignableDatasets],
+  );
   const selectedDataset = useMemo(
     () =>
       assignableDatasets.find((dataset) => dataset.id === selectedDatasetId) ?? null,
@@ -273,7 +280,13 @@ export function DatasetAssignDerivedViewSheet({
                   className="w-full"
                   data-smoke-assign-derived-view-target
                 >
-                  <SelectValue placeholder="Select a dataset" />
+                  <SelectValue placeholder="Select a dataset">
+                    {(selectedValue) =>
+                      datasetNameById.get(
+                        typeof selectedValue === "string" ? selectedValue : "",
+                      ) ?? ""
+                    }
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {assignableDatasets.map((dataset) => (

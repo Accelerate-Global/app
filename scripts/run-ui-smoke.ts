@@ -381,6 +381,11 @@ function isSupabaseStartupRaceError(error: unknown) {
       error.message.includes("container is not ready: starting") ||
       error.message.includes("error running container: exit 1") ||
       error.message.includes("error running container: exit 143") ||
+      error.message.includes("failed to start docker container") ||
+      (
+        error.message.includes("network ") &&
+        error.message.includes(" not found")
+      ) ||
       error.message.includes("timed out") ||
       error.message.includes("failed to inspect container health") ||
       error.message.includes("failed to read docker logs") ||
@@ -391,13 +396,16 @@ function isSupabaseStartupRaceError(error: unknown) {
   );
 }
 
-function isSupabaseStartRetryableError(error: unknown) {
+export function isSupabaseStartRetryableError(error: unknown) {
   return (
-    error instanceof Error &&
+    isDockerPruneInProgressError(error) ||
     (
-      error.message.includes("ports are not available") ||
-      error.message.includes("container name") ||
-      isSupabaseStartupRaceError(error)
+      error instanceof Error &&
+      (
+        error.message.includes("ports are not available") ||
+        error.message.includes("container name") ||
+        isSupabaseStartupRaceError(error)
+      )
     )
   );
 }
@@ -532,7 +540,9 @@ async function resetSupabaseAfterStartupFailure() {
   }
 
   await waitForSupabasePortsAvailable(DEFAULT_SUPABASE_PORT_RELEASE_WAIT);
-  await sleep(3_000);
+  // Docker sometimes keeps container/network prune work in-flight briefly after
+  // Supabase reports the stack stopped. Give it extra time before retrying.
+  await sleep(10_000);
 }
 
 async function hasUsableLocalSupabaseStatus() {

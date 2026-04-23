@@ -107,7 +107,7 @@ function createInitialFilters(
       thresholdEnabled: true,
       threshold: 2,
       engagementPhaseEnabled: true,
-      engagementPhaseThreshold: 6,
+      engagementPhaseThreshold: 2,
       evangelicalPopulationBelieversRuleEnabled: true,
       evangelicalPopulationBelieversRule: DEFAULT_POPULATION_BELIEVERS_RULE,
       frontierGroupEnabled: true,
@@ -1801,6 +1801,20 @@ describe("DatasetDetailClient", () => {
             linkedSources: [],
           },
         }}
+        initialFilters={createInitialFilters({
+          watchlist: {
+            enabled: true,
+            thresholdEnabled: true,
+            threshold: 5,
+            engagementPhaseEnabled: true,
+            engagementPhaseThreshold: 2,
+            evangelicalPopulationBelieversRuleEnabled: true,
+            evangelicalPopulationBelieversRule:
+              DEFAULT_POPULATION_BELIEVERS_RULE,
+            frontierGroupEnabled: true,
+            frontierGroupValue: true,
+          },
+        })}
       />,
     );
 
@@ -1812,12 +1826,9 @@ describe("DatasetDetailClient", () => {
         thresholdDefinition: string;
         thresholdEnabled: boolean;
         threshold: number;
-        minThreshold: number;
-        maxThreshold: number;
         engagementPhaseLabel: string;
         engagementPhaseDefinition: string;
-        engagementPhaseEnabled: boolean;
-        engagementPhaseThreshold: number;
+        engagementPhaseSummary: string;
         populationBelieversRuleLabel: string;
         populationBelieversRuleDefinition: string;
         populationBelieversRuleEnabled: boolean;
@@ -1871,18 +1882,16 @@ describe("DatasetDetailClient", () => {
     };
 
     expect(viewSwitchGridProps.watchlistCard).toMatchObject({
-      enabled: false,
+      enabled: true,
       supported: true,
       thresholdLabel: "Christianity: GSEC",
       thresholdDefinition: "Watchlist status definition",
       thresholdEnabled: true,
       threshold: 2,
-      minThreshold: 0,
-      maxThreshold: 6,
       engagementPhaseLabel: "Engage: 8 Phases of Engagement",
-      engagementPhaseDefinition: "Engagement phase definition",
-      engagementPhaseEnabled: true,
-      engagementPhaseThreshold: 6,
+      engagementPhaseDefinition:
+        "Engagement phase definition\n\nWatchlist hardcodes this filter to keep only values 2-5.",
+      engagementPhaseSummary: "Engage: 8 Phases of Engagement 2-5 only",
       populationBelieversRuleLabel: "Population vs Evangelical Believers",
       populationBelieversRuleDefinition:
         "Build a tiered minimum-believers rule by population. Actual believers are calculated as People Group: Population * (Percent Evangelical PGAC / 100), and the implied percentage is shown live for context.",
@@ -1894,21 +1903,21 @@ describe("DatasetDetailClient", () => {
     expect(viewSwitchGridProps.watchlistCard).not.toHaveProperty("frontierGroupEnabled");
     expect(viewSwitchGridProps.watchlistCard).not.toHaveProperty("frontierGroupValue");
     expect(datasetTableStateProps.watchlistFilter).toEqual({
-      enabled: false,
+      enabled: true,
       isSupported: true,
       thresholdEnabled: true,
       threshold: 2,
       engagementPhaseEnabled: true,
-      engagementPhaseThreshold: 6,
+      engagementPhaseThreshold: 2,
       evangelicalPopulationBelieversRuleEnabled: true,
       evangelicalPopulationBelieversRule: DEFAULT_POPULATION_BELIEVERS_RULE,
     });
     expect(actionBarProps.filters.watchlist).toEqual({
-      enabled: false,
+      enabled: true,
       thresholdEnabled: true,
       threshold: 2,
       engagementPhaseEnabled: true,
-      engagementPhaseThreshold: 6,
+      engagementPhaseThreshold: 2,
       evangelicalPopulationBelieversRuleEnabled: true,
       evangelicalPopulationBelieversRule: DEFAULT_POPULATION_BELIEVERS_RULE,
     });

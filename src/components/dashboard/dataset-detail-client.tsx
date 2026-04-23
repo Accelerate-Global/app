@@ -57,9 +57,15 @@ import { isGlobalRegionName } from "@/lib/region-display";
 import {
   buildSavedDatasetFilterState,
   getInitialDatasetDetailState,
+  WATCHLIST_FIXED_THRESHOLD,
 } from "@/lib/saved-dataset-filters";
 import { sanitizePopulationBelieversRule } from "@/lib/evangelical-population-believers-rule";
 import { useDatasetPerfRenderTrace } from "@/lib/render-trace";
+import {
+  WATCHLIST_FIXED_ENGAGEMENT_PHASE_MIN,
+  appendWatchlistEngagementPhaseDefinition,
+  formatWatchlistEngagementPhaseSummary,
+} from "@/lib/watchlist-engagement-phase";
 
 type DatasetDetailClientProps = {
   dataset: DatasetSummary;
@@ -80,10 +86,6 @@ type DatasetDetailClientProps = {
   initialSavedTableFilterSections?: SavedDatasetFilterState | null;
 };
 
-const WATCHLIST_THRESHOLD_MIN = 0;
-const WATCHLIST_THRESHOLD_MAX = 6;
-const WATCHLIST_ENGAGEMENT_PHASE_MIN = 0;
-const WATCHLIST_ENGAGEMENT_PHASE_MAX = 7;
 const UUPG_FRONTIER_LOOKUP_KEYS = getFieldDefinitionCanonicalKeyLookupKeys(
   WATCHLIST_FRONTIER_GROUP_DATASET_COLUMN_KEY,
 );
@@ -126,20 +128,6 @@ function getFieldPresentationForDatasetColumn(input: {
 const HOTSPOTS_COUNTRY_COUNT_MIN = 1;
 const WATCHLIST_POPULATION_BELIEVERS_RULE_LABEL =
   "Population vs Evangelical Believers";
-
-function clampWatchlistThreshold(value: number) {
-  return Math.min(
-    WATCHLIST_THRESHOLD_MAX,
-    Math.max(WATCHLIST_THRESHOLD_MIN, Math.round(value)),
-  );
-}
-
-function clampWatchlistEngagementPhaseThreshold(value: number) {
-  return Math.min(
-    WATCHLIST_ENGAGEMENT_PHASE_MAX,
-    Math.max(WATCHLIST_ENGAGEMENT_PHASE_MIN, Math.round(value)),
-  );
-}
 
 function clampHotspotsCountryCount(value: number) {
   return Math.min(
@@ -243,9 +231,14 @@ export function DatasetDetailClient({
       WATCHLIST_ENGAGEMENT_PHASES_DATASET_COLUMN_KEY
     ]?.effectiveLabel ?? "Engage_8_Phases_of_Engagement";
   const watchlistEngagementPhaseDefinition =
-    fieldDefinitionPresentationByColumnKey[
-      WATCHLIST_ENGAGEMENT_PHASES_DATASET_COLUMN_KEY
-    ]?.definition ?? "";
+    appendWatchlistEngagementPhaseDefinition(
+      fieldDefinitionPresentationByColumnKey[
+        WATCHLIST_ENGAGEMENT_PHASES_DATASET_COLUMN_KEY
+      ]?.definition ?? "",
+    );
+  const watchlistEngagementPhaseSummary = formatWatchlistEngagementPhaseSummary(
+    watchlistEngagementPhaseLabel,
+  );
   const watchlistPopulationLabel =
     fieldDefinitionPresentationByColumnKey[WATCHLIST_POPULATION_DATASET_COLUMN_KEY]
       ?.effectiveLabel ?? "PG_Population";
@@ -310,15 +303,14 @@ export function DatasetDetailClient({
     watchlistPopulationBelieversRuleEnabled,
     setWatchlistPopulationBelieversRuleEnabled,
   ] = useState(initialState.watchlistPopulationBelieversRuleEnabled);
-  const [watchlistEngagementPhaseEnabled, setWatchlistEngagementPhaseEnabled] =
-    useState(initialState.watchlistEngagementPhaseEnabled);
-  const [watchlistThreshold, setWatchlistThreshold] = useState(initialState.watchlistThreshold);
-  const [watchlistEngagementPhaseThreshold, setWatchlistEngagementPhaseThreshold] =
-    useState(initialState.watchlistEngagementPhaseThreshold);
   const [
     watchlistPopulationBelieversRule,
     setWatchlistPopulationBelieversRule,
   ] = useState(initialState.watchlistPopulationBelieversRule);
+  const watchlistThreshold = WATCHLIST_FIXED_THRESHOLD;
+  const watchlistEngagementPhaseEnabled = true;
+  const watchlistEngagementPhaseThreshold =
+    WATCHLIST_FIXED_ENGAGEMENT_PHASE_MIN;
   const [uupgEnabled, setUupgEnabled] = useState(initialState.uupgEnabled);
   const [hotspotsEnabled, setHotspotsEnabled] = useState(
     initialState.hotspotsEnabled,
@@ -501,11 +493,11 @@ export function DatasetDetailClient({
       hotspotsEnabled,
       hotspotsMetric,
       uupgEnabled,
-      watchlistEngagementPhaseEnabled,
       watchlistEnabled,
+      watchlistEngagementPhaseEnabled,
+      watchlistEngagementPhaseThreshold,
       watchlistPopulationBelieversRuleEnabled,
       watchlistThresholdEnabled,
-      watchlistEngagementPhaseThreshold,
       watchlistPopulationBelieversRule,
       watchlistThreshold,
     ],
@@ -570,17 +562,6 @@ export function DatasetDetailClient({
       setSelectedCountryNames(nextSelectedCountryNames);
     },
     [selectedRegionIds, visibleRegions],
-  );
-  const handleWatchlistThresholdChange = useCallback(
-    (value: number) => setWatchlistThreshold(clampWatchlistThreshold(value)),
-    [],
-  );
-  const handleWatchlistEngagementPhaseThresholdChange = useCallback(
-    (value: number) =>
-      setWatchlistEngagementPhaseThreshold(
-        clampWatchlistEngagementPhaseThreshold(value),
-      ),
-    [],
   );
   const handleWatchlistPopulationBelieversRuleChange = useCallback(
     (value: typeof watchlistPopulationBelieversRule) =>
@@ -746,8 +727,8 @@ export function DatasetDetailClient({
             watchlistPopulationBelieversRuleEnabled
               ? watchlistPopulationBelieversRule.tiers.length
               : null,
-          watchlist_engagement_phase_enabled: watchlistEngagementPhaseEnabled,
-          watchlist_engagement_phase_threshold: watchlistEngagementPhaseEnabled
+          watchlist_engagement_phase_enabled: watchlistEnabled,
+          watchlist_engagement_phase_threshold: watchlistEnabled
             ? watchlistEngagementPhaseThreshold
             : null,
           uupg_enabled: uupgEnabled,
@@ -780,7 +761,6 @@ export function DatasetDetailClient({
     hotspotsMetric,
     uupgEnabled,
     watchlistEnabled,
-    watchlistEngagementPhaseEnabled,
     watchlistEngagementPhaseThreshold,
     watchlistPopulationBelieversRuleEnabled,
     watchlistPopulationBelieversRule,
@@ -819,14 +799,9 @@ export function DatasetDetailClient({
         thresholdDefinition: watchlistThresholdDefinition,
         thresholdEnabled: watchlistThresholdEnabled,
         threshold: watchlistThreshold,
-        minThreshold: WATCHLIST_THRESHOLD_MIN,
-        maxThreshold: WATCHLIST_THRESHOLD_MAX,
         engagementPhaseLabel: watchlistEngagementPhaseLabel,
         engagementPhaseDefinition: watchlistEngagementPhaseDefinition,
-        engagementPhaseEnabled: watchlistEngagementPhaseEnabled,
-        engagementPhaseThreshold: watchlistEngagementPhaseThreshold,
-        minEngagementPhaseThreshold: WATCHLIST_ENGAGEMENT_PHASE_MIN,
-        maxEngagementPhaseThreshold: WATCHLIST_ENGAGEMENT_PHASE_MAX,
+        engagementPhaseSummary: watchlistEngagementPhaseSummary,
         populationBelieversRuleLabel: WATCHLIST_POPULATION_BELIEVERS_RULE_LABEL,
         populationBelieversRuleDefinition:
           watchlistPopulationBelieversRuleDefinition,
@@ -835,10 +810,6 @@ export function DatasetDetailClient({
         populationBelieversRule: watchlistPopulationBelieversRule,
         onEnabledChange: setWatchlistEnabled,
         onThresholdEnabledChange: setWatchlistThresholdEnabled,
-        onThresholdChange: handleWatchlistThresholdChange,
-        onEngagementPhaseEnabledChange: setWatchlistEngagementPhaseEnabled,
-        onEngagementPhaseThresholdChange:
-          handleWatchlistEngagementPhaseThresholdChange,
         onPopulationBelieversRuleEnabledChange:
           setWatchlistPopulationBelieversRuleEnabled,
         onPopulationBelieversRuleChange:
@@ -883,9 +854,7 @@ export function DatasetDetailClient({
       handleHotspotsMetricChange,
       handleRegionSelectorChange,
       handleSelectVisibleCountries,
-      handleWatchlistEngagementPhaseThresholdChange,
       handleWatchlistPopulationBelieversRuleChange,
-      handleWatchlistThresholdChange,
       hotspotsCountryCount,
       hotspotsEnabled,
       hotspotsMetric,
@@ -904,9 +873,8 @@ export function DatasetDetailClient({
       uupgFrontierFieldLabel,
       watchlistEnabled,
       watchlistEngagementPhaseDefinition,
-      watchlistEngagementPhaseEnabled,
       watchlistEngagementPhaseLabel,
-      watchlistEngagementPhaseThreshold,
+      watchlistEngagementPhaseSummary,
       watchlistPopulationBelieversRule,
       watchlistPopulationBelieversRuleDefinition,
       watchlistPopulationBelieversRuleEnabled,

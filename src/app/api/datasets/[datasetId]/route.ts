@@ -69,6 +69,7 @@ export async function PATCH(request: Request, context: DatasetContext) {
         : await updateDatasetDetails({
             datasetId,
             fileName: parsed.data.fileName,
+            sourceOrganizationName: parsed.data.sourceOrganizationName,
             tags: parsed.data.tags,
             isPrimary: parsed.data.isPrimary,
             isPublic: parsed.data.isPublic,

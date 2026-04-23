@@ -69,6 +69,20 @@ export const smokeRouteSpecs: SmokeRouteSpec[] = [
     journeys: ["admin can edit dataset details"],
   },
   {
+    id: "data-lake-viewer",
+    role: "viewer",
+    pageFile: "src/app/dashboard/data-lake/page.tsx",
+    path: "/dashboard/data-lake",
+    pageId: "data-lake",
+  },
+  {
+    id: "data-lake-admin",
+    role: "admin",
+    pageFile: "src/app/dashboard/data-lake/page.tsx",
+    path: "/dashboard/data-lake",
+    pageId: "data-lake",
+  },
+  {
     id: "datasets-index-viewer",
     role: "viewer",
     pageFile: "src/app/dashboard/datasets/page.tsx",

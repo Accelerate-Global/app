@@ -35,6 +35,9 @@ import {
   normalizeRegionDisplayName,
   normalizeRegionMatchName,
 } from "@/lib/region-display";
+import { WATCHLIST_FIXED_ENGAGEMENT_PHASE_MIN } from "@/lib/watchlist-engagement-phase";
+
+export const WATCHLIST_FIXED_THRESHOLD = 2;
 
 function dedupeStrings(values: string[]) {
   return Array.from(
@@ -215,6 +218,10 @@ function getNormalizedPopulationBelieversRuleState(
   }
 }
 
+function normalizeWatchlistThreshold(_value: number | null | undefined) {
+  return WATCHLIST_FIXED_THRESHOLD;
+}
+
 export function buildSavedDatasetFilterState(input: {
   regions: FilterRegion[];
   selectedRegionIds: Record<string, boolean>;
@@ -275,9 +282,9 @@ export function buildSavedDatasetFilterState(input: {
     watchlist: {
       enabled: input.watchlistEnabled,
       thresholdEnabled: input.watchlistThresholdEnabled,
-      threshold: input.watchlistThreshold,
-      engagementPhaseEnabled: input.watchlistEngagementPhaseEnabled,
-      engagementPhaseThreshold: input.watchlistEngagementPhaseThreshold,
+      threshold: normalizeWatchlistThreshold(input.watchlistThreshold),
+      engagementPhaseEnabled: true,
+      engagementPhaseThreshold: WATCHLIST_FIXED_ENGAGEMENT_PHASE_MIN,
       evangelicalPopulationBelieversRuleEnabled:
         input.watchlistPopulationBelieversRuleEnabled,
       evangelicalPopulationBelieversRule: sanitizePopulationBelieversRule(
@@ -373,9 +380,9 @@ export function getInitialDatasetDetailState(input: {
     includeAlternateCountries: false,
     watchlistEnabled: false,
     watchlistThresholdEnabled: true,
-    watchlistThreshold: 2,
+    watchlistThreshold: WATCHLIST_FIXED_THRESHOLD,
     watchlistEngagementPhaseEnabled: true,
-    watchlistEngagementPhaseThreshold: 6,
+    watchlistEngagementPhaseThreshold: WATCHLIST_FIXED_ENGAGEMENT_PHASE_MIN,
     watchlistPopulationBelieversRuleEnabled: true,
     watchlistPopulationBelieversRule: createDefaultPopulationBelieversRule(),
     uupgEnabled: false,
@@ -428,15 +435,10 @@ export function getInitialDatasetDetailState(input: {
     watchlistThresholdEnabled: supportsWatchlistFiltering
       ? normalizedPreset.watchlist.thresholdEnabled ?? true
       : defaultState.watchlistThresholdEnabled,
-    watchlistThreshold: supportsWatchlistFiltering
-      ? normalizedPreset.watchlist.threshold
-      : defaultState.watchlistThreshold,
-    watchlistEngagementPhaseEnabled: supportsWatchlistFiltering
-      ? normalizedPreset.watchlist.engagementPhaseEnabled ?? true
-      : defaultState.watchlistEngagementPhaseEnabled,
-    watchlistEngagementPhaseThreshold: supportsWatchlistFiltering
-      ? normalizedPreset.watchlist.engagementPhaseThreshold
-      : defaultState.watchlistEngagementPhaseThreshold,
+    watchlistThreshold: defaultState.watchlistThreshold,
+    watchlistEngagementPhaseEnabled: defaultState.watchlistEngagementPhaseEnabled,
+    watchlistEngagementPhaseThreshold:
+      defaultState.watchlistEngagementPhaseThreshold,
     watchlistPopulationBelieversRuleEnabled: supportsWatchlistFiltering
       ? getNormalizedPopulationBelieversRuleState(normalizedPreset.watchlist).enabled
       : defaultState.watchlistPopulationBelieversRuleEnabled,
@@ -479,9 +481,9 @@ export function normalizeSavedDatasetFilterState(filters: SavedDatasetFilterStat
     watchlist: {
       enabled: filters.watchlist.enabled,
       thresholdEnabled: filters.watchlist.thresholdEnabled ?? true,
-      threshold: filters.watchlist.threshold,
-      engagementPhaseEnabled: filters.watchlist.engagementPhaseEnabled ?? true,
-      engagementPhaseThreshold: filters.watchlist.engagementPhaseThreshold,
+      threshold: normalizeWatchlistThreshold(filters.watchlist.threshold),
+      engagementPhaseEnabled: true,
+      engagementPhaseThreshold: WATCHLIST_FIXED_ENGAGEMENT_PHASE_MIN,
       evangelicalPopulationBelieversRuleEnabled:
         populationBelieversRuleState.hasPersistedRule
           ? populationBelieversRuleState.enabled

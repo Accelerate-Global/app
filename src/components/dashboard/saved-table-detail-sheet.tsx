@@ -17,6 +17,7 @@ import type { DatasetSummary, SavedDatasetTable } from "@/lib/api-types";
 import { buildPopulationBelieversRuleSummaryLines } from "@/lib/evangelical-population-believers-rule";
 import { normalizeRegionDisplayName } from "@/lib/region-display";
 import { normalizeSavedDatasetFilterState } from "@/lib/saved-dataset-filters";
+import { formatWatchlistEngagementPhaseSummary } from "@/lib/watchlist-engagement-phase";
 
 type SavedTableDetailSheetProps = {
   savedTable: SavedDatasetTable;
@@ -83,11 +84,7 @@ function getWatchlistSummary(savedTable: SavedDatasetTable) {
     );
   }
 
-  if (normalizedFilters.watchlist.engagementPhaseEnabled ?? true) {
-    summary.push(
-      `Engage: 8 Phases >= ${normalizedFilters.watchlist.engagementPhaseThreshold}`,
-    );
-  }
+  summary.push(formatWatchlistEngagementPhaseSummary("Engage: 8 Phases"));
 
   return summary.length > 0 ? summary.join("; ") : "No criteria selected";
 }

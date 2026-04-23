@@ -115,6 +115,7 @@ describe("analytics helpers", () => {
   it("maps pathname segments into analytics routes", () => {
     expect(getAnalyticsRouteFromPathname("/")).toBe("sign_in");
     expect(getAnalyticsRouteFromPathname("/dashboard/profile")).toBe("profile");
+    expect(getAnalyticsRouteFromPathname("/dashboard/data-lake")).toBe("data_lake");
     expect(getAnalyticsRouteFromPathname("/dashboard/analytics")).toBe("analytics");
     expect(getAnalyticsRouteFromPathname("/dashboard/filter-settings")).toBe(
       "dashboard",

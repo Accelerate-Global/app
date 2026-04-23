@@ -101,6 +101,31 @@ describe("DatasetAssignDerivedViewSheet", () => {
     vi.unstubAllGlobals();
   });
 
+  it("shows the selected dataset name in the target dataset trigger", () => {
+    const uuidDataset = {
+      ...targetDataset,
+      id: "cabc3013-b922-4950-8058-ba36c8f175f5",
+    } satisfies DatasetSummary;
+
+    render(
+      <DatasetAssignDerivedViewSheet
+        open
+        onOpenChange={vi.fn()}
+        currentDataset={currentDataset}
+        sourceDatasetId={currentDataset.id}
+        filters={filters}
+        recordCount={2}
+        assignableDatasets={[uuidDataset]}
+      />,
+    );
+
+    const trigger = document.getElementById("dataset-assign-derived-view-target");
+
+    expect(trigger).toBeTruthy();
+    expect(trigger?.textContent).toContain("South Asia");
+    expect(trigger?.textContent).not.toContain(uuidDataset.id);
+  });
+
   it("assigns the current filtered result to the selected dataset", async () => {
     fetchMock.mockResolvedValue(
       new Response(JSON.stringify({ dataset: targetDataset }), {

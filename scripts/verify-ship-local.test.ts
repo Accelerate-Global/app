@@ -123,10 +123,10 @@ describe("verify-ship-local", () => {
 
       if (
         command === "git" &&
-        args.join(" ") === "diff --name-only -z origin/main...HEAD"
+        args.join(" ") === "diff --name-status -z origin/main...HEAD"
       ) {
         return {
-          stdout: "scripts/ship.ts\0tests/ui/global.setup.ts\0",
+          stdout: "A\0scripts/ship.ts\0D\0tests/ui/global.setup.ts\0",
           stderr: "",
           exitCode: 0,
         };
@@ -171,7 +171,7 @@ describe("verify-ship-local", () => {
     );
     expect(runCommandMock).toHaveBeenCalledWith(
       "git",
-      ["diff", "--name-only", "-z", "origin/main...HEAD"],
+      ["diff", "--name-status", "-z", "origin/main...HEAD"],
       expect.objectContaining({
         quiet: true,
         stdinMode: "ignore",
@@ -182,16 +182,28 @@ describe("verify-ship-local", () => {
         baseRef: "origin/main",
         headRef: "HEAD",
         changedFiles: ["scripts/ship.ts", "tests/ui/global.setup.ts"],
+        changedEntries: [
+          {
+            path: "scripts/ship.ts",
+            status: "A",
+            displayPath: "scripts/ship.ts",
+          },
+          {
+            path: "tests/ui/global.setup.ts",
+            status: "D",
+            displayPath: "tests/ui/global.setup.ts",
+          },
+        ],
       },
       changedFiles: [
         {
           path: "scripts/ship.ts",
-          status: "M",
+          status: "A",
           displayPath: "scripts/ship.ts",
         },
         {
           path: "tests/ui/global.setup.ts",
-          status: "M",
+          status: "D",
           displayPath: "tests/ui/global.setup.ts",
         },
       ],
@@ -223,7 +235,7 @@ describe("verify-ship-local", () => {
     );
     expect(runCommandMock).toHaveBeenCalledWith(
       "git",
-      ["diff", "--name-only", "-z", "origin/main...HEAD"],
+      ["diff", "--name-status", "-z", "origin/main...HEAD"],
       expect.objectContaining({
         quiet: true,
         stdinMode: "ignore",
@@ -243,16 +255,28 @@ describe("verify-ship-local", () => {
         baseRef: "origin/main",
         headRef: "HEAD",
         changedFiles: ["scripts/ship.ts", "tests/ui/global.setup.ts"],
+        changedEntries: [
+          {
+            path: "scripts/ship.ts",
+            status: "A",
+            displayPath: "scripts/ship.ts",
+          },
+          {
+            path: "tests/ui/global.setup.ts",
+            status: "D",
+            displayPath: "tests/ui/global.setup.ts",
+          },
+        ],
       },
       changedFiles: [
         {
           path: "scripts/ship.ts",
-          status: "M",
+          status: "A",
           displayPath: "scripts/ship.ts",
         },
         {
           path: "tests/ui/global.setup.ts",
-          status: "M",
+          status: "D",
           displayPath: "tests/ui/global.setup.ts",
         },
       ],
