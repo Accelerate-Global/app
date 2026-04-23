@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  AlertTriangleIcon,
   ChevronDownIcon,
   FlameIcon,
   InfoIcon,
@@ -13,7 +12,6 @@ import {
 import { memo, useState, type ReactNode } from "react";
 
 import { CountrySearchSelector } from "@/components/dashboard/country-search-selector";
-import { WatchlistPopulationBelieversBuilder } from "@/components/dashboard/watchlist-population-believers-builder";
 import {
   NumberField,
   NumberFieldDecrement,
@@ -22,33 +20,28 @@ import {
   NumberFieldInput,
 } from "@/components/reui/number-field";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { ButtonGroup } from "@/components/ui/button-group";
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type {
   DatasetHotspotsMetric,
-  PopulationBelieversRule,
+  WatchlistEngagementPhaseRule,
+  WatchlistJpOnlyEvangelicalRule,
 } from "@/lib/api-types";
-import {
-  buildPopulationBelieversRuleSummaryLines,
-  createDefaultPopulationBelieversRule,
-} from "@/lib/evangelical-population-believers-rule";
 import {
   isGlobalRegionName,
   normalizeRegionDisplayName,
   normalizeRegionDisplayText,
 } from "@/lib/region-display";
+import { WATCHLIST_THRESHOLD_MAX } from "@/lib/saved-dataset-filters";
+import {
+  WATCHLIST_ENGAGEMENT_PHASE_RULE_MAX,
+  WATCHLIST_ENGAGEMENT_PHASE_RULE_MIN,
+} from "@/lib/watchlist-engagement-phase";
+import {
+  WATCHLIST_JP_ONLY_EVANGELICAL_RULE_MAX_BELIEVERS,
+  WATCHLIST_JP_ONLY_EVANGELICAL_RULE_MAX_PERCENT_EVANGELICAL,
+} from "@/lib/watchlist-jp-only-evangelical";
 import { cn } from "@/lib/utils";
 
 type RegionSelector = {
@@ -89,26 +82,44 @@ type DatasetViewSwitchGridProps = {
     thresholdDefinition: string;
     thresholdEnabled: boolean;
     threshold: number;
+    thresholdIsDefault: boolean;
+    jpOnlyEvangelicalCriteriaEnabled: boolean;
+    jpOnlyEvangelicalCriteriaSupported: boolean;
+    jpOnlyEvangelicalCriteriaLabel: string;
+    jpOnlyEvangelicalCriteriaDefinition: string;
+    jpOnlyEvangelicalCriteriaSummary: string;
+    jpOnlyEvangelicalRule: WatchlistJpOnlyEvangelicalRule;
+    jpOnlyEvangelicalRuleIsDefault: boolean;
+    engagementPhaseEnabled: boolean;
     engagementPhaseLabel: string;
     engagementPhaseDefinition: string;
+    engagementPhaseRule: WatchlistEngagementPhaseRule;
+    engagementPhaseRuleIsDefault: boolean;
     engagementPhaseSummary: string;
-    populationBelieversRuleLabel: string;
-    populationBelieversRuleDefinition: string;
-    populationBelieversRuleEnabled: boolean;
-    populationBelieversRule: PopulationBelieversRule;
     onEnabledChange: (checked: boolean) => void;
     onThresholdEnabledChange: (checked: boolean) => void;
-    onPopulationBelieversRuleEnabledChange: (checked: boolean) => void;
-    onPopulationBelieversRuleChange: (rule: PopulationBelieversRule) => void;
+    onThresholdChange: (value: number) => void;
+    onThresholdReset: () => void;
+    onEngagementPhaseEnabledChange: (checked: boolean) => void;
+    onEngagementPhaseRuleChange: (rule: WatchlistEngagementPhaseRule) => void;
+    onEngagementPhaseRuleReset: () => void;
+    onJpOnlyEvangelicalCriteriaEnabledChange: (checked: boolean) => void;
+    onJpOnlyEvangelicalRuleChange: (rule: WatchlistJpOnlyEvangelicalRule) => void;
+    onJpOnlyEvangelicalRuleReset: () => void;
   };
   uupgCard: {
     enabled: boolean;
     supported: boolean;
-    fields: Array<{
-      label: string;
-      definition: string;
-    }>;
+    globalEngagementAnywhereLabel: string;
+    globalEngagementAnywhereDefinition: string;
+    globalEngagementAnywhereEnabled: boolean;
+    frontierGroupSupported: boolean;
+    frontierGroupLabel: string;
+    frontierGroupDefinition: string;
+    frontierGroupEnabled: boolean;
     onEnabledChange: (checked: boolean) => void;
+    onGlobalEngagementAnywhereEnabledChange: (checked: boolean) => void;
+    onFrontierGroupEnabledChange: (checked: boolean) => void;
   };
   hotspotsCard: {
     enabled: boolean;
@@ -136,18 +147,16 @@ const FILTER_PANEL_DESCRIPTIONS = {
   watchlist:
     "People groups unengaged or would be unengaged if the current mission work stopped today.",
   uupg:
-    "Keep people groups with no global engagement record and, when present, a frontier group value of TRUE.",
+    "Configure the Global Engagement Anywhere and Frontier Group criteria used for UUPG filtering.",
   hotspots:
     "Rank primary countries by UUPG burden and keep only UUPG rows from the top countries.",
 } as const;
 
 const INFO_TOOLTIP_CONTENT_CLASSNAME =
   "max-w-[26rem] rounded-2xl border border-border/80 bg-popover px-4 py-3.5 text-sm leading-6 text-popover-foreground shadow-lg ring-1 ring-foreground/8";
-const POPULATION_BELIEVERS_INLINE_SUMMARY_LIMIT = 3;
 const WATCHLIST_THRESHOLD_FILTER_LABEL = "GSEC (IMB-only)";
-const WATCHLIST_WARNING_TITLE = "Watchlist is not working correctly yet";
-const WATCHLIST_WARNING_DESCRIPTION =
-  "These filters can return incorrect results while the Watchlist logic is being fixed. Do not rely on this section yet.";
+const WATCHLIST_RULE_GRID_CLASSNAME =
+  "grid grid-cols-[repeat(auto-fit,minmax(min(100%,11rem),1fr))] gap-3";
 
 function RegionCountriesInfo({
   label,
@@ -307,17 +316,19 @@ function DatasetFilterNumberControl({
   step = 1,
   smallStep = 1,
   largeStep = 1,
+  className,
 }: {
   label: string;
   value: number;
   min: number;
   max: number;
-  operator: "<=" | ">=";
+  operator: "<" | "<=" | ">=";
   disabled: boolean;
   onValueChange: (value: number) => void;
   step?: number;
   smallStep?: number;
   largeStep?: number;
+  className?: string;
 }) {
   return (
     <NumberField
@@ -330,7 +341,7 @@ function DatasetFilterNumberControl({
       snapOnStep
       disabled={disabled}
       onValueChange={(nextValue) => onValueChange(nextValue ?? min)}
-      className="w-full sm:w-[10rem]"
+      className={cn("w-full sm:w-[10rem]", className)}
     >
       <NumberFieldGroup className="h-10 overflow-hidden rounded-xl border-border/70 bg-background/80 text-foreground shadow-xs shadow-black/5 focus-within:border-foreground/20 focus-within:ring-foreground/10">
         <span
@@ -354,6 +365,23 @@ function DatasetFilterNumberControl({
         />
       </NumberFieldGroup>
     </NumberField>
+  );
+}
+
+function DatasetFilterNumberField({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="min-w-0 space-y-1.5">
+      <p className="text-[0.72rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+        {label}
+      </p>
+      {children}
+    </div>
   );
 }
 
@@ -488,125 +516,18 @@ function getWatchlistSummary(
     );
   }
 
-  if (watchlistCard.populationBelieversRuleEnabled) {
-    summary.push(
-      ...buildPopulationBelieversRuleSummaryLines(
-        watchlistCard.populationBelieversRule,
-      ),
-    );
+  if (
+    watchlistCard.jpOnlyEvangelicalCriteriaSupported &&
+    watchlistCard.jpOnlyEvangelicalCriteriaEnabled
+  ) {
+    summary.push(watchlistCard.jpOnlyEvangelicalCriteriaSummary);
   }
 
-  summary.push(watchlistCard.engagementPhaseSummary);
+  if (watchlistCard.engagementPhaseEnabled) {
+    summary.push(watchlistCard.engagementPhaseSummary);
+  }
 
   return summary.length > 0 ? summary : ["No criteria selected"];
-}
-
-function WatchlistPopulationBelieversControl({
-  watchlistCard,
-}: {
-  watchlistCard: DatasetViewSwitchGridProps["watchlistCard"];
-}) {
-  const [open, setOpen] = useState(false);
-  const isEditorDisabled =
-    !watchlistCard.enabled || !watchlistCard.populationBelieversRuleEnabled;
-  const summaryLines = buildPopulationBelieversRuleSummaryLines(
-    watchlistCard.populationBelieversRule,
-  );
-  const visibleSummaryLines = summaryLines.slice(
-    0,
-    POPULATION_BELIEVERS_INLINE_SUMMARY_LIMIT,
-  );
-  const additionalTierCount = summaryLines.length - visibleSummaryLines.length;
-
-  return (
-    <div
-      className={cn(
-        "rounded-2xl border border-border/70 bg-muted/20 px-4 py-3",
-        isEditorDisabled && "opacity-70",
-      )}
-    >
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0 flex-1">
-          <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
-            Configured rule
-          </p>
-          <div className="mt-2 space-y-1.5 text-sm text-foreground">
-            {visibleSummaryLines.map((line) => (
-              <p key={line}>{line}</p>
-            ))}
-            {additionalTierCount > 0 ? (
-              <p className="text-muted-foreground">+{additionalTierCount} more tiers</p>
-            ) : null}
-          </div>
-          <p className="mt-3 text-xs leading-5 text-muted-foreground">
-            Open the popup editor to adjust breakpoints, minimum believers, and
-            the scenario test dot.
-          </p>
-        </div>
-
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger
-            render={
-              <Button
-                type="button"
-                variant="outline"
-                disabled={isEditorDisabled}
-                data-smoke-trigger="watchlist-population-believers-dialog"
-                data-smoke-write="safe"
-                className="shrink-0"
-              />
-            }
-          >
-            Edit rule
-          </DialogTrigger>
-          <DialogContent
-            className="p-0"
-            data-smoke-surface="watchlist-population-believers-dialog"
-            data-smoke-ready="watchlist-population-believers-dialog"
-          >
-            <DialogHeader className="border-b border-border/70 px-4 py-4 pr-16 sm:px-6 sm:py-5">
-              <DialogTitle>Population vs Evangelical Believers</DialogTitle>
-              <DialogDescription className="max-w-3xl leading-6">
-                Edit the tiered threshold visually. Changes apply to the current
-                filter immediately while the popup is open.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
-              <WatchlistPopulationBelieversBuilder
-                presentation="embedded"
-                disabled={isEditorDisabled}
-                rule={watchlistCard.populationBelieversRule}
-                onRuleChange={watchlistCard.onPopulationBelieversRuleChange}
-              />
-            </div>
-            <DialogFooter className="border-t border-border/70 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() =>
-                  watchlistCard.onPopulationBelieversRuleChange(
-                    createDefaultPopulationBelieversRule(),
-                  )
-                }
-              >
-                Reset to defaults
-              </Button>
-              <DialogClose
-                render={
-                  <Button
-                    type="button"
-                    data-smoke-close="watchlist-population-believers-dialog"
-                  />
-                }
-              >
-                Done
-              </DialogClose>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
-    </div>
-  );
 }
 
 function getCountrySummary(countryCard: DatasetViewSwitchGridProps["countryCard"]) {
@@ -643,7 +564,21 @@ function getUupgSummary(uupgCard: DatasetViewSwitchGridProps["uupgCard"]) {
     return ["Unavailable"];
   }
 
-  return [uupgCard.enabled ? "On" : "Off"];
+  if (!uupgCard.enabled) {
+    return ["Off"];
+  }
+
+  const summary: string[] = [];
+
+  if (uupgCard.globalEngagementAnywhereEnabled) {
+    summary.push(uupgCard.globalEngagementAnywhereLabel);
+  }
+
+  if (uupgCard.frontierGroupSupported && uupgCard.frontierGroupEnabled) {
+    summary.push(uupgCard.frontierGroupLabel);
+  }
+
+  return summary.length > 0 ? summary : ["No criteria selected"];
 }
 
 function getHotspotsMetricLabel(metric: DatasetHotspotsMetric) {
@@ -674,8 +609,7 @@ function DatasetViewSwitchGridInner({
   uupgCard,
   hotspotsCard,
 }: DatasetViewSwitchGridProps) {
-  const primaryUupgFieldLabel =
-    uupgCard.fields[0]?.label ?? "Engage_Global_Engagement_Anywhere";
+  const primaryUupgFieldLabel = uupgCard.globalEngagementAnywhereLabel;
   const visibleRegionSelectors = regionCard.selectors;
   const hasRegions = visibleRegionSelectors.length > 0;
   const [expandedSections, setExpandedSections] = useState<
@@ -692,6 +626,22 @@ function DatasetViewSwitchGridInner({
       countryCard.onEnabledChange(true);
     }
   };
+  const enabledUupgCriteriaCount =
+    Number(uupgCard.globalEngagementAnywhereEnabled) +
+    Number(uupgCard.frontierGroupSupported && uupgCard.frontierGroupEnabled);
+  const disableGlobalEngagementAnywhereToggle =
+    !uupgCard.enabled ||
+    (uupgCard.globalEngagementAnywhereEnabled && enabledUupgCriteriaCount === 1);
+  const disableFrontierGroupToggle =
+    !uupgCard.enabled ||
+    !uupgCard.frontierGroupSupported ||
+    (uupgCard.frontierGroupEnabled && enabledUupgCriteriaCount === 1);
+  const thresholdControlsDisabled =
+    !watchlistCard.enabled || !watchlistCard.thresholdEnabled;
+  const engagementPhaseRuleControlsDisabled =
+    !watchlistCard.enabled || !watchlistCard.engagementPhaseEnabled;
+  const jpOnlyRuleControlsDisabled =
+    !watchlistCard.enabled || !watchlistCard.jpOnlyEvangelicalCriteriaEnabled;
 
   return (
     <div
@@ -811,7 +761,8 @@ function DatasetViewSwitchGridInner({
                 showSelectionSummary={false}
                 selectActionLabel="Select all"
                 selectActionCountries={countryCard.availableCountries}
-                showClearAction={false}
+                clearActionLabel="Deselect all"
+                clearActionCountries={countryCard.availableCountries}
                 onSearchChange={countryCard.onSearchChange}
                 onToggleCountry={(country, checked) => {
                   if (checked) {
@@ -827,7 +778,13 @@ function DatasetViewSwitchGridInner({
 
                   countryCard.onSelectVisible(countryNames);
                 }}
-                onClearVisible={countryCard.onClearVisible}
+                onClearVisible={(countryNames) => {
+                  if (countryNames.length > 0) {
+                    enableCountryFilter();
+                  }
+
+                  countryCard.onClearVisible(countryNames);
+                }}
               />
             </div>
           )}
@@ -840,32 +797,6 @@ function DatasetViewSwitchGridInner({
           summary={getWatchlistSummary(watchlistCard)}
           description={FILTER_PANEL_DESCRIPTIONS.watchlist}
           expanded={expandedSections.watchlist}
-          titleAccessory={
-            <Badge
-              variant="outline"
-              className="shrink-0 border-warning/30 bg-warning/10 text-warning-foreground"
-            >
-              Warning
-            </Badge>
-          }
-          notice={
-            watchlistCard.supported ? (
-              <div className="flex items-start gap-3 rounded-xl border border-warning/25 bg-warning/10 p-3 text-left">
-                <AlertTriangleIcon
-                  aria-hidden="true"
-                  className="mt-0.5 size-4 shrink-0 text-warning-foreground"
-                />
-                <div className="space-y-1">
-                  <p className="text-sm font-semibold leading-5 text-warning-foreground">
-                    {WATCHLIST_WARNING_TITLE}
-                  </p>
-                  <p className="text-sm leading-5 text-warning-foreground">
-                    {WATCHLIST_WARNING_DESCRIPTION}
-                  </p>
-                </div>
-              </div>
-            ) : null
-          }
           onExpandedChange={(expanded) =>
             setExpandedSections((current) => ({ ...current, watchlist: expanded }))
           }
@@ -889,6 +820,7 @@ function DatasetViewSwitchGridInner({
               <DatasetFilterRow
                 label={WATCHLIST_THRESHOLD_FILTER_LABEL}
                 definition={watchlistCard.thresholdDefinition}
+                controlClassName="space-y-3"
                 toggleControl={
                   <Switch
                     size="sm"
@@ -898,29 +830,192 @@ function DatasetViewSwitchGridInner({
                     aria-label={`Toggle Watchlist ${WATCHLIST_THRESHOLD_FILTER_LABEL}`}
                   />
                 }
-              />
-              <DatasetFilterRow
-                label={watchlistCard.populationBelieversRuleLabel}
-                definition={watchlistCard.populationBelieversRuleDefinition}
-                toggleControl={
-                  <Switch
-                    size="sm"
-                    checked={watchlistCard.populationBelieversRuleEnabled}
-                    disabled={!watchlistCard.enabled}
-                    onCheckedChange={
-                      watchlistCard.onPopulationBelieversRuleEnabledChange
-                    }
-                    aria-label={`Toggle Watchlist ${watchlistCard.populationBelieversRuleLabel}`}
-                  />
-                }
               >
-                <WatchlistPopulationBelieversControl watchlistCard={watchlistCard} />
+                <div className={WATCHLIST_RULE_GRID_CLASSNAME}>
+                  <DatasetFilterNumberField label="Keep through">
+                    <DatasetFilterNumberControl
+                      label="Watchlist GSEC max"
+                      value={watchlistCard.threshold}
+                      min={0}
+                      max={WATCHLIST_THRESHOLD_MAX}
+                      operator="<="
+                      disabled={thresholdControlsDisabled}
+                      onValueChange={watchlistCard.onThresholdChange}
+                      className="sm:w-full"
+                    />
+                  </DatasetFilterNumberField>
+                </div>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-xs leading-5 text-muted-foreground">
+                    {`${WATCHLIST_THRESHOLD_FILTER_LABEL} <= ${watchlistCard.threshold}`}
+                  </p>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    disabled={watchlistCard.thresholdIsDefault}
+                    onClick={watchlistCard.onThresholdReset}
+                  >
+                    Reset defaults
+                  </Button>
+                </div>
               </DatasetFilterRow>
+              {watchlistCard.jpOnlyEvangelicalCriteriaSupported ? (
+                <DatasetFilterRow
+                  label={watchlistCard.jpOnlyEvangelicalCriteriaLabel}
+                  definition={watchlistCard.jpOnlyEvangelicalCriteriaDefinition}
+                  controlClassName="space-y-3"
+                  toggleControl={
+                    <Switch
+                      size="sm"
+                      checked={watchlistCard.jpOnlyEvangelicalCriteriaEnabled}
+                      disabled={!watchlistCard.enabled}
+                      onCheckedChange={
+                        watchlistCard.onJpOnlyEvangelicalCriteriaEnabledChange
+                      }
+                      aria-label={`Toggle Watchlist ${watchlistCard.jpOnlyEvangelicalCriteriaLabel}`}
+                    />
+                  }
+                >
+                  <div className={WATCHLIST_RULE_GRID_CLASSNAME}>
+                    <DatasetFilterNumberField label="Auto-keep below">
+                      <DatasetFilterNumberControl
+                        label="JP-only believer floor"
+                        value={watchlistCard.jpOnlyEvangelicalRule.minBelievers}
+                        min={0}
+                        max={WATCHLIST_JP_ONLY_EVANGELICAL_RULE_MAX_BELIEVERS}
+                        operator="<"
+                        disabled={jpOnlyRuleControlsDisabled}
+                        onValueChange={(minBelievers) =>
+                          watchlistCard.onJpOnlyEvangelicalRuleChange({
+                            ...watchlistCard.jpOnlyEvangelicalRule,
+                            minBelievers,
+                          })
+                        }
+                        className="sm:w-full"
+                      />
+                    </DatasetFilterNumberField>
+                    <DatasetFilterNumberField label="Percent cap through">
+                      <DatasetFilterNumberControl
+                        label="JP-only believer ceiling"
+                        value={watchlistCard.jpOnlyEvangelicalRule.maxBelievers}
+                        min={watchlistCard.jpOnlyEvangelicalRule.minBelievers}
+                        max={WATCHLIST_JP_ONLY_EVANGELICAL_RULE_MAX_BELIEVERS}
+                        operator="<="
+                        disabled={jpOnlyRuleControlsDisabled}
+                        onValueChange={(maxBelievers) =>
+                          watchlistCard.onJpOnlyEvangelicalRuleChange({
+                            ...watchlistCard.jpOnlyEvangelicalRule,
+                            maxBelievers,
+                          })
+                        }
+                        className="sm:w-full"
+                      />
+                    </DatasetFilterNumberField>
+                    <DatasetFilterNumberField label="Max evangelical %">
+                      <DatasetFilterNumberControl
+                        label="JP-only max evangelical percent"
+                        value={
+                          watchlistCard.jpOnlyEvangelicalRule.maxPercentEvangelical
+                        }
+                        min={0}
+                        max={WATCHLIST_JP_ONLY_EVANGELICAL_RULE_MAX_PERCENT_EVANGELICAL}
+                        operator="<="
+                        disabled={jpOnlyRuleControlsDisabled}
+                        onValueChange={(maxPercentEvangelical) =>
+                          watchlistCard.onJpOnlyEvangelicalRuleChange({
+                            ...watchlistCard.jpOnlyEvangelicalRule,
+                            maxPercentEvangelical,
+                          })
+                        }
+                        step={0.01}
+                        smallStep={0.01}
+                        largeStep={0.1}
+                        className="sm:w-full"
+                      />
+                    </DatasetFilterNumberField>
+                  </div>
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-xs leading-5 text-muted-foreground">
+                      {watchlistCard.jpOnlyEvangelicalCriteriaSummary}
+                    </p>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      disabled={watchlistCard.jpOnlyEvangelicalRuleIsDefault}
+                      onClick={watchlistCard.onJpOnlyEvangelicalRuleReset}
+                    >
+                      Reset defaults
+                    </Button>
+                  </div>
+                </DatasetFilterRow>
+              ) : null}
               <DatasetFilterRow
                 label={watchlistCard.engagementPhaseLabel}
                 definition={watchlistCard.engagementPhaseDefinition}
-                controlClassName="max-w-[10rem]"
-              />
+                controlClassName="space-y-3"
+                toggleControl={
+                  <Switch
+                    size="sm"
+                    checked={watchlistCard.engagementPhaseEnabled}
+                    disabled={!watchlistCard.enabled}
+                    onCheckedChange={watchlistCard.onEngagementPhaseEnabledChange}
+                    aria-label={`Toggle Watchlist ${watchlistCard.engagementPhaseLabel}`}
+                  />
+                }
+              >
+                <div className={WATCHLIST_RULE_GRID_CLASSNAME}>
+                  <DatasetFilterNumberField label="Keep from">
+                    <DatasetFilterNumberControl
+                      label="Watchlist engagement min phase"
+                      value={watchlistCard.engagementPhaseRule.minPhase}
+                      min={WATCHLIST_ENGAGEMENT_PHASE_RULE_MIN}
+                      max={WATCHLIST_ENGAGEMENT_PHASE_RULE_MAX}
+                      operator=">="
+                      disabled={engagementPhaseRuleControlsDisabled}
+                      onValueChange={(minPhase) =>
+                        watchlistCard.onEngagementPhaseRuleChange({
+                          ...watchlistCard.engagementPhaseRule,
+                          minPhase,
+                        })
+                      }
+                      className="sm:w-full"
+                    />
+                  </DatasetFilterNumberField>
+                  <DatasetFilterNumberField label="Keep through">
+                    <DatasetFilterNumberControl
+                      label="Watchlist engagement max phase"
+                      value={watchlistCard.engagementPhaseRule.maxPhase}
+                      min={watchlistCard.engagementPhaseRule.minPhase}
+                      max={WATCHLIST_ENGAGEMENT_PHASE_RULE_MAX}
+                      operator="<="
+                      disabled={engagementPhaseRuleControlsDisabled}
+                      onValueChange={(maxPhase) =>
+                        watchlistCard.onEngagementPhaseRuleChange({
+                          ...watchlistCard.engagementPhaseRule,
+                          maxPhase,
+                        })
+                      }
+                      className="sm:w-full"
+                    />
+                  </DatasetFilterNumberField>
+                </div>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-xs leading-5 text-muted-foreground">
+                    {watchlistCard.engagementPhaseSummary}
+                  </p>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    disabled={watchlistCard.engagementPhaseRuleIsDefault}
+                    onClick={watchlistCard.onEngagementPhaseRuleReset}
+                  >
+                    Reset defaults
+                  </Button>
+                </div>
+              </DatasetFilterRow>
             </div>
           )}
         </FilterSection>
@@ -952,13 +1047,36 @@ function DatasetViewSwitchGridInner({
             </p>
           ) : (
             <div className="divide-y divide-border/70 px-3">
-              {uupgCard.fields.map((field) => (
+              <DatasetFilterRow
+                label={uupgCard.globalEngagementAnywhereLabel}
+                definition={uupgCard.globalEngagementAnywhereDefinition}
+                toggleControl={
+                  <Switch
+                    size="sm"
+                    checked={uupgCard.globalEngagementAnywhereEnabled}
+                    disabled={disableGlobalEngagementAnywhereToggle}
+                    onCheckedChange={
+                      uupgCard.onGlobalEngagementAnywhereEnabledChange
+                    }
+                    aria-label={`Toggle UUPG ${uupgCard.globalEngagementAnywhereLabel}`}
+                  />
+                }
+              />
+              {uupgCard.frontierGroupSupported ? (
                 <DatasetFilterRow
-                  key={field.label}
-                  label={field.label}
-                  definition={field.definition}
+                  label={uupgCard.frontierGroupLabel}
+                  definition={uupgCard.frontierGroupDefinition}
+                  toggleControl={
+                    <Switch
+                      size="sm"
+                      checked={uupgCard.frontierGroupEnabled}
+                      disabled={disableFrontierGroupToggle}
+                      onCheckedChange={uupgCard.onFrontierGroupEnabledChange}
+                      aria-label={`Toggle UUPG ${uupgCard.frontierGroupLabel}`}
+                    />
+                  }
                 />
-              ))}
+              ) : null}
             </div>
           )}
         </FilterSection>

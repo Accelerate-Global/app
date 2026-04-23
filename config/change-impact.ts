@@ -3,6 +3,7 @@ import path from "node:path";
 import manifest from "./change-impact.manifest.json";
 
 export type SupabaseLifecycle = "none" | "prestart-required" | "self-managed";
+export type WorkflowCommandUsage = "planning" | "debug" | "terminal";
 
 export const verificationCommandCatalog = {
   typecheck: {
@@ -10,6 +11,7 @@ export const verificationCommandCatalog = {
     command: "pnpm run typecheck",
     description: "TypeScript static analysis for repo code and scripts.",
     supabaseLifecycle: "none",
+    usage: "terminal",
   },
   "verify:test-delta": {
     id: "verify:test-delta",
@@ -17,6 +19,7 @@ export const verificationCommandCatalog = {
     description:
       "Require a test file delta when directly tested repo code changes in the current diff.",
     supabaseLifecycle: "none",
+    usage: "terminal",
   },
   "smoke:preflight": {
     id: "smoke:preflight",
@@ -24,24 +27,28 @@ export const verificationCommandCatalog = {
     description:
       "Verify local Supabase, auth, storage, and smoke bootstrap prerequisites before Playwright starts.",
     supabaseLifecycle: "none",
+    usage: "debug",
   },
   "verify:app": {
     id: "verify:app",
     command: "pnpm run verify:app",
     description: "Run the repo app verification bundle: lint, vitest, and Next build.",
     supabaseLifecycle: "none",
+    usage: "terminal",
   },
   "smoke:check": {
     id: "smoke:check",
     command: "pnpm run smoke:check",
     description: "Regenerate the shared UI smoke fixture manifest and validate smoke contracts.",
     supabaseLifecycle: "none",
+    usage: "debug",
   },
   "test:ui:smoke": {
     id: "test:ui:smoke",
     command: "pnpm run test:ui:smoke",
     description: "Run the full Playwright UI smoke suite against the local stack.",
     supabaseLifecycle: "prestart-required",
+    usage: "terminal",
   },
   "test:ui:smoke:targeted": {
     id: "test:ui:smoke:targeted",
@@ -49,24 +56,28 @@ export const verificationCommandCatalog = {
     description:
       "Run the current-worktree Playwright smoke subset before attempting the full suite.",
     supabaseLifecycle: "prestart-required",
+    usage: "debug",
   },
   "db:security": {
     id: "db:security",
     command: "pnpm run db:security",
     description: "Reset local Supabase and run the database security suite.",
     supabaseLifecycle: "self-managed",
+    usage: "terminal",
   },
   "db:check-migration-drift": {
     id: "db:check-migration-drift",
     command: "pnpm run db:check-migration-drift",
     description: "Check linked Supabase migration drift before release work.",
     supabaseLifecycle: "none",
+    usage: "terminal",
   },
   "verify:ship:local": {
     id: "verify:ship:local",
     command: "pnpm run verify:ship:local",
     description: "Require a passing ship-local verification receipt before merge work begins.",
     supabaseLifecycle: "none",
+    usage: "terminal",
   },
 } as const;
 

@@ -56,6 +56,8 @@ const savedTable = {
     },
     uupg: {
       enabled: false,
+      globalEngagementAnywhereEnabled: true,
+      frontierGroupEnabled: true,
     },
     sorting: [
       {
@@ -120,6 +122,7 @@ describe("/api/saved-tables", () => {
           ...savedTable.filters.watchlist,
           thresholdEnabled: true,
           engagementPhaseEnabled: true,
+          jpOnlyEvangelicalCriteriaEnabled: true,
           evangelicalPopulationBelieversRuleEnabled: true,
           frontierGroupEnabled: true,
         },

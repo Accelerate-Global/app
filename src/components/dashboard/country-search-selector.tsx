@@ -23,6 +23,8 @@ type CountrySearchSelectorProps = {
   showSelectionSummary?: boolean;
   selectActionLabel?: string;
   selectActionCountries?: string[];
+  clearActionLabel?: string;
+  clearActionCountries?: string[];
   showClearAction?: boolean;
 };
 
@@ -40,6 +42,8 @@ export function CountrySearchSelector({
   showSelectionSummary = true,
   selectActionLabel = "Select visible",
   selectActionCountries,
+  clearActionLabel = "Clear visible",
+  clearActionCountries,
   showClearAction = true,
 }: CountrySearchSelectorProps) {
   const normalizedSearch = searchValue.trim().toLowerCase();
@@ -57,6 +61,7 @@ export function CountrySearchSelector({
     [selectedCountries],
   );
   const primaryActionCountries = selectActionCountries ?? filteredCountries;
+  const secondaryActionCountries = clearActionCountries ?? filteredCountries;
   const selectionSummary =
     selectedCountries.length > 0
       ? `${selectedCountries.length} selected`
@@ -98,10 +103,10 @@ export function CountrySearchSelector({
                 size="xs"
                 variant="outline"
                 className="rounded-full px-3"
-                disabled={disabled || filteredCountries.length === 0}
-                onClick={() => onClearVisible(filteredCountries)}
+                disabled={disabled || secondaryActionCountries.length === 0}
+                onClick={() => onClearVisible(secondaryActionCountries)}
               >
-                Clear visible
+                {clearActionLabel}
               </Button>
             ) : null}
           </div>

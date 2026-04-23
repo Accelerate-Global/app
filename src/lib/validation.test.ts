@@ -156,6 +156,11 @@ describe("datasetAssignDerivedViewSchema", () => {
       countryCount: 10,
     });
     expect(result.data.filters.country.includeAlternateCountries).toBe(false);
+    expect(result.data.filters.uupg).toEqual({
+      enabled: false,
+      globalEngagementAnywhereEnabled: true,
+      frontierGroupEnabled: true,
+    });
   });
 
   it("keeps legacy persisted region labels syntactically valid", () => {
@@ -219,7 +224,170 @@ describe("datasetAssignDerivedViewSchema", () => {
       return;
     }
 
+    expect(result.data.filters.watchlist.jpOnlyEvangelicalCriteriaEnabled).toBe(
+      true,
+    );
     expect(result.data.filters.watchlist.frontierGroupValue).toBe(true);
+  });
+
+  it("accepts a custom JP-only evangelical rule", () => {
+    const result = datasetAssignDerivedViewSchema.safeParse({
+      sourceDatasetId: "f0000000-0000-4000-8000-000000000099",
+      filters: {
+        region: {
+          enabled: false,
+          selectedRegionIds: [],
+          selectedRegionNames: [],
+          enabledCountryNames: [],
+        },
+        country: {
+          enabled: false,
+          selectedCountryNames: [],
+        },
+        watchlist: {
+          enabled: true,
+          threshold: 2,
+          engagementPhaseThreshold: 6,
+          jpOnlyEvangelicalRule: {
+            minBelievers: 90,
+            maxBelievers: 300000,
+            maxPercentEvangelical: 2.5,
+          },
+        },
+        uupg: {
+          enabled: false,
+        },
+        sorting: [],
+      },
+    });
+
+    expect(result.success).toBe(true);
+    if (!result.success) {
+      return;
+    }
+
+    expect(result.data.filters.watchlist.jpOnlyEvangelicalRule).toEqual({
+      minBelievers: 90,
+      maxBelievers: 300000,
+      maxPercentEvangelical: 2.5,
+    });
+  });
+
+  it("accepts versioned custom GSEC and engagement-phase rules", () => {
+    const result = datasetAssignDerivedViewSchema.safeParse({
+      sourceDatasetId: "f0000000-0000-4000-8000-000000000099",
+      filters: {
+        region: {
+          enabled: false,
+          selectedRegionIds: [],
+          selectedRegionNames: [],
+          enabledCountryNames: [],
+        },
+        country: {
+          enabled: false,
+          selectedCountryNames: [],
+        },
+        watchlist: {
+          enabled: true,
+          thresholdRuleVersion: 1,
+          threshold: 4,
+          engagementPhaseThreshold: 4,
+          engagementPhaseRule: {
+            minPhase: 1,
+            maxPhase: 4,
+          },
+        },
+        uupg: {
+          enabled: false,
+        },
+        sorting: [],
+      },
+    });
+
+    expect(result.success).toBe(true);
+    if (!result.success) {
+      return;
+    }
+
+    expect(result.data.filters.watchlist.thresholdRuleVersion).toBe(1);
+    expect(result.data.filters.watchlist.threshold).toBe(4);
+    expect(result.data.filters.watchlist.engagementPhaseRule).toEqual({
+      minPhase: 1,
+      maxPhase: 4,
+    });
+  });
+
+  it("rejects an engagement-phase rule whose max phase is below the min phase", () => {
+    const result = datasetAssignDerivedViewSchema.safeParse({
+      sourceDatasetId: "f0000000-0000-4000-8000-000000000099",
+      filters: {
+        region: {
+          enabled: false,
+          selectedRegionIds: [],
+          selectedRegionNames: [],
+          enabledCountryNames: [],
+        },
+        country: {
+          enabled: false,
+          selectedCountryNames: [],
+        },
+        watchlist: {
+          enabled: true,
+          threshold: 2,
+          engagementPhaseThreshold: 4,
+          engagementPhaseRule: {
+            minPhase: 4,
+            maxPhase: 1,
+          },
+        },
+        uupg: {
+          enabled: false,
+        },
+        sorting: [],
+      },
+    });
+
+    expect(result.success).toBe(false);
+    expect(
+      result.error?.issues.some((issue) => issue.path.includes("maxPhase")),
+    ).toBe(true);
+  });
+
+  it("rejects a JP-only evangelical rule whose max believers is below the min believers", () => {
+    const result = datasetAssignDerivedViewSchema.safeParse({
+      sourceDatasetId: "f0000000-0000-4000-8000-000000000099",
+      filters: {
+        region: {
+          enabled: false,
+          selectedRegionIds: [],
+          selectedRegionNames: [],
+          enabledCountryNames: [],
+        },
+        country: {
+          enabled: false,
+          selectedCountryNames: [],
+        },
+        watchlist: {
+          enabled: true,
+          threshold: 2,
+          engagementPhaseThreshold: 6,
+          jpOnlyEvangelicalRule: {
+            minBelievers: 90,
+            maxBelievers: 80,
+            maxPercentEvangelical: 2.5,
+          },
+        },
+        uupg: {
+          enabled: false,
+        },
+        sorting: [],
+      },
+    });
+
+    expect(result.success).toBe(false);
+    expect(
+      result.error?.issues.some((issue) => issue.path.includes("maxBelievers")),
+    ).toBe(true);
   });
 
   it("rejects invalid region ids inside the saved filter state", () => {

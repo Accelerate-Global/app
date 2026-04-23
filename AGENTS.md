@@ -83,6 +83,8 @@ Full rules and examples live in [/Users/blake/Documents/accelerate-global/online
 Treat `pnpm run verify:change` as the local planning gate for repo-tracked edits.
 
 - After initial exploration, run `pnpm run verify:change` before writing code.
+- For AI-agent UI and admin tasks, prefer `pnpm run task:kickoff -- --scope <owned-path-or-glob>` right after exploration so the kickoff brief captures owned paths, unrelated dirty paths, required commands, targeted smoke subset, and the terminal gate.
+- During the active 3-task UI/admin pilot, treat `pnpm run task:kickoff -- --scope <owned-path-or-glob>` as required before editing, not optional.
 - Treat the repo definition of done as blocking policy:
   - if a changed repo file already has a direct same-stem repo-local test, at least one mapped test file must be created or updated in the same diff
   - every command listed under `pnpm run verify:change` “Required commands” must run and pass locally before the agent finalizes
@@ -92,14 +94,22 @@ Treat `pnpm run verify:change` as the local planning gate for repo-tracked edits
   - changed area
   - required commands from `pnpm run verify:change`
   - targeted smoke subset from `pnpm run verify:change`
+- Prefer the thin-slice loop while coding:
+  - direct tests for touched units or components first
+  - `pnpm run smoke:check` when UI contracts changed
+  - `pnpm run test:ui:smoke:targeted` only when a browser-specific issue needs debugging
+  - `pnpm run verify:change:run` as the single terminal gate for the candidate tracked tree
 - Run `pnpm run verify:change:run` before finalizing when repo-tracked code, scripts, config, or tests changed.
 - If you add or edit a page, shared UI primitive, smoke surface, Supabase migration, or DB-affecting code path, satisfy the listed repo contracts during implementation, not at the end.
 - Before finalizing or attempting `ship` / release work, rerun `pnpm run verify:change` and complete every command listed under “Required commands”.
 - Use `pnpm run verify:ship:local` as the single pre-ship local gate. It reuses prior passes on the same tracked tree and runs any remaining release-only smoke work before `pnpm ship --pr <number>`.
 - Use standalone `pnpm run test:ui:smoke:targeted` and `pnpm run test:ui:smoke` only for focused debugging, ad hoc verification, or when `pnpm run verify:change` explicitly requires them.
+- Do not run `pnpm run test:ui:smoke` manually before `pnpm run verify:change:run` unless targeted smoke or the terminal gate already proved the failure is browser-specific.
+- During the active 3-task UI/admin pilot, classify every failed verification rerun as `environment`, `contract / harness`, or `product` before rerunning the narrow failing command and returning to `pnpm run verify:change:run`.
 - If `pnpm run test:ui:smoke`, `pnpm run db:security`, or `pnpm run verify:change:run` is blocked by an already-running repo-local Supabase stack, stop or reset that stack first and then continue the required command instead of stopping to ask.
 - Use [/Users/blake/Documents/accelerate-global/online/config/change-impact.ts](/Users/blake/Documents/accelerate-global/online/config/change-impact.ts) as the canonical rule set for impacted domains and verification commands.
 - Use [/Users/blake/Documents/accelerate-global/online/docs/testing/ui-smoke.md](/Users/blake/Documents/accelerate-global/online/docs/testing/ui-smoke.md) for the detailed smoke contract and examples.
+- Use [/Users/blake/Documents/accelerate-global/online/docs/testing/verification-triage.md](/Users/blake/Documents/accelerate-global/online/docs/testing/verification-triage.md) for the fastest next step when verification fails.
 
 # Security Remediation Invariants
 

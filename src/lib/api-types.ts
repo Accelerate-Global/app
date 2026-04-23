@@ -47,17 +47,6 @@ export type DatasetSummary = {
   updatedAt: string;
 };
 
-export type DataLakeSource = {
-  datasetId: string;
-  displayName: string;
-  sourceOrganizationName: string | null;
-  datasetFileName: string;
-  lastUploadAt: string;
-  status: DatasetStatus;
-  rowCount: number;
-  isPublic: boolean;
-};
-
 export type DatasetVersionSummary = {
   id: string;
   datasetId: string;
@@ -106,6 +95,17 @@ export type PopulationBelieversRule = {
   tiers: PopulationBelieversTier[];
 };
 
+export type WatchlistJpOnlyEvangelicalRule = {
+  minBelievers: number;
+  maxBelievers: number;
+  maxPercentEvangelical: number;
+};
+
+export type WatchlistEngagementPhaseRule = {
+  minPhase: number;
+  maxPhase: number;
+};
+
 export type DatasetHotspotsMetric = "unique_uupgs" | "population";
 
 export type SavedDatasetFilterState = {
@@ -123,9 +123,13 @@ export type SavedDatasetFilterState = {
   watchlist: {
     enabled: boolean;
     thresholdEnabled?: boolean;
+    thresholdRuleVersion?: 1;
     threshold: number;
     engagementPhaseEnabled?: boolean;
     engagementPhaseThreshold: number;
+    engagementPhaseRule?: WatchlistEngagementPhaseRule;
+    jpOnlyEvangelicalCriteriaEnabled?: boolean;
+    jpOnlyEvangelicalRule?: WatchlistJpOnlyEvangelicalRule;
     evangelicalPopulationBelieversRuleEnabled?: boolean;
     evangelicalPopulationBelieversRule?: PopulationBelieversRule;
     evangelicalBelieversEnabled?: boolean;
@@ -137,6 +141,8 @@ export type SavedDatasetFilterState = {
   };
   uupg: {
     enabled: boolean;
+    globalEngagementAnywhereEnabled?: boolean;
+    frontierGroupEnabled?: boolean;
   };
   hotspots?: {
     enabled: boolean;

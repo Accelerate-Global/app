@@ -176,6 +176,10 @@ export const DEFAULT_SUPABASE_STATUS_OUTPUT_RETRY = {
   attempts: 5,
   retryDelayMs: 2_000,
 } as const;
+export const DEFAULT_UI_SMOKE_PROJECT_GROUP_RETRY = {
+  attempts: 2,
+  retryDelayMs: 3_000,
+} as const;
 export const DEFAULT_UI_SMOKE_SUPABASE_START_TIMEOUT_MS = 120_000;
 export const CI_UI_SMOKE_SUPABASE_START_TIMEOUT_MS = 300_000;
 const UI_SMOKE_APP_PORT = Number(new URL(UI_SMOKE_BASE_URL).port || "3100");
@@ -200,6 +204,18 @@ function createPipelineError(
 ) {
   const detail = formatUnknownError(error);
   return new Error(`[${classification}] ${message}\n${detail}`);
+}
+
+export function isUiSmokeEnvironmentFailure(error: unknown) {
+  const detail = formatUnknownError(error);
+
+  return (
+    detail.includes("ECONNREFUSED 127.0.0.1:54321") ||
+    detail.includes("connect ECONNREFUSED 127.0.0.1:54321") ||
+    detail.includes("page.goto: net::ERR_CONNECTION_REFUSED") ||
+    detail.includes("supabase start is not running") ||
+    detail.includes("Local Supabase ports are unavailable")
+  );
 }
 
 async function canListenOnPort(port: number) {
@@ -410,13 +426,15 @@ export function isSupabaseStartRetryableError(error: unknown) {
   );
 }
 
-function isSupabaseDbResetRetryableError(error: unknown) {
+export function isSupabaseDbResetRetryableError(error: unknown) {
   return (
     error instanceof Error &&
     (
       isSupabaseStartupRaceError(error) ||
       error.message.includes("supabase start is not running") ||
-      error.message.includes("open supabase/.temp/profile")
+      error.message.includes("open supabase/.temp/profile") ||
+      error.message.includes("DatabaseSchemaMismatch") ||
+      error.message.includes("database schema is out of sync")
     )
   );
 }
@@ -630,6 +648,131 @@ async function startLocalSupabaseStack() {
   await sleep(3_000);
 }
 
+async function resetAndBootstrapUiSmokeEnvironment(input: {
+  smokeEnv: NodeJS.ProcessEnv;
+  bootstrapScope: UiSmokeBootstrapScope;
+}) {
+  await resetSupabaseAfterStartupFailure();
+  await startLocalSupabaseStack();
+  await runStageWithRetry({
+    classification: "bootstrap",
+    message: "supabase db reset failed.",
+    command: "supabase",
+    args: [...UI_SMOKE_DB_RESET_ARGS],
+    captureOutput: true,
+    attempts: 3,
+    retryDelayMs: 2_000,
+    timeoutMs: 120_000,
+    shouldRetry: isSupabaseDbResetRetryableError,
+    beforeRetry: async () => {
+      await resetSupabaseAfterStartupFailure();
+      await startLocalSupabaseStack();
+    },
+  });
+
+  const statusOutput = await getLocalSupabaseStatusOutput();
+  const nextSmokeEnv = {
+    ...buildUiSmokeCommandEnv(parseSupabaseEnvOutput(statusOutput)),
+    TMPDIR: input.smokeEnv.TMPDIR,
+  };
+
+  await runStageWithRetry({
+    classification: "bootstrap",
+    message: "UI smoke preflight failed.",
+    command: "pnpm",
+    args: ["run", "smoke:preflight"],
+    env: nextSmokeEnv,
+    attempts: 5,
+    retryDelayMs: 2_000,
+    shouldRetry: isLocalStackNotReadyError,
+  });
+  await runStageWithRetry({
+    classification: "bootstrap",
+    message: "UI smoke bootstrap failed.",
+    command: "pnpm",
+    args: [...getSmokeBootstrapArgs(input.bootstrapScope)],
+    env: nextSmokeEnv,
+    attempts: 5,
+    retryDelayMs: 2_000,
+    shouldRetry: isLocalStackNotReadyError,
+  });
+
+  return nextSmokeEnv;
+}
+
+async function runPlaywrightSuiteWithRecovery(input: {
+  suite: UiSmokeSuitePlan;
+  projectGroup: string[];
+  smokeEnv: NodeJS.ProcessEnv;
+  headed: boolean;
+  bootstrapScope: UiSmokeBootstrapScope;
+}) {
+  let smokeEnv = input.smokeEnv;
+
+  for (
+    let attempt = 1;
+    attempt <= DEFAULT_UI_SMOKE_PROJECT_GROUP_RETRY.attempts;
+    attempt += 1
+  ) {
+    await ensureUiSmokeAppPortAvailable();
+
+    const playwrightArgs = [
+      "exec",
+      "playwright",
+      "test",
+      ...input.suite.testPaths,
+      "-c",
+      "playwright.smoke.config.ts",
+    ];
+
+    if (input.suite.grepPattern) {
+      playwrightArgs.push("--grep", input.suite.grepPattern);
+    }
+
+    for (const projectName of input.projectGroup) {
+      playwrightArgs.push("--project", projectName);
+    }
+
+    if (input.headed) {
+      playwrightArgs.push("--headed");
+    }
+
+    try {
+      await runCommand("pnpm", playwrightArgs, {
+        env: smokeEnv,
+        captureOutput: true,
+      });
+      return smokeEnv;
+    } catch (error) {
+      const environmentFailure = isUiSmokeEnvironmentFailure(error);
+
+      if (
+        !environmentFailure ||
+        attempt === DEFAULT_UI_SMOKE_PROJECT_GROUP_RETRY.attempts
+      ) {
+        throw createPipelineError(
+          environmentFailure ? "bootstrap" : "product",
+          `${
+            input.suite.kind === "targeted" ? "Targeted" : "Full"
+          } Playwright UI smoke suite failed. Review the classified failures above.`,
+          error,
+        );
+      }
+
+      console.warn(
+        "Playwright smoke lost the local app or Supabase stack. Resetting the local stack before retrying this project group.",
+      );
+      smokeEnv = await resetAndBootstrapUiSmokeEnvironment({
+        smokeEnv,
+        bootstrapScope: input.bootstrapScope,
+      });
+      await sleep(DEFAULT_UI_SMOKE_PROJECT_GROUP_RETRY.retryDelayMs);
+    }
+  }
+
+  return smokeEnv;
+}
+
 function printSelectionSummary(lines: string[]) {
   if (lines.length === 0) {
     return;
@@ -648,12 +791,23 @@ export type UiSmokeSuitePlan = {
   testPaths: string[];
 };
 
+export const UI_SMOKE_PROJECT_ORDER = [
+  "desktop-anonymous",
+  "desktop-viewer",
+  "desktop-admin",
+  "mobile-anonymous",
+  "mobile-viewer",
+  "mobile-admin",
+] as const;
+
 export type UiSmokeRunPlan = {
   selection: UiSmokeSelection | null;
   suites: UiSmokeSuitePlan[];
   bootstrapScope: UiSmokeBootstrapScope;
   summary: string[];
 };
+
+const ROUTE_SWEEP_SPEC_PATH = "tests/ui/00-route-sweep.spec.ts";
 
 function resolveRunBootstrapScope(input: {
   selection: UiSmokeSelection | null;
@@ -717,12 +871,16 @@ export function buildUiSmokeRunPlan(input: {
   }
 
   const grepPattern = buildUiSmokeGrepPattern(selection);
+  const targetedTestPaths =
+    selection.routeIds.length > 0 && selection.testPaths.length > 0
+      ? [ROUTE_SWEEP_SPEC_PATH, ...selection.testPaths]
+      : selection.testPaths;
   const suites: UiSmokeSuitePlan[] = [
     {
       kind: "targeted",
       grepPattern,
       projectNames: selection.projectNames,
-      testPaths: selection.testPaths,
+      testPaths: targetedTestPaths,
     },
   ];
 
@@ -834,6 +992,17 @@ async function validateTargetedSelection(input: {
   }
 }
 
+export function expandUiSmokeSuiteProjects(
+  suite: UiSmokeSuitePlan,
+): string[][] {
+  const projectNames =
+    suite.projectNames.length > 0
+      ? suite.projectNames
+      : [...UI_SMOKE_PROJECT_ORDER];
+
+  return projectNames.map((projectName) => [projectName]);
+}
+
 async function main() {
   const {
     headed,
@@ -917,7 +1086,7 @@ async function main() {
   const playwrightTmpDir = path.join(UI_SMOKE_TMP_DIR, "playwright-tmp");
 
   await mkdir(playwrightTmpDir, { recursive: true });
-  const smokeEnv = {
+  let smokeEnv: NodeJS.ProcessEnv = {
     ...buildUiSmokeCommandEnv(parseSupabaseEnvOutput(statusOutput)),
     TMPDIR: playwrightTmpDir,
   };
@@ -965,40 +1134,15 @@ async function main() {
     });
   }
 
-  await ensureUiSmokeAppPortAvailable();
-
   for (const suite of runPlan.suites) {
-    const playwrightArgs = [
-      "exec",
-      "playwright",
-      "test",
-      ...suite.testPaths,
-      "-c",
-      "playwright.smoke.config.ts",
-    ];
-
-    if (suite.grepPattern) {
-      playwrightArgs.push("--grep", suite.grepPattern);
-    }
-
-    for (const projectName of suite.projectNames) {
-      playwrightArgs.push("--project", projectName);
-    }
-
-    if (headed) {
-      playwrightArgs.push("--headed");
-    }
-
-    try {
-      await runCommand("pnpm", playwrightArgs, { env: smokeEnv });
-    } catch (error) {
-      throw createPipelineError(
-        "product",
-        `${
-          suite.kind === "targeted" ? "Targeted" : "Full"
-        } Playwright UI smoke suite failed. Review the classified failures above.`,
-        error,
-      );
+    for (const projectGroup of expandUiSmokeSuiteProjects(suite)) {
+      smokeEnv = await runPlaywrightSuiteWithRecovery({
+        suite,
+        projectGroup,
+        smokeEnv,
+        headed,
+        bootstrapScope: runPlan.bootstrapScope,
+      });
     }
   }
 }

@@ -68,19 +68,20 @@ export function applyDatasetDefaultFilters(input: {
 
   return sortDatasetRows(
     filterDatasetRowsByCountry(
-      filterDatasetRowsByUupg(
-        filterDatasetRowsByHotspots(
-          filterDatasetRowsByWatchlist(
-            filterDatasetRowsByRegion(
-              input.rows,
-              getDatasetRegionFilterStateFromSavedView(input.dataset, filters),
+        filterDatasetRowsByUupg(
+          filterDatasetRowsByHotspots(
+            filterDatasetRowsByWatchlist(
+              filterDatasetRowsByRegion(
+                input.rows,
+                getDatasetRegionFilterStateFromSavedView(input.dataset, filters),
+              ),
+              getDatasetWatchlistFilterStateFromSavedView(input.dataset, filters),
             ),
-            getDatasetWatchlistFilterStateFromSavedView(input.dataset, filters),
+            getDatasetHotspotsFilterStateFromSavedView(input.dataset, filters),
+            getDatasetUupgFilterStateFromSavedView(input.dataset, filters),
           ),
-          getDatasetHotspotsFilterStateFromSavedView(input.dataset, filters),
+          getDatasetUupgFilterStateFromSavedView(input.dataset, filters),
         ),
-        getDatasetUupgFilterStateFromSavedView(input.dataset, filters),
-      ),
       getDatasetCountryFilterStateFromSavedView(input.dataset, filters),
     ),
     filters.sorting,

@@ -6,6 +6,7 @@ import {
   datasetSupportsCountryFiltering,
   datasetSupportsHotspotsFiltering,
   datasetSupportsRegionFiltering,
+  datasetSupportsWatchlistJpOnlyFiltering,
   datasetSupportsWatchlistFiltering,
   datasetSupportsUupgFiltering,
   filterDatasetRowsByCountry,
@@ -19,6 +20,43 @@ import {
   getMatchingRegionIdsForCountries,
   getSelectedRegionCountryNames,
 } from "./dataset-region-filtering";
+
+function createJpOnlySourceFlags(
+  overrides: Partial<
+    Record<
+      "JP_Source" | "IMB_Source" | "AX_Source" | "ETNO_Source" | "WCD_Source",
+      string
+    >
+  > = {},
+) {
+  return {
+    JP_Source: "TRUE",
+    IMB_Source: "FALSE",
+    AX_Source: "FALSE",
+    ETNO_Source: "FALSE",
+    WCD_Source: "FALSE",
+    ...overrides,
+  };
+}
+
+function createUupgFilter(
+  overrides: Partial<{
+    enabled: boolean;
+    isSupported: boolean;
+    globalEngagementAnywhereEnabled: boolean;
+    frontierGroupEnabled: boolean;
+    frontierGroupSupported: boolean;
+  }> = {},
+) {
+  return {
+    enabled: true,
+    isSupported: true,
+    globalEngagementAnywhereEnabled: true,
+    frontierGroupEnabled: true,
+    frontierGroupSupported: true,
+    ...overrides,
+  };
+}
 
 const rows: DatasetRowsResponse["rows"] = [
   {
@@ -151,6 +189,22 @@ describe("dataset-region-filtering", () => {
     expect(datasetSupportsWatchlistFiltering(dataset)).toBe(true);
   });
 
+  it("detects JP-only watchlist support when the dataset includes the source flags", () => {
+    expect(
+      datasetSupportsWatchlistJpOnlyFiltering({
+        ...dataset,
+        columns: [
+          ...dataset.columns,
+          { key: "jp_source", label: "JP_Source", sourceIndex: 10 },
+          { key: "imb_source", label: "IMB_Source", sourceIndex: 11 },
+          { key: "ax_source", label: "AX_Source", sourceIndex: 12 },
+          { key: "etno_source", label: "ETNO_Source", sourceIndex: 13 },
+          { key: "wcd_source", label: "WCD_Source", sourceIndex: 14 },
+        ],
+      }),
+    ).toBe(true);
+  });
+
   it("detects UUPG support when the dataset exposes the raw header as the label", () => {
     expect(
       datasetSupportsUupgFiltering({
@@ -269,6 +323,21 @@ describe("dataset-region-filtering", () => {
             label: "Christianity_GSEC",
             sourceIndex: 1,
           },
+        ],
+      }),
+    ).toBe(false);
+  });
+
+  it("reports JP-only watchlist filtering as unsupported when a source flag is absent", () => {
+    expect(
+      datasetSupportsWatchlistJpOnlyFiltering({
+        ...dataset,
+        columns: [
+          ...dataset.columns,
+          { key: "jp_source", label: "JP_Source", sourceIndex: 10 },
+          { key: "imb_source", label: "IMB_Source", sourceIndex: 11 },
+          { key: "ax_source", label: "AX_Source", sourceIndex: 12 },
+          { key: "etno_source", label: "ETNO_Source", sourceIndex: 13 },
         ],
       }),
     ).toBe(false);
@@ -526,6 +595,21 @@ describe("dataset-region-filtering", () => {
     });
   });
 
+  it("preserves an explicit empty country selection when country filtering is active", () => {
+    const selection = getEffectiveCountrySelection({
+      availableCountryNames: ["Brazil", "India", "Nepal"],
+      countryFilterEnabled: true,
+      regionFilterEnabled: false,
+      regionCountryNames: [],
+      selectedCountryNames: [],
+    });
+
+    expect(selection).toEqual({
+      selectedCountryNames: [],
+      hasExplicitSelection: true,
+    });
+  });
+
   it("filters rows by enabled region countries", () => {
     const filteredRows = filterDatasetRowsByRegion(rows, {
       enabled: true,
@@ -580,7 +664,7 @@ describe("dataset-region-filtering", () => {
     expect(filteredRows.map((row) => row.id)).toEqual(["row-1"]);
   });
 
-  it("keeps all rows when country filtering is enabled without selected countries", () => {
+  it("returns no rows when country filtering is enabled without selected countries", () => {
     const filteredRows = filterDatasetRowsByCountry(rows, {
       enabled: true,
       isSupported: true,
@@ -588,7 +672,7 @@ describe("dataset-region-filtering", () => {
       includeAlternateCountries: false,
     });
 
-    expect(filteredRows).toHaveLength(3);
+    expect(filteredRows).toEqual([]);
   });
 
   it("combines region and country filters as an intersection", () => {
@@ -766,6 +850,50 @@ describe("dataset-region-filtering", () => {
     ]);
   });
 
+  it("lets hotspots follow the active split UUPG criteria even when the UUPG master toggle is off", () => {
+    const filteredRows = filterDatasetRowsByHotspots(
+      [
+        {
+          id: "row-brazil-frontier-only",
+          rowIndex: 0,
+          data: {
+            geo_country_name: "Brazil",
+            pg_peid: "PG-BRAZIL-1",
+            pg_population: "500",
+            engage_global_engagement_anywhere: "TRUE",
+            christianity_frontier_group: "TRUE",
+          },
+        },
+        {
+          id: "row-india-frontier-false",
+          rowIndex: 1,
+          data: {
+            geo_country_name: "India",
+            pg_peid: "PG-INDIA-1",
+            pg_population: "600",
+            engage_global_engagement_anywhere: "FALSE",
+            christianity_frontier_group: "FALSE",
+          },
+        },
+      ],
+      {
+        enabled: true,
+        isSupported: true,
+        metric: "population",
+        countryCount: 1,
+      },
+      createUupgFilter({
+        enabled: false,
+        globalEngagementAnywhereEnabled: false,
+        frontierGroupEnabled: true,
+      }),
+    );
+
+    expect(filteredRows.map((row) => row.id)).toEqual([
+      "row-brazil-frontier-only",
+    ]);
+  });
+
   it("still reads legacy row keys that use the raw header casing", () => {
     const filteredRows = filterDatasetRowsByRegion(
       [
@@ -880,6 +1008,393 @@ describe("dataset-region-filtering", () => {
     });
 
     expect(filteredRows.map((row) => row.id)).toEqual(["row-1"]);
+  });
+
+  it("skips the engagement phase rule when that toggle is disabled", () => {
+    const filteredRows = filterDatasetRowsByWatchlist(
+      [
+        {
+          id: "row-phase-one",
+          rowIndex: 0,
+          data: {
+            christianity_gsec: "2",
+            engage_8_phases_of_engagement: "1",
+            pg_population: "20000",
+            percent_evangelical_pgac: "5",
+          },
+        },
+        {
+          id: "row-phase-five",
+          rowIndex: 1,
+          data: {
+            christianity_gsec: "2",
+            engage_8_phases_of_engagement: "5",
+            pg_population: "20000",
+            percent_evangelical_pgac: "5",
+          },
+        },
+      ],
+      {
+        enabled: true,
+        isSupported: true,
+        threshold: 2,
+        engagementPhaseEnabled: false,
+        engagementPhaseThreshold: 2,
+      },
+    );
+
+    expect(filteredRows.map((row) => row.id)).toEqual([
+      "row-phase-one",
+      "row-phase-five",
+    ]);
+  });
+
+  it("applies a custom engagement-phase rule when configured", () => {
+    const filteredRows = filterDatasetRowsByWatchlist(
+      [
+        {
+          id: "row-phase-one",
+          rowIndex: 0,
+          data: {
+            christianity_gsec: "2",
+            engage_8_phases_of_engagement: "1",
+            pg_population: "20000",
+            percent_evangelical_pgac: "5",
+            ax_source: "true",
+          },
+        },
+        {
+          id: "row-phase-four",
+          rowIndex: 1,
+          data: {
+            christianity_gsec: "2",
+            engage_8_phases_of_engagement: "4",
+            pg_population: "20000",
+            percent_evangelical_pgac: "5",
+            ax_source: "true",
+          },
+        },
+        {
+          id: "row-phase-five",
+          rowIndex: 2,
+          data: {
+            christianity_gsec: "2",
+            engage_8_phases_of_engagement: "5",
+            pg_population: "20000",
+            percent_evangelical_pgac: "5",
+            ax_source: "true",
+          },
+        },
+      ],
+      {
+        enabled: true,
+        isSupported: true,
+        threshold: 2,
+        engagementPhaseEnabled: true,
+        engagementPhaseThreshold: 4,
+        engagementPhaseRule: {
+          minPhase: 1,
+          maxPhase: 4,
+        },
+      },
+    );
+
+    expect(filteredRows.map((row) => row.id)).toEqual([
+      "row-phase-one",
+      "row-phase-four",
+    ]);
+  });
+
+  it("applies the JP-only evangelical rule at the inclusive boundaries", () => {
+    const filteredRows = filterDatasetRowsByWatchlist(
+      [
+        {
+          id: "row-min",
+          rowIndex: 0,
+          data: {
+            christianity_gsec: "6",
+            engage_8_phases_of_engagement: "1",
+            pg_population: "3750",
+            percent_evangelical_pgac: "2",
+            ...createJpOnlySourceFlags(),
+          },
+        },
+        {
+          id: "row-max",
+          rowIndex: 1,
+          data: {
+            christianity_gsec: "6",
+            engage_8_phases_of_engagement: "7",
+            pg_population: "12499950",
+            percent_evangelical_pgac: "2",
+            ...createJpOnlySourceFlags(),
+          },
+        },
+      ],
+      {
+        enabled: true,
+        isSupported: true,
+        threshold: 2,
+        engagementPhaseThreshold: 6,
+        jpOnlyEvangelicalCriteriaEnabled: true,
+      },
+    );
+
+    expect(filteredRows.map((row) => row.id)).toEqual(["row-min", "row-max"]);
+  });
+
+  it("applies a custom JP-only evangelical rule when configured", () => {
+    const filteredRows = filterDatasetRowsByWatchlist(
+      [
+        {
+          id: "row-custom-below-min",
+          rowIndex: 0,
+          data: {
+            christianity_gsec: "6",
+            engage_8_phases_of_engagement: "7",
+            pg_population: "4450",
+            percent_evangelical_pgac: "2",
+            ...createJpOnlySourceFlags(),
+          },
+        },
+        {
+          id: "row-custom-in-range",
+          rowIndex: 1,
+          data: {
+            christianity_gsec: "6",
+            engage_8_phases_of_engagement: "7",
+            pg_population: "10000",
+            percent_evangelical_pgac: "2.5",
+            ...createJpOnlySourceFlags(),
+          },
+        },
+        {
+          id: "row-custom-percent-miss",
+          rowIndex: 2,
+          data: {
+            christianity_gsec: "6",
+            engage_8_phases_of_engagement: "7",
+            pg_population: "10000",
+            percent_evangelical_pgac: "2.51",
+            ...createJpOnlySourceFlags(),
+          },
+        },
+        {
+          id: "row-custom-above-max",
+          rowIndex: 3,
+          data: {
+            christianity_gsec: "6",
+            engage_8_phases_of_engagement: "7",
+            pg_population: "12400000",
+            percent_evangelical_pgac: "2.5",
+            ...createJpOnlySourceFlags(),
+          },
+        },
+      ],
+      {
+        enabled: true,
+        isSupported: true,
+        threshold: 2,
+        engagementPhaseThreshold: 6,
+        jpOnlyEvangelicalCriteriaEnabled: true,
+        jpOnlyEvangelicalRule: {
+          minBelievers: 90,
+          maxBelievers: 300_000,
+          maxPercentEvangelical: 2.5,
+        },
+      },
+    );
+
+    expect(filteredRows.map((row) => row.id)).toEqual([
+      "row-custom-below-min",
+      "row-custom-in-range",
+    ]);
+  });
+
+  it("keeps JP-only rows under 75 believers regardless of percent, while rejecting the remaining misses", () => {
+    const filteredRows = filterDatasetRowsByWatchlist(
+      [
+        {
+          id: "row-below-min",
+          rowIndex: 0,
+          data: {
+            christianity_gsec: "1",
+            engage_8_phases_of_engagement: "5",
+            pg_population: "3700",
+            percent_evangelical_pgac: "2",
+            ...createJpOnlySourceFlags(),
+          },
+        },
+        {
+          id: "row-above-max",
+          rowIndex: 1,
+          data: {
+            christianity_gsec: "1",
+            engage_8_phases_of_engagement: "5",
+            pg_population: "12500000",
+            percent_evangelical_pgac: "2",
+            ...createJpOnlySourceFlags(),
+          },
+        },
+        {
+          id: "row-percent-miss",
+          rowIndex: 2,
+          data: {
+            christianity_gsec: "1",
+            engage_8_phases_of_engagement: "5",
+            pg_population: "10000",
+            percent_evangelical_pgac: "2.01",
+            ...createJpOnlySourceFlags(),
+          },
+        },
+        {
+          id: "row-under-min-percent-agnostic",
+          rowIndex: 3,
+          data: {
+            christianity_gsec: "1",
+            engage_8_phases_of_engagement: "5",
+            pg_population: "1000",
+            percent_evangelical_pgac: "7.4",
+            ...createJpOnlySourceFlags(),
+          },
+        },
+      ],
+      {
+        enabled: true,
+        isSupported: true,
+        threshold: 2,
+        engagementPhaseThreshold: 6,
+        jpOnlyEvangelicalCriteriaEnabled: true,
+      },
+    );
+
+    expect(filteredRows.map((row) => row.id)).toEqual([
+      "row-below-min",
+      "row-under-min-percent-agnostic",
+    ]);
+  });
+
+  it("lets the JP-only rule replace the GSEC and engagement-phase gates", () => {
+    const filteredRows = filterDatasetRowsByWatchlist(
+      [
+        {
+          id: "row-jp-only-match",
+          rowIndex: 0,
+          data: {
+            christianity_gsec: "6",
+            engage_8_phases_of_engagement: "",
+            pg_population: "10000",
+            percent_evangelical_pgac: "1",
+            ...createJpOnlySourceFlags(),
+          },
+        },
+      ],
+      {
+        enabled: true,
+        isSupported: true,
+        threshold: 2,
+        engagementPhaseThreshold: 6,
+        jpOnlyEvangelicalCriteriaEnabled: true,
+      },
+    );
+
+    expect(filteredRows.map((row) => row.id)).toEqual(["row-jp-only-match"]);
+  });
+
+  it("keeps the existing GSEC and engagement behavior for non-JP-only rows", () => {
+    const filteredRows = filterDatasetRowsByWatchlist(
+      [
+        {
+          id: "row-non-jp-only",
+          rowIndex: 0,
+          data: {
+            christianity_gsec: "6",
+            engage_8_phases_of_engagement: "",
+            pg_population: "10000",
+            percent_evangelical_pgac: "1",
+            ...createJpOnlySourceFlags({ IMB_Source: "TRUE" }),
+          },
+        },
+      ],
+      {
+        enabled: true,
+        isSupported: true,
+        threshold: 2,
+        engagementPhaseThreshold: 6,
+        jpOnlyEvangelicalCriteriaEnabled: true,
+      },
+    );
+
+    expect(filteredRows).toHaveLength(0);
+  });
+
+  it("does not classify rows as JP-only when a source flag is missing or invalid", () => {
+    const filteredRows = filterDatasetRowsByWatchlist(
+      [
+        {
+          id: "row-missing-flag",
+          rowIndex: 0,
+          data: {
+            christianity_gsec: "6",
+            engage_8_phases_of_engagement: "",
+            pg_population: "10000",
+            percent_evangelical_pgac: "1",
+            ...createJpOnlySourceFlags({
+              WCD_Source: "",
+            }),
+          },
+        },
+        {
+          id: "row-invalid-flag",
+          rowIndex: 1,
+          data: {
+            christianity_gsec: "6",
+            engage_8_phases_of_engagement: "",
+            pg_population: "10000",
+            percent_evangelical_pgac: "1",
+            ...createJpOnlySourceFlags({
+              AX_Source: "UNKNOWN",
+            }),
+          },
+        },
+      ],
+      {
+        enabled: true,
+        isSupported: true,
+        threshold: 2,
+        engagementPhaseThreshold: 6,
+        jpOnlyEvangelicalCriteriaEnabled: true,
+      },
+    );
+
+    expect(filteredRows).toHaveLength(0);
+  });
+
+  it("falls back to the existing watchlist gates when the JP-only rule is disabled", () => {
+    const filteredRows = filterDatasetRowsByWatchlist(
+      [
+        {
+          id: "row-jp-only-disabled",
+          rowIndex: 0,
+          data: {
+            christianity_gsec: "6",
+            engage_8_phases_of_engagement: "",
+            pg_population: "10000",
+            percent_evangelical_pgac: "1",
+            ...createJpOnlySourceFlags(),
+          },
+        },
+      ],
+      {
+        enabled: true,
+        isSupported: true,
+        threshold: 2,
+        engagementPhaseThreshold: 6,
+        jpOnlyEvangelicalCriteriaEnabled: false,
+      },
+    );
+
+    expect(filteredRows).toHaveLength(0);
   });
 
   it("still reads legacy row keys that use the raw watchlist header casing", () => {
@@ -1226,7 +1741,7 @@ describe("dataset-region-filtering", () => {
     expect(filteredRows.map((row) => row.id)).toEqual(["row-match"]);
   });
 
-  it("keeps only rows whose engagement phase is within the hardcoded 2-5 range", () => {
+  it("keeps only AX rows whose engagement phase is within the hardcoded 2-5 range", () => {
     const filteredRows = filterDatasetRowsByWatchlist(
       [
         {
@@ -1238,6 +1753,7 @@ describe("dataset-region-filtering", () => {
             christianity_frontier_group: "TRUE",
             pg_population: "10000",
             percent_evangelical_pgac: "10",
+            AX_Source: "TRUE",
           },
         },
         {
@@ -1249,6 +1765,7 @@ describe("dataset-region-filtering", () => {
             christianity_frontier_group: "TRUE",
             pg_population: "10000",
             percent_evangelical_pgac: "10",
+            AX_Source: "TRUE",
           },
         },
         {
@@ -1260,6 +1777,7 @@ describe("dataset-region-filtering", () => {
             christianity_frontier_group: "TRUE",
             pg_population: "10000",
             percent_evangelical_pgac: "10",
+            AX_Source: "TRUE",
           },
         },
         {
@@ -1271,6 +1789,7 @@ describe("dataset-region-filtering", () => {
             christianity_frontier_group: "TRUE",
             pg_population: "10000",
             percent_evangelical_pgac: "10",
+            AX_Source: "TRUE",
           },
         },
         {
@@ -1281,6 +1800,7 @@ describe("dataset-region-filtering", () => {
             christianity_frontier_group: "TRUE",
             pg_population: "10000",
             percent_evangelical_pgac: "10",
+            AX_Source: "TRUE",
           },
         },
       ],
@@ -1300,6 +1820,121 @@ describe("dataset-region-filtering", () => {
     expect(filteredRows.map((row) => row.id)).toEqual([
       "row-phase-2",
       "row-phase-5",
+    ]);
+  });
+
+  it("skips the engagement phase gate for rows that are explicitly non-AX", () => {
+    const filteredRows = filterDatasetRowsByWatchlist(
+      [
+        {
+          id: "row-non-ax-phase-1",
+          rowIndex: 0,
+          data: {
+            christianity_gsec: "2",
+            engage_8_phases_of_engagement: "1",
+            christianity_frontier_group: "TRUE",
+            pg_population: "10000",
+            percent_evangelical_pgac: "10",
+            AX_Source: "FALSE",
+          },
+        },
+        {
+          id: "row-non-ax-phase-missing",
+          rowIndex: 1,
+          data: {
+            christianity_gsec: "2",
+            christianity_frontier_group: "TRUE",
+            pg_population: "10000",
+            percent_evangelical_pgac: "10",
+            AX_Source: "FALSE",
+          },
+        },
+      ],
+      {
+        enabled: true,
+        isSupported: true,
+        threshold: 2,
+        engagementPhaseThreshold: 6,
+        evangelicalBelieversEnabled: false,
+        evangelicalBelieversThreshold: 1000,
+        evangelicalPercentEnabled: false,
+        evangelicalPercentThreshold: 0.05,
+        frontierGroupValue: true,
+      },
+    );
+
+    expect(filteredRows.map((row) => row.id)).toEqual([
+      "row-non-ax-phase-1",
+      "row-non-ax-phase-missing",
+    ]);
+  });
+
+  it("treats rows with missing or invalid AX source flags as AX for engagement phases", () => {
+    const filteredRows = filterDatasetRowsByWatchlist(
+      [
+        {
+          id: "row-missing-ax-in-range",
+          rowIndex: 0,
+          data: {
+            christianity_gsec: "2",
+            engage_8_phases_of_engagement: "4",
+            christianity_frontier_group: "TRUE",
+            pg_population: "10000",
+            percent_evangelical_pgac: "10",
+          },
+        },
+        {
+          id: "row-missing-ax-out-of-range",
+          rowIndex: 1,
+          data: {
+            christianity_gsec: "2",
+            engage_8_phases_of_engagement: "1",
+            christianity_frontier_group: "TRUE",
+            pg_population: "10000",
+            percent_evangelical_pgac: "10",
+          },
+        },
+        {
+          id: "row-invalid-ax-in-range",
+          rowIndex: 2,
+          data: {
+            christianity_gsec: "2",
+            engage_8_phases_of_engagement: "5",
+            christianity_frontier_group: "TRUE",
+            pg_population: "10000",
+            percent_evangelical_pgac: "10",
+            AX_Source: "UNKNOWN",
+          },
+        },
+        {
+          id: "row-invalid-ax-out-of-range",
+          rowIndex: 3,
+          data: {
+            christianity_gsec: "2",
+            engage_8_phases_of_engagement: "6",
+            christianity_frontier_group: "TRUE",
+            pg_population: "10000",
+            percent_evangelical_pgac: "10",
+            AX_Source: "UNKNOWN",
+          },
+        },
+      ],
+      {
+        enabled: true,
+        isSupported: true,
+        threshold: 2,
+        engagementPhaseThreshold: 6,
+        evangelicalBelieversEnabled: false,
+        evangelicalBelieversThreshold: 1000,
+        evangelicalPercentEnabled: false,
+        evangelicalPercentThreshold: 0.05,
+        frontierGroupValue: true,
+      },
+    );
+
+    expect(filteredRows.map((row) => row.id)).toEqual([
+      "row-missing-ax-in-range",
+      "row-invalid-ax-in-range",
     ]);
   });
 
@@ -1399,10 +2034,7 @@ describe("dataset-region-filtering", () => {
           },
         },
       ],
-      {
-        enabled: true,
-        isSupported: true,
-      },
+      createUupgFilter(),
     );
 
     expect(filteredRows.map((row) => row.id)).toEqual([
@@ -1451,10 +2083,7 @@ describe("dataset-region-filtering", () => {
           },
         },
       ],
-      {
-        enabled: true,
-        isSupported: true,
-      },
+      createUupgFilter(),
     );
 
     expect(filteredRows.map((row) => row.id)).toEqual([
@@ -1463,11 +2092,41 @@ describe("dataset-region-filtering", () => {
     ]);
   });
 
+  it("applies only the enabled split UUPG criteria", () => {
+    const filteredRows = filterDatasetRowsByUupg(
+      [
+        {
+          id: "row-gea-match-frontier-false",
+          rowIndex: 0,
+          data: {
+            engage_global_engagement_anywhere: "FALSE",
+            christianity_frontier_group: "FALSE",
+          },
+        },
+        {
+          id: "row-gea-miss-frontier-true",
+          rowIndex: 1,
+          data: {
+            engage_global_engagement_anywhere: "TRUE",
+            christianity_frontier_group: "TRUE",
+          },
+        },
+      ],
+      createUupgFilter({
+        frontierGroupEnabled: false,
+      }),
+    );
+
+    expect(filteredRows.map((row) => row.id)).toEqual([
+      "row-gea-match-frontier-false",
+    ]);
+  });
+
   it("keeps all rows when UUPG filtering is disabled", () => {
-    const filteredRows = filterDatasetRowsByUupg(rows, {
-      enabled: false,
-      isSupported: true,
-    });
+    const filteredRows = filterDatasetRowsByUupg(
+      rows,
+      createUupgFilter({ enabled: false }),
+    );
 
     expect(filteredRows).toHaveLength(3);
   });
@@ -1596,10 +2255,10 @@ describe("dataset-region-filtering", () => {
       evangelicalPercentThreshold: 0.05,
       frontierGroupValue: true,
     });
-    const filteredRows = filterDatasetRowsByUupg(watchlistFilteredRows, {
-      enabled: true,
-      isSupported: true,
-    });
+    const filteredRows = filterDatasetRowsByUupg(
+      watchlistFilteredRows,
+      createUupgFilter(),
+    );
 
     expect(filteredRows.map((row) => row.id)).toEqual([
       "row-india-false",

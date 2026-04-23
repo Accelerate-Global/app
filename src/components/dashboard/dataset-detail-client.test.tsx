@@ -8,7 +8,6 @@ import type {
   DatasetSummary,
   SavedDatasetSort,
 } from "@/lib/api-types";
-import { DEFAULT_POPULATION_BELIEVERS_RULE } from "@/lib/evangelical-population-believers-rule";
 
 import { DatasetDetailClient } from "./dataset-detail-client";
 
@@ -108,14 +107,20 @@ function createInitialFilters(
       threshold: 2,
       engagementPhaseEnabled: true,
       engagementPhaseThreshold: 2,
-      evangelicalPopulationBelieversRuleEnabled: true,
-      evangelicalPopulationBelieversRule: DEFAULT_POPULATION_BELIEVERS_RULE,
+      jpOnlyEvangelicalCriteriaEnabled: true,
+      jpOnlyEvangelicalRule: {
+        minBelievers: 75,
+        maxBelievers: 249_999,
+        maxPercentEvangelical: 2,
+      },
       frontierGroupEnabled: true,
       frontierGroupValue: true,
       ...overrides.watchlist,
     },
     uupg: {
       enabled: false,
+      globalEngagementAnywhereEnabled: true,
+      frontierGroupEnabled: true,
       ...overrides.uupg,
     },
     hotspots: {
@@ -416,8 +421,8 @@ describe("DatasetDetailClient", () => {
               sourceIndex: 0,
             },
             {
-              key: "frontier_group",
-              label: "Frontier_Group",
+              key: "christianity_frontier_group",
+              label: "Christianity_Frontier_Group",
               sourceIndex: 1,
             },
           ],
@@ -430,7 +435,7 @@ describe("DatasetDetailClient", () => {
             effectiveLabel: "Watchlist status",
             linkedSources: [],
           },
-          frontier_group: {
+          christianity_frontier_group: {
             definition: "Frontier definition",
             displayLabel: "Frontier Group",
             effectiveLabel: "Frontier Group",
@@ -444,18 +449,33 @@ describe("DatasetDetailClient", () => {
       uupgCard: {
         enabled: boolean;
         supported: boolean;
-        fields: Array<{
-          label: string;
-          definition: string;
-        }>;
+        globalEngagementAnywhereLabel: string;
+        globalEngagementAnywhereDefinition: string;
+        globalEngagementAnywhereEnabled: boolean;
+        frontierGroupSupported: boolean;
+        frontierGroupLabel: string;
+        frontierGroupDefinition: string;
+        frontierGroupEnabled: boolean;
+        onGlobalEngagementAnywhereEnabledChange: (enabled: boolean) => void;
+        onFrontierGroupEnabledChange: (enabled: boolean) => void;
       };
     };
     const datasetTableStateProps = useDatasetTableStateMock.mock.calls[0]?.[0] as {
-      uupgFilter: { enabled: boolean; isSupported: boolean };
+      uupgFilter: {
+        enabled: boolean;
+        isSupported: boolean;
+        globalEngagementAnywhereEnabled: boolean;
+        frontierGroupEnabled: boolean;
+        frontierGroupSupported: boolean;
+      };
     };
     const actionBarProps = actionBarSpy.mock.calls[0]?.[0] as {
       filters: {
-        uupg: { enabled: boolean };
+        uupg: {
+          enabled: boolean;
+          globalEngagementAnywhereEnabled: boolean;
+          frontierGroupEnabled: boolean;
+        };
       };
       recordCount: number;
     };
@@ -463,25 +483,156 @@ describe("DatasetDetailClient", () => {
     expect(viewSwitchGridProps.uupgCard).toMatchObject({
       enabled: false,
       supported: true,
+      globalEngagementAnywhereLabel: "Watchlist status",
+      globalEngagementAnywhereDefinition: "UUPG definition",
+      globalEngagementAnywhereEnabled: true,
+      frontierGroupSupported: true,
+      frontierGroupLabel: "Frontier Group",
+      frontierGroupDefinition: "Frontier definition",
+      frontierGroupEnabled: true,
     });
-    expect(viewSwitchGridProps.uupgCard.fields).toEqual([
-      {
-        label: "Watchlist status",
-        definition: "UUPG definition",
-      },
-      {
-        label: "Frontier Group",
-        definition: "Frontier definition",
-      },
-    ]);
     expect(datasetTableStateProps.uupgFilter).toEqual({
       enabled: false,
       isSupported: true,
+      globalEngagementAnywhereEnabled: true,
+      frontierGroupEnabled: true,
+      frontierGroupSupported: true,
     });
     expect(actionBarProps.filters.uupg).toEqual({
       enabled: false,
+      globalEngagementAnywhereEnabled: true,
+      frontierGroupEnabled: true,
     });
     expect(actionBarProps.recordCount).toBe(2);
+  });
+
+  it("updates the split UUPG child criteria without allowing the last active one to turn off", () => {
+    render(
+      <DatasetDetailClient
+        dataset={{
+          ...datasetBase,
+          columns: [
+            {
+              key: "engage_global_engagement_anywhere",
+              label: "Engage_Global_Engagement_Anywhere",
+              sourceIndex: 0,
+            },
+            {
+              key: "christianity_frontier_group",
+              label: "Christianity_Frontier_Group",
+              sourceIndex: 1,
+            },
+          ],
+        }}
+        regions={[]}
+        fieldDefinitionPresentationByColumnKey={{}}
+        initialFilters={createInitialFilters({
+          uupg: {
+            enabled: true,
+            globalEngagementAnywhereEnabled: true,
+            frontierGroupEnabled: true,
+          },
+        })}
+      />,
+    );
+
+    let viewSwitchGridProps: {
+      uupgCard: {
+        onFrontierGroupEnabledChange: (enabled: boolean) => void;
+        onGlobalEngagementAnywhereEnabledChange: (enabled: boolean) => void;
+      };
+    };
+    viewSwitchGridProps = viewSwitchGridSpy.mock.lastCall?.[0] as typeof viewSwitchGridProps;
+
+    act(() => {
+      viewSwitchGridProps.uupgCard.onFrontierGroupEnabledChange(false);
+    });
+
+    let latestDatasetTableStateProps = useDatasetTableStateMock.mock.lastCall?.[0] as {
+      uupgFilter: {
+        globalEngagementAnywhereEnabled: boolean;
+        frontierGroupEnabled: boolean;
+      };
+    };
+
+    expect(latestDatasetTableStateProps.uupgFilter).toEqual({
+      enabled: true,
+      isSupported: true,
+      globalEngagementAnywhereEnabled: true,
+      frontierGroupEnabled: false,
+      frontierGroupSupported: true,
+    });
+
+    viewSwitchGridProps = viewSwitchGridSpy.mock.lastCall?.[0] as typeof viewSwitchGridProps;
+
+    act(() => {
+      viewSwitchGridProps.uupgCard.onGlobalEngagementAnywhereEnabledChange(false);
+    });
+
+    latestDatasetTableStateProps = useDatasetTableStateMock.mock.lastCall?.[0] as {
+      uupgFilter: {
+        globalEngagementAnywhereEnabled: boolean;
+        frontierGroupEnabled: boolean;
+      };
+    };
+
+    expect(latestDatasetTableStateProps.uupgFilter).toEqual({
+      enabled: true,
+      isSupported: true,
+      globalEngagementAnywhereEnabled: true,
+      frontierGroupEnabled: false,
+      frontierGroupSupported: true,
+    });
+  });
+
+  it("omits frontier support from the UUPG card and filter state when the dataset lacks that column", () => {
+    render(
+      <DatasetDetailClient
+        dataset={{
+          ...datasetBase,
+          columns: [
+            {
+              key: "engage_global_engagement_anywhere",
+              label: "Engage_Global_Engagement_Anywhere",
+              sourceIndex: 0,
+            },
+          ],
+        }}
+        regions={[]}
+        fieldDefinitionPresentationByColumnKey={{}}
+        initialFilters={createInitialFilters({
+          uupg: {
+            enabled: true,
+          },
+        })}
+      />,
+    );
+
+    const viewSwitchGridProps = viewSwitchGridSpy.mock.lastCall?.[0] as {
+      uupgCard: {
+        frontierGroupSupported: boolean;
+        frontierGroupEnabled: boolean;
+      };
+    };
+    const datasetTableStateProps = useDatasetTableStateMock.mock.lastCall?.[0] as {
+      uupgFilter: {
+        enabled: boolean;
+        isSupported: boolean;
+        globalEngagementAnywhereEnabled: boolean;
+        frontierGroupEnabled: boolean;
+        frontierGroupSupported: boolean;
+      };
+    };
+
+    expect(viewSwitchGridProps.uupgCard.frontierGroupSupported).toBe(false);
+    expect(viewSwitchGridProps.uupgCard.frontierGroupEnabled).toBe(false);
+    expect(datasetTableStateProps.uupgFilter).toEqual({
+      enabled: true,
+      isSupported: true,
+      globalEngagementAnywhereEnabled: true,
+      frontierGroupEnabled: false,
+      frontierGroupSupported: false,
+    });
   });
 
   it("passes hotspots filter state into the card, shared table state, and action bar", () => {
@@ -983,6 +1134,64 @@ describe("DatasetDetailClient", () => {
     expect(latestCountryViewSwitchGridProps.countryCard).toMatchObject({
       selectedCountries: ["Brazil", "India", "Nepal", "Peru"],
       hasExplicitSelection: false,
+    });
+  });
+
+  it("keeps an explicit empty selection when country Deselect all is applied", () => {
+    mockCountrySyncTableState();
+
+    render(
+      <DatasetDetailClient
+        dataset={{
+          ...datasetBase,
+          columns: [
+            {
+              key: "geo_country_name",
+              label: "Geo_Country_Name",
+              sourceIndex: 0,
+            },
+          ],
+        }}
+        regions={createFilterRegions()}
+        fieldDefinitionPresentationByColumnKey={{}}
+      />,
+    );
+
+    const initialViewSwitchGridProps = viewSwitchGridSpy.mock.lastCall?.[0] as {
+      countryCard: {
+        onClearVisible: (countryNames: string[]) => void;
+      };
+    };
+
+    act(() => {
+      initialViewSwitchGridProps.countryCard.onClearVisible([
+        "Brazil",
+        "India",
+        "Nepal",
+        "Peru",
+      ]);
+    });
+
+    const latestDatasetTableStateProps = useDatasetTableStateMock.mock.lastCall?.[0] as {
+      countryFilter: {
+        enabled: boolean;
+        selectedCountryNames: string[];
+      };
+    };
+    const latestCountryViewSwitchGridProps = viewSwitchGridSpy.mock.lastCall?.[0] as {
+      countryCard: {
+        selectedCountries: string[];
+        hasExplicitSelection?: boolean;
+      };
+    };
+
+    expect(latestDatasetTableStateProps.countryFilter).toMatchObject({
+      enabled: true,
+      selectedCountryNames: [],
+    });
+    expect(latestCountryViewSwitchGridProps.countryCard).toMatchObject({
+      selectedCountries: [],
+      hasExplicitSelection: true,
     });
   });
 
@@ -1772,6 +1981,31 @@ describe("DatasetDetailClient", () => {
               label: "Percent_Evangelical_PGAC",
               sourceIndex: 3,
             },
+            {
+              key: "jp_source",
+              label: "JP_Source",
+              sourceIndex: 4,
+            },
+            {
+              key: "imb_source",
+              label: "IMB_Source",
+              sourceIndex: 5,
+            },
+            {
+              key: "ax_source",
+              label: "AX_Source",
+              sourceIndex: 6,
+            },
+            {
+              key: "etno_source",
+              label: "ETNO_Source",
+              sourceIndex: 7,
+            },
+            {
+              key: "wcd_source",
+              label: "WCD_Source",
+              sourceIndex: 8,
+            },
           ],
         }}
         regions={[]}
@@ -1806,11 +2040,14 @@ describe("DatasetDetailClient", () => {
             enabled: true,
             thresholdEnabled: true,
             threshold: 5,
+            thresholdRuleVersion: 1,
             engagementPhaseEnabled: true,
             engagementPhaseThreshold: 2,
-            evangelicalPopulationBelieversRuleEnabled: true,
-            evangelicalPopulationBelieversRule:
-              DEFAULT_POPULATION_BELIEVERS_RULE,
+            engagementPhaseRule: {
+              minPhase: 1,
+              maxPhase: 4,
+            },
+            jpOnlyEvangelicalCriteriaEnabled: true,
             frontierGroupEnabled: true,
             frontierGroupValue: true,
           },
@@ -1825,19 +2062,27 @@ describe("DatasetDetailClient", () => {
         thresholdDefinition: string;
         thresholdEnabled: boolean;
         threshold: number;
+        thresholdIsDefault: boolean;
+        jpOnlyEvangelicalCriteriaEnabled: boolean;
+        jpOnlyEvangelicalCriteriaSupported: boolean;
+        jpOnlyEvangelicalCriteriaLabel: string;
+        jpOnlyEvangelicalCriteriaDefinition: string;
+        jpOnlyEvangelicalCriteriaSummary: string;
+        jpOnlyEvangelicalRule: {
+          minBelievers: number;
+          maxBelievers: number;
+          maxPercentEvangelical: number;
+        };
+        jpOnlyEvangelicalRuleIsDefault: boolean;
+        engagementPhaseEnabled: boolean;
         engagementPhaseLabel: string;
         engagementPhaseDefinition: string;
-        engagementPhaseSummary: string;
-        populationBelieversRuleLabel: string;
-        populationBelieversRuleDefinition: string;
-        populationBelieversRuleEnabled: boolean;
-        populationBelieversRule: {
-          tiers: Array<{
-            minPopulation: number;
-            maxPopulation: number | null;
-            minBelievers: number;
-          }>;
+        engagementPhaseRule: {
+          minPhase: number;
+          maxPhase: number;
         };
+        engagementPhaseRuleIsDefault: boolean;
+        engagementPhaseSummary: string;
       };
     };
     const datasetTableStateProps = useDatasetTableStateMock.mock.calls[0]?.[0] as {
@@ -1848,13 +2093,15 @@ describe("DatasetDetailClient", () => {
         threshold: number;
         engagementPhaseEnabled: boolean;
         engagementPhaseThreshold: number;
-        evangelicalPopulationBelieversRuleEnabled: boolean;
-        evangelicalPopulationBelieversRule: {
-          tiers: Array<{
-            minPopulation: number;
-            maxPopulation: number | null;
-            minBelievers: number;
-          }>;
+        engagementPhaseRule: {
+          minPhase: number;
+          maxPhase: number;
+        };
+        jpOnlyEvangelicalCriteriaEnabled: boolean;
+        jpOnlyEvangelicalRule: {
+          minBelievers: number;
+          maxBelievers: number;
+          maxPercentEvangelical: number;
         };
       };
     };
@@ -1863,16 +2110,19 @@ describe("DatasetDetailClient", () => {
         watchlist: {
           enabled: boolean;
           thresholdEnabled?: boolean;
+          thresholdRuleVersion?: 1;
           threshold: number;
           engagementPhaseEnabled?: boolean;
           engagementPhaseThreshold: number;
-          evangelicalPopulationBelieversRuleEnabled?: boolean;
-          evangelicalPopulationBelieversRule?: {
-            tiers: Array<{
-              minPopulation: number;
-              maxPopulation: number | null;
-              minBelievers: number;
-            }>;
+          engagementPhaseRule?: {
+            minPhase: number;
+            maxPhase: number;
+          };
+          jpOnlyEvangelicalCriteriaEnabled?: boolean;
+          jpOnlyEvangelicalRule?: {
+            minBelievers: number;
+            maxBelievers: number;
+            maxPercentEvangelical: number;
           };
         };
         sorting: Array<{ id: string; desc: boolean }>;
@@ -1885,40 +2135,82 @@ describe("DatasetDetailClient", () => {
       supported: true,
       thresholdDefinition: "Watchlist status definition",
       thresholdEnabled: true,
-      threshold: 2,
+      threshold: 5,
+      thresholdIsDefault: false,
+      jpOnlyEvangelicalCriteriaEnabled: true,
+      jpOnlyEvangelicalCriteriaSupported: true,
+      jpOnlyEvangelicalCriteriaLabel: "Evangelical Believers (JP-only)",
+      jpOnlyEvangelicalCriteriaDefinition: expect.stringContaining(
+        "JP-only rows",
+      ),
+      jpOnlyEvangelicalCriteriaSummary:
+        "JP-only: < 75 believers, or 75-249,999 believers and <= 2% evangelical",
+      jpOnlyEvangelicalRule: {
+        minBelievers: 75,
+        maxBelievers: 249_999,
+        maxPercentEvangelical: 2,
+      },
+      jpOnlyEvangelicalRuleIsDefault: true,
+      engagementPhaseEnabled: true,
       engagementPhaseLabel: "Engage: 8 Phases of Engagement",
       engagementPhaseDefinition:
-        "Engagement phase definition\n\nWatchlist hardcodes this filter to keep only values 2-5.",
-      engagementPhaseSummary: "Engage: 8 Phases of Engagement 2-5 only",
-      populationBelieversRuleLabel: "Population vs Evangelical Believers",
-      populationBelieversRuleDefinition:
-        "Build a tiered minimum-believers rule by population. Actual believers are calculated as People Group: Population * (Percent Evangelical PGAC / 100), and the implied percentage is shown live for context.",
-      populationBelieversRuleEnabled: true,
-      populationBelieversRule: DEFAULT_POPULATION_BELIEVERS_RULE,
+        "Engagement phase definition\n\nWhen enabled, Watchlist keeps only AX rows with values 1-4. If AX_Source is missing or invalid, Watchlist treats the row as AX and still applies the 1-4 rule.",
+      engagementPhaseRule: {
+        minPhase: 1,
+        maxPhase: 4,
+      },
+      engagementPhaseRuleIsDefault: false,
+      engagementPhaseSummary: "Engage: 8 Phases of Engagement 1-4 only",
     });
     expect(viewSwitchGridProps.watchlistCard).not.toHaveProperty("frontierGroupLabel");
     expect(viewSwitchGridProps.watchlistCard).not.toHaveProperty("frontierGroupDefinition");
     expect(viewSwitchGridProps.watchlistCard).not.toHaveProperty("frontierGroupEnabled");
     expect(viewSwitchGridProps.watchlistCard).not.toHaveProperty("frontierGroupValue");
+    expect(viewSwitchGridProps.watchlistCard).not.toHaveProperty(
+      "populationBelieversRuleLabel",
+    );
     expect(datasetTableStateProps.watchlistFilter).toEqual({
       enabled: true,
       isSupported: true,
       thresholdEnabled: true,
-      threshold: 2,
+      threshold: 5,
       engagementPhaseEnabled: true,
-      engagementPhaseThreshold: 2,
-      evangelicalPopulationBelieversRuleEnabled: true,
-      evangelicalPopulationBelieversRule: DEFAULT_POPULATION_BELIEVERS_RULE,
+      engagementPhaseThreshold: 4,
+      engagementPhaseRule: {
+        minPhase: 1,
+        maxPhase: 4,
+      },
+      jpOnlyEvangelicalCriteriaEnabled: true,
+      jpOnlyEvangelicalRule: {
+        minBelievers: 75,
+        maxBelievers: 249_999,
+        maxPercentEvangelical: 2,
+      },
     });
     expect(actionBarProps.filters.watchlist).toEqual({
       enabled: true,
       thresholdEnabled: true,
-      threshold: 2,
+      thresholdRuleVersion: 1,
+      threshold: 5,
       engagementPhaseEnabled: true,
-      engagementPhaseThreshold: 2,
-      evangelicalPopulationBelieversRuleEnabled: true,
-      evangelicalPopulationBelieversRule: DEFAULT_POPULATION_BELIEVERS_RULE,
+      engagementPhaseThreshold: 4,
+      engagementPhaseRule: {
+        minPhase: 1,
+        maxPhase: 4,
+      },
+      jpOnlyEvangelicalCriteriaEnabled: true,
+      jpOnlyEvangelicalRule: {
+        minBelievers: 75,
+        maxBelievers: 249_999,
+        maxPercentEvangelical: 2,
+      },
     });
+    expect(datasetTableStateProps.watchlistFilter).not.toHaveProperty(
+      "evangelicalPopulationBelieversRuleEnabled",
+    );
+    expect(datasetTableStateProps.watchlistFilter).not.toHaveProperty(
+      "evangelicalPopulationBelieversRule",
+    );
     expect(actionBarProps.filters.sorting).toEqual([
       {
         id: "christianity_gsec",
@@ -1928,7 +2220,19 @@ describe("DatasetDetailClient", () => {
     expect(actionBarProps.recordCount).toBe(5);
   });
 
-  it("sanitizes the population-believers rule when it changes", () => {
+  it("preserves a disabled watchlist engagement-phase toggle across the card, table state, and action bar", () => {
+    useDatasetTableStateMock.mockReturnValue({
+      table: {} as never,
+      sorting: [],
+      visibleColumns: [],
+      datasetCountryNames: [],
+      availableCountryNames: [],
+      getSortedRows: () => [],
+      recordCount: 5,
+      isLoading: false,
+      error: null,
+    });
+
     render(
       <DatasetDetailClient
         dataset={{
@@ -1940,88 +2244,249 @@ describe("DatasetDetailClient", () => {
               sourceIndex: 0,
             },
             {
-              key: "christianity_frontier_group",
-              label: "Christianity_Frontier_Group",
-              sourceIndex: 1,
-            },
-            {
               key: "engage_8_phases_of_engagement",
               label: "Engage_8_Phases_of_Engagement",
-              sourceIndex: 2,
+              sourceIndex: 1,
             },
             {
               key: "pg_population",
               label: "PG_Population",
-              sourceIndex: 3,
+              sourceIndex: 2,
             },
             {
               key: "percent_evangelical_pgac",
               label: "Percent_Evangelical_PGAC",
-              sourceIndex: 4,
+              sourceIndex: 3,
             },
           ],
         }}
         regions={[]}
-        fieldDefinitionPresentationByColumnKey={{}}
+        fieldDefinitionPresentationByColumnKey={{
+          christianity_gsec: {
+            definition: "Watchlist status definition",
+            displayLabel: "Christianity: GSEC",
+            effectiveLabel: "Christianity: GSEC",
+            linkedSources: [],
+          },
+          engage_8_phases_of_engagement: {
+            definition: "Engagement phase definition",
+            displayLabel: "Engage: 8 Phases of Engagement",
+            effectiveLabel: "Engage: 8 Phases of Engagement",
+            linkedSources: [],
+          },
+          pg_population: {
+            definition: "Population definition",
+            displayLabel: "People Group: Population",
+            effectiveLabel: "People Group: Population",
+            linkedSources: [],
+          },
+          percent_evangelical_pgac: {
+            definition: "Percent evangelical definition",
+            displayLabel: "Percent Evangelical PGAC",
+            effectiveLabel: "Percent Evangelical PGAC",
+            linkedSources: [],
+          },
+        }}
+        initialFilters={createInitialFilters({
+          watchlist: {
+            enabled: true,
+            thresholdEnabled: true,
+            threshold: 2,
+            engagementPhaseEnabled: false,
+            engagementPhaseThreshold: 2,
+            jpOnlyEvangelicalCriteriaEnabled: true,
+          },
+        })}
       />,
     );
 
-    const initialViewSwitchGridProps = viewSwitchGridSpy.mock.lastCall?.[0] as {
+    const viewSwitchGridProps = viewSwitchGridSpy.mock.calls[0]?.[0] as {
       watchlistCard: {
-        onPopulationBelieversRuleChange: (value: {
-          tiers: Array<{
-            minPopulation: number;
-            maxPopulation: number | null;
-            minBelievers: number;
-          }>;
-        }) => void;
+        engagementPhaseEnabled: boolean;
       };
     };
-
-    act(() => {
-      initialViewSwitchGridProps.watchlistCard.onPopulationBelieversRuleChange({
-        tiers: [
-          {
-            minPopulation: 4_000,
-            maxPopulation: 8_000,
-            minBelievers: 60,
-          },
-          {
-            minPopulation: 9_000,
-            maxPopulation: null,
-            minBelievers: 120,
-          },
-        ],
-      });
-    });
-
-    const latestDatasetTableStateProps = useDatasetTableStateMock.mock.lastCall?.[0] as {
+    const datasetTableStateProps = useDatasetTableStateMock.mock.calls[0]?.[0] as {
       watchlistFilter: {
-        evangelicalPopulationBelieversRule: {
-          tiers: Array<{
-            minPopulation: number;
-            maxPopulation: number | null;
-            minBelievers: number;
-          }>;
+        engagementPhaseEnabled: boolean;
+      };
+    };
+    const actionBarProps = actionBarSpy.mock.calls[0]?.[0] as {
+      filters: {
+        watchlist: {
+          engagementPhaseEnabled?: boolean;
         };
       };
     };
 
-    expect(
-      latestDatasetTableStateProps.watchlistFilter.evangelicalPopulationBelieversRule,
-    ).toEqual({
-      tiers: [
-        {
-          minPopulation: 0,
-          maxPopulation: 8_000,
-          minBelievers: 60,
-        },
-        {
-          minPopulation: 8_001,
-          maxPopulation: null,
-          minBelievers: 120,
-        },
-      ],
+    expect(viewSwitchGridProps.watchlistCard.engagementPhaseEnabled).toBe(false);
+    expect(datasetTableStateProps.watchlistFilter.engagementPhaseEnabled).toBe(
+      false,
+    );
+    expect(actionBarProps.filters.watchlist.engagementPhaseEnabled).toBe(false);
+  });
+
+  it("hydrates a custom JP-only rule across the card, table state, and action bar", () => {
+    useDatasetTableStateMock.mockReturnValue({
+      table: {} as never,
+      sorting: [],
+      visibleColumns: [],
+      datasetCountryNames: [],
+      availableCountryNames: [],
+      getSortedRows: () => [],
+      recordCount: 5,
+      isLoading: false,
+      error: null,
+    });
+
+    render(
+      <DatasetDetailClient
+        dataset={{
+          ...datasetBase,
+          columns: [
+            {
+              key: "christianity_gsec",
+              label: "Christianity_GSEC",
+              sourceIndex: 0,
+            },
+            {
+              key: "engage_8_phases_of_engagement",
+              label: "Engage_8_Phases_of_Engagement",
+              sourceIndex: 1,
+            },
+            {
+              key: "pg_population",
+              label: "PG_Population",
+              sourceIndex: 2,
+            },
+            {
+              key: "percent_evangelical_pgac",
+              label: "Percent_Evangelical_PGAC",
+              sourceIndex: 3,
+            },
+            {
+              key: "jp_source",
+              label: "JP_Source",
+              sourceIndex: 4,
+            },
+            {
+              key: "imb_source",
+              label: "IMB_Source",
+              sourceIndex: 5,
+            },
+            {
+              key: "ax_source",
+              label: "AX_Source",
+              sourceIndex: 6,
+            },
+            {
+              key: "etno_source",
+              label: "ETNO_Source",
+              sourceIndex: 7,
+            },
+            {
+              key: "wcd_source",
+              label: "WCD_Source",
+              sourceIndex: 8,
+            },
+          ],
+        }}
+        regions={[]}
+        fieldDefinitionPresentationByColumnKey={{
+          christianity_gsec: {
+            definition: "Watchlist status definition",
+            displayLabel: "Christianity: GSEC",
+            effectiveLabel: "Christianity: GSEC",
+            linkedSources: [],
+          },
+          engage_8_phases_of_engagement: {
+            definition: "Engagement phase definition",
+            displayLabel: "Engage: 8 Phases of Engagement",
+            effectiveLabel: "Engage: 8 Phases of Engagement",
+            linkedSources: [],
+          },
+          pg_population: {
+            definition: "Population definition",
+            displayLabel: "People Group: Population",
+            effectiveLabel: "People Group: Population",
+            linkedSources: [],
+          },
+          percent_evangelical_pgac: {
+            definition: "Percent evangelical definition",
+            displayLabel: "Percent Evangelical PGAC",
+            effectiveLabel: "Percent Evangelical PGAC",
+            linkedSources: [],
+          },
+        }}
+        initialFilters={createInitialFilters({
+          watchlist: {
+            enabled: true,
+            thresholdEnabled: true,
+            threshold: 2,
+            engagementPhaseEnabled: true,
+            engagementPhaseThreshold: 2,
+            jpOnlyEvangelicalCriteriaEnabled: true,
+            jpOnlyEvangelicalRule: {
+              minBelievers: 90,
+              maxBelievers: 300_000,
+              maxPercentEvangelical: 2.5,
+            },
+          },
+        })}
+      />,
+    );
+
+    const viewSwitchGridProps = viewSwitchGridSpy.mock.calls[0]?.[0] as {
+      watchlistCard: {
+        jpOnlyEvangelicalCriteriaSummary: string;
+        jpOnlyEvangelicalRule: {
+          minBelievers: number;
+          maxBelievers: number;
+          maxPercentEvangelical: number;
+        };
+        jpOnlyEvangelicalRuleIsDefault: boolean;
+      };
+    };
+    const datasetTableStateProps = useDatasetTableStateMock.mock.calls[0]?.[0] as {
+      watchlistFilter: {
+        jpOnlyEvangelicalRule: {
+          minBelievers: number;
+          maxBelievers: number;
+          maxPercentEvangelical: number;
+        };
+      };
+    };
+    const actionBarProps = actionBarSpy.mock.calls[0]?.[0] as {
+      filters: {
+        watchlist: {
+          jpOnlyEvangelicalRule?: {
+            minBelievers: number;
+            maxBelievers: number;
+            maxPercentEvangelical: number;
+          };
+        };
+      };
+    };
+
+    expect(viewSwitchGridProps.watchlistCard.jpOnlyEvangelicalCriteriaSummary).toBe(
+      "JP-only: < 90 believers, or 90-300,000 believers and <= 2.5% evangelical",
+    );
+    expect(viewSwitchGridProps.watchlistCard.jpOnlyEvangelicalRule).toEqual({
+      minBelievers: 90,
+      maxBelievers: 300_000,
+      maxPercentEvangelical: 2.5,
+    });
+    expect(viewSwitchGridProps.watchlistCard.jpOnlyEvangelicalRuleIsDefault).toBe(
+      false,
+    );
+    expect(datasetTableStateProps.watchlistFilter.jpOnlyEvangelicalRule).toEqual({
+      minBelievers: 90,
+      maxBelievers: 300_000,
+      maxPercentEvangelical: 2.5,
+    });
+    expect(actionBarProps.filters.watchlist.jpOnlyEvangelicalRule).toEqual({
+      minBelievers: 90,
+      maxBelievers: 300_000,
+      maxPercentEvangelical: 2.5,
     });
   });
 

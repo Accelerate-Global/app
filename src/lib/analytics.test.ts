@@ -115,7 +115,6 @@ describe("analytics helpers", () => {
   it("maps pathname segments into analytics routes", () => {
     expect(getAnalyticsRouteFromPathname("/")).toBe("sign_in");
     expect(getAnalyticsRouteFromPathname("/dashboard/profile")).toBe("profile");
-    expect(getAnalyticsRouteFromPathname("/dashboard/data-lake")).toBe("data_lake");
     expect(getAnalyticsRouteFromPathname("/dashboard/analytics")).toBe("analytics");
     expect(getAnalyticsRouteFromPathname("/dashboard/filter-settings")).toBe(
       "dashboard",
@@ -151,6 +150,27 @@ describe("analytics helpers", () => {
     expect(getAnalyticsEventPropertyKeys("dataset_filters_applied")).toContain(
       "hotspots_country_count",
     );
+    expect(getAnalyticsEventPropertyKeys("dataset_filters_applied")).toContain(
+      "watchlist_jp_only_evangelical_enabled",
+    );
+    expect(getAnalyticsEventPropertyKeys("dataset_filters_applied")).toContain(
+      "watchlist_jp_only_min_believers",
+    );
+    expect(getAnalyticsEventPropertyKeys("dataset_filters_applied")).toContain(
+      "watchlist_jp_only_max_believers",
+    );
+    expect(getAnalyticsEventPropertyKeys("dataset_filters_applied")).toContain(
+      "watchlist_jp_only_max_percent_evangelical",
+    );
+    expect(getAnalyticsEventPropertyKeys("dataset_filters_applied")).toContain(
+      "watchlist_engagement_phase_min",
+    );
+    expect(getAnalyticsEventPropertyKeys("dataset_filters_applied")).toContain(
+      "uupg_global_engagement_anywhere_enabled",
+    );
+    expect(getAnalyticsEventPropertyKeys("dataset_filters_applied")).toContain(
+      "uupg_frontier_group_enabled",
+    );
   });
 
   it("does not expose legacy frontier-group analytics event property keys", () => {
@@ -159,6 +179,15 @@ describe("analytics helpers", () => {
     );
     expect(getAnalyticsEventPropertyKeys("dataset_filters_applied")).not.toContain(
       "watchlist_frontier_group_value",
+    );
+  });
+
+  it("does not expose removed watchlist population-believers analytics keys", () => {
+    expect(getAnalyticsEventPropertyKeys("dataset_filters_applied")).not.toContain(
+      "watchlist_population_believers_rule_enabled",
+    );
+    expect(getAnalyticsEventPropertyKeys("dataset_filters_applied")).not.toContain(
+      "watchlist_population_believers_rule_tier_count",
     );
   });
 

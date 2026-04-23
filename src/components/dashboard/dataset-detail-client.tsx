@@ -22,6 +22,8 @@ import type {
   FilterRegion,
   DatasetHotspotsMetric,
   SavedDatasetSort,
+  WatchlistEngagementPhaseRule,
+  WatchlistJpOnlyEvangelicalRule,
 } from "@/lib/api-types";
 import {
   buildAnalyticsContext,
@@ -37,8 +39,6 @@ import {
   WATCHLIST_DATASET_COLUMN_KEY,
   WATCHLIST_ENGAGEMENT_PHASES_DATASET_COLUMN_KEY,
   WATCHLIST_FRONTIER_GROUP_DATASET_COLUMN_KEY,
-  WATCHLIST_PERCENT_EVANGELICAL_DATASET_COLUMN_KEY,
-  WATCHLIST_POPULATION_DATASET_COLUMN_KEY,
 } from "@/lib/dataset-region-constants";
 import {
   MAX_HOTSPOTS_COUNTRY_COUNT,
@@ -46,11 +46,14 @@ import {
   datasetSupportsCountryFiltering,
   datasetSupportsHotspotsFiltering,
   datasetSupportsRegionFiltering,
+  datasetSupportsUupgFrontierFiltering,
+  datasetSupportsWatchlistJpOnlyFiltering,
   datasetSupportsWatchlistFiltering,
   datasetSupportsUupgFiltering,
   getEffectiveCountrySelection,
   getMatchingRegionIdsForCountries,
   getSelectedRegionCountryNames,
+  normalizeDatasetUupgCriteriaState,
 } from "@/lib/dataset-region-filtering";
 import { getFieldDefinitionCanonicalKeyLookupKeys } from "@/lib/field-definition-canonical";
 import { isGlobalRegionName } from "@/lib/region-display";
@@ -59,13 +62,22 @@ import {
   getInitialDatasetDetailState,
   WATCHLIST_FIXED_THRESHOLD,
 } from "@/lib/saved-dataset-filters";
-import { sanitizePopulationBelieversRule } from "@/lib/evangelical-population-believers-rule";
 import { useDatasetPerfRenderTrace } from "@/lib/render-trace";
 import {
-  WATCHLIST_FIXED_ENGAGEMENT_PHASE_MIN,
   appendWatchlistEngagementPhaseDefinition,
   formatWatchlistEngagementPhaseSummary,
+  getDefaultWatchlistEngagementPhaseRule,
+  isWatchlistEngagementPhaseRuleDefault,
+  normalizeWatchlistEngagementPhaseRule,
 } from "@/lib/watchlist-engagement-phase";
+import {
+  WATCHLIST_JP_ONLY_EVANGELICAL_LABEL,
+  formatWatchlistJpOnlyEvangelicalSummary,
+  getDefaultWatchlistJpOnlyEvangelicalRule,
+  getWatchlistJpOnlyEvangelicalDefinition,
+  isWatchlistJpOnlyEvangelicalRuleDefault,
+  normalizeWatchlistJpOnlyEvangelicalRule,
+} from "@/lib/watchlist-jp-only-evangelical";
 
 type DatasetDetailClientProps = {
   dataset: DatasetSummary;
@@ -126,8 +138,6 @@ function getFieldPresentationForDatasetColumn(input: {
   };
 }
 const HOTSPOTS_COUNTRY_COUNT_MIN = 1;
-const WATCHLIST_POPULATION_BELIEVERS_RULE_LABEL =
-  "Population vs Evangelical Believers";
 
 function clampHotspotsCountryCount(value: number) {
   return Math.min(
@@ -227,23 +237,10 @@ export function DatasetDetailClient({
     fieldDefinitionPresentationByColumnKey[
       WATCHLIST_ENGAGEMENT_PHASES_DATASET_COLUMN_KEY
     ]?.effectiveLabel ?? "Engage_8_Phases_of_Engagement";
-  const watchlistEngagementPhaseDefinition =
-    appendWatchlistEngagementPhaseDefinition(
-      fieldDefinitionPresentationByColumnKey[
-        WATCHLIST_ENGAGEMENT_PHASES_DATASET_COLUMN_KEY
-      ]?.definition ?? "",
-    );
-  const watchlistEngagementPhaseSummary = formatWatchlistEngagementPhaseSummary(
-    watchlistEngagementPhaseLabel,
-  );
-  const watchlistPopulationLabel =
-    fieldDefinitionPresentationByColumnKey[WATCHLIST_POPULATION_DATASET_COLUMN_KEY]
-      ?.effectiveLabel ?? "PG_Population";
-  const watchlistPercentEvangelicalLabel =
+  const watchlistEngagementPhaseBaseDefinition =
     fieldDefinitionPresentationByColumnKey[
-      WATCHLIST_PERCENT_EVANGELICAL_DATASET_COLUMN_KEY
-    ]?.effectiveLabel ?? "Percent_Evangelical_PGAC";
-  const watchlistPopulationBelieversRuleDefinition = `Build a tiered minimum-believers rule by population. Actual believers are calculated as ${watchlistPopulationLabel} * (${watchlistPercentEvangelicalLabel} / 100), and the implied percentage is shown live for context.`;
+      WATCHLIST_ENGAGEMENT_PHASES_DATASET_COLUMN_KEY
+    ]?.definition ?? "";
   const uupgFieldPresentation = getFieldPresentationForDatasetColumn({
     columns: dataset.columns,
     fieldDefinitionPresentationByColumnKey,
@@ -266,7 +263,11 @@ export function DatasetDetailClient({
   const supportsHotspotsFiltering = datasetSupportsHotspotsFiltering(dataset);
   const supportsRegionFiltering = datasetSupportsRegionFiltering(dataset);
   const supportsWatchlistFiltering = datasetSupportsWatchlistFiltering(dataset);
+  const supportsWatchlistJpOnlyFiltering =
+    datasetSupportsWatchlistJpOnlyFiltering(dataset);
   const supportsUupgFiltering = datasetSupportsUupgFiltering(dataset);
+  const supportsUupgFrontierFiltering =
+    datasetSupportsUupgFrontierFiltering(dataset);
   const visibleRegions = regions;
   const initialState = useMemo(
     () =>
@@ -296,19 +297,37 @@ export function DatasetDetailClient({
   const [watchlistThresholdEnabled, setWatchlistThresholdEnabled] = useState(
     initialState.watchlistThresholdEnabled,
   );
+  const [watchlistThreshold, setWatchlistThreshold] = useState(
+    initialState.watchlistThreshold,
+  );
+  const [watchlistEngagementPhaseEnabled, setWatchlistEngagementPhaseEnabled] =
+    useState(initialState.watchlistEngagementPhaseEnabled);
   const [
-    watchlistPopulationBelieversRuleEnabled,
-    setWatchlistPopulationBelieversRuleEnabled,
-  ] = useState(initialState.watchlistPopulationBelieversRuleEnabled);
-  const [
-    watchlistPopulationBelieversRule,
-    setWatchlistPopulationBelieversRule,
-  ] = useState(initialState.watchlistPopulationBelieversRule);
-  const watchlistThreshold = WATCHLIST_FIXED_THRESHOLD;
-  const watchlistEngagementPhaseEnabled = true;
+    watchlistEngagementPhaseRule,
+    setWatchlistEngagementPhaseRule,
+  ] = useState<WatchlistEngagementPhaseRule>(
+    initialState.watchlistEngagementPhaseRule,
+  );
   const watchlistEngagementPhaseThreshold =
-    WATCHLIST_FIXED_ENGAGEMENT_PHASE_MIN;
+    watchlistEngagementPhaseRule.maxPhase;
+  const [
+    watchlistJpOnlyEvangelicalCriteriaEnabled,
+    setWatchlistJpOnlyEvangelicalCriteriaEnabled,
+  ] = useState(initialState.watchlistJpOnlyEvangelicalCriteriaEnabled);
+  const [
+    watchlistJpOnlyEvangelicalRule,
+    setWatchlistJpOnlyEvangelicalRule,
+  ] = useState<WatchlistJpOnlyEvangelicalRule>(
+    initialState.watchlistJpOnlyEvangelicalRule,
+  );
   const [uupgEnabled, setUupgEnabled] = useState(initialState.uupgEnabled);
+  const [
+    uupgGlobalEngagementAnywhereEnabled,
+    setUupgGlobalEngagementAnywhereEnabled,
+  ] = useState(initialState.uupgGlobalEngagementAnywhereEnabled);
+  const [uupgFrontierGroupEnabled, setUupgFrontierGroupEnabled] = useState(
+    initialState.uupgFrontierGroupEnabled,
+  );
   const [hotspotsEnabled, setHotspotsEnabled] = useState(
     initialState.hotspotsEnabled,
   );
@@ -383,6 +402,30 @@ export function DatasetDetailClient({
       supportsCountryFiltering,
     ],
   );
+  const watchlistJpOnlyEvangelicalDefinition = useMemo(
+    () => getWatchlistJpOnlyEvangelicalDefinition(watchlistJpOnlyEvangelicalRule),
+    [watchlistJpOnlyEvangelicalRule],
+  );
+  const watchlistJpOnlyEvangelicalSummary = useMemo(
+    () => formatWatchlistJpOnlyEvangelicalSummary(watchlistJpOnlyEvangelicalRule),
+    [watchlistJpOnlyEvangelicalRule],
+  );
+  const watchlistEngagementPhaseDefinition = useMemo(
+    () =>
+      appendWatchlistEngagementPhaseDefinition(
+        watchlistEngagementPhaseBaseDefinition,
+        watchlistEngagementPhaseRule,
+      ),
+    [watchlistEngagementPhaseBaseDefinition, watchlistEngagementPhaseRule],
+  );
+  const watchlistEngagementPhaseSummary = useMemo(
+    () =>
+      formatWatchlistEngagementPhaseSummary(
+        watchlistEngagementPhaseLabel,
+        watchlistEngagementPhaseRule,
+      ),
+    [watchlistEngagementPhaseLabel, watchlistEngagementPhaseRule],
+  );
   const watchlistFilter = useMemo(
     () => ({
       enabled: watchlistEnabled,
@@ -391,27 +434,46 @@ export function DatasetDetailClient({
       threshold: watchlistThreshold,
       engagementPhaseEnabled: watchlistEngagementPhaseEnabled,
       engagementPhaseThreshold: watchlistEngagementPhaseThreshold,
-      evangelicalPopulationBelieversRuleEnabled:
-        watchlistPopulationBelieversRuleEnabled,
-      evangelicalPopulationBelieversRule: watchlistPopulationBelieversRule,
+      engagementPhaseRule: watchlistEngagementPhaseRule,
+      jpOnlyEvangelicalCriteriaEnabled:
+        watchlistJpOnlyEvangelicalCriteriaEnabled,
+      jpOnlyEvangelicalRule: watchlistJpOnlyEvangelicalRule,
     }),
     [
       supportsWatchlistFiltering,
       watchlistEnabled,
       watchlistEngagementPhaseEnabled,
+      watchlistEngagementPhaseRule,
       watchlistEngagementPhaseThreshold,
-      watchlistPopulationBelieversRule,
-      watchlistPopulationBelieversRuleEnabled,
+      watchlistJpOnlyEvangelicalCriteriaEnabled,
+      watchlistJpOnlyEvangelicalRule,
       watchlistThreshold,
       watchlistThresholdEnabled,
+    ],
+  );
+  const normalizedUupgCriteria = useMemo(
+    () =>
+      normalizeDatasetUupgCriteriaState({
+        globalEngagementAnywhereEnabled: uupgGlobalEngagementAnywhereEnabled,
+        frontierGroupEnabled: uupgFrontierGroupEnabled,
+        frontierGroupSupported: supportsUupgFrontierFiltering,
+      }),
+    [
+      supportsUupgFrontierFiltering,
+      uupgFrontierGroupEnabled,
+      uupgGlobalEngagementAnywhereEnabled,
     ],
   );
   const uupgFilter = useMemo(
     () => ({
       enabled: uupgEnabled,
       isSupported: supportsUupgFiltering,
+      globalEngagementAnywhereEnabled:
+        normalizedUupgCriteria.globalEngagementAnywhereEnabled,
+      frontierGroupEnabled: normalizedUupgCriteria.frontierGroupEnabled,
+      frontierGroupSupported: normalizedUupgCriteria.frontierGroupSupported,
     }),
-    [supportsUupgFiltering, uupgEnabled],
+    [normalizedUupgCriteria, supportsUupgFiltering, uupgEnabled],
   );
   const hotspotsFilter = useMemo(
     () => ({
@@ -456,6 +518,34 @@ export function DatasetDetailClient({
       selectedRegionCountryNames,
     ],
   );
+  const resetWatchlistJpOnlyEvangelicalRule = useCallback(() => {
+    setWatchlistJpOnlyEvangelicalRule(getDefaultWatchlistJpOnlyEvangelicalRule());
+  }, []);
+  const resetWatchlistThreshold = useCallback(() => {
+    setWatchlistThreshold(WATCHLIST_FIXED_THRESHOLD);
+  }, []);
+  const resetWatchlistEngagementPhaseRule = useCallback(() => {
+    setWatchlistEngagementPhaseRule(getDefaultWatchlistEngagementPhaseRule());
+  }, []);
+  const handleWatchlistThresholdChange = useCallback((value: number) => {
+    setWatchlistThreshold(value);
+  }, []);
+  const handleWatchlistEngagementPhaseRuleChange = useCallback(
+    (rule: WatchlistEngagementPhaseRule) => {
+      setWatchlistEngagementPhaseRule(
+        normalizeWatchlistEngagementPhaseRule(rule),
+      );
+    },
+    [],
+  );
+  const handleWatchlistJpOnlyEvangelicalRuleChange = useCallback(
+    (rule: WatchlistJpOnlyEvangelicalRule) => {
+      setWatchlistJpOnlyEvangelicalRule(
+        normalizeWatchlistJpOnlyEvangelicalRule(rule),
+      );
+    },
+    [],
+  );
   const savedFilters = useMemo(
     () =>
       buildSavedDatasetFilterState({
@@ -470,9 +560,13 @@ export function DatasetDetailClient({
         watchlistThreshold,
         watchlistEngagementPhaseEnabled,
         watchlistEngagementPhaseThreshold,
-        watchlistPopulationBelieversRuleEnabled,
-        watchlistPopulationBelieversRule,
+        watchlistEngagementPhaseRule,
+        watchlistJpOnlyEvangelicalCriteriaEnabled,
+        watchlistJpOnlyEvangelicalRule,
         uupgEnabled,
+        uupgGlobalEngagementAnywhereEnabled:
+          normalizedUupgCriteria.globalEngagementAnywhereEnabled,
+        uupgFrontierGroupEnabled: normalizedUupgCriteria.frontierGroupEnabled,
         hotspotsEnabled,
         hotspotsMetric,
         hotspotsCountryCount,
@@ -489,13 +583,15 @@ export function DatasetDetailClient({
       hotspotsCountryCount,
       hotspotsEnabled,
       hotspotsMetric,
+      normalizedUupgCriteria,
       uupgEnabled,
       watchlistEnabled,
       watchlistEngagementPhaseEnabled,
+      watchlistEngagementPhaseRule,
       watchlistEngagementPhaseThreshold,
-      watchlistPopulationBelieversRuleEnabled,
+      watchlistJpOnlyEvangelicalCriteriaEnabled,
+      watchlistJpOnlyEvangelicalRule,
       watchlistThresholdEnabled,
-      watchlistPopulationBelieversRule,
       watchlistThreshold,
     ],
   );
@@ -560,11 +656,6 @@ export function DatasetDetailClient({
     },
     [selectedRegionIds, visibleRegions],
   );
-  const handleWatchlistPopulationBelieversRuleChange = useCallback(
-    (value: typeof watchlistPopulationBelieversRule) =>
-      setWatchlistPopulationBelieversRule(sanitizePopulationBelieversRule(value)),
-    [],
-  );
   const handleHotspotsMetricChange = useCallback(
     (value: DatasetHotspotsMetric) => setHotspotsMetric(value),
     [],
@@ -573,6 +664,59 @@ export function DatasetDetailClient({
     (value: number) =>
       setHotspotsCountryCount(clampHotspotsCountryCount(value)),
     [],
+  );
+  const handleUupgEnabledChange = useCallback(
+    (checked: boolean) => {
+      setUupgEnabled(checked);
+
+      if (!checked) {
+        return;
+      }
+
+      const nextCriteria = normalizeDatasetUupgCriteriaState({
+        globalEngagementAnywhereEnabled: uupgGlobalEngagementAnywhereEnabled,
+        frontierGroupEnabled: uupgFrontierGroupEnabled,
+        frontierGroupSupported: supportsUupgFrontierFiltering,
+      });
+
+      setUupgGlobalEngagementAnywhereEnabled(
+        nextCriteria.globalEngagementAnywhereEnabled,
+      );
+      setUupgFrontierGroupEnabled(nextCriteria.frontierGroupEnabled);
+    },
+    [
+      supportsUupgFrontierFiltering,
+      uupgFrontierGroupEnabled,
+      uupgGlobalEngagementAnywhereEnabled,
+    ],
+  );
+  const handleUupgGlobalEngagementAnywhereEnabledChange = useCallback(
+    (checked: boolean) => {
+      if (
+        uupgEnabled &&
+        !checked &&
+        !normalizedUupgCriteria.frontierGroupEnabled
+      ) {
+        return;
+      }
+
+      setUupgGlobalEngagementAnywhereEnabled(checked);
+    },
+    [normalizedUupgCriteria.frontierGroupEnabled, uupgEnabled],
+  );
+  const handleUupgFrontierGroupEnabledChange = useCallback(
+    (checked: boolean) => {
+      if (
+        uupgEnabled &&
+        !checked &&
+        !normalizedUupgCriteria.globalEngagementAnywhereEnabled
+      ) {
+        return;
+      }
+
+      setUupgFrontierGroupEnabled(checked);
+    },
+    [normalizedUupgCriteria.globalEngagementAnywhereEnabled, uupgEnabled],
   );
   const handleCountryToggle = useCallback(
     (countryName: string, checked: boolean) =>
@@ -659,10 +803,12 @@ export function DatasetDetailClient({
         watchlistThresholdEnabled,
         watchlistThreshold,
         watchlistEngagementPhaseEnabled,
+        watchlistEngagementPhaseRule,
         watchlistEngagementPhaseThreshold,
-        watchlistPopulationBelieversRuleEnabled,
-        watchlistPopulationBelieversRule,
+        watchlistJpOnlyEvangelicalCriteriaEnabled,
         uupgEnabled,
+        uupgGlobalEngagementAnywhereEnabled,
+        uupgFrontierGroupEnabled,
         hotspotsEnabled,
         hotspotsMetric,
         hotspotsCountryCount,
@@ -678,12 +824,14 @@ export function DatasetDetailClient({
       hotspotsCountryCount,
       hotspotsEnabled,
       hotspotsMetric,
+      uupgFrontierGroupEnabled,
+      uupgGlobalEngagementAnywhereEnabled,
       uupgEnabled,
       watchlistEnabled,
       watchlistEngagementPhaseEnabled,
+      watchlistEngagementPhaseRule,
       watchlistEngagementPhaseThreshold,
-      watchlistPopulationBelieversRuleEnabled,
-      watchlistPopulationBelieversRule,
+      watchlistJpOnlyEvangelicalCriteriaEnabled,
       watchlistThreshold,
       watchlistThresholdEnabled,
     ],
@@ -718,17 +866,36 @@ export function DatasetDetailClient({
           watchlist_threshold: watchlistThresholdEnabled
             ? watchlistThreshold
             : null,
-          watchlist_population_believers_rule_enabled:
-            watchlistPopulationBelieversRuleEnabled,
-          watchlist_population_believers_rule_tier_count:
-            watchlistPopulationBelieversRuleEnabled
-              ? watchlistPopulationBelieversRule.tiers.length
+          watchlist_jp_only_evangelical_enabled:
+            watchlistJpOnlyEvangelicalCriteriaEnabled,
+          watchlist_jp_only_min_believers:
+            watchlistEnabled && watchlistJpOnlyEvangelicalCriteriaEnabled
+              ? watchlistJpOnlyEvangelicalRule.minBelievers
               : null,
-          watchlist_engagement_phase_enabled: watchlistEnabled,
-          watchlist_engagement_phase_threshold: watchlistEnabled
-            ? watchlistEngagementPhaseThreshold
-            : null,
+          watchlist_jp_only_max_believers:
+            watchlistEnabled && watchlistJpOnlyEvangelicalCriteriaEnabled
+              ? watchlistJpOnlyEvangelicalRule.maxBelievers
+              : null,
+          watchlist_jp_only_max_percent_evangelical:
+            watchlistEnabled && watchlistJpOnlyEvangelicalCriteriaEnabled
+              ? watchlistJpOnlyEvangelicalRule.maxPercentEvangelical
+              : null,
+          watchlist_engagement_phase_enabled:
+            watchlistEnabled && watchlistEngagementPhaseEnabled,
+          watchlist_engagement_phase_min:
+            watchlistEnabled && watchlistEngagementPhaseEnabled
+              ? watchlistEngagementPhaseRule.minPhase
+              : null,
+          watchlist_engagement_phase_threshold:
+            watchlistEnabled && watchlistEngagementPhaseEnabled
+              ? watchlistEngagementPhaseThreshold
+              : null,
           uupg_enabled: uupgEnabled,
+          uupg_global_engagement_anywhere_enabled:
+            uupgEnabled &&
+            normalizedUupgCriteria.globalEngagementAnywhereEnabled,
+          uupg_frontier_group_enabled:
+            uupgEnabled && normalizedUupgCriteria.frontierGroupEnabled,
           hotspots_enabled: hotspotsEnabled,
           hotspots_metric: hotspotsEnabled ? hotspotsMetric : null,
           hotspots_country_count: hotspotsEnabled ? hotspotsCountryCount : null,
@@ -756,11 +923,15 @@ export function DatasetDetailClient({
     hotspotsCountryCount,
     hotspotsEnabled,
     hotspotsMetric,
+    normalizedUupgCriteria.frontierGroupEnabled,
+    normalizedUupgCriteria.globalEngagementAnywhereEnabled,
     uupgEnabled,
     watchlistEnabled,
+    watchlistEngagementPhaseEnabled,
+    watchlistEngagementPhaseRule,
     watchlistEngagementPhaseThreshold,
-    watchlistPopulationBelieversRuleEnabled,
-    watchlistPopulationBelieversRule,
+    watchlistJpOnlyEvangelicalCriteriaEnabled,
+    watchlistJpOnlyEvangelicalRule,
     watchlistThreshold,
     watchlistThresholdEnabled,
   ]);
@@ -795,36 +966,54 @@ export function DatasetDetailClient({
         thresholdDefinition: watchlistThresholdDefinition,
         thresholdEnabled: watchlistThresholdEnabled,
         threshold: watchlistThreshold,
+        thresholdIsDefault:
+          watchlistThreshold === WATCHLIST_FIXED_THRESHOLD,
+        jpOnlyEvangelicalCriteriaEnabled:
+          watchlistJpOnlyEvangelicalCriteriaEnabled,
+        jpOnlyEvangelicalCriteriaSupported: supportsWatchlistJpOnlyFiltering,
+        jpOnlyEvangelicalCriteriaLabel: WATCHLIST_JP_ONLY_EVANGELICAL_LABEL,
+        jpOnlyEvangelicalCriteriaDefinition:
+          watchlistJpOnlyEvangelicalDefinition,
+        jpOnlyEvangelicalCriteriaSummary: watchlistJpOnlyEvangelicalSummary,
+        jpOnlyEvangelicalRule: watchlistJpOnlyEvangelicalRule,
+        jpOnlyEvangelicalRuleIsDefault:
+          isWatchlistJpOnlyEvangelicalRuleDefault(
+            watchlistJpOnlyEvangelicalRule,
+          ),
+        engagementPhaseEnabled: watchlistEngagementPhaseEnabled,
         engagementPhaseLabel: watchlistEngagementPhaseLabel,
         engagementPhaseDefinition: watchlistEngagementPhaseDefinition,
+        engagementPhaseRule: watchlistEngagementPhaseRule,
+        engagementPhaseRuleIsDefault:
+          isWatchlistEngagementPhaseRuleDefault(watchlistEngagementPhaseRule),
         engagementPhaseSummary: watchlistEngagementPhaseSummary,
-        populationBelieversRuleLabel: WATCHLIST_POPULATION_BELIEVERS_RULE_LABEL,
-        populationBelieversRuleDefinition:
-          watchlistPopulationBelieversRuleDefinition,
-        populationBelieversRuleEnabled:
-          watchlistPopulationBelieversRuleEnabled,
-        populationBelieversRule: watchlistPopulationBelieversRule,
         onEnabledChange: setWatchlistEnabled,
         onThresholdEnabledChange: setWatchlistThresholdEnabled,
-        onPopulationBelieversRuleEnabledChange:
-          setWatchlistPopulationBelieversRuleEnabled,
-        onPopulationBelieversRuleChange:
-          handleWatchlistPopulationBelieversRuleChange,
+        onThresholdChange: handleWatchlistThresholdChange,
+        onThresholdReset: resetWatchlistThreshold,
+        onEngagementPhaseEnabledChange: setWatchlistEngagementPhaseEnabled,
+        onEngagementPhaseRuleChange: handleWatchlistEngagementPhaseRuleChange,
+        onEngagementPhaseRuleReset: resetWatchlistEngagementPhaseRule,
+        onJpOnlyEvangelicalCriteriaEnabledChange:
+          setWatchlistJpOnlyEvangelicalCriteriaEnabled,
+        onJpOnlyEvangelicalRuleChange: handleWatchlistJpOnlyEvangelicalRuleChange,
+        onJpOnlyEvangelicalRuleReset: resetWatchlistJpOnlyEvangelicalRule,
       },
       uupgCard: {
         enabled: uupgEnabled,
         supported: supportsUupgFiltering,
-        fields: [
-          {
-            label: uupgFieldLabel,
-            definition: uupgFieldDefinition,
-          },
-          {
-            label: uupgFrontierFieldLabel,
-            definition: uupgFrontierFieldDefinition,
-          },
-        ],
-        onEnabledChange: setUupgEnabled,
+        globalEngagementAnywhereLabel: uupgFieldLabel,
+        globalEngagementAnywhereDefinition: uupgFieldDefinition,
+        globalEngagementAnywhereEnabled:
+          normalizedUupgCriteria.globalEngagementAnywhereEnabled,
+        frontierGroupSupported: supportsUupgFrontierFiltering,
+        frontierGroupLabel: uupgFrontierFieldLabel,
+        frontierGroupDefinition: uupgFrontierFieldDefinition,
+        frontierGroupEnabled: normalizedUupgCriteria.frontierGroupEnabled,
+        onEnabledChange: handleUupgEnabledChange,
+        onGlobalEngagementAnywhereEnabledChange:
+          handleUupgGlobalEngagementAnywhereEnabledChange,
+        onFrontierGroupEnabledChange: handleUupgFrontierGroupEnabledChange,
       },
       hotspotsCard: {
         enabled: hotspotsEnabled,
@@ -850,17 +1039,29 @@ export function DatasetDetailClient({
       handleHotspotsMetricChange,
       handleRegionSelectorChange,
       handleSelectVisibleCountries,
-      handleWatchlistPopulationBelieversRuleChange,
+      handleUupgEnabledChange,
+      handleUupgFrontierGroupEnabledChange,
+      handleUupgGlobalEngagementAnywhereEnabledChange,
+      handleWatchlistEngagementPhaseRuleChange,
+      handleWatchlistJpOnlyEvangelicalRuleChange,
+      handleWatchlistThresholdChange,
+      resetWatchlistEngagementPhaseRule,
+      resetWatchlistJpOnlyEvangelicalRule,
+      resetWatchlistThreshold,
       hotspotsCountryCount,
       hotspotsEnabled,
       hotspotsMetric,
       includeAlternateCountries,
+      normalizedUupgCriteria.frontierGroupEnabled,
+      normalizedUupgCriteria.globalEngagementAnywhereEnabled,
       regionSelectors,
       supportsAlternateCountryFiltering,
       supportsCountryFiltering,
       supportsHotspotsFiltering,
       supportsRegionFiltering,
+      supportsUupgFrontierFiltering,
       supportsUupgFiltering,
+      supportsWatchlistJpOnlyFiltering,
       supportsWatchlistFiltering,
       uupgEnabled,
       uupgFieldDefinition,
@@ -868,12 +1069,15 @@ export function DatasetDetailClient({
       uupgFrontierFieldDefinition,
       uupgFrontierFieldLabel,
       watchlistEnabled,
+      watchlistEngagementPhaseEnabled,
       watchlistEngagementPhaseDefinition,
       watchlistEngagementPhaseLabel,
+      watchlistEngagementPhaseRule,
       watchlistEngagementPhaseSummary,
-      watchlistPopulationBelieversRule,
-      watchlistPopulationBelieversRuleDefinition,
-      watchlistPopulationBelieversRuleEnabled,
+      watchlistJpOnlyEvangelicalCriteriaEnabled,
+      watchlistJpOnlyEvangelicalDefinition,
+      watchlistJpOnlyEvangelicalRule,
+      watchlistJpOnlyEvangelicalSummary,
       watchlistThreshold,
       watchlistThresholdDefinition,
       watchlistThresholdEnabled,

@@ -210,4 +210,109 @@ describe("dataset-default-view", () => {
       }),
     ).toBe(2);
   });
+
+  it("applies hotspots using the normalized UUPG criteria before country ranking", () => {
+    const dataset = {
+      ...baseDataset,
+      columns: [
+        { key: "people_name", label: "People Name", sourceIndex: 0 },
+        { key: "geo_country_name", label: "Geo_Country_Name", sourceIndex: 1 },
+        {
+          key: "engage_global_engagement_anywhere",
+          label: "Engage_Global_Engagement_Anywhere",
+          sourceIndex: 2,
+        },
+        {
+          key: "christianity_frontier_group",
+          label: "Christianity_Frontier_Group",
+          sourceIndex: 3,
+        },
+        { key: "pg_peid", label: "PG_PEID", sourceIndex: 4 },
+      ],
+      defaultFilters: {
+        region: {
+          enabled: false,
+          selectedRegionIds: [],
+          selectedRegionNames: [],
+          enabledCountryNames: [],
+        },
+        country: {
+          enabled: false,
+          selectedCountryNames: [],
+          includeAlternateCountries: false,
+        },
+        watchlist: {
+          enabled: false,
+          thresholdEnabled: true,
+          threshold: 2,
+          engagementPhaseEnabled: true,
+          engagementPhaseThreshold: 6,
+          evangelicalPopulationBelieversRuleEnabled: true,
+          evangelicalPopulationBelieversRule: {
+            tiers: [
+              {
+                minPopulation: 0,
+                maxPopulation: null,
+                minBelievers: 50,
+              },
+            ],
+          },
+          frontierGroupEnabled: true,
+          frontierGroupValue: true,
+        },
+        uupg: {
+          enabled: true,
+        },
+        hotspots: {
+          enabled: true,
+          metric: "unique_uupgs" as const,
+          countryCount: 1,
+        },
+        sorting: [],
+      },
+    } satisfies DatasetSummary;
+    const hotspotRows: DatasetRowsResponse["rows"] = [
+      {
+        id: "hotspot-row-1",
+        rowIndex: 0,
+        data: {
+          people_name: "Country A Engaged 1",
+          geo_country_name: "India",
+          engage_global_engagement_anywhere: "true",
+          christianity_frontier_group: "false",
+          pg_peid: "india-1",
+        },
+      },
+      {
+        id: "hotspot-row-2",
+        rowIndex: 1,
+        data: {
+          people_name: "Country A Engaged 2",
+          geo_country_name: "India",
+          engage_global_engagement_anywhere: "true",
+          christianity_frontier_group: "false",
+          pg_peid: "india-2",
+        },
+      },
+      {
+        id: "hotspot-row-3",
+        rowIndex: 2,
+        data: {
+          people_name: "Country B UUPG",
+          geo_country_name: "Nepal",
+          engage_global_engagement_anywhere: "false",
+          christianity_frontier_group: "true",
+          pg_peid: "nepal-1",
+        },
+      },
+    ];
+
+    expect(
+      applyDatasetDefaultFilters({
+        dataset,
+        rows: hotspotRows,
+        regions,
+      }).map((row) => row.data.people_name),
+    ).toEqual(["Country B UUPG"]);
+  });
 });

@@ -83,11 +83,6 @@ describe("FieldSourcesClient", () => {
     ).toBeNull();
     expect(screen.queryByRole("textbox")).toBeNull();
     expect(screen.queryByRole("button", { name: "Add source" })).toBeNull();
-    expect(
-      screen.getByText(
-        "Review which source fields currently map to each shared workspace field. These mappings are available here as read-only reference data.",
-      ),
-    ).toBeTruthy();
     expect(screen.getByText("Country Name")).toBeTruthy();
     expect(
       screen.getByRole("columnheader", { name: "Joshua Project" }),

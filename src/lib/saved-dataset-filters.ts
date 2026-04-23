@@ -6,6 +6,8 @@ import type {
   FilterRegion,
   SavedDatasetFilterState,
   SavedDatasetSort,
+  WatchlistEngagementPhaseRule,
+  WatchlistJpOnlyEvangelicalRule,
 } from "@/lib/api-types";
 import {
   DEFAULT_HOTSPOTS_COUNTRY_COUNT,
@@ -14,9 +16,11 @@ import {
   datasetSupportsCountryFiltering,
   datasetSupportsHotspotsFiltering,
   datasetSupportsRegionFiltering,
+  datasetSupportsUupgFrontierFiltering,
   datasetSupportsUupgFiltering,
   datasetSupportsWatchlistFiltering,
   getSelectedRegionCountryNames,
+  normalizeDatasetUupgCriteriaState,
   type DatasetCountryFilterState,
   type DatasetHotspotsFilterState,
   type DatasetRegionFilterState,
@@ -25,19 +29,26 @@ import {
   normalizeHotspotsCountryCount,
   normalizeHotspotsMetric,
 } from "@/lib/dataset-region-filtering";
-import {
-  createDefaultPopulationBelieversRule,
-  createSingleTierPopulationBelieversRule,
-  sanitizePopulationBelieversRule,
-} from "@/lib/evangelical-population-believers-rule";
+import { createDefaultPopulationBelieversRule } from "@/lib/evangelical-population-believers-rule";
 import {
   isGlobalRegionName,
   normalizeRegionDisplayName,
   normalizeRegionMatchName,
 } from "@/lib/region-display";
-import { WATCHLIST_FIXED_ENGAGEMENT_PHASE_MIN } from "@/lib/watchlist-engagement-phase";
+import {
+  WATCHLIST_FIXED_ENGAGEMENT_PHASE_MAX,
+  getDefaultWatchlistEngagementPhaseRule,
+  normalizeWatchlistEngagementPhaseRule,
+} from "@/lib/watchlist-engagement-phase";
+import {
+  getDefaultWatchlistJpOnlyEvangelicalRule,
+  normalizeWatchlistJpOnlyEvangelicalRule,
+} from "@/lib/watchlist-jp-only-evangelical";
 
 export const WATCHLIST_FIXED_THRESHOLD = 2;
+export const WATCHLIST_THRESHOLD_MIN = 0;
+export const WATCHLIST_THRESHOLD_MAX = 6;
+export const WATCHLIST_THRESHOLD_RULE_VERSION = 1 as const;
 
 function dedupeStrings(values: string[]) {
   return Array.from(
@@ -67,9 +78,14 @@ export type InitialDatasetDetailState = {
   watchlistThreshold: number;
   watchlistEngagementPhaseEnabled: boolean;
   watchlistEngagementPhaseThreshold: number;
+  watchlistEngagementPhaseRule: WatchlistEngagementPhaseRule;
+  watchlistJpOnlyEvangelicalCriteriaEnabled: boolean;
+  watchlistJpOnlyEvangelicalRule: WatchlistJpOnlyEvangelicalRule;
   watchlistPopulationBelieversRuleEnabled: boolean;
   watchlistPopulationBelieversRule: PopulationBelieversRule;
   uupgEnabled: boolean;
+  uupgGlobalEngagementAnywhereEnabled: boolean;
+  uupgFrontierGroupEnabled: boolean;
   hotspotsEnabled: boolean;
   hotspotsMetric: DatasetHotspotsMetric;
   hotspotsCountryCount: number;
@@ -185,41 +201,30 @@ function isLegacyDefaultGlobalPreset(preset: DatasetOpenPreset) {
   );
 }
 
-function getNormalizedPopulationBelieversRuleState(
-  watchlist: SavedDatasetFilterState["watchlist"] | DatasetOpenPreset["watchlist"],
+function shouldUsePersistedWatchlistThresholdRule(
+  thresholdRuleVersion: number | null | undefined,
 ) {
-  if (watchlist.evangelicalPopulationBelieversRule) {
-    return {
-      enabled: watchlist.evangelicalPopulationBelieversRuleEnabled ?? true,
-      rule: sanitizePopulationBelieversRule(
-        watchlist.evangelicalPopulationBelieversRule,
-      ),
-      hasPersistedRule: true,
-    }
-  }
-
-  if (
-    watchlist.evangelicalBelieversThreshold !== undefined &&
-    (watchlist.evangelicalBelieversEnabled ?? true)
-  ) {
-    return {
-      enabled: true,
-      rule: createSingleTierPopulationBelieversRule(
-        watchlist.evangelicalBelieversThreshold,
-      ),
-      hasPersistedRule: true,
-    }
-  }
-
-  return {
-    enabled: watchlist.evangelicalPopulationBelieversRuleEnabled ?? true,
-    rule: createDefaultPopulationBelieversRule(),
-    hasPersistedRule: false,
-  }
+  return thresholdRuleVersion === WATCHLIST_THRESHOLD_RULE_VERSION;
 }
 
-function normalizeWatchlistThreshold(_value: number | null | undefined) {
-  return WATCHLIST_FIXED_THRESHOLD;
+function normalizeWatchlistThreshold(
+  value: number | null | undefined,
+  options?: {
+    usePersistedValue?: boolean;
+  },
+) {
+  if (!options?.usePersistedValue) {
+    return WATCHLIST_FIXED_THRESHOLD;
+  }
+
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return WATCHLIST_FIXED_THRESHOLD;
+  }
+
+  return Math.min(
+    WATCHLIST_THRESHOLD_MAX,
+    Math.max(WATCHLIST_THRESHOLD_MIN, Math.round(value)),
+  );
 }
 
 export function buildSavedDatasetFilterState(input: {
@@ -234,14 +239,25 @@ export function buildSavedDatasetFilterState(input: {
   watchlistThreshold: number;
   watchlistEngagementPhaseEnabled: boolean;
   watchlistEngagementPhaseThreshold: number;
-  watchlistPopulationBelieversRuleEnabled: boolean;
-  watchlistPopulationBelieversRule: PopulationBelieversRule;
+  watchlistEngagementPhaseRule?: WatchlistEngagementPhaseRule;
+  watchlistJpOnlyEvangelicalCriteriaEnabled: boolean;
+  watchlistJpOnlyEvangelicalRule: WatchlistJpOnlyEvangelicalRule;
   uupgEnabled: boolean;
+  uupgGlobalEngagementAnywhereEnabled: boolean;
+  uupgFrontierGroupEnabled: boolean;
   hotspotsEnabled: boolean;
   hotspotsMetric: DatasetHotspotsMetric;
   hotspotsCountryCount: number;
   sorting: SavedDatasetSort[];
 }): SavedDatasetFilterState {
+  const normalizedWatchlistThreshold = normalizeWatchlistThreshold(
+    input.watchlistThreshold,
+    { usePersistedValue: true },
+  );
+  const normalizedEngagementPhaseRule = normalizeWatchlistEngagementPhaseRule(
+    input.watchlistEngagementPhaseRule,
+  );
+
   const normalizedSelectedRegionIdSet = input.regionEnabled
     ? normalizeSelectedRegionIdSet(
         input.regions,
@@ -282,17 +298,21 @@ export function buildSavedDatasetFilterState(input: {
     watchlist: {
       enabled: input.watchlistEnabled,
       thresholdEnabled: input.watchlistThresholdEnabled,
-      threshold: normalizeWatchlistThreshold(input.watchlistThreshold),
-      engagementPhaseEnabled: true,
-      engagementPhaseThreshold: WATCHLIST_FIXED_ENGAGEMENT_PHASE_MIN,
-      evangelicalPopulationBelieversRuleEnabled:
-        input.watchlistPopulationBelieversRuleEnabled,
-      evangelicalPopulationBelieversRule: sanitizePopulationBelieversRule(
-        input.watchlistPopulationBelieversRule,
+      thresholdRuleVersion: WATCHLIST_THRESHOLD_RULE_VERSION,
+      threshold: normalizedWatchlistThreshold,
+      engagementPhaseEnabled: input.watchlistEngagementPhaseEnabled,
+      engagementPhaseThreshold: normalizedEngagementPhaseRule.maxPhase,
+      engagementPhaseRule: normalizedEngagementPhaseRule,
+      jpOnlyEvangelicalCriteriaEnabled:
+        input.watchlistJpOnlyEvangelicalCriteriaEnabled,
+      jpOnlyEvangelicalRule: normalizeWatchlistJpOnlyEvangelicalRule(
+        input.watchlistJpOnlyEvangelicalRule,
       ),
     },
     uupg: {
       enabled: input.uupgEnabled,
+      globalEngagementAnywhereEnabled: input.uupgGlobalEngagementAnywhereEnabled,
+      frontierGroupEnabled: input.uupgFrontierGroupEnabled,
     },
     hotspots: {
       enabled: input.hotspotsEnabled,
@@ -361,6 +381,8 @@ export function getInitialDatasetDetailState(input: {
     datasetSupportsAlternateCountryFiltering(input.dataset);
   const supportsWatchlistFiltering = datasetSupportsWatchlistFiltering(input.dataset);
   const supportsUupgFiltering = datasetSupportsUupgFiltering(input.dataset);
+  const supportsUupgFrontierFiltering =
+    datasetSupportsUupgFrontierFiltering(input.dataset);
   const supportsHotspotsFiltering = datasetSupportsHotspotsFiltering(input.dataset);
   const canUseRegionFilter =
     supportsRegionFiltering && input.regions.length > 0;
@@ -382,10 +404,15 @@ export function getInitialDatasetDetailState(input: {
     watchlistThresholdEnabled: true,
     watchlistThreshold: WATCHLIST_FIXED_THRESHOLD,
     watchlistEngagementPhaseEnabled: true,
-    watchlistEngagementPhaseThreshold: WATCHLIST_FIXED_ENGAGEMENT_PHASE_MIN,
-    watchlistPopulationBelieversRuleEnabled: true,
+    watchlistEngagementPhaseThreshold: WATCHLIST_FIXED_ENGAGEMENT_PHASE_MAX,
+    watchlistEngagementPhaseRule: getDefaultWatchlistEngagementPhaseRule(),
+    watchlistJpOnlyEvangelicalCriteriaEnabled: true,
+    watchlistJpOnlyEvangelicalRule: getDefaultWatchlistJpOnlyEvangelicalRule(),
+    watchlistPopulationBelieversRuleEnabled: false,
     watchlistPopulationBelieversRule: createDefaultPopulationBelieversRule(),
     uupgEnabled: false,
+    uupgGlobalEngagementAnywhereEnabled: true,
+    uupgFrontierGroupEnabled: true,
     hotspotsEnabled: false,
     hotspotsMetric: DEFAULT_HOTSPOTS_METRIC,
     hotspotsCountryCount: DEFAULT_HOTSPOTS_COUNTRY_COUNT,
@@ -416,6 +443,12 @@ export function getInitialDatasetDetailState(input: {
     canUseRegionFilter &&
     (shouldUseLegacyDefaultGlobal ||
       (normalizedPreset.region.enabled && matchedRegionIds.size > 0));
+  const normalizedUupgCriteria = normalizeDatasetUupgCriteriaState({
+    globalEngagementAnywhereEnabled:
+      normalizedPreset.uupg.globalEngagementAnywhereEnabled ?? true,
+    frontierGroupEnabled: normalizedPreset.uupg.frontierGroupEnabled ?? true,
+    frontierGroupSupported: supportsUupgFrontierFiltering,
+  });
 
   return {
     regionEnabled,
@@ -435,17 +468,41 @@ export function getInitialDatasetDetailState(input: {
     watchlistThresholdEnabled: supportsWatchlistFiltering
       ? normalizedPreset.watchlist.thresholdEnabled ?? true
       : defaultState.watchlistThresholdEnabled,
-    watchlistThreshold: defaultState.watchlistThreshold,
-    watchlistEngagementPhaseEnabled: defaultState.watchlistEngagementPhaseEnabled,
-    watchlistEngagementPhaseThreshold:
-      defaultState.watchlistEngagementPhaseThreshold,
-    watchlistPopulationBelieversRuleEnabled: supportsWatchlistFiltering
-      ? getNormalizedPopulationBelieversRuleState(normalizedPreset.watchlist).enabled
-      : defaultState.watchlistPopulationBelieversRuleEnabled,
-    watchlistPopulationBelieversRule: supportsWatchlistFiltering
-      ? getNormalizedPopulationBelieversRuleState(normalizedPreset.watchlist).rule
-      : defaultState.watchlistPopulationBelieversRule,
+    watchlistThreshold: supportsWatchlistFiltering
+      ? normalizedPreset.watchlist.threshold
+      : defaultState.watchlistThreshold,
+    watchlistEngagementPhaseEnabled: supportsWatchlistFiltering
+      ? normalizedPreset.watchlist.engagementPhaseEnabled ?? true
+      : defaultState.watchlistEngagementPhaseEnabled,
+    watchlistEngagementPhaseThreshold: supportsWatchlistFiltering
+      ? normalizedPreset.watchlist.engagementPhaseThreshold
+      : defaultState.watchlistEngagementPhaseThreshold,
+    watchlistEngagementPhaseRule: supportsWatchlistFiltering
+      ? normalizeWatchlistEngagementPhaseRule(
+          normalizedPreset.watchlist.engagementPhaseRule,
+        )
+      : defaultState.watchlistEngagementPhaseRule,
+    watchlistJpOnlyEvangelicalCriteriaEnabled: supportsWatchlistFiltering
+      ? normalizedPreset.watchlist.jpOnlyEvangelicalCriteriaEnabled ?? true
+      : defaultState.watchlistJpOnlyEvangelicalCriteriaEnabled,
+    watchlistJpOnlyEvangelicalRule: supportsWatchlistFiltering
+      ? normalizeWatchlistJpOnlyEvangelicalRule(
+          normalizedPreset.watchlist.jpOnlyEvangelicalRule,
+        )
+      : defaultState.watchlistJpOnlyEvangelicalRule,
+    watchlistPopulationBelieversRuleEnabled:
+      defaultState.watchlistPopulationBelieversRuleEnabled,
+    watchlistPopulationBelieversRule:
+      defaultState.watchlistPopulationBelieversRule,
     uupgEnabled: supportsUupgFiltering && normalizedPreset.uupg.enabled,
+    uupgGlobalEngagementAnywhereEnabled:
+      supportsUupgFiltering && normalizedPreset.uupg.enabled
+        ? normalizedUupgCriteria.globalEngagementAnywhereEnabled
+        : defaultState.uupgGlobalEngagementAnywhereEnabled,
+    uupgFrontierGroupEnabled:
+      supportsUupgFiltering && normalizedPreset.uupg.enabled
+        ? normalizedUupgCriteria.frontierGroupEnabled
+        : defaultState.uupgFrontierGroupEnabled,
     hotspotsEnabled:
       supportsHotspotsFiltering && (normalizedPreset.hotspots?.enabled ?? false),
     hotspotsMetric: supportsHotspotsFiltering
@@ -459,8 +516,14 @@ export function getInitialDatasetDetailState(input: {
 }
 
 export function normalizeSavedDatasetFilterState(filters: SavedDatasetFilterState) {
-  const populationBelieversRuleState =
-    getNormalizedPopulationBelieversRuleState(filters.watchlist);
+  const thresholdRuleVersion = shouldUsePersistedWatchlistThresholdRule(
+    filters.watchlist.thresholdRuleVersion,
+  )
+    ? WATCHLIST_THRESHOLD_RULE_VERSION
+    : undefined;
+  const normalizedEngagementPhaseRule = normalizeWatchlistEngagementPhaseRule(
+    filters.watchlist.engagementPhaseRule,
+  );
 
   return {
     ...filters,
@@ -481,34 +544,26 @@ export function normalizeSavedDatasetFilterState(filters: SavedDatasetFilterStat
     watchlist: {
       enabled: filters.watchlist.enabled,
       thresholdEnabled: filters.watchlist.thresholdEnabled ?? true,
-      threshold: normalizeWatchlistThreshold(filters.watchlist.threshold),
-      engagementPhaseEnabled: true,
-      engagementPhaseThreshold: WATCHLIST_FIXED_ENGAGEMENT_PHASE_MIN,
-      evangelicalPopulationBelieversRuleEnabled:
-        populationBelieversRuleState.hasPersistedRule
-          ? populationBelieversRuleState.enabled
-          : filters.watchlist.evangelicalPopulationBelieversRuleEnabled ??
-            filters.watchlist.evangelicalBelieversEnabled ??
-            true,
-      evangelicalPopulationBelieversRule:
-        populationBelieversRuleState.hasPersistedRule
-          ? populationBelieversRuleState.rule
-          : undefined,
-      ...(populationBelieversRuleState.hasPersistedRule
-        ? {}
-        : {
-            evangelicalPercentEnabled:
-              filters.watchlist.evangelicalPercentThreshold === undefined
-                ? undefined
-                : filters.watchlist.evangelicalPercentEnabled ?? true,
-            evangelicalPercentThreshold:
-              filters.watchlist.evangelicalPercentThreshold,
-          }),
+      thresholdRuleVersion,
+      threshold: normalizeWatchlistThreshold(filters.watchlist.threshold, {
+        usePersistedValue: thresholdRuleVersion === WATCHLIST_THRESHOLD_RULE_VERSION,
+      }),
+      engagementPhaseEnabled: filters.watchlist.engagementPhaseEnabled ?? true,
+      engagementPhaseThreshold: normalizedEngagementPhaseRule.maxPhase,
+      engagementPhaseRule: normalizedEngagementPhaseRule,
+      jpOnlyEvangelicalCriteriaEnabled:
+        filters.watchlist.jpOnlyEvangelicalCriteriaEnabled ?? true,
+      jpOnlyEvangelicalRule: normalizeWatchlistJpOnlyEvangelicalRule(
+        filters.watchlist.jpOnlyEvangelicalRule,
+      ),
       frontierGroupEnabled: filters.watchlist.frontierGroupEnabled ?? true,
       frontierGroupValue: filters.watchlist.frontierGroupValue ?? true,
     },
     uupg: {
       enabled: filters.uupg?.enabled ?? false,
+      globalEngagementAnywhereEnabled:
+        filters.uupg?.globalEngagementAnywhereEnabled ?? true,
+      frontierGroupEnabled: filters.uupg?.frontierGroupEnabled ?? true,
     },
     hotspots: {
       enabled: filters.hotspots?.enabled ?? false,
@@ -565,15 +620,14 @@ export function getDatasetWatchlistFilterStateFromSavedView(
     engagementPhaseEnabled:
       normalizedFilters.watchlist.engagementPhaseEnabled ?? true,
     engagementPhaseThreshold: normalizedFilters.watchlist.engagementPhaseThreshold,
-    evangelicalPopulationBelieversRuleEnabled:
-      normalizedFilters.watchlist.evangelicalPopulationBelieversRuleEnabled ??
-      true,
-    evangelicalPopulationBelieversRule:
-      normalizedFilters.watchlist.evangelicalPopulationBelieversRule,
-    evangelicalPercentEnabled:
-      normalizedFilters.watchlist.evangelicalPercentEnabled,
-    evangelicalPercentThreshold:
-      normalizedFilters.watchlist.evangelicalPercentThreshold,
+    engagementPhaseRule: normalizeWatchlistEngagementPhaseRule(
+      normalizedFilters.watchlist.engagementPhaseRule,
+    ),
+    jpOnlyEvangelicalCriteriaEnabled:
+      normalizedFilters.watchlist.jpOnlyEvangelicalCriteriaEnabled ?? true,
+    jpOnlyEvangelicalRule: normalizeWatchlistJpOnlyEvangelicalRule(
+      normalizedFilters.watchlist.jpOnlyEvangelicalRule,
+    ),
     frontierGroupEnabled:
       normalizedFilters.watchlist.frontierGroupEnabled ?? true,
     frontierGroupValue: normalizedFilters.watchlist.frontierGroupValue ?? true,
@@ -585,10 +639,20 @@ export function getDatasetUupgFilterStateFromSavedView(
   filters: SavedDatasetFilterState,
 ): DatasetUupgFilterState {
   const normalizedFilters = normalizeSavedDatasetFilterState(filters);
+  const normalizedCriteria = normalizeDatasetUupgCriteriaState({
+    globalEngagementAnywhereEnabled:
+      normalizedFilters.uupg.globalEngagementAnywhereEnabled,
+    frontierGroupEnabled: normalizedFilters.uupg.frontierGroupEnabled,
+    frontierGroupSupported: datasetSupportsUupgFrontierFiltering(dataset),
+  });
 
   return {
     enabled: normalizedFilters.uupg.enabled,
     isSupported: datasetSupportsUupgFiltering(dataset),
+    globalEngagementAnywhereEnabled:
+      normalizedCriteria.globalEngagementAnywhereEnabled,
+    frontierGroupEnabled: normalizedCriteria.frontierGroupEnabled,
+    frontierGroupSupported: normalizedCriteria.frontierGroupSupported,
   };
 }
 

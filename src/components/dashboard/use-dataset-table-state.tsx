@@ -108,6 +108,7 @@ export function useDatasetTableState(input: {
             input.watchlistFilter,
           ),
           input.hotspotsFilter,
+          input.uupgFilter,
         ),
         input.uupgFilter,
       ),
@@ -392,13 +393,14 @@ export function useDatasetTableState(input: {
       }
     });
 
-    void ensureDatasetRowsCache({
+    const cacheRequest = ensureDatasetRowsCache({
       datasetId: input.dataset.id,
       sourceDatasetId,
       expectedRowCount:
         input.sourceRowCount ??
         (input.dataset.backingDatasetId ? null : input.dataset.rowCount),
-    }).promise;
+    });
+    void cacheRequest.promise?.catch(() => undefined);
 
     return unsubscribe;
   }, [

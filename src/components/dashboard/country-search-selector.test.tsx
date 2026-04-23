@@ -49,6 +49,7 @@ describe("CountrySearchSelector", () => {
 
   it("supports dataset-detail custom actions without changing the shared defaults", () => {
     const onSelectVisible = vi.fn();
+    const onClearVisible = vi.fn();
 
     render(
       <CountrySearchSelector
@@ -59,23 +60,26 @@ describe("CountrySearchSelector", () => {
         showSelectionSummary={false}
         selectActionLabel="Select all"
         selectActionCountries={["Egypt", "Jordan", "Turkey"]}
-        showClearAction={false}
+        clearActionLabel="Deselect all"
+        clearActionCountries={["Egypt", "Jordan", "Turkey"]}
         onSearchChange={vi.fn()}
         onToggleCountry={vi.fn()}
         onSelectVisible={onSelectVisible}
-        onClearVisible={vi.fn()}
+        onClearVisible={onClearVisible}
       />,
     );
 
     expect(screen.queryByText("0 selected")).toBeNull();
-    expect(screen.queryByText("Clear visible")).toBeNull();
     expect(screen.getByRole("button", { name: "Select all" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Deselect all" })).toBeTruthy();
     expect(screen.queryByText("Egypt")).toBeNull();
     expect(screen.getByText("Jordan")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Select all" }));
+    fireEvent.click(screen.getByRole("button", { name: "Deselect all" }));
 
     expect(onSelectVisible).toHaveBeenCalledWith(["Egypt", "Jordan", "Turkey"]);
+    expect(onClearVisible).toHaveBeenCalledWith(["Egypt", "Jordan", "Turkey"]);
   });
 
   it("renders an empty state when the search has no matches", () => {

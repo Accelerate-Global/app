@@ -45,7 +45,8 @@ type AccountControlProps = {
   identity: CurrentIdentity;
 };
 
-function subscribeToHydration() {
+function subscribeToHydration(callback: () => void) {
+  queueMicrotask(callback);
   return () => undefined;
 }
 
@@ -131,6 +132,7 @@ export function AccountControl({ identity }: AccountControlProps) {
           <button
             type="button"
             data-smoke-trigger="account-menu"
+            data-smoke-close="account-menu"
             data-smoke-await-ready="true"
             data-smoke-trigger-ready={isTriggerReady ? "account-menu" : undefined}
             className="inline-flex h-14 w-fit max-w-full items-center gap-3 rounded-[1.25rem] border border-border bg-background px-4 text-left shadow-none transition-colors hover:bg-accent/35"
@@ -176,10 +178,6 @@ export function AccountControl({ identity }: AccountControlProps) {
           <DropdownMenuItem onClick={() => navigateTo("/dashboard")}>
             <LayoutDashboardIcon aria-hidden="true" />
             Dashboard
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => navigateTo("/dashboard/data-lake")}>
-            <DatabaseIcon aria-hidden="true" />
-            Field Sources
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => navigateTo("/dashboard/field-definitions")}>
             <BookTextIcon aria-hidden="true" />

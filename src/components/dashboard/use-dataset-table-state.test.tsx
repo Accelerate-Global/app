@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { clearDatasetRowsCache } from "@/components/dashboard/dataset-row-cache";
+import { trackAppEvent } from "@/lib/analytics-client";
 import type {
   DatasetCountryFilterState,
   DatasetHotspotsFilterState,
@@ -23,6 +24,8 @@ vi.mock("next/navigation", () => ({
 vi.mock("@/lib/analytics-client", () => ({
   trackAppEvent: vi.fn(),
 }));
+
+const trackAppEventMock = vi.mocked(trackAppEvent);
 
 function createDataset(overrides: Record<string, unknown> = {}) {
   return {
@@ -80,22 +83,46 @@ function createDeferredResponse(payload: unknown) {
   };
 }
 
+function createDeferredRejection(error: unknown) {
+  let rejectResponse: (() => void) | null = null;
+  const promise = new Promise<Response>((_resolve, reject) => {
+    rejectResponse = () => reject(error);
+  });
+
+  return {
+    promise,
+    reject() {
+      rejectResponse?.();
+    },
+  };
+}
+
 function DatasetTableStateProbe({
   dataset,
   regionFilter,
   countryFilter,
   hotspotsFilter,
+  analytics,
 }: {
   dataset: ReturnType<typeof createDataset>;
   regionFilter?: DatasetRegionFilterState;
   countryFilter?: DatasetCountryFilterState;
   hotspotsFilter?: DatasetHotspotsFilterState;
+  analytics?: {
+    context: {
+      route: "dataset_detail";
+      actor_owner_id: string;
+      workspace_role: "viewer";
+    };
+    datasetSource: "dashboard";
+  };
 }) {
   const state = useDatasetTableState({
     dataset,
     regionFilter,
     countryFilter,
     hotspotsFilter,
+    analytics,
   });
 
   return (
@@ -214,6 +241,80 @@ describe("useDatasetTableState", () => {
     await waitFor(() => {
       expect(screen.getByTestId("record-count").textContent).toBe("1");
     });
+  });
+
+  it("retries after a cancelled row request without tracking a failure event", async () => {
+    const abortError = new Error("The user aborted a request.");
+    abortError.name = "AbortError";
+    const deferredAbort = createDeferredRejection(abortError);
+
+    fetchMock.mockImplementation(async (input) => {
+      if (input === "/api/datasets/dataset-1/rows?all=true") {
+        if (fetchMock.mock.calls.length === 1) {
+          return deferredAbort.promise;
+        }
+
+        return buildJsonResponse({
+          sourceDatasetId: "dataset-1",
+          rows: [
+            {
+              id: "row-1",
+              rowIndex: 0,
+              data: {
+                people_group_id: "PG-1",
+                country: "Egypt",
+              },
+            },
+          ],
+          page: 1,
+          pageSize: 1000,
+          totalRows: 1,
+          pageCount: 1,
+        });
+      }
+
+      throw new Error(`Unexpected fetch: ${String(input)}`);
+    });
+
+    const analytics = {
+      context: {
+        route: "dataset_detail" as const,
+        actor_owner_id: "viewer-1",
+        workspace_role: "viewer" as const,
+      },
+      datasetSource: "dashboard" as const,
+    };
+    const firstRender = render(
+      <DatasetTableStateProbe
+        dataset={createDataset()}
+        analytics={analytics}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    firstRender.unmount();
+    deferredAbort.reject();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    render(
+      <DatasetTableStateProbe
+        dataset={createDataset()}
+        analytics={analytics}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("record-count").textContent).toBe("1");
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(trackAppEventMock).not.toHaveBeenCalledWith(
+      "dataset_rows_failed",
+      expect.anything(),
+    );
   });
 
   it("reuses warmed rows when switching between derived datasets with the same backing source", async () => {

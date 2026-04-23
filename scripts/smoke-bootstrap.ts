@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
@@ -242,11 +243,22 @@ async function resetSmokeData(sql: postgres.Sql) {
   `;
 }
 
-async function insertAllowlist(sql: postgres.Sql) {
-  const allowlistEntries = Object.values(UI_SMOKE_USERS).map((user) => ({
-    email: user.email,
-    note: `UI smoke ${user.fullName}`,
-  }));
+async function insertAllowlist(
+  sql: postgres.Sql,
+  options?: {
+    additionalEntries?: Array<{
+      email: string;
+      note: string;
+    }>;
+  },
+) {
+  const allowlistEntries = [
+    ...Object.values(UI_SMOKE_USERS).map((user) => ({
+      email: user.email,
+      note: `UI smoke ${user.fullName}`,
+    })),
+    ...(options?.additionalEntries ?? []),
+  ];
 
   await sql`
     insert into public.signup_email_allowlist ${sql(
@@ -737,12 +749,21 @@ async function main() {
     max: 1,
     prepare: false,
   });
+  const allowlistedSignupEmail =
+    `smoke-sign-up-${randomUUID()}@accelerate-global.test`;
 
   try {
     await mkdir(UI_SMOKE_TMP_DIR, { recursive: true });
     await ensureBucket(storageAdmin, smokeEnv.storageBucket);
     await resetSmokeData(sql);
-    await insertAllowlist(sql);
+    await insertAllowlist(sql, {
+      additionalEntries: [
+        {
+          email: allowlistedSignupEmail,
+          note: "UI smoke allowlisted signup",
+        },
+      ],
+    });
 
     const adminUser = await recreateUser({
       sql,
@@ -861,7 +882,7 @@ async function main() {
       },
       authFlows: {
         allowlistedSignup: {
-          email: UI_SMOKE_USERS.allowlistedSignup.email,
+          email: allowlistedSignupEmail,
           password: UI_SMOKE_USERS.allowlistedSignup.password,
           fullName: UI_SMOKE_USERS.allowlistedSignup.fullName,
         },
