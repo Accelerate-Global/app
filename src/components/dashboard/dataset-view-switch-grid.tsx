@@ -147,9 +147,9 @@ const FILTER_PANEL_DESCRIPTIONS = {
   watchlist:
     "People groups unengaged or would be unengaged if the current mission work stopped today.",
   uupg:
-    "Configure the Global Engagement Anywhere and Frontier Group criteria used for UUPG filtering.",
+    "Configure the criteria used for UUPG filtering.",
   hotspots:
-    "Rank primary countries by UUPG burden and keep only UUPG rows from the top countries.",
+    "Rank primary countries ranked by UUPG density.",
 } as const;
 
 const INFO_TOOLTIP_CONTENT_CLASSNAME =
@@ -832,23 +832,18 @@ function DatasetViewSwitchGridInner({
                 }
               >
                 <div className={WATCHLIST_RULE_GRID_CLASSNAME}>
-                  <DatasetFilterNumberField label="Keep through">
-                    <DatasetFilterNumberControl
-                      label="Watchlist GSEC max"
-                      value={watchlistCard.threshold}
-                      min={0}
-                      max={WATCHLIST_THRESHOLD_MAX}
-                      operator="<="
-                      disabled={thresholdControlsDisabled}
-                      onValueChange={watchlistCard.onThresholdChange}
-                      className="sm:w-full"
-                    />
-                  </DatasetFilterNumberField>
+                  <DatasetFilterNumberControl
+                    label="Watchlist GSEC max"
+                    value={watchlistCard.threshold}
+                    min={0}
+                    max={WATCHLIST_THRESHOLD_MAX}
+                    operator="<="
+                    disabled={thresholdControlsDisabled}
+                    onValueChange={watchlistCard.onThresholdChange}
+                    className="sm:w-full"
+                  />
                 </div>
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <p className="text-xs leading-5 text-muted-foreground">
-                    {`${WATCHLIST_THRESHOLD_FILTER_LABEL} <= ${watchlistCard.threshold}`}
-                  </p>
+                <div className="flex justify-end">
                   <Button
                     type="button"
                     variant="ghost"
@@ -878,7 +873,7 @@ function DatasetViewSwitchGridInner({
                   }
                 >
                   <div className={WATCHLIST_RULE_GRID_CLASSNAME}>
-                    <DatasetFilterNumberField label="Auto-keep below">
+                    <DatasetFilterNumberField label="Keep below">
                       <DatasetFilterNumberControl
                         label="JP-only believer floor"
                         value={watchlistCard.jpOnlyEvangelicalRule.minBelievers}
@@ -895,7 +890,7 @@ function DatasetViewSwitchGridInner({
                         className="sm:w-full"
                       />
                     </DatasetFilterNumberField>
-                    <DatasetFilterNumberField label="Percent cap through">
+                    <DatasetFilterNumberField label="Max population">
                       <DatasetFilterNumberControl
                         label="JP-only believer ceiling"
                         value={watchlistCard.jpOnlyEvangelicalRule.maxBelievers}
@@ -935,10 +930,7 @@ function DatasetViewSwitchGridInner({
                       />
                     </DatasetFilterNumberField>
                   </div>
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    <p className="text-xs leading-5 text-muted-foreground">
-                      {watchlistCard.jpOnlyEvangelicalCriteriaSummary}
-                    </p>
+                  <div className="flex justify-end">
                     <Button
                       type="button"
                       variant="ghost"
@@ -965,8 +957,11 @@ function DatasetViewSwitchGridInner({
                   />
                 }
               >
-                <div className={WATCHLIST_RULE_GRID_CLASSNAME}>
-                  <DatasetFilterNumberField label="Keep from">
+                <div className="space-y-1.5">
+                  <p className="text-[0.72rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                    Phase range
+                  </p>
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                     <DatasetFilterNumberControl
                       label="Watchlist engagement min phase"
                       value={watchlistCard.engagementPhaseRule.minPhase}
@@ -982,8 +977,9 @@ function DatasetViewSwitchGridInner({
                       }
                       className="sm:w-full"
                     />
-                  </DatasetFilterNumberField>
-                  <DatasetFilterNumberField label="Keep through">
+                    <span className="text-sm font-medium text-muted-foreground">
+                      to
+                    </span>
                     <DatasetFilterNumberControl
                       label="Watchlist engagement max phase"
                       value={watchlistCard.engagementPhaseRule.maxPhase}
@@ -999,12 +995,9 @@ function DatasetViewSwitchGridInner({
                       }
                       className="sm:w-full"
                     />
-                  </DatasetFilterNumberField>
+                  </div>
                 </div>
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <p className="text-xs leading-5 text-muted-foreground">
-                    {watchlistCard.engagementPhaseSummary}
-                  </p>
+                <div className="flex justify-end">
                   <Button
                     type="button"
                     variant="ghost"

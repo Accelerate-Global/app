@@ -451,8 +451,15 @@ describe("DatasetViewSwitchGrid", () => {
       ),
     ).toBeNull();
     expect(screen.queryByText("<= 2")).toBeNull();
+    expect(screen.queryByText("Keep through")).toBeNull();
+    expect(screen.queryByText("Keep from")).toBeNull();
+    expect(screen.queryByText("Auto-keep below")).toBeNull();
+    expect(screen.queryByText("Percent cap through")).toBeNull();
     expect(screen.queryByLabelText("GSEC (IMB-only)")).toBeNull();
     expect(screen.queryByLabelText("Decrease GSEC (IMB-only)")).toBeNull();
+    expect(screen.getByText("Keep below")).toBeTruthy();
+    expect(screen.getByText("Max population")).toBeTruthy();
+    expect(screen.getByText("Phase range")).toBeTruthy();
     expect(
       thresholdLabel.compareDocumentPosition(thresholdInfo) &
         Node.DOCUMENT_POSITION_FOLLOWING,
@@ -675,7 +682,7 @@ describe("DatasetViewSwitchGrid", () => {
       screen.getAllByText(
         "JP-only: < 80 believers, or 80-300,000 believers and <= 2.5% evangelical",
       ),
-    ).toHaveLength(2);
+    ).toHaveLength(1);
   });
 
   it("lets users edit the GSEC and engagement-phase rules inline and reset them", () => {
@@ -753,8 +760,7 @@ describe("DatasetViewSwitchGrid", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Watchlist filters" }));
 
-    const jpOnlyRuleGrid =
-      screen.getByText("Auto-keep below").parentElement?.parentElement;
+    const jpOnlyRuleGrid = screen.getByText("Keep below").parentElement?.parentElement;
 
     expect(jpOnlyRuleGrid?.className).toContain(
       "grid-cols-[repeat(auto-fit,minmax(min(100%,11rem),1fr))]",
