@@ -22,6 +22,8 @@ import { buildDatasetOpenPreset } from "@/lib/saved-dataset-filters";
 import { getSavedDatasetTable } from "@/lib/saved-dataset-tables";
 import { cn } from "@/lib/utils";
 
+const DATASET_PAGE_TITLE = "PGAC Dataset";
+
 type DatasetPageProps = {
   params: Promise<{
     datasetId: string;
@@ -123,7 +125,7 @@ export default async function DatasetPage({
             Back to dashboard
           </Link>
           <h1 className="truncate text-4xl font-semibold tracking-[-0.04em] sm:text-[3rem]">
-            {dataset.fileName}
+            {DATASET_PAGE_TITLE}
           </h1>
           {headerDescription ? (
             <p className="max-w-3xl text-base leading-7 text-muted-foreground sm:text-lg">
