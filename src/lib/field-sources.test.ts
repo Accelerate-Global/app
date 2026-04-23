@@ -3,6 +3,7 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import * as fieldSourcesModule from "@/lib/field-sources";
 import {
   getFieldSourceTypeKey,
   mergeSeededFieldDisplayLabel,
@@ -26,6 +27,11 @@ const fieldDescriptionCsv = readFileSync(
 );
 
 describe("field-sources", () => {
+  it("does not expose the removed field source write helpers", () => {
+    expect("createFieldSourceType" in fieldSourcesModule).toBe(false);
+    expect("updateFieldSourceValue" in fieldSourcesModule).toBe(false);
+  });
+
   it("preserves existing display labels when seed data is reapplied", () => {
     expect(
       mergeSeededFieldDisplayLabel({

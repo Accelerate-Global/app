@@ -175,6 +175,11 @@ describe("analytics helpers", () => {
     expect(isAppAnalyticsEventName("dataset_open_preset_used")).toBe(false);
   });
 
+  it("does not recognize removed field source write analytics events", () => {
+    expect(isAppAnalyticsEventName("field_source_value_saved")).toBe(false);
+    expect(isAppAnalyticsEventName("field_source_type_created")).toBe(false);
+  });
+
   it("exposes filtered dataset assignment analytics event property keys", () => {
     expect(getAnalyticsEventPropertyKeys("dataset_assigned")).toEqual([
       "source_dataset_id",

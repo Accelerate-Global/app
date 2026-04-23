@@ -99,11 +99,11 @@ describe("AccountControl", () => {
       "separator",
       "Profile",
       "Dashboard",
-      "Data Partners",
+      "Field Sources",
       "Definitions",
       "Dark mode",
       "separator",
-      "Field Sources",
+      "Manage Field Sources",
       "Analytics",
       "User Management",
       "Upload",
@@ -131,13 +131,13 @@ describe("AccountControl", () => {
     );
     const menu = openMenu();
     expect(screen.getByText("viewer@example.com")).toBeTruthy();
-    expect(screen.queryByText("Field Sources")).toBeNull();
+    expect(screen.queryByText("Manage Field Sources")).toBeNull();
     expect(screen.queryByText("Upload")).toBeNull();
     expect(getMenuStructure(menu)).toEqual([
       "separator",
       "Profile",
       "Dashboard",
-      "Data Partners",
+      "Field Sources",
       "Definitions",
       "Dark mode",
       "separator",

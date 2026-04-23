@@ -6,7 +6,6 @@ import { FieldSourcesClient } from "@/components/dashboard/field-sources-client"
 import { SiteHeader } from "@/components/layout/site-header";
 import { buttonVariants } from "@/components/ui/button";
 import { getCurrentIdentity } from "@/lib/auth";
-import { getAnalyticsWorkspaceRole } from "@/lib/analytics";
 import { listFieldSourceGridData } from "@/lib/field-sources";
 import { cn } from "@/lib/utils";
 
@@ -46,15 +45,14 @@ export default async function FieldSourcesPage() {
             Field Sources
           </h1>
           <p className="max-w-3xl text-base leading-7 text-muted-foreground sm:text-lg">
-            Manage which databases track each shared field and keep those source
-            mappings editable for the workspace.
+            Review which databases map to each shared field. These source
+            relationships remain visible throughout the workspace as read-only
+            reference data.
           </p>
         </section>
         <FieldSourcesClient
           initialFieldSourceTypes={fieldSourceTypes}
           initialFieldSources={fieldSources}
-          actorOwnerId={identity.ownerId}
-          workspaceRole={getAnalyticsWorkspaceRole(identity.isDatasetAdmin)}
         />
       </div>
     </main>

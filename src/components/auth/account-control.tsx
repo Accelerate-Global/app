@@ -179,7 +179,7 @@ export function AccountControl({ identity }: AccountControlProps) {
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => navigateTo("/dashboard/data-lake")}>
             <DatabaseIcon aria-hidden="true" />
-            Data Partners
+            Field Sources
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => navigateTo("/dashboard/field-definitions")}>
             <BookTextIcon aria-hidden="true" />
@@ -198,7 +198,7 @@ export function AccountControl({ identity }: AccountControlProps) {
             <>
               <DropdownMenuItem onClick={() => navigateTo("/dashboard/field-sources")}>
                 <DatabaseIcon aria-hidden="true" />
-                Field Sources
+                Manage Field Sources
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => navigateTo("/dashboard/analytics")}>
                 <ActivityIcon aria-hidden="true" />

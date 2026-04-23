@@ -206,7 +206,7 @@ function FieldDefinitionEditSheetForm({
           <div className="space-y-1">
             <p className="text-sm font-medium text-foreground">Sources</p>
             <p className="text-sm text-muted-foreground">
-              These database links are managed from{" "}
+              These database links are also listed on{" "}
               <Link
                 href="/dashboard/field-sources"
                 className="font-medium text-foreground underline underline-offset-4"

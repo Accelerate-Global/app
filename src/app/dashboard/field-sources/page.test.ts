@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { render } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { redirect } from "next/navigation";
@@ -80,10 +80,15 @@ describe("/dashboard/field-sources", () => {
     render(await FieldSourcesPage());
 
     expect(listFieldSourceGridDataMock).toHaveBeenCalledWith();
+    expect(
+      screen.getByText(
+        "Review which databases map to each shared field. These source relationships remain visible throughout the workspace as read-only reference data.",
+      ),
+    ).toBeTruthy();
     expect(fieldSourcesClientMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        actorOwnerId: "owner-1",
-        workspaceRole: "admin",
+        initialFieldSourceTypes: [],
+        initialFieldSources: [],
       }),
       undefined,
     );

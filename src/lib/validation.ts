@@ -333,15 +333,6 @@ export const fieldDefinitionPatchSchema = z.object({
   hideFromViewerFieldDefinitions: z.boolean(),
 });
 
-export const fieldSourcePatchSchema = z.object({
-  sourceTypeId: z.string().uuid(),
-  sourceFieldName: z.string().trim().max(255),
-});
-
-export const fieldSourceTypeCreateSchema = z.object({
-  label: z.string().trim().min(1).max(64),
-});
-
 export const datasetPatchSchema = z.union([
   datasetStatusPatchSchema,
   datasetMetadataPatchSchema,

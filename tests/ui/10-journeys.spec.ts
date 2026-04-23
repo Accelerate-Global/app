@@ -464,25 +464,28 @@ test("admin can edit a field definition", async ({ page }, testInfo) => {
   });
 });
 
-test("admin can create a source column and update a field source value", async ({ page }, testInfo) => {
+test("admin can review field source mappings", async ({ page }, testInfo) => {
   test.skip(skipUnlessDesktopAdmin(testInfo.project.name));
 
   await runSmokeJourney(
-    "admin can create a source column and update a field source value",
+    "admin can review field source mappings",
     async () => {
       const bootstrap = await readUiSmokeBootstrap();
 
       await page.goto("/dashboard/field-sources");
-      await page.locator('[data-smoke-field-source-add-input]').fill("Smoke Source");
-      await page.locator('[data-smoke-field-source-add-submit]').click();
-      await expect(getFieldSourceColumnLocator(page, "Smoke Source")).toBeVisible();
+      await expect(
+        page.getByText(
+          "Review which source fields currently map to each shared workspace field. These mappings are available here as read-only reference data.",
+        ),
+      ).toBeVisible();
+      await expect(
+        getFieldSourceColumnLocator(page, bootstrap.fieldSourceTypes.editable.label),
+      ).toBeVisible();
 
-      const fieldSourceInput = page.locator(
-        `[data-smoke-field-source-input="${bootstrap.fieldDefinitions.editable.id}:${bootstrap.fieldSourceTypes.editable.id}"]`,
+      const fieldSourceValue = page.locator(
+        `[data-smoke-field-source-value="${bootstrap.fieldDefinitions.editable.id}:${bootstrap.fieldSourceTypes.editable.id}"]`,
       );
-      await fieldSourceInput.fill("SMOKE_SOURCE_FIELD");
-      await fieldSourceInput.blur();
-      await expect(fieldSourceInput).toHaveValue("SMOKE_SOURCE_FIELD");
+      await expect(fieldSourceValue).toContainText("people_id");
     },
   );
 });

@@ -245,14 +245,6 @@ export type FieldSourcesResponse = {
   fieldSources: FieldSourceGridRow[];
 };
 
-export type FieldSourceResponse = {
-  fieldSource: FieldSourceGridRow;
-};
-
-export type FieldSourceTypeResponse = {
-  fieldSourceType: FieldSourceType;
-};
-
 export type WorkspaceUserAccountStatus =
   | "active"
   | "pending_invite"

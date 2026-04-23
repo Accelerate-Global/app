@@ -58,7 +58,7 @@ describe("ui-smoke-selection", () => {
     expect(selection.mode).toBe("targeted");
     expect(selection.routeIds).toContain("field-sources-admin");
     expect(selection.journeyTitles).toContain(
-      "admin can create a source column and update a field source value",
+      "admin can review field source mappings",
     );
     expect(selection.projectNames).toEqual(["desktop-viewer", "desktop-admin"]);
     expect(selection.bootstrapScope).toBe("admin-config");
@@ -138,7 +138,7 @@ describe("ui-smoke-selection", () => {
     ).toBe(true);
     expect(
       matcher.test(
-        "tests/ui/10-journeys.spec.ts admin can create a source column and update a field source value",
+        "tests/ui/10-journeys.spec.ts admin can review field source mappings",
       ),
     ).toBe(true);
   });
@@ -155,9 +155,7 @@ describe("ui-smoke-selection", () => {
 
     expect(message).toContain("matched zero Playwright tests");
     expect(message).toContain("field-sources-admin");
-    expect(message).toContain(
-      "admin can create a source column and update a field source value",
-    );
+    expect(message).toContain("admin can review field source mappings");
   });
 
   it("includes direct test files in zero-match validation errors", () => {
