@@ -38,6 +38,7 @@ export const datasets = pgTable(
       },
     ),
     fileName: text("file_name").notNull(),
+    sourceOrganizationName: text("source_organization_name"),
     sortOrder: integer("sort_order").notNull().default(0),
     blobUrl: text("blob_url").notNull(),
     blobPath: text("blob_path").notNull(),
@@ -374,4 +375,16 @@ export const analyticsEvents = privateSchema.table(
       table.createdAt,
     ),
   ],
+);
+
+export const analyticsFailureResolutions = privateSchema.table(
+  "analytics_failure_resolutions",
+  {
+    fingerprint: text("fingerprint").primaryKey(),
+    resolvedByOwnerId: text("resolved_by_owner_id").notNull(),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [index("analytics_failure_resolutions_resolved_at_idx").on(table.resolvedAt)],
 );
