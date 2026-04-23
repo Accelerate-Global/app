@@ -1822,7 +1822,6 @@ describe("DatasetDetailClient", () => {
       watchlistCard: {
         enabled: boolean;
         supported: boolean;
-        thresholdLabel: string;
         thresholdDefinition: string;
         thresholdEnabled: boolean;
         threshold: number;
@@ -1884,7 +1883,6 @@ describe("DatasetDetailClient", () => {
     expect(viewSwitchGridProps.watchlistCard).toMatchObject({
       enabled: true,
       supported: true,
-      thresholdLabel: "Christianity: GSEC",
       thresholdDefinition: "Watchlist status definition",
       thresholdEnabled: true,
       threshold: 2,

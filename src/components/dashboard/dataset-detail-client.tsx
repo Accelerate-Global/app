@@ -220,9 +220,6 @@ export function DatasetDetailClient({
   initialSavedTableFilterSections = null,
 }: DatasetDetailClientProps) {
   useDatasetPerfRenderTrace("DatasetDetailClient");
-  const watchlistThresholdLabel =
-    fieldDefinitionPresentationByColumnKey[WATCHLIST_DATASET_COLUMN_KEY]
-      ?.effectiveLabel ?? "Christianity_GSEC";
   const watchlistThresholdDefinition =
     fieldDefinitionPresentationByColumnKey[WATCHLIST_DATASET_COLUMN_KEY]
       ?.definition ?? "";
@@ -795,7 +792,6 @@ export function DatasetDetailClient({
       watchlistCard: {
         enabled: watchlistEnabled,
         supported: supportsWatchlistFiltering,
-        thresholdLabel: watchlistThresholdLabel,
         thresholdDefinition: watchlistThresholdDefinition,
         thresholdEnabled: watchlistThresholdEnabled,
         threshold: watchlistThreshold,
@@ -881,7 +877,6 @@ export function DatasetDetailClient({
       watchlistThreshold,
       watchlistThresholdDefinition,
       watchlistThresholdEnabled,
-      watchlistThresholdLabel,
     ],
   );
 

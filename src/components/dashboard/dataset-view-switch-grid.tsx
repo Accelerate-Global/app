@@ -49,7 +49,6 @@ import {
   normalizeRegionDisplayName,
   normalizeRegionDisplayText,
 } from "@/lib/region-display";
-import { getWatchlistEngagementPhaseCriterionText } from "@/lib/watchlist-engagement-phase";
 import { cn } from "@/lib/utils";
 
 type RegionSelector = {
@@ -87,7 +86,6 @@ type DatasetViewSwitchGridProps = {
   watchlistCard: {
     enabled: boolean;
     supported: boolean;
-    thresholdLabel: string;
     thresholdDefinition: string;
     thresholdEnabled: boolean;
     threshold: number;
@@ -146,6 +144,7 @@ const FILTER_PANEL_DESCRIPTIONS = {
 const INFO_TOOLTIP_CONTENT_CLASSNAME =
   "max-w-[26rem] rounded-2xl border border-border/80 bg-popover px-4 py-3.5 text-sm leading-6 text-popover-foreground shadow-lg ring-1 ring-foreground/8";
 const POPULATION_BELIEVERS_INLINE_SUMMARY_LIMIT = 3;
+const WATCHLIST_THRESHOLD_FILTER_LABEL = "GSEC (IMB-only)";
 const WATCHLIST_WARNING_TITLE = "Watchlist is not working correctly yet";
 const WATCHLIST_WARNING_DESCRIPTION =
   "These filters can return incorrect results while the Watchlist logic is being fixed. Do not rely on this section yet.";
@@ -484,7 +483,9 @@ function getWatchlistSummary(
   const summary: string[] = [];
 
   if (watchlistCard.thresholdEnabled) {
-    summary.push(`${watchlistCard.thresholdLabel} <= ${watchlistCard.threshold}`);
+    summary.push(
+      `${WATCHLIST_THRESHOLD_FILTER_LABEL} <= ${watchlistCard.threshold}`,
+    );
   }
 
   if (watchlistCard.populationBelieversRuleEnabled) {
@@ -604,25 +605,6 @@ function WatchlistPopulationBelieversControl({
           </DialogContent>
         </Dialog>
       </div>
-    </div>
-  );
-}
-
-function WatchlistReadOnlyCriterion({
-  value,
-  disabled,
-}: {
-  value: string;
-  disabled: boolean;
-}) {
-  return (
-    <div
-      className={cn(
-        "rounded-xl border border-border/70 bg-background/80 px-3 py-2 text-sm font-medium tracking-[-0.02em] text-foreground shadow-xs shadow-black/5",
-        disabled && "opacity-70",
-      )}
-    >
-      {value}
     </div>
   );
 }
@@ -905,24 +887,18 @@ function DatasetViewSwitchGridInner({
           ) : (
             <div className="divide-y divide-border/70 px-3">
               <DatasetFilterRow
-                label={watchlistCard.thresholdLabel}
+                label={WATCHLIST_THRESHOLD_FILTER_LABEL}
                 definition={watchlistCard.thresholdDefinition}
-                controlClassName="max-w-[10rem]"
                 toggleControl={
                   <Switch
                     size="sm"
                     checked={watchlistCard.thresholdEnabled}
                     disabled={!watchlistCard.enabled}
                     onCheckedChange={watchlistCard.onThresholdEnabledChange}
-                    aria-label={`Toggle Watchlist ${watchlistCard.thresholdLabel}`}
+                    aria-label={`Toggle Watchlist ${WATCHLIST_THRESHOLD_FILTER_LABEL}`}
                   />
                 }
-              >
-                <WatchlistReadOnlyCriterion
-                  value={`<= ${watchlistCard.threshold}`}
-                  disabled={!watchlistCard.enabled || !watchlistCard.thresholdEnabled}
-                />
-              </DatasetFilterRow>
+              />
               <DatasetFilterRow
                 label={watchlistCard.populationBelieversRuleLabel}
                 definition={watchlistCard.populationBelieversRuleDefinition}
@@ -944,12 +920,7 @@ function DatasetViewSwitchGridInner({
                 label={watchlistCard.engagementPhaseLabel}
                 definition={watchlistCard.engagementPhaseDefinition}
                 controlClassName="max-w-[10rem]"
-              >
-                <WatchlistReadOnlyCriterion
-                  value={getWatchlistEngagementPhaseCriterionText()}
-                  disabled={!watchlistCard.enabled}
-                />
-              </DatasetFilterRow>
+              />
             </div>
           )}
         </FilterSection>
