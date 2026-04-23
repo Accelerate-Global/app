@@ -277,7 +277,7 @@ describe("DatasetEditPageClient", () => {
           fileName: "Global Updated.csv",
           tags: [
             {
-              id: "tag-1",
+              id: "dataset-classification-pgac",
               label: "PGAC",
               color: "#fcab2a",
             },
@@ -303,6 +303,26 @@ describe("DatasetEditPageClient", () => {
       }),
     );
     expect(pushMock).toHaveBeenCalledWith("/dashboard");
+  });
+
+  it("requires a PGAC or PGIC classification before saving a source dataset", async () => {
+    render(
+      <DatasetEditPageClient
+        initialDataset={createDataset({ tags: [] })}
+        availableTags={[]}
+        initialVersions={[]}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText("Dataset name"), {
+      target: { value: "Global Updated.csv" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+
+    expect(
+      await screen.findByText("Select PGAC or PGIC for this source dataset."),
+    ).toBeTruthy();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("shows dataset delete failures inline", async () => {
@@ -334,6 +354,38 @@ describe("DatasetEditPageClient", () => {
     expect(pushMock).not.toHaveBeenCalled();
   });
 
+  it("does not allow reserved classification labels to be added as freeform tags", async () => {
+    render(
+      <DatasetEditPageClient
+        initialDataset={createDataset()}
+        availableTags={[
+          {
+            id: "tag-2",
+            label: "PGIC",
+            color: "#078bc9",
+          },
+          {
+            id: "tag-3",
+            label: "Regional focus",
+            color: "#078bc9",
+          },
+        ]}
+        initialVersions={[]}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText("New tag"), {
+      target: { value: "PGIC" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Add tag" }));
+
+    expect(
+      await screen.findByText("PGAC and PGIC are managed by dataset classification."),
+    ).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "PGIC" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Regional focus" })).toBeTruthy();
+  });
+
   it("opens the tag color dropdown and updates the selected color", async () => {
     render(
       <DatasetEditPageClient
@@ -343,9 +395,7 @@ describe("DatasetEditPageClient", () => {
       />,
     );
 
-    const existingTagColorSelect = screen
-      .getAllByRole("combobox")
-      .find((element) => element.textContent?.includes("Yellow"));
+    const existingTagColorSelect = screen.getAllByRole("combobox")[1];
 
     expect(existingTagColorSelect).toBeTruthy();
 

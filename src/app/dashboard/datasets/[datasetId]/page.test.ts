@@ -96,9 +96,9 @@ function createDataset() {
     defaultFilters: null,
     tags: [
       {
-        id: "tag-1",
-        label: "Watchlist",
-        color: "#262531",
+        id: "dataset-classification-pgac",
+        label: "PGAC",
+        color: "#fcab2a",
       },
     ],
     error: null,
@@ -297,10 +297,38 @@ describe("/dashboard/datasets/[datasetId]", () => {
     expect(props.datasetSource).toBe("default_redirect");
   });
 
-  it("renders a static page heading regardless of the dataset name", async () => {
+  it("renders the source dataset classification in the page heading", async () => {
     getDatasetMock.mockResolvedValue({
       ...createDataset(),
       fileName: "All People Groups",
+      tags: [
+        {
+          id: "dataset-classification-pgic",
+          label: "PGIC",
+          color: "#078bc9",
+        },
+      ],
+    });
+
+    render(
+      await DatasetPage({
+        params: Promise.resolve({ datasetId: "dataset-1" }),
+        searchParams: Promise.resolve({}),
+      }),
+    );
+
+    expect(
+      screen.getByRole("heading", { level: 1, name: "PGIC Dataset" }),
+    ).toBeTruthy();
+    expect(
+      screen.queryByRole("heading", { level: 1, name: "All People Groups" }),
+    ).toBeNull();
+  });
+
+  it("falls back to a PGAC heading for legacy datasets without classification tags", async () => {
+    getDatasetMock.mockResolvedValue({
+      ...createDataset(),
+      tags: [],
     });
 
     render(
@@ -313,9 +341,6 @@ describe("/dashboard/datasets/[datasetId]", () => {
     expect(
       screen.getByRole("heading", { level: 1, name: "PGAC Dataset" }),
     ).toBeTruthy();
-    expect(
-      screen.queryByRole("heading", { level: 1, name: "All People Groups" }),
-    ).toBeNull();
   });
 
   it("passes the backing source row count to the dataset detail client for derived datasets", async () => {
@@ -327,6 +352,13 @@ describe("/dashboard/datasets/[datasetId]", () => {
         fileName: "South Asia",
         rowCount: 128,
         isPrimary: false,
+        tags: [
+          {
+            id: "tag-watchlist",
+            label: "Watchlist",
+            color: "#262531",
+          },
+        ],
       },
       {
         ...createDataset(),
@@ -334,6 +366,13 @@ describe("/dashboard/datasets/[datasetId]", () => {
         backingDatasetId: null,
         fileName: "All People Groups",
         rowCount: 12507,
+        tags: [
+          {
+            id: "dataset-classification-pgic",
+            label: "PGIC",
+            color: "#078bc9",
+          },
+        ],
       },
       {
         ...createDataset(),
@@ -350,12 +389,26 @@ describe("/dashboard/datasets/[datasetId]", () => {
         backingDatasetId: "dataset-source",
         rowCount: 128,
         isPrimary: false,
+        tags: [
+          {
+            id: "tag-watchlist",
+            label: "Watchlist",
+            color: "#262531",
+          },
+        ],
       })
       .mockResolvedValueOnce({
         ...createDataset(),
         id: "dataset-source",
         backingDatasetId: null,
         rowCount: 12507,
+        tags: [
+          {
+            id: "dataset-classification-pgic",
+            label: "PGIC",
+            color: "#078bc9",
+          },
+        ],
       });
 
     render(
@@ -386,6 +439,9 @@ describe("/dashboard/datasets/[datasetId]", () => {
     expect(getDatasetMock).toHaveBeenNthCalledWith(2, "dataset-source", {
       includeDisabled: true,
     });
+    expect(
+      screen.getByRole("heading", { level: 1, name: "PGIC Dataset" }),
+    ).toBeTruthy();
   });
 
   it("ignores a saved table from another dataset when no dataset defaults exist", async () => {

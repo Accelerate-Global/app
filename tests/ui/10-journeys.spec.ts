@@ -384,7 +384,9 @@ test("viewer reuses warmed primary dataset rows for derived dataset cards", asyn
       await expect(page.locator('[data-smoke-page="dataset-detail"]')).toBeVisible();
       await expect(page.getByText("Rana Tharu")).toBeVisible();
       await expect(
-        page.getByRole("heading", { name: bootstrap.datasets.primary.fileName }),
+        page.getByRole("heading", {
+          name: `${bootstrap.datasets.primary.classification} Dataset`,
+        }),
       ).toBeVisible();
       await expect.poll(
         () =>
@@ -400,7 +402,9 @@ test("viewer reuses warmed primary dataset rows for derived dataset cards", asyn
       await page.locator(`[data-smoke-dataset-row="${bootstrap.datasets.derived.id}"]`).click();
       await expect(page.locator('[data-smoke-page="dataset-detail"]')).toBeVisible();
       await expect(
-        page.getByRole("heading", { name: bootstrap.datasets.derived.fileName }),
+        page.getByRole("heading", {
+          name: `${bootstrap.datasets.derived.classification} Dataset`,
+        }),
       ).toBeVisible();
       await expect(page.getByText("Rana Tharu")).toBeVisible();
       await expect(rowRequests).toHaveLength(warmRequestCount);
@@ -557,7 +561,9 @@ test("admin can assign a filtered dataset view to an admin dataset", async ({ pa
         .click();
       await expect(page.locator('[data-smoke-page="dataset-detail"]')).toBeVisible();
       await expect(
-        page.getByRole("heading", { name: bootstrap.datasets.secondary.fileName }),
+        page.getByRole("heading", {
+          name: `${bootstrap.datasets.primary.classification} Dataset`,
+        }),
       ).toBeVisible();
       await expect(page.locator("[data-smoke-filtered-table-count]")).toHaveText("2");
       await page.getByRole("button", { name: "Region filters" }).click();

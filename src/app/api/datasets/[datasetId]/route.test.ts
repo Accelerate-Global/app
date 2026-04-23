@@ -37,6 +37,16 @@ vi.mock("@/lib/error-logging", () => ({
 }));
 
 vi.mock("@/lib/datasets", () => ({
+  DatasetClassificationError: class DatasetClassificationError extends Error {
+    readonly status = 409;
+
+    constructor(
+      message = "Source datasets must include exactly one PGAC or PGIC tag.",
+    ) {
+      super(message);
+      this.name = "DatasetClassificationError";
+    }
+  },
   DerivedDatasetMutationError: class DerivedDatasetMutationError extends Error {
     readonly status = 409;
 
@@ -90,7 +100,13 @@ const dataset = {
   columns: [{ key: "email", label: "Email", sourceIndex: 0 }],
   hiddenColumnKeys: [],
   defaultFilters: null,
-  tags: [],
+  tags: [
+    {
+      id: "dataset-classification-pgac",
+      label: "PGAC",
+      color: "#fcab2a",
+    },
+  ],
   error: null,
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
@@ -325,6 +341,27 @@ describe("/api/datasets/[datasetId]", () => {
     expect(response.status).toBe(409);
     await expect(response.json()).resolves.toEqual({
       error: "Derived dataset views cannot be marked as primary.",
+    });
+  });
+
+  it("returns source classification conflicts from metadata updates", async () => {
+    const { DatasetClassificationError } = await import("@/lib/datasets");
+    updateDatasetDetailsMock.mockRejectedValue(new DatasetClassificationError());
+
+    const response = await PATCH(
+      new Request("http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001", {
+        method: "PATCH",
+        body: JSON.stringify({
+          fileName: "renamed.csv",
+          tags: [],
+        }),
+      }),
+      context,
+    );
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual({
+      error: "Source datasets must include exactly one PGAC or PGIC tag.",
     });
   });
 

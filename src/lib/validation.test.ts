@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import * as validationModule from "@/lib/validation";
 import {
+  createDatasetSchema,
   datasetAssignDerivedViewSchema,
   datasetMetadataPatchSchema,
+  replaceDatasetSchema,
 } from "@/lib/validation";
 
 describe("datasetMetadataPatchSchema", () => {
@@ -419,5 +421,38 @@ describe("datasetAssignDerivedViewSchema", () => {
 
     expect(result.success).toBe(false);
     expect(result.error?.issues.some((issue) => issue.path.includes("selectedRegionIds"))).toBe(true);
+  });
+});
+
+describe("dataset create and replace schemas", () => {
+  it("requires a PGAC or PGIC classification on dataset create", () => {
+    expect(
+      createDatasetSchema.safeParse({
+        fileName: "customers.csv",
+        blobPath: "datasets/csv/customers.csv",
+        sizeBytes: 100,
+        columns: [{ key: "email", label: "Email", sourceIndex: 0 }],
+      }).success,
+    ).toBe(false);
+
+    expect(
+      createDatasetSchema.safeParse({
+        fileName: "customers.csv",
+        blobPath: "datasets/csv/customers.csv",
+        sizeBytes: 100,
+        columns: [{ key: "email", label: "Email", sourceIndex: 0 }],
+        classification: "PGAC",
+      }).success,
+    ).toBe(true);
+  });
+
+  it("requires a PGAC or PGIC classification on dataset replace", () => {
+    expect(
+      replaceDatasetSchema.safeParse({
+        blobPath: "datasets/csv/customers.csv",
+        sizeBytes: 100,
+        columns: [{ key: "email", label: "Email", sourceIndex: 0 }],
+      }).success,
+    ).toBe(false);
   });
 });

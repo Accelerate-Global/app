@@ -130,14 +130,17 @@ export type UiSmokeBootstrap = {
     primary: {
       id: string;
       fileName: string;
+      classification: "PGAC" | "PGIC";
     };
     derived: {
       id: string;
       fileName: string;
+      classification: "PGAC" | "PGIC";
     };
     secondary: {
       id: string;
       fileName: string;
+      classification: "PGAC" | "PGIC";
     };
   };
   fieldDefinitions: {

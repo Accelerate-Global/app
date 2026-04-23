@@ -442,6 +442,11 @@ async function insertDatasets(input: {
           hidden_column_keys: ["christianity_frontier_group"],
           tags: [
             {
+              id: "dataset-classification-pgac",
+              label: "PGAC",
+              color: "#fcab2a",
+            },
+            {
               id: "tag-smoke-primary",
               label: "Priority",
               color: "#d97706",
@@ -530,9 +535,14 @@ async function insertDatasets(input: {
           hidden_column_keys: [],
           tags: [
             {
+              id: "dataset-classification-pgic",
+              label: "PGIC",
+              color: "#078bc9",
+            },
+            {
               id: "tag-smoke-secondary",
               label: "Archive",
-              color: "#2563eb",
+              color: "#cad3b8",
             },
           ],
           error: null,
@@ -894,14 +904,17 @@ async function main() {
         primary: {
           id: PRIMARY_DATASET_ID,
           fileName: "Smoke Primary Dataset",
+          classification: "PGAC",
         },
         derived: {
           id: DERIVED_DATASET_ID,
           fileName: "Smoke Watchlist Dataset",
+          classification: "PGAC",
         },
         secondary: {
           id: SECONDARY_DATASET_ID,
           fileName: "Smoke Secondary Dataset",
+          classification: "PGIC",
         },
       },
       fieldDefinitions: {
