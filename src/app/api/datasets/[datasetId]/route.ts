@@ -1,5 +1,6 @@
 import { getCurrentIdentity } from "@/lib/auth";
 import {
+  DatasetClassificationError,
   DatasetDeleteConflictError,
   DerivedDatasetMutationError,
   deleteDataset,
@@ -76,7 +77,10 @@ export async function PATCH(request: Request, context: DatasetContext) {
             hiddenColumnKeys: parsed.data.hiddenColumnKeys,
           });
   } catch (error) {
-    if (error instanceof DerivedDatasetMutationError) {
+    if (
+      error instanceof DatasetClassificationError ||
+      error instanceof DerivedDatasetMutationError
+    ) {
       return jsonError(error.message, error.status);
     }
 

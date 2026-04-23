@@ -12,6 +12,7 @@ import Papa from "papaparse";
 
 import type {
   CsvColumn,
+  DatasetClassification,
   DatasetSummary,
   DatasetUploadAuthorizationResponse,
 } from "@/lib/api-types";
@@ -39,12 +40,27 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  DATASET_CLASSIFICATION_OPTIONS,
+  getDatasetClassification,
+  getDatasetTagStyle,
+  hasExactDatasetClassificationTag,
+} from "@/lib/dataset-tags";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
 type DatasetUploadClientProps = {
   targetDataset?: DatasetSummary | null;
+  preferredClassification?: DatasetClassification | null;
   actorOwnerId?: string;
   workspaceRole?: AnalyticsWorkspaceRole;
 };
@@ -114,6 +130,7 @@ async function createDatasetRecord(input: {
   file: File;
   columns: CsvColumn[];
   blobPath: string;
+  classification: DatasetClassification;
 }) {
   const response = await fetch("/api/datasets", {
     method: "POST",
@@ -123,6 +140,7 @@ async function createDatasetRecord(input: {
       blobPath: input.blobPath,
       sizeBytes: input.file.size,
       columns: input.columns,
+      classification: input.classification,
     }),
   });
 
@@ -140,6 +158,7 @@ async function replaceDatasetRecord(input: {
   file: File;
   columns: CsvColumn[];
   blobPath: string;
+  classification: DatasetClassification;
 }) {
   const response = await fetch(`/api/datasets/${input.datasetId}/replace`, {
     method: "POST",
@@ -148,6 +167,7 @@ async function replaceDatasetRecord(input: {
       blobPath: input.blobPath,
       sizeBytes: input.file.size,
       columns: input.columns,
+      classification: input.classification,
     }),
   });
 
@@ -279,8 +299,53 @@ async function parseAndPersistRows(input: {
   });
 }
 
+function DatasetClassificationSelect({
+  value,
+  disabled,
+  onChange,
+}: {
+  value: DatasetClassification | null;
+  disabled: boolean;
+  onChange: (value: DatasetClassification) => void;
+}) {
+  return (
+    <div className="space-y-2">
+      <Label htmlFor="dataset-classification">Dataset classification</Label>
+      <Select
+        value={value ?? undefined}
+        onValueChange={(nextValue) => {
+          if (nextValue === "PGAC" || nextValue === "PGIC") {
+            onChange(nextValue);
+          }
+        }}
+        disabled={disabled}
+      >
+        <SelectTrigger
+          id="dataset-classification"
+          aria-label="Dataset classification"
+          data-smoke-dataset-classification
+        >
+          <SelectValue placeholder="Select PGAC or PGIC" />
+        </SelectTrigger>
+        <SelectContent>
+          {DATASET_CLASSIFICATION_OPTIONS.map((option) => (
+            <SelectItem key={option.value} value={option.value}>
+              <span
+                className="inline-block size-2.5 rounded-full border border-border"
+                style={getDatasetTagStyle(option.color)}
+              />
+              <span>{option.label}</span>
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
+
 export function DatasetUploadClient({
   targetDataset = null,
+  preferredClassification = null,
   actorOwnerId = "anonymous",
   workspaceRole = "anonymous",
 }: DatasetUploadClientProps) {
@@ -290,14 +355,34 @@ export function DatasetUploadClient({
     null,
   );
   const [isDragging, setIsDragging] = useState(false);
+  const sourceDatasetClassification =
+    targetDataset &&
+    targetDataset.backingDatasetId === null &&
+    hasExactDatasetClassificationTag(targetDataset.tags)
+      ? getDatasetClassification(targetDataset.tags)
+      : null;
+  const [classification, setClassification] = useState<DatasetClassification | null>(
+    () => sourceDatasetClassification ?? preferredClassification,
+  );
   const isReplacing = targetDataset !== null;
   const isBusy =
     upload?.phase === "uploading" || upload?.phase === "parsing";
+  const isClassificationLocked = sourceDatasetClassification !== null;
+  const isReadyForFileSelection = isClassificationLocked || classification !== null;
   const analyticsContext = buildAnalyticsContext({
     route: "upload",
     actorOwnerId,
     workspaceRole,
   });
+  const classificationHelpText = isReplacing
+    ? targetDataset.backingDatasetId
+      ? preferredClassification
+        ? "Replacing this derived view creates a new source dataset. The classification is prefilled from its current backing dataset and can be changed here."
+        : "Replacing this derived view creates a new source dataset. Choose PGAC or PGIC before uploading."
+      : isClassificationLocked
+        ? `This source dataset keeps its current ${sourceDatasetClassification} classification during replacement.`
+        : "Choose PGAC or PGIC before replacing this dataset."
+    : "Choose PGAC or PGIC before uploading a new source dataset.";
 
   async function handleFile(file: File) {
     let datasetId: string | null = null;
@@ -318,6 +403,18 @@ export function DatasetUploadClient({
     );
 
     try {
+      if (!classification) {
+        setCompletedDataset(null);
+        setUpload({
+          fileName: uploadFileName,
+          phase: "failed",
+          progress: 0,
+          rowsParsed: 0,
+          message: "Choose PGAC or PGIC before uploading a dataset.",
+        });
+        return;
+      }
+
       if (!isCsvFile(file)) {
         throw new Error("Choose a CSV file.");
       }
@@ -379,11 +476,13 @@ export function DatasetUploadClient({
             file,
             columns,
             blobPath: uploadAuthorization.path,
+            classification,
           })
         : await createDatasetRecord({
             file,
             columns,
             blobPath: uploadAuthorization.path,
+            classification,
           });
 
       datasetId = nextDataset.id;
@@ -506,7 +605,7 @@ export function DatasetUploadClient({
   }
 
   function handleDrop(event: DragEvent<HTMLDivElement>) {
-    if (isBusy) {
+    if (isBusy || !isReadyForFileSelection) {
       return;
     }
 
@@ -528,13 +627,30 @@ export function DatasetUploadClient({
           </CardDescription>
         </CardHeader>
         <CardContent>
+          <div className="mb-4 space-y-2">
+            <DatasetClassificationSelect
+              value={classification}
+              disabled={isBusy || isClassificationLocked}
+              onChange={(nextClassification) => {
+                setClassification(nextClassification);
+                if (
+                  upload?.phase === "failed" &&
+                  upload.message === "Choose PGAC or PGIC before uploading a dataset."
+                ) {
+                  setUpload(null);
+                }
+              }}
+            />
+            <p className="text-sm text-muted-foreground">{classificationHelpText}</p>
+          </div>
           <div
             className={cn(
               "flex min-h-56 flex-col items-center justify-center gap-3 rounded-lg border border-dashed bg-muted/30 p-6 text-center transition-colors",
+              !isReadyForFileSelection && "cursor-not-allowed opacity-60",
               !isBusy && isDragging && "border-foreground bg-muted",
             )}
             onDragOver={(event) => {
-              if (isBusy) {
+              if (isBusy || !isReadyForFileSelection) {
                 return;
               }
 
@@ -564,7 +680,7 @@ export function DatasetUploadClient({
             />
             <Button
               type="button"
-              disabled={isBusy}
+              disabled={isBusy || !isReadyForFileSelection}
               onClick={() => inputRef.current?.click()}
             >
               Choose CSV

@@ -21,6 +21,7 @@ import {
 } from "@/db/schema";
 import type {
   CsvColumn,
+  DatasetClassification,
   DatasetStatus,
   FilterRegion,
   SavedDatasetFilterState,
@@ -31,7 +32,14 @@ import type {
 import { countDatasetDefaultRows } from "@/lib/dataset-default-view";
 import { normalizeDatasetHiddenColumnKeys } from "@/lib/dataset-column-visibility";
 import { getDatasetStorageObjectUrl } from "@/lib/dataset-storage";
-import { normalizeDatasetTags } from "@/lib/dataset-tags";
+import {
+  composeDatasetTagsWithClassification,
+  getDatasetClassification,
+  getDatasetClassificationTags,
+  getDatasetTagsWithoutClassification,
+  hasExactDatasetClassificationTag,
+  normalizeDatasetTags,
+} from "@/lib/dataset-tags";
 import { syncFieldDefinitionsForColumns } from "@/lib/field-definitions";
 import { normalizeSavedDatasetFilterState } from "@/lib/saved-dataset-filters";
 
@@ -142,6 +150,47 @@ export class DatasetDeleteConflictError extends Error {
     super(message);
     this.name = "DatasetDeleteConflictError";
   }
+}
+
+export class DatasetClassificationError extends Error {
+  readonly status = 409;
+
+  constructor(message = "Source datasets must include exactly one PGAC or PGIC tag.") {
+    super(message);
+    this.name = "DatasetClassificationError";
+  }
+}
+
+function getValidatedSourceDatasetClassification(tags: DatasetTag[]) {
+  const normalizedTags = normalizeDatasetTags(tags);
+  const classification = getDatasetClassification(normalizedTags);
+
+  if (getDatasetClassificationTags(normalizedTags).length !== 1 || !classification) {
+    throw new DatasetClassificationError();
+  }
+
+  return classification;
+}
+
+function getValidatedDatasetTags(input: {
+  backingDatasetId: string | null;
+  tags: DatasetTag[];
+}) {
+  const normalizedTags = normalizeDatasetTags(input.tags);
+
+  if (input.backingDatasetId) {
+    if (getDatasetClassificationTags(normalizedTags).length > 0) {
+      throw new DatasetClassificationError(
+        "Derived dataset views cannot set PGAC or PGIC tags.",
+      );
+    }
+
+    return getDatasetTagsWithoutClassification(normalizedTags);
+  }
+
+  const classification = getValidatedSourceDatasetClassification(normalizedTags);
+
+  return composeDatasetTagsWithClassification(normalizedTags, classification);
 }
 
 async function getDatasetRecord(
@@ -508,6 +557,7 @@ export async function createDataset(input: {
   blobPath: string;
   sizeBytes: number;
   columns: CsvColumn[];
+  classification: DatasetClassification;
 }) {
   const dataset = await getDb().transaction(async (tx) => {
     const [position] = await tx
@@ -534,7 +584,7 @@ export async function createDataset(input: {
         columns: input.columns,
         hiddenColumnKeys: [],
         defaultFilters: null,
-        tags: [],
+        tags: composeDatasetTagsWithClassification([], input.classification),
         status: "processing",
         rowCount: 0,
       })
@@ -602,6 +652,11 @@ export async function updateDatasetDetails(input: {
     const updates: Partial<typeof datasets.$inferInsert> = {
       updatedAt: new Date(),
     };
+    const currentTags = normalizeDatasetTags(existingDataset.tags);
+    const nextTags = getValidatedDatasetTags({
+      backingDatasetId: existingDataset.backingDatasetId,
+      tags: input.tags ?? currentTags,
+    });
 
     if (input.fileName !== undefined) {
       updates.fileName = input.fileName;
@@ -618,7 +673,7 @@ export async function updateDatasetDetails(input: {
     }
 
     if (input.tags !== undefined) {
-      updates.tags = normalizeDatasetTags(input.tags);
+      updates.tags = nextTags;
     }
 
     if (input.hiddenColumnKeys !== undefined) {
@@ -646,6 +701,13 @@ export async function updateDatasetDetails(input: {
 
     if (!nextIsPublic) {
       updates.isPrimary = false;
+    }
+
+    if (
+      input.tags === undefined &&
+      JSON.stringify(nextTags) !== JSON.stringify(currentTags)
+    ) {
+      updates.tags = nextTags;
     }
 
     if (updates.isPrimary === true) {
@@ -723,6 +785,7 @@ export async function assignDatasetDerivedView(input: {
           targetDataset.hiddenColumnKeys,
           sourceDataset.columns,
         ),
+        tags: getDatasetTagsWithoutClassification(targetDataset.tags),
         defaultFilters: normalizedFilters,
         sourceOrganizationName: null,
         isPrimary: false,
@@ -757,6 +820,7 @@ export async function replaceDatasetContents(input: {
   blobPath: string;
   sizeBytes: number;
   columns: CsvColumn[];
+  classification: DatasetClassification;
 }) {
   const replacement = await getDb().transaction(async (tx) => {
     const [existing] = await tx
@@ -777,6 +841,11 @@ export async function replaceDatasetContents(input: {
     await tx.delete(datasetRows).where(eq(datasetRows.datasetId, input.datasetId));
 
     const now = new Date();
+    const preservedSourceClassification =
+      !existing.backingDatasetId && hasExactDatasetClassificationTag(existing.tags)
+        ? getDatasetClassification(existing.tags)
+        : null;
+    const classification = preservedSourceClassification ?? input.classification;
     const [updated] = await tx
       .update(datasets)
       .set({
@@ -795,7 +864,7 @@ export async function replaceDatasetContents(input: {
           input.columns,
         ),
         defaultFilters: null,
-        tags: existing.tags,
+        tags: composeDatasetTagsWithClassification(existing.tags, classification),
         status: "processing",
         rowCount: 0,
         error: null,

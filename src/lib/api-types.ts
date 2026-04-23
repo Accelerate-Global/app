@@ -15,6 +15,8 @@ export type DatasetTag = {
   color: string;
 };
 
+export type DatasetClassification = "PGAC" | "PGIC";
+
 export type FilterRegion = {
   id: string;
   name: string;

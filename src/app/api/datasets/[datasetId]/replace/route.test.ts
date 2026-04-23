@@ -45,7 +45,13 @@ const dataset = {
   columns: [{ key: "email", label: "Email", sourceIndex: 0 }],
   hiddenColumnKeys: [],
   defaultFilters: null,
-  tags: [],
+  tags: [
+    {
+      id: "dataset-classification-pgac",
+      label: "PGAC",
+      color: "#fcab2a",
+    },
+  ],
   error: null,
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
@@ -67,6 +73,7 @@ describe("/api/datasets/[datasetId]/replace", () => {
           blobPath: "datasets/csv/customers-v2.csv",
           sizeBytes: 100,
           columns: [{ key: "email", label: "Email", sourceIndex: 0 }],
+          classification: "PGAC",
         }),
       }),
       context,
@@ -90,6 +97,7 @@ describe("/api/datasets/[datasetId]/replace", () => {
           blobPath: "datasets/csv/customers-v2.csv",
           sizeBytes: 100,
           columns: [{ key: "email", label: "Email", sourceIndex: 0 }],
+          classification: "PGAC",
         }),
       }),
       context,
@@ -111,6 +119,7 @@ describe("/api/datasets/[datasetId]/replace", () => {
           blobPath: "datasets/csv/customers-v2.csv",
           sizeBytes: 100,
           columns: [{ key: "email", label: "Email", sourceIndex: 0 }],
+          classification: "PGAC",
         }),
       }),
       context,
@@ -125,6 +134,7 @@ describe("/api/datasets/[datasetId]/replace", () => {
       blobPath: "datasets/csv/customers-v2.csv",
       sizeBytes: 100,
       columns: [{ key: "email", label: "Email", sourceIndex: 0 }],
+      classification: "PGAC",
     });
   });
 
@@ -138,11 +148,29 @@ describe("/api/datasets/[datasetId]/replace", () => {
           blobPath: "datasets/csv/customers-v2.csv",
           sizeBytes: 100,
           columns: [{ key: "email", label: "Email", sourceIndex: 0 }],
+          classification: "PGAC",
         }),
       }),
       context,
     );
 
     expect(response.status).toBe(404);
+  });
+
+  it("rejects replacement payloads without a PGAC or PGIC classification", async () => {
+    const response = await POST(
+      new Request("http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001/replace", {
+        method: "POST",
+        body: JSON.stringify({
+          blobPath: "datasets/csv/customers-v2.csv",
+          sizeBytes: 100,
+          columns: [{ key: "email", label: "Email", sourceIndex: 0 }],
+        }),
+      }),
+      context,
+    );
+
+    expect(response.status).toBe(400);
+    expect(replaceDatasetContentsMock).not.toHaveBeenCalled();
   });
 });

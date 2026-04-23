@@ -5,6 +5,7 @@ import { SiteHeader } from "@/components/layout/site-header";
 import { getAnalyticsWorkspaceRole } from "@/lib/analytics";
 import { getCurrentIdentity } from "@/lib/auth";
 import { getDataset } from "@/lib/datasets";
+import { getDatasetClassification } from "@/lib/dataset-tags";
 
 type UploadPageProps = {
   searchParams: Promise<{
@@ -27,6 +28,12 @@ export default async function UploadPage({ searchParams }: UploadPageProps) {
   const targetDataset = replace
     ? await getDataset(replace, { includeDisabled: true })
     : null;
+  const backingDataset =
+    targetDataset?.backingDatasetId
+      ? await getDataset(targetDataset.backingDatasetId, {
+          includeDisabled: true,
+        })
+      : null;
 
   if (replace && !targetDataset) {
     redirect("/dashboard");
@@ -58,6 +65,9 @@ export default async function UploadPage({ searchParams }: UploadPageProps) {
         </section>
         <DatasetUploadClient
           targetDataset={targetDataset}
+          preferredClassification={
+            backingDataset ? getDatasetClassification(backingDataset.tags) : null
+          }
           actorOwnerId={identity.ownerId}
           workspaceRole={getAnalyticsWorkspaceRole(identity.isDatasetAdmin)}
         />

@@ -7,6 +7,7 @@ import { useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -18,6 +19,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import type {
+  DatasetClassification,
   DatasetSummary,
   DatasetTag,
   DatasetVersionSummary,
@@ -30,10 +32,16 @@ import {
 import { trackAppEvent } from "@/lib/analytics-client";
 import { normalizeDatasetHiddenColumnKeys } from "@/lib/dataset-column-visibility";
 import {
+  composeDatasetTagsWithClassification,
+  DATASET_CLASSIFICATION_OPTIONS,
   DATASET_TAG_COLOR_OPTIONS,
   DEFAULT_DATASET_TAG_COLOR,
+  getDatasetClassification,
   getDatasetTagIdentity,
+  getDatasetTagsWithoutClassification,
   getDatasetTagStyle,
+  hasExactDatasetClassificationTag,
+  isDatasetClassificationLabel,
   normalizeDatasetTagColor,
   normalizeDatasetTags,
 } from "@/lib/dataset-tags";
@@ -260,6 +268,50 @@ function DatasetTagColorMenu({
   );
 }
 
+function DatasetClassificationMenu({
+  value,
+  disabled,
+  onChange,
+}: {
+  value: DatasetClassification | null;
+  disabled: boolean;
+  onChange: (value: DatasetClassification) => void;
+}) {
+  return (
+    <div className="space-y-2">
+      <Label htmlFor="dataset-classification">Dataset classification</Label>
+      <Select
+        value={value ?? undefined}
+        onValueChange={(nextValue) => {
+          if (nextValue === "PGAC" || nextValue === "PGIC") {
+            onChange(nextValue);
+          }
+        }}
+        disabled={disabled}
+      >
+        <SelectTrigger
+          id="dataset-classification"
+          aria-label="Dataset classification"
+          data-smoke-dataset-classification
+        >
+          <SelectValue placeholder="Select PGAC or PGIC" />
+        </SelectTrigger>
+        <SelectContent align="start">
+          {DATASET_CLASSIFICATION_OPTIONS.map((option) => (
+            <SelectItem key={option.value} value={option.value}>
+              <span
+                className="size-3 rounded-full border border-border"
+                style={getDatasetTagStyle(option.color)}
+              />
+              <span>{option.label}</span>
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
+
 function DatasetTagEditor({
   tag,
   disabled,
@@ -388,10 +440,23 @@ function DatasetEditForm({
 }: DatasetEditFormProps) {
   const isDerivedView = dataset.backingDatasetId != null;
   const sourceDatasetLabel = backingDatasetName ?? "its source dataset";
+  const initialClassification = useMemo(
+    () => (isDerivedView ? null : getDatasetClassification(dataset.tags)),
+    [dataset.tags, isDerivedView],
+  );
+  const hasValidInitialClassification = useMemo(
+    () => (isDerivedView ? true : hasExactDatasetClassificationTag(dataset.tags)),
+    [dataset.tags, isDerivedView],
+  );
   const [fileName, setFileName] = useState(dataset.fileName);
   const [isPrimary, setIsPrimary] = useState(dataset.isPrimary);
   const [isPublic, setIsPublic] = useState(dataset.isPublic);
-  const [tags, setTags] = useState(() => normalizeDatasetTags(dataset.tags));
+  const [classification, setClassification] = useState<DatasetClassification | null>(
+    initialClassification,
+  );
+  const [tags, setTags] = useState(() =>
+    getDatasetTagsWithoutClassification(dataset.tags),
+  );
   const [hiddenColumnKeys, setHiddenColumnKeys] = useState(() =>
     normalizeDatasetHiddenColumnKeys(dataset.hiddenColumnKeys, dataset.columns),
   );
@@ -406,12 +471,16 @@ function DatasetEditForm({
     ? `Replace ${selectedDatasetLabel}`
     : "Replace dataset";
   const normalizedTags = useMemo(() => normalizeDatasetTags(tags), [tags]);
+  const normalizedAvailableTags = useMemo(
+    () => getDatasetTagsWithoutClassification(availableTags),
+    [availableTags],
+  );
   const normalizedHiddenColumnKeys = useMemo(
     () => normalizeDatasetHiddenColumnKeys(hiddenColumnKeys, dataset.columns),
     [dataset.columns, hiddenColumnKeys],
   );
   const initialTags = useMemo(
-    () => normalizeDatasetTags(dataset.tags),
+    () => getDatasetTagsWithoutClassification(dataset.tags),
     [dataset.tags],
   );
   const initialHiddenColumnKeys = useMemo(
@@ -420,6 +489,10 @@ function DatasetEditForm({
   );
   const hasTagChanges =
     JSON.stringify(normalizedTags) !== JSON.stringify(initialTags);
+  const hasClassificationChange =
+    !isDerivedView &&
+    ((classification ?? null) !== (initialClassification ?? null) ||
+      (!hasValidInitialClassification && classification !== null));
   const hasHiddenColumnChanges =
     JSON.stringify(normalizedHiddenColumnKeys) !==
     JSON.stringify(initialHiddenColumnKeys);
@@ -430,6 +503,7 @@ function DatasetEditForm({
     trimmedFileName &&
       !isWorking &&
       (trimmedFileName !== dataset.fileName ||
+        hasClassificationChange ||
         hasTagChanges ||
         hasHiddenColumnChanges ||
         hasPrimaryChange ||
@@ -445,10 +519,10 @@ function DatasetEditForm({
   );
   const reusableTags = useMemo(
     () =>
-      availableTags.filter(
+      normalizedAvailableTags.filter(
         (tag) => !currentTagIdentities.has(getDatasetTagIdentity(tag)),
       ),
-    [availableTags, currentTagIdentities],
+    [currentTagIdentities, normalizedAvailableTags],
   );
 
   function createTagId() {
@@ -466,6 +540,11 @@ function DatasetEditForm({
 
     if (!label) {
       setErrorMessage("Enter a tag label before adding it.");
+      return;
+    }
+
+    if (isDatasetClassificationLabel(label)) {
+      setErrorMessage("PGAC and PGIC are managed by dataset classification.");
       return;
     }
 
@@ -503,6 +582,11 @@ function DatasetEditForm({
   }
 
   function handleAddExistingTag(tag: DatasetTag) {
+    if (isDatasetClassificationLabel(tag.label)) {
+      setErrorMessage("PGAC and PGIC are managed by dataset classification.");
+      return;
+    }
+
     const normalizedTag = normalizeDatasetTags([tag])[0];
 
     if (!normalizedTag) {
@@ -559,13 +643,21 @@ function DatasetEditForm({
       return;
     }
 
+    if (!isDerivedView && !classification) {
+      setErrorMessage("Select PGAC or PGIC for this source dataset.");
+      return;
+    }
+
     setErrorMessage(null);
 
     try {
+      const nextTags = isDerivedView
+        ? normalizedTags
+        : composeDatasetTagsWithClassification(normalizedTags, classification!);
       await onSaveDataset({
         datasetId: dataset.id,
         fileName: trimmedFileName,
-        tags: normalizedTags,
+        tags: nextTags,
         isPrimary,
         isPublic,
         hiddenColumnKeys: normalizedHiddenColumnKeys,
@@ -683,6 +775,29 @@ function DatasetEditForm({
             Update the name shown in the dataset list.
           </p>
         </section>
+
+        {!isDerivedView ? (
+          <section className="space-y-2">
+            <DatasetClassificationMenu
+              value={classification}
+              disabled={isWorking}
+              onChange={(nextClassification) => {
+                setClassification(nextClassification);
+                setErrorMessage(null);
+              }}
+            />
+            <p className="text-sm text-muted-foreground">
+              This drives the dataset detail title and is required for every
+              source dataset.
+            </p>
+            {!hasValidInitialClassification ? (
+              <p className="text-sm text-muted-foreground">
+                This dataset needs a PGAC or PGIC classification before it can
+                be saved again.
+              </p>
+            ) : null}
+          </section>
+        ) : null}
 
         <section className="space-y-3 rounded-2xl border border-border bg-card px-4 py-4">
           <div className="flex items-start justify-between gap-4">

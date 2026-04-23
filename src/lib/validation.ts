@@ -267,6 +267,8 @@ export const datasetTagSchema = z.object({
   color: z.string().trim().regex(/^#[0-9a-fA-F]{6}$/),
 });
 
+export const datasetClassificationSchema = z.enum(["PGAC", "PGIC"]);
+
 export const savedDatasetFilterStateSchema = z.object({
   region: savedDatasetRegionFilterStateSchema,
   country: savedDatasetCountryFilterStateSchema,
@@ -295,6 +297,7 @@ export const createDatasetSchema = z.object({
   blobPath: z.string().min(1).max(1024),
   sizeBytes: z.number().int().positive().max(MAX_CSV_BYTES),
   columns: z.array(csvColumnSchema).min(1).max(500),
+  classification: datasetClassificationSchema,
 });
 
 export const replaceDatasetSchema = createDatasetSchema.omit({

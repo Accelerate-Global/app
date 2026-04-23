@@ -69,7 +69,13 @@ function createTargetDataset() {
     ],
     hiddenColumnKeys: [],
     defaultFilters: null,
-    tags: [],
+    tags: [
+      {
+        id: "dataset-classification-pgac",
+        label: "PGAC",
+        color: "#fcab2a",
+      },
+    ],
     error: null,
     createdAt: new Date("2026-04-15T16:00:00.000Z").toISOString(),
     updatedAt: new Date("2026-04-15T16:00:00.000Z").toISOString(),
@@ -97,6 +103,64 @@ describe("DatasetUploadClient", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
     cleanup();
+  });
+
+  it("blocks uploads until PGAC or PGIC is selected for new datasets", async () => {
+    render(<DatasetUploadClient />);
+
+    const input = document.querySelector(
+      '[data-smoke-upload-input="dataset-upload"]',
+    ) as HTMLInputElement | null;
+
+    expect(input).toBeTruthy();
+
+    fireEvent.change(input!, {
+      target: {
+        files: [new File(["Email\nada@example.com"], "upload.csv", { type: "text/csv" })],
+      },
+    });
+
+    expect(await screen.findByText("Dataset update failed")).toBeTruthy();
+    expect(
+      await screen.findAllByText("Choose PGAC or PGIC before uploading a dataset."),
+    ).toHaveLength(2);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("requires a classification when replacing a derived dataset view", async () => {
+    render(
+      <DatasetUploadClient
+        targetDataset={{
+          ...createTargetDataset(),
+          backingDatasetId: "dataset-source-1",
+          tags: [
+            {
+              id: "tag-watchlist",
+              label: "Watchlist",
+              color: "#262531",
+            },
+          ],
+        }}
+      />,
+    );
+
+    const input = document.querySelector(
+      '[data-smoke-upload-input="dataset-upload"]',
+    ) as HTMLInputElement | null;
+
+    fireEvent.change(input!, {
+      target: {
+        files: [new File(["Email\nada@example.com"], "replacement.csv", {
+          type: "text/csv",
+        })],
+      },
+    });
+
+    expect(await screen.findByText("Dataset update failed")).toBeTruthy();
+    expect(
+      await screen.findAllByText("Choose PGAC or PGIC before uploading a dataset."),
+    ).toHaveLength(2);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("shows the Dashboard completion CTA after a successful replacement", async () => {
@@ -176,12 +240,14 @@ describe("DatasetUploadClient", () => {
         blobPath: string;
         sizeBytes: number;
         columns: Array<{ key: string; label: string; sourceIndex: number }>;
+        classification: string;
       };
 
       expect(init?.method).toBe("POST");
       expect(body.blobPath).toBe("datasets/csv/replacement.csv");
       expect(body.sizeBytes).toBeGreaterThan(0);
       expect(body.columns).toEqual([{ key: "email", label: "Email", sourceIndex: 0 }]);
+      expect(body.classification).toBe("PGAC");
     });
     expect(trackAppEventMock).toHaveBeenCalledWith(
       "dataset_upload_started",

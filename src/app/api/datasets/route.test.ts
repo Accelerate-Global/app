@@ -41,7 +41,13 @@ const dataset = {
   columns: [{ key: "email", label: "Email", sourceIndex: 0 }],
   hiddenColumnKeys: [],
   defaultFilters: null,
-  tags: [],
+  tags: [
+    {
+      id: "dataset-classification-pgac",
+      label: "PGAC",
+      color: "#fcab2a",
+    },
+  ],
   error: null,
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
@@ -85,6 +91,7 @@ describe("/api/datasets", () => {
           blobPath: "datasets/csv/customers.csv",
           sizeBytes: 100,
           columns: [{ key: "email", label: "Email", sourceIndex: 0 }],
+          classification: "PGAC",
         }),
       }),
     );
@@ -98,6 +105,7 @@ describe("/api/datasets", () => {
       blobPath: "datasets/csv/customers.csv",
       sizeBytes: 100,
       columns: [{ key: "email", label: "Email", sourceIndex: 0 }],
+      classification: "PGAC",
     });
   });
 
@@ -116,6 +124,7 @@ describe("/api/datasets", () => {
           blobPath: "datasets/csv/customers.csv",
           sizeBytes: 100,
           columns: [{ key: "email", label: "Email", sourceIndex: 0 }],
+          classification: "PGAC",
         }),
       }),
     );
@@ -135,11 +144,31 @@ describe("/api/datasets", () => {
           blobPath: "users/other-user/csv/customers.csv",
           sizeBytes: 100,
           columns: [{ key: "email", label: "Email", sourceIndex: 0 }],
+          classification: "PGAC",
         }),
       }),
     );
 
     expect(response.status).toBe(403);
+    expect(createDatasetMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects dataset creation payloads without a PGAC or PGIC classification", async () => {
+    getCurrentIdentityMock.mockResolvedValue(identity);
+
+    const response = await POST(
+      new Request("http://localhost/api/datasets", {
+        method: "POST",
+        body: JSON.stringify({
+          fileName: "customers.csv",
+          blobPath: "datasets/csv/customers.csv",
+          sizeBytes: 100,
+          columns: [{ key: "email", label: "Email", sourceIndex: 0 }],
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(400);
     expect(createDatasetMock).not.toHaveBeenCalled();
   });
 });
