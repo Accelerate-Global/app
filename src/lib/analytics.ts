@@ -227,15 +227,6 @@ export type AppAnalyticsEventMap = {
     linked_source_count: number;
     hidden_from_viewers_changed: boolean;
   };
-  field_source_value_saved: AppAnalyticsEventBase & {
-    field_definition_id: string;
-    source_type_id: string;
-    has_value: boolean;
-  };
-  field_source_type_created: AppAnalyticsEventBase & {
-    source_type_id?: string;
-    label_length: number;
-  };
   profile_name_updated: AppAnalyticsEventBase;
   email_change_started: AppAnalyticsEventBase;
   account_disabled_self: AppAnalyticsEventBase;
@@ -325,8 +316,6 @@ export const APP_ANALYTICS_EVENT_NAMES = [
   "field_definition_search_used",
   "field_definition_info_opened",
   "field_definition_updated",
-  "field_source_value_saved",
-  "field_source_type_created",
   "profile_name_updated",
   "email_change_started",
   "account_disabled_self",
@@ -452,12 +441,6 @@ const APP_ANALYTICS_EVENT_PROPERTY_KEYS = {
     "linked_source_count",
     "hidden_from_viewers_changed",
   ],
-  field_source_value_saved: [
-    "field_definition_id",
-    "source_type_id",
-    "has_value",
-  ],
-  field_source_type_created: ["source_type_id", "label_length"],
   profile_name_updated: [],
   email_change_started: [],
   account_disabled_self: [],

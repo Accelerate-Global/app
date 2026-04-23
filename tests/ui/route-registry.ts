@@ -153,7 +153,7 @@ export const smokeRouteSpecs: SmokeRouteSpec[] = [
     pageFile: "src/app/dashboard/field-sources/page.tsx",
     path: "/dashboard/field-sources",
     pageId: "field-sources",
-    journeys: ["admin can create a source column and update a field source value"],
+    journeys: ["admin can review field source mappings"],
   },
   {
     id: "profile-viewer",

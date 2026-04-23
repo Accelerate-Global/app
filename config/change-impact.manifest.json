@@ -347,7 +347,7 @@
         "src/app/api/field-source-types/**"
       ],
       "routeIds": ["field-sources-viewer-redirect", "field-sources-admin"],
-      "journeyTitles": ["admin can create a source column and update a field source value"],
+      "journeyTitles": ["admin can review field source mappings"],
       "projectNames": ["desktop-viewer", "desktop-admin"],
       "bootstrapScope": "admin-config"
     },

@@ -11,6 +11,11 @@ describe("datasetMetadataPatchSchema", () => {
     expect("filterRegionPayloadSchema" in validationModule).toBe(false);
   });
 
+  it("does not expose the removed field source write schemas", () => {
+    expect("fieldSourcePatchSchema" in validationModule).toBe(false);
+    expect("fieldSourceTypeCreateSchema" in validationModule).toBe(false);
+  });
+
   it("accepts a public visibility-only update", () => {
     const result = datasetMetadataPatchSchema.safeParse({
       isPublic: false,

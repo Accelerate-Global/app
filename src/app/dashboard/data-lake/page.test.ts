@@ -6,7 +6,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { redirect } from "next/navigation";
 
 import { getCurrentIdentity } from "@/lib/auth";
-import { listDataLakeSources } from "@/lib/data-lake";
 import DataLakePage from "./page";
 
 vi.mock("next/navigation", () => ({
@@ -19,22 +18,16 @@ vi.mock("@/lib/auth", () => ({
   getCurrentIdentity: vi.fn(),
 }));
 
-vi.mock("@/lib/data-lake", () => ({
-  listDataLakeSources: vi.fn(),
-}));
-
 vi.mock("@/components/layout/site-header", () => ({
   SiteHeader: () => null,
 }));
 
 const getCurrentIdentityMock = vi.mocked(getCurrentIdentity);
-const listDataLakeSourcesMock = vi.mocked(listDataLakeSources);
 const redirectMock = vi.mocked(redirect);
 
 describe("/dashboard/data-lake", () => {
   beforeEach(() => {
     vi.resetAllMocks();
-    listDataLakeSourcesMock.mockResolvedValue([]);
   });
 
   it("redirects anonymous users home", async () => {
@@ -52,45 +45,18 @@ describe("/dashboard/data-lake", () => {
       isDatasetAdmin: false,
       mode: "supabase",
     });
-    listDataLakeSourcesMock.mockResolvedValue([
-      {
-        datasetId: "dataset-1",
-        displayName: "Joshua Project",
-        sourceOrganizationName: "Joshua Project",
-        datasetFileName: "joshua-project-april.csv",
-        lastUploadAt: "2026-04-22T18:00:00.000Z",
-        status: "ready",
-        rowCount: 422,
-        isPublic: true,
-      },
-      {
-        datasetId: "dataset-2",
-        displayName: "imb-april.csv",
-        sourceOrganizationName: null,
-        datasetFileName: "imb-april.csv",
-        lastUploadAt: "2026-04-21T18:00:00.000Z",
-        status: "processing",
-        rowCount: 0,
-        isPublic: true,
-      },
-    ]);
 
     render(await DataLakePage());
 
-    expect(screen.getByRole("heading", { name: "Data Partners" })).toBeTruthy();
-    expect(screen.getByText("Shared source catalog")).toBeTruthy();
-    expect(screen.getByText("Admin naming stays restricted")).toBeTruthy();
-    expect(screen.getByText("Joshua Project")).toBeTruthy();
-    expect(screen.getAllByText("imb-april.csv").length).toBeGreaterThan(0);
+    expect(screen.getByRole("heading", { name: "Field Sources" })).toBeTruthy();
     expect(
-      screen.queryByRole("button", { name: /Rename organization for/i }),
-    ).toBeNull();
-    expect(listDataLakeSourcesMock).toHaveBeenCalledWith({
-      includeDisabled: false,
-    });
+      screen.getByText(
+        "Field Sources gives the workspace a dedicated home for understanding where shared field data originates and how those source relationships are managed.",
+      ),
+    ).toBeTruthy();
   });
 
-  it("renders admin naming controls for dataset admins", async () => {
+  it("renders the same simplified page for dataset admins", async () => {
     getCurrentIdentityMock.mockResolvedValue({
       ownerId: "admin-1",
       email: "admin@example.com",
@@ -98,30 +64,12 @@ describe("/dashboard/data-lake", () => {
       isDatasetAdmin: true,
       mode: "supabase",
     });
-    listDataLakeSourcesMock.mockResolvedValue([
-      {
-        datasetId: "dataset-1",
-        displayName: "joshua-project-april.csv",
-        sourceOrganizationName: null,
-        datasetFileName: "joshua-project-april.csv",
-        lastUploadAt: "2026-04-22T18:00:00.000Z",
-        status: "ready",
-        rowCount: 422,
-        isPublic: false,
-      },
-    ]);
 
     render(await DataLakePage());
 
-    expect(screen.getByText("Admin organization naming enabled")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Field Sources" })).toBeTruthy();
     expect(
-      screen.getByRole("button", {
-        name: "Rename organization for joshua-project-april.csv",
-      }),
+      screen.getByRole("link", { name: "Back to dashboard" }),
     ).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Upload dataset" })).toBeTruthy();
-    expect(listDataLakeSourcesMock).toHaveBeenCalledWith({
-      includeDisabled: true,
-    });
   });
 });

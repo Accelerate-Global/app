@@ -104,13 +104,6 @@ type FieldDefinitionSourceJoinRow = {
   sourceFieldName: string;
 };
 
-export class FieldSourceTypeConflictError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "FieldSourceTypeConflictError";
-  }
-}
-
 function normalizeSourceFieldName(value: string | null | undefined) {
   return (value ?? "").trim();
 }
@@ -483,35 +476,6 @@ async function listFieldDefinitionSourceJoinRows(fieldDefinitionIds?: string[]) 
   return query.where(inArray(fieldDefinitionSources.fieldDefinitionId, fieldDefinitionIds));
 }
 
-async function findExistingFieldSourceTypeByLabelOrKey(input: {
-  label: string;
-  key: string;
-}) {
-  const [fieldSourceType] = await getDb()
-    .select({
-      id: fieldSourceTypes.id,
-      key: fieldSourceTypes.key,
-      label: fieldSourceTypes.label,
-    })
-    .from(fieldSourceTypes)
-    .where(
-      sql`lower(btrim(${fieldSourceTypes.label})) = lower(${input.label}) or ${fieldSourceTypes.key} = ${input.key}`,
-    )
-    .limit(1);
-
-  return fieldSourceType ?? null;
-}
-
-async function findFieldSourceTypeById(sourceTypeId: string) {
-  const [fieldSourceType] = await getDb()
-    .select()
-    .from(fieldSourceTypes)
-    .where(eq(fieldSourceTypes.id, sourceTypeId))
-    .limit(1);
-
-  return fieldSourceType ?? null;
-}
-
 async function listFieldDefinitionRows() {
   return getDb()
     .select()
@@ -759,116 +723,4 @@ export async function listFieldSourceGridData() {
         }),
       ),
   };
-}
-
-export async function getFieldSourceGridRow(fieldDefinitionId: string) {
-  const [fieldDefinitionRow] = await getDb()
-    .select()
-    .from(fieldDefinitions)
-    .where(eq(fieldDefinitions.id, fieldDefinitionId))
-    .limit(1);
-
-  if (!fieldDefinitionRow) {
-    return null;
-  }
-
-  const joinedSourceRows = await listFieldDefinitionSourceJoinRows([fieldDefinitionId]);
-  const {
-    linkedSourcesByFieldDefinitionId,
-    sourceValuesByFieldDefinitionId,
-  } = buildLinkedSourceMaps({
-    rows: [
-      {
-        id: fieldDefinitionRow.id,
-        sourcePriorityKeys: fieldDefinitionRow.sourcePriorityKeys,
-      },
-    ],
-    joinedSourceRows,
-  });
-
-  return toFieldSourceGridRow({
-    row: fieldDefinitionRow,
-    linkedSources: linkedSourcesByFieldDefinitionId.get(fieldDefinitionId) ?? [],
-    sourceValues: sourceValuesByFieldDefinitionId.get(fieldDefinitionId) ?? {},
-  });
-}
-
-export async function createFieldSourceType(input: { label: string }) {
-  const label = normalizeFieldSourceTypeLabel(input.label);
-  const key = getFieldSourceTypeKey(label);
-  const existingFieldSourceType = await findExistingFieldSourceTypeByLabelOrKey({
-    label,
-    key,
-  });
-
-  if (existingFieldSourceType) {
-    throw new FieldSourceTypeConflictError(
-      "A source column with that name already exists.",
-    );
-  }
-
-  const [{ nextSortOrder }] = await getDb()
-    .select({
-      nextSortOrder: sql<number>`coalesce(max(${fieldSourceTypes.sortOrder}), 0) + 1`,
-    })
-    .from(fieldSourceTypes);
-  const [fieldSourceType] = await getDb()
-    .insert(fieldSourceTypes)
-    .values({
-      key,
-      label,
-      sortOrder: nextSortOrder,
-    })
-    .returning();
-
-  return toFieldSourceType(fieldSourceType);
-}
-
-export async function updateFieldSourceValue(input: {
-  fieldDefinitionId: string;
-  sourceTypeId: string;
-  sourceFieldName: string;
-}) {
-  const [fieldDefinitionRow, fieldSourceTypeRow] = await Promise.all([
-    getDb()
-      .select({ id: fieldDefinitions.id })
-      .from(fieldDefinitions)
-      .where(eq(fieldDefinitions.id, input.fieldDefinitionId))
-      .limit(1),
-    findFieldSourceTypeById(input.sourceTypeId),
-  ]);
-
-  if (!fieldDefinitionRow[0] || !fieldSourceTypeRow) {
-    return null;
-  }
-
-  const sourceFieldName = normalizeSourceFieldName(input.sourceFieldName);
-
-  if (!sourceFieldName) {
-    await getDb()
-      .delete(fieldDefinitionSources)
-      .where(
-        sql`${fieldDefinitionSources.fieldDefinitionId} = ${input.fieldDefinitionId} and ${fieldDefinitionSources.sourceTypeId} = ${input.sourceTypeId}`,
-      );
-  } else {
-    await getDb()
-      .insert(fieldDefinitionSources)
-      .values({
-        fieldDefinitionId: input.fieldDefinitionId,
-        sourceTypeId: input.sourceTypeId,
-        sourceFieldName,
-      })
-      .onConflictDoUpdate({
-        target: [
-          fieldDefinitionSources.fieldDefinitionId,
-          fieldDefinitionSources.sourceTypeId,
-        ],
-        set: {
-          sourceFieldName,
-          updatedAt: new Date(),
-        },
-      });
-  }
-
-  return getFieldSourceGridRow(input.fieldDefinitionId);
 }

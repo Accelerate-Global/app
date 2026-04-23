@@ -160,6 +160,15 @@ describe("FieldDefinitionsClient", () => {
       }),
     );
     expect(within(dialog).getByText("Sources")).toBeTruthy();
+    expect(
+      within(dialog).getByText((_, element) =>
+        element?.textContent ===
+        "These database links are also listed on Field Sources.",
+      ),
+    ).toBeTruthy();
+    expect(
+      within(dialog).getByRole("link", { name: "Field Sources" }),
+    ).toHaveProperty("pathname", "/dashboard/field-sources");
     expect(within(dialog).getAllByText("Joshua Project").length).toBeGreaterThan(
       0,
     );
