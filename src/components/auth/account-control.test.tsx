@@ -106,6 +106,7 @@ describe("AccountControl", () => {
       "Dark mode",
       "separator",
       "Manage Field Sources",
+      "API Connections",
       "Analytics",
       "User Management",
       "Upload",

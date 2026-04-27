@@ -4,6 +4,8 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
+  apiConnectionRuns,
+  apiConnections,
   analyticsEvents,
   analyticsFailureResolutions,
   datasetVersionRows,
@@ -236,5 +238,32 @@ describe("analyticsFailureResolutions schema", () => {
     expect(migration).toContain(
       "create index if not exists analytics_failure_resolutions_resolved_at_idx",
     );
+  });
+});
+
+describe("apiConnections schema", () => {
+  it("declares private API connection columns", () => {
+    expect(apiConnections.secretVaultId.name).toBe("secret_vault_id");
+    expect(apiConnections.requestHeaders.name).toBe("request_headers");
+    expect(apiConnections.responseFormat.name).toBe("response_format");
+    expect(apiConnectionRuns.connectionId.name).toBe("connection_id");
+    expect(apiConnectionRuns.responsePreview.name).toBe("response_preview");
+  });
+
+  it("creates the API connections migration", async () => {
+    const migrationPath = path.join(
+      process.cwd(),
+      "supabase/migrations/20260424120000_api_connections.sql",
+    );
+
+    const migration = await readFile(migrationPath, "utf8");
+
+    expect(migration).toContain(
+      "create table if not exists private.api_connections",
+    );
+    expect(migration).toContain("create extension if not exists supabase_vault");
+    expect(migration).toContain("secret_vault_id uuid");
+    expect(migration).toContain("enable row level security");
+    expect(migration).toContain("revoke all on private.api_connection_runs");
   });
 });

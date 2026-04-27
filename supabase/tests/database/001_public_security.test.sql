@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(95);
+select plan(99);
 
 select results_eq(
   $$
@@ -107,6 +107,21 @@ select is(
   0::bigint,
   'private.analytics_events has no grants for public-facing roles'
 );
+
+select ok((select relrowsecurity from pg_class join pg_namespace on pg_namespace.oid = pg_class.relnamespace where pg_namespace.nspname = 'private' and pg_class.relname = 'api_connections' and pg_class.relkind = 'r'), 'private.api_connections has row level security enabled');
+select ok((select relrowsecurity from pg_class join pg_namespace on pg_namespace.oid = pg_class.relnamespace where pg_namespace.nspname = 'private' and pg_class.relname = 'api_connection_runs' and pg_class.relkind = 'r'), 'private.api_connection_runs has row level security enabled');
+select is(
+  (
+    select count(*)::bigint
+    from information_schema.table_privileges
+    where table_schema = 'private'
+      and table_name in ('api_connections', 'api_connection_runs')
+      and grantee in ('PUBLIC', 'anon', 'authenticated')
+  ),
+  0::bigint,
+  'private API connection tables have no grants for public-facing roles'
+);
+select ok(exists(select 1 from pg_extension where extname = 'supabase_vault'), 'Supabase Vault is available for API connection secrets');
 
 select throws_ok(
   $$
