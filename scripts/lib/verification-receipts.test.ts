@@ -59,7 +59,7 @@ describe("verification-receipts", () => {
       rootDir,
       treeSha,
       changedFiles: ["src/lib/example.ts"],
-      commandIds: ["typecheck", "verify:app"],
+      commandIds: ["spec:validate", "typecheck", "verify:app"],
     });
 
     const receipt = await loadVerificationReceipt({
@@ -69,6 +69,7 @@ describe("verification-receipts", () => {
     });
 
     expect(receipt).not.toBeNull();
+    expect(isVerificationSatisfied(receipt, "spec:validate")).toBe(true);
     expect(isVerificationSatisfied(receipt, "typecheck")).toBe(true);
     expect(isVerificationSatisfied(receipt, "verify:app")).toBe(true);
   });

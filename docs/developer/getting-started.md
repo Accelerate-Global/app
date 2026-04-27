@@ -81,9 +81,15 @@ pnpm run verify:change:run
 
 ## OpenSpec
 
-Use OpenSpec for behavior changes, API contracts, auth/session/permission
-changes, data model behavior, security posture, cross-service changes, and
-user-facing outcomes.
+OpenSpec is required for repo-tracked work. Every tracked change must pass:
+
+```bash
+pnpm run spec:validate
+```
+
+Use an OpenSpec change for behavior changes, API contracts,
+auth/session/permission changes, data model behavior, security posture,
+cross-service changes, user-facing outcomes, and repo workflow policy.
 
 Do not backfill broad specs for untouched legacy behavior. Add or update specs
 under `openspec/` as related behavior is changed.
@@ -91,3 +97,10 @@ under `openspec/` as related behavior is changed.
 Repo-owned OpenSpec state is the tracked `openspec/` directory. Generated Codex
 skills under `.codex/` and prompts under `~/.codex/prompts/opsx-*.md` are local
 developer tooling and are not required for the app to run.
+
+Archive completed changes before ship:
+
+```bash
+pnpm run spec:archive -- <change-id>
+pnpm run spec:check-archive
+```

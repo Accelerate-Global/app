@@ -1,7 +1,9 @@
 # authenticated-dataset-access Specification
 
 ## Purpose
-TBD - created by archiving change define-authenticated-dataset-access. Update Purpose after archive.
+Define the durable access contract for authenticated dataset pages, dataset APIs,
+row APIs, downloads, saved tables, and dashboard flows.
+
 ## Requirements
 ### Requirement: Anonymous dataset access is denied
 
@@ -172,4 +174,3 @@ public and private datasets and rows.
 - **WHEN** an authenticated admin database role queries private dataset metadata
   or rows
 - **THEN** private dataset metadata and rows are visible
-

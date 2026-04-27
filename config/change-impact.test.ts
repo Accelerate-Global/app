@@ -12,8 +12,15 @@ describe("change-impact", () => {
   it("requires smoke:check for shared UI primitive changes", () => {
     const impact = resolveChangeImpact(["src/components/ui/button.tsx"]);
 
+    expect(impact.requiredCommands).toContain("spec:validate");
     expect(impact.requiredCommands).toContain("smoke:check");
     expect(impact.requiredCommands).toContain("test:ui:smoke:targeted");
+  });
+
+  it("requires OpenSpec validation for docs-only changes", () => {
+    const impact = resolveChangeImpact(["docs/testing/ui-smoke.md"]);
+
+    expect(impact.requiredCommands).toEqual(["spec:validate"]);
   });
 
   it("requires the full smoke suite for harness changes", () => {
@@ -52,6 +59,7 @@ describe("change-impact", () => {
 
     expect(impact.requiredCommands).toEqual(
       expect.arrayContaining([
+        "spec:validate",
         "typecheck",
         "verify:test-delta",
         "verify:app",
@@ -67,7 +75,11 @@ describe("change-impact", () => {
     ]);
 
     expect(impact.requiredCommands).toEqual(
-      expect.arrayContaining(["db:security", "db:check-migration-drift"]),
+      expect.arrayContaining([
+        "spec:validate",
+        "db:security",
+        "db:check-migration-drift",
+      ]),
     );
     expect(impact.manualSteps).toContain("db:push:remote");
   });
@@ -113,7 +125,7 @@ describe("change-impact", () => {
     const impact = resolveChangeImpact(["scripts/check-workflow-bootstrap.mjs"]);
 
     expect(impact.requiredCommands).toEqual(
-      expect.arrayContaining(["typecheck", "verify:test-delta"]),
+      expect.arrayContaining(["spec:validate", "typecheck", "verify:test-delta"]),
     );
   });
 
@@ -144,9 +156,13 @@ describe("change-impact", () => {
     expect(verificationCommandCatalog["verify:ship:local"].supabaseLifecycle).toBe(
       "none",
     );
+    expect(verificationCommandCatalog["spec:validate"].supabaseLifecycle).toBe(
+      "none",
+    );
   });
 
   it("labels verification commands by workflow usage", () => {
+    expect(verificationCommandCatalog["spec:validate"].usage).toBe("terminal");
     expect(verificationCommandCatalog.typecheck.usage).toBe("terminal");
     expect(verificationCommandCatalog["smoke:check"].usage).toBe("debug");
     expect(verificationCommandCatalog["test:ui:smoke:targeted"].usage).toBe("debug");

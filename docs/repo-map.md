@@ -45,6 +45,8 @@ storage, exploration, and admin management.
 - Full UI smoke runner: `pnpm run test:ui:smoke`.
 - Database security gate: `pnpm run db:security`.
 - Local pre-ship gate: `pnpm run verify:ship:local`.
+- OpenSpec validation: `pnpm run spec:validate`.
+- OpenSpec archive readiness: `pnpm run spec:check-archive`.
 - Release flow: `docs/release.md` and `pnpm ship --pr <number>`.
 
 ## OpenSpec

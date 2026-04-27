@@ -6,15 +6,18 @@
 2. Read the relevant code and docs before making claims.
 3. Run `pnpm run verify:change` before editing.
 4. Run `pnpm run task:kickoff -- --scope <owned-path-or-glob>` for UI, admin, DB, or verification-tooling work.
-5. Keep edits scoped to the requested behavior.
-6. Add or update tests when touched code already has direct same-stem tests, when behavior changes, or when verification reports a test-delta requirement.
-7. Run `pnpm run verify:change:run` before finalizing tracked repo changes.
+5. Create or update OpenSpec artifacts before implementing behavior or workflow-policy changes.
+6. Keep edits scoped to the requested behavior.
+7. Add or update tests when touched code already has direct same-stem tests, when behavior changes, or when verification reports a test-delta requirement.
+8. Run `pnpm run verify:change:run` before finalizing tracked repo changes.
 
 ## OpenSpec Policy
 
-Use OpenSpec when changing observable behavior, workflows, public APIs, data
-model behavior, auth/session/permissions, security/privacy posture, Supabase
-behavior, Vercel deployment behavior, or user-facing outcomes.
+OpenSpec is required for repo-tracked work. Every tracked change must pass
+`pnpm run spec:validate`. Create or update an OpenSpec change when changing
+observable behavior, workflows, public APIs, data model behavior,
+auth/session/permissions, security/privacy posture, Supabase behavior, Vercel
+deployment behavior, user-facing outcomes, or repo workflow policy.
 
 Keep current-state documentation in `docs/`. Keep durable future behavior
 contracts in `openspec/specs/`, created or updated only as related behavior is
@@ -29,6 +32,18 @@ Default flow for meaningful behavior changes when OPSX commands are configured:
 /opsx:archive
 ```
 
+Equivalent repo-owned helper commands:
+
+```bash
+pnpm run spec:validate
+pnpm run spec:archive -- <change-id>
+pnpm run spec:check-archive
+```
+
+Archive completed OpenSpec changes before `pnpm run verify:ship:local` or
+`pnpm ship`. Ship and ship-local checks fail when active changes remain under
+`openspec/changes/*`.
+
 Repo-owned OpenSpec state is the tracked `openspec/` directory. Generated Codex
 skills under `.codex/` and global prompts under `~/.codex/prompts/opsx-*.md`
 are machine-local tooling, not portable repo behavior.
@@ -36,6 +51,7 @@ are machine-local tooling, not portable repo behavior.
 ## Tests And Gates
 
 - App quality: `pnpm run verify:app`.
+- OpenSpec: `pnpm run spec:validate`.
 - TypeScript: `pnpm run typecheck`.
 - UI smoke contract: `pnpm run smoke:check`.
 - UI smoke browser suite: `pnpm run test:ui:smoke` or `pnpm run test:ui:smoke:targeted` when required by `verify:change`.
@@ -65,5 +81,5 @@ environment operation unless a tracked migration or runbook changes it.
 
 The standard release path is documented in `docs/release.md`. The repo treats a
 merge to `main` as the production deployment trigger through Vercel. `pnpm ship`
-waits for App Quality, UI Smoke, Database Security, Dependency Audit, and
-Release Health signals.
+waits for App Quality, OpenSpec, UI Smoke, Database Security, Dependency Audit,
+and Release Health signals.

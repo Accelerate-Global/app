@@ -22,6 +22,10 @@
     "verify:ship:local": "node --import tsx scripts/verify-ship-local.ts",
     "verify:app": "node --import tsx scripts/verify-app.ts",
     "verify:release": "node --import tsx scripts/verify-ship-local.ts --deprecated-alias",
+    "spec:validate": "openspec validate --all --strict --no-interactive",
+    "spec:status": "openspec list --json && openspec list --specs --json",
+    "spec:archive": "node --import tsx scripts/openspec-archive.ts",
+    "spec:check-archive": "node --import tsx scripts/check-openspec-archive.ts",
     "db:generate": "drizzle-kit generate",
     "db:start": "supabase start",
     "db:push": "supabase db push --local && pnpm run field-sources:seed:local",
@@ -72,6 +76,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@fission-ai/openspec": "1.3.1",
     "@playwright/test": "^1.59.1",
     "@tailwindcss/postcss": "^4",
     "@testing-library/dom": "^10.4.1",

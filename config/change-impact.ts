@@ -6,6 +6,13 @@ export type SupabaseLifecycle = "none" | "prestart-required" | "self-managed";
 export type WorkflowCommandUsage = "planning" | "debug" | "terminal";
 
 export const verificationCommandCatalog = {
+  "spec:validate": {
+    id: "spec:validate",
+    command: "pnpm run spec:validate",
+    description: "Validate all OpenSpec changes and durable specs.",
+    supabaseLifecycle: "none",
+    usage: "terminal",
+  },
   typecheck: {
     id: "typecheck",
     command: "pnpm run typecheck",
@@ -209,12 +216,17 @@ export function resolveChangeImpact(changedFiles: string[]): ChangeImpactResult 
   const domains = changeImpactDomains.filter((domain) =>
     matchesChangedFiles(normalizedChangedFiles, domain.patterns),
   );
+  const alwaysRequiredCommands: VerificationCommandId[] =
+    normalizedChangedFiles.length > 0 ? ["spec:validate"] : [];
 
   return {
     changedFiles: normalizedChangedFiles,
     domains,
     requiredCommands: dedupeInCatalogOrder(
-      domains.flatMap((domain) => domain.requiredCommands),
+      [
+        ...alwaysRequiredCommands,
+        ...domains.flatMap((domain) => domain.requiredCommands),
+      ],
       verificationCommandOrder,
     ),
     recommendedCommands: dedupeInCatalogOrder(

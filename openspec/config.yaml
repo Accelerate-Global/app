@@ -10,7 +10,7 @@ context: |
   UI smoke: Every src/app/**/page.tsx route is tracked in tests/ui/route-registry.ts and must expose data-smoke-page markers.
   Security: Same-origin mutation guards stay centralized in src/proxy.ts and src/lib/request-security.ts.
   Brownfield rule: Current code and repo docs are source of truth. Preserve existing behavior unless the approved change requires behavior change.
-  OpenSpec adoption: Use spec-as-you-touch. Do not backfill broad current-state specs; create or update specs when future work changes observable behavior.
+  OpenSpec adoption: OpenSpec validation is required for every repo-tracked change. Use spec-as-you-touch. Do not backfill broad current-state specs; create or update specs when future work changes observable behavior or repo workflow policy.
   Tooling boundary: Repo-owned OpenSpec state lives under openspec/. Generated Codex skills in .codex/ and prompts under ~/.codex/prompts are machine-local developer tooling.
 
 rules:
@@ -29,3 +29,4 @@ rules:
     - Include repo-required planning and verification commands from pnpm run verify:change.
     - Include direct tests or contract updates when changed files already have same-stem tests or UI smoke requirements.
     - Keep tasks small enough to review without unrelated refactors.
+    - Archive completed changes before ship-local or ship work.
