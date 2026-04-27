@@ -2,6 +2,7 @@
 
 import {
   BookTextIcon,
+  CableIcon,
   ChevronDownIcon,
   DatabaseIcon,
   LayoutDashboardIcon,
@@ -197,6 +198,10 @@ export function AccountControl({ identity }: AccountControlProps) {
               <DropdownMenuItem onClick={() => navigateTo("/dashboard/field-sources")}>
                 <DatabaseIcon aria-hidden="true" />
                 Manage Field Sources
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigateTo("/dashboard/api-connections")}>
+                <CableIcon aria-hidden="true" />
+                API Connections
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => navigateTo("/dashboard/analytics")}>
                 <ActivityIcon aria-hidden="true" />

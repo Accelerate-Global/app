@@ -183,6 +183,66 @@ export type DatasetUploadAuthorizationResponse = {
   token: string;
 };
 
+export type ApiConnectionMethod = "GET" | "POST" | "PUT" | "PATCH";
+export type ApiConnectionResponseFormat = "json" | "csv";
+export type ApiConnectionImportMode = "create" | "replace";
+export type ApiConnectionRunMode = "test" | "import";
+export type ApiConnectionRunStatus = "success" | "failed";
+
+export type ApiConnectionHeader = {
+  name: string;
+  value: string;
+  isSecret: boolean;
+};
+
+export type ApiConnection = {
+  id: string;
+  name: string;
+  description: string;
+  method: ApiConnectionMethod;
+  url: string;
+  headers: ApiConnectionHeader[];
+  bodyTemplate: string;
+  responseFormat: ApiConnectionResponseFormat;
+  responseDataPath: string;
+  importMode: ApiConnectionImportMode;
+  targetDatasetId: string | null;
+  datasetName: string;
+  datasetClassification: DatasetClassification;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ApiConnectionRun = {
+  id: string;
+  connectionId: string;
+  actorOwnerId: string;
+  actorEmail: string | null;
+  mode: ApiConnectionRunMode;
+  status: ApiConnectionRunStatus;
+  httpStatus: number | null;
+  durationMs: number;
+  rowCount: number | null;
+  datasetId: string | null;
+  errorMessage: string | null;
+  responsePreview: string;
+  createdAt: string;
+};
+
+export type ApiConnectionsResponse = {
+  connections: ApiConnection[];
+  runs: ApiConnectionRun[];
+};
+
+export type ApiConnectionResponse = {
+  connection: ApiConnection;
+};
+
+export type ApiConnectionRunResponse = {
+  connection: ApiConnection;
+  run: ApiConnectionRun;
+};
+
 export type FieldDefinitionLinkedDataset = {
   id: string;
   fileName: string;

@@ -126,7 +126,9 @@
         "src/lib/supabase/**",
         "src/lib/user-management.ts",
         "src/lib/workspace-role.ts",
+        "src/lib/api-connections.ts",
         "src/app/api/admin/users/**",
+        "src/app/api/admin/api-connections/**",
         "supabase/**"
       ],
       "requiredCommands": ["db:security"],
@@ -348,6 +350,22 @@
       ],
       "routeIds": ["field-sources-viewer-redirect", "field-sources-admin"],
       "journeyTitles": ["admin can review field source mappings"],
+      "projectNames": ["desktop-viewer", "desktop-admin"],
+      "bootstrapScope": "admin-config"
+    },
+    {
+      "id": "api-connections",
+      "label": "API Connections route and admin import flow",
+      "patterns": [
+        "src/app/dashboard/api-connections/**",
+        "src/components/dashboard/api-connections-client.tsx",
+        "src/lib/api-connections.ts",
+        "src/app/api/admin/api-connections/**"
+      ],
+      "routeIds": [
+        "api-connections-viewer-redirect",
+        "api-connections-admin"
+      ],
       "projectNames": ["desktop-viewer", "desktop-admin"],
       "bootstrapScope": "admin-config"
     },

@@ -1,6 +1,12 @@
 import { sql } from "drizzle-orm";
 
 import type {
+  ApiConnectionHeader,
+  ApiConnectionImportMode,
+  ApiConnectionMethod,
+  ApiConnectionResponseFormat,
+  ApiConnectionRunMode,
+  ApiConnectionRunStatus,
   CsvColumn,
   DatasetStatus,
   DatasetTag,
@@ -21,10 +27,7 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 
-import type {
-  AnalyticsWorkspaceRole,
-  AppAnalyticsRoute,
-} from "@/lib/analytics";
+import type { AnalyticsWorkspaceRole, AppAnalyticsRoute } from "@/lib/analytics";
 
 export const datasets = pgTable(
   "datasets",
@@ -333,6 +336,88 @@ export const signupEmailAllowlist = pgTable("signup_email_allowlist", {
 });
 
 const privateSchema = pgSchema("private");
+
+export const apiConnections = privateSchema.table(
+  "api_connections",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    name: text("name").notNull(),
+    description: text("description").notNull().default(""),
+    method: text("method").$type<ApiConnectionMethod>().notNull().default("GET"),
+    url: text("url").notNull(),
+    requestHeaders: jsonb("request_headers")
+      .$type<ApiConnectionHeader[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    secretHeaderNames: jsonb("secret_header_names")
+      .$type<string[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    secretVaultId: uuid("secret_vault_id"),
+    bodyTemplate: text("body_template").notNull().default(""),
+    responseFormat: text("response_format")
+      .$type<ApiConnectionResponseFormat>()
+      .notNull()
+      .default("json"),
+    responseDataPath: text("response_data_path").notNull().default(""),
+    importMode: text("import_mode")
+      .$type<ApiConnectionImportMode>()
+      .notNull()
+      .default("create"),
+    targetDatasetId: uuid("target_dataset_id").references(() => datasets.id, {
+      onDelete: "set null",
+    }),
+    datasetName: text("dataset_name").notNull().default("api-import.csv"),
+    datasetClassification: text("dataset_classification")
+      .$type<"PGAC" | "PGIC">()
+      .notNull()
+      .default("PGAC"),
+    createdByOwnerId: text("created_by_owner_id").notNull(),
+    updatedByOwnerId: text("updated_by_owner_id").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("api_connections_created_at_idx").on(table.createdAt),
+    index("api_connections_updated_at_idx").on(table.updatedAt),
+  ],
+);
+
+export const apiConnectionRuns = privateSchema.table(
+  "api_connection_runs",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    connectionId: uuid("connection_id")
+      .notNull()
+      .references(() => apiConnections.id, { onDelete: "cascade" }),
+    actorOwnerId: text("actor_owner_id").notNull(),
+    actorEmail: text("actor_email"),
+    mode: text("mode").$type<ApiConnectionRunMode>().notNull(),
+    status: text("status").$type<ApiConnectionRunStatus>().notNull(),
+    httpStatus: integer("http_status"),
+    durationMs: integer("duration_ms").notNull(),
+    rowCount: integer("row_count"),
+    datasetId: uuid("dataset_id").references(() => datasets.id, {
+      onDelete: "set null",
+    }),
+    errorMessage: text("error_message"),
+    responsePreview: text("response_preview").notNull().default(""),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("api_connection_runs_connection_created_idx").on(
+      table.connectionId,
+      table.createdAt,
+    ),
+    index("api_connection_runs_created_at_idx").on(table.createdAt),
+  ],
+);
 
 export const analyticsEvents = privateSchema.table(
   "analytics_events",

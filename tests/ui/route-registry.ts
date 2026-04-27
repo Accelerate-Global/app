@@ -188,6 +188,20 @@ export const smokeRouteSpecs: SmokeRouteSpec[] = [
     pageId: "analytics",
   },
   {
+    id: "api-connections-viewer-redirect",
+    role: "viewer",
+    pageFile: "src/app/dashboard/api-connections/page.tsx",
+    path: "/dashboard/api-connections",
+    redirectTo: "/dashboard",
+  },
+  {
+    id: "api-connections-admin",
+    role: "admin",
+    pageFile: "src/app/dashboard/api-connections/page.tsx",
+    path: "/dashboard/api-connections",
+    pageId: "api-connections",
+  },
+  {
     id: "upload-viewer-redirect",
     role: "viewer",
     pageFile: "src/app/dashboard/upload/page.tsx",

@@ -311,6 +311,74 @@ export const rowBatchSchema = z.object({
   totalRows: z.number().int().nonnegative().optional(),
 });
 
+const apiConnectionHeaderNameSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(128)
+  .regex(/^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/u);
+
+const apiConnectionHeaderSchema = z.object({
+  name: apiConnectionHeaderNameSchema,
+  value: z.string().max(4096),
+  isSecret: z.boolean().default(false),
+});
+
+const apiConnectionBaseSchema = z.object({
+  name: z.string().trim().min(1).max(120),
+  description: z.string().trim().max(500).default(""),
+  method: z.enum(["GET", "POST", "PUT", "PATCH"]),
+  url: z.string().trim().url().max(2048),
+  headers: z.array(apiConnectionHeaderSchema).max(40).default([]),
+  bodyTemplate: z.string().max(100_000).default(""),
+  responseFormat: z.enum(["json", "csv"]),
+  responseDataPath: z.string().trim().max(500).default(""),
+  importMode: z.enum(["create", "replace"]).default("create"),
+  targetDatasetId: z.string().uuid().nullable().default(null),
+  datasetName: z.string().trim().min(1).max(255).default("api-import.csv"),
+  datasetClassification: datasetClassificationSchema.default("PGAC"),
+});
+
+function refineApiConnectionPayload(
+  value: z.infer<typeof apiConnectionBaseSchema>,
+  ctx: z.RefinementCtx,
+) {
+  const headerNames = value.headers.map((header) => header.name.toLowerCase());
+
+  if (new Set(headerNames).size !== headerNames.length) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["headers"],
+      message: "Header names must be unique.",
+    });
+  }
+
+  if (["GET"].includes(value.method) && value.bodyTemplate.trim()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["bodyTemplate"],
+      message: "GET requests cannot include a request body.",
+    });
+  }
+
+  if (value.importMode === "replace" && !value.targetDatasetId) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["targetDatasetId"],
+      message: "Choose a dataset before replacing imported data.",
+    });
+  }
+}
+
+export const apiConnectionCreateSchema =
+  apiConnectionBaseSchema.superRefine(refineApiConnectionPayload);
+
+export const apiConnectionUpdateSchema = apiConnectionCreateSchema;
+
+export const apiConnectionRunSchema = z.object({
+  importEnabled: z.boolean().default(false),
+});
+
 export const datasetAssignDerivedViewSchema = z.object({
   sourceDatasetId: z.string().uuid(),
   filters: savedDatasetFilterStateSchema,

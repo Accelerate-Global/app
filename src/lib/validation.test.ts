@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import * as validationModule from "@/lib/validation";
 import {
+  apiConnectionCreateSchema,
   createDatasetSchema,
   datasetAssignDerivedViewSchema,
   datasetMetadataPatchSchema,
@@ -454,5 +455,54 @@ describe("dataset create and replace schemas", () => {
         columns: [{ key: "email", label: "Email", sourceIndex: 0 }],
       }).success,
     ).toBe(false);
+  });
+});
+
+describe("apiConnectionCreateSchema", () => {
+  const basePayload = {
+    name: "People API",
+    description: "",
+    method: "GET",
+    url: "https://api.example.com/people",
+    headers: [
+      {
+        name: "Authorization",
+        value: "Bearer token",
+        isSecret: true,
+      },
+    ],
+    bodyTemplate: "",
+    responseFormat: "json",
+    responseDataPath: "data.items",
+    importMode: "create",
+    targetDatasetId: null,
+    datasetName: "people.csv",
+    datasetClassification: "PGAC",
+  };
+
+  it("accepts a generic REST connection", () => {
+    expect(apiConnectionCreateSchema.safeParse(basePayload).success).toBe(true);
+  });
+
+  it("rejects duplicate headers", () => {
+    const result = apiConnectionCreateSchema.safeParse({
+      ...basePayload,
+      headers: [
+        { name: "Authorization", value: "Bearer one", isSecret: true },
+        { name: "authorization", value: "Bearer two", isSecret: true },
+      ],
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("requires a target dataset for replacement imports", () => {
+    const result = apiConnectionCreateSchema.safeParse({
+      ...basePayload,
+      importMode: "replace",
+      targetDatasetId: null,
+    });
+
+    expect(result.success).toBe(false);
   });
 });
