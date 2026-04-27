@@ -1,0 +1,31 @@
+schema: spec-driven
+
+context: |
+  Repository: /Users/blake/Documents/accelerate-global/online
+  Product: Accelerate Global CSV dataset viewer for authenticated shared dataset exploration.
+  Runtime: Next.js App Router, React, TypeScript, Tailwind CSS, shadcn/Base UI, deployed on Vercel.
+  Data and auth: Supabase provides email/password auth, Postgres, Storage, local CLI services, and RLS-backed database security tests.
+  Database access: Drizzle schema lives in src/db/schema.ts; committed database changes use SQL migrations under supabase/migrations.
+  Verification: Run pnpm run verify:change before editing and pnpm run verify:change:run before finalizing tracked repo changes.
+  UI smoke: Every src/app/**/page.tsx route is tracked in tests/ui/route-registry.ts and must expose data-smoke-page markers.
+  Security: Same-origin mutation guards stay centralized in src/proxy.ts and src/lib/request-security.ts.
+  Brownfield rule: Current code and repo docs are source of truth. Preserve existing behavior unless the approved change requires behavior change.
+  OpenSpec adoption: Use spec-as-you-touch. Do not backfill broad current-state specs; create or update specs when future work changes observable behavior.
+  Tooling boundary: Repo-owned OpenSpec state lives under openspec/. Generated Codex skills in .codex/ and prompts under ~/.codex/prompts are machine-local developer tooling.
+
+rules:
+  proposal:
+    - State whether the change affects auth, admin permissions, data integrity, Supabase, Vercel deployment, API contracts, or UI smoke coverage.
+    - Include explicit non-goals when the request is adjacent to existing behavior that should remain unchanged.
+    - Reference current repo files or docs as evidence for brownfield assumptions.
+  specs:
+    - Describe observable behavior, inputs and outputs, permissions, error states, compatibility, and user-visible outcomes.
+    - Use testable scenarios; avoid implementation-only helper names and file-by-file mechanics.
+    - Do not create baseline specs for untouched legacy behavior.
+  design:
+    - Explain implementation approach, boundaries touched, data flow, verification impact, and rollback or recovery considerations.
+    - Call out Supabase RLS, auth metadata, Vercel runtime, and local service requirements when relevant.
+  tasks:
+    - Include repo-required planning and verification commands from pnpm run verify:change.
+    - Include direct tests or contract updates when changed files already have same-stem tests or UI smoke requirements.
+    - Keep tasks small enough to review without unrelated refactors.

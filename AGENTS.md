@@ -112,6 +112,18 @@ Treat `pnpm run verify:change` as the local planning gate for repo-tracked edits
 - Use [/Users/blake/Documents/accelerate-global/online/docs/testing/ui-smoke.md](/Users/blake/Documents/accelerate-global/online/docs/testing/ui-smoke.md) for the detailed smoke contract and examples.
 - Use [/Users/blake/Documents/accelerate-global/online/docs/testing/verification-triage.md](/Users/blake/Documents/accelerate-global/online/docs/testing/verification-triage.md) for the fastest next step when verification fails.
 
+# OpenSpec
+
+OpenSpec is initialized in `/Users/blake/Documents/accelerate-global/online/openspec` for durable behavior-change planning.
+
+- Use OpenSpec for changes to observable behavior, workflows, public APIs, data model behavior, auth/session/permissions, security/privacy posture, Supabase behavior, Vercel deployment behavior, or user-facing outcomes.
+- Keep current-state orientation in `/Users/blake/Documents/accelerate-global/online/docs`; do not backfill broad baseline specs for untouched legacy behavior.
+- Use the spec-as-you-touch model: create or update specs only when related behavior is changed.
+- Prefer `/opsx:propose`, `/opsx:apply`, `/opsx:verify`, and `/opsx:archive` for meaningful behavior changes when those commands are available.
+- Repo-owned OpenSpec state lives under `/Users/blake/Documents/accelerate-global/online/openspec`; generated `.codex` skills and `~/.codex/prompts/opsx-*.md` prompts are machine-local developer tooling, not portable repo state.
+- Keep OpenSpec artifacts grounded in actual repo files, commands, tests, and provider boundaries.
+- Do not archive an OpenSpec change until implementation and required repo verification have passed, unless the change is intentionally doc-only or skipped with an explicit reason.
+
 # Security Remediation Invariants
 
 - Mutating `/api/**` requests and `POST /auth/sign-out` are same-origin guarded in `/Users/blake/Documents/accelerate-global/online/src/proxy.ts` via `/Users/blake/Documents/accelerate-global/online/src/lib/request-security.ts`. Keep that guard centralized unless a route needs a documented exception.
