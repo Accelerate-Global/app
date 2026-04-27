@@ -1,0 +1,26 @@
+name: OpenSpec
+
+on:
+  pull_request:
+
+concurrency:
+  group: openspec-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  openspec:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
+
+      - uses: ./.github/actions/setup-pnpm-node
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run spec:validate
+      - run: pnpm run spec:check-archive

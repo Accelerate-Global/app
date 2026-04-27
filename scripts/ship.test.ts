@@ -64,6 +64,10 @@ function installShipCommandMock(input: {
       return { stdout: "", stderr: "", exitCode: 0 };
     }
 
+    if (command === "pnpm" && args.join(" ") === "run spec:check-archive") {
+      return { stdout: "", stderr: "", exitCode: 0 };
+    }
+
     if (command === "pnpm" && args.join(" ") === "run field-sources:seed:remote") {
       return { stdout: "", stderr: "", exitCode: 0 };
     }
@@ -191,6 +195,7 @@ describe("ship", () => {
       prNumber: "46",
       workflowNames: [
         "App Quality",
+        "OpenSpec",
         "UI Smoke",
         "Database Security",
         "Dependency Audit",
@@ -367,6 +372,7 @@ describe("ship", () => {
       prNumber: "46",
       workflowNames: [
         "App Quality",
+        "OpenSpec",
         "UI Smoke",
         "Database Security",
         "Dependency Audit",

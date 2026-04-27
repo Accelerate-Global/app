@@ -24,6 +24,7 @@ export async function GET(_request: Request, context: SavedTableContext) {
   const savedTable = await getSavedDatasetTable({
     ownerId: identity.ownerId,
     savedTableId,
+    includeDisabled: identity.isDatasetAdmin,
   });
 
   if (!savedTable) {
@@ -52,6 +53,7 @@ export async function PATCH(request: Request, context: SavedTableContext) {
     savedTableId,
     name: parsed.data.name,
     details: parsed.data.details,
+    includeDisabled: identity.isDatasetAdmin,
   });
 
   if (!savedTable) {
@@ -72,6 +74,7 @@ export async function DELETE(_request: Request, context: SavedTableContext) {
   const savedTable = await deleteSavedDatasetTable({
     ownerId: identity.ownerId,
     savedTableId,
+    includeDisabled: identity.isDatasetAdmin,
   });
 
   if (!savedTable) {

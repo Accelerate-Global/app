@@ -45,6 +45,17 @@ describe("parseApiResponseRows", () => {
     expect(result.rows).toEqual([{ value: "ok" }]);
   });
 
+  it("imports JSON root arrays when no response path is configured", () => {
+    const result = parseApiResponseRows({
+      body: JSON.stringify([{ name: "Alpha" }, { name: "Beta" }]),
+      responseFormat: "json",
+      responseDataPath: "",
+    });
+
+    expect(result.columns.map((column) => column.key)).toEqual(["name"]);
+    expect(result.rows).toEqual([{ name: "Alpha" }, { name: "Beta" }]);
+  });
+
   it("imports CSV responses", () => {
     const result = parseApiResponseRows({
       body: "People Group,Population\nAlpha,1200\nBeta,2400\n",

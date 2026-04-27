@@ -66,6 +66,7 @@ export default async function DatasetPage({
     ? await getSavedDatasetTable({
         ownerId: identity.ownerId,
         savedTableId,
+        includeDisabled: identity.isDatasetAdmin,
       })
     : null;
   const matchingSavedTable =

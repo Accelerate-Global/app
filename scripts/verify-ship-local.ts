@@ -4,6 +4,7 @@ import {
   buildLocalVerificationPlan,
   executeLocalVerificationPlan,
 } from "./lib/local-verification";
+import { runCommand } from "./lib/command";
 import { getShipLocalDiff } from "./lib/ship-local-changes";
 import { evaluateTestImpact } from "./lib/test-impact";
 import { analyzeUiSmokeContracts } from "./lib/ui-smoke-contract";
@@ -69,6 +70,10 @@ export async function runVerifyShipLocal() {
       process.exitCode = 1;
       return;
     }
+
+    await runCommand("pnpm", ["run", "spec:check-archive"], {
+      stdinMode: "ignore",
+    });
 
     treeSha = await getTrackedFileTreeSha(rootDir);
     const receipt = await loadVerificationReceipt({

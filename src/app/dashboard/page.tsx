@@ -16,7 +16,9 @@ export default async function DashboardPage() {
 
   const [datasets, savedTables] = await Promise.all([
     listDatasets({ includeDisabled: identity.isDatasetAdmin }),
-    listSavedDatasetTables(identity.ownerId),
+    listSavedDatasetTables(identity.ownerId, {
+      includeDisabled: identity.isDatasetAdmin,
+    }),
   ]);
 
   return (

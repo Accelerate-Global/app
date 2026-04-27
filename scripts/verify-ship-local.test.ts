@@ -132,6 +132,14 @@ describe("verify-ship-local", () => {
         };
       }
 
+      if (command === "pnpm" && args.join(" ") === "run spec:check-archive") {
+        return {
+          stdout: "",
+          stderr: "",
+          exitCode: 0,
+        };
+      }
+
       throw new Error(`Unexpected command: ${command} ${args.join(" ")}`);
     });
     analyzeUiSmokeContractsMock.mockResolvedValue({
@@ -250,6 +258,13 @@ describe("verify-ship-local", () => {
       treeSha: "tree-sha",
       changedFiles: ["scripts/ship.ts", "tests/ui/global.setup.ts"],
     });
+    expect(runCommandMock).toHaveBeenCalledWith(
+      "pnpm",
+      ["run", "spec:check-archive"],
+      expect.objectContaining({
+        stdinMode: "ignore",
+      }),
+    );
     expect(printVerifyChangeReportMock).toHaveBeenCalledWith({
       shipLocalDiff: {
         baseRef: "origin/main",
@@ -333,6 +348,52 @@ describe("verify-ship-local", () => {
       expect.objectContaining({
         rootDir: process.cwd(),
         changedFiles: ["scripts/ship.ts", "tests/ui/global.setup.ts"],
+        scope: "verification-run",
+        name: "verify:ship:local",
+        status: "failed",
+      }),
+    );
+  });
+
+  it("fails before local verification when active OpenSpec changes are not archived", async () => {
+    const { runVerifyShipLocal } = await import("./verify-ship-local");
+
+    runCommandMock.mockImplementation(async (command: string, args: string[]) => {
+      if (
+        command === "git" &&
+        args.join(" ") === "fetch --quiet --no-tags origin refs/heads/main:refs/remotes/origin/main"
+      ) {
+        return {
+          stdout: "",
+          stderr: "",
+          exitCode: 0,
+        };
+      }
+
+      if (
+        command === "git" &&
+        args.join(" ") === "diff --name-status -z origin/main...HEAD"
+      ) {
+        return {
+          stdout: "A\0openspec/changes/add-feature/proposal.md\0",
+          stderr: "",
+          exitCode: 0,
+        };
+      }
+
+      if (command === "pnpm" && args.join(" ") === "run spec:check-archive") {
+        throw new Error("Active OpenSpec changes must be archived before ship.");
+      }
+
+      throw new Error(`Unexpected command: ${command} ${args.join(" ")}`);
+    });
+
+    await expect(runVerifyShipLocal()).rejects.toThrow(
+      "Active OpenSpec changes must be archived before ship.",
+    );
+    expect(getTrackedFileTreeShaMock).not.toHaveBeenCalled();
+    expect(recordVerificationTimingMock).toHaveBeenCalledWith(
+      expect.objectContaining({
         scope: "verification-run",
         name: "verify:ship:local",
         status: "failed",

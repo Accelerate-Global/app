@@ -12,7 +12,19 @@ Vercel production deploys for emergency recovery only.
    pnpm run verify:change:run
    ```
 
-2. Run the single pre-ship local gate:
+2. Confirm OpenSpec has no active unarchived changes:
+
+   ```bash
+   pnpm run spec:check-archive
+   ```
+
+   If this fails, archive the completed change before shipping:
+
+   ```bash
+   pnpm run spec:archive -- <change-id>
+   ```
+
+3. Run the single pre-ship local gate:
 
    ```bash
    pnpm run verify:ship:local
@@ -22,14 +34,14 @@ Vercel production deploys for emergency recovery only.
    Run this from a clean, already-committed PR branch. `pnpm ship` is not a
    substitute for branch creation, staging, or commit authoring.
 
-3. If the release includes tracked Supabase migrations, apply them to the linked
+4. If the release includes tracked Supabase migrations, apply them to the linked
    remote project explicitly before merge:
 
    ```bash
    pnpm db:push:remote
    ```
 
-4. Ship the reviewed PR:
+5. Ship the reviewed PR:
 
    ```bash
    pnpm ship --pr <number>
@@ -38,13 +50,14 @@ Vercel production deploys for emergency recovery only.
 `pnpm ship` does the following:
 
 - refuses to run with a dirty worktree
+- blocks ship when active OpenSpec changes remain unarchived
 - fails early if the linked remote database is missing tracked migrations
 - inspects the PR file list and only seeds the remote field-source registry
   when the diff touches checked-in field-source seed inputs
 - relies on release-critical CLI scripts that use the shared `@/db` singleton
   to close that client before exit, so control returns cleanly to the ship
   process after remote checks such as `field-sources:seed:remote`
-- waits for the PR `App Quality`, `UI Smoke`, `Database Security`, and
+- waits for the PR `App Quality`, `OpenSpec`, `UI Smoke`, `Database Security`, and
   `Dependency Audit` checks
 - emits progress updates while waiting on remote checks, merge state, and
   release health
@@ -86,16 +99,16 @@ git config user.email "116130409+II-ricky-bobby-II@users.noreply.github.com"
 
 ## Required Checks
 
-The repo now publishes `App Quality`, `UI Smoke`, `Database Security`,
+The repo now publishes `App Quality`, `OpenSpec`, `UI Smoke`, `Database Security`,
 `Dependency Audit`, and `Release Health` workflow signals. `pnpm ship` waits
-for the first four checks before merge, but GitHub UI merges can still bypass
+for the first five checks before merge, but GitHub UI merges can still bypass
 that CLI gate unless repository settings enforce required checks.
 
 Manual GitHub follow-up:
 
 1. Add a branch protection rule or ruleset for `main`.
-2. Require `App Quality`, `UI Smoke`, `Database Security`, and `Dependency Audit`
-   before merge.
+2. Require `App Quality`, `OpenSpec`, `UI Smoke`, `Database Security`, and
+   `Dependency Audit` before merge.
 3. Restrict direct pushes and manual bypasses to the smallest practical admin
    set.
 

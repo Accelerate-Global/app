@@ -72,45 +72,100 @@ describe("ApiConnectionsClient", () => {
     expect(await screen.findByText("Connection saved")).toBeTruthy();
   });
 
-  it("runs a saved connection in import mode", async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        connection: {
-          id: "11111111-1111-4111-8111-111111111111",
-          name: "People API",
-          description: "",
-          method: "GET",
-          url: "https://api.example.com/people",
-          headers: [],
-          bodyTemplate: "",
-          responseFormat: "json",
-          responseDataPath: "data",
-          importMode: "create",
-          targetDatasetId: null,
-          datasetName: "people.csv",
-          datasetClassification: "PGAC",
-          createdAt: "2026-04-24T12:00:00.000Z",
-          updatedAt: "2026-04-24T12:00:00.000Z",
-        },
-        run: {
-          id: "22222222-2222-4222-8222-222222222222",
-          connectionId: "11111111-1111-4111-8111-111111111111",
-          actorOwnerId: "admin-1",
-          actorEmail: "admin@example.com",
-          mode: "import",
-          status: "success",
-          httpStatus: 200,
-          durationMs: 33,
-          rowCount: 2,
-          datasetId: "33333333-3333-4333-8333-333333333333",
-          errorMessage: null,
-          responsePreview: "[{\"name\":\"Alpha\"}]",
-          createdAt: "2026-04-24T12:00:00.000Z",
-        },
-      }),
+  it("queues a saved connection in import mode", async () => {
+    const connection = {
+      id: "11111111-1111-4111-8111-111111111111",
+      name: "People API",
+      description: "",
+      method: "GET" as const,
+      url: "https://api.example.com/people",
+      headers: [],
+      bodyTemplate: "",
+      responseFormat: "json" as const,
+      responseDataPath: "data",
+      importMode: "create" as const,
+      targetDatasetId: null,
+      datasetName: "people.csv",
+      datasetClassification: "PGAC" as const,
+      createdAt: "2026-04-24T12:00:00.000Z",
+      updatedAt: "2026-04-24T12:00:00.000Z",
+    };
+    const run = {
+      id: "22222222-2222-4222-8222-222222222222",
+      connectionId: connection.id,
+      actorOwnerId: "admin-1",
+      actorEmail: "admin@example.com",
+      mode: "import" as const,
+      status: "queued" as const,
+      httpStatus: null,
+      durationMs: 0,
+      rowCount: null,
+      datasetId: null,
+      errorMessage: null,
+      responsePreview: "",
+      startedAt: null,
+      completedAt: null,
+      createdAt: "2026-04-24T12:00:00.000Z",
+      logs: [],
+      output: null,
+    };
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+
+      if (url.endsWith("/runs")) {
+        return {
+          ok: true,
+          json: async () => ({ runs: [] }),
+        };
+      }
+
+      if (url.endsWith(`/runs/${run.id}`)) {
+        return {
+          ok: true,
+          json: async () => ({ run }),
+        };
+      }
+
+      return {
+        ok: true,
+        json: async () => ({ connection, run }),
+      };
     });
     vi.stubGlobal("fetch", fetchMock);
+
+    render(
+      <ApiConnectionsClient
+        initialConnections={[connection]}
+        initialRuns={[]}
+        datasets={[]}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Import" }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/admin/api-connections/11111111-1111-4111-8111-111111111111/run",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ importEnabled: true }),
+        },
+      );
+    });
+    await waitFor(() => {
+      expect(screen.getAllByText("Import queued").length).toBeGreaterThan(0);
+    });
+  });
+
+  it("shows archived output downloads and logs", () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ runs: [] }),
+      }),
+    );
 
     render(
       <ApiConnectionsClient
@@ -133,28 +188,61 @@ describe("ApiConnectionsClient", () => {
             updatedAt: "2026-04-24T12:00:00.000Z",
           },
         ]}
-        initialRuns={[]}
+        initialRuns={[
+          {
+            id: "22222222-2222-4222-8222-222222222222",
+            connectionId: "11111111-1111-4111-8111-111111111111",
+            actorOwnerId: "admin-1",
+            actorEmail: "admin@example.com",
+            mode: "test",
+            status: "success",
+            httpStatus: 200,
+            durationMs: 33,
+            rowCount: 2,
+            datasetId: null,
+            errorMessage: null,
+            responsePreview: "[{\"name\":\"Alpha\"}]",
+            startedAt: "2026-04-24T12:00:01.000Z",
+            completedAt: "2026-04-24T12:00:02.000Z",
+            createdAt: "2026-04-24T12:00:00.000Z",
+            logs: [
+              {
+                id: "44444444-4444-4444-8444-444444444444",
+                runId: "22222222-2222-4222-8222-222222222222",
+                connectionId: "11111111-1111-4111-8111-111111111111",
+                level: "info",
+                message: "Archived output artifacts.",
+                createdAt: "2026-04-24T12:00:02.000Z",
+              },
+            ],
+            output: {
+              id: "55555555-5555-4555-8555-555555555555",
+              runId: "22222222-2222-4222-8222-222222222222",
+              connectionId: "11111111-1111-4111-8111-111111111111",
+              rowCount: 2,
+              columns: [{ key: "name", label: "Name", sourceIndex: 0 }],
+              rowsStoragePath: "api-connection-runs/run/rows.json",
+              rawStoragePath: "api-connection-runs/run/raw-response.json",
+              rowsSizeBytes: 20,
+              rawSizeBytes: 24,
+              createdAt: "2026-04-24T12:00:02.000Z",
+            },
+          },
+        ]}
         datasets={[]}
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Import" }));
-
-    await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith(
-        "/api/admin/api-connections/11111111-1111-4111-8111-111111111111/run",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ importEnabled: true }),
-        },
-      );
-    });
-    await waitFor(() => {
-      expect(screen.getAllByText("Import passed").length).toBeGreaterThan(0);
-    });
-    await waitFor(() => {
-      expect(screen.getAllByText("2 rows").length).toBeGreaterThan(0);
-    });
+    expect(screen.getByText("Archived output artifacts.")).toBeTruthy();
+    expect(
+      screen.getAllByRole("link", { name: "JSON" })[0]?.getAttribute("href"),
+    ).toBe(
+      "/api/admin/api-connections/11111111-1111-4111-8111-111111111111/runs/22222222-2222-4222-8222-222222222222/download?format=json",
+    );
+    expect(
+      screen.getAllByRole("link", { name: "CSV" })[0]?.getAttribute("href"),
+    ).toBe(
+      "/api/admin/api-connections/11111111-1111-4111-8111-111111111111/runs/22222222-2222-4222-8222-222222222222/download?format=csv",
+    );
   });
 });

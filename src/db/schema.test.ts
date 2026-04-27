@@ -5,6 +5,8 @@ import { describe, expect, it } from "vitest";
 
 import {
   apiConnectionRuns,
+  apiConnectionRunLogs,
+  apiConnectionRunOutputs,
   apiConnections,
   analyticsEvents,
   analyticsFailureResolutions,
@@ -248,6 +250,12 @@ describe("apiConnections schema", () => {
     expect(apiConnections.responseFormat.name).toBe("response_format");
     expect(apiConnectionRuns.connectionId.name).toBe("connection_id");
     expect(apiConnectionRuns.responsePreview.name).toBe("response_preview");
+    expect(apiConnectionRuns.startedAt.name).toBe("started_at");
+    expect(apiConnectionRuns.completedAt.name).toBe("completed_at");
+    expect(apiConnectionRunLogs.runId.name).toBe("run_id");
+    expect(apiConnectionRunLogs.message.name).toBe("message");
+    expect(apiConnectionRunOutputs.rowsStoragePath.name).toBe("rows_storage_path");
+    expect(apiConnectionRunOutputs.rawStoragePath.name).toBe("raw_storage_path");
   });
 
   it("creates the API connections migration", async () => {
@@ -265,5 +273,28 @@ describe("apiConnections schema", () => {
     expect(migration).toContain("secret_vault_id uuid");
     expect(migration).toContain("enable row level security");
     expect(migration).toContain("revoke all on private.api_connection_runs");
+  });
+
+  it("creates the API connection run outputs migration", async () => {
+    const migrationPath = path.join(
+      process.cwd(),
+      "supabase/migrations/20260427190408_api_connection_run_outputs.sql",
+    );
+
+    const migration = await readFile(migrationPath, "utf8");
+
+    expect(migration).toContain("add column if not exists started_at");
+    expect(migration).toContain(
+      "check (status in ('queued', 'running', 'success', 'failed'))",
+    );
+    expect(migration).toContain(
+      "create table if not exists private.api_connection_run_logs",
+    );
+    expect(migration).toContain(
+      "create table if not exists private.api_connection_run_outputs",
+    );
+    expect(migration).toContain(
+      "revoke all on private.api_connection_run_outputs",
+    );
   });
 });

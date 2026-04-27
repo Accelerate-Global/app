@@ -4,6 +4,7 @@ import { printSection } from "./verify-change-report";
 import { readVerificationTimings, type VerificationTimingSample } from "./verification-timing";
 
 const verificationTimingOrder = [
+  "spec:validate",
   "typecheck",
   "verify:test-delta",
   "verify:app",

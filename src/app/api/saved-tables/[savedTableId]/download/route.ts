@@ -46,13 +46,16 @@ export async function GET(
   const savedTable = await getSavedDatasetTable({
     ownerId: identity.ownerId,
     savedTableId,
+    includeDisabled: identity.isDatasetAdmin,
   });
 
   if (!savedTable) {
     return jsonError("Saved table not found.", 404);
   }
 
-  const dataset = await getDataset(savedTable.datasetId);
+  const dataset = await getDataset(savedTable.datasetId, {
+    includeDisabled: identity.isDatasetAdmin,
+  });
 
   if (!dataset) {
     return jsonError("Dataset not found.", 404);
@@ -60,7 +63,10 @@ export async function GET(
 
   const [rowsResponse, fieldDefinitionPresentationByColumnKey] =
     await Promise.all([
-      getAllDatasetRows({ datasetId: savedTable.datasetId }),
+      getAllDatasetRows({
+        datasetId: savedTable.datasetId,
+        includeDisabled: identity.isDatasetAdmin,
+      }),
       listFieldDefinitionPresentationByColumnKey(dataset.columns),
     ]);
 

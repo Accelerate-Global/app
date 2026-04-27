@@ -2,10 +2,21 @@ import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
 
 import Papa from "papaparse";
-import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 
 import { getDb } from "@/db";
-import { apiConnectionRuns, apiConnections } from "@/db/schema";
+import {
+  apiConnectionRunLogs,
+  apiConnectionRunOutputs,
+  apiConnectionRuns,
+  apiConnections,
+} from "@/db/schema";
+import {
+  parseApiConnectionRowsArtifact,
+  serializeApiConnectionRawResponseArtifact,
+  serializeApiConnectionRowsArtifact,
+  serializeApiConnectionRowsToCsv,
+} from "@/lib/api-connection-output";
 import type { CurrentIdentity } from "@/lib/auth";
 import { chunkRows, normalizeHeaders, sanitizeFileName } from "@/lib/csv";
 import {
@@ -14,6 +25,7 @@ import {
   replaceDatasetContents,
 } from "@/lib/datasets";
 import {
+  createApiConnectionRunOutputStoragePath,
   createDatasetStoragePath,
   getDatasetStorageBucket,
 } from "@/lib/dataset-storage";
@@ -25,6 +37,9 @@ import type {
   ApiConnectionImportMode,
   ApiConnectionResponseFormat,
   ApiConnectionRun,
+  ApiConnectionRunLog,
+  ApiConnectionRunLogLevel,
+  ApiConnectionRunOutput,
   ApiConnectionRunMode,
   ApiConnectionRunStatus,
   CsvColumn,
@@ -39,6 +54,8 @@ const MAX_REDIRECTS = 3;
 
 type ApiConnectionRecord = typeof apiConnections.$inferSelect;
 type ApiConnectionRunRecord = typeof apiConnectionRuns.$inferSelect;
+type ApiConnectionRunLogRecord = typeof apiConnectionRunLogs.$inferSelect;
+type ApiConnectionRunOutputRecord = typeof apiConnectionRunOutputs.$inferSelect;
 
 export type ApiConnectionInput = {
   name: string;
@@ -110,6 +127,40 @@ function toApiConnectionRun(row: ApiConnectionRunRecord): ApiConnectionRun {
     datasetId: row.datasetId,
     errorMessage: row.errorMessage,
     responsePreview: row.responsePreview,
+    startedAt: row.startedAt?.toISOString() ?? null,
+    completedAt: row.completedAt?.toISOString() ?? null,
+    createdAt: row.createdAt.toISOString(),
+    logs: [],
+    output: null,
+  };
+}
+
+function toApiConnectionRunLog(
+  row: ApiConnectionRunLogRecord,
+): ApiConnectionRunLog {
+  return {
+    id: row.id,
+    runId: row.runId,
+    connectionId: row.connectionId,
+    level: row.level,
+    message: row.message,
+    createdAt: row.createdAt.toISOString(),
+  };
+}
+
+function toApiConnectionRunOutput(
+  row: ApiConnectionRunOutputRecord,
+): ApiConnectionRunOutput {
+  return {
+    id: row.id,
+    runId: row.runId,
+    connectionId: row.connectionId,
+    rowCount: row.rowCount,
+    columns: row.columns,
+    rowsStoragePath: row.rowsStoragePath,
+    rawStoragePath: row.rawStoragePath,
+    rowsSizeBytes: row.rowsSizeBytes,
+    rawSizeBytes: row.rawSizeBytes,
     createdAt: row.createdAt.toISOString(),
   };
 }
@@ -245,6 +296,41 @@ function mergeSecretHeaders(input: {
   return merged;
 }
 
+async function hydrateRunDetails(runRows: ApiConnectionRunRecord[]) {
+  if (runRows.length === 0) {
+    return [];
+  }
+
+  const runIds = runRows.map((run) => run.id);
+  const [logRows, outputRows] = await Promise.all([
+    getDb()
+      .select()
+      .from(apiConnectionRunLogs)
+      .where(inArray(apiConnectionRunLogs.runId, runIds))
+      .orderBy(asc(apiConnectionRunLogs.createdAt)),
+    getDb()
+      .select()
+      .from(apiConnectionRunOutputs)
+      .where(inArray(apiConnectionRunOutputs.runId, runIds)),
+  ]);
+  const logsByRunId = new Map<string, ApiConnectionRunLog[]>();
+  const outputByRunId = new Map<string, ApiConnectionRunOutput>();
+
+  for (const log of logRows.map(toApiConnectionRunLog)) {
+    logsByRunId.set(log.runId, [...(logsByRunId.get(log.runId) ?? []), log]);
+  }
+
+  for (const output of outputRows.map(toApiConnectionRunOutput)) {
+    outputByRunId.set(output.runId, output);
+  }
+
+  return runRows.map((row) => ({
+    ...toApiConnectionRun(row),
+    logs: logsByRunId.get(row.id) ?? [],
+    output: outputByRunId.get(row.id) ?? null,
+  }));
+}
+
 export async function listApiConnections() {
   const connectionRows = await getDb()
     .select()
@@ -263,7 +349,7 @@ export async function listApiConnections() {
 
   return {
     connections: connectionRows.map(toApiConnection),
-    runs: runRows.map(toApiConnectionRun),
+    runs: await hydrateRunDetails(runRows),
   };
 }
 
@@ -756,6 +842,8 @@ async function insertRun(input: {
   datasetId: string | null;
   errorMessage: string | null;
   responsePreview: string;
+  startedAt?: Date | null;
+  completedAt?: Date | null;
 }) {
   const [run] = await getDb()
     .insert(apiConnectionRuns)
@@ -771,13 +859,142 @@ async function insertRun(input: {
       datasetId: input.datasetId,
       errorMessage: input.errorMessage,
       responsePreview: input.responsePreview,
+      startedAt: input.startedAt ?? null,
+      completedAt: input.completedAt ?? null,
     })
     .returning();
 
   return toApiConnectionRun(run);
 }
 
-export async function runApiConnection(input: {
+async function insertRunLog(input: {
+  runId: string;
+  connectionId: string;
+  level?: ApiConnectionRunLogLevel;
+  message: string;
+}) {
+  const [log] = await getDb()
+    .insert(apiConnectionRunLogs)
+    .values({
+      runId: input.runId,
+      connectionId: input.connectionId,
+      level: input.level ?? "info",
+      message: input.message,
+    })
+    .returning();
+
+  return toApiConnectionRunLog(log);
+}
+
+async function updateRun(input: {
+  runId: string;
+  status: ApiConnectionRunStatus;
+  httpStatus?: number | null;
+  durationMs?: number;
+  rowCount?: number | null;
+  datasetId?: string | null;
+  errorMessage?: string | null;
+  responsePreview?: string;
+  startedAt?: Date | null;
+  completedAt?: Date | null;
+}) {
+  const [run] = await getDb()
+    .update(apiConnectionRuns)
+    .set({
+      status: input.status,
+      httpStatus: input.httpStatus,
+      durationMs: input.durationMs,
+      rowCount: input.rowCount,
+      datasetId: input.datasetId,
+      errorMessage: input.errorMessage,
+      responsePreview: input.responsePreview,
+      startedAt: input.startedAt,
+      completedAt: input.completedAt,
+    })
+    .where(eq(apiConnectionRuns.id, input.runId))
+    .returning();
+
+  return run;
+}
+
+async function uploadRunArtifact(input: {
+  runId: string;
+  fileName: string;
+  content: string;
+  contentType: string;
+}) {
+  const path = createApiConnectionRunOutputStoragePath(input.runId, input.fileName);
+  const supabase = createSupabaseAdminClient();
+  const result = await supabase.storage
+    .from(getDatasetStorageBucket())
+    .upload(path, new Blob([input.content], { type: input.contentType }), {
+      contentType: input.contentType,
+      upsert: false,
+    });
+
+  if (result.error) {
+    throw result.error;
+  }
+
+  return path;
+}
+
+async function persistRunOutput(input: {
+  run: ApiConnectionRunRecord;
+  connection: ApiConnectionRecord;
+  parsed: {
+    rows: Record<string, string>[];
+    columns: CsvColumn[];
+  };
+  redactedBody: string;
+  httpStatus: number | null;
+}) {
+  const rowsArtifact = serializeApiConnectionRowsArtifact({
+    rows: input.parsed.rows,
+    columns: input.parsed.columns,
+  });
+  const rawArtifact = serializeApiConnectionRawResponseArtifact({
+    runId: input.run.id,
+    connectionId: input.connection.id,
+    mode: input.run.mode,
+    responseFormat: input.connection.responseFormat,
+    responseDataPath: input.connection.responseDataPath,
+    httpStatus: input.httpStatus,
+    rowCount: input.parsed.rows.length,
+    rawResponse: input.redactedBody,
+  });
+  const [rowsStoragePath, rawStoragePath] = await Promise.all([
+    uploadRunArtifact({
+      runId: input.run.id,
+      fileName: "rows.json",
+      content: rowsArtifact,
+      contentType: "application/json;charset=utf-8",
+    }),
+    uploadRunArtifact({
+      runId: input.run.id,
+      fileName: "raw-response.json",
+      content: rawArtifact,
+      contentType: "application/json;charset=utf-8",
+    }),
+  ]);
+  const [output] = await getDb()
+    .insert(apiConnectionRunOutputs)
+    .values({
+      runId: input.run.id,
+      connectionId: input.connection.id,
+      rowCount: input.parsed.rows.length,
+      columns: input.parsed.columns,
+      rowsStoragePath,
+      rawStoragePath,
+      rowsSizeBytes: Buffer.byteLength(rowsArtifact),
+      rawSizeBytes: Buffer.byteLength(rawArtifact),
+    })
+    .returning();
+
+  return toApiConnectionRunOutput(output);
+}
+
+export async function startApiConnectionRun(input: {
   connectionId: string;
   identity: CurrentIdentity;
   importEnabled: boolean;
@@ -792,6 +1009,72 @@ export async function runApiConnection(input: {
     return null;
   }
 
+  const run = await insertRun({
+    connectionId: connection.id,
+    identity: input.identity,
+    mode: input.importEnabled ? "import" : "test",
+    status: "queued",
+    httpStatus: null,
+    durationMs: 0,
+    rowCount: null,
+    datasetId: null,
+    errorMessage: null,
+    responsePreview: "",
+  });
+
+  await insertRunLog({
+    runId: run.id,
+    connectionId: connection.id,
+    message: "Run queued.",
+  });
+
+  return {
+    connection: toApiConnection(connection),
+    run: (await getApiConnectionRunDetail({
+      connectionId: connection.id,
+      runId: run.id,
+    }))!,
+  };
+}
+
+function identityFromRun(run: ApiConnectionRunRecord): CurrentIdentity {
+  return {
+    ownerId: run.actorOwnerId,
+    email: run.actorEmail,
+    fullName: null,
+    isDatasetAdmin: true,
+    mode: "supabase",
+  };
+}
+
+export async function executeApiConnectionRun(input: { runId: string }) {
+  const [run] = await getDb()
+    .select()
+    .from(apiConnectionRuns)
+    .where(eq(apiConnectionRuns.id, input.runId))
+    .limit(1);
+
+  if (!run || run.status !== "queued") {
+    return null;
+  }
+
+  const [connection] = await getDb()
+    .select()
+    .from(apiConnections)
+    .where(eq(apiConnections.id, run.connectionId))
+    .limit(1);
+
+  if (!connection) {
+    await updateRun({
+      runId: run.id,
+      status: "failed",
+      durationMs: 0,
+      errorMessage: "API connection not found.",
+      completedAt: new Date(),
+    });
+    return null;
+  }
+
   const secrets = await readVaultSecret(connection.secretVaultId);
   const headers = new Headers();
 
@@ -803,11 +1086,30 @@ export async function runApiConnection(input: {
     headers.set(name, value);
   }
 
+  const startedAtDate = new Date();
   const startedAt = Date.now();
   let httpStatus: number | null = null;
   let responsePreview = "";
 
+  await updateRun({
+    runId: run.id,
+    status: "running",
+    startedAt: startedAtDate,
+    durationMs: 0,
+  });
+  await insertRunLog({
+    runId: run.id,
+    connectionId: connection.id,
+    message: "Run started.",
+  });
+
   try {
+    await insertRunLog({
+      runId: run.id,
+      connectionId: connection.id,
+      message: "Fetching upstream API.",
+    });
+
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
     let response: Response;
@@ -830,48 +1132,85 @@ export async function runApiConnection(input: {
     httpStatus = response.status;
     const body = await readLimitedResponse(response);
     responsePreview = previewResponse(body, secrets);
+    const redactedBody = redactSecrets(body, secrets);
+
+    await insertRunLog({
+      runId: run.id,
+      connectionId: connection.id,
+      message: `Received HTTP ${response.status}.`,
+    });
 
     if (!response.ok) {
       throw new ApiConnectionError(`API request failed with HTTP ${response.status}.`, 502);
     }
 
-    let datasetId: string | null = null;
-    let rowCount: number | null = null;
+    const parsed = parseApiResponseRows({
+      body,
+      responseFormat: connection.responseFormat,
+      responseDataPath: connection.responseDataPath,
+    });
 
-    if (input.importEnabled) {
-      const parsed = parseApiResponseRows({
-        body,
-        responseFormat: connection.responseFormat,
-        responseDataPath: connection.responseDataPath,
-      });
+    await insertRunLog({
+      runId: run.id,
+      connectionId: connection.id,
+      message: `Parsed ${parsed.rows.length} rows.`,
+    });
+
+    let datasetId: string | null = null;
+
+    if (run.mode === "import") {
       const dataset = await persistImportedRows({
-        identity: input.identity,
+        identity: identityFromRun(run),
         connection,
         rows: parsed.rows,
         columns: parsed.columns,
       });
 
       datasetId = dataset?.id ?? null;
-      rowCount = parsed.rows.length;
+      await insertRunLog({
+        runId: run.id,
+        connectionId: connection.id,
+        message: datasetId ? "Imported dataset rows." : "Import completed.",
+      });
     }
 
-    const run = await insertRun({
+    await persistRunOutput({
+      run,
+      connection,
+      parsed,
+      redactedBody,
+      httpStatus,
+    });
+
+    await insertRunLog({
+      runId: run.id,
       connectionId: connection.id,
-      identity: input.identity,
-      mode: input.importEnabled ? "import" : "test",
+      message: "Archived output artifacts.",
+    });
+
+    await updateRun({
+      runId: run.id,
       status: "success",
       httpStatus,
       durationMs: Date.now() - startedAt,
-      rowCount,
+      rowCount: parsed.rows.length,
       datasetId,
       errorMessage: null,
       responsePreview,
+      startedAt: startedAtDate,
+      completedAt: new Date(),
     });
 
     await getDb()
       .update(apiConnections)
-      .set({ updatedAt: new Date(), updatedByOwnerId: input.identity.ownerId })
+      .set({ updatedAt: new Date(), updatedByOwnerId: run.actorOwnerId })
       .where(eq(apiConnections.id, connection.id));
+
+    await insertRunLog({
+      runId: run.id,
+      connectionId: connection.id,
+      message: "Run completed.",
+    });
 
     const [updatedConnection] = await getDb()
       .select()
@@ -881,7 +1220,10 @@ export async function runApiConnection(input: {
 
     return {
       connection: toApiConnection(updatedConnection),
-      run,
+      run: (await getApiConnectionRunDetail({
+        connectionId: connection.id,
+        runId: run.id,
+      }))!,
     };
   } catch (error) {
     const message =
@@ -895,10 +1237,8 @@ export async function runApiConnection(input: {
       logError("Failed to run API connection", error);
     }
 
-    const run = await insertRun({
-      connectionId: connection.id,
-      identity: input.identity,
-      mode: input.importEnabled ? "import" : "test",
+    await updateRun({
+      runId: run.id,
       status: "failed",
       httpStatus,
       durationMs: Date.now() - startedAt,
@@ -906,11 +1246,22 @@ export async function runApiConnection(input: {
       datasetId: null,
       errorMessage: redactSecrets(message, secrets),
       responsePreview,
+      startedAt: startedAtDate,
+      completedAt: new Date(),
+    });
+    await insertRunLog({
+      runId: run.id,
+      connectionId: connection.id,
+      level: "error",
+      message: redactSecrets(message, secrets),
     });
 
     return {
       connection: toApiConnection(connection),
-      run,
+      run: await getApiConnectionRunDetail({
+        connectionId: connection.id,
+        runId: run.id,
+      }),
     };
   }
 }
@@ -923,5 +1274,78 @@ export async function listApiConnectionRuns(connectionId: string) {
     .orderBy(desc(apiConnectionRuns.createdAt))
     .limit(50);
 
-  return rows.map(toApiConnectionRun);
+  return hydrateRunDetails(rows);
+}
+
+export async function getApiConnectionRunDetail(input: {
+  connectionId: string;
+  runId: string;
+}): Promise<ApiConnectionRun | null> {
+  const rows = await getDb()
+    .select()
+    .from(apiConnectionRuns)
+    .where(
+      and(
+        eq(apiConnectionRuns.connectionId, input.connectionId),
+        eq(apiConnectionRuns.id, input.runId),
+      ),
+    )
+    .limit(1);
+  const [run] = await hydrateRunDetails(rows);
+
+  return run ?? null;
+}
+
+async function downloadStorageText(path: string) {
+  const supabase = createSupabaseAdminClient();
+  const result = await supabase.storage.from(getDatasetStorageBucket()).download(path);
+
+  if (result.error) {
+    throw result.error;
+  }
+
+  return result.data.text();
+}
+
+function getOutputFileName(input: { runId: string; format: "json" | "csv" }) {
+  return `api-connection-run-${input.runId}.${input.format}`;
+}
+
+export async function getApiConnectionRunOutputDownload(input: {
+  connectionId: string;
+  runId: string;
+  format: "json" | "csv";
+}) {
+  const [output] = await getDb()
+    .select()
+    .from(apiConnectionRunOutputs)
+    .where(
+      and(
+        eq(apiConnectionRunOutputs.connectionId, input.connectionId),
+        eq(apiConnectionRunOutputs.runId, input.runId),
+      ),
+    )
+    .limit(1);
+
+  if (!output) {
+    return null;
+  }
+
+  if (input.format === "json") {
+    return {
+      body: await downloadStorageText(output.rawStoragePath),
+      contentType: "application/json; charset=utf-8",
+      fileName: getOutputFileName({ runId: input.runId, format: "json" }),
+    };
+  }
+
+  const rowsArtifact = parseApiConnectionRowsArtifact(
+    await downloadStorageText(output.rowsStoragePath),
+  );
+
+  return {
+    body: serializeApiConnectionRowsToCsv(rowsArtifact),
+    contentType: "text/csv; charset=utf-8",
+    fileName: getOutputFileName({ runId: input.runId, format: "csv" }),
+  };
 }

@@ -2,6 +2,8 @@
 
 import {
   CheckCircle2Icon,
+  DownloadIcon,
+  ExternalLinkIcon,
   KeyRoundIcon,
   Loader2Icon,
   PlayIcon,
@@ -11,11 +13,11 @@ import {
   UploadCloudIcon,
   XCircleIcon,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -30,7 +32,9 @@ import type {
   ApiConnectionHeader,
   ApiConnectionResponse,
   ApiConnectionRun,
+  ApiConnectionRunDetailResponse,
   ApiConnectionRunResponse,
+  ApiConnectionRunsResponse,
   DatasetClassification,
   DatasetSummary,
 } from "@/lib/api-types";
@@ -115,15 +119,87 @@ function formatTimestamp(value: string) {
 }
 
 function getRunLabel(run: ApiConnectionRun) {
-  return `${run.mode === "import" ? "Import" : "Test"} ${
-    run.status === "success" ? "passed" : "failed"
-  }`;
+  const mode = run.mode === "import" ? "Import" : "Test";
+
+  if (run.status === "queued") {
+    return `${mode} queued`;
+  }
+
+  if (run.status === "running") {
+    return `${mode} running`;
+  }
+
+  return `${mode} ${run.status === "success" ? "passed" : "failed"}`;
 }
 
 function statusBadgeClass(status: ApiConnectionRun["status"]) {
-  return status === "success"
-    ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-300"
-    : "border-destructive/30 bg-destructive/10 text-destructive";
+  if (status === "success") {
+    return "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-300";
+  }
+
+  if (status === "queued") {
+    return "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300";
+  }
+
+  if (status === "running") {
+    return "border-sky-500/30 bg-sky-500/10 text-sky-700 dark:text-sky-300";
+  }
+
+  return "border-destructive/30 bg-destructive/10 text-destructive";
+}
+
+function isRunActive(run: ApiConnectionRun) {
+  return run.status === "queued" || run.status === "running";
+}
+
+function sortRuns(runs: ApiConnectionRun[]) {
+  return [...runs].sort(
+    (first, second) =>
+      new Date(second.createdAt).getTime() - new Date(first.createdAt).getTime(),
+  );
+}
+
+function mergeRun(current: ApiConnectionRun[], next: ApiConnectionRun) {
+  return sortRuns([next, ...current.filter((run) => run.id !== next.id)]);
+}
+
+function mergeRuns(current: ApiConnectionRun[], nextRuns: ApiConnectionRun[]) {
+  const byId = new Map(current.map((run) => [run.id, run]));
+
+  for (const run of nextRuns) {
+    byId.set(run.id, run);
+  }
+
+  return sortRuns([...byId.values()]);
+}
+
+function getRunDownloadUrl(run: ApiConnectionRun, format: "json" | "csv") {
+  return `/api/admin/api-connections/${run.connectionId}/runs/${run.id}/download?format=${format}`;
+}
+
+function RunDownloadLinks({ run }: { run: ApiConnectionRun }) {
+  if (!run.output) {
+    return null;
+  }
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      <a
+        href={getRunDownloadUrl(run, "json")}
+        className={buttonVariants({ variant: "outline", size: "sm" })}
+      >
+        <DownloadIcon className="size-3.5" />
+        JSON
+      </a>
+      <a
+        href={getRunDownloadUrl(run, "csv")}
+        className={buttonVariants({ variant: "outline", size: "sm" })}
+      >
+        <DownloadIcon className="size-3.5" />
+        CSV
+      </a>
+    </div>
+  );
 }
 
 export function ApiConnectionsClient({
@@ -153,6 +229,77 @@ export function ApiConnectionsClient({
   );
   const latestRun = selectedRuns[0] ?? null;
   const isBusy = busyAction !== null;
+  const hasActiveRun = selectedRuns.some(isRunActive);
+
+  const upsertRun = useCallback((run: ApiConnectionRun) => {
+    setRuns((current) => mergeRun(current, run));
+  }, []);
+
+  const loadConnectionRuns = useCallback(async (connectionId: string) => {
+    const response = await fetch(
+      `/api/admin/api-connections/${connectionId}/runs`,
+    );
+
+    if (!response.ok) {
+      throw new Error(
+        await getErrorMessage(response, "API connection runs could not be loaded."),
+      );
+    }
+
+    const payload = (await response.json()) as ApiConnectionRunsResponse;
+    setRuns((current) => mergeRuns(current, payload.runs ?? []));
+  }, []);
+
+  useEffect(() => {
+    if (!selectedConnectionId) {
+      return;
+    }
+
+    void loadConnectionRuns(selectedConnectionId).catch((error) => {
+      setMessage({
+        title: "Run history failed",
+        detail:
+          error instanceof Error
+            ? error.message
+            : "API connection runs could not be loaded.",
+        tone: "error",
+      });
+    });
+  }, [loadConnectionRuns, selectedConnectionId]);
+
+  useEffect(() => {
+    if (!selectedConnectionId || !latestRun || !isRunActive(latestRun)) {
+      return;
+    }
+
+    let cancelled = false;
+
+    async function refreshRun() {
+      const response = await fetch(
+        `/api/admin/api-connections/${selectedConnectionId}/runs/${latestRun.id}`,
+      );
+
+      if (!response.ok) {
+        return;
+      }
+
+      const payload = (await response.json()) as ApiConnectionRunDetailResponse;
+
+      if (!cancelled) {
+        upsertRun(payload.run);
+      }
+    }
+
+    const interval = window.setInterval(() => {
+      void refreshRun();
+    }, 1500);
+    void refreshRun();
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, [latestRun, selectedConnectionId, upsertRun]);
 
   function updateForm(updates: Partial<FormState>) {
     setForm((current) => ({ ...current, ...updates }));
@@ -314,17 +461,17 @@ export function ApiConnectionsClient({
           connection.id === payload.connection.id ? payload.connection : connection,
         ),
       );
-      setRuns((current) => [
-        payload.run,
-        ...current.filter((run) => run.id !== payload.run.id),
-      ]);
+      upsertRun(payload.run);
       setMessage({
         title: getRunLabel(payload.run),
         detail:
-          payload.run.status === "success"
-            ? `${payload.run.durationMs} ms`
-            : (payload.run.errorMessage ?? "The run failed."),
-        tone: payload.run.status === "success" ? "success" : "error",
+          isRunActive(payload.run)
+            ? "The run is processing in the background."
+            : payload.run.status === "success"
+              ? `${payload.run.durationMs} ms`
+              : (payload.run.errorMessage ?? "The run failed."),
+        tone:
+          payload.run.status === "failed" ? "error" : "success",
       });
     } catch (error) {
       setMessage({
@@ -651,7 +798,7 @@ export function ApiConnectionsClient({
               <Button
                 type="button"
                 variant="secondary"
-                disabled={isBusy || !form.id}
+                disabled={isBusy || !form.id || hasActiveRun}
                 onClick={() => handleRun(false)}
                 data-smoke-api-connection-test
               >
@@ -665,7 +812,7 @@ export function ApiConnectionsClient({
               <Button
                 type="button"
                 variant="secondary"
-                disabled={isBusy || !form.id}
+                disabled={isBusy || !form.id || hasActiveRun}
                 onClick={() => handleRun(true)}
                 data-smoke-api-connection-import
               >
@@ -698,31 +845,71 @@ export function ApiConnectionsClient({
         <section className="grid gap-6 xl:grid-cols-2">
           <Card>
             <CardHeader>
-              <CardTitle>Latest result</CardTitle>
+              <CardTitle>Latest output</CardTitle>
             </CardHeader>
             <CardContent>
               {!latestRun ? (
                 <p className="text-sm text-muted-foreground">No runs yet.</p>
               ) : (
                 <div className="space-y-4">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Badge className={statusBadgeClass(latestRun.status)}>
-                      {getRunLabel(latestRun)}
-                    </Badge>
-                    <span className="font-mono text-xs text-muted-foreground">
-                      {latestRun.httpStatus ? `HTTP ${latestRun.httpStatus}` : "No HTTP status"}
-                    </span>
-                    <span className="font-mono text-xs text-muted-foreground">
-                      {latestRun.durationMs} ms
-                    </span>
-                    {latestRun.rowCount !== null ? (
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge className={statusBadgeClass(latestRun.status)}>
+                        {getRunLabel(latestRun)}
+                      </Badge>
                       <span className="font-mono text-xs text-muted-foreground">
-                        {latestRun.rowCount} rows
+                        {latestRun.httpStatus
+                          ? `HTTP ${latestRun.httpStatus}`
+                          : "No HTTP status"}
                       </span>
-                    ) : null}
+                      <span className="font-mono text-xs text-muted-foreground">
+                        {latestRun.durationMs} ms
+                      </span>
+                      {latestRun.rowCount !== null ? (
+                        <span className="font-mono text-xs text-muted-foreground">
+                          {latestRun.rowCount} rows
+                        </span>
+                      ) : null}
+                    </div>
+                    <RunDownloadLinks run={latestRun} />
                   </div>
                   {latestRun.errorMessage ? (
                     <p className="text-sm text-destructive">{latestRun.errorMessage}</p>
+                  ) : null}
+                  {latestRun.datasetId ? (
+                    <a
+                      href={`/dashboard/datasets/${latestRun.datasetId}`}
+                      className={cn(
+                        buttonVariants({ variant: "link", size: "sm" }),
+                        "h-auto px-0 text-xs",
+                      )}
+                    >
+                      <ExternalLinkIcon className="size-3.5" />
+                      Imported dataset
+                    </a>
+                  ) : null}
+                  {latestRun.logs && latestRun.logs.length > 0 ? (
+                    <div className="space-y-2 rounded-lg border border-border bg-muted/20 p-3">
+                      <h3 className="text-xs font-semibold uppercase text-muted-foreground">
+                        Logs
+                      </h3>
+                      <div className="max-h-36 space-y-1 overflow-auto">
+                        {latestRun.logs.map((log) => (
+                          <div
+                            key={log.id}
+                            className={cn(
+                              "grid gap-2 font-mono text-xs md:grid-cols-[8.5rem_minmax(0,1fr)]",
+                              log.level === "error"
+                                ? "text-destructive"
+                                : "text-muted-foreground",
+                            )}
+                          >
+                            <span>{formatTimestamp(log.createdAt)}</span>
+                            <span>{log.message}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   ) : null}
                   <pre className="max-h-80 overflow-auto rounded-lg border border-border bg-muted/40 p-3 text-xs leading-5">
                     {latestRun.responsePreview || "No preview available."}
@@ -758,6 +945,10 @@ export function ApiConnectionsClient({
                         <span>{run.durationMs} ms</span>
                         {run.httpStatus ? <span>HTTP {run.httpStatus}</span> : null}
                         {run.rowCount !== null ? <span>{run.rowCount} rows</span> : null}
+                        {run.output ? <span>output archived</span> : null}
+                      </div>
+                      <div className="mt-3">
+                        <RunDownloadLinks run={run} />
                       </div>
                     </div>
                   ))}

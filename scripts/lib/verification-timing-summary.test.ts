@@ -9,6 +9,14 @@ describe("verification-timing-summary", () => {
       samples: [
         {
           changedFiles: ["src/components/auth/account-control.tsx"],
+          durationMs: 500,
+          name: "spec:validate",
+          recordedAt: "2026-04-22T00:59:00.000Z",
+          scope: "command",
+          status: "passed",
+        },
+        {
+          changedFiles: ["src/components/auth/account-control.tsx"],
           durationMs: 10_000,
           name: "test:ui:smoke",
           recordedAt: "2026-04-22T01:00:00.000Z",
@@ -43,6 +51,15 @@ describe("verification-timing-summary", () => {
     });
 
     expect(summary.rollups).toEqual([
+      {
+        failedRuns: 0,
+        latestDurationMs: 500,
+        latestStatus: "passed",
+        latestTimestamp: "2026-04-22T00:59:00.000Z",
+        name: "spec:validate",
+        passedRuns: 1,
+        totalRuns: 1,
+      },
       {
         failedRuns: 1,
         latestDurationMs: 65_000,

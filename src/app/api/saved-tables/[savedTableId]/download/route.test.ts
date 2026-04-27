@@ -204,6 +204,55 @@ describe("/api/saved-tables/[savedTableId]/download", () => {
     expect(csv).toContain("Row number,ROP3,Country");
     expect(csv).toContain("3,100021.0,Egypt");
     expect(csv).not.toContain("Turkey");
+    expect(getSavedDatasetTableMock).toHaveBeenCalledWith({
+      ownerId: "supabase-user",
+      savedTableId: savedTable.id,
+      includeDisabled: false,
+    });
+    expect(getDatasetMock).toHaveBeenCalledWith(dataset.id, {
+      includeDisabled: false,
+    });
+    expect(getAllDatasetRowsMock).toHaveBeenCalledWith({
+      datasetId: dataset.id,
+      includeDisabled: false,
+    });
+  });
+
+  it("allows admin-owned saved-table downloads for private datasets", async () => {
+    getCurrentIdentityMock.mockResolvedValue({
+      ...identity,
+      isDatasetAdmin: true,
+    });
+    getSavedDatasetTableMock.mockResolvedValue({
+      ...savedTable,
+      datasetId: "private-dataset",
+      datasetFileName: "Private.csv",
+    });
+    getDatasetMock.mockResolvedValue({
+      ...dataset,
+      id: "private-dataset",
+      fileName: "Private.csv",
+      isPublic: false,
+    });
+
+    const response = await GET(
+      new Request("http://localhost/api/saved-tables/c0000000-0000-4000-8000-000000000001/download"),
+      context,
+    );
+
+    expect(response.status).toBe(200);
+    expect(getSavedDatasetTableMock).toHaveBeenCalledWith({
+      ownerId: "supabase-user",
+      savedTableId: savedTable.id,
+      includeDisabled: true,
+    });
+    expect(getDatasetMock).toHaveBeenCalledWith("private-dataset", {
+      includeDisabled: true,
+    });
+    expect(getAllDatasetRowsMock).toHaveBeenCalledWith({
+      datasetId: "private-dataset",
+      includeDisabled: true,
+    });
   });
 
   it("includes rows that match the selected country through alternate countries", async () => {
@@ -239,6 +288,17 @@ describe("/api/saved-tables/[savedTableId]/download", () => {
 
   it("returns not found when the saved table does not exist", async () => {
     getSavedDatasetTableMock.mockResolvedValue(null);
+
+    const response = await GET(
+      new Request("http://localhost/api/saved-tables/c0000000-0000-4000-8000-000000000001/download"),
+      context,
+    );
+
+    expect(response.status).toBe(404);
+  });
+
+  it("returns not found when the underlying dataset is inaccessible", async () => {
+    getDatasetMock.mockResolvedValue(null);
 
     const response = await GET(
       new Request("http://localhost/api/saved-tables/c0000000-0000-4000-8000-000000000001/download"),

@@ -112,10 +112,25 @@ Treat `pnpm run verify:change` as the local planning gate for repo-tracked edits
 - Use [/Users/blake/Documents/accelerate-global/online/docs/testing/ui-smoke.md](/Users/blake/Documents/accelerate-global/online/docs/testing/ui-smoke.md) for the detailed smoke contract and examples.
 - Use [/Users/blake/Documents/accelerate-global/online/docs/testing/verification-triage.md](/Users/blake/Documents/accelerate-global/online/docs/testing/verification-triage.md) for the fastest next step when verification fails.
 
+# OpenSpec
+
+OpenSpec is initialized in `/Users/blake/Documents/accelerate-global/online/openspec` for durable behavior-change planning.
+
+- OpenSpec is required for repo-tracked work. At minimum, every tracked change must pass `pnpm run spec:validate`.
+- Use an OpenSpec change for changes to observable behavior, workflows, public APIs, data model behavior, auth/session/permissions, security/privacy posture, Supabase behavior, Vercel deployment behavior, user-facing outcomes, or repo workflow policy.
+- Keep current-state orientation in `/Users/blake/Documents/accelerate-global/online/docs`; do not backfill broad baseline specs for untouched legacy behavior.
+- Use the spec-as-you-touch model: create or update specs only when related behavior is changed.
+- Prefer `/opsx:propose`, `/opsx:apply`, `/opsx:verify`, and `/opsx:archive` for meaningful behavior changes when those commands are available.
+- If a plan clearly requires OpenSpec and no active change exists, stop before implementation and provide the exact `/opsx:propose` prompt unless the user explicitly asks to create the change directly.
+- Repo-owned OpenSpec state lives under `/Users/blake/Documents/accelerate-global/online/openspec`; generated `.codex` skills and `~/.codex/prompts/opsx-*.md` prompts are machine-local developer tooling, not portable repo state.
+- Keep OpenSpec artifacts grounded in actual repo files, commands, tests, and provider boundaries.
+- Archive an OpenSpec change after implementation and required repo verification have passed, before `pnpm run verify:ship:local` or `pnpm ship`.
+- Do not run `pnpm ship` with active unarchived OpenSpec changes under `openspec/changes/*`.
+
 # Security Remediation Invariants
 
 - Mutating `/api/**` requests and `POST /auth/sign-out` are same-origin guarded in `/Users/blake/Documents/accelerate-global/online/src/proxy.ts` via `/Users/blake/Documents/accelerate-global/online/src/lib/request-security.ts`. Keep that guard centralized unless a route needs a documented exception.
 - Repo-owned browser hardening headers and CSP are defined in `/Users/blake/Documents/accelerate-global/online/next.config.ts` via `/Users/blake/Documents/accelerate-global/online/src/lib/security-headers.ts`.
 - Provider-facing auth, storage, and admin code should log normalized error details through `/Users/blake/Documents/accelerate-global/online/src/lib/error-logging.ts`, not raw provider objects.
-- GitHub workflows in `/Users/blake/Documents/accelerate-global/online/.github/workflows` are pinned to full SHAs, and `Dependency Audit` is part of the release gate that `pnpm ship` waits on.
+- GitHub workflows in `/Users/blake/Documents/accelerate-global/online/.github/workflows` are pinned to full SHAs, and `OpenSpec` plus `Dependency Audit` are part of the release gate that `pnpm ship` waits on.
 - Runtime admin access comes from `auth.users.raw_app_meta_data.workspace_role`. First-admin bootstrap remains a manual environment/provider concern and must stay documented as such.

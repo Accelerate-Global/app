@@ -12,6 +12,16 @@ const passingTestDelta = {
 };
 
 describe("verify-change", () => {
+  it("requires OpenSpec validation for every non-empty change set", () => {
+    const report = createVerifyChangeReport({
+      changedFiles: ["docs/release.md"],
+      contractIssues: [],
+      testDelta: passingTestDelta,
+    });
+
+    expect(report.requiredCommands).toEqual(["spec:validate"]);
+  });
+
   it("returns a non-zero exit code for a missing route registry entry on page changes", () => {
     const report = createVerifyChangeReport({
       changedFiles: ["src/app/example/page.tsx"],
@@ -120,5 +130,6 @@ describe("verify-change", () => {
     );
     expect(report.requiredCommands).toContain("verify:test-delta");
     expect(report.requiredCommands).toContain("verify:app");
+    expect(report.requiredCommands).toContain("spec:validate");
   });
 });

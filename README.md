@@ -11,6 +11,16 @@ A Vercel-hosted Next.js app for authenticated CSV uploads, Supabase-backed CSV s
 - Supabase Postgres with Drizzle for dataset metadata and JSONB row storage
 - Papa Parse and TanStack Table for client-side ingestion and table controls
 
+## Documentation
+
+- [Repository map](docs/repo-map.md)
+- [Current-state architecture](docs/architecture/current-state.md)
+- [Developer getting started](docs/developer/getting-started.md)
+- [Contributing](docs/developer/contributing.md)
+- [User quickstart](docs/user/quickstart.md)
+- [Open questions](docs/open-questions.md)
+- [Release runbook](docs/release.md)
+
 ## Local Setup
 
 Install dependencies:

@@ -18,6 +18,7 @@ const GIT_COMMAND_TIMEOUT_MS = 30_000;
 const GH_COMMAND_TIMEOUT_MS = 30_000;
 const DRIFT_CHECK_TIMEOUT_MS = 2 * 60_000;
 const REMOTE_SEED_TIMEOUT_MS = 5 * 60_000;
+const OPENSPEC_CHECK_TIMEOUT_MS = 2 * 60_000;
 const VERIFY_SHIP_LOCAL_TIMEOUT_MS = 30 * 60_000;
 const FIELD_SOURCE_SEED_INPUT_PATTERNS = [
   "scripts/seed-field-sources.ts",
@@ -188,6 +189,12 @@ export async function shipPullRequest(input: { prNumber: string }) {
   try {
     await ensureCleanWorktree();
 
+    logStage("Checking OpenSpec archive readiness...");
+    await runCommand("pnpm", ["run", "spec:check-archive"], {
+      stdinMode: "ignore",
+      timeoutMs: OPENSPEC_CHECK_TIMEOUT_MS,
+    });
+
     logStage(`Looking up PR #${prNumber}...`);
     let pullRequest = await getPullRequest(prNumber);
 
@@ -229,6 +236,7 @@ export async function shipPullRequest(input: { prNumber: string }) {
         prNumber,
         workflowNames: [
           "App Quality",
+          "OpenSpec",
           "UI Smoke",
           "Database Security",
           "Dependency Audit",

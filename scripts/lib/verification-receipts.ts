@@ -6,6 +6,7 @@ import type { VerificationCommandId } from "../../config/change-impact";
 import { runCommand } from "./command";
 
 const receiptCommandIds = [
+  "spec:validate",
   "typecheck",
   "verify:test-delta",
   "verify:app",
