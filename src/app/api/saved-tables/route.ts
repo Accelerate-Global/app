@@ -13,7 +13,9 @@ export async function GET() {
     return jsonError("Unauthorized.", 401);
   }
 
-  const savedTables = await listSavedDatasetTables(identity.ownerId);
+  const savedTables = await listSavedDatasetTables(identity.ownerId, {
+    includeDisabled: identity.isDatasetAdmin,
+  });
   return Response.json({ savedTables });
 }
 
@@ -35,6 +37,7 @@ export async function POST(request: Request) {
     datasetId: parsed.data.datasetId,
     filters: parsed.data.filters,
     savedRowCount: parsed.data.savedRowCount,
+    includeDisabled: identity.isDatasetAdmin,
   });
 
   if (!savedTable) {

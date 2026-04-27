@@ -92,7 +92,9 @@ describe("/api/saved-tables", () => {
     const response = await GET();
 
     await expect(response.json()).resolves.toEqual({ savedTables: [savedTable] });
-    expect(listSavedDatasetTablesMock).toHaveBeenCalledWith("supabase-user");
+    expect(listSavedDatasetTablesMock).toHaveBeenCalledWith("supabase-user", {
+      includeDisabled: false,
+    });
   });
 
   it("creates a saved table for any authenticated user", async () => {
@@ -132,7 +134,36 @@ describe("/api/saved-tables", () => {
           countryCount: 10,
         },
       },
+      includeDisabled: false,
     });
+  });
+
+  it("allows admins to create saved tables for datasets they can access", async () => {
+    getCurrentIdentityMock.mockResolvedValue({
+      ...identity,
+      isDatasetAdmin: true,
+    });
+    createSavedDatasetTableMock.mockResolvedValue(savedTable);
+
+    const response = await POST(
+      new Request("http://localhost/api/saved-tables", {
+        method: "POST",
+        body: JSON.stringify({
+          datasetId: savedTable.datasetId,
+          savedRowCount: 12,
+          filters: savedTable.filters,
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(201);
+    expect(createSavedDatasetTableMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        ownerId: "supabase-user",
+        datasetId: savedTable.datasetId,
+        includeDisabled: true,
+      }),
+    );
   });
 
   it("returns not found when the source dataset does not exist", async () => {

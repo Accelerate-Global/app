@@ -19,6 +19,9 @@ configuration, not intended future architecture.
 - Runtime admin access is derived from `auth.users.raw_app_meta_data.workspace_role`, surfaced as `identity.isDatasetAdmin`.
 - Unauthenticated dashboard users redirect to `/`.
 - Non-admin users are redirected away from admin-only pages such as upload, user management, analytics, field sources, and API connections.
+- Dataset reads are public-only for non-admin users and include private datasets
+  for admins. Saved dataset tables remain owner-scoped and also require access
+  to the underlying dataset.
 - First-admin bootstrap is not repo-owned; it remains an environment/provider procedure.
 
 ## Data And Storage

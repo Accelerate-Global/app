@@ -22,6 +22,9 @@ filter rows, and save useful table views.
 
 Saved tables preserve a named filtered view of a dataset. They are useful for
 repeat review, focused collaboration, and exporting a subset of rows.
+Saved tables belong to the signed-in user who created them. They remain
+available only while that user can access the underlying dataset; admins can save
+views of private datasets for their own account.
 
 ## Profile
 

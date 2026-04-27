@@ -8,7 +8,13 @@ JSON APIs, row APIs, downloads, or saved-table APIs.
 #### Scenario: Anonymous user requests a dataset page
 
 - **WHEN** an unauthenticated request opens a dataset dashboard page
-- **THEN** the user is redirected to the sign-in entry page
+- **THEN** the user is redirected to the app's route-relative sign-in entry page
+
+#### Scenario: Anonymous user requests the deployed app
+
+- **WHEN** an unauthenticated browser request opens a protected dataset page on
+  `data.accelerateglobal.org`
+- **THEN** the user is forwarded to that host's sign-in entry page
 
 #### Scenario: Anonymous user requests a dataset API
 
@@ -61,6 +67,12 @@ rows, downloads, and admin dataset surfaces.
 - **WHEN** an authenticated admin requests rows for a private dataset
 - **THEN** the API returns rows for that dataset or its resolved backing source
 
+#### Scenario: Admin downloads a private derived dataset
+
+- **WHEN** an authenticated admin requests a private derived dataset download
+- **THEN** the API returns the derived dataset download using the same access
+  rules as a private physical dataset
+
 ### Requirement: Dataset mutations are admin-only
 
 Dataset mutation operations MUST require an authenticated admin.
@@ -97,7 +109,9 @@ datasets and datasets inaccessible to the current authenticated principal.
 ### Requirement: Saved tables are owner-scoped and dataset-access scoped
 
 Saved-table operations MUST require the requester to own the saved table and be
-able to access the underlying dataset.
+able to access the underlying dataset. Admin users may create and use saved
+tables for private datasets they can access, but admin status MUST NOT grant
+access to another user's saved table.
 
 #### Scenario: Owner opens a saved table for an accessible dataset
 
@@ -114,6 +128,23 @@ able to access the underlying dataset.
 
 - **WHEN** an authenticated user requests their own saved table after the
   underlying dataset becomes inaccessible to them
+- **THEN** the response is `404 Not Found`
+
+#### Scenario: Admin owner requests a private-dataset saved table
+
+- **WHEN** an authenticated admin requests their own saved table whose underlying
+  dataset is private
+- **THEN** the operation is allowed subject to payload validation
+
+#### Scenario: Admin requests another user's private-dataset saved table
+
+- **WHEN** an authenticated admin requests a saved table owned by another user
+- **THEN** the response is `404 Not Found`
+
+#### Scenario: Owner creates a saved table for an inaccessible dataset
+
+- **WHEN** an authenticated user creates a saved table for a dataset they cannot
+  access
 - **THEN** the response is `404 Not Found`
 
 ### Requirement: RLS mirrors application dataset read access

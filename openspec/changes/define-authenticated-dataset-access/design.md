@@ -38,6 +38,17 @@ Authenticated dataset access currently crosses these boundaries:
   admins to read private datasets and rows.
 - Saved tables are owner-scoped and currently joined to public datasets.
 
+## Terminology
+
+- Admin-uploaded/default datasets are shared dataset records managed by admin
+  dataset workflows.
+- Public datasets have `is_public=true`; private datasets have
+  `is_public=false`.
+- Derived datasets point at a backing physical dataset through
+  `backing_dataset_id`.
+- User-saved dataset views/tables are user-owned `saved_dataset_tables` records
+  containing saved filters, sorting, and display metadata.
+
 ## Auth And Permission Boundaries
 
 - `CurrentIdentity.ownerId` is the app-layer owner identifier for saved tables.
@@ -50,7 +61,9 @@ Authenticated dataset access currently crosses these boundaries:
 
 ## Dataset Page And API Behavior Alignment
 
-- Browser pages should redirect anonymous users before loading dataset data.
+- Browser pages should redirect anonymous users before loading dataset data. The
+  current sign-in entry route is `/`; keep redirects route-relative so local and
+  deployed environments use their own host, including `data.accelerateglobal.org`.
 - Dataset detail/edit pages should use not-found behavior for missing or
   inaccessible datasets.
 - Dataset read APIs should return `401` when unauthenticated and `404` when a
@@ -59,6 +72,10 @@ Authenticated dataset access currently crosses these boundaries:
   authenticated non-admin attempts admin-only behavior.
 - Dataset download endpoints should perform the same access check before creating
   signed Supabase Storage URLs or derived CSV responses.
+- Private physical datasets and private derived datasets use the same
+  read/download access decision. Derived downloads may resolve rows from a
+  backing source, but access is granted or denied based on the requested derived
+  dataset under the same public/private/admin rules.
 
 ## Saved-Table Access Model
 
@@ -67,13 +84,16 @@ Authenticated dataset access currently crosses these boundaries:
   the underlying dataset.
 - Saved-table reads, updates, deletes, opens, and downloads should return not
   found when ownership or underlying dataset access fails.
-- Open question: whether admins should be able to save private dataset views for
-  their own account. If yes, saved-table helpers need role-aware dataset access
-  instead of public-only joins.
+- Admins may create and use saved tables for private datasets they can access.
+- Admin status does not bypass saved-table ownership; admin-owned saved tables
+  stay private to that admin account.
+- Saved-table helpers need role-aware dataset access instead of public-only
+  joins so owner scope and dataset access remain separate checks.
 
 ## Error, Redirect, And Status-Code Model
 
-- Browser anonymous access to dashboard dataset surfaces: redirect to `/`.
+- Browser anonymous access to dashboard dataset surfaces: redirect to the
+  route-relative sign-in entry point, currently `/`.
 - Browser authenticated access to missing/inaccessible dataset: not found.
 - JSON anonymous access: `401 Unauthorized`.
 - JSON authenticated non-admin access to admin-only action: `403 Forbidden`
@@ -89,7 +109,9 @@ Authenticated dataset access currently crosses these boundaries:
   public datasets for authenticated users, private datasets for admins.
 - Saved-table RLS currently protects ownership. If saved-table behavior changes
   to support private datasets for admins, app-layer checks and RLS/test coverage
-  need review together.
+  need review together. Current RLS already owner-scopes saved tables and
+  role-scopes private dataset reads, so the implementation should avoid an RLS
+  migration unless testing reveals a mismatch.
 - Admin role checks must continue using Supabase app metadata rather than
   user-editable metadata.
 
@@ -118,11 +140,18 @@ Authenticated dataset access currently crosses these boundaries:
 - Keep saved tables owner-scoped.
 - Tie saved-table usability to the requester's access to the underlying dataset.
 - Keep private dataset admin access explicit and role-based.
+- Allow admins to create and use their own saved tables for private datasets.
+- Keep anonymous browser redirects route-relative to the current sign-in entry
+  route instead of hard-coding the production host.
+- Return `404 Not Found` for both missing and inaccessible saved tables across
+  saved-table APIs.
+- Apply identical read/download access behavior to private physical and private
+  derived datasets.
 
 ## Risks / Trade-offs
 
-- Current saved-table public-only joins may conflict with desired admin-private
-  saved-table behavior.
+- Current saved-table public-only joins conflict with desired admin-private
+  saved-table behavior and need a role-aware option.
 - API and page behavior may drift unless tests cover both.
 - Supabase RLS and app-layer checks can diverge if future changes update only one
   layer.

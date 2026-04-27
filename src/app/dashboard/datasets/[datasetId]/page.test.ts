@@ -209,6 +209,7 @@ describe("/dashboard/datasets/[datasetId]", () => {
     expect(getSavedDatasetTableMock).toHaveBeenCalledWith({
       ownerId: "owner-1",
       savedTableId: "saved-table-1",
+      includeDisabled: true,
     });
     expect(props.initialFilters).toEqual({
       region: {

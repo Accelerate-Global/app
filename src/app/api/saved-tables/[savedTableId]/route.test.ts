@@ -103,6 +103,7 @@ describe("/api/saved-tables/[savedTableId]", () => {
     expect(getSavedDatasetTableMock).toHaveBeenCalledWith({
       ownerId: "supabase-user",
       savedTableId: savedTable.id,
+      includeDisabled: false,
     });
   });
 
@@ -130,6 +131,7 @@ describe("/api/saved-tables/[savedTableId]", () => {
       savedTableId: savedTable.id,
       name: "North Africa focus",
       details: "Saved from dataset detail page.",
+      includeDisabled: false,
     });
   });
 
@@ -145,6 +147,30 @@ describe("/api/saved-tables/[savedTableId]", () => {
     expect(deleteSavedDatasetTableMock).toHaveBeenCalledWith({
       ownerId: "supabase-user",
       savedTableId: savedTable.id,
+      includeDisabled: false,
+    });
+  });
+
+  it("keeps admin saved-table access owner-scoped while allowing private datasets", async () => {
+    getCurrentIdentityMock.mockResolvedValue({
+      ...identity,
+      isDatasetAdmin: true,
+    });
+    getSavedDatasetTableMock.mockResolvedValue({
+      ...savedTable,
+      datasetId: "private-dataset",
+    });
+
+    const response = await GET(
+      new Request("http://localhost/api/saved-tables/c0000000-0000-4000-8000-000000000001"),
+      context,
+    );
+
+    expect(response.status).toBe(200);
+    expect(getSavedDatasetTableMock).toHaveBeenCalledWith({
+      ownerId: "supabase-user",
+      savedTableId: savedTable.id,
+      includeDisabled: true,
     });
   });
 
@@ -158,6 +184,17 @@ describe("/api/saved-tables/[savedTableId]", () => {
           name: "North Africa focus",
         }),
       }),
+      context,
+    );
+
+    expect(response.status).toBe(404);
+  });
+
+  it("returns not found when a saved table is inaccessible", async () => {
+    getSavedDatasetTableMock.mockResolvedValue(null);
+
+    const response = await GET(
+      new Request("http://localhost/api/saved-tables/c0000000-0000-4000-8000-000000000001"),
       context,
     );
 

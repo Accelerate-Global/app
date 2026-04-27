@@ -14,6 +14,8 @@ implement inconsistently.
 
 ## Goals
 
+- Define the access terminology for admin-uploaded/default datasets, public and
+  private datasets, derived datasets, and user-saved dataset views.
 - Define who can access public, private, missing, and unauthorized datasets.
 - Align dashboard pages, dataset APIs, row APIs, downloads, and saved-table
   behavior.
@@ -58,10 +60,26 @@ implement inconsistently.
   dashboard routes, dataset detail routes, saved-table journey coverage, and
   viewer redirects from admin pages.
 
+## Terminology
+
+- **Admin-uploaded/default dataset:** a dataset record managed through admin
+  dataset workflows and used as a shared application dataset.
+- **Public dataset:** a dataset with `is_public=true`; authenticated viewers and
+  admins can read it.
+- **Private dataset:** a dataset with `is_public=false`; only authenticated
+  admins can read it.
+- **Derived dataset:** a dataset whose `backing_dataset_id` points to another
+  dataset and whose rows/downloads resolve through that backing source.
+- **User-saved dataset view/table:** an owner-scoped saved filter/sort view in
+  `saved_dataset_tables`; it belongs to a user and does not become shared just
+  because the owner is an admin.
+
 ## Proposed Behavior Contract
 
 - Anonymous users cannot access dashboard dataset surfaces or dataset APIs.
-  Browser pages redirect to `/`; JSON APIs return `401 Unauthorized`.
+  Browser pages redirect to the app's sign-in entry route; in the current app
+  that route is `/` locally and on the deployed `data.accelerateglobal.org`
+  host. JSON APIs return `401 Unauthorized`.
 - Authenticated viewers can access public datasets, public dataset rows,
   public dataset downloads, and their own saved tables whose underlying dataset
   is accessible to them.
@@ -70,12 +88,20 @@ implement inconsistently.
   or admin-only dashboard pages.
 - Authenticated admins can access public and private datasets, rows, downloads,
   edit pages, upload/replace flows, version history, and dataset mutations.
+- Private physical datasets and private derived datasets use the same
+  read/download access rules: viewers receive not found, while admins can read
+  or download them.
 - Missing datasets and datasets unauthorized for the current principal are not
   distinguishable to viewers through dataset pages or read APIs; both resolve as
   not found.
 - Saved tables are always owner-scoped. A saved table may only be read, updated,
   deleted, opened, or downloaded when the requester owns it and can access the
   underlying dataset under the same dataset-access rules.
+- Admin users may create and use their own saved tables for private datasets,
+  but admin status does not grant access to another user's saved tables.
+- Missing saved tables and saved tables inaccessible because of ownership or
+  underlying dataset access return the same `404 Not Found` behavior across
+  saved-table APIs.
 - API status codes should be consistent: `401` for unauthenticated JSON API
   requests, `403` for authenticated non-admin attempts to perform admin-only
   actions, and `404` for missing or inaccessible read resources.
@@ -105,21 +131,16 @@ implement inconsistently.
 
 - The proposal is intended to preserve most current behavior while formalizing
   inconsistencies.
-- Saved-table behavior may need implementation review where current code joins
+- Saved-table behavior requires implementation review where current code joins
   only public datasets even for admins.
 - Any RLS changes would require Supabase migration and database security
   verification, but no migration is part of this proposal.
 
 ## Open Questions
 
-- Should admins be able to create and use their own saved tables for private
-  datasets, or should saved tables remain public-dataset-only for all roles?
-- Should dataset browser pages redirect anonymous users to `/` forever, or should
-  they use an explicit sign-in route if one is introduced later?
-- Should inaccessible saved tables return the same `404` as missing saved tables
-  across all saved-table APIs?
-- Should private physical datasets and private derived datasets always share the
-  same read/download access behavior?
+- Should a future dedicated sign-in route replace `/` for browser redirects?
+  Evidence: current dashboard pages redirect anonymous users to `/`, which is
+  the deployed app's sign-in entry point today.
 
 ## Why
 

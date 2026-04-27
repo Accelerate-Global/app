@@ -16,6 +16,10 @@ function getDefaultSavedDatasetTableName(fileName: string, sequence: number) {
   return `${stripCsvExtension(fileName) || "Dataset"} Saved view ${sequence}`;
 }
 
+type SavedDatasetTableAccessOptions = {
+  includeDisabled?: boolean;
+};
+
 function toSavedDatasetTable(row: {
   id: string;
   datasetId: string;
@@ -43,11 +47,13 @@ function toSavedDatasetTable(row: {
 function getSavedDatasetTableQuery(input: {
   ownerId: string;
   savedTableId?: string;
+  includeDisabled?: boolean;
 }) {
-  const predicates = [
-    eq(savedDatasetTables.ownerId, input.ownerId),
-    eq(datasets.isPublic, true),
-  ];
+  const predicates = [eq(savedDatasetTables.ownerId, input.ownerId)];
+
+  if (!input.includeDisabled) {
+    predicates.push(eq(datasets.isPublic, true));
+  }
 
   if (input.savedTableId) {
     predicates.push(eq(savedDatasetTables.id, input.savedTableId));
@@ -70,8 +76,14 @@ function getSavedDatasetTableQuery(input: {
     .where(and(...predicates));
 }
 
-export async function listSavedDatasetTables(ownerId: string) {
-  const rows = await getSavedDatasetTableQuery({ ownerId }).orderBy(
+export async function listSavedDatasetTables(
+  ownerId: string,
+  options: SavedDatasetTableAccessOptions = {},
+) {
+  const rows = await getSavedDatasetTableQuery({
+    ownerId,
+    includeDisabled: options.includeDisabled,
+  }).orderBy(
     desc(savedDatasetTables.updatedAt),
     desc(savedDatasetTables.createdAt),
   );
@@ -82,6 +94,7 @@ export async function listSavedDatasetTables(ownerId: string) {
 export async function getSavedDatasetTable(input: {
   ownerId: string;
   savedTableId: string;
+  includeDisabled?: boolean;
 }) {
   const [row] = await getSavedDatasetTableQuery(input).limit(1);
   return row ? toSavedDatasetTable(row) : null;
@@ -92,15 +105,22 @@ export async function createSavedDatasetTable(input: {
   datasetId: string;
   filters: SavedDatasetFilterState;
   savedRowCount: number;
+  includeDisabled?: boolean;
 }) {
   return getDb().transaction(async (tx) => {
+    const datasetPredicates = [eq(datasets.id, input.datasetId)];
+
+    if (!input.includeDisabled) {
+      datasetPredicates.push(eq(datasets.isPublic, true));
+    }
+
     const [dataset] = await tx
       .select({
         id: datasets.id,
         fileName: datasets.fileName,
       })
       .from(datasets)
-      .where(and(eq(datasets.id, input.datasetId), eq(datasets.isPublic, true)))
+      .where(and(...datasetPredicates))
       .limit(1);
 
     if (!dataset) {
@@ -146,7 +166,18 @@ export async function updateSavedDatasetTable(input: {
   savedTableId: string;
   name?: string;
   details?: string;
+  includeDisabled?: boolean;
 }) {
+  const existing = await getSavedDatasetTable({
+    ownerId: input.ownerId,
+    savedTableId: input.savedTableId,
+    includeDisabled: input.includeDisabled,
+  });
+
+  if (!existing) {
+    return null;
+  }
+
   const [updated] = await getDb()
     .update(savedDatasetTables)
     .set({
@@ -171,12 +202,14 @@ export async function updateSavedDatasetTable(input: {
   return getSavedDatasetTable({
     ownerId: input.ownerId,
     savedTableId: updated.id,
+    includeDisabled: input.includeDisabled,
   });
 }
 
 export async function deleteSavedDatasetTable(input: {
   ownerId: string;
   savedTableId: string;
+  includeDisabled?: boolean;
 }) {
   const savedTable = await getSavedDatasetTable(input);
 
