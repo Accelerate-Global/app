@@ -1,19 +1,34 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { runApiConnection } from "@/lib/api-connections";
+import {
+  executeApiConnectionRun,
+  startApiConnectionRun,
+} from "@/lib/api-connections";
 import { getCurrentIdentity } from "@/lib/auth";
 import { POST } from "./route";
+
+const { afterMock } = vi.hoisted(() => ({
+  afterMock: vi.fn((callback: () => void | Promise<void>) => {
+    void callback();
+  }),
+}));
+
+vi.mock("next/server", () => ({
+  after: afterMock,
+}));
 
 vi.mock("@/lib/auth", () => ({
   getCurrentIdentity: vi.fn(),
 }));
 
 vi.mock("@/lib/api-connections", () => ({
-  runApiConnection: vi.fn(),
+  executeApiConnectionRun: vi.fn(),
+  startApiConnectionRun: vi.fn(),
 }));
 
 const getCurrentIdentityMock = vi.mocked(getCurrentIdentity);
-const runApiConnectionMock = vi.mocked(runApiConnection);
+const executeApiConnectionRunMock = vi.mocked(executeApiConnectionRun);
+const startApiConnectionRunMock = vi.mocked(startApiConnectionRun);
 
 const identity = {
   ownerId: "admin-1",
@@ -47,14 +62,18 @@ const run = {
   actorOwnerId: "admin-1",
   actorEmail: "admin@example.com",
   mode: "import" as const,
-  status: "success" as const,
-  httpStatus: 200,
-  durationMs: 123,
-  rowCount: 2,
-  datasetId: "33333333-3333-4333-8333-333333333333",
+  status: "queued" as const,
+  httpStatus: null,
+  durationMs: 0,
+  rowCount: null,
+  datasetId: null,
   errorMessage: null,
-  responsePreview: "[{\"name\":\"Alpha\"}]",
+  responsePreview: "",
+  startedAt: null,
+  completedAt: null,
   createdAt: "2026-04-24T12:00:00.000Z",
+  logs: [],
+  output: null,
 };
 
 const context = {
@@ -79,7 +98,7 @@ describe("/api/admin/api-connections/[connectionId]/run", () => {
     );
 
     expect(response.status).toBe(401);
-    expect(runApiConnectionMock).not.toHaveBeenCalled();
+    expect(startApiConnectionRunMock).not.toHaveBeenCalled();
   });
 
   it("rejects non-admin runs", async () => {
@@ -97,11 +116,11 @@ describe("/api/admin/api-connections/[connectionId]/run", () => {
     );
 
     expect(response.status).toBe(403);
-    expect(runApiConnectionMock).not.toHaveBeenCalled();
+    expect(startApiConnectionRunMock).not.toHaveBeenCalled();
   });
 
-  it("runs a saved API connection", async () => {
-    runApiConnectionMock.mockResolvedValue({ connection, run });
+  it("queues a saved API connection run and schedules execution", async () => {
+    startApiConnectionRunMock.mockResolvedValue({ connection, run });
 
     const response = await POST(
       new Request(`http://localhost/api/admin/api-connections/${connection.id}/run`, {
@@ -111,17 +130,19 @@ describe("/api/admin/api-connections/[connectionId]/run", () => {
       context,
     );
 
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(202);
     await expect(response.json()).resolves.toEqual({ connection, run });
-    expect(runApiConnectionMock).toHaveBeenCalledWith({
+    expect(startApiConnectionRunMock).toHaveBeenCalledWith({
       connectionId: connection.id,
       identity,
       importEnabled: true,
     });
+    expect(afterMock).toHaveBeenCalled();
+    expect(executeApiConnectionRunMock).toHaveBeenCalledWith({ runId: run.id });
   });
 
   it("returns not found for missing connections", async () => {
-    runApiConnectionMock.mockResolvedValue(null);
+    startApiConnectionRunMock.mockResolvedValue(null);
 
     const response = await POST(
       new Request(`http://localhost/api/admin/api-connections/${connection.id}/run`, {
@@ -132,5 +153,6 @@ describe("/api/admin/api-connections/[connectionId]/run", () => {
     );
 
     expect(response.status).toBe(404);
+    expect(afterMock).not.toHaveBeenCalled();
   });
 });

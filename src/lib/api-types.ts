@@ -187,7 +187,8 @@ export type ApiConnectionMethod = "GET" | "POST" | "PUT" | "PATCH";
 export type ApiConnectionResponseFormat = "json" | "csv";
 export type ApiConnectionImportMode = "create" | "replace";
 export type ApiConnectionRunMode = "test" | "import";
-export type ApiConnectionRunStatus = "success" | "failed";
+export type ApiConnectionRunStatus = "queued" | "running" | "success" | "failed";
+export type ApiConnectionRunLogLevel = "info" | "error";
 
 export type ApiConnectionHeader = {
   name: string;
@@ -226,6 +227,32 @@ export type ApiConnectionRun = {
   datasetId: string | null;
   errorMessage: string | null;
   responsePreview: string;
+  startedAt: string | null;
+  completedAt: string | null;
+  createdAt: string;
+  logs?: ApiConnectionRunLog[];
+  output?: ApiConnectionRunOutput | null;
+};
+
+export type ApiConnectionRunLog = {
+  id: string;
+  runId: string;
+  connectionId: string;
+  level: ApiConnectionRunLogLevel;
+  message: string;
+  createdAt: string;
+};
+
+export type ApiConnectionRunOutput = {
+  id: string;
+  runId: string;
+  connectionId: string;
+  rowCount: number;
+  columns: CsvColumn[];
+  rowsStoragePath: string;
+  rawStoragePath: string;
+  rowsSizeBytes: number;
+  rawSizeBytes: number;
   createdAt: string;
 };
 
@@ -241,6 +268,14 @@ export type ApiConnectionResponse = {
 export type ApiConnectionRunResponse = {
   connection: ApiConnection;
   run: ApiConnectionRun;
+};
+
+export type ApiConnectionRunDetailResponse = {
+  run: ApiConnectionRun;
+};
+
+export type ApiConnectionRunsResponse = {
+  runs: ApiConnectionRun[];
 };
 
 export type FieldDefinitionLinkedDataset = {

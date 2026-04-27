@@ -1,4 +1,9 @@
-import { runApiConnection } from "@/lib/api-connections";
+import { after } from "next/server";
+
+import {
+  executeApiConnectionRun,
+  startApiConnectionRun,
+} from "@/lib/api-connections";
 import { getCurrentIdentity } from "@/lib/auth";
 import { logError } from "@/lib/error-logging";
 import { jsonAdminOnlyError, jsonError } from "@/lib/http";
@@ -30,7 +35,7 @@ export async function POST(request: Request, context: ApiConnectionRunContext) {
   const { connectionId } = await context.params;
 
   try {
-    const result = await runApiConnection({
+    const result = await startApiConnectionRun({
       connectionId,
       identity,
       importEnabled: parsed.data.importEnabled,
@@ -40,7 +45,11 @@ export async function POST(request: Request, context: ApiConnectionRunContext) {
       return jsonError("API connection not found.", 404);
     }
 
-    return Response.json(result);
+    after(async () => {
+      await executeApiConnectionRun({ runId: result.run.id });
+    });
+
+    return Response.json(result, { status: 202 });
   } catch (error) {
     logError("Failed to run API connection", error);
     return jsonError("Could not run the API connection.", 500);

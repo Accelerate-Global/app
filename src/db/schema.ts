@@ -5,6 +5,7 @@ import type {
   ApiConnectionImportMode,
   ApiConnectionMethod,
   ApiConnectionResponseFormat,
+  ApiConnectionRunLogLevel,
   ApiConnectionRunMode,
   ApiConnectionRunStatus,
   CsvColumn,
@@ -406,6 +407,8 @@ export const apiConnectionRuns = privateSchema.table(
     }),
     errorMessage: text("error_message"),
     responsePreview: text("response_preview").notNull().default(""),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -416,6 +419,63 @@ export const apiConnectionRuns = privateSchema.table(
       table.createdAt,
     ),
     index("api_connection_runs_created_at_idx").on(table.createdAt),
+  ],
+);
+
+export const apiConnectionRunLogs = privateSchema.table(
+  "api_connection_run_logs",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    runId: uuid("run_id")
+      .notNull()
+      .references(() => apiConnectionRuns.id, { onDelete: "cascade" }),
+    connectionId: uuid("connection_id")
+      .notNull()
+      .references(() => apiConnections.id, { onDelete: "cascade" }),
+    level: text("level").$type<ApiConnectionRunLogLevel>().notNull().default("info"),
+    message: text("message").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("api_connection_run_logs_run_created_idx").on(
+      table.runId,
+      table.createdAt,
+    ),
+    index("api_connection_run_logs_connection_created_idx").on(
+      table.connectionId,
+      table.createdAt,
+    ),
+  ],
+);
+
+export const apiConnectionRunOutputs = privateSchema.table(
+  "api_connection_run_outputs",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    runId: uuid("run_id")
+      .notNull()
+      .references(() => apiConnectionRuns.id, { onDelete: "cascade" }),
+    connectionId: uuid("connection_id")
+      .notNull()
+      .references(() => apiConnections.id, { onDelete: "cascade" }),
+    rowCount: integer("row_count").notNull().default(0),
+    columns: jsonb("columns").$type<CsvColumn[]>().notNull().default(sql`'[]'::jsonb`),
+    rowsStoragePath: text("rows_storage_path").notNull(),
+    rawStoragePath: text("raw_storage_path").notNull(),
+    rowsSizeBytes: integer("rows_size_bytes").notNull().default(0),
+    rawSizeBytes: integer("raw_size_bytes").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("api_connection_run_outputs_run_idx").on(table.runId),
+    index("api_connection_run_outputs_connection_created_idx").on(
+      table.connectionId,
+      table.createdAt,
+    ),
   ],
 );
 
