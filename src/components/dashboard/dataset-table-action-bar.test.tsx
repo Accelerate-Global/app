@@ -152,6 +152,25 @@ describe("DatasetTableActionBar", () => {
     expect(onOpenAssignDerivedView).toHaveBeenCalledTimes(1);
   });
 
+  it("hides the save action when saving is not allowed while keeping download available", () => {
+    render(
+      <DatasetTableActionBar
+        dataset={dataset}
+        filters={filters}
+        recordCount={12507}
+        getSortedRows={() => []}
+        visibleColumns={[]}
+        isLoading={false}
+        hasError={false}
+        fieldDefinitionPresentationByColumnKey={{}}
+        canSaveFilteredTable={false}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "Download" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Save to dashboard" })).toBeNull();
+  });
+
   it("tracks saved table creation outcomes", async () => {
     fetchMock.mockResolvedValue(
       new Response(

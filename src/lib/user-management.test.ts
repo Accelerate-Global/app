@@ -39,7 +39,7 @@ function createWorkspaceUser(overrides: Partial<WorkspaceUser> = {}): WorkspaceU
     id: "user-1",
     email: "user@example.com",
     fullName: "Example User",
-    workspaceRole: "viewer",
+    workspaceRole: "pro",
     accountStatus: "active",
     providers: ["email"],
     identities: [],
@@ -69,12 +69,12 @@ function createWorkspaceUserRecord(
 ) {
   return {
     id: "auth-user-1",
-    email: "viewer@example.com",
-    raw_user_meta_data: { full_name: "Viewer User" },
+    email: "pro@example.com",
+    raw_user_meta_data: { full_name: "Pro User" },
     raw_app_meta_data: {
       provider: "email",
       providers: ["email"],
-      workspace_role: "viewer",
+      workspace_role: "pro",
     },
     created_at: "2026-04-15T20:00:00.000Z",
     updated_at: "2026-04-15T20:00:00.000Z",
@@ -208,7 +208,7 @@ describe("user-management", () => {
     });
   });
 
-  it("defaults missing workspace roles to viewer", () => {
+  it("defaults missing workspace roles to pro", () => {
     const user = mapAuthUserToWorkspaceUser(
       createAuthUser({
         app_metadata: {
@@ -218,7 +218,21 @@ describe("user-management", () => {
       }),
     );
 
-    expect(user.workspaceRole).toBe("viewer");
+    expect(user.workspaceRole).toBe("pro");
+  });
+
+  it("maps legacy viewer workspace roles to pro", () => {
+    const user = mapAuthUserToWorkspaceUser(
+      createAuthUser({
+        app_metadata: {
+          provider: "email",
+          providers: ["email"],
+          workspace_role: "viewer",
+        },
+      }),
+    );
+
+    expect(user.workspaceRole).toBe("pro");
   });
 
   it("merges workspace roles into existing app metadata", () => {
@@ -251,8 +265,8 @@ describe("user-management", () => {
           accountStatus: "disabled",
         }),
         createWorkspaceUser({
-          id: "viewer-1",
-          workspaceRole: "viewer",
+          id: "pro-1",
+          workspaceRole: "pro",
           accountStatus: "active",
         }),
       ]),
@@ -291,12 +305,37 @@ describe("user-management", () => {
             accountStatus: "active",
           }),
           createWorkspaceUser({
-            id: "viewer-1",
-            workspaceRole: "viewer",
+            id: "pro-1",
+            workspaceRole: "pro",
             accountStatus: "active",
           }),
         ],
         disabled: true,
+      }),
+    ).toThrowError(
+      new WorkspaceUserPermissionError(
+        "The last active admin cannot be disabled or demoted.",
+      ),
+    );
+  });
+
+  it("rejects demoting the last active admin to basic", () => {
+    expect(() =>
+      assertWorkspaceUserMutationAllowed({
+        currentUserId: "admin-2",
+        targetUser: createWorkspaceUser({
+          id: "admin-1",
+          workspaceRole: "admin",
+          accountStatus: "active",
+        }),
+        users: [
+          createWorkspaceUser({
+            id: "admin-1",
+            workspaceRole: "admin",
+            accountStatus: "active",
+          }),
+        ],
+        workspaceRole: "basic",
       }),
     ).toThrowError(
       new WorkspaceUserPermissionError(
@@ -326,7 +365,7 @@ describe("user-management", () => {
             accountStatus: "active",
           }),
         ],
-        workspaceRole: "viewer",
+        workspaceRole: "pro",
       }),
     ).not.toThrow();
   });
@@ -382,15 +421,15 @@ describe("user-management", () => {
       .mockResolvedValueOnce([createWorkspaceUserRecord()]);
 
     const user = await inviteWorkspaceUser({
-      email: "viewer@example.com",
-      fullName: "Viewer User",
-      workspaceRole: "viewer",
+      email: "pro@example.com",
+      fullName: "Pro User",
+      workspaceRole: "pro",
     });
 
     expect(user).toMatchObject({
-      email: "viewer@example.com",
-      fullName: "Viewer User",
-      workspaceRole: "viewer",
+      email: "pro@example.com",
+      fullName: "Pro User",
+      workspaceRole: "pro",
       accountStatus: "pending_invite",
     });
     expect(executeMock).toHaveBeenCalledTimes(2);
@@ -398,7 +437,7 @@ describe("user-management", () => {
       app_metadata: {
         provider: "email",
         providers: ["email"],
-        workspace_role: "viewer",
+        workspace_role: "pro",
       },
     });
   });
@@ -415,8 +454,8 @@ describe("user-management", () => {
 
     await expect(
       inviteWorkspaceUser({
-        email: "viewer@example.com",
-        workspaceRole: "viewer",
+        email: "basic@example.com",
+        workspaceRole: "basic",
       }),
     ).rejects.toBe(inviteError);
 
@@ -436,8 +475,8 @@ describe("user-management", () => {
 
     await expect(
       inviteWorkspaceUser({
-        email: "viewer@example.com",
-        workspaceRole: "viewer",
+        email: "pro@example.com",
+        workspaceRole: "pro",
       }),
     ).rejects.toBe(inviteError);
 

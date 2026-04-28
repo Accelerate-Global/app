@@ -61,7 +61,7 @@ export default async function UserManagementPage() {
           currentUserId={identity.ownerId}
           initialUsers={users}
           actorOwnerId={identity.ownerId}
-          workspaceRole={getAnalyticsWorkspaceRole(identity.isDatasetAdmin)}
+          workspaceRole={getAnalyticsWorkspaceRole(identity.workspaceRole)}
         />
       </div>
     </main>

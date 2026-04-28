@@ -3,12 +3,17 @@ import { cookies } from "next/headers";
 import { logError } from "@/lib/error-logging";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
-import { isWorkspaceAdmin } from "@/lib/workspace-role";
+import {
+  getWorkspaceRole,
+  isWorkspaceAdmin,
+  type WorkspaceRole,
+} from "@/lib/workspace-role";
 
 export type CurrentIdentity = {
   ownerId: string;
   email: string | null;
   fullName: string | null;
+  workspaceRole: WorkspaceRole;
   isDatasetAdmin: boolean;
   mode: "supabase";
 };
@@ -38,11 +43,14 @@ export async function getCurrentIdentity(): Promise<CurrentIdentity | null> {
             ? user.user_metadata.full_name.trim()
             : null;
 
+        const workspaceRole = getWorkspaceRole(user.app_metadata?.workspace_role);
+
         return {
           ownerId: user.id,
           email,
           fullName,
-          isDatasetAdmin: isWorkspaceAdmin(user.app_metadata?.workspace_role),
+          workspaceRole,
+          isDatasetAdmin: isWorkspaceAdmin(workspaceRole),
           mode: "supabase",
         };
       }

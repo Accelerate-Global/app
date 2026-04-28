@@ -33,8 +33,9 @@ const listFieldDefinitionPresentationByColumnKeyMock = vi.mocked(
 
 const identity = {
   ownerId: "supabase-user",
-  email: "viewer@example.com",
+  email: "basic@example.com",
   fullName: null,
+  workspaceRole: "basic" as const,
   isDatasetAdmin: false,
   mode: "supabase" as const,
 };

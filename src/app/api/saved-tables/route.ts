@@ -5,6 +5,7 @@ import {
   listSavedDatasetTables,
 } from "@/lib/saved-dataset-tables";
 import { savedDatasetTableCreateSchema } from "@/lib/validation";
+import { canCreateSavedDatasetTables } from "@/lib/workspace-role";
 
 export async function GET() {
   const identity = await getCurrentIdentity();
@@ -24,6 +25,10 @@ export async function POST(request: Request) {
 
   if (!identity) {
     return jsonError("Unauthorized.", 401);
+  }
+
+  if (!canCreateSavedDatasetTables(identity.workspaceRole)) {
+    return jsonError("Basic accounts cannot save dataset tables.", 403);
   }
 
   const parsed = savedDatasetTableCreateSchema.safeParse(await request.json());

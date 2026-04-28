@@ -26,8 +26,9 @@ const getDefaultDatasetMock = vi.mocked(getDefaultDataset);
 
 const identity = {
   ownerId: "supabase-user",
-  email: "viewer@example.com",
+  email: "pro@example.com",
   fullName: null,
+  workspaceRole: "pro" as const,
   isDatasetAdmin: false,
   mode: "supabase" as const,
 };

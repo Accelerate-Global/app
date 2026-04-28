@@ -809,12 +809,12 @@ function DatasetEditForm({
                 Public dataset
               </label>
               <p className="text-sm text-muted-foreground">
-                Keep this enabled to show the dataset to non-admin viewers across
+                Keep this enabled to show the dataset to non-admin users across
                 the dashboard, detail pages, downloads, and saved views.
               </p>
               {!isPublic ? (
                 <p className="text-sm text-muted-foreground">
-                  This dataset is currently hidden from non-admin viewers.
+                  This dataset is currently hidden from non-admin users.
                 </p>
               ) : null}
             </div>
@@ -823,7 +823,7 @@ function DatasetEditForm({
               id="dataset-is-public"
               checked={isPublic}
               disabled={isWorking}
-              aria-label="Set dataset visibility for viewers"
+              aria-label="Set dataset visibility for non-admin users"
               data-smoke-dataset-public-toggle
               onCheckedChange={(checked) => {
                 setIsPublic(checked);

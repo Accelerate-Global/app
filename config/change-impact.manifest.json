@@ -234,9 +234,9 @@
         "src/lib/auth.ts",
         "src/lib/supabase/**"
       ],
-      "routeIds": ["dashboard-viewer", "dashboard-admin"],
+      "routeIds": ["dashboard-pro", "dashboard-basic", "dashboard-admin"],
       "journeyTitles": ["signed-in user can sign out"],
-      "projectNames": ["desktop-anonymous", "desktop-viewer", "desktop-admin"],
+      "projectNames": ["desktop-anonymous", "desktop-pro", "desktop-basic", "desktop-admin"],
       "bootstrapScope": "full"
     },
     {
@@ -248,12 +248,14 @@
         "src/components/dashboard/datasets-grid.tsx"
       ],
       "routeIds": [
-        "dashboard-viewer",
+        "dashboard-pro",
+        "dashboard-basic",
         "dashboard-admin",
-        "datasets-index-viewer",
+        "datasets-index-pro",
+        "datasets-index-basic",
         "datasets-index-admin"
       ],
-      "projectNames": ["desktop-viewer", "desktop-admin"],
+      "projectNames": ["desktop-pro", "desktop-basic", "desktop-admin"],
       "bootstrapScope": "datasets"
     },
     {
@@ -264,16 +266,20 @@
         "src/lib/dataset-*.ts"
       ],
       "routeIds": [
-        "dashboard-viewer",
+        "dashboard-pro",
+        "dashboard-basic",
         "dashboard-admin",
-        "datasets-index-viewer",
+        "datasets-index-pro",
+        "datasets-index-basic",
         "datasets-index-admin",
-        "dataset-detail-viewer",
+        "dataset-detail-pro",
+        "dataset-detail-basic",
         "dataset-detail-admin",
-        "dataset-edit-viewer-redirect",
+        "dataset-edit-pro-redirect",
+        "dataset-edit-basic-redirect",
         "dataset-edit-admin"
       ],
-      "projectNames": ["desktop-viewer", "desktop-admin"],
+      "projectNames": ["desktop-pro", "desktop-basic", "desktop-admin"],
       "bootstrapScope": "datasets"
     },
     {
@@ -290,8 +296,9 @@
         "src/components/dashboard/use-dataset-table-state.tsx",
         "src/lib/saved-dataset-tables.ts"
       ],
-      "routeIds": ["dataset-detail-viewer", "dataset-detail-admin"],
-      "projectNames": ["desktop-viewer", "desktop-admin"],
+      "routeIds": ["dataset-detail-pro", "dataset-detail-basic", "dataset-detail-admin"],
+      "journeyTitles": ["basic user can filter and download without saving"],
+      "projectNames": ["desktop-pro", "desktop-basic", "desktop-admin"],
       "bootstrapScope": "datasets"
     },
     {
@@ -301,9 +308,9 @@
         "src/app/dashboard/datasets/[datasetId]/edit/**",
         "src/components/dashboard/dataset-edit-page-client.tsx"
       ],
-      "routeIds": ["dataset-edit-viewer-redirect", "dataset-edit-admin"],
+      "routeIds": ["dataset-edit-pro-redirect", "dataset-edit-basic-redirect", "dataset-edit-admin"],
       "journeyTitles": ["admin can edit dataset details"],
-      "projectNames": ["desktop-viewer", "desktop-admin"],
+      "projectNames": ["desktop-pro", "desktop-basic", "desktop-admin"],
       "bootstrapScope": "datasets"
     },
     {
@@ -315,9 +322,9 @@
         "src/app/api/blob/**",
         "src/app/api/datasets/[datasetId]/replace/**"
       ],
-      "routeIds": ["upload-viewer-redirect", "upload-admin"],
+      "routeIds": ["upload-pro-redirect", "upload-basic-redirect", "upload-admin"],
       "journeyTitles": ["admin can replace a dataset through the real upload flow"],
-      "projectNames": ["desktop-viewer", "desktop-admin"],
+      "projectNames": ["desktop-pro", "desktop-basic", "desktop-admin"],
       "bootstrapScope": "datasets"
     },
     {
@@ -332,9 +339,9 @@
         "src/lib/field-definitions.ts",
         "src/app/api/field-definitions/**"
       ],
-      "routeIds": ["field-definitions-viewer", "field-definitions-admin"],
+      "routeIds": ["field-definitions-pro", "field-definitions-basic", "field-definitions-admin"],
       "journeyTitles": ["admin can edit a field definition"],
-      "projectNames": ["desktop-viewer", "desktop-admin"],
+      "projectNames": ["desktop-pro", "desktop-basic", "desktop-admin"],
       "bootstrapScope": "admin-config"
     },
     {
@@ -348,9 +355,9 @@
         "src/app/api/field-sources/**",
         "src/app/api/field-source-types/**"
       ],
-      "routeIds": ["field-sources-viewer-redirect", "field-sources-admin"],
+      "routeIds": ["field-sources-pro-redirect", "field-sources-basic-redirect", "field-sources-admin"],
       "journeyTitles": ["admin can review field source mappings"],
-      "projectNames": ["desktop-viewer", "desktop-admin"],
+      "projectNames": ["desktop-pro", "desktop-basic", "desktop-admin"],
       "bootstrapScope": "admin-config"
     },
     {
@@ -363,10 +370,11 @@
         "src/app/api/admin/api-connections/**"
       ],
       "routeIds": [
-        "api-connections-viewer-redirect",
+        "api-connections-pro-redirect",
+        "api-connections-basic-redirect",
         "api-connections-admin"
       ],
-      "projectNames": ["desktop-viewer", "desktop-admin"],
+      "projectNames": ["desktop-pro", "desktop-basic", "desktop-admin"],
       "bootstrapScope": "admin-config"
     },
     {
@@ -377,12 +385,13 @@
         "src/components/auth/account-profile-form.tsx",
         "src/app/api/account/**"
       ],
-      "routeIds": ["profile-viewer", "profile-admin"],
+      "routeIds": ["profile-pro", "profile-basic", "profile-admin"],
       "journeyTitles": [
         "signed-in user can sign out",
-        "disabled user cannot sign back in"
+        "disabled user cannot sign back in",
+        "basic profile is read-only"
       ],
-      "projectNames": ["desktop-anonymous", "desktop-viewer", "desktop-admin"],
+      "projectNames": ["desktop-anonymous", "desktop-pro", "desktop-basic", "desktop-admin"],
       "bootstrapScope": "auth"
     },
     {
@@ -397,8 +406,8 @@
         "src/app/api/admin/users/**",
         "src/app/api/account/disable/**"
       ],
-      "routeIds": ["user-management-viewer-redirect", "user-management-admin"],
-      "projectNames": ["desktop-viewer", "desktop-admin"],
+      "routeIds": ["user-management-pro-redirect", "user-management-basic-redirect", "user-management-admin"],
+      "projectNames": ["desktop-pro", "desktop-basic", "desktop-admin"],
       "bootstrapScope": "admin-config"
     }
   ],

@@ -69,7 +69,7 @@ export default async function UploadPage({ searchParams }: UploadPageProps) {
             backingDataset ? getDatasetClassification(backingDataset.tags) : null
           }
           actorOwnerId={identity.ownerId}
-          workspaceRole={getAnalyticsWorkspaceRole(identity.isDatasetAdmin)}
+          workspaceRole={getAnalyticsWorkspaceRole(identity.workspaceRole)}
         />
       </div>
     </main>

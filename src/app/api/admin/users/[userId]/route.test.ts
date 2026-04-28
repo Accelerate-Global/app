@@ -30,14 +30,15 @@ const identity = {
   ownerId: "admin-1",
   email: "admin@example.com",
   fullName: "Blake Lewis",
+  workspaceRole: "admin" as const,
   isDatasetAdmin: true,
   mode: "supabase" as const,
 };
 
 const user = {
   id: "user-1",
-  email: "viewer@example.com",
-  fullName: "Viewer User",
+  email: "pro@example.com",
+  fullName: "Pro User",
   workspaceRole: "admin" as const,
   accountStatus: "active" as const,
   providers: ["email"],
@@ -75,7 +76,8 @@ describe("/api/admin/users/[userId]", () => {
   it("rejects non-admin updates", async () => {
     getCurrentIdentityMock.mockResolvedValue({
       ...identity,
-      email: "viewer@example.com",
+      email: "basic@example.com",
+      workspaceRole: "basic",
       isDatasetAdmin: false,
     });
 
@@ -172,7 +174,7 @@ describe("/api/admin/users/[userId]", () => {
     const response = await PATCH(
       new Request("http://localhost/api/admin/users/admin-1", {
         method: "PATCH",
-        body: JSON.stringify({ workspaceRole: "viewer" }),
+        body: JSON.stringify({ workspaceRole: "basic" }),
       }),
       { params: Promise.resolve({ userId: "admin-1" }) },
     );

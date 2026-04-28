@@ -144,7 +144,7 @@ export default async function DatasetPage({
           initialSorting={initialSorting}
           assignableDatasets={assignableDatasets}
           actorOwnerId={identity.ownerId}
-          workspaceRole={getAnalyticsWorkspaceRole(identity.isDatasetAdmin)}
+          workspaceRole={getAnalyticsWorkspaceRole(identity.workspaceRole)}
           datasetSource={datasetSource}
           initialSavedTableId={matchingSavedTable?.id ?? null}
           initialSavedTableRowCount={matchingSavedTable?.savedRowCount ?? null}

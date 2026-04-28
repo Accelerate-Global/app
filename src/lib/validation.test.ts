@@ -7,6 +7,8 @@ import {
   datasetAssignDerivedViewSchema,
   datasetMetadataPatchSchema,
   replaceDatasetSchema,
+  workspaceUserInviteSchema,
+  workspaceUserPatchSchema,
 } from "@/lib/validation";
 
 describe("datasetMetadataPatchSchema", () => {
@@ -504,5 +506,31 @@ describe("apiConnectionCreateSchema", () => {
     });
 
     expect(result.success).toBe(false);
+  });
+});
+
+describe("workspace user schemas", () => {
+  it("accepts admin, pro, and basic role writes", () => {
+    for (const workspaceRole of ["admin", "pro", "basic"]) {
+      expect(
+        workspaceUserInviteSchema.safeParse({
+          email: `${workspaceRole}@example.com`,
+          workspaceRole,
+        }).success,
+      ).toBe(true);
+      expect(workspaceUserPatchSchema.safeParse({ workspaceRole }).success).toBe(true);
+    }
+  });
+
+  it("does not accept legacy viewer as a writable role", () => {
+    expect(
+      workspaceUserInviteSchema.safeParse({
+        email: "viewer@example.com",
+        workspaceRole: "viewer",
+      }).success,
+    ).toBe(false);
+    expect(
+      workspaceUserPatchSchema.safeParse({ workspaceRole: "viewer" }).success,
+    ).toBe(false);
   });
 });

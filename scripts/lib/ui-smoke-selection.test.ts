@@ -14,14 +14,19 @@ describe("ui-smoke-selection", () => {
 
     expect(selection.mode).toBe("targeted");
     expect(selection.routeIds).toEqual([
-      "dataset-edit-viewer-redirect",
+      "dataset-edit-pro-redirect",
+      "dataset-edit-basic-redirect",
       "dataset-edit-admin",
     ]);
     expect(selection.journeyTitles).toEqual(["admin can edit dataset details"]);
     expect(selection.journeyTitles).not.toContain(
       "authenticated user can save a filtered table",
     );
-    expect(selection.projectNames).toEqual(["desktop-viewer", "desktop-admin"]);
+    expect(selection.projectNames).toEqual([
+      "desktop-pro",
+      "desktop-basic",
+      "desktop-admin",
+    ]);
     expect(selection.bootstrapScope).toBe("datasets");
   });
 
@@ -60,7 +65,11 @@ describe("ui-smoke-selection", () => {
     expect(selection.journeyTitles).toContain(
       "admin can review field source mappings",
     );
-    expect(selection.projectNames).toEqual(["desktop-viewer", "desktop-admin"]);
+    expect(selection.projectNames).toEqual([
+      "desktop-pro",
+      "desktop-basic",
+      "desktop-admin",
+    ]);
     expect(selection.bootstrapScope).toBe("admin-config");
   });
 
@@ -70,11 +79,18 @@ describe("ui-smoke-selection", () => {
     ]);
 
     expect(selection.routeIds).toEqual([
-      "dataset-detail-viewer",
+      "dataset-detail-pro",
+      "dataset-detail-basic",
       "dataset-detail-admin",
     ]);
-    expect(selection.journeyTitles).toEqual([]);
-    expect(selection.projectNames).toEqual(["desktop-viewer", "desktop-admin"]);
+    expect(selection.journeyTitles).toEqual([
+      "basic user can filter and download without saving",
+    ]);
+    expect(selection.projectNames).toEqual([
+      "desktop-pro",
+      "desktop-basic",
+      "desktop-admin",
+    ]);
     expect(selection.bootstrapScope).toBe("datasets");
   });
 
@@ -99,10 +115,12 @@ describe("ui-smoke-selection", () => {
     expect(selection.testPaths).toEqual(["tests/ui/10-journeys.spec.ts"]);
     expect(selection.projectNames).toEqual([
       "desktop-anonymous",
-      "desktop-viewer",
+      "desktop-pro",
+      "desktop-basic",
       "desktop-admin",
       "mobile-anonymous",
-      "mobile-viewer",
+      "mobile-pro",
+      "mobile-basic",
       "mobile-admin",
     ]);
     expect(selection.bootstrapScope).toBe("full");
@@ -116,9 +134,14 @@ describe("ui-smoke-selection", () => {
 
     expect(selection.mode).toBe("targeted");
     expect(selection.testPaths).toEqual(["tests/ui/10-journeys.spec.ts"]);
-    expect(selection.projectNames).toEqual(["desktop-viewer", "desktop-admin"]);
+    expect(selection.projectNames).toEqual([
+      "desktop-pro",
+      "desktop-basic",
+      "desktop-admin",
+    ]);
     expect(selection.routeIds).toEqual([
-      "dataset-edit-viewer-redirect",
+      "dataset-edit-pro-redirect",
+      "dataset-edit-basic-redirect",
       "dataset-edit-admin",
     ]);
     expect(selection.bootstrapScope).toBe("full");

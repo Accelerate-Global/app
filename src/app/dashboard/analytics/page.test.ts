@@ -59,9 +59,10 @@ describe("/dashboard/analytics", () => {
 
   it("redirects non-admin users back to the dashboard", async () => {
     getCurrentIdentityMock.mockResolvedValue({
-      ownerId: "viewer-1",
-      email: "viewer@example.com",
+      ownerId: "basic-1",
+      email: "basic@example.com",
       fullName: null,
+      workspaceRole: "basic",
       isDatasetAdmin: false,
       mode: "supabase",
     });
@@ -77,6 +78,7 @@ describe("/dashboard/analytics", () => {
       ownerId: "admin-1",
       email: "admin@example.com",
       fullName: "Admin User",
+      workspaceRole: "admin",
       isDatasetAdmin: true,
       mode: "supabase",
     });

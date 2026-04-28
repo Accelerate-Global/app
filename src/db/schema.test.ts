@@ -193,6 +193,21 @@ describe("savedDatasetTables schema", () => {
       'create policy "users can read own saved dataset tables"',
     );
   });
+
+  it("adds the basic role saved-table and profile guard migration", async () => {
+    const migrationPath = path.join(
+      process.cwd(),
+      "supabase/migrations/20260427203720_add_basic_role_and_rename_viewer_to_pro.sql",
+    );
+
+    const migration = await readFile(migrationPath, "utf8");
+
+    expect(migration).toContain("where raw_app_meta_data ->> 'workspace_role' = 'viewer'");
+    expect(migration).toContain("'\"pro\"'::jsonb");
+    expect(migration).toContain("create trigger prevent_basic_profile_updates");
+    expect(migration).toContain("create or replace function private.is_workspace_basic()");
+    expect(migration).toContain("and not private.is_workspace_basic()");
+  });
 });
 
 describe("analyticsEvents schema", () => {

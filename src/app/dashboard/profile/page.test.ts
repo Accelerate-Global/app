@@ -43,6 +43,7 @@ describe("/dashboard/profile", () => {
       ownerId: "owner-1",
       email: "admin@example.com",
       fullName: "Blake Lewis",
+      workspaceRole: "admin",
       isDatasetAdmin: true,
       mode: "supabase",
     });

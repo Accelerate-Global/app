@@ -32,15 +32,16 @@ const identity = {
   ownerId: "admin-1",
   email: "admin@example.com",
   fullName: "Blake Lewis",
+  workspaceRole: "admin" as const,
   isDatasetAdmin: true,
   mode: "supabase" as const,
 };
 
 const user = {
   id: "user-1",
-  email: "viewer@example.com",
-  fullName: "Viewer User",
-  workspaceRole: "viewer" as const,
+  email: "pro@example.com",
+  fullName: "Pro User",
+  workspaceRole: "pro" as const,
   accountStatus: "pending_invite" as const,
   providers: ["email"],
   identities: [],
@@ -71,7 +72,8 @@ describe("/api/admin/users", () => {
   it("rejects non-admin list requests", async () => {
     getCurrentIdentityMock.mockResolvedValue({
       ...identity,
-      email: "viewer@example.com",
+      email: "basic@example.com",
+      workspaceRole: "basic",
       isDatasetAdmin: false,
     });
 
@@ -103,7 +105,22 @@ describe("/api/admin/users", () => {
     const response = await POST(
       new Request("http://localhost/api/admin/users", {
         method: "POST",
-        body: JSON.stringify({ email: "", workspaceRole: "viewer" }),
+        body: JSON.stringify({ email: "", workspaceRole: "pro" }),
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    expect(inviteWorkspaceUserMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects legacy viewer as a writable invite role", async () => {
+    const response = await POST(
+      new Request("http://localhost/api/admin/users", {
+        method: "POST",
+        body: JSON.stringify({
+          email: "viewer@example.com",
+          workspaceRole: "viewer",
+        }),
       }),
     );
 
@@ -118,9 +135,9 @@ describe("/api/admin/users", () => {
       new Request("http://localhost/api/admin/users", {
         method: "POST",
         body: JSON.stringify({
-          email: "viewer@example.com",
-          fullName: "Viewer User",
-          workspaceRole: "viewer",
+          email: "pro@example.com",
+          fullName: "Pro User",
+          workspaceRole: "pro",
         }),
       }),
     );
@@ -128,9 +145,9 @@ describe("/api/admin/users", () => {
     expect(response.status).toBe(201);
     await expect(response.json()).resolves.toEqual({ user });
     expect(inviteWorkspaceUserMock).toHaveBeenCalledWith({
-      email: "viewer@example.com",
-      fullName: "Viewer User",
-      workspaceRole: "viewer",
+      email: "pro@example.com",
+      fullName: "Pro User",
+      workspaceRole: "pro",
       redirectTo:
         "http://localhost/?message=Check+your+email+to+finish+setting+up+your+account.",
     });
@@ -145,8 +162,8 @@ describe("/api/admin/users", () => {
       new Request("http://localhost/api/admin/users", {
         method: "POST",
         body: JSON.stringify({
-          email: "viewer@example.com",
-          workspaceRole: "viewer",
+          email: "basic@example.com",
+          workspaceRole: "basic",
         }),
       }),
     );
@@ -164,8 +181,8 @@ describe("/api/admin/users", () => {
       new Request("http://localhost/api/admin/users", {
         method: "POST",
         body: JSON.stringify({
-          email: "viewer@example.com",
-          workspaceRole: "viewer",
+          email: "pro@example.com",
+          workspaceRole: "pro",
         }),
       }),
     );

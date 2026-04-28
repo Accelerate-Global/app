@@ -520,8 +520,16 @@ export function isAppAnalyticsEventName(
   return APP_ANALYTICS_EVENT_NAMES.includes(value as AppAnalyticsEventName);
 }
 
-export function getAnalyticsWorkspaceRole(isDatasetAdmin: boolean) {
-  return (isDatasetAdmin ? "admin" : "viewer") satisfies AnalyticsWorkspaceRole;
+export function getAnalyticsWorkspaceRole(
+  workspaceRoleOrAdminFlag: WorkspaceRole | boolean,
+) {
+  if (typeof workspaceRoleOrAdminFlag === "boolean") {
+    return (
+      workspaceRoleOrAdminFlag ? "admin" : "pro"
+    ) satisfies AnalyticsWorkspaceRole;
+  }
+
+  return workspaceRoleOrAdminFlag satisfies AnalyticsWorkspaceRole;
 }
 
 export function getAnalyticsRouteFromPathname(

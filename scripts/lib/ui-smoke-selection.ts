@@ -28,10 +28,12 @@ const routeById = new Map(smokeRouteSpecs.map((route) => [route.id, route]));
 const routeIdOrder = smokeRouteSpecs.map((route) => route.id);
 const projectOrder = [
   "desktop-anonymous",
-  "desktop-viewer",
+  "desktop-pro",
+  "desktop-basic",
   "desktop-admin",
   "mobile-anonymous",
-  "mobile-viewer",
+  "mobile-pro",
+  "mobile-basic",
   "mobile-admin",
 ] as const;
 const bootstrapScopeOrder: UiSmokeBootstrapScope[] = [

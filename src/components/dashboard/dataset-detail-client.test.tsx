@@ -294,6 +294,32 @@ describe("DatasetDetailClient", () => {
     expect(datasetTableStateProps.sourceRowCount).toBe(12507);
   });
 
+  it("disables filtered-table saving for basic users", () => {
+    render(
+      <DatasetDetailClient
+        dataset={{
+          ...datasetBase,
+          columns: [
+            {
+              key: "geo_country_name",
+              label: "Geo_Country_Name",
+              sourceIndex: 0,
+            },
+          ],
+        }}
+        regions={[]}
+        fieldDefinitionPresentationByColumnKey={{}}
+        workspaceRole="basic"
+      />,
+    );
+
+    const actionBarProps = actionBarSpy.mock.calls[0]?.[0] as {
+      canSaveFilteredTable?: boolean;
+    };
+
+    expect(actionBarProps.canSaveFilteredTable).toBe(false);
+  });
+
   it("does not rerender the filter rail when only sorting changes", () => {
     const dataset = {
       ...datasetBase,

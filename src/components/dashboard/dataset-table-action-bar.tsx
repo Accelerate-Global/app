@@ -43,6 +43,7 @@ type DatasetTableActionBarProps = {
     FieldDefinitionPresentation
   >;
   analyticsContext?: AppAnalyticsContext;
+  canSaveFilteredTable?: boolean;
   onOpenFilters?: () => void;
   onOpenAssignDerivedView?: () => void;
 };
@@ -79,6 +80,7 @@ export function DatasetTableActionBar({
     actorOwnerId: "anonymous",
     workspaceRole: "anonymous",
   }),
+  canSaveFilteredTable = true,
   onOpenFilters,
   onOpenAssignDerivedView,
 }: DatasetTableActionBarProps) {
@@ -115,6 +117,10 @@ export function DatasetTableActionBar({
   }
 
   async function handleSave() {
+    if (!canSaveFilteredTable) {
+      return;
+    }
+
     setIsSavingSavedTable(true);
     setMessage(null);
     setMessageTone("default");
@@ -221,17 +227,19 @@ export function DatasetTableActionBar({
             <DownloadIcon />
             Download
           </Button>
-          <Button
-            type="button"
-            disabled={isDisabled}
-            data-smoke-save-filtered-table
-            onClick={() => {
-              void handleSave();
-            }}
-          >
-            <SaveIcon />
-            {isSavingSavedTable ? "Saving..." : "Save to dashboard"}
-          </Button>
+          {canSaveFilteredTable ? (
+            <Button
+              type="button"
+              disabled={isDisabled}
+              data-smoke-save-filtered-table
+              onClick={() => {
+                void handleSave();
+              }}
+            >
+              <SaveIcon />
+              {isSavingSavedTable ? "Saving..." : "Save to dashboard"}
+            </Button>
+          ) : null}
           {onOpenAssignDerivedView ? (
             <Button
               type="button"

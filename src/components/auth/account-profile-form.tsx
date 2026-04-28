@@ -18,6 +18,10 @@ import {
 import { trackAppEvent } from "@/lib/analytics-client";
 import { buildAuthConfirmUrl } from "@/lib/auth-redirect";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import {
+  canDisableOwnAccount,
+  canUpdateOwnProfile,
+} from "@/lib/workspace-role";
 
 type AccountProfileFormProps = {
   identity: CurrentIdentity;
@@ -38,19 +42,28 @@ export function AccountProfileForm({ identity }: AccountProfileFormProps) {
 
   const normalizedFullName = fullName.trim();
   const normalizedEmail = email.trim().toLowerCase();
+  const canUpdateProfile = canUpdateOwnProfile(identity.workspaceRole);
+  const canDisableAccount = canDisableOwnAccount(identity.workspaceRole);
   const canSaveName =
-    !isSavingName && normalizedFullName !== (identity.fullName ?? "").trim();
+    canUpdateProfile &&
+    !isSavingName &&
+    normalizedFullName !== (identity.fullName ?? "").trim();
   const canSaveEmail =
+    canUpdateProfile &&
     !isSavingEmail &&
     Boolean(normalizedEmail) &&
     normalizedEmail !== (identity.email ?? "").trim().toLowerCase();
   const analyticsContext = buildAnalyticsContext({
     route: "profile",
     actorOwnerId: identity.ownerId,
-    workspaceRole: getAnalyticsWorkspaceRole(identity.isDatasetAdmin),
+    workspaceRole: getAnalyticsWorkspaceRole(identity.workspaceRole),
   });
 
   async function handleSaveName() {
+    if (!canUpdateProfile) {
+      return;
+    }
+
     setNameError(null);
     setNameSuccess(null);
     setIsSavingName(true);
@@ -109,6 +122,10 @@ export function AccountProfileForm({ identity }: AccountProfileFormProps) {
   }
 
   async function handleSaveEmail() {
+    if (!canUpdateProfile) {
+      return;
+    }
+
     setEmailError(null);
     setEmailSuccess(null);
     setIsSavingEmail(true);
@@ -162,6 +179,10 @@ export function AccountProfileForm({ identity }: AccountProfileFormProps) {
   }
 
   async function handleDisableAccount() {
+    if (!canDisableAccount) {
+      return;
+    }
+
     setDisableError(null);
     setIsDisablingAccount(true);
     const startedAt = Date.now();
@@ -238,14 +259,16 @@ export function AccountProfileForm({ identity }: AccountProfileFormProps) {
               id="account-full-name"
               value={fullName}
               placeholder={identity.email?.split("@")[0] ?? "Add full name"}
-              disabled={isSavingName}
+              disabled={isSavingName || !canUpdateProfile}
               onChange={(event) => setFullName(event.target.value)}
             />
           </div>
-          <Button type="button" disabled={!canSaveName} onClick={handleSaveName}>
-            {isSavingName ? <Loader2Icon className="animate-spin" /> : null}
-            Save name
-          </Button>
+          {canUpdateProfile ? (
+            <Button type="button" disabled={!canSaveName} onClick={handleSaveName}>
+              {isSavingName ? <Loader2Icon className="animate-spin" /> : null}
+              Save name
+            </Button>
+          ) : null}
         </CardContent>
       </Card>
 
@@ -279,17 +302,20 @@ export function AccountProfileForm({ identity }: AccountProfileFormProps) {
               type="email"
               value={email}
               placeholder="you@example.com"
-              disabled={isSavingEmail}
+              disabled={isSavingEmail || !canUpdateProfile}
               onChange={(event) => setEmail(event.target.value)}
             />
           </div>
-          <Button type="button" disabled={!canSaveEmail} onClick={handleSaveEmail}>
-            {isSavingEmail ? <Loader2Icon className="animate-spin" /> : null}
-            Update email
-          </Button>
+          {canUpdateProfile ? (
+            <Button type="button" disabled={!canSaveEmail} onClick={handleSaveEmail}>
+              {isSavingEmail ? <Loader2Icon className="animate-spin" /> : null}
+              Update email
+            </Button>
+          ) : null}
         </CardContent>
       </Card>
 
+      {canDisableAccount ? (
       <Card className="border-destructive/25">
         <CardHeader className="space-y-2">
           <CardTitle className="flex items-center gap-2 text-2xl">
@@ -318,6 +344,7 @@ export function AccountProfileForm({ identity }: AccountProfileFormProps) {
           </Button>
         </CardContent>
       </Card>
+      ) : null}
     </div>
   );
 }

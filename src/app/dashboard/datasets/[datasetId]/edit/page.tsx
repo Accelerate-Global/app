@@ -83,7 +83,7 @@ export default async function DatasetEditPage({
           availableTags={availableTags}
           initialVersions={versions ?? []}
           actorOwnerId={identity.ownerId}
-          workspaceRole={getAnalyticsWorkspaceRole(identity.isDatasetAdmin)}
+          workspaceRole={getAnalyticsWorkspaceRole(identity.workspaceRole)}
         />
       </div>
     </main>

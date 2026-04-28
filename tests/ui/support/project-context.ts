@@ -11,8 +11,10 @@ export function getSmokeProjectContext(projectName: string): SmokeProjectContext
   return {
     role: normalizedName.includes("admin")
       ? "admin"
-      : normalizedName.includes("viewer")
-        ? "viewer"
+      : normalizedName.includes("basic")
+        ? "basic"
+        : normalizedName.includes("pro")
+          ? "pro"
         : "anonymous",
     viewport: normalizedName.includes("mobile") ? "mobile" : "desktop",
   };

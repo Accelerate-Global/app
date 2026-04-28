@@ -1,3 +1,6 @@
+import { readFile } from "node:fs/promises";
+import path from "node:path";
+
 import { describe, expect, it } from "vitest";
 
 import { ApiConnectionError, parseApiResponseRows } from "@/lib/api-connections";
@@ -81,5 +84,17 @@ describe("parseApiResponseRows", () => {
         responseDataPath: "data.items",
       }),
     ).toThrow(ApiConnectionError);
+  });
+});
+
+describe("api connection run actor identity", () => {
+  it("hydrates replayed run identities as admin workspace actors", async () => {
+    const source = await readFile(
+      path.join(process.cwd(), "src/lib/api-connections.ts"),
+      "utf8",
+    );
+
+    expect(source).toContain("function identityFromRun");
+    expect(source).toContain('workspaceRole: "admin"');
   });
 });

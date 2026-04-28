@@ -12,7 +12,8 @@ export const UI_SMOKE_BOOTSTRAP_FILE = path.join(
 
 export const UI_SMOKE_STORAGE_STATES = {
   anonymous: path.join(UI_SMOKE_AUTH_DIR, "anonymous.json"),
-  viewer: path.join(UI_SMOKE_AUTH_DIR, "viewer.json"),
+  pro: path.join(UI_SMOKE_AUTH_DIR, "pro.json"),
+  basic: path.join(UI_SMOKE_AUTH_DIR, "basic.json"),
   admin: path.join(UI_SMOKE_AUTH_DIR, "admin.json"),
 } as const;
 
@@ -26,10 +27,15 @@ export type UiSmokeBootstrapScope =
   | "admin-config";
 
 export const UI_SMOKE_USERS = {
-  viewer: {
-    email: "smoke-viewer@accelerate-global.test",
+  pro: {
+    email: "smoke-pro@accelerate-global.test",
     password: UI_SMOKE_PASSWORD,
-    fullName: "Smoke Viewer",
+    fullName: "Smoke Pro",
+  },
+  basic: {
+    email: "smoke-basic@accelerate-global.test",
+    password: UI_SMOKE_PASSWORD,
+    fullName: "Smoke Basic",
   },
   admin: {
     email: "smoke-admin@accelerate-global.test",
@@ -80,7 +86,12 @@ export type UiSmokeBootstrap = {
     editableFieldSourceTypeId: string;
   };
   users: {
-    viewer: {
+    pro: {
+      id: string;
+      email: string;
+      fullName: string;
+    };
+    basic: {
       id: string;
       email: string;
       fullName: string;

@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(99);
+select plan(109);
 
 select results_eq(
   $$
@@ -167,12 +167,22 @@ where not exists (
 
 insert into public.signup_email_allowlist (email, note)
 select
-  'viewer@example.com',
-  'pgTAP viewer fixture'
+  'pro@example.com',
+  'pgTAP pro fixture'
 where not exists (
   select 1
   from public.signup_email_allowlist
-  where email = 'viewer@example.com'
+  where email = 'pro@example.com'
+);
+
+insert into public.signup_email_allowlist (email, note)
+select
+  'basic@example.com',
+  'pgTAP basic fixture'
+where not exists (
+  select 1
+  from public.signup_email_allowlist
+  where email = 'basic@example.com'
 );
 
 insert into auth.users (
@@ -220,17 +230,46 @@ select
   'aaaaaaaa-1337-403d-beb5-b7c44a1be131',
   'authenticated',
   'authenticated',
-  'viewer@example.com',
+  'pro@example.com',
   '',
   now(),
-  '{"provider":"email","providers":["email"],"workspace_role":"viewer"}'::jsonb,
+  '{"provider":"email","providers":["email"],"workspace_role":"pro"}'::jsonb,
   '{"workspace_role":"admin"}'::jsonb,
   now(),
   now()
 where not exists (
   select 1
   from auth.users
-  where lower(email) = 'viewer@example.com'
+  where lower(email) = 'pro@example.com'
+);
+
+insert into auth.users (
+  id,
+  aud,
+  role,
+  email,
+  encrypted_password,
+  email_confirmed_at,
+  raw_app_meta_data,
+  raw_user_meta_data,
+  created_at,
+  updated_at
+)
+select
+  'cccccccc-1337-403d-beb5-b7c44a1be131',
+  'authenticated',
+  'authenticated',
+  'basic@example.com',
+  '',
+  now(),
+  '{"provider":"email","providers":["email"],"workspace_role":"basic"}'::jsonb,
+  '{}'::jsonb,
+  now(),
+  now()
+where not exists (
+  select 1
+  from auth.users
+  where lower(email) = 'basic@example.com'
 );
 
 insert into public.datasets (
@@ -461,13 +500,33 @@ select results_eq($$ select count(*)::bigint from public.field_definition_source
 select results_eq($$ select count(*)::bigint from public.signup_email_allowlist where email = 'security-test@example.com' $$, array[0::bigint], 'authenticated users cannot read signup_email_allowlist');
 select is(private.is_dataset_admin(), false, 'raw_user_meta_data workspace_role does not grant dataset admin access');
 
+select lives_ok(
+  $$
+    insert into public.saved_dataset_tables (id, owner_id, dataset_id, name, filters)
+    values (
+      'c1000000-0000-4000-8000-000000000001',
+      'aaaaaaaa-1337-403d-beb5-b7c44a1be131',
+      '10000000-0000-4000-8000-000000000001',
+      'Pro saved table',
+      '{}'::jsonb
+    )
+  $$,
+  'pro users can insert own saved dataset tables'
+);
+
+select results_eq(
+  $$ select count(*)::bigint from public.saved_dataset_tables where id = 'c1000000-0000-4000-8000-000000000001' $$,
+  array[1::bigint],
+  'pro users can read own saved dataset tables'
+);
+
 select throws_ok(
   $$
     insert into public.field_definitions (id, canonical_key, label)
     values (
       '40000000-0000-4000-8000-000000000002',
-      'security_fixture_viewer_insert_field',
-      'Viewer Insert Field'
+      'security_fixture_pro_insert_field',
+      'Pro Insert Field'
     )
   $$,
   '42501',
@@ -480,8 +539,8 @@ select throws_ok(
     insert into public.field_source_types (id, key, label, sort_order)
     values (
       '41000000-0000-4000-8000-000000000002',
-      'security_fixture_viewer_source_type',
-      'Viewer Source Type',
+      'security_fixture_pro_source_type',
+      'Pro Source Type',
       2
     )
   $$,
@@ -497,12 +556,72 @@ select throws_ok(
       '42000000-0000-4000-8000-000000000002',
       '40000000-0000-4000-8000-000000000001',
       '41000000-0000-4000-8000-000000000001',
-      'Viewer Source Value'
+      'Pro Source Value'
     )
   $$,
   '42501',
   null,
   'non-admin authenticated users cannot insert field_definition_sources'
+);
+
+reset role;
+
+select set_config('request.jwt.claim.sub', 'cccccccc-1337-403d-beb5-b7c44a1be131', true);
+set local role authenticated;
+
+select results_eq($$ select count(*)::bigint from public.datasets where id = '10000000-0000-4000-8000-000000000001' $$, array[1::bigint], 'basic users can read public datasets');
+select results_eq($$ select count(*)::bigint from public.dataset_rows where dataset_id = '10000000-0000-4000-8000-000000000001' $$, array[1::bigint], 'basic users can read public dataset_rows');
+select results_eq($$ select count(*)::bigint from public.datasets where id = '10000000-0000-4000-8000-000000000010' $$, array[0::bigint], 'basic users cannot read hidden datasets');
+select results_eq($$ select count(*)::bigint from public.dataset_rows where dataset_id = '10000000-0000-4000-8000-000000000010' $$, array[0::bigint], 'basic users cannot read hidden dataset_rows');
+
+select throws_ok(
+  $$
+    insert into public.saved_dataset_tables (id, owner_id, dataset_id, name, filters)
+    values (
+      'c1000000-0000-4000-8000-000000000002',
+      'cccccccc-1337-403d-beb5-b7c44a1be131',
+      '10000000-0000-4000-8000-000000000001',
+      'Basic saved table',
+      '{}'::jsonb
+    )
+  $$,
+  '42501',
+  null,
+  'basic users cannot insert saved dataset tables'
+);
+
+reset role;
+
+select throws_ok(
+  $$
+    update auth.users
+    set raw_user_meta_data = jsonb_build_object('full_name', 'Basic User')
+    where id = 'cccccccc-1337-403d-beb5-b7c44a1be131'
+  $$,
+  'P0001',
+  'Basic users cannot update profile details.',
+  'basic users cannot update auth user metadata'
+);
+
+select throws_ok(
+  $$
+    update auth.users
+    set email_change = 'basic-new@example.com',
+        email_change_sent_at = now()
+    where id = 'cccccccc-1337-403d-beb5-b7c44a1be131'
+  $$,
+  'P0001',
+  'Basic users cannot update profile details.',
+  'basic users cannot update auth email change fields'
+);
+
+select lives_ok(
+  $$
+    update auth.users
+    set raw_app_meta_data = raw_app_meta_data || jsonb_build_object('workspace_note', 'managed by admin')
+    where id = 'cccccccc-1337-403d-beb5-b7c44a1be131'
+  $$,
+  'admin/service app metadata changes remain possible for basic users'
 );
 
 reset role;

@@ -52,9 +52,16 @@ export default defineConfig({
       },
     },
     {
-      name: "desktop-viewer",
+      name: "desktop-pro",
       use: {
-        storageState: UI_SMOKE_STORAGE_STATES.viewer,
+        storageState: UI_SMOKE_STORAGE_STATES.pro,
+        viewport: { width: 1440, height: 960 },
+      },
+    },
+    {
+      name: "desktop-basic",
+      use: {
+        storageState: UI_SMOKE_STORAGE_STATES.basic,
         viewport: { width: 1440, height: 960 },
       },
     },
@@ -75,9 +82,18 @@ export default defineConfig({
       },
     },
     {
-      name: "mobile-viewer",
+      name: "mobile-pro",
       use: {
-        storageState: UI_SMOKE_STORAGE_STATES.viewer,
+        storageState: UI_SMOKE_STORAGE_STATES.pro,
+        viewport: { width: 393, height: 852 },
+        isMobile: true,
+        hasTouch: true,
+      },
+    },
+    {
+      name: "mobile-basic",
+      use: {
+        storageState: UI_SMOKE_STORAGE_STATES.basic,
         viewport: { width: 393, height: 852 },
         isMobile: true,
         hasTouch: true,

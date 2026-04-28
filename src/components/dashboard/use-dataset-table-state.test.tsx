@@ -112,7 +112,7 @@ function DatasetTableStateProbe({
     context: {
       route: "dataset_detail";
       actor_owner_id: string;
-      workspace_role: "viewer";
+      workspace_role: "pro";
     };
     datasetSource: "dashboard";
   };
@@ -279,8 +279,8 @@ describe("useDatasetTableState", () => {
     const analytics = {
       context: {
         route: "dataset_detail" as const,
-        actor_owner_id: "viewer-1",
-        workspace_role: "viewer" as const,
+        actor_owner_id: "pro-1",
+        workspace_role: "pro" as const,
       },
       datasetSource: "dashboard" as const,
     };

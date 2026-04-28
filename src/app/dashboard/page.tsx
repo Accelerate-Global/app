@@ -42,7 +42,7 @@ export default async function DashboardPage() {
           initialSavedTables={savedTables}
           canManageDatasets={identity.isDatasetAdmin}
           actorOwnerId={identity.ownerId}
-          workspaceRole={getAnalyticsWorkspaceRole(identity.isDatasetAdmin)}
+          workspaceRole={getAnalyticsWorkspaceRole(identity.workspaceRole)}
         />
       </div>
     </main>

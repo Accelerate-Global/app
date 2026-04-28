@@ -67,12 +67,14 @@ type UserManagementClientProps = {
 
 const ROLE_LABELS: Record<WorkspaceRole, string> = {
   admin: "Admin",
-  viewer: "Viewer",
+  pro: "Pro",
+  basic: "Basic",
 };
 const ROLE_FILTER_LABELS: Record<WorkspaceRole | "all", string> = {
   all: "All roles",
   admin: "Admins",
-  viewer: "Viewers",
+  pro: "Pro users",
+  basic: "Basic users",
 };
 
 const STATUS_LABELS: Record<WorkspaceUserAccountStatus, string> = {
@@ -221,8 +223,8 @@ export function UserManagementClient({
     WorkspaceUserAccountStatus | "all"
   >("all");
   const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteRole, setInviteRole] = useState<WorkspaceRole>("viewer");
-  const [selectedRole, setSelectedRole] = useState<WorkspaceRole>("viewer");
+  const [inviteRole, setInviteRole] = useState<WorkspaceRole>("pro");
+  const [selectedRole, setSelectedRole] = useState<WorkspaceRole>("pro");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isInviting, setIsInviting] = useState(false);
@@ -313,7 +315,7 @@ export function UserManagementClient({
       setUsers((current) => replaceUser(current, user));
       setSelectedUserId(user.id);
       setInviteEmail("");
-      setInviteRole("viewer");
+      setInviteRole("pro");
       setSuccessMessage(`Invitation sent to ${user.email ?? "the new user"}.`);
       trackAppEvent(
         "user_invite_sent",
@@ -506,7 +508,7 @@ export function UserManagementClient({
     !isCurrentUserSelected &&
     !isSelectedUserBusy &&
     selectedRole !== selectedUser.workspaceRole &&
-    !(selectedUser.workspaceRole === "admin" && selectedRole === "viewer" && removesLastActiveAdmin);
+    !(selectedUser.workspaceRole === "admin" && selectedRole !== "admin" && removesLastActiveAdmin);
   const canDisableSelectedUser =
     selectedUser !== null &&
     !isCurrentUserSelected &&
@@ -572,7 +574,8 @@ export function UserManagementClient({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent align="start">
-                <SelectItem value="viewer">Viewer</SelectItem>
+                <SelectItem value="pro">Pro</SelectItem>
+                <SelectItem value="basic">Basic</SelectItem>
                 <SelectItem value="admin">Admin</SelectItem>
               </SelectContent>
             </Select>
@@ -629,7 +632,8 @@ export function UserManagementClient({
                 <SelectContent align="start">
                   <SelectItem value="all">All roles</SelectItem>
                   <SelectItem value="admin">Admins</SelectItem>
-                  <SelectItem value="viewer">Viewers</SelectItem>
+                  <SelectItem value="pro">Pro users</SelectItem>
+                  <SelectItem value="basic">Basic users</SelectItem>
                 </SelectContent>
               </Select>
               <Select
@@ -864,7 +868,8 @@ export function UserManagementClient({
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent align="start">
-                        <SelectItem value="viewer">Viewer</SelectItem>
+                        <SelectItem value="pro">Pro</SelectItem>
+                        <SelectItem value="basic">Basic</SelectItem>
                         <SelectItem value="admin">Admin</SelectItem>
                       </SelectContent>
                     </Select>
