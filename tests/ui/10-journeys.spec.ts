@@ -40,9 +40,14 @@ function skipUnlessDesktopAnonymous(projectName: string) {
   return project.role !== "anonymous" || project.viewport !== "desktop";
 }
 
-function skipUnlessDesktopViewer(projectName: string) {
+function skipUnlessDesktopPro(projectName: string) {
   const project = getSmokeProjectContext(projectName);
-  return project.role !== "viewer" || project.viewport !== "desktop";
+  return project.role !== "pro" || project.viewport !== "desktop";
+}
+
+function skipUnlessDesktopBasic(projectName: string) {
+  const project = getSmokeProjectContext(projectName);
+  return project.role !== "basic" || project.viewport !== "desktop";
 }
 
 async function signInWithPassword(page: Page, input: {
@@ -299,6 +304,20 @@ test("disabled user cannot sign back in", async ({ page }, testInfo) => {
   });
 });
 
+test("basic profile is read-only", async ({ page }, testInfo) => {
+  test.skip(skipUnlessDesktopBasic(testInfo.project.name));
+
+  await runSmokeJourney("basic profile is read-only", async () => {
+    await page.goto("/dashboard/profile");
+    await expect(page.locator('[data-smoke-page="profile"]')).toBeVisible();
+    await expect(page.getByLabel("Full name")).toBeDisabled();
+    await expect(page.getByLabel("Email address")).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Save name" })).toBeHidden();
+    await expect(page.getByRole("button", { name: "Update email" })).toBeHidden();
+    await expect(page.getByRole("button", { name: "Disable account" })).toBeHidden();
+  });
+});
+
 test("admin can edit dataset details", async ({ page }, testInfo) => {
   test.skip(skipUnlessDesktopAdmin(testInfo.project.name));
 
@@ -333,7 +352,7 @@ test("admin can edit dataset details", async ({ page }, testInfo) => {
 });
 
 test("authenticated user can save a filtered table", async ({ page }, testInfo) => {
-  test.skip(skipUnlessDesktopViewer(testInfo.project.name));
+  test.skip(skipUnlessDesktopPro(testInfo.project.name));
 
   await runSmokeJourney("authenticated user can save a filtered table", async () => {
     const bootstrap = await readUiSmokeBootstrap();
@@ -363,11 +382,32 @@ test("authenticated user can save a filtered table", async ({ page }, testInfo) 
   });
 });
 
-test("viewer reuses warmed primary dataset rows for derived dataset cards", async ({ page }, testInfo) => {
-  test.skip(skipUnlessDesktopViewer(testInfo.project.name));
+test("basic user can filter and download without saving", async ({ page }, testInfo) => {
+  test.skip(skipUnlessDesktopBasic(testInfo.project.name));
+
+  await runSmokeJourney("basic user can filter and download without saving", async () => {
+    const bootstrap = await readUiSmokeBootstrap();
+
+    await page.goto(`/dashboard/datasets/${bootstrap.datasets.primary.id}`);
+    await expect(page.locator('[data-smoke-page="dataset-detail"]')).toBeVisible();
+    await page.getByRole("button", { name: "Watchlist filters" }).click();
+    await page.getByRole("switch", { name: /^Toggle Watchlist$/ }).click();
+    await expect(page.locator("[data-smoke-save-filtered-table]")).toBeHidden();
+    await expect(page.locator("[data-smoke-filtered-table-download]")).toBeVisible();
+
+    const downloadPromise = page.waitForEvent("download");
+    await page.locator("[data-smoke-filtered-table-download]").click();
+    const download = await downloadPromise;
+
+    expect(download.suggestedFilename()).toContain(".csv");
+  });
+});
+
+test("pro reuses warmed primary dataset rows for derived dataset cards", async ({ page }, testInfo) => {
+  test.skip(skipUnlessDesktopPro(testInfo.project.name));
 
   await runSmokeJourney(
-    "viewer reuses warmed primary dataset rows for derived dataset cards",
+    "pro reuses warmed primary dataset rows for derived dataset cards",
     async () => {
       const bootstrap = await readUiSmokeBootstrap();
       const rowRequests: string[] = [];

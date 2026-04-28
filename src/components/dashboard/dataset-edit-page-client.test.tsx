@@ -266,7 +266,13 @@ describe("DatasetEditPageClient", () => {
     fireEvent.change(screen.getByLabelText("Dataset name"), {
       target: { value: "Global Updated.csv" },
     });
+    expect(
+      screen.getByText(/show the dataset to non-admin users/i),
+    ).toBeTruthy();
     fireEvent.click(screen.getByRole("switch", { name: "Public dataset" }));
+    expect(
+      screen.getByText("This dataset is currently hidden from non-admin users."),
+    ).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
 
     await waitFor(() => {

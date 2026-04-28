@@ -115,6 +115,7 @@ describe("/dashboard/datasets/[datasetId]", () => {
       ownerId: "owner-1",
       email: "admin@example.com",
       fullName: "Blake Lewis",
+      workspaceRole: "admin",
       isDatasetAdmin: true,
       mode: "supabase",
     });
@@ -253,11 +254,12 @@ describe("/dashboard/datasets/[datasetId]", () => {
     expect(props.initialSavedTableRowCount).toBe(10);
   });
 
-  it("does not hydrate default filters for viewers when none are configured", async () => {
+  it("does not hydrate default filters for pro users when none are configured", async () => {
     getCurrentIdentityMock.mockResolvedValue({
-      ownerId: "viewer-1",
-      email: "viewer@example.com",
-      fullName: "Viewer",
+      ownerId: "pro-1",
+      email: "pro@example.com",
+      fullName: "Pro",
+      workspaceRole: "pro",
       isDatasetAdmin: false,
       mode: "supabase",
     });
@@ -277,7 +279,7 @@ describe("/dashboard/datasets/[datasetId]", () => {
 
     expect(props.initialFilters).toBeNull();
     expect(props.assignableDatasets).toEqual([]);
-    expect(props.workspaceRole).toBe("viewer");
+    expect(props.workspaceRole).toBe("pro");
     expect(getDatasetMock).toHaveBeenCalledWith("dataset-1", {
       includeDisabled: false,
     });

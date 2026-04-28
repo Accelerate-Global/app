@@ -793,10 +793,12 @@ export type UiSmokeSuitePlan = {
 
 export const UI_SMOKE_PROJECT_ORDER = [
   "desktop-anonymous",
-  "desktop-viewer",
+  "desktop-pro",
+  "desktop-basic",
   "desktop-admin",
   "mobile-anonymous",
-  "mobile-viewer",
+  "mobile-pro",
+  "mobile-basic",
   "mobile-admin",
 ] as const;
 

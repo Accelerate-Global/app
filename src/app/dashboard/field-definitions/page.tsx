@@ -52,7 +52,7 @@ export default async function FieldDefinitionsPage() {
           initialFieldDefinitions={fieldDefinitions}
           canEdit={identity.isDatasetAdmin}
           actorOwnerId={identity.ownerId}
-          workspaceRole={getAnalyticsWorkspaceRole(identity.isDatasetAdmin)}
+          workspaceRole={getAnalyticsWorkspaceRole(identity.workspaceRole)}
         />
       </div>
     </main>

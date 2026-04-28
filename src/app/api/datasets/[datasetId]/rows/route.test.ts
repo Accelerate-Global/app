@@ -21,6 +21,7 @@ const identity = {
   ownerId: "viewer-user",
   email: "viewer@example.com",
   fullName: null,
+  workspaceRole: "pro" as const,
   isDatasetAdmin: false,
   mode: "supabase" as const,
 };

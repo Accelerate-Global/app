@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   getAnalyticsEventPropertyKeys,
+  getAnalyticsWorkspaceRole,
   getAnalyticsRouteFromPathname,
   getEnabledFilterSections,
   getSortingKeys,
@@ -125,6 +126,13 @@ describe("analytics helpers", () => {
     expect(
       getAnalyticsRouteFromPathname("/dashboard/field-sources"),
     ).toBe("field_sources");
+  });
+
+  it("reports canonical workspace roles for analytics", () => {
+    expect(getAnalyticsWorkspaceRole("admin")).toBe("admin");
+    expect(getAnalyticsWorkspaceRole("pro")).toBe("pro");
+    expect(getAnalyticsWorkspaceRole("basic")).toBe("basic");
+    expect(getAnalyticsWorkspaceRole(false)).toBe("pro");
   });
 
   it("exposes preload and cache analytics event property keys", () => {

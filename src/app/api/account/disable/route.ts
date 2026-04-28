@@ -11,6 +11,7 @@ import {
   listWorkspaceUsers,
   setWorkspaceUserDisabled,
 } from "@/lib/user-management";
+import { canDisableOwnAccount } from "@/lib/workspace-role";
 
 export async function POST() {
   if (!hasSupabaseConfig()) {
@@ -21,6 +22,10 @@ export async function POST() {
 
   if (!identity) {
     return jsonError("Unauthorized.", 401);
+  }
+
+  if (!canDisableOwnAccount(identity.workspaceRole)) {
+    return jsonError("Basic accounts cannot disable themselves.", 403);
   }
 
   try {

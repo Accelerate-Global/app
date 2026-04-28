@@ -438,7 +438,9 @@ export function assertWorkspaceUserMutationAllowed(input: {
     input.targetUser.accountStatus !== "disabled";
   const removesActiveAdmin =
     (input.disabled === true && isTargetActiveAdmin) ||
-    (input.workspaceRole === "viewer" && isTargetActiveAdmin);
+    (input.workspaceRole !== undefined &&
+      input.workspaceRole !== "admin" &&
+      isTargetActiveAdmin);
 
   if (
     removesActiveAdmin &&

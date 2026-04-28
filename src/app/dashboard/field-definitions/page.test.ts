@@ -51,11 +51,12 @@ describe("/dashboard/field-definitions", () => {
     expect(redirectMock).toHaveBeenCalledWith("/");
   });
 
-  it("renders viewer-facing intro copy for authenticated viewers", async () => {
+  it("renders user-facing intro copy for authenticated pro users", async () => {
     getCurrentIdentityMock.mockResolvedValue({
-      ownerId: "viewer-1",
-      email: "viewer@example.com",
+      ownerId: "pro-1",
+      email: "pro@example.com",
       fullName: null,
+      workspaceRole: "pro",
       isDatasetAdmin: false,
       mode: "supabase",
     });
@@ -77,8 +78,8 @@ describe("/dashboard/field-definitions", () => {
     expect(fieldDefinitionsClientMock).toHaveBeenCalledWith(
       expect.objectContaining({
         canEdit: false,
-        actorOwnerId: "viewer-1",
-        workspaceRole: "viewer",
+        actorOwnerId: "pro-1",
+        workspaceRole: "pro",
       }),
       undefined,
     );
@@ -89,6 +90,7 @@ describe("/dashboard/field-definitions", () => {
       ownerId: "owner-1",
       email: "admin@example.com",
       fullName: "Blake Lewis",
+      workspaceRole: "admin",
       isDatasetAdmin: true,
       mode: "supabase",
     });

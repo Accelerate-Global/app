@@ -22,8 +22,9 @@ const listSavedDatasetTablesMock = vi.mocked(listSavedDatasetTables);
 
 const identity = {
   ownerId: "supabase-user",
-  email: "viewer@example.com",
+  email: "pro@example.com",
   fullName: null,
+  workspaceRole: "pro" as const,
   isDatasetAdmin: false,
   mode: "supabase" as const,
 };
@@ -97,7 +98,7 @@ describe("/api/saved-tables", () => {
     });
   });
 
-  it("creates a saved table for any authenticated user", async () => {
+  it("creates a saved table for pro users", async () => {
     getCurrentIdentityMock.mockResolvedValue(identity);
     createSavedDatasetTableMock.mockResolvedValue(savedTable);
 
@@ -141,6 +142,7 @@ describe("/api/saved-tables", () => {
   it("allows admins to create saved tables for datasets they can access", async () => {
     getCurrentIdentityMock.mockResolvedValue({
       ...identity,
+      workspaceRole: "admin",
       isDatasetAdmin: true,
     });
     createSavedDatasetTableMock.mockResolvedValue(savedTable);
@@ -164,6 +166,30 @@ describe("/api/saved-tables", () => {
         includeDisabled: true,
       }),
     );
+  });
+
+  it("rejects saved table creation for basic users", async () => {
+    getCurrentIdentityMock.mockResolvedValue({
+      ...identity,
+      workspaceRole: "basic",
+    });
+
+    const response = await POST(
+      new Request("http://localhost/api/saved-tables", {
+        method: "POST",
+        body: JSON.stringify({
+          datasetId: savedTable.datasetId,
+          savedRowCount: 12,
+          filters: savedTable.filters,
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toEqual({
+      error: "Basic accounts cannot save dataset tables.",
+    });
+    expect(createSavedDatasetTableMock).not.toHaveBeenCalled();
   });
 
   it("returns not found when the source dataset does not exist", async () => {

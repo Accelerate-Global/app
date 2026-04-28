@@ -19,9 +19,9 @@ vi.mock("@/lib/analytics-client", () => ({
 function createUser(overrides: Partial<WorkspaceUser> = {}): WorkspaceUser {
   return {
     id: "user-1",
-    email: "viewer@example.com",
-    fullName: "Viewer User",
-    workspaceRole: "viewer",
+    email: "pro@example.com",
+    fullName: "Pro User",
+    workspaceRole: "pro",
     accountStatus: "active",
     providers: ["email"],
     identities: [],
@@ -73,6 +73,31 @@ describe("UserManagementClient", () => {
     const inviteFormGrid = container.querySelector(".md\\:grid-cols-\\[minmax\\(0\\,1fr\\)_12rem_auto\\]");
 
     expect(inviteFormGrid?.className).toContain("md:items-start");
+  });
+
+  it("displays pro and basic workspace roles", () => {
+    renderUserManagementClient([
+      createUser({ id: "pro-1", workspaceRole: "pro", fullName: "Pro User" }),
+      createUser({
+        id: "basic-1",
+        email: "basic@example.com",
+        fullName: "Basic User",
+        workspaceRole: "basic",
+      }),
+      createUser({
+        id: "admin-1",
+        email: "admin@example.com",
+        fullName: "Admin User",
+        workspaceRole: "admin",
+      }),
+    ]);
+
+    expect(screen.getByText("Pro User")).toBeTruthy();
+    expect(screen.getByText("Basic User")).toBeTruthy();
+    expect(screen.getByText("Admin User")).toBeTruthy();
+    expect(screen.getAllByText("Pro").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Basic").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Admin").length).toBeGreaterThan(0);
   });
 
   it("opens the details sheet when a user row is clicked", async () => {
@@ -127,7 +152,7 @@ describe("UserManagementClient", () => {
 
     renderUserManagementClient();
 
-    const row = screen.getByText("Viewer User").closest("tr");
+    const row = screen.getByText("Pro User").closest("tr");
 
     expect(row).toBeTruthy();
     fireEvent.click(row!);
@@ -140,7 +165,7 @@ describe("UserManagementClient", () => {
     });
 
     expect(
-      await screen.findByText("Password reset email sent to viewer@example.com."),
+      await screen.findByText("Password reset email sent to pro@example.com."),
     ).toBeTruthy();
     expect(trackAppEventMock).toHaveBeenCalledWith(
       "admin_password_reset_sent",
@@ -160,7 +185,7 @@ describe("UserManagementClient", () => {
       }),
     ]);
 
-    const row = screen.getByText("Viewer User").closest("tr");
+    const row = screen.getByText("Pro User").closest("tr");
 
     expect(row).toBeTruthy();
     fireEvent.click(row!);

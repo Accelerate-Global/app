@@ -111,6 +111,7 @@ describe("/dashboard/datasets/[datasetId]/edit", () => {
       ownerId: "owner-1",
       email: "admin@example.com",
       fullName: "Blake Lewis",
+      workspaceRole: "admin",
       isDatasetAdmin: true,
       mode: "supabase",
     });
@@ -147,8 +148,9 @@ describe("/dashboard/datasets/[datasetId]/edit", () => {
   it("redirects non-admin users to the dataset detail page", async () => {
     getCurrentIdentityMock.mockResolvedValue({
       ownerId: "owner-1",
-      email: "viewer@example.com",
-      fullName: "Viewer",
+      email: "basic@example.com",
+      fullName: "Basic",
+      workspaceRole: "basic",
       isDatasetAdmin: false,
       mode: "supabase",
     });

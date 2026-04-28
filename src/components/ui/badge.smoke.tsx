@@ -7,7 +7,7 @@ function BadgeSmokeFixture() {
   return (
     <div className="flex flex-wrap gap-2">
       <Badge>Shared</Badge>
-      <Badge variant="secondary">Viewer</Badge>
+      <Badge variant="secondary">Pro</Badge>
       <Badge variant="outline">Filter</Badge>
     </div>
   );

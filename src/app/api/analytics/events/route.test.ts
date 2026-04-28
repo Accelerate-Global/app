@@ -59,6 +59,7 @@ describe("/api/analytics/events", () => {
       ownerId: "admin-1",
       email: "admin@example.com",
       fullName: "Admin User",
+      workspaceRole: "admin",
       isDatasetAdmin: true,
       mode: "supabase",
     });
@@ -87,6 +88,44 @@ describe("/api/analytics/events", () => {
       expect.objectContaining({
         actor_owner_id: "admin-1",
         workspace_role: "admin",
+      }),
+    );
+  });
+
+  it("reports basic authenticated users with the canonical role", async () => {
+    getCurrentIdentityMock.mockResolvedValue({
+      ownerId: "basic-1",
+      email: "basic@example.com",
+      fullName: "Basic User",
+      workspaceRole: "basic",
+      isDatasetAdmin: false,
+      mode: "supabase",
+    });
+
+    const response = await POST(
+      new Request("http://localhost/api/analytics/events", {
+        method: "POST",
+        body: JSON.stringify({
+          name: "dashboard_viewed",
+          payload: {
+            route: "dashboard",
+            actor_owner_id: "legacy-viewer",
+            workspace_role: "viewer",
+            source_surface: "dashboard_page",
+            success: true,
+            dataset_count: 3,
+            saved_table_count: 1,
+          },
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(202);
+    expect(persistAnalyticsEventMock).toHaveBeenCalledWith(
+      "dashboard_viewed",
+      expect.objectContaining({
+        actor_owner_id: "basic-1",
+        workspace_role: "basic",
       }),
     );
   });
@@ -150,6 +189,7 @@ describe("/api/analytics/events", () => {
       ownerId: "admin-1",
       email: "admin@example.com",
       fullName: "Admin User",
+      workspaceRole: "admin",
       isDatasetAdmin: true,
       mode: "supabase",
     });

@@ -1,4 +1,4 @@
-export type SmokeRole = "anonymous" | "viewer" | "admin";
+export type SmokeRole = "anonymous" | "pro" | "basic" | "admin";
 
 export type SmokeRouteSpec = {
   id: string;

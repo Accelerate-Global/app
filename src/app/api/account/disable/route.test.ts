@@ -52,6 +52,7 @@ const identity = {
   ownerId: "supabase-user",
   email: "admin@example.com",
   fullName: "Blake",
+  workspaceRole: "admin" as const,
   isDatasetAdmin: true,
   mode: "supabase" as const,
 };
@@ -174,6 +175,23 @@ describe("/api/account/disable", () => {
     await expect(response.json()).resolves.toEqual({
       error: "The last active admin cannot disable their own account.",
     });
+    expect(setWorkspaceUserDisabledMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects self-disable for basic users", async () => {
+    getCurrentIdentityMock.mockResolvedValue({
+      ...identity,
+      workspaceRole: "basic",
+      isDatasetAdmin: false,
+    });
+
+    const response = await POST();
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toEqual({
+      error: "Basic accounts cannot disable themselves.",
+    });
+    expect(listWorkspaceUsersMock).not.toHaveBeenCalled();
     expect(setWorkspaceUserDisabledMock).not.toHaveBeenCalled();
   });
 

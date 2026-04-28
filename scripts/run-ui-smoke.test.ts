@@ -34,7 +34,7 @@ describe("run-ui-smoke", () => {
       }),
     ]);
     expect(plan.suites[0]?.projectNames).toEqual(
-      expect.arrayContaining(["desktop-admin", "desktop-viewer"]),
+      expect.arrayContaining(["desktop-admin", "desktop-pro", "desktop-basic"]),
     );
     expect(plan.bootstrapScope).toBe("datasets");
   });
@@ -88,10 +88,12 @@ describe("run-ui-smoke", () => {
         grepPattern: null,
         projectNames: [
           "desktop-anonymous",
-          "desktop-viewer",
+          "desktop-pro",
+          "desktop-basic",
           "desktop-admin",
           "mobile-anonymous",
-          "mobile-viewer",
+          "mobile-pro",
+          "mobile-basic",
           "mobile-admin",
         ],
         testPaths: ["tests/ui/10-journeys.spec.ts"],
@@ -120,7 +122,8 @@ describe("run-ui-smoke", () => {
       }),
     ]);
     expect(plan.suites[0]?.projectNames).toEqual([
-      "desktop-viewer",
+      "desktop-pro",
+      "desktop-basic",
       "desktop-admin",
     ]);
   });
@@ -156,10 +159,12 @@ describe("run-ui-smoke", () => {
       }),
     ).toEqual([
       ["desktop-anonymous"],
-      ["desktop-viewer"],
+      ["desktop-pro"],
+      ["desktop-basic"],
       ["desktop-admin"],
       ["mobile-anonymous"],
-      ["mobile-viewer"],
+      ["mobile-pro"],
+      ["mobile-basic"],
       ["mobile-admin"],
     ]);
   });

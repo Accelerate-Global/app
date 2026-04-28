@@ -19,6 +19,7 @@ const identity = {
   ownerId: "admin-1",
   email: "admin@example.com",
   fullName: "Admin",
+  workspaceRole: "admin" as const,
   isDatasetAdmin: true,
   mode: "supabase" as const,
 };

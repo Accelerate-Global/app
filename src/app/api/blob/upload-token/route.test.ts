@@ -46,6 +46,7 @@ const identity = {
   ownerId: "supabase-user",
   email: "admin@example.com",
   fullName: null,
+  workspaceRole: "admin" as const,
   isDatasetAdmin: true,
   mode: "supabase" as const,
 };

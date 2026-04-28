@@ -73,9 +73,9 @@ export function AccountControl({ identity }: AccountControlProps) {
       buildAnalyticsContext({
         route: getAnalyticsRouteFromPathname(pathname),
         actorOwnerId: identity.ownerId,
-        workspaceRole: getAnalyticsWorkspaceRole(identity.isDatasetAdmin),
+        workspaceRole: getAnalyticsWorkspaceRole(identity.workspaceRole),
       }),
-    [identity.isDatasetAdmin, identity.ownerId, pathname],
+    [identity.ownerId, identity.workspaceRole, pathname],
   );
 
   async function signOut() {

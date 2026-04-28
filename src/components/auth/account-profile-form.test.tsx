@@ -35,6 +35,7 @@ const identity = {
   ownerId: "owner-1",
   email: "admin@example.com",
   fullName: "Blake Lewis",
+  workspaceRole: "admin" as const,
   isDatasetAdmin: true,
   mode: "supabase" as const,
 };
@@ -155,5 +156,29 @@ describe("AccountProfileForm", () => {
     );
     expect(pushMock).toHaveBeenCalledWith("/");
     expect(refreshMock).toHaveBeenCalled();
+  });
+
+  it("renders profile controls read-only for basic users", () => {
+    render(
+      <AccountProfileForm
+        identity={{
+          ...identity,
+          workspaceRole: "basic",
+          isDatasetAdmin: false,
+        }}
+      />,
+    );
+
+    expect((screen.getByLabelText("Full name") as HTMLInputElement).disabled).toBe(
+      true,
+    );
+    expect(
+      (screen.getByLabelText("Email address") as HTMLInputElement).disabled,
+    ).toBe(true);
+    expect(screen.queryByRole("button", { name: "Save name" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Update email" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Disable account" })).toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(createSupabaseBrowserClientMock).not.toHaveBeenCalled();
   });
 });

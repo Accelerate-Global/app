@@ -1042,6 +1042,7 @@ function identityFromRun(run: ApiConnectionRunRecord): CurrentIdentity {
     ownerId: run.actorOwnerId,
     email: run.actorEmail,
     fullName: null,
+    workspaceRole: "admin",
     isDatasetAdmin: true,
     mode: "supabase",
   };

@@ -19,6 +19,7 @@ function isValidOptionalUuid(value: unknown) {
 function isValidWorkspaceRole(value: unknown) {
   return (
     value === "anonymous" ||
+    value === "viewer" ||
     (typeof value === "string" && WORKSPACE_ROLES.includes(value as (typeof WORKSPACE_ROLES)[number]))
   );
 }
@@ -75,7 +76,7 @@ export async function POST(request: Request) {
     ...body.payload,
     actor_owner_id: identity ? identity.ownerId : body.payload.actor_owner_id,
     workspace_role: identity
-      ? getAnalyticsWorkspaceRole(identity.isDatasetAdmin)
+      ? getAnalyticsWorkspaceRole(identity.workspaceRole)
       : body.payload.workspace_role,
   };
 

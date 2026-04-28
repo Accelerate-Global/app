@@ -82,6 +82,7 @@ describe("AccountControl", () => {
           ownerId: "owner-1",
           email: "admin@example.com",
           fullName: "Blake Lewis",
+          workspaceRole: "admin",
           isDatasetAdmin: true,
           mode: "supabase",
         }}
@@ -120,20 +121,21 @@ describe("AccountControl", () => {
       <AccountControl
         identity={{
           ownerId: "owner-1",
-          email: "viewer@example.com",
+          email: "pro@example.com",
           fullName: null,
+          workspaceRole: "pro",
           isDatasetAdmin: false,
           mode: "supabase",
         }}
       />,
     );
 
-    expect(screen.getByRole("button").textContent).toContain("viewer");
+    expect(screen.getByRole("button").textContent).toContain("pro");
     expect(screen.getByRole("button").getAttribute("data-smoke-await-ready")).toBe(
       "true",
     );
     const menu = openMenu();
-    expect(screen.getByText("viewer@example.com")).toBeTruthy();
+    expect(screen.getByText("pro@example.com")).toBeTruthy();
     expect(screen.queryByText("Manage Field Sources")).toBeNull();
     expect(screen.queryByText("Upload")).toBeNull();
     expect(screen.queryByText("Field Sources")).toBeNull();
@@ -153,8 +155,9 @@ describe("AccountControl", () => {
       <AccountControl
         identity={{
           ownerId: "owner-1",
-          email: "viewer@example.com",
+          email: "pro@example.com",
           fullName: null,
+          workspaceRole: "pro",
           isDatasetAdmin: false,
           mode: "supabase",
         }}
@@ -172,7 +175,7 @@ describe("AccountControl", () => {
       expect.objectContaining({
         route: "dashboard",
         actor_owner_id: "owner-1",
-        workspace_role: "viewer",
+        workspace_role: "pro",
         source_surface: "account_menu",
         success: true,
       }),
@@ -189,8 +192,9 @@ describe("AccountControl", () => {
       <AccountControl
         identity={{
           ownerId: "owner-1",
-          email: "viewer@example.com",
+          email: "pro@example.com",
           fullName: null,
+          workspaceRole: "pro",
           isDatasetAdmin: false,
           mode: "supabase",
         }}
@@ -205,7 +209,7 @@ describe("AccountControl", () => {
       expect.objectContaining({
         route: "profile",
         actor_owner_id: "owner-1",
-        workspace_role: "viewer",
+        workspace_role: "pro",
         source_surface: "account_menu",
         success: true,
         from_theme: "light",
@@ -219,8 +223,9 @@ describe("AccountControl", () => {
       <AccountControl
         identity={{
           ownerId: "owner-1",
-          email: "viewer@example.com",
+          email: "pro@example.com",
           fullName: null,
+          workspaceRole: "pro",
           isDatasetAdmin: false,
           mode: "supabase",
         }}

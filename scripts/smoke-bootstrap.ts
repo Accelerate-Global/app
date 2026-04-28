@@ -66,7 +66,7 @@ type SmokeAuthUser = {
   fullName: string;
 };
 
-type SmokeWorkspaceRole = "admin" | "viewer";
+type SmokeWorkspaceRole = "admin" | "pro" | "basic";
 
 type SmokeColumn = {
   key: string;
@@ -781,11 +781,17 @@ async function main() {
       supabasePublishableKey: smokeEnv.supabasePublishableKey,
       user: UI_SMOKE_USERS.admin,
     });
-    const viewerUser = await recreateUser({
+    const proUser = await recreateUser({
       sql,
       supabaseUrl: smokeEnv.supabaseUrl,
       supabasePublishableKey: smokeEnv.supabasePublishableKey,
-      user: UI_SMOKE_USERS.viewer,
+      user: UI_SMOKE_USERS.pro,
+    });
+    const basicUser = await recreateUser({
+      sql,
+      supabaseUrl: smokeEnv.supabaseUrl,
+      supabasePublishableKey: smokeEnv.supabasePublishableKey,
+      user: UI_SMOKE_USERS.basic,
     });
     const recoveryUser = await recreateUser({
       sql,
@@ -824,33 +830,38 @@ async function main() {
     });
     await setWorkspaceRole({
       sql,
-      userId: viewerUser.id,
-      workspaceRole: "viewer",
+      userId: proUser.id,
+      workspaceRole: "pro",
+    });
+    await setWorkspaceRole({
+      sql,
+      userId: basicUser.id,
+      workspaceRole: "basic",
     });
     await setWorkspaceRole({
       sql,
       userId: recoveryUser.id,
-      workspaceRole: "viewer",
+      workspaceRole: "pro",
     });
     await setWorkspaceRole({
       sql,
       userId: forgotPasswordUser.id,
-      workspaceRole: "viewer",
+      workspaceRole: "pro",
     });
     await setWorkspaceRole({
       sql,
       userId: resetUser.id,
-      workspaceRole: "viewer",
+      workspaceRole: "pro",
     });
     await setWorkspaceRole({
       sql,
       userId: signOutUser.id,
-      workspaceRole: "viewer",
+      workspaceRole: "pro",
     });
     await setWorkspaceRole({
       sql,
       userId: disableUser.id,
-      workspaceRole: "viewer",
+      workspaceRole: "pro",
     });
 
     if (shouldSeedWorkspaceMetadata(scope)) {
@@ -883,7 +894,8 @@ async function main() {
       },
       users: {
         admin: adminUser,
-        viewer: viewerUser,
+        pro: proUser,
+        basic: basicUser,
         recovery: recoveryUser,
         forgotPassword: forgotPasswordUser,
         reset: resetUser,
@@ -935,7 +947,7 @@ async function main() {
 
     await writeFile(UI_SMOKE_BOOTSTRAP_FILE, JSON.stringify(payload, null, 2), "utf8");
     console.log(
-      `Bootstrapped UI smoke data for ${viewerUser.email}, ${adminUser.email}, ${recoveryUser.email}, ${forgotPasswordUser.email}, ${resetUser.email}, ${signOutUser.email}, and ${disableUser.email}.`,
+      `Bootstrapped UI smoke data for ${proUser.email}, ${basicUser.email}, ${adminUser.email}, ${recoveryUser.email}, ${forgotPasswordUser.email}, ${resetUser.email}, ${signOutUser.email}, and ${disableUser.email}.`,
     );
     console.log(
       `Using scope ${scope} with publishable key length ${smokeEnv.supabasePublishableKey.length} against ${smokeEnv.supabaseUrl}.`,

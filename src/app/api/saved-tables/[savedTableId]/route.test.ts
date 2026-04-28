@@ -25,8 +25,9 @@ const updateSavedDatasetTableMock = vi.mocked(updateSavedDatasetTable);
 
 const identity = {
   ownerId: "supabase-user",
-  email: "viewer@example.com",
+  email: "basic@example.com",
   fullName: null,
+  workspaceRole: "basic" as const,
   isDatasetAdmin: false,
   mode: "supabase" as const,
 };
@@ -154,6 +155,7 @@ describe("/api/saved-tables/[savedTableId]", () => {
   it("keeps admin saved-table access owner-scoped while allowing private datasets", async () => {
     getCurrentIdentityMock.mockResolvedValue({
       ...identity,
+      workspaceRole: "admin",
       isDatasetAdmin: true,
     });
     getSavedDatasetTableMock.mockResolvedValue({

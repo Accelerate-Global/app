@@ -97,9 +97,15 @@ export default async function globalSetup(config: FullConfig) {
 
   await createSignedInStorageState({
     baseUrl,
-    email: UI_SMOKE_USERS.viewer.email,
-    password: UI_SMOKE_USERS.viewer.password,
-    storageStatePath: UI_SMOKE_STORAGE_STATES.viewer,
+    email: UI_SMOKE_USERS.pro.email,
+    password: UI_SMOKE_USERS.pro.password,
+    storageStatePath: UI_SMOKE_STORAGE_STATES.pro,
+  });
+  await createSignedInStorageState({
+    baseUrl,
+    email: UI_SMOKE_USERS.basic.email,
+    password: UI_SMOKE_USERS.basic.password,
+    storageStatePath: UI_SMOKE_STORAGE_STATES.basic,
   });
   await createSignedInStorageState({
     baseUrl,

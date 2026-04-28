@@ -117,7 +117,7 @@ function FieldDefinitionName({
       <span>{effectiveLabel}</span>
       {showHiddenMarker && fieldDefinition.hideFromViewerFieldDefinitions ? (
         <Badge variant="outline" className="rounded-full px-2.5 text-[0.7rem]">
-          Hidden from viewers
+          Hidden from non-admins
         </Badge>
       ) : null}
     </div>
@@ -330,7 +330,7 @@ export function FieldDefinitionsClient({
   initialFieldDefinitions,
   canEdit,
   actorOwnerId = "anonymous",
-  workspaceRole = canEdit ? "admin" : "viewer",
+  workspaceRole = canEdit ? "admin" : "pro",
 }: FieldDefinitionsClientProps) {
   const [fieldDefinitions, setFieldDefinitions] = useState(() =>
     sortFieldDefinitions(initialFieldDefinitions),

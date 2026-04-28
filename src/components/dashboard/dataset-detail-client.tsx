@@ -357,6 +357,7 @@ export function DatasetDetailClient({
     }),
     [analyticsContext, datasetSource],
   );
+  const canSaveFilteredTable = workspaceRole !== "basic";
   const sourceDatasetId = dataset.backingDatasetId ?? dataset.id;
 
   const selectedRegionCountryNames = useMemo(
@@ -1103,6 +1104,7 @@ export function DatasetDetailClient({
             hasError={Boolean(dataset.error || datasetTable.error)}
             fieldDefinitionPresentationByColumnKey={fieldDefinitionPresentationByColumnKey}
             analyticsContext={analyticsContext}
+            canSaveFilteredTable={canSaveFilteredTable}
             onOpenFilters={handleOpenFilters}
             onOpenAssignDerivedView={
               assignableDatasets.length > 0

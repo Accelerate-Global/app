@@ -31,7 +31,7 @@ describe("FieldDefinitionsClient", () => {
     cleanup();
   });
 
-  it("renders audience-facing copy and read-only field rows for viewers", () => {
+  it("renders audience-facing copy and read-only field rows for non-admin users", () => {
     render(
       <FieldDefinitionsClient
         canEdit={false}
@@ -156,7 +156,7 @@ describe("FieldDefinitionsClient", () => {
     });
     fireEvent.click(
       within(dialog).getByRole("switch", {
-        name: "Hide from viewer Definitions page",
+        name: "Hide from non-admin Definitions page",
       }),
     );
     expect(within(dialog).getByText("Sources")).toBeTruthy();
@@ -201,7 +201,7 @@ describe("FieldDefinitionsClient", () => {
       }),
     );
     expect(screen.getAllByText("Country Name").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Hidden from viewers").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Hidden from non-admins").length).toBeGreaterThan(0);
     expect(
       screen.getAllByText("The country assigned to the row.").length,
     ).toBeGreaterThan(0);
