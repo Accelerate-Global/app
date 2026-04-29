@@ -16,6 +16,9 @@ vi.mock("next/navigation", () => ({
   redirect: vi.fn((target: string) => {
     throw new Error(`NEXT_REDIRECT:${target}`);
   }),
+  useRouter: () => ({
+    refresh: vi.fn(),
+  }),
 }));
 
 vi.mock("@/lib/auth", () => ({
@@ -105,6 +108,9 @@ describe("/dashboard/analytics", () => {
         totalEvents: 12,
         successfulEvents: 10,
         failedEvents: 2,
+        openFailureGroups: 1,
+        expectedFailureGroups: 1,
+        resolvedFailureGroups: 0,
         uniqueActors: 4,
       },
       eventBreakdown: [{ key: "sign_out", count: 6 }],
@@ -119,8 +125,33 @@ describe("/dashboard/analytics", () => {
           occurrenceCount: 1,
           firstSeenAt: "2026-04-18T15:00:00.000Z",
           lastSeenAt: "2026-04-18T15:00:00.000Z",
+          status: "needs_review",
+          note: "",
+          triagedByOwnerId: null,
+          triagedAt: null,
+          isBuiltInExpected: false,
+          reopened: false,
         },
       ],
+      expectedFailures: [
+        {
+          fingerprint: "auth_sign_in_failed|invalid_credentials|sign_in|auth_form",
+          eventName: "auth_sign_in_failed",
+          route: "sign_in",
+          sourceSurface: "auth_form",
+          errorCode: "invalid_credentials",
+          occurrenceCount: 1,
+          firstSeenAt: "2026-04-18T14:00:00.000Z",
+          lastSeenAt: "2026-04-18T14:00:00.000Z",
+          status: "expected",
+          note: "",
+          triagedByOwnerId: null,
+          triagedAt: null,
+          isBuiltInExpected: true,
+          reopened: false,
+        },
+      ],
+      resolvedFailures: [],
       recentFailures: [],
       events: [],
       pageCount: 1,
@@ -135,7 +166,9 @@ describe("/dashboard/analytics", () => {
     expect(screen.getByText("Total events")).toBeTruthy();
     expect(screen.getByText("Unique actors")).toBeTruthy();
     expect(screen.getByText("Known failures")).toBeTruthy();
-    expect(screen.getByText("Seen 1 times")).toBeTruthy();
+    expect(screen.getByText("Open failure groups")).toBeTruthy();
+    expect(screen.getByText("Expected failure groups")).toBeTruthy();
+    expect(screen.getAllByText("Seen 1 times").length).toBeGreaterThan(0);
     expect(getAnalyticsDashboardDataMock).toHaveBeenCalled();
   });
 });

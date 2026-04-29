@@ -8,10 +8,15 @@ import { hasSupabaseConfig } from "@/lib/supabase/config";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   getActiveWorkspaceAdminCount,
+  getActiveWorkspaceSuperAdminCount,
   listWorkspaceUsers,
   setWorkspaceUserDisabled,
 } from "@/lib/user-management";
-import { canDisableOwnAccount } from "@/lib/workspace-role";
+import {
+  canDisableOwnAccount,
+  isWorkspaceAdmin,
+  isWorkspaceSuperAdmin,
+} from "@/lib/workspace-role";
 
 export async function POST() {
   if (!hasSupabaseConfig()) {
@@ -32,14 +37,31 @@ export async function POST() {
     if (identity.isDatasetAdmin) {
       const users = await listWorkspaceUsers();
       const activeAdminCount = getActiveWorkspaceAdminCount(users);
+      const activeSuperAdminCount = getActiveWorkspaceSuperAdminCount(users);
       const currentUser = users.find((user) => user.id === identity.ownerId);
 
       if (
-        currentUser?.workspaceRole === "admin" &&
+        currentUser &&
+        isWorkspaceSuperAdmin(currentUser?.workspaceRole) &&
+        currentUser.accountStatus !== "disabled" &&
+        activeSuperAdminCount <= 1
+      ) {
+        return jsonError(
+          "The last active super admin cannot disable their own account.",
+          409,
+        );
+      }
+
+      if (
+        currentUser &&
+        isWorkspaceAdmin(currentUser?.workspaceRole) &&
         currentUser.accountStatus !== "disabled" &&
         activeAdminCount <= 1
       ) {
-        return jsonError("The last active admin cannot disable their own account.", 409);
+        return jsonError(
+          "The last active admin-capable account cannot disable their own account.",
+          409,
+        );
       }
     }
 

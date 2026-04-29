@@ -275,6 +275,10 @@ export type AppAnalyticsEventMap = {
     target_user_id: string;
     to_status: string;
   };
+  admin_invite_resent: AppAnalyticsEventBase & {
+    target_user_id: string;
+    to_status: string;
+  };
 };
 
 export type AppAnalyticsEventName = keyof AppAnalyticsEventMap;
@@ -331,6 +335,7 @@ export const APP_ANALYTICS_EVENT_NAMES = [
   "user_disabled",
   "user_enabled",
   "admin_password_reset_sent",
+  "admin_invite_resent",
 ] as const satisfies readonly AppAnalyticsEventName[];
 
 export const APP_ANALYTICS_BASE_FIELDS = [
@@ -461,6 +466,7 @@ const APP_ANALYTICS_EVENT_PROPERTY_KEYS = {
   user_disabled: ["from_role", "to_role", "from_status", "to_status"],
   user_enabled: ["from_role", "to_role", "from_status", "to_status"],
   admin_password_reset_sent: ["to_status"],
+  admin_invite_resent: ["to_status"],
 } as const satisfies {
   [Name in AppAnalyticsEventName]: readonly string[];
 };

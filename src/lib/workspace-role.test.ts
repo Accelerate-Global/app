@@ -6,10 +6,12 @@ import {
   canUpdateOwnProfile,
   getWorkspaceRole,
   isWorkspaceAdmin,
+  isWorkspaceSuperAdmin,
 } from "@/lib/workspace-role";
 
 describe("workspace-role", () => {
   it("resolves canonical workspace roles", () => {
+    expect(getWorkspaceRole("super_admin")).toBe("super_admin");
     expect(getWorkspaceRole("admin")).toBe("admin");
     expect(getWorkspaceRole("pro")).toBe("pro");
     expect(getWorkspaceRole("basic")).toBe("basic");
@@ -22,9 +24,12 @@ describe("workspace-role", () => {
   });
 
   it("keeps admin checks based on the canonical role", () => {
+    expect(isWorkspaceAdmin("super_admin")).toBe(true);
     expect(isWorkspaceAdmin("admin")).toBe(true);
     expect(isWorkspaceAdmin("viewer")).toBe(false);
     expect(isWorkspaceAdmin("basic")).toBe(false);
+    expect(isWorkspaceSuperAdmin("super_admin")).toBe(true);
+    expect(isWorkspaceSuperAdmin("admin")).toBe(false);
   });
 
   it("restricts basic-only account and saved-table capabilities", () => {
@@ -33,6 +38,7 @@ describe("workspace-role", () => {
     expect(canCreateSavedDatasetTables("basic")).toBe(false);
     expect(canUpdateOwnProfile("viewer")).toBe(true);
     expect(canDisableOwnAccount("pro")).toBe(true);
+    expect(canCreateSavedDatasetTables("super_admin")).toBe(true);
     expect(canCreateSavedDatasetTables("admin")).toBe(true);
   });
 });

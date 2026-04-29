@@ -129,6 +129,7 @@ describe("analytics helpers", () => {
   });
 
   it("reports canonical workspace roles for analytics", () => {
+    expect(getAnalyticsWorkspaceRole("super_admin")).toBe("super_admin");
     expect(getAnalyticsWorkspaceRole("admin")).toBe("admin");
     expect(getAnalyticsWorkspaceRole("pro")).toBe("pro");
     expect(getAnalyticsWorkspaceRole("basic")).toBe("basic");
@@ -224,6 +225,13 @@ describe("analytics helpers", () => {
       "assigned_row_count",
       "filter_sections_enabled",
       "sorting_count",
+    ]);
+  });
+
+  it("exposes user management resend analytics event property keys", () => {
+    expect(isAppAnalyticsEventName("admin_invite_resent")).toBe(true);
+    expect(getAnalyticsEventPropertyKeys("admin_invite_resent")).toEqual([
+      "to_status",
     ]);
   });
 });

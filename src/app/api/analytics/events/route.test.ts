@@ -130,6 +130,45 @@ describe("/api/analytics/events", () => {
     );
   });
 
+  it("reports super admin authenticated users with the canonical role", async () => {
+    getCurrentIdentityMock.mockResolvedValue({
+      ownerId: "super-1",
+      email: "super@example.com",
+      fullName: "Super Admin",
+      workspaceRole: "super_admin",
+      isDatasetAdmin: true,
+      mode: "supabase",
+    });
+
+    const response = await POST(
+      new Request("http://localhost/api/analytics/events", {
+        method: "POST",
+        body: JSON.stringify({
+          name: "dashboard_viewed",
+          payload: {
+            route: "dashboard",
+            actor_owner_id: "spoofed-user",
+            workspace_role: "anonymous",
+            source_surface: "dashboard_page",
+            success: true,
+            dataset_count: 3,
+            saved_table_count: 1,
+          },
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(202);
+    expect(persistAnalyticsEventMock).toHaveBeenCalledWith(
+      "dashboard_viewed",
+      expect.objectContaining({
+        actor_owner_id: "super-1",
+        workspace_role: "super_admin",
+      }),
+    );
+  });
+
+
   it("accepts anonymous auth events with the anonymous context", async () => {
     getCurrentIdentityMock.mockResolvedValue(null);
 

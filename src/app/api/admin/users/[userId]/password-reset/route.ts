@@ -5,6 +5,7 @@ import {
   sendWorkspaceUserPasswordResetEmail,
   WorkspaceUserActionError,
   WorkspaceUserNotFoundError,
+  WorkspaceUserPermissionError,
 } from "@/lib/user-management";
 
 type UserPasswordResetContext = {
@@ -28,6 +29,7 @@ export async function POST(request: Request, context: UserPasswordResetContext) 
     const { userId } = await context.params;
 
     await sendWorkspaceUserPasswordResetEmail({
+      currentUserRole: identity.workspaceRole,
       userId,
       redirectTo: new URL("/reset-password", request.url).toString(),
     });
@@ -39,6 +41,10 @@ export async function POST(request: Request, context: UserPasswordResetContext) 
     }
 
     if (error instanceof WorkspaceUserActionError) {
+      return jsonError(error.message, error.status);
+    }
+
+    if (error instanceof WorkspaceUserPermissionError) {
       return jsonError(error.message, error.status);
     }
 

@@ -8,6 +8,7 @@ import {
   isActionableAnalyticsFailure,
   resolveAnalyticsFailure,
   resolveAnalyticsDashboardFilters,
+  upsertAnalyticsFailureTriage,
 } from "@/lib/analytics-store";
 
 vi.mock("@/db", () => ({
@@ -116,12 +117,42 @@ describe("analytics-store payload shaping", () => {
   });
 });
 
-describe("analytics-store failure resolution writes", () => {
+describe("analytics-store failure triage writes", () => {
   beforeEach(() => {
     vi.resetAllMocks();
   });
 
-  it("upserts the latest analytics failure resolution", async () => {
+  it("upserts the latest analytics failure triage", async () => {
+    const onConflictDoUpdate = vi.fn();
+    const values = vi.fn(() => ({ onConflictDoUpdate }));
+    const insert = vi.fn(() => ({ values }));
+
+    getDbMock.mockReturnValue({
+      insert,
+    } as never);
+
+    const result = await upsertAnalyticsFailureTriage({
+      fingerprint: "dataset_upload_failed|authorize_failed|upload|dataset_upload",
+      status: "debugging",
+      note: "Investigating dataset upload authorization.",
+      triagedByOwnerId: "admin-1",
+      triagedAt: new Date("2026-04-22T22:00:00.000Z"),
+    });
+
+    expect(insert).toHaveBeenCalledTimes(1);
+    expect(values).toHaveBeenCalledWith({
+      fingerprint: "dataset_upload_failed|authorize_failed|upload|dataset_upload",
+      status: "debugging",
+      note: "Investigating dataset upload authorization.",
+      triagedByOwnerId: "admin-1",
+      triagedAt: new Date("2026-04-22T22:00:00.000Z"),
+      updatedAt: new Date("2026-04-22T22:00:00.000Z"),
+    });
+    expect(onConflictDoUpdate).toHaveBeenCalledTimes(1);
+    expect(result.status).toBe("debugging");
+  });
+
+  it("keeps legacy resolution helper mapped to resolved triage", async () => {
     const onConflictDoUpdate = vi.fn();
     const values = vi.fn(() => ({ onConflictDoUpdate }));
     const insert = vi.fn(() => ({ values }));
@@ -136,13 +167,14 @@ describe("analytics-store failure resolution writes", () => {
       resolvedAt: new Date("2026-04-22T22:00:00.000Z"),
     });
 
-    expect(insert).toHaveBeenCalledTimes(1);
     expect(values).toHaveBeenCalledWith({
       fingerprint: "dataset_upload_failed|authorize_failed|upload|dataset_upload",
-      resolvedByOwnerId: "admin-1",
-      resolvedAt: new Date("2026-04-22T22:00:00.000Z"),
+      status: "resolved",
+      note: "",
+      triagedByOwnerId: "admin-1",
+      triagedAt: new Date("2026-04-22T22:00:00.000Z"),
+      updatedAt: new Date("2026-04-22T22:00:00.000Z"),
     });
-    expect(onConflictDoUpdate).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -207,12 +239,54 @@ describe("analytics-store dashboard queries", () => {
         firstSeenAt: new Date("2026-04-18T14:00:00.000Z"),
         lastSeenAt: new Date("2026-04-18T18:00:00.000Z"),
       },
+      {
+        fingerprint: "dataset_rows_failed|row_load_failed|dataset_detail|dataset_table",
+        eventName: "dataset_rows_failed",
+        route: "dataset_detail",
+        sourceSurface: "dataset_table",
+        errorCode: "row_load_failed",
+        occurrenceCount: "1",
+        firstSeenAt: new Date("2026-04-18T15:30:00.000Z"),
+        lastSeenAt: new Date("2026-04-18T15:30:00.000Z"),
+      },
+      {
+        fingerprint: "dataset_preload_failed|preload_failed|dashboard|dashboard_page",
+        eventName: "dataset_preload_failed",
+        route: "dashboard",
+        sourceSurface: "dashboard_page",
+        errorCode: "preload_failed",
+        occurrenceCount: "3",
+        firstSeenAt: new Date("2026-04-18T13:00:00.000Z"),
+        lastSeenAt: new Date("2026-04-18T14:30:00.000Z"),
+      },
     ]);
-    const knownFailureResolutionsQuery = createQueryMock([
+    const knownFailureTriageQuery = createQueryMock([
       {
         fingerprint: "dataset_upload_failed|authorize_failed|upload|dataset_upload",
-        resolvedByOwnerId: "admin-1",
-        resolvedAt: new Date("2026-04-18T16:00:00.000Z"),
+        status: "resolved",
+        note: "Deploy shipped.",
+        triagedByOwnerId: "admin-1",
+        triagedAt: new Date("2026-04-18T16:00:00.000Z"),
+        createdAt: new Date("2026-04-18T16:00:00.000Z"),
+        updatedAt: new Date("2026-04-18T16:00:00.000Z"),
+      },
+      {
+        fingerprint: "dataset_rows_failed|row_load_failed|dataset_detail|dataset_table",
+        status: "resolved",
+        note: "Rows endpoint fixed.",
+        triagedByOwnerId: "admin-1",
+        triagedAt: new Date("2026-04-18T16:00:00.000Z"),
+        createdAt: new Date("2026-04-18T16:00:00.000Z"),
+        updatedAt: new Date("2026-04-18T16:00:00.000Z"),
+      },
+      {
+        fingerprint: "dataset_preload_failed|preload_failed|dashboard|dashboard_page",
+        status: "expected",
+        note: "Known empty local preload.",
+        triagedByOwnerId: "admin-2",
+        triagedAt: new Date("2026-04-18T15:00:00.000Z"),
+        createdAt: new Date("2026-04-18T15:00:00.000Z"),
+        updatedAt: new Date("2026-04-18T15:00:00.000Z"),
       },
     ]);
     const rowsQuery = createQueryMock([
@@ -242,7 +316,7 @@ describe("analytics-store dashboard queries", () => {
         .mockReturnValueOnce(routeBreakdownQuery)
         .mockReturnValueOnce(failureQuery)
         .mockReturnValueOnce(knownFailuresQuery)
-        .mockReturnValueOnce(knownFailureResolutionsQuery)
+        .mockReturnValueOnce(knownFailureTriageQuery)
         .mockReturnValueOnce(rowsQuery),
     } as never);
 
@@ -260,6 +334,9 @@ describe("analytics-store dashboard queries", () => {
       totalEvents: 51,
       successfulEvents: 40,
       failedEvents: 11,
+      openFailureGroups: 1,
+      expectedFailureGroups: 2,
+      resolvedFailureGroups: 1,
       uniqueActors: 8,
     });
     expect(result.pageCount).toBe(2);
@@ -282,8 +359,21 @@ describe("analytics-store dashboard queries", () => {
         occurrenceCount: 2,
         firstSeenAt: "2026-04-18T15:00:00.000Z",
         lastSeenAt: "2026-04-18T17:00:00.000Z",
+        status: "needs_review",
+        note: "Deploy shipped.",
+        triagedByOwnerId: "admin-1",
+        triagedAt: "2026-04-18T16:00:00.000Z",
+        isBuiltInExpected: false,
+        reopened: true,
       },
     ]);
+    expect(result.expectedFailures.map((failure) => failure.fingerprint)).toEqual([
+      "auth_sign_in_failed|invalid_credentials|sign_in|auth_form",
+      "dataset_preload_failed|preload_failed|dashboard|dashboard_page",
+    ]);
+    expect(result.resolvedFailures[0]?.fingerprint).toBe(
+      "dataset_rows_failed|row_load_failed|dataset_detail|dataset_table",
+    );
     expect(result.recentFailures[0]?.createdAt).toBe("2026-04-18T15:00:00.000Z");
     expect(result.events[0]?.createdAt).toBe("2026-04-18T16:00:00.000Z");
     expect(rowsQuery.offset).toHaveBeenCalledWith(50);

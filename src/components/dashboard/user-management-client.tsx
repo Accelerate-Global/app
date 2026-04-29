@@ -66,12 +66,14 @@ type UserManagementClientProps = {
 };
 
 const ROLE_LABELS: Record<WorkspaceRole, string> = {
+  super_admin: "Super Admin",
   admin: "Admin",
   pro: "Pro",
   basic: "Basic",
 };
 const ROLE_FILTER_LABELS: Record<WorkspaceRole | "all", string> = {
   all: "All roles",
+  super_admin: "Super admins",
   admin: "Admins",
   pro: "Pro users",
   basic: "Basic users",
@@ -200,6 +202,20 @@ async function sendUserPasswordResetEmail(userId: string) {
   }
 }
 
+async function resendUserInviteEmail(userId: string) {
+  const response = await fetch(`/api/admin/users/${userId}/invite-resend`, {
+    method: "POST",
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      await getErrorMessage(response, "The invite email could not be resent."),
+    );
+  }
+
+  return ((await response.json()) as WorkspaceUserResponse).user;
+}
+
 function replaceUser(users: WorkspaceUser[], nextUser: WorkspaceUser) {
   const hasUser = users.some((user) => user.id === nextUser.id);
   return sortUsers(
@@ -229,6 +245,7 @@ export function UserManagementClient({
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isInviting, setIsInviting] = useState(false);
   const [isUpdatingUserId, setIsUpdatingUserId] = useState<string | null>(null);
+  const isActorSuperAdmin = workspaceRole === "super_admin";
   const analyticsContext = useMemo(
     () =>
       buildAnalyticsContext({
@@ -264,7 +281,17 @@ export function UserManagementClient({
     () =>
       users.filter(
         (user) =>
-          user.workspaceRole === "admin" &&
+          (user.workspaceRole === "admin" ||
+            user.workspaceRole === "super_admin") &&
+          user.accountStatus !== "disabled",
+      ).length,
+    [users],
+  );
+  const activeSuperAdminCount = useMemo(
+    () =>
+      users.filter(
+        (user) =>
+          user.workspaceRole === "super_admin" &&
           user.accountStatus !== "disabled",
       ).length,
     [users],
@@ -496,35 +523,111 @@ export function UserManagementClient({
     }
   }
 
+  async function handleResendInviteEmail() {
+    if (!selectedUser?.email) {
+      return;
+    }
+
+    setErrorMessage(null);
+    setSuccessMessage(null);
+    setIsUpdatingUserId(selectedUser.id);
+
+    try {
+      const user = await resendUserInviteEmail(selectedUser.id);
+      setUsers((current) => replaceUser(current, user));
+      setSuccessMessage(`Invite email resent to ${user.email ?? selectedUser.email}.`);
+      trackAppEvent(
+        "admin_invite_resent",
+        withAnalyticsContext(analyticsContext, {
+          source_surface: "user_detail_sheet",
+          success: true,
+          target_user_id: user.id,
+          to_status: user.accountStatus,
+        }),
+      );
+    } catch (error) {
+      trackAppEvent(
+        "admin_invite_resent",
+        withAnalyticsContext(analyticsContext, {
+          source_surface: "user_detail_sheet",
+          success: false,
+          error_code: "admin_invite_resend_failed",
+          target_user_id: selectedUser.id,
+          to_status: selectedUser.accountStatus,
+        }),
+      );
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "The invite email could not be resent.",
+      );
+    } finally {
+      setIsUpdatingUserId(null);
+    }
+  }
+
   const isCurrentUserSelected = selectedUser?.id === currentUserId;
+  const isSelectedUserSuperAdmin = selectedUser?.workspaceRole === "super_admin";
+  const canManageSelectedUser =
+    selectedUser !== null && (!isSelectedUserSuperAdmin || isActorSuperAdmin);
   const removesLastActiveAdmin =
     selectedUser !== null &&
-    selectedUser.workspaceRole === "admin" &&
+    (selectedUser.workspaceRole === "admin" ||
+      selectedUser.workspaceRole === "super_admin") &&
     selectedUser.accountStatus !== "disabled" &&
+    selectedRole !== "admin" &&
+    selectedRole !== "super_admin" &&
     activeAdminCount <= 1;
+  const removesLastActiveSuperAdmin =
+    selectedUser !== null &&
+    selectedUser.workspaceRole === "super_admin" &&
+    selectedUser.accountStatus !== "disabled" &&
+    selectedRole !== "super_admin" &&
+    activeSuperAdminCount <= 1;
   const isSelectedUserBusy = selectedUser?.id === isUpdatingUserId;
   const canSaveRole =
     selectedUser !== null &&
+    canManageSelectedUser &&
     !isCurrentUserSelected &&
     !isSelectedUserBusy &&
+    (selectedRole !== "super_admin" || isActorSuperAdmin) &&
     selectedRole !== selectedUser.workspaceRole &&
-    !(selectedUser.workspaceRole === "admin" && selectedRole !== "admin" && removesLastActiveAdmin);
+    !removesLastActiveAdmin &&
+    !removesLastActiveSuperAdmin;
   const canDisableSelectedUser =
     selectedUser !== null &&
+    canManageSelectedUser &&
     !isCurrentUserSelected &&
     !isSelectedUserBusy &&
     selectedUser.accountStatus !== "disabled" &&
-    !removesLastActiveAdmin;
+    !(
+      (selectedUser.workspaceRole === "admin" ||
+        selectedUser.workspaceRole === "super_admin") &&
+      activeAdminCount <= 1
+    ) &&
+    !(
+      selectedUser.workspaceRole === "super_admin" &&
+      activeSuperAdminCount <= 1
+    );
   const canEnableSelectedUser =
     selectedUser !== null &&
+    canManageSelectedUser &&
     !isCurrentUserSelected &&
     !isSelectedUserBusy &&
     selectedUser.accountStatus === "disabled";
   const canSendSelectedUserPasswordReset =
     selectedUser !== null &&
+    canManageSelectedUser &&
     !isSelectedUserBusy &&
     Boolean(selectedUser.email) &&
-    selectedUser.accountStatus !== "disabled";
+    selectedUser.accountStatus !== "disabled" &&
+    selectedUser.accountStatus !== "pending_invite";
+  const canResendSelectedUserInvite =
+    selectedUser !== null &&
+    canManageSelectedUser &&
+    !isSelectedUserBusy &&
+    Boolean(selectedUser.email) &&
+    selectedUser.accountStatus === "pending_invite";
 
   return (
     <div className="grid gap-6">
@@ -577,6 +680,9 @@ export function UserManagementClient({
                 <SelectItem value="pro">Pro</SelectItem>
                 <SelectItem value="basic">Basic</SelectItem>
                 <SelectItem value="admin">Admin</SelectItem>
+                {isActorSuperAdmin ? (
+                  <SelectItem value="super_admin">Super Admin</SelectItem>
+                ) : null}
               </SelectContent>
             </Select>
           </div>
@@ -631,6 +737,7 @@ export function UserManagementClient({
                 </SelectTrigger>
                 <SelectContent align="start">
                   <SelectItem value="all">All roles</SelectItem>
+                  <SelectItem value="super_admin">Super admins</SelectItem>
                   <SelectItem value="admin">Admins</SelectItem>
                   <SelectItem value="pro">Pro users</SelectItem>
                   <SelectItem value="basic">Basic users</SelectItem>
@@ -860,6 +967,7 @@ export function UserManagementClient({
                     <Select
                       value={selectedRole}
                       onValueChange={(value) => setSelectedRole(value as WorkspaceRole)}
+                      disabled={!canManageSelectedUser || isCurrentUserSelected}
                     >
                       <SelectTrigger
                         id="selected-user-role"
@@ -871,6 +979,12 @@ export function UserManagementClient({
                         <SelectItem value="pro">Pro</SelectItem>
                         <SelectItem value="basic">Basic</SelectItem>
                         <SelectItem value="admin">Admin</SelectItem>
+                        <SelectItem
+                          value="super_admin"
+                          disabled={!isActorSuperAdmin}
+                        >
+                          Super Admin
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                     <Button
@@ -887,18 +1001,33 @@ export function UserManagementClient({
                   </div>
 
                   <div className="grid gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="w-full"
-                      disabled={!canSendSelectedUserPasswordReset}
-                      onClick={() => {
-                        void handleSendPasswordResetEmail();
-                      }}
-                    >
-                      {isSelectedUserBusy ? <Loader2Icon className="animate-spin" /> : null}
-                      Send password reset email
-                    </Button>
+                    {selectedUser.accountStatus === "pending_invite" ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full"
+                        disabled={!canResendSelectedUserInvite}
+                        onClick={() => {
+                          void handleResendInviteEmail();
+                        }}
+                      >
+                        {isSelectedUserBusy ? <Loader2Icon className="animate-spin" /> : null}
+                        Resend invite email
+                      </Button>
+                    ) : (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full"
+                        disabled={!canSendSelectedUserPasswordReset}
+                        onClick={() => {
+                          void handleSendPasswordResetEmail();
+                        }}
+                      >
+                        {isSelectedUserBusy ? <Loader2Icon className="animate-spin" /> : null}
+                        Send password reset email
+                      </Button>
+                    )}
                     <Button
                       type="button"
                       variant="destructive"
@@ -927,8 +1056,9 @@ export function UserManagementClient({
 
                   {!selectedUser.email ? (
                     <p className="text-sm text-muted-foreground">
-                      This account cannot receive a password reset email because no email address
-                      is stored.
+                      {selectedUser.accountStatus === "pending_invite"
+                        ? "This pending invite cannot be resent because no email address is stored."
+                        : "This account cannot receive a password reset email because no email address is stored."}
                     </p>
                   ) : null}
 
@@ -946,7 +1076,23 @@ export function UserManagementClient({
 
                   {!isCurrentUserSelected && removesLastActiveAdmin ? (
                     <p className="text-sm text-muted-foreground">
-                      This account is the last active admin and cannot be demoted or disabled.
+                      This account is the last active admin-capable account and cannot
+                      be demoted or disabled.
+                    </p>
+                  ) : null}
+
+                  {!isCurrentUserSelected && removesLastActiveSuperAdmin ? (
+                    <p className="text-sm text-muted-foreground">
+                      This account is the last active super admin and cannot be demoted
+                      or disabled.
+                    </p>
+                  ) : null}
+
+                  {!isCurrentUserSelected &&
+                  isSelectedUserSuperAdmin &&
+                  !isActorSuperAdmin ? (
+                    <p className="text-sm text-muted-foreground">
+                      Only super admins can change super admin accounts.
                     </p>
                   ) : null}
                 </div>

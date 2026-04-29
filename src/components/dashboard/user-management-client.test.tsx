@@ -36,11 +36,15 @@ function createUser(overrides: Partial<WorkspaceUser> = {}): WorkspaceUser {
   };
 }
 
-function renderUserManagementClient(users: WorkspaceUser[] = [createUser()]) {
+function renderUserManagementClient(
+  users: WorkspaceUser[] = [createUser()],
+  workspaceRole: "admin" | "super_admin" = "admin",
+) {
   return render(
     <UserManagementClient
       currentUserId="admin-1"
       initialUsers={users}
+      workspaceRole={workspaceRole}
     />,
   );
 }
@@ -75,8 +79,14 @@ describe("UserManagementClient", () => {
     expect(inviteFormGrid?.className).toContain("md:items-start");
   });
 
-  it("displays pro and basic workspace roles", () => {
+  it("displays super admin, admin, pro, and basic workspace roles", () => {
     renderUserManagementClient([
+      createUser({
+        id: "super-1",
+        email: "super@example.com",
+        fullName: "Super User",
+        workspaceRole: "super_admin",
+      }),
       createUser({ id: "pro-1", workspaceRole: "pro", fullName: "Pro User" }),
       createUser({
         id: "basic-1",
@@ -92,12 +102,95 @@ describe("UserManagementClient", () => {
       }),
     ]);
 
+    expect(screen.getByText("Super User")).toBeTruthy();
     expect(screen.getByText("Pro User")).toBeTruthy();
     expect(screen.getByText("Basic User")).toBeTruthy();
     expect(screen.getByText("Admin User")).toBeTruthy();
+    expect(screen.getAllByText("Super Admin").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Pro").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Basic").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Admin").length).toBeGreaterThan(0);
+  });
+
+  it("disables super admin account controls for standard admins", async () => {
+    renderUserManagementClient([
+      createUser({
+        id: "super-1",
+        email: "super@example.com",
+        fullName: "Super User",
+        workspaceRole: "super_admin",
+      }),
+      createUser({
+        id: "admin-1",
+        email: "admin@example.com",
+        fullName: "Admin User",
+        workspaceRole: "admin",
+      }),
+    ]);
+
+    const row = screen.getByText("Super User").closest("tr");
+
+    expect(row).toBeTruthy();
+    fireEvent.click(row!);
+
+    expect(
+      await screen.findByText("Only super admins can change super admin accounts."),
+    ).toBeTruthy();
+    expect(
+      (screen.getByRole("button", { name: "Save role" }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(true);
+    expect(
+      (
+        screen.getByRole("button", {
+          name: "Send password reset email",
+        }) as HTMLButtonElement
+      ).disabled,
+    ).toBe(true);
+    expect(
+      (screen.getByRole("button", { name: "Disable account" }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(true);
+  });
+
+  it("allows super admins to manage other super admin accounts", async () => {
+    renderUserManagementClient(
+      [
+        createUser({
+          id: "super-1",
+          email: "super@example.com",
+          fullName: "Super User",
+          workspaceRole: "super_admin",
+        }),
+        createUser({
+          id: "super-2",
+          email: "other-super@example.com",
+          fullName: "Other Super",
+          workspaceRole: "super_admin",
+        }),
+      ],
+      "super_admin",
+    );
+
+    const row = screen.getByText("Super User").closest("tr");
+
+    expect(row).toBeTruthy();
+    fireEvent.click(row!);
+
+    expect(
+      (
+        await screen.findByRole("button", {
+          name: "Send password reset email",
+        }) as HTMLButtonElement
+      ).disabled,
+    ).toBe(false);
+    expect(
+      (screen.getByRole("button", { name: "Disable account" }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(false);
+    expect(
+      screen.queryByText("Only super admins can change super admin accounts."),
+    ).toBeNull();
   });
 
   it("opens the details sheet when a user row is clicked", async () => {
@@ -127,6 +220,7 @@ describe("UserManagementClient", () => {
     expect(await screen.findByText("Review identifiers, providers, access level, and account status.")).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Admin User" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Send password reset email" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Resend invite email" })).toBeNull();
     expect(screen.getAllByText("email")).toHaveLength(1);
     expect(container.querySelector(".rounded-2xl.border.border-border.p-4")).toBeNull();
     expect(container.querySelector(".rounded-xl.border.border-border.p-3.text-sm")).toBeNull();
@@ -138,6 +232,55 @@ describe("UserManagementClient", () => {
         target_user_id: "user-2",
         target_status: "active",
         target_role: "admin",
+      }),
+    );
+  });
+
+  it("resends invite emails for pending users", async () => {
+    const pendingUser = createUser({
+      accountStatus: "pending_invite",
+      invitedAt: "2026-04-15T20:01:00.000Z",
+      confirmedAt: null,
+      emailConfirmedAt: null,
+      lastLoginAt: null,
+    });
+    const updatedUser = {
+      ...pendingUser,
+      invitedAt: "2026-04-15T20:10:00.000Z",
+      updatedAt: "2026-04-15T20:10:00.000Z",
+    };
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ user: updatedUser }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    renderUserManagementClient([pendingUser]);
+
+    const row = screen.getByText("Pro User").closest("tr");
+
+    expect(row).toBeTruthy();
+    fireEvent.click(row!);
+    expect(
+      screen.queryByRole("button", { name: "Send password reset email" }),
+    ).toBeNull();
+    fireEvent.click(await screen.findByRole("button", { name: "Resend invite email" }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith("/api/admin/users/user-1/invite-resend", {
+        method: "POST",
+      });
+    });
+
+    expect(await screen.findByText("Invite email resent to pro@example.com.")).toBeTruthy();
+    expect(trackAppEventMock).toHaveBeenCalledWith(
+      "admin_invite_resent",
+      expect.objectContaining({
+        source_surface: "user_detail_sheet",
+        success: true,
+        target_user_id: "user-1",
+        to_status: "pending_invite",
       }),
     );
   });

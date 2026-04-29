@@ -46,13 +46,10 @@ export async function POST(request: Request) {
   }
 
   try {
-    const redirectUrl = new URL("/", request.url);
-    redirectUrl.searchParams.set(
-      "message",
-      "Check your email to finish setting up your account.",
-    );
+    const redirectUrl = new URL("/reset-password", request.url);
 
     const user = await inviteWorkspaceUser({
+      currentUserRole: identity.workspaceRole,
       email: parsed.data.email,
       fullName: parsed.data.fullName,
       workspaceRole: parsed.data.workspaceRole,

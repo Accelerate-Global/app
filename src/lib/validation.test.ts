@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import * as validationModule from "@/lib/validation";
 import {
+  analyticsFailureTriagePatchSchema,
   apiConnectionCreateSchema,
   createDatasetSchema,
   datasetAssignDerivedViewSchema,
@@ -510,8 +511,8 @@ describe("apiConnectionCreateSchema", () => {
 });
 
 describe("workspace user schemas", () => {
-  it("accepts admin, pro, and basic role writes", () => {
-    for (const workspaceRole of ["admin", "pro", "basic"]) {
+  it("accepts super admin, admin, pro, and basic role writes", () => {
+    for (const workspaceRole of ["super_admin", "admin", "pro", "basic"]) {
       expect(
         workspaceUserInviteSchema.safeParse({
           email: `${workspaceRole}@example.com`,
@@ -531,6 +532,40 @@ describe("workspace user schemas", () => {
     ).toBe(false);
     expect(
       workspaceUserPatchSchema.safeParse({ workspaceRole: "viewer" }).success,
+    ).toBe(false);
+  });
+});
+
+describe("analyticsFailureTriagePatchSchema", () => {
+  it("accepts valid triage updates and trims notes", () => {
+    const result = analyticsFailureTriagePatchSchema.safeParse({
+      fingerprint: "dataset_upload_failed|authorize_failed|upload|dataset_upload",
+      status: "debugging",
+      note: "  Investigating import authorization.  ",
+    });
+
+    expect(result.success).toBe(true);
+    if (!result.success) {
+      return;
+    }
+
+    expect(result.data.note).toBe("Investigating import authorization.");
+  });
+
+  it("rejects invalid triage status and long notes", () => {
+    expect(
+      analyticsFailureTriagePatchSchema.safeParse({
+        fingerprint: "failure|code|route|surface",
+        status: "ignored",
+        note: "",
+      }).success,
+    ).toBe(false);
+    expect(
+      analyticsFailureTriagePatchSchema.safeParse({
+        fingerprint: "failure|code|route|surface",
+        status: "expected",
+        note: "x".repeat(501),
+      }).success,
     ).toBe(false);
   });
 });

@@ -928,6 +928,16 @@ export function getSmokeBootstrapArgs(scope: UiSmokeBootstrapScope) {
   return ["run", "smoke:bootstrap", "--", "--scope", scope] as const;
 }
 
+export function shouldRefreshUiSmokeBootstrapBeforeSuite(input: {
+  suites: UiSmokeSuitePlan[];
+  suiteIndex: number;
+}) {
+  const suite = input.suites[input.suiteIndex];
+  const previousSuite = input.suites[input.suiteIndex - 1];
+
+  return previousSuite?.kind === "targeted" && suite?.kind === "full";
+}
+
 async function getChangedFilesForRunPlan(input: {
   targeted: boolean;
   baseSha: string | null;
@@ -1136,7 +1146,25 @@ async function main() {
     });
   }
 
-  for (const suite of runPlan.suites) {
+  for (const [suiteIndex, suite] of runPlan.suites.entries()) {
+    if (
+      shouldRefreshUiSmokeBootstrapBeforeSuite({
+        suites: runPlan.suites,
+        suiteIndex,
+      })
+    ) {
+      await runStageWithRetry({
+        classification: "bootstrap",
+        message: "UI smoke bootstrap failed before full suite.",
+        command: "pnpm",
+        args: [...getSmokeBootstrapArgs(runPlan.bootstrapScope)],
+        env: smokeEnv,
+        attempts: 5,
+        retryDelayMs: 2_000,
+        shouldRetry: isLocalStackNotReadyError,
+      });
+    }
+
     for (const projectGroup of expandUiSmokeSuiteProjects(suite)) {
       smokeEnv = await runPlaywrightSuiteWithRecovery({
         suite,

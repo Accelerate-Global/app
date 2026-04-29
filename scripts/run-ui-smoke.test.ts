@@ -16,6 +16,7 @@ import {
   isUiSmokeEnvironmentFailure,
   parseRunUiSmokeArgs,
   resolveUiSmokeChangedFiles,
+  shouldRefreshUiSmokeBootstrapBeforeSuite,
   UI_SMOKE_DB_RESET_ARGS,
 } from "./run-ui-smoke";
 
@@ -56,7 +57,7 @@ describe("run-ui-smoke", () => {
     ]);
   });
 
-  it("builds a targeted-and-full plan that reuses the same setup", () => {
+  it("builds a targeted-and-full plan that runs targeted before full", () => {
     const plan = buildUiSmokeRunPlan({
       changedFiles: ["src/components/dashboard/dataset-edit-page-client.tsx"],
       targeted: true,
@@ -73,6 +74,42 @@ describe("run-ui-smoke", () => {
       },
     ]);
     expect(plan.bootstrapScope).toBe("full");
+  });
+
+  it("refreshes smoke bootstrap data between targeted and full suites", () => {
+    const plan = buildUiSmokeRunPlan({
+      changedFiles: ["src/components/dashboard/dataset-edit-page-client.tsx"],
+      targeted: true,
+      fullAfterTargeted: true,
+    });
+
+    expect(
+      shouldRefreshUiSmokeBootstrapBeforeSuite({
+        suites: plan.suites,
+        suiteIndex: 0,
+      }),
+    ).toBe(false);
+    expect(
+      shouldRefreshUiSmokeBootstrapBeforeSuite({
+        suites: plan.suites,
+        suiteIndex: 1,
+      }),
+    ).toBe(true);
+  });
+
+  it("does not refresh smoke bootstrap data before a full-only suite", () => {
+    const plan = buildUiSmokeRunPlan({
+      changedFiles: [],
+      targeted: false,
+      fullAfterTargeted: false,
+    });
+
+    expect(
+      shouldRefreshUiSmokeBootstrapBeforeSuite({
+        suites: plan.suites,
+        suiteIndex: 0,
+      }),
+    ).toBe(false);
   });
 
   it("targets a smoke spec file directly when only the journey spec changed", () => {
