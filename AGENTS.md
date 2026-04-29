@@ -95,6 +95,7 @@ Treat `pnpm run verify:change` as the local planning gate for repo-tracked edits
   - targeted smoke subset from `pnpm run verify:change`
   - whether local Supabase is needed
 - Prefer the thin-slice loop while coding:
+  - `pnpm run verify:fast` for early TypeScript, lint, and Vitest feedback before slower gates
   - direct tests for touched units or components first
   - `pnpm run smoke:check` when UI contracts changed
   - `pnpm run test:ui:smoke:targeted` only when a browser-specific issue needs debugging
@@ -111,6 +112,20 @@ Treat `pnpm run verify:change` as the local planning gate for repo-tracked edits
 - Use [/Users/blake/Documents/accelerate-global/online/docs/testing/verification-first-delivery.md](/Users/blake/Documents/accelerate-global/online/docs/testing/verification-first-delivery.md) as the default repo workflow for verification-first delivery.
 - Use [/Users/blake/Documents/accelerate-global/online/docs/testing/ui-smoke.md](/Users/blake/Documents/accelerate-global/online/docs/testing/ui-smoke.md) for the detailed smoke contract and examples.
 - Use [/Users/blake/Documents/accelerate-global/online/docs/testing/verification-triage.md](/Users/blake/Documents/accelerate-global/online/docs/testing/verification-triage.md) for the fastest next step when verification fails.
+
+# Expect.dev Local Preflight
+
+Treat Expect.dev as an optional local-only preflight layer, not a durable test gate.
+
+- As of Phase 2, Expect.dev is blocked as reliable pass/fail validation by an upstream run-completion timeout. Do not rely on `pnpm run qa:expect` until a future safe no-cookie unauthenticated retest exits cleanly.
+- Use `pnpm run qa:expect` only for local changed-area browser QA before targeted persistent tests and before `pnpm run verify:change:run`.
+- Do not add Expect.dev to GitHub Actions, `pnpm ship`, `verify:change:run`, or required CI gates during the local pilot.
+- The wrapper defaults to `--no-cookies` because the connected Supabase project is production.
+- Prefer unauthenticated checks first. Use `EXPECT_USE_COOKIES=1` only when the user explicitly approves read-only authenticated checks.
+- Do not use Expect.dev to create, update, delete, invite, publish, revoke, reset passwords, change permissions, or otherwise mutate production data.
+- Do not commit Expect.dev cookies, storage state, browser profiles, traces, screenshots, videos, downloads, local auth files, or logs that expose production data.
+- Promote an Expect.dev finding into a persistent repo test only when the bug is important, deterministic, and likely to recur.
+- See [/Users/blake/Documents/accelerate-global/online/docs/testing/TESTING_STRATEGY.md](/Users/blake/Documents/accelerate-global/online/docs/testing/TESTING_STRATEGY.md) for the full methodology and safety policy.
 
 # OpenSpec
 
