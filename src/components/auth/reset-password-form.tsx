@@ -26,15 +26,20 @@ type ResetPasswordFormProps = {
   initialCanReset: boolean;
 };
 
-function hasRecoveryHash() {
+function hasAuthCallbackHash() {
   if (typeof window === "undefined") {
     return false;
   }
 
-  return window.location.hash.includes("type=recovery");
+  const hashParams = new URLSearchParams(window.location.hash.slice(1));
+  return Boolean(
+    hashParams.get("access_token") ||
+      hashParams.get("refresh_token") ||
+      hashParams.get("type"),
+  );
 }
 
-function getRecoveryCodeFromQuery() {
+function getAuthCallbackCodeFromQuery() {
   if (typeof window === "undefined") {
     return null;
   }
@@ -42,11 +47,11 @@ function getRecoveryCodeFromQuery() {
   return new URL(window.location.href).searchParams.get("code");
 }
 
-function hasRecoveryCallbackParams() {
-  return hasRecoveryHash() || Boolean(getRecoveryCodeFromQuery());
+function hasAuthCallbackParams() {
+  return hasAuthCallbackHash() || Boolean(getAuthCallbackCodeFromQuery());
 }
 
-function getRecoverySessionFromHash() {
+function getAuthCallbackSessionFromHash() {
   if (typeof window === "undefined") {
     return null;
   }
@@ -76,7 +81,7 @@ export function ResetPasswordForm({
   const [confirmPassword, setConfirmPassword] = useState("");
   const [canReset, setCanReset] = useState(initialCanReset);
   const [isResolvingRecovery, setIsResolvingRecovery] = useState(
-    () => !initialCanReset && hasRecoveryCallbackParams(),
+    () => !initialCanReset && hasAuthCallbackParams(),
   );
   const analyticsContext = buildAnalyticsContext({
     route: "reset_password",
@@ -87,7 +92,7 @@ export function ResetPasswordForm({
   const passwordsMatch = password.length > 0 && password === confirmPassword;
 
   useEffect(() => {
-    if (initialCanReset || !hasRecoveryCallbackParams()) {
+    if (initialCanReset || !hasAuthCallbackParams()) {
       return;
     }
 
@@ -97,7 +102,7 @@ export function ResetPasswordForm({
     }, 3_000);
 
     void (async () => {
-      const recoveryCode = getRecoveryCodeFromQuery();
+      const recoveryCode = getAuthCallbackCodeFromQuery();
 
       if (recoveryCode) {
         const { error } = await supabase.auth.exchangeCodeForSession(recoveryCode);
@@ -110,7 +115,7 @@ export function ResetPasswordForm({
         }
       }
 
-      const recoverySession = getRecoverySessionFromHash();
+      const recoverySession = getAuthCallbackSessionFromHash();
 
       if (recoverySession) {
         const { error } = await supabase.auth.setSession(recoverySession);
@@ -242,17 +247,17 @@ export function ResetPasswordForm({
           <Alert variant="destructive">
             <AlertTitle>Recovery link issue</AlertTitle>
             <AlertDescription>
-              This recovery link is invalid or has expired. Request a new one to
-              continue.
+              This password setup link is invalid or has expired. Request a new
+              one to continue.
             </AlertDescription>
           </Alert>
         ) : null}
 
         {!canReset && isResolvingRecovery ? (
           <Alert>
-            <AlertTitle>Validating recovery link</AlertTitle>
+            <AlertTitle>Validating password setup link</AlertTitle>
             <AlertDescription>
-              One moment while the password reset session is restored.
+              One moment while the password setup session is restored.
             </AlertDescription>
           </Alert>
         ) : null}

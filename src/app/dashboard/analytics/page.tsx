@@ -3,17 +3,24 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { SiteHeader } from "@/components/layout/site-header";
+import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { APP_ANALYTICS_EVENT_NAMES, APP_ANALYTICS_ROUTES } from "@/lib/analytics";
+import {
+  ANALYTICS_FAILURE_TRIAGE_STATUS_LABELS,
+  type AnalyticsFailureTriageStatus,
+} from "@/lib/analytics-failure-triage";
 import { getCurrentIdentity } from "@/lib/auth";
 import {
   buildAnalyticsPageHref,
   formatAnalyticsPayloadPreview,
   getAnalyticsDashboardData,
+  type KnownAnalyticsFailure,
   resolveAnalyticsDashboardFilters,
 } from "@/lib/analytics-store";
 import { cn } from "@/lib/utils";
+import { FailureTriageControls } from "./failure-triage-controls";
 
 type AnalyticsPageProps = {
   searchParams: Promise<{
@@ -63,6 +70,98 @@ function getEventEntityLabel(input: {
   }
 
   return "None";
+}
+
+function getFailureStatusBadgeVariant(
+  status: AnalyticsFailureTriageStatus,
+): "default" | "secondary" | "outline" | "destructive" {
+  if (status === "needs_review") {
+    return "destructive";
+  }
+
+  if (status === "debugging") {
+    return "secondary";
+  }
+
+  if (status === "expected") {
+    return "outline";
+  }
+
+  return "default";
+}
+
+function FailureGroupList({
+  failures,
+  emptyMessage,
+  showControls = true,
+}: {
+  failures: KnownAnalyticsFailure[];
+  emptyMessage: string;
+  showControls?: boolean;
+}) {
+  if (failures.length === 0) {
+    return <p className="text-sm text-muted-foreground">{emptyMessage}</p>;
+  }
+
+  return (
+    <ul className="space-y-3">
+      {failures.map((failure) => (
+        <li
+          key={failure.fingerprint}
+          className={cn(
+            "rounded-lg border px-4 py-3 text-sm",
+            failure.status === "needs_review"
+              ? "border-destructive/30 bg-destructive/5"
+              : "border-border",
+          )}
+        >
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-mono text-xs text-foreground">
+                {failure.eventName}
+              </span>
+              <Badge variant={getFailureStatusBadgeVariant(failure.status)}>
+                {ANALYTICS_FAILURE_TRIAGE_STATUS_LABELS[failure.status]}
+              </Badge>
+              {failure.reopened ? (
+                <Badge variant="destructive">New since resolved</Badge>
+              ) : null}
+              {failure.isBuiltInExpected ? (
+                <Badge variant="outline">Built-in expected</Badge>
+              ) : null}
+            </div>
+            <div className="text-muted-foreground">
+              Last seen {formatTimestamp(failure.lastSeenAt)}
+            </div>
+          </div>
+          <div className="mt-1 text-muted-foreground">
+            {failure.errorCode ?? "No error code"} · {formatCodeLabel(failure.route)} ·{" "}
+            {failure.sourceSurface}
+          </div>
+          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+            <span>Seen {formatCount(failure.occurrenceCount)} times</span>
+            <span>First seen {formatTimestamp(failure.firstSeenAt)}</span>
+            {failure.triagedAt ? (
+              <span>Triaged {formatTimestamp(failure.triagedAt)}</span>
+            ) : null}
+            {failure.triagedByOwnerId ? (
+              <span className="font-mono">By {failure.triagedByOwnerId}</span>
+            ) : null}
+          </div>
+          {failure.note ? (
+            <p className="mt-2 text-sm text-foreground">{failure.note}</p>
+          ) : null}
+          {showControls && !failure.isBuiltInExpected ? (
+            <FailureTriageControls
+              fingerprint={failure.fingerprint}
+              status={failure.status}
+              note={failure.note}
+            />
+          ) : null}
+        </li>
+      ))}
+    </ul>
+  );
 }
 
 export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps) {
@@ -221,6 +320,30 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
           </Card>
           <Card>
             <CardHeader>
+              <CardTitle className="text-base">Open failure groups</CardTitle>
+            </CardHeader>
+            <CardContent className="text-3xl font-semibold text-destructive">
+              {formatCount(data.summary.openFailureGroups)}
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Expected groups</CardTitle>
+            </CardHeader>
+            <CardContent className="text-3xl font-semibold">
+              {formatCount(data.summary.expectedFailureGroups)}
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Resolved groups</CardTitle>
+            </CardHeader>
+            <CardContent className="text-3xl font-semibold">
+              {formatCount(data.summary.resolvedFailureGroups)}
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
               <CardTitle className="text-base">Unique actors</CardTitle>
             </CardHeader>
             <CardContent className="text-3xl font-semibold">
@@ -294,50 +417,50 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
           <CardHeader>
             <CardTitle>Known failures</CardTitle>
           </CardHeader>
-          <CardContent>
-            {data.knownFailures.length === 0 ? (
-              <div className="space-y-2 text-sm text-muted-foreground">
-                <p>No open known failures for this range.</p>
-                {data.summary.failedEvents > 0 ? (
-                  <p>
-                    Raw failure events remain in history below, but they are either
-                    expected user-input outcomes or already addressed.
-                  </p>
-                ) : null}
-              </div>
-            ) : (
-              <ul className="space-y-3">
-                {data.knownFailures.map((failure) => (
-                  <li
-                    key={failure.fingerprint}
-                    className="rounded-2xl border border-border px-4 py-3 text-sm"
-                  >
-                    <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="font-mono text-xs text-foreground">
-                        {failure.eventName}
-                      </div>
-                      <div className="text-muted-foreground">
-                        Last seen {formatTimestamp(failure.lastSeenAt)}
-                      </div>
-                    </div>
-                    <div className="mt-1 text-muted-foreground">
-                      {failure.errorCode ?? "No error code"} ·{" "}
-                      {formatCodeLabel(failure.route)} · {failure.sourceSurface}
-                    </div>
-                    <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                      <span>Seen {formatCount(failure.occurrenceCount)} times</span>
-                      <span>First seen {formatTimestamp(failure.firstSeenAt)}</span>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-            <p className="mt-4 text-xs text-muted-foreground">
-              Expected user-input outcomes stay in the raw event history and are not
-              treated as open known failures.
-            </p>
+          <CardContent className="space-y-4">
+            <div className="space-y-1">
+              <p className="text-sm text-muted-foreground">
+                Open known failures are actionable grouped fingerprints that need
+                review or are actively being debugged.
+              </p>
+              {data.summary.failedEvents > 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  Raw failed events remain in recent history even when their group is
+                  expected or resolved.
+                </p>
+              ) : null}
+            </div>
+            <FailureGroupList
+              failures={data.knownFailures}
+              emptyMessage="No open known failures for this range."
+            />
           </CardContent>
         </Card>
+
+        <section className="grid gap-6 lg:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>Expected failure groups</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <FailureGroupList
+                failures={data.expectedFailures}
+                emptyMessage="No expected failure groups in this range."
+              />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Resolved failure groups</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <FailureGroupList
+                failures={data.resolvedFailures}
+                emptyMessage="No resolved failure groups in this range."
+              />
+            </CardContent>
+          </Card>
+        </section>
 
         <Card>
           <CardHeader>
@@ -368,7 +491,13 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
                     </tr>
                   ) : (
                     data.events.map((event) => (
-                      <tr key={event.id} className="border-b border-border/60 align-top">
+                      <tr
+                        key={event.id}
+                        className={cn(
+                          "border-b border-border/60 align-top",
+                          event.success ? "" : "bg-destructive/5",
+                        )}
+                      >
                         <td className="py-2">{formatTimestamp(event.createdAt)}</td>
                         <td className="py-2 font-mono text-xs">{event.eventName}</td>
                         <td className="py-2">{formatCodeLabel(event.route)}</td>

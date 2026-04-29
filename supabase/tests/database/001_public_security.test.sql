@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(109);
+select plan(111);
 
 select results_eq(
   $$
@@ -177,12 +177,32 @@ where not exists (
 
 insert into public.signup_email_allowlist (email, note)
 select
+  'super@example.com',
+  'pgTAP super admin fixture'
+where not exists (
+  select 1
+  from public.signup_email_allowlist
+  where email = 'super@example.com'
+);
+
+insert into public.signup_email_allowlist (email, note)
+select
   'basic@example.com',
   'pgTAP basic fixture'
 where not exists (
   select 1
   from public.signup_email_allowlist
   where email = 'basic@example.com'
+);
+
+insert into public.signup_email_allowlist (email, note)
+select
+  'pending-basic@example.com',
+  'pgTAP pending basic fixture'
+where not exists (
+  select 1
+  from public.signup_email_allowlist
+  where email = 'pending-basic@example.com'
 );
 
 insert into auth.users (
@@ -212,6 +232,35 @@ where not exists (
   select 1
   from auth.users
   where lower(email) = 'admin@example.com'
+);
+
+insert into auth.users (
+  id,
+  aud,
+  role,
+  email,
+  encrypted_password,
+  email_confirmed_at,
+  raw_app_meta_data,
+  raw_user_meta_data,
+  created_at,
+  updated_at
+)
+select
+  'eeeeeeee-1337-403d-beb5-b7c44a1be131',
+  'authenticated',
+  'authenticated',
+  'super@example.com',
+  '',
+  now(),
+  '{"provider":"email","providers":["email"],"workspace_role":"super_admin"}'::jsonb,
+  '{}'::jsonb,
+  now(),
+  now()
+where not exists (
+  select 1
+  from auth.users
+  where lower(email) = 'super@example.com'
 );
 
 insert into auth.users (
@@ -270,6 +319,35 @@ where not exists (
   select 1
   from auth.users
   where lower(email) = 'basic@example.com'
+);
+
+insert into auth.users (
+  id,
+  aud,
+  role,
+  email,
+  encrypted_password,
+  invited_at,
+  raw_app_meta_data,
+  raw_user_meta_data,
+  created_at,
+  updated_at
+)
+select
+  'dddddddd-1337-403d-beb5-b7c44a1be131',
+  'authenticated',
+  'authenticated',
+  'pending-basic@example.com',
+  '',
+  now(),
+  '{"provider":"email","providers":["email"],"workspace_role":"basic"}'::jsonb,
+  '{}'::jsonb,
+  now(),
+  now()
+where not exists (
+  select 1
+  from auth.users
+  where lower(email) = 'pending-basic@example.com'
 );
 
 insert into public.datasets (
@@ -592,6 +670,17 @@ select throws_ok(
 
 reset role;
 
+select lives_ok(
+  $$
+    update auth.users
+    set encrypted_password = 'pending-basic-password-hash',
+        email_confirmed_at = now(),
+        raw_user_meta_data = jsonb_build_object('full_name', 'Pending Basic')
+    where id = 'dddddddd-1337-403d-beb5-b7c44a1be131'
+  $$,
+  'pending invited basic users can complete initial auth setup'
+);
+
 select throws_ok(
   $$
     update auth.users
@@ -623,6 +712,13 @@ select lives_ok(
   $$,
   'admin/service app metadata changes remain possible for basic users'
 );
+
+reset role;
+
+select set_config('request.jwt.claim.sub', 'eeeeeeee-1337-403d-beb5-b7c44a1be131', true);
+set local role authenticated;
+
+select is(private.is_dataset_admin(), true, 'super admin app metadata grants dataset admin access');
 
 reset role;
 

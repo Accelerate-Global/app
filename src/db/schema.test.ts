@@ -9,7 +9,7 @@ import {
   apiConnectionRunOutputs,
   apiConnections,
   analyticsEvents,
-  analyticsFailureResolutions,
+  analyticsFailureTriage,
   datasetVersionRows,
   datasetVersions,
   datasets,
@@ -208,6 +208,37 @@ describe("savedDatasetTables schema", () => {
     expect(migration).toContain("create or replace function private.is_workspace_basic()");
     expect(migration).toContain("and not private.is_workspace_basic()");
   });
+
+  it("allows pending basic invite setup while preserving the profile guard", async () => {
+    const migrationPath = path.join(
+      process.cwd(),
+      "supabase/migrations/20260429032328_allow_basic_invite_account_setup.sql",
+    );
+
+    const migration = await readFile(migrationPath, "utf8");
+
+    expect(migration).toContain("is_basic_initial_setup");
+    expect(migration).toContain("old.invited_at is not null");
+    expect(migration).toContain("new.encrypted_password is distinct from old.encrypted_password");
+    expect(migration).toContain(
+      "Basic users cannot update profile details.",
+    );
+  });
+
+  it("promotes the first super admin and keeps admin-capable RLS aligned", async () => {
+    const migrationPath = path.join(
+      process.cwd(),
+      "supabase/migrations/20260429154231_add_super_admin_role.sql",
+    );
+
+    const migration = await readFile(migrationPath, "utf8");
+
+    expect(migration).toContain("where lower(email) = 'admin@example.com'");
+    expect(migration).toContain("'\"super_admin\"'::jsonb");
+    expect(migration).toContain(
+      "coalesce(raw_app_meta_data ->> 'workspace_role', 'pro') in ('admin', 'super_admin')",
+    );
+  });
 });
 
 describe("analyticsEvents schema", () => {
@@ -231,29 +262,34 @@ describe("analyticsEvents schema", () => {
   });
 });
 
-describe("analyticsFailureResolutions schema", () => {
-  it("declares the private analytics failure resolution columns", () => {
-    expect(analyticsFailureResolutions.fingerprint.name).toBe("fingerprint");
-    expect(analyticsFailureResolutions.resolvedByOwnerId.name).toBe(
-      "resolved_by_owner_id",
+describe("analyticsFailureTriage schema", () => {
+  it("declares the private analytics failure triage columns", () => {
+    expect(analyticsFailureTriage.fingerprint.name).toBe("fingerprint");
+    expect(analyticsFailureTriage.status.name).toBe("status");
+    expect(analyticsFailureTriage.note.name).toBe("note");
+    expect(analyticsFailureTriage.triagedByOwnerId.name).toBe(
+      "triaged_by_owner_id",
     );
-    expect(analyticsFailureResolutions.resolvedAt.name).toBe("resolved_at");
+    expect(analyticsFailureTriage.triagedAt.name).toBe("triaged_at");
   });
 
-  it("creates the private analytics failure resolutions migration", async () => {
+  it("creates the private analytics failure triage migration", async () => {
     const migrationPath = path.join(
       process.cwd(),
-      "supabase/migrations/20260422221300_analytics_failure_resolutions.sql",
+      "supabase/migrations/20260429161223_analytics_failure_triage.sql",
     );
 
     const migration = await readFile(migrationPath, "utf8");
 
     expect(migration).toContain(
-      "create table if not exists private.analytics_failure_resolutions",
+      "create table if not exists private.analytics_failure_triage",
     );
+    expect(migration).toContain("status in ('needs_review', 'debugging', 'expected', 'resolved')");
+    expect(migration).toContain("from private.analytics_failure_resolutions");
+    expect(migration).toContain("drop table if exists private.analytics_failure_resolutions");
     expect(migration).toContain("enable row level security");
     expect(migration).toContain(
-      "create index if not exists analytics_failure_resolutions_resolved_at_idx",
+      "create index if not exists analytics_failure_triage_status_triaged_at_idx",
     );
   });
 });

@@ -6,6 +6,7 @@ import { hasSupabaseConfig } from "@/lib/supabase/config";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   getActiveWorkspaceAdminCount,
+  getActiveWorkspaceSuperAdminCount,
   listWorkspaceUsers,
   setWorkspaceUserDisabled,
 } from "@/lib/user-management";
@@ -35,6 +36,7 @@ vi.mock("@/lib/user-management", async () => {
   return {
     ...actual,
     getActiveWorkspaceAdminCount: vi.fn(),
+    getActiveWorkspaceSuperAdminCount: vi.fn(),
     listWorkspaceUsers: vi.fn(),
     setWorkspaceUserDisabled: vi.fn(),
   };
@@ -45,6 +47,9 @@ const createSupabaseAdminClientMock = vi.mocked(createSupabaseAdminClient);
 const hasSupabaseConfigMock = vi.mocked(hasSupabaseConfig);
 const createSupabaseServerClientMock = vi.mocked(createSupabaseServerClient);
 const getActiveWorkspaceAdminCountMock = vi.mocked(getActiveWorkspaceAdminCount);
+const getActiveWorkspaceSuperAdminCountMock = vi.mocked(
+  getActiveWorkspaceSuperAdminCount,
+);
 const listWorkspaceUsersMock = vi.mocked(listWorkspaceUsers);
 const setWorkspaceUserDisabledMock = vi.mocked(setWorkspaceUserDisabled);
 
@@ -97,6 +102,7 @@ describe("/api/account/disable", () => {
       },
     ]);
     getActiveWorkspaceAdminCountMock.mockReturnValue(2);
+    getActiveWorkspaceSuperAdminCountMock.mockReturnValue(1);
     setWorkspaceUserDisabledMock.mockResolvedValue({
       id: "supabase-user",
       email: "admin@example.com",
@@ -173,7 +179,58 @@ describe("/api/account/disable", () => {
 
     expect(response.status).toBe(409);
     await expect(response.json()).resolves.toEqual({
-      error: "The last active admin cannot disable their own account.",
+      error: "The last active admin-capable account cannot disable their own account.",
+    });
+    expect(setWorkspaceUserDisabledMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects self-disable for the last active super admin", async () => {
+    getCurrentIdentityMock.mockResolvedValue({
+      ...identity,
+      workspaceRole: "super_admin",
+    });
+    getActiveWorkspaceAdminCountMock.mockReturnValue(2);
+    getActiveWorkspaceSuperAdminCountMock.mockReturnValue(1);
+    listWorkspaceUsersMock.mockResolvedValue([
+      {
+        id: "supabase-user",
+        email: "admin@example.com",
+        fullName: "Blake",
+        workspaceRole: "super_admin",
+        accountStatus: "active",
+        providers: ["email"],
+        identities: [],
+        createdAt: "2026-04-15T20:00:00.000Z",
+        updatedAt: "2026-04-15T20:00:00.000Z",
+        invitedAt: null,
+        confirmedAt: "2026-04-15T20:00:00.000Z",
+        emailConfirmedAt: "2026-04-15T20:00:00.000Z",
+        lastLoginAt: "2026-04-15T20:00:00.000Z",
+        bannedUntil: null,
+      },
+      {
+        id: "admin-2",
+        email: "admin2@example.com",
+        fullName: "Admin Two",
+        workspaceRole: "admin",
+        accountStatus: "active",
+        providers: ["email"],
+        identities: [],
+        createdAt: "2026-04-15T20:00:00.000Z",
+        updatedAt: "2026-04-15T20:00:00.000Z",
+        invitedAt: null,
+        confirmedAt: "2026-04-15T20:00:00.000Z",
+        emailConfirmedAt: "2026-04-15T20:00:00.000Z",
+        lastLoginAt: "2026-04-15T20:00:00.000Z",
+        bannedUntil: null,
+      },
+    ]);
+
+    const response = await POST();
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual({
+      error: "The last active super admin cannot disable their own account.",
     });
     expect(setWorkspaceUserDisabledMock).not.toHaveBeenCalled();
   });

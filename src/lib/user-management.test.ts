@@ -6,13 +6,17 @@ import { getDb } from "@/db";
 import type { WorkspaceUser } from "@/lib/api-types";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import {
+  assertWorkspaceUserInviteResendAllowed,
+  assertWorkspaceUserInviteAllowed,
   assertWorkspaceUserMutationAllowed,
   assertWorkspaceUserPasswordResetAllowed,
   getActiveWorkspaceAdminCount,
+  getActiveWorkspaceSuperAdminCount,
   getWorkspaceUserAccountStatus,
   inviteWorkspaceUser,
   mapAuthUserToWorkspaceUser,
   mergeWorkspaceRoleIntoAppMetadata,
+  resendWorkspaceUserInviteEmail,
   WorkspaceUserActionError,
   WorkspaceUserPermissionError,
 } from "@/lib/user-management";
@@ -162,6 +166,18 @@ describe("user-management", () => {
     ).toBe("pending_invite");
   });
 
+  it("maps accepted invited users to active status", () => {
+    expect(
+      getWorkspaceUserAccountStatus({
+        banned_until: undefined,
+        invited_at: "2026-04-15T20:01:00.000Z",
+        confirmed_at: "2026-04-15T20:02:00.000Z",
+        email_confirmed_at: "2026-04-15T20:02:00.000Z",
+        last_sign_in_at: undefined,
+      }),
+    ).toBe("active");
+  });
+
   it("maps unconfirmed users to pending confirmation status", () => {
     expect(
       getWorkspaceUserAccountStatus({
@@ -235,6 +251,20 @@ describe("user-management", () => {
     expect(user.workspaceRole).toBe("pro");
   });
 
+  it("maps super admin workspace roles from auth metadata", () => {
+    const user = mapAuthUserToWorkspaceUser(
+      createAuthUser({
+        app_metadata: {
+          provider: "email",
+          providers: ["email"],
+          workspace_role: "super_admin",
+        },
+      }),
+    );
+
+    expect(user.workspaceRole).toBe("super_admin");
+  });
+
   it("merges workspace roles into existing app metadata", () => {
     expect(
       mergeWorkspaceRoleIntoAppMetadata(
@@ -251,9 +281,14 @@ describe("user-management", () => {
     });
   });
 
-  it("counts only active admins", () => {
+  it("counts only active admin-capable users", () => {
     expect(
       getActiveWorkspaceAdminCount([
+        createWorkspaceUser({
+          id: "super-1",
+          workspaceRole: "super_admin",
+          accountStatus: "active",
+        }),
         createWorkspaceUser({
           id: "admin-1",
           workspaceRole: "admin",
@@ -270,13 +305,59 @@ describe("user-management", () => {
           accountStatus: "active",
         }),
       ]),
+    ).toBe(2);
+  });
+
+  it("counts only active super admins", () => {
+    expect(
+      getActiveWorkspaceSuperAdminCount([
+        createWorkspaceUser({
+          id: "super-1",
+          workspaceRole: "super_admin",
+          accountStatus: "active",
+        }),
+        createWorkspaceUser({
+          id: "super-2",
+          workspaceRole: "super_admin",
+          accountStatus: "disabled",
+        }),
+        createWorkspaceUser({
+          id: "admin-1",
+          workspaceRole: "admin",
+          accountStatus: "active",
+        }),
+      ]),
     ).toBe(1);
+  });
+
+  it("rejects standard admins assigning the super admin role", () => {
+    expect(() =>
+      assertWorkspaceUserInviteAllowed({
+        currentUserRole: "admin",
+        workspaceRole: "super_admin",
+      }),
+    ).toThrowError(
+      new WorkspaceUserPermissionError(
+        "Only super admins can assign the super admin role.",
+        403,
+      ),
+    );
+  });
+
+  it("allows super admins assigning the super admin role", () => {
+    expect(() =>
+      assertWorkspaceUserInviteAllowed({
+        currentUserRole: "super_admin",
+        workspaceRole: "super_admin",
+      }),
+    ).not.toThrow();
   });
 
   it("rejects self role and status changes", () => {
     expect(() =>
       assertWorkspaceUserMutationAllowed({
         currentUserId: "user-1",
+        currentUserRole: "admin",
         targetUser: createWorkspaceUser({ id: "user-1" }),
         users: [createWorkspaceUser({ id: "user-1" })],
         workspaceRole: "admin",
@@ -293,6 +374,7 @@ describe("user-management", () => {
     expect(() =>
       assertWorkspaceUserMutationAllowed({
         currentUserId: "admin-2",
+        currentUserRole: "admin",
         targetUser: createWorkspaceUser({
           id: "admin-1",
           workspaceRole: "admin",
@@ -314,7 +396,7 @@ describe("user-management", () => {
       }),
     ).toThrowError(
       new WorkspaceUserPermissionError(
-        "The last active admin cannot be disabled or demoted.",
+        "The last active admin-capable account cannot be disabled or demoted.",
       ),
     );
   });
@@ -323,6 +405,7 @@ describe("user-management", () => {
     expect(() =>
       assertWorkspaceUserMutationAllowed({
         currentUserId: "admin-2",
+        currentUserRole: "admin",
         targetUser: createWorkspaceUser({
           id: "admin-1",
           workspaceRole: "admin",
@@ -339,7 +422,70 @@ describe("user-management", () => {
       }),
     ).toThrowError(
       new WorkspaceUserPermissionError(
-        "The last active admin cannot be disabled or demoted.",
+        "The last active admin-capable account cannot be disabled or demoted.",
+      ),
+    );
+  });
+
+  it("rejects demoting the last active super admin", () => {
+    expect(() =>
+      assertWorkspaceUserMutationAllowed({
+        currentUserId: "super-2",
+        currentUserRole: "super_admin",
+        targetUser: createWorkspaceUser({
+          id: "super-1",
+          workspaceRole: "super_admin",
+          accountStatus: "active",
+        }),
+        users: [
+          createWorkspaceUser({
+            id: "super-1",
+            workspaceRole: "super_admin",
+            accountStatus: "active",
+          }),
+          createWorkspaceUser({
+            id: "admin-1",
+            workspaceRole: "admin",
+            accountStatus: "active",
+          }),
+        ],
+        workspaceRole: "admin",
+      }),
+    ).toThrowError(
+      new WorkspaceUserPermissionError(
+        "The last active super admin cannot be disabled or demoted.",
+      ),
+    );
+  });
+
+  it("rejects standard admins changing super admin accounts", () => {
+    expect(() =>
+      assertWorkspaceUserMutationAllowed({
+        currentUserId: "admin-1",
+        currentUserRole: "admin",
+        targetUser: createWorkspaceUser({
+          id: "super-1",
+          workspaceRole: "super_admin",
+          accountStatus: "active",
+        }),
+        users: [
+          createWorkspaceUser({
+            id: "super-1",
+            workspaceRole: "super_admin",
+            accountStatus: "active",
+          }),
+          createWorkspaceUser({
+            id: "admin-1",
+            workspaceRole: "admin",
+            accountStatus: "active",
+          }),
+        ],
+        disabled: true,
+      }),
+    ).toThrowError(
+      new WorkspaceUserPermissionError(
+        "Only super admins can manage super admin accounts.",
+        403,
       ),
     );
   });
@@ -348,6 +494,7 @@ describe("user-management", () => {
     expect(() =>
       assertWorkspaceUserMutationAllowed({
         currentUserId: "admin-2",
+        currentUserRole: "admin",
         targetUser: createWorkspaceUser({
           id: "admin-1",
           workspaceRole: "admin",
@@ -403,6 +550,77 @@ describe("user-management", () => {
     ).not.toThrow();
   });
 
+  it("rejects invite resend for users without an email address", () => {
+    expect(() =>
+      assertWorkspaceUserInviteResendAllowed(
+        createWorkspaceUser({
+          email: null,
+          accountStatus: "pending_invite",
+          invitedAt: "2026-04-15T20:01:00.000Z",
+          confirmedAt: null,
+          emailConfirmedAt: null,
+          lastLoginAt: null,
+        }),
+      ),
+    ).toThrowError(
+      new WorkspaceUserActionError("This account does not have an email address.", 400),
+    );
+  });
+
+  it("rejects invite resend for accepted users", () => {
+    expect(() =>
+      assertWorkspaceUserInviteResendAllowed(
+        createWorkspaceUser({
+          accountStatus: "active",
+          invitedAt: "2026-04-15T20:01:00.000Z",
+          confirmedAt: "2026-04-15T20:02:00.000Z",
+          emailConfirmedAt: "2026-04-15T20:02:00.000Z",
+          lastLoginAt: null,
+        }),
+      ),
+    ).toThrowError(
+      new WorkspaceUserActionError(
+        "Only pending invites can receive another invite email.",
+        409,
+      ),
+    );
+  });
+
+  it("resends invite emails for pending users", async () => {
+    inviteUserByEmailMock.mockResolvedValue({
+      data: {
+        user: {
+          id: "auth-user-1",
+        },
+      },
+      error: null,
+    });
+    executeMock
+      .mockResolvedValueOnce([createWorkspaceUserRecord()])
+      .mockResolvedValueOnce([
+        createWorkspaceUserRecord({
+          invited_at: "2026-04-15T20:10:00.000Z",
+        }),
+      ]);
+
+    const user = await resendWorkspaceUserInviteEmail({
+      currentUserRole: "admin",
+      userId: "auth-user-1",
+      redirectTo: "http://localhost/reset-password",
+    });
+
+    expect(user).toMatchObject({
+      id: "auth-user-1",
+      email: "pro@example.com",
+      accountStatus: "pending_invite",
+      invitedAt: "2026-04-15T20:10:00.000Z",
+    });
+    expect(inviteUserByEmailMock).toHaveBeenCalledWith("pro@example.com", {
+      redirectTo: "http://localhost/reset-password",
+    });
+    expect(updateUserByIdMock).not.toHaveBeenCalled();
+  });
+
   it("keeps the allowlist approval when inviting a user succeeds", async () => {
     inviteUserByEmailMock.mockResolvedValue({
       data: {
@@ -421,6 +639,7 @@ describe("user-management", () => {
       .mockResolvedValueOnce([createWorkspaceUserRecord()]);
 
     const user = await inviteWorkspaceUser({
+      currentUserRole: "admin",
       email: "pro@example.com",
       fullName: "Pro User",
       workspaceRole: "pro",
@@ -454,6 +673,7 @@ describe("user-management", () => {
 
     await expect(
       inviteWorkspaceUser({
+        currentUserRole: "admin",
         email: "basic@example.com",
         workspaceRole: "basic",
       }),
@@ -475,6 +695,7 @@ describe("user-management", () => {
 
     await expect(
       inviteWorkspaceUser({
+        currentUserRole: "admin",
         email: "pro@example.com",
         workspaceRole: "pro",
       }),

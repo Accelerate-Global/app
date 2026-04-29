@@ -9,7 +9,11 @@ import type {
 import { normalizeEmail } from "@/lib/signup-allowlist";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import type { WorkspaceRole } from "@/lib/workspace-role";
-import { getWorkspaceRole } from "@/lib/workspace-role";
+import {
+  getWorkspaceRole,
+  isWorkspaceAdmin,
+  isWorkspaceSuperAdmin,
+} from "@/lib/workspace-role";
 
 export const ACCOUNT_DISABLE_DURATION = "876000h";
 
@@ -123,7 +127,12 @@ export function getWorkspaceUserAccountStatus(
     return "disabled";
   }
 
-  if (user.invited_at && !user.last_sign_in_at) {
+  if (
+    user.invited_at &&
+    !user.confirmed_at &&
+    !user.email_confirmed_at &&
+    !user.last_sign_in_at
+  ) {
     return "pending_invite";
   }
 
@@ -414,13 +423,54 @@ export function getActiveWorkspaceAdminCount(
 ) {
   return users.filter(
     (user) =>
-      user.workspaceRole === "admin" &&
+      isWorkspaceAdmin(user.workspaceRole) &&
       user.accountStatus !== "disabled",
   ).length;
 }
 
+export function getActiveWorkspaceSuperAdminCount(
+  users: Pick<WorkspaceUser, "workspaceRole" | "accountStatus">[],
+) {
+  return users.filter(
+    (user) =>
+      isWorkspaceSuperAdmin(user.workspaceRole) &&
+      user.accountStatus !== "disabled",
+  ).length;
+}
+
+function assertWorkspaceUserTargetActionAllowed(input: {
+  currentUserRole: WorkspaceRole;
+  targetUser: Pick<WorkspaceUser, "workspaceRole">;
+}) {
+  if (
+    isWorkspaceSuperAdmin(input.targetUser.workspaceRole) &&
+    !isWorkspaceSuperAdmin(input.currentUserRole)
+  ) {
+    throw new WorkspaceUserPermissionError(
+      "Only super admins can manage super admin accounts.",
+      403,
+    );
+  }
+}
+
+export function assertWorkspaceUserInviteAllowed(input: {
+  currentUserRole: WorkspaceRole;
+  workspaceRole: WorkspaceRole;
+}) {
+  if (
+    isWorkspaceSuperAdmin(input.workspaceRole) &&
+    !isWorkspaceSuperAdmin(input.currentUserRole)
+  ) {
+    throw new WorkspaceUserPermissionError(
+      "Only super admins can assign the super admin role.",
+      403,
+    );
+  }
+}
+
 export function assertWorkspaceUserMutationAllowed(input: {
   currentUserId: string;
+  currentUserRole: WorkspaceRole;
   targetUser: WorkspaceUser;
   users: WorkspaceUser[];
   workspaceRole?: WorkspaceRole;
@@ -433,21 +483,49 @@ export function assertWorkspaceUserMutationAllowed(input: {
     );
   }
 
+  if (input.workspaceRole !== undefined) {
+    assertWorkspaceUserInviteAllowed({
+      currentUserRole: input.currentUserRole,
+      workspaceRole: input.workspaceRole,
+    });
+  }
+  assertWorkspaceUserTargetActionAllowed({
+    currentUserRole: input.currentUserRole,
+    targetUser: input.targetUser,
+  });
+
   const isTargetActiveAdmin =
-    input.targetUser.workspaceRole === "admin" &&
+    isWorkspaceAdmin(input.targetUser.workspaceRole) &&
+    input.targetUser.accountStatus !== "disabled";
+  const isTargetActiveSuperAdmin =
+    isWorkspaceSuperAdmin(input.targetUser.workspaceRole) &&
     input.targetUser.accountStatus !== "disabled";
   const removesActiveAdmin =
     (input.disabled === true && isTargetActiveAdmin) ||
     (input.workspaceRole !== undefined &&
-      input.workspaceRole !== "admin" &&
+      !isWorkspaceAdmin(input.workspaceRole) &&
       isTargetActiveAdmin);
+  const removesActiveSuperAdmin =
+    (input.disabled === true && isTargetActiveSuperAdmin) ||
+    (input.workspaceRole !== undefined &&
+      !isWorkspaceSuperAdmin(input.workspaceRole) &&
+      isTargetActiveSuperAdmin);
+
+  if (
+    removesActiveSuperAdmin &&
+    getActiveWorkspaceSuperAdminCount(input.users) <= 1
+  ) {
+    throw new WorkspaceUserPermissionError(
+      "The last active super admin cannot be disabled or demoted.",
+    );
+  }
 
   if (
     removesActiveAdmin &&
     getActiveWorkspaceAdminCount(input.users) <= 1
   ) {
     throw new WorkspaceUserPermissionError(
-      "The last active admin cannot be disabled or demoted.",
+      "The last active admin-capable account cannot be disabled or demoted.",
     );
   }
 }
@@ -470,12 +548,57 @@ export function assertWorkspaceUserPasswordResetAllowed(
   }
 }
 
+export function assertWorkspaceUserInviteResendAllowed(
+  targetUser: Pick<
+    WorkspaceUser,
+    | "email"
+    | "accountStatus"
+    | "invitedAt"
+    | "confirmedAt"
+    | "emailConfirmedAt"
+    | "lastLoginAt"
+  >,
+): asserts targetUser is Pick<
+  WorkspaceUser,
+  | "accountStatus"
+  | "invitedAt"
+  | "confirmedAt"
+  | "emailConfirmedAt"
+  | "lastLoginAt"
+> & { email: string } {
+  if (!targetUser.email) {
+    throw new WorkspaceUserActionError(
+      "This account does not have an email address.",
+      400,
+    );
+  }
+
+  if (
+    targetUser.accountStatus !== "pending_invite" ||
+    !targetUser.invitedAt ||
+    targetUser.confirmedAt ||
+    targetUser.emailConfirmedAt ||
+    targetUser.lastLoginAt
+  ) {
+    throw new WorkspaceUserActionError(
+      "Only pending invites can receive another invite email.",
+      409,
+    );
+  }
+}
+
 export async function inviteWorkspaceUser(input: {
+  currentUserRole: WorkspaceRole;
   email: string;
   fullName?: string;
   workspaceRole: WorkspaceRole;
   redirectTo?: string;
 }) {
+  assertWorkspaceUserInviteAllowed({
+    currentUserRole: input.currentUserRole,
+    workspaceRole: input.workspaceRole,
+  });
+
   const email = normalizeEmail(input.email);
   const fullName = normalizeFullName(input.fullName);
 
@@ -511,6 +634,34 @@ export async function inviteWorkspaceUser(input: {
   return mapWorkspaceUserRecordToWorkspaceUser(user);
 }
 
+export async function resendWorkspaceUserInviteEmail(input: {
+  currentUserRole: WorkspaceRole;
+  userId: string;
+  redirectTo: string;
+}) {
+  const userRecord = await getWorkspaceUserRecordByIdOrThrow(input.userId);
+  const targetUser = mapWorkspaceUserRecordToWorkspaceUser(userRecord);
+
+  assertWorkspaceUserTargetActionAllowed({
+    currentUserRole: input.currentUserRole,
+    targetUser,
+  });
+  assertWorkspaceUserInviteResendAllowed(targetUser);
+
+  const admin = createSupabaseAdminClient();
+  const inviteResult = await admin.auth.admin.inviteUserByEmail(targetUser.email, {
+    redirectTo: input.redirectTo,
+  });
+
+  if (inviteResult.error) {
+    throw inviteResult.error;
+  }
+
+  return mapWorkspaceUserRecordToWorkspaceUser(
+    await getWorkspaceUserRecordByIdOrThrow(input.userId),
+  );
+}
+
 export async function setWorkspaceUserDisabled(userId: string, disabled: boolean) {
   const user = await getWorkspaceUserRecordByIdOrThrow(userId);
 
@@ -531,6 +682,7 @@ export async function setWorkspaceUserDisabled(userId: string, disabled: boolean
 
 export async function updateWorkspaceUser(input: {
   currentUserId: string;
+  currentUserRole: WorkspaceRole;
   userId: string;
   workspaceRole?: WorkspaceRole;
   disabled?: boolean;
@@ -544,6 +696,7 @@ export async function updateWorkspaceUser(input: {
 
   assertWorkspaceUserMutationAllowed({
     currentUserId: input.currentUserId,
+    currentUserRole: input.currentUserRole,
     targetUser,
     users,
     workspaceRole: input.workspaceRole,
@@ -577,12 +730,17 @@ export async function updateWorkspaceUser(input: {
 }
 
 export async function sendWorkspaceUserPasswordResetEmail(input: {
+  currentUserRole: WorkspaceRole;
   userId: string;
   redirectTo: string;
 }) {
   const userRecord = await getWorkspaceUserRecordByIdOrThrow(input.userId);
   const targetUser = mapWorkspaceUserRecordToWorkspaceUser(userRecord);
 
+  assertWorkspaceUserTargetActionAllowed({
+    currentUserRole: input.currentUserRole,
+    targetUser,
+  });
   assertWorkspaceUserPasswordResetAllowed(targetUser);
 
   const admin = createSupabaseAdminClient();

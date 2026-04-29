@@ -5,6 +5,7 @@ import {
   sendWorkspaceUserPasswordResetEmail,
   WorkspaceUserActionError,
   WorkspaceUserNotFoundError,
+  WorkspaceUserPermissionError,
 } from "@/lib/user-management";
 import { POST } from "./route";
 
@@ -86,6 +87,7 @@ describe("/api/admin/users/[userId]/password-reset", () => {
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({ ok: true });
     expect(sendWorkspaceUserPasswordResetEmailMock).toHaveBeenCalledWith({
+      currentUserRole: "admin",
       userId: "user-1",
       redirectTo: "http://localhost/reset-password",
     });
@@ -125,6 +127,27 @@ describe("/api/admin/users/[userId]/password-reset", () => {
     expect(response.status).toBe(409);
     await expect(response.json()).resolves.toEqual({
       error: "Re-enable the account before sending a password reset email.",
+    });
+  });
+
+  it("returns permission errors from the admin helper", async () => {
+    sendWorkspaceUserPasswordResetEmailMock.mockRejectedValue(
+      new WorkspaceUserPermissionError(
+        "Only super admins can manage super admin accounts.",
+        403,
+      ),
+    );
+
+    const response = await POST(
+      new Request("http://localhost/api/admin/users/user-1/password-reset", {
+        method: "POST",
+      }),
+      { params: Promise.resolve({ userId: "user-1" }) },
+    );
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toEqual({
+      error: "Only super admins can manage super admin accounts.",
     });
   });
 

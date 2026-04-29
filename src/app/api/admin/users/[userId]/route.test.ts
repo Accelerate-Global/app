@@ -121,6 +121,7 @@ describe("/api/admin/users/[userId]", () => {
     await expect(response.json()).resolves.toEqual({ user });
     expect(updateWorkspaceUserMock).toHaveBeenCalledWith({
       currentUserId: "admin-1",
+      currentUserRole: "admin",
       userId: "user-1",
       workspaceRole: "admin",
       disabled: false,

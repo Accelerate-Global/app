@@ -16,13 +16,16 @@ configuration, not intended future architecture.
 - Supabase email/password auth is the identity provider.
 - Server-side identity resolution is centralized in `src/lib/auth.ts`.
 - Supabase browser/server/admin clients live under `src/lib/supabase`.
-- Runtime admin access is derived from `auth.users.raw_app_meta_data.workspace_role`, surfaced as `identity.isDatasetAdmin`.
+- Runtime admin access is derived from `auth.users.raw_app_meta_data.workspace_role`, surfaced as `identity.isDatasetAdmin`; `admin` and `super_admin` are admin-capable roles.
 - Unauthenticated dashboard users redirect to `/`.
 - Non-admin users are redirected away from admin-only pages such as upload, user management, analytics, field sources, and API connections.
 - Dataset reads are public-only for non-admin users and include private datasets
   for admins. Saved dataset tables remain owner-scoped and also require access
   to the underlying dataset.
-- First-admin bootstrap is not repo-owned; it remains an environment/provider procedure.
+- First-admin account creation or restoration is not repo-owned; it remains an
+  environment/provider procedure. When an Auth user already exists for
+  `admin@example.com`, the tracked migration promotes that user to
+  `super_admin`.
 
 ## Data And Storage
 

@@ -35,6 +35,7 @@ export async function PATCH(request: Request, context: UserContext) {
     const { userId } = await context.params;
     const user = await updateWorkspaceUser({
       currentUserId: identity.ownerId,
+      currentUserRole: identity.workspaceRole,
       userId,
       workspaceRole: parsed.data.workspaceRole,
       disabled: parsed.data.disabled,

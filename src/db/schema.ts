@@ -29,6 +29,7 @@ import {
 } from "drizzle-orm/pg-core";
 
 import type { AnalyticsWorkspaceRole, AppAnalyticsRoute } from "@/lib/analytics";
+import type { AnalyticsFailureTriageStatus } from "@/lib/analytics-failure-triage";
 
 export const datasets = pgTable(
   "datasets",
@@ -522,14 +523,31 @@ export const analyticsEvents = privateSchema.table(
   ],
 );
 
-export const analyticsFailureResolutions = privateSchema.table(
-  "analytics_failure_resolutions",
+export const analyticsFailureTriage = privateSchema.table(
+  "analytics_failure_triage",
   {
     fingerprint: text("fingerprint").primaryKey(),
-    resolvedByOwnerId: text("resolved_by_owner_id").notNull(),
-    resolvedAt: timestamp("resolved_at", { withTimezone: true })
+    status: text("status")
+      .$type<AnalyticsFailureTriageStatus>()
+      .notNull()
+      .default("needs_review"),
+    note: text("note").notNull().default(""),
+    triagedByOwnerId: text("triaged_by_owner_id").notNull(),
+    triagedAt: timestamp("triaged_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
   },
-  (table) => [index("analytics_failure_resolutions_resolved_at_idx").on(table.resolvedAt)],
+  (table) => [
+    index("analytics_failure_triage_status_triaged_at_idx").on(
+      table.status,
+      table.triagedAt,
+    ),
+    index("analytics_failure_triage_updated_at_idx").on(table.updatedAt),
+  ],
 );

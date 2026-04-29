@@ -13,7 +13,7 @@ import {
 import { getDb } from "@/db";
 import {
   analyticsEvents,
-  analyticsFailureResolutions,
+  analyticsFailureTriage,
 } from "@/db/schema";
 import {
   APP_ANALYTICS_EVENT_NAMES,
@@ -24,6 +24,7 @@ import {
   type AppAnalyticsEventName,
   type AppAnalyticsRoute,
 } from "@/lib/analytics";
+import type { AnalyticsFailureTriageStatus } from "@/lib/analytics-failure-triage";
 
 type StoredAnalyticsValue = string | number | boolean | null;
 type AnalyticsSearchParams = Record<string, string | string[] | undefined>;
@@ -62,6 +63,9 @@ export type AnalyticsSummary = {
   totalEvents: number;
   successfulEvents: number;
   failedEvents: number;
+  openFailureGroups: number;
+  expectedFailureGroups: number;
+  resolvedFailureGroups: number;
   uniqueActors: number;
 };
 
@@ -79,6 +83,22 @@ export type KnownAnalyticsFailure = {
   occurrenceCount: number;
   firstSeenAt: string;
   lastSeenAt: string;
+  status: AnalyticsFailureTriageStatus;
+  note: string;
+  triagedByOwnerId: string | null;
+  triagedAt: string | null;
+  isBuiltInExpected: boolean;
+  reopened: boolean;
+};
+
+export type StoredAnalyticsFailureTriage = {
+  fingerprint: string;
+  status: AnalyticsFailureTriageStatus;
+  note: string;
+  triagedByOwnerId: string;
+  triagedAt: string;
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type AnalyticsDashboardData = {
@@ -87,6 +107,8 @@ export type AnalyticsDashboardData = {
   eventBreakdown: AnalyticsBreakdownRow[];
   routeBreakdown: AnalyticsBreakdownRow[];
   knownFailures: KnownAnalyticsFailure[];
+  expectedFailures: KnownAnalyticsFailure[];
+  resolvedFailures: KnownAnalyticsFailure[];
   recentFailures: StoredAnalyticsEvent[];
   events: StoredAnalyticsEvent[];
   pageCount: number;
@@ -253,33 +275,66 @@ export async function persistAnalyticsEvent(
   await getDb().insert(analyticsEvents).values(createStoredAnalyticsEventRecord(name, payload));
 }
 
-export async function resolveAnalyticsFailure(input: {
+export async function upsertAnalyticsFailureTriage(input: {
   fingerprint: string;
-  resolvedByOwnerId: string;
-  resolvedAt?: Date;
-}) {
+  status: AnalyticsFailureTriageStatus;
+  note?: string;
+  triagedByOwnerId: string;
+  triagedAt?: Date;
+}): Promise<StoredAnalyticsFailureTriage> {
   const fingerprint = input.fingerprint.trim();
 
   if (!fingerprint) {
     throw new Error("Analytics failure fingerprint is required.");
   }
 
-  const resolvedAt = input.resolvedAt ?? new Date();
+  const triagedAt = input.triagedAt ?? new Date();
+  const note = input.note?.trim() ?? "";
+  const row = {
+    fingerprint,
+    status: input.status,
+    note,
+    triagedByOwnerId: input.triagedByOwnerId,
+    triagedAt,
+    updatedAt: triagedAt,
+  };
 
   await getDb()
-    .insert(analyticsFailureResolutions)
-    .values({
-      fingerprint,
-      resolvedByOwnerId: input.resolvedByOwnerId,
-      resolvedAt,
-    })
+    .insert(analyticsFailureTriage)
+    .values(row)
     .onConflictDoUpdate({
-      target: analyticsFailureResolutions.fingerprint,
+      target: analyticsFailureTriage.fingerprint,
       set: {
-        resolvedByOwnerId: input.resolvedByOwnerId,
-        resolvedAt,
+        status: input.status,
+        note,
+        triagedByOwnerId: input.triagedByOwnerId,
+        triagedAt,
+        updatedAt: triagedAt,
       },
     });
+
+  return {
+    fingerprint,
+    status: input.status,
+    note,
+    triagedByOwnerId: input.triagedByOwnerId,
+    triagedAt: triagedAt.toISOString(),
+    createdAt: triagedAt.toISOString(),
+    updatedAt: triagedAt.toISOString(),
+  };
+}
+
+export async function resolveAnalyticsFailure(input: {
+  fingerprint: string;
+  resolvedByOwnerId: string;
+  resolvedAt?: Date;
+}) {
+  await upsertAnalyticsFailureTriage({
+    fingerprint: input.fingerprint,
+    status: "resolved",
+    triagedByOwnerId: input.resolvedByOwnerId,
+    triagedAt: input.resolvedAt,
+  });
 }
 
 export function resolveAnalyticsDashboardFilters(
@@ -437,53 +492,91 @@ export async function getAnalyticsDashboardData(
         ),
     ]);
 
-  const actionableKnownFailureRows = knownFailureRows.filter((row) =>
-    isActionableAnalyticsFailure({
-      eventName: row.eventName as AppAnalyticsEventName,
-      errorCode: row.errorCode,
-    }),
-  );
-  const knownFailureResolutionRows =
-    actionableKnownFailureRows.length === 0
+  const failureGroupRows = knownFailureRows.map((row) => ({
+    fingerprint: row.fingerprint,
+    eventName: row.eventName as AppAnalyticsEventName,
+    route: row.route as AppAnalyticsRoute,
+    sourceSurface: row.sourceSurface,
+    errorCode: row.errorCode,
+    occurrenceCount: normalizeCount(row.occurrenceCount),
+    firstSeenAt: coerceDate(row.firstSeenAt),
+    lastSeenAt: coerceDate(row.lastSeenAt),
+  }));
+  const analyticsFailureTriageRows =
+    failureGroupRows.length === 0
       ? []
       : await getDb()
           .select()
-          .from(analyticsFailureResolutions)
+          .from(analyticsFailureTriage)
           .where(
             inArray(
-              analyticsFailureResolutions.fingerprint,
-              actionableKnownFailureRows.map((row) => row.fingerprint),
+              analyticsFailureTriage.fingerprint,
+              failureGroupRows.map((row) => row.fingerprint),
             ),
           );
-  const knownFailureResolutionsByFingerprint = new Map(
-    knownFailureResolutionRows.map((row) => [row.fingerprint, row]),
+  const triageByFingerprint = new Map(
+    analyticsFailureTriageRows.map((row) => [row.fingerprint, row]),
   );
-  const knownFailures = actionableKnownFailureRows
-    .filter((row) => {
-      const resolution = knownFailureResolutionsByFingerprint.get(row.fingerprint);
+  const failureGroups = failureGroupRows
+    .map((row): KnownAnalyticsFailure => {
+      const triage = triageByFingerprint.get(row.fingerprint);
+      const isBuiltInExpected = !isActionableAnalyticsFailure({
+        eventName: row.eventName,
+        errorCode: row.errorCode,
+      });
+      const triagedAt = triage ? coerceDate(triage.triagedAt) : null;
+      const isResolvedAfterLatestEvent =
+        triage?.status === "resolved" &&
+        triagedAt !== null &&
+        triagedAt.getTime() >= row.lastSeenAt.getTime();
+      const reopened =
+        triage?.status === "resolved" &&
+        triagedAt !== null &&
+        row.lastSeenAt.getTime() > triagedAt.getTime();
+      const status: AnalyticsFailureTriageStatus = isBuiltInExpected
+        ? "expected"
+        : reopened
+          ? "needs_review"
+          : isResolvedAfterLatestEvent
+            ? "resolved"
+            : triage?.status ?? "needs_review";
 
-      if (!resolution) {
-        return true;
-      }
-
-      return coerceDate(row.lastSeenAt) > resolution.resolvedAt;
+      return {
+        fingerprint: row.fingerprint,
+        eventName: row.eventName,
+        route: row.route,
+        sourceSurface: row.sourceSurface,
+        errorCode: row.errorCode,
+        occurrenceCount: row.occurrenceCount,
+        firstSeenAt: row.firstSeenAt.toISOString(),
+        lastSeenAt: row.lastSeenAt.toISOString(),
+        status,
+        note: triage?.note ?? "",
+        triagedByOwnerId: triage?.triagedByOwnerId ?? null,
+        triagedAt: triagedAt?.toISOString() ?? null,
+        isBuiltInExpected,
+        reopened,
+      };
     })
-    .map((row) => ({
-      fingerprint: row.fingerprint,
-      eventName: row.eventName as AppAnalyticsEventName,
-      route: row.route as AppAnalyticsRoute,
-      sourceSurface: row.sourceSurface,
-      errorCode: row.errorCode,
-      occurrenceCount: normalizeCount(row.occurrenceCount),
-      firstSeenAt: coerceDate(row.firstSeenAt).toISOString(),
-      lastSeenAt: coerceDate(row.lastSeenAt).toISOString(),
-    }))
     .sort((left, right) => right.lastSeenAt.localeCompare(left.lastSeenAt));
+  const knownFailures = failureGroups.filter(
+    (failure) =>
+      failure.status === "needs_review" || failure.status === "debugging",
+  );
+  const expectedFailures = failureGroups.filter(
+    (failure) => failure.status === "expected",
+  );
+  const resolvedFailures = failureGroups.filter(
+    (failure) => failure.status === "resolved",
+  );
 
   const summary: AnalyticsSummary = {
     totalEvents: normalizeCount(summaryRow?.totalEvents),
     successfulEvents: normalizeCount(summaryRow?.successfulEvents),
     failedEvents: normalizeCount(summaryRow?.failedEvents),
+    openFailureGroups: knownFailures.length,
+    expectedFailureGroups: expectedFailures.length,
+    resolvedFailureGroups: resolvedFailures.length,
     uniqueActors: normalizeCount(summaryRow?.uniqueActors),
   };
   const pageCount = Math.max(
@@ -514,6 +607,8 @@ export async function getAnalyticsDashboardData(
       count: normalizeCount(row.count),
     })),
     knownFailures,
+    expectedFailures,
+    resolvedFailures,
     recentFailures: failureRows.map(toStoredAnalyticsEvent),
     events: rows.map(toStoredAnalyticsEvent),
     pageCount,

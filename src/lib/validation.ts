@@ -19,6 +19,10 @@ import {
   WATCHLIST_ENGAGEMENT_PHASE_RULE_MAX,
   WATCHLIST_ENGAGEMENT_PHASE_RULE_MIN,
 } from "@/lib/watchlist-engagement-phase";
+import {
+  ANALYTICS_FAILURE_TRIAGE_NOTE_MAX_LENGTH,
+  ANALYTICS_FAILURE_TRIAGE_STATUSES,
+} from "@/lib/analytics-failure-triage";
 import { WORKSPACE_ROLES } from "@/lib/workspace-role";
 
 export const csvColumnSchema = z.object({
@@ -498,3 +502,9 @@ export const workspaceUserPatchSchema = z
       });
     }
   });
+
+export const analyticsFailureTriagePatchSchema = z.object({
+  fingerprint: z.string().trim().min(1).max(500),
+  status: z.enum(ANALYTICS_FAILURE_TRIAGE_STATUSES),
+  note: z.string().trim().max(ANALYTICS_FAILURE_TRIAGE_NOTE_MAX_LENGTH).default(""),
+});

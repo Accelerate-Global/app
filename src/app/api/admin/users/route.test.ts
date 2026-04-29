@@ -145,11 +145,11 @@ describe("/api/admin/users", () => {
     expect(response.status).toBe(201);
     await expect(response.json()).resolves.toEqual({ user });
     expect(inviteWorkspaceUserMock).toHaveBeenCalledWith({
+      currentUserRole: "admin",
       email: "pro@example.com",
       fullName: "Pro User",
       workspaceRole: "pro",
-      redirectTo:
-        "http://localhost/?message=Check+your+email+to+finish+setting+up+your+account.",
+      redirectTo: "http://localhost/reset-password",
     });
   });
 

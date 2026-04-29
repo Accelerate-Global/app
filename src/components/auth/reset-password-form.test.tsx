@@ -105,4 +105,64 @@ describe("ResetPasswordForm", () => {
       );
     });
   });
+
+  it("restores invite callback sessions before password setup", async () => {
+    const setSession = vi.fn().mockResolvedValue({ error: null });
+    const onAuthStateChange = vi.fn().mockReturnValue({
+      data: {
+        subscription: {
+          unsubscribe: vi.fn(),
+        },
+      },
+    });
+
+    createSupabaseBrowserClientMock.mockReturnValue({
+      auth: {
+        getSession: vi.fn().mockResolvedValue({ data: { session: null } }),
+        onAuthStateChange,
+        setSession,
+      },
+    } as never);
+    window.history.replaceState(
+      {},
+      "",
+      "/reset-password#access_token=invite-access&refresh_token=invite-refresh&type=invite",
+    );
+
+    render(<ResetPasswordForm initialCanReset={false} />);
+
+    await waitFor(() => {
+      expect(setSession).toHaveBeenCalledWith({
+        access_token: "invite-access",
+        refresh_token: "invite-refresh",
+      });
+      expect(screen.getByLabelText("New password")).toBeTruthy();
+    });
+    expect(onAuthStateChange).toHaveBeenCalled();
+  });
+
+  it("restores code callback sessions before password setup", async () => {
+    const exchangeCodeForSession = vi.fn().mockResolvedValue({ error: null });
+
+    createSupabaseBrowserClientMock.mockReturnValue({
+      auth: {
+        exchangeCodeForSession,
+        onAuthStateChange: vi.fn().mockReturnValue({
+          data: {
+            subscription: {
+              unsubscribe: vi.fn(),
+            },
+          },
+        }),
+      },
+    } as never);
+    window.history.replaceState({}, "", "/reset-password?code=invite-code");
+
+    render(<ResetPasswordForm initialCanReset={false} />);
+
+    await waitFor(() => {
+      expect(exchangeCodeForSession).toHaveBeenCalledWith("invite-code");
+      expect(screen.getByLabelText("New password")).toBeTruthy();
+    });
+  });
 });
