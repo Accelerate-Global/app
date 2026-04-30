@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(111);
+select plan(112);
 
 select results_eq(
   $$
@@ -110,12 +110,13 @@ select is(
 
 select ok((select relrowsecurity from pg_class join pg_namespace on pg_namespace.oid = pg_class.relnamespace where pg_namespace.nspname = 'private' and pg_class.relname = 'api_connections' and pg_class.relkind = 'r'), 'private.api_connections has row level security enabled');
 select ok((select relrowsecurity from pg_class join pg_namespace on pg_namespace.oid = pg_class.relnamespace where pg_namespace.nspname = 'private' and pg_class.relname = 'api_connection_runs' and pg_class.relkind = 'r'), 'private.api_connection_runs has row level security enabled');
+select ok((select relrowsecurity from pg_class join pg_namespace on pg_namespace.oid = pg_class.relnamespace where pg_namespace.nspname = 'private' and pg_class.relname = 'api_connection_resources' and pg_class.relkind = 'r'), 'private.api_connection_resources has row level security enabled');
 select is(
   (
     select count(*)::bigint
     from information_schema.table_privileges
     where table_schema = 'private'
-      and table_name in ('api_connections', 'api_connection_runs')
+      and table_name in ('api_connections', 'api_connection_runs', 'api_connection_resources')
       and grantee in ('PUBLIC', 'anon', 'authenticated')
   ),
   0::bigint,

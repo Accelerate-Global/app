@@ -20,7 +20,7 @@ export default async function ApiConnectionsPage() {
     redirect("/dashboard");
   }
 
-  const { connections, runs } = await listApiConnections();
+  const { connections, runs, resources } = await listApiConnections();
 
   return (
     <main
@@ -60,6 +60,7 @@ export default async function ApiConnectionsPage() {
         <ApiConnectionsClient
           initialConnections={connections}
           initialRuns={runs}
+          initialResources={resources}
         />
       </div>
     </main>

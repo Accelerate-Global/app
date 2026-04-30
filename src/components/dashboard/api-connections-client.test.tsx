@@ -5,7 +5,11 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ApiConnectionsClient } from "@/components/dashboard/api-connections-client";
-import type { ApiConnection, ApiConnectionRun } from "@/lib/api-types";
+import type {
+  ApiConnection,
+  ApiConnectionResource,
+  ApiConnectionRun,
+} from "@/lib/api-types";
 
 const pushMock = vi.fn();
 
@@ -134,6 +138,19 @@ const queuedRun: ApiConnectionRun = {
   completedAt: null,
 };
 
+const resource: ApiConnectionResource = {
+  id: "55555555-5555-4555-8555-555555555555",
+  connectionId: pgicConnection.id,
+  runId: queuedRun.id,
+  resourceUrl: "https://example.com/film#watch",
+  normalizedUrl: "https://example.com/film",
+  category: "Film",
+  webText: "Watch",
+  sourceRowIndex: 0,
+  sourceResourceIndex: 1,
+  createdAt: "2026-04-24T12:03:00.000Z",
+};
+
 describe("ApiConnectionsClient", () => {
   afterEach(() => {
     vi.restoreAllMocks();
@@ -145,6 +162,7 @@ describe("ApiConnectionsClient", () => {
       <ApiConnectionsClient
         initialConnections={[pgacConnection, pgicConnection]}
         initialRuns={[successfulRun, queuedRun]}
+        initialResources={[]}
       />,
     );
 
@@ -171,6 +189,7 @@ describe("ApiConnectionsClient", () => {
       <ApiConnectionsClient
         initialConnections={[pgacConnection, pgicConnection]}
         initialRuns={[successfulRun, queuedRun]}
+        initialResources={[]}
       />,
     );
 
@@ -203,6 +222,7 @@ describe("ApiConnectionsClient", () => {
       <ApiConnectionsClient
         initialConnections={[pgacConnection]}
         initialRuns={[successfulRun]}
+        initialResources={[]}
       />,
     );
 
@@ -233,10 +253,33 @@ describe("ApiConnectionsClient", () => {
       <ApiConnectionsClient
         initialConnections={[]}
         initialRuns={[]}
+        initialResources={[]}
       />,
     );
 
     expect(screen.getByText("No API connections are available.")).toBeTruthy();
+    expect(screen.getByText("No resources have been captured yet.")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "New API connection" })).toBeNull();
+  });
+
+  it("renders captured resources in a second read-only grid", () => {
+    render(
+      <ApiConnectionsClient
+        initialConnections={[pgicConnection]}
+        initialRuns={[queuedRun]}
+        initialResources={[resource]}
+      />,
+    );
+
+    expect(screen.getByText("Resources")).toBeTruthy();
+    expect(screen.getByText("Category")).toBeTruthy();
+    expect(screen.getByText("Display text")).toBeTruthy();
+    expect(screen.getByText("URL")).toBeTruthy();
+    expect(screen.getByText("Film")).toBeTruthy();
+    expect(screen.getByText("Watch")).toBeTruthy();
+    expect(screen.getByText("https://example.com/film#watch")).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Open/ }).getAttribute("href")).toBe(
+      "https://example.com/film#watch",
+    );
   });
 });

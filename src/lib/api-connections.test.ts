@@ -10,6 +10,7 @@ vi.mock("node:dns/promises", () => ({
 import {
   ApiConnectionError,
   createApiConnectionRunRequest,
+  extractApiConnectionResources,
   fetchArcgisFeaturePages,
   listCodeManagedApiConnections,
   parseArcgisFeatureRows,
@@ -343,6 +344,41 @@ describe("parseApiResponseRows", () => {
         responseDataPath: "data.items",
       }),
     ).toThrow(ApiConnectionError);
+  });
+});
+
+describe("extractApiConnectionResources", () => {
+  it("extracts valid resource fields, removes URL hashes for dedupe, and skips invalid URLs", () => {
+    const resources = extractApiConnectionResources({
+      connectionId: "connection-1",
+      runId: "run-1",
+      rows: [
+        {
+          resource_01_category: "Audio",
+          resource_01_webtext: "Listen",
+          resource_01_url: "https://example.com/audio#player",
+          resource_02_category: "Film",
+          resource_02_webtext: "Watch",
+          resource_02_url: "ftp://example.com/film",
+          resource_03_category: "Audio",
+          resource_03_webtext: "Hear",
+          resource_03_url: "https://example.com/audio",
+        },
+      ],
+    });
+
+    expect(resources).toEqual([
+      {
+        connectionId: "connection-1",
+        runId: "run-1",
+        resourceUrl: "https://example.com/audio#player",
+        normalizedUrl: "https://example.com/audio",
+        category: "Audio",
+        webText: "Listen",
+        sourceRowIndex: 0,
+        sourceResourceIndex: 1,
+      },
+    ]);
   });
 });
 
