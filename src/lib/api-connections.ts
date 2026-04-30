@@ -29,6 +29,13 @@ import {
   createDatasetStoragePath,
   getDatasetStorageBucket,
 } from "@/lib/dataset-storage";
+import {
+  ETNOPEDIA_CSV_COLUMNS,
+  etnopediaRecordsToRows,
+  fetchEtnopediaPeopleGroups,
+  isEtnopediaApiUrl,
+} from "@/lib/etnopedia-api";
+import type { EtnopediaRecord } from "@/lib/etnopedia-api";
 import { logError } from "@/lib/error-logging";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import type {
@@ -48,14 +55,27 @@ import type {
 } from "@/lib/api-types";
 
 const MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
+const MAX_ARCGIS_RESPONSE_BYTES = 64 * 1024 * 1024;
+const ARCGIS_FEATURE_PAGE_SIZE = 2000;
 const MAX_PREVIEW_LENGTH = 8 * 1024;
 const REQUEST_TIMEOUT_MS = 20_000;
 const MAX_REDIRECTS = 3;
+const JOSHUA_PROJECT_API_HOST = "api.joshuaproject.net";
+const JOSHUA_PROJECT_PEOPLE_GROUPS_PATH = "/v1/people_groups.json";
+const JOSHUA_PROJECT_API_KEY_NAME = "api_key";
 
 type ApiConnectionRecord = typeof apiConnections.$inferSelect;
 type ApiConnectionRunRecord = typeof apiConnectionRuns.$inferSelect;
 type ApiConnectionRunLogRecord = typeof apiConnectionRunLogs.$inferSelect;
 type ApiConnectionRunOutputRecord = typeof apiConnectionRunOutputs.$inferSelect;
+
+export type ApiConnectionRunRequestInput = {
+  method: ApiConnection["method"];
+  url: string;
+  requestHeaders: ApiConnectionHeader[];
+  bodyTemplate: string;
+  secrets: Map<string, string>;
+};
 
 export type ApiConnectionInput = {
   name: string;
@@ -549,7 +569,71 @@ function previewResponse(value: string, secrets: Map<string, string>) {
   return redactSecrets(value.slice(0, MAX_PREVIEW_LENGTH), secrets);
 }
 
-async function readLimitedResponse(response: Response) {
+function isJoshuaProjectPeopleGroupsUrl(value: string) {
+  try {
+    const url = new URL(value);
+    return (
+      url.hostname === JOSHUA_PROJECT_API_HOST &&
+      url.pathname === JOSHUA_PROJECT_PEOPLE_GROUPS_PATH
+    );
+  } catch {
+    return false;
+  }
+}
+
+function getCaseInsensitiveSecret(secrets: Map<string, string>, name: string) {
+  const normalizedName = name.toLowerCase();
+
+  for (const [secretName, value] of secrets) {
+    if (secretName.toLowerCase() === normalizedName) {
+      return value;
+    }
+  }
+
+  return null;
+}
+
+export function createApiConnectionRunRequest(input: ApiConnectionRunRequestInput) {
+  const headers = new Headers();
+  const requestUrl = new URL(input.url);
+  const isJoshuaProjectPeopleGroups = isJoshuaProjectPeopleGroupsUrl(input.url);
+
+  for (const header of input.requestHeaders) {
+    headers.set(header.name, header.value);
+  }
+
+  for (const [name, value] of input.secrets) {
+    if (
+      isJoshuaProjectPeopleGroups &&
+      name.toLowerCase() === JOSHUA_PROJECT_API_KEY_NAME
+    ) {
+      continue;
+    }
+
+    headers.set(name, value);
+  }
+
+  if (isJoshuaProjectPeopleGroups) {
+    const apiKey = getCaseInsensitiveSecret(input.secrets, JOSHUA_PROJECT_API_KEY_NAME);
+
+    if (!apiKey) {
+      throw new ApiConnectionError("Joshua Project API key is required.", 400);
+    }
+
+    requestUrl.searchParams.set(JOSHUA_PROJECT_API_KEY_NAME, apiKey);
+  }
+
+  return {
+    url: requestUrl.toString(),
+    headers,
+    body: input.method === "GET" ? undefined : input.bodyTemplate || undefined,
+  };
+}
+
+async function readLimitedResponse(
+  response: Response,
+  maxBytes = MAX_RESPONSE_BYTES,
+) {
   const reader = response.body?.getReader();
 
   if (!reader) {
@@ -568,7 +652,7 @@ async function readLimitedResponse(response: Response) {
 
     totalBytes += value.byteLength;
 
-    if (totalBytes > MAX_RESPONSE_BYTES) {
+    if (totalBytes > maxBytes) {
       throw new ApiConnectionError("API response is too large.", 502);
     }
 
@@ -611,6 +695,262 @@ async function fetchWithSafeRedirects(input: {
   return response;
 }
 
+function createEtnopediaRequestJson(input: {
+  url: string;
+  headers: Headers;
+  secrets: Map<string, string>;
+}) {
+  return async (params: Record<string, string>, method: "GET" | "POST") => {
+    const headers = new Headers(input.headers);
+    let url = input.url;
+    let body: BodyInit | undefined;
+
+    if (!headers.has("User-Agent")) {
+      headers.set("User-Agent", "Etnopedia-WebExport/1.0 (+accelerate-global)");
+    }
+
+    if (method === "GET") {
+      const requestUrl = new URL(url);
+
+      for (const [key, value] of Object.entries(params)) {
+        requestUrl.searchParams.set(key, value);
+      }
+
+      url = requestUrl.toString();
+    } else {
+      if (!headers.has("Content-Type")) {
+        headers.set("Content-Type", "application/x-www-form-urlencoded;charset=utf-8");
+      }
+
+      body = new URLSearchParams(params);
+    }
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    let response: Response;
+
+    try {
+      response = await fetchWithSafeRedirects({
+        url,
+        init: {
+          method,
+          headers,
+          body,
+          signal: controller.signal,
+        },
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
+
+    const responseBody = await readLimitedResponse(response);
+
+    if (!response.ok) {
+      throw new ApiConnectionError(
+        `Etnopedia API request failed with HTTP ${response.status}.`,
+        502,
+      );
+    }
+
+    try {
+      return JSON.parse(responseBody) as unknown;
+    } catch {
+      const snippet = redactSecrets(
+        responseBody.slice(0, 240).replace(/[\r\n]+/g, " ").trim(),
+        input.secrets,
+      );
+
+      throw new ApiConnectionError(
+        `Etnopedia API returned a non-JSON response. Body starts with: ${snippet}`,
+        502,
+      );
+    }
+  };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function isArcgisFeatureServerQueryUrl(value: string) {
+  try {
+    const url = new URL(value);
+    return /\/FeatureServer\/\d+\/query$/i.test(url.pathname);
+  } catch {
+    return false;
+  }
+}
+
+function isArcgisFeatureConnection(input: {
+  url: string;
+  responseFormat: ApiConnectionResponseFormat;
+  responseDataPath: string;
+}) {
+  return (
+    input.responseFormat === "json" &&
+    input.responseDataPath.trim() === "features" &&
+    isArcgisFeatureServerQueryUrl(input.url)
+  );
+}
+
+function getArcgisFeaturePageUrl(input: {
+  url: string;
+  pageSize: number;
+  offset: number;
+  objectIdField: string | null;
+}) {
+  const url = new URL(input.url);
+
+  if (!url.searchParams.has("where")) {
+    url.searchParams.set("where", "1=1");
+  }
+
+  if (!url.searchParams.has("outFields")) {
+    url.searchParams.set("outFields", "*");
+  }
+
+  if (!url.searchParams.has("outSR")) {
+    url.searchParams.set("outSR", "4326");
+  }
+
+  url.searchParams.set("f", "json");
+  url.searchParams.set("resultRecordCount", String(input.pageSize));
+  url.searchParams.set("resultOffset", String(input.offset));
+
+  if (input.objectIdField) {
+    url.searchParams.set("orderByFields", input.objectIdField);
+  }
+
+  return url.toString();
+}
+
+function parseArcgisFeaturePage(body: string) {
+  let parsed: unknown;
+
+  try {
+    parsed = JSON.parse(body);
+  } catch {
+    throw new ApiConnectionError("ArcGIS API response could not be parsed.", 502);
+  }
+
+  if (!isRecord(parsed)) {
+    throw new ApiConnectionError("ArcGIS API response was not an object.", 502);
+  }
+
+  if (isRecord(parsed.error)) {
+    const message =
+      typeof parsed.error.message === "string"
+        ? parsed.error.message
+        : "ArcGIS API returned an error.";
+    throw new ApiConnectionError(`ArcGIS API error: ${message}`, 502);
+  }
+
+  if (!Array.isArray(parsed.features)) {
+    throw new ApiConnectionError("ArcGIS API response did not include features.", 502);
+  }
+
+  const features = parsed.features.filter(isRecord);
+
+  if (features.length !== parsed.features.length) {
+    throw new ApiConnectionError("ArcGIS API response included invalid features.", 502);
+  }
+
+  return {
+    features,
+    objectIdField:
+      typeof parsed.objectIdFieldName === "string"
+        ? parsed.objectIdFieldName
+        : null,
+  };
+}
+
+export async function fetchArcgisFeaturePages(input: {
+  url: string;
+  headers: Headers;
+  pageSize?: number;
+  maxBytes?: number;
+  log?: (message: string) => Promise<void>;
+  onHttpStatus?: (status: number) => void;
+}) {
+  const pageSize = input.pageSize ?? ARCGIS_FEATURE_PAGE_SIZE;
+  const maxBytes = input.maxBytes ?? MAX_ARCGIS_RESPONSE_BYTES;
+  const features: Record<string, unknown>[] = [];
+  let objectIdField: string | null = null;
+  let offset = 0;
+  let pageIndex = 0;
+  let totalBytes = 0;
+  let httpStatus: number | null = null;
+
+  if (pageSize <= 0) {
+    throw new ApiConnectionError("ArcGIS page size must be greater than zero.");
+  }
+
+  while (true) {
+    const pageUrl = getArcgisFeaturePageUrl({
+      url: input.url,
+      pageSize,
+      offset,
+      objectIdField,
+    });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    let response: Response;
+
+    try {
+      response = await fetchWithSafeRedirects({
+        url: pageUrl,
+        init: {
+          method: "GET",
+          headers: input.headers,
+          signal: controller.signal,
+        },
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
+
+    httpStatus = response.status;
+    input.onHttpStatus?.(response.status);
+
+    const remainingBytes = Math.max(0, maxBytes - totalBytes);
+    const body = await readLimitedResponse(response, remainingBytes);
+    totalBytes += Buffer.byteLength(body);
+
+    if (totalBytes > maxBytes) {
+      throw new ApiConnectionError("API response is too large.", 502);
+    }
+
+    if (!response.ok) {
+      throw new ApiConnectionError(`API request failed with HTTP ${response.status}.`, 502);
+    }
+
+    const page = parseArcgisFeaturePage(body);
+
+    if (!objectIdField) {
+      objectIdField = page.objectIdField || "OBJECTID";
+    }
+
+    features.push(...page.features);
+
+    await input.log?.(
+      `Fetched ArcGIS page ${pageIndex}: ${page.features.length} features (${features.length} total).`,
+    );
+
+    if (page.features.length < pageSize) {
+      break;
+    }
+
+    offset += pageSize;
+    pageIndex += 1;
+  }
+
+  return {
+    body: JSON.stringify(features),
+    featureCount: features.length,
+    httpStatus,
+  };
+}
+
 function getJsonPathValue(value: unknown, path: string) {
   const trimmedPath = path.trim();
 
@@ -638,6 +978,147 @@ function objectToRecord(value: Record<string, unknown>) {
           : String(entryValue),
     ]),
   );
+}
+
+function parseJoshuaProjectResources(value: unknown) {
+  if (Array.isArray(value)) {
+    return value.filter(
+      (resource): resource is Record<string, unknown> =>
+        resource !== null &&
+        typeof resource === "object" &&
+        !Array.isArray(resource),
+    );
+  }
+
+  if (typeof value !== "string") {
+    return [];
+  }
+
+  const trimmed = value.trim();
+
+  if (!trimmed) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(trimmed) as unknown;
+
+    return Array.isArray(parsed)
+      ? parsed.filter(
+          (resource): resource is Record<string, unknown> =>
+            resource !== null &&
+            typeof resource === "object" &&
+            !Array.isArray(resource),
+        )
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+function apiValueToString(value: unknown) {
+  if (value === null || value === undefined) {
+    return "";
+  }
+
+  if (typeof value === "object") {
+    return JSON.stringify(value);
+  }
+
+  return String(value);
+}
+
+export function parseArcgisFeatureRows(features: unknown[]) {
+  const rawRows = features.map((feature) => {
+    if (!isRecord(feature)) {
+      throw new ApiConnectionError("ArcGIS feature rows must be objects.", 502);
+    }
+
+    const row: Record<string, string> = {};
+    const attributes = feature.attributes;
+
+    if (isRecord(attributes)) {
+      for (const [key, value] of Object.entries(attributes)) {
+        row[key] = apiValueToString(value);
+      }
+    } else {
+      for (const [key, value] of Object.entries(feature)) {
+        if (key !== "geometry") {
+          row[key] = apiValueToString(value);
+        }
+      }
+    }
+
+    if (isRecord(feature.geometry)) {
+      for (const [key, value] of Object.entries(feature.geometry)) {
+        row[`geometry_${key}`] = apiValueToString(value);
+      }
+    }
+
+    return row;
+  });
+  const columns = rowsToColumns(rawRows);
+
+  return {
+    rows: alignRowsToColumns({ rows: rawRows, columns }),
+    columns,
+  };
+}
+
+function getJoshuaProjectItems(value: unknown) {
+  if (
+    value !== null &&
+    typeof value === "object" &&
+    !Array.isArray(value) &&
+    Array.isArray((value as { data?: unknown }).data)
+  ) {
+    return (value as { data: unknown[] }).data;
+  }
+
+  return Array.isArray(value) ? value : [value];
+}
+
+function parseJoshuaProjectPeopleGroupsRows(value: unknown) {
+  const rawRows = getJoshuaProjectItems(value).map((item) => {
+    if (item === undefined) {
+      throw new ApiConnectionError("Configured JSON response path was not found.", 502);
+    }
+
+    if (item === null || typeof item !== "object" || Array.isArray(item)) {
+      return { value: JSON.stringify(item) };
+    }
+
+    const row: Record<string, string> = {};
+
+    for (const [key, entryValue] of Object.entries(item)) {
+      if (key === "Resources") {
+        const resources = parseJoshuaProjectResources(entryValue);
+
+        resources.forEach((resource, resourceIndex) => {
+          const index = String(resourceIndex + 1).padStart(2, "0");
+
+          for (const fieldName of ["ROL3", "Category", "WebText", "URL"]) {
+            row[`Resource_${index}_${fieldName}`] = apiValueToString(
+              resource[fieldName],
+            );
+          }
+        });
+
+        row.Resources_raw = apiValueToString(entryValue);
+        continue;
+      }
+
+      row[key] = apiValueToString(entryValue);
+    }
+
+    return row;
+  });
+  const columns = rowsToColumns(rawRows);
+
+  return {
+    rows: alignRowsToColumns({ rows: rawRows, columns }),
+    columns,
+  };
 }
 
 function rowsToColumns(rows: Record<string, string>[]) {
@@ -671,6 +1152,7 @@ export function parseApiResponseRows(input: {
   body: string;
   responseFormat: ApiConnectionResponseFormat;
   responseDataPath: string;
+  connectionUrl?: string;
 }) {
   if (input.responseFormat === "csv") {
     const parsed = Papa.parse<Record<string, string>>(input.body, {
@@ -703,7 +1185,29 @@ export function parseApiResponseRows(input: {
     throw new ApiConnectionError("JSON API response could not be parsed.", 502);
   }
 
+  if (input.connectionUrl && isEtnopediaApiUrl(input.connectionUrl)) {
+    if (!Array.isArray(json)) {
+      throw new ApiConnectionError("Etnopedia export output was not an array.", 502);
+    }
+
+    const columns = normalizeHeaders([...ETNOPEDIA_CSV_COLUMNS]);
+    const rawRows = etnopediaRecordsToRows(json as EtnopediaRecord[]);
+
+    return {
+      rows: alignRowsToColumns({ rows: rawRows, columns }),
+      columns,
+    };
+  }
+
   const selected = getJsonPathValue(json, input.responseDataPath);
+
+  if (
+    input.connectionUrl &&
+    isJoshuaProjectPeopleGroupsUrl(input.connectionUrl)
+  ) {
+    return parseJoshuaProjectPeopleGroupsRows(selected);
+  }
+
   const items = Array.isArray(selected) ? selected : [selected];
 
   if (items.some((item) => item === undefined)) {
@@ -1077,16 +1581,6 @@ export async function executeApiConnectionRun(input: { runId: string }) {
   }
 
   const secrets = await readVaultSecret(connection.secretVaultId);
-  const headers = new Headers();
-
-  for (const header of connection.requestHeaders) {
-    headers.set(header.name, header.value);
-  }
-
-  for (const [name, value] of secrets) {
-    headers.set(name, value);
-  }
-
   const startedAtDate = new Date();
   const startedAt = Date.now();
   let httpStatus: number | null = null;
@@ -1111,45 +1605,111 @@ export async function executeApiConnectionRun(input: { runId: string }) {
       message: "Fetching upstream API.",
     });
 
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-    let response: Response;
+    const requestConfig = createApiConnectionRunRequest({
+      method: connection.method,
+      url: connection.url,
+      requestHeaders: connection.requestHeaders,
+      bodyTemplate: connection.bodyTemplate,
+      secrets,
+    });
 
-    try {
-      response = await fetchWithSafeRedirects({
-        url: connection.url,
-        init: {
-          method: connection.method,
-          headers,
-          body:
-            connection.method === "GET" ? undefined : connection.bodyTemplate || undefined,
-          signal: controller.signal,
+    let body: string;
+
+    const isArcgisRun = isArcgisFeatureConnection({
+      url: requestConfig.url,
+      responseFormat: connection.responseFormat,
+      responseDataPath: connection.responseDataPath,
+    });
+
+    if (isEtnopediaApiUrl(connection.url)) {
+      try {
+        const result = await fetchEtnopediaPeopleGroups({
+          requestJson: createEtnopediaRequestJson({
+            url: requestConfig.url,
+            headers: requestConfig.headers,
+            secrets,
+          }),
+          log: (message) =>
+            insertRunLog({
+              runId: run.id,
+              connectionId: connection.id,
+              message,
+            }).then(() => undefined),
+        });
+
+        body = JSON.stringify(result.records);
+        httpStatus = 200;
+      } catch (error) {
+        if (error instanceof ApiConnectionError) {
+          throw error;
+        }
+
+        throw new ApiConnectionError(
+          error instanceof Error ? error.message : "Etnopedia export failed.",
+          502,
+        );
+      }
+    } else if (isArcgisRun) {
+      const result = await fetchArcgisFeaturePages({
+        url: requestConfig.url,
+        headers: requestConfig.headers,
+        log: (message) =>
+          insertRunLog({
+            runId: run.id,
+            connectionId: connection.id,
+            message,
+          }).then(() => undefined),
+        onHttpStatus: (status) => {
+          httpStatus = status;
         },
       });
-    } finally {
-      clearTimeout(timeout);
+
+      body = result.body;
+      httpStatus = result.httpStatus;
+    } else {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+      let response: Response;
+
+      try {
+        response = await fetchWithSafeRedirects({
+          url: requestConfig.url,
+          init: {
+            method: connection.method,
+            headers: requestConfig.headers,
+            body: requestConfig.body,
+            signal: controller.signal,
+          },
+        });
+      } finally {
+        clearTimeout(timeout);
+      }
+
+      httpStatus = response.status;
+      body = await readLimitedResponse(response);
+
+      if (!response.ok) {
+        throw new ApiConnectionError(`API request failed with HTTP ${response.status}.`, 502);
+      }
     }
 
-    httpStatus = response.status;
-    const body = await readLimitedResponse(response);
     responsePreview = previewResponse(body, secrets);
     const redactedBody = redactSecrets(body, secrets);
 
     await insertRunLog({
       runId: run.id,
       connectionId: connection.id,
-      message: `Received HTTP ${response.status}.`,
+      message: `Received HTTP ${httpStatus}.`,
     });
 
-    if (!response.ok) {
-      throw new ApiConnectionError(`API request failed with HTTP ${response.status}.`, 502);
-    }
-
-    const parsed = parseApiResponseRows({
-      body,
-      responseFormat: connection.responseFormat,
-      responseDataPath: connection.responseDataPath,
-    });
+    const parsed = isArcgisRun
+      ? parseArcgisFeatureRows(JSON.parse(body) as unknown[])
+      : parseApiResponseRows({
+          body,
+          responseFormat: connection.responseFormat,
+          responseDataPath: connection.responseDataPath,
+          connectionUrl: connection.url,
+        });
 
     await insertRunLog({
       runId: run.id,

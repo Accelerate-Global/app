@@ -1,11 +1,14 @@
 "use client";
 
 import {
+  BookOpenTextIcon,
   CheckCircle2Icon,
   DownloadIcon,
   ExternalLinkIcon,
+  Globe2Icon,
   KeyRoundIcon,
   Loader2Icon,
+  MapPinnedIcon,
   PlayIcon,
   PlusIcon,
   SaveIcon,
@@ -66,6 +69,62 @@ const defaultFormState: FormState = {
   datasetName: "api-import.csv",
   datasetClassification: "PGAC",
 };
+
+const joshuaProjectPgicPreset: FormState = {
+  id: null,
+  name: "Joshua Project (PGIC)",
+  description: "Joshua Project people groups with profile text and resources.",
+  method: "GET",
+  url: "https://api.joshuaproject.net/v1/people_groups.json?include_profile_text=Y&include_resources=Y&page=1&limit=100000",
+  headers: [{ name: "api_key", value: "", isSecret: true }],
+  bodyTemplate: "",
+  responseFormat: "json",
+  responseDataPath: "",
+  importMode: "create",
+  targetDatasetId: null,
+  datasetName: "joshua-project-pgic.csv",
+  datasetClassification: "PGIC",
+};
+
+const imbPeopleGroupsPreset: FormState = {
+  id: null,
+  name: "IMB (People Groups)",
+  description: "IMB public ArcGIS people groups layer.",
+  method: "GET",
+  url:
+    "https://services1.arcgis.com/mICk7VdFTP86wcbI/arcgis/rest/services/pIMBpeoplePublic/FeatureServer/0/query",
+  headers: [],
+  bodyTemplate: "",
+  responseFormat: "json",
+  responseDataPath: "features",
+  importMode: "create",
+  targetDatasetId: null,
+  datasetName: "imb-people-groups.csv",
+  datasetClassification: "PGIC",
+};
+
+const etnopediaPreset: FormState = {
+  id: null,
+  name: "Etnopedia",
+  description: "Etnopedia MediaWiki people-group export.",
+  method: "GET",
+  url: "https://en.etnopedia.org/api.php",
+  headers: [],
+  bodyTemplate: "",
+  responseFormat: "json",
+  responseDataPath: "",
+  importMode: "create",
+  targetDatasetId: null,
+  datasetName: "etnopedia-people.csv",
+  datasetClassification: "PGIC",
+};
+
+function cloneFormState(formState: FormState): FormState {
+  return {
+    ...formState,
+    headers: formState.headers.map((header) => ({ ...header })),
+  };
+}
 
 async function getErrorMessage(response: Response, fallback: string) {
   try {
@@ -210,7 +269,9 @@ export function ApiConnectionsClient({
   const [connections, setConnections] = useState(initialConnections);
   const [runs, setRuns] = useState(initialRuns);
   const [form, setForm] = useState<FormState>(
-    initialConnections[0] ? toFormState(initialConnections[0]) : defaultFormState,
+    initialConnections[0]
+      ? toFormState(initialConnections[0])
+      : cloneFormState(defaultFormState),
   );
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [message, setMessage] = useState<{
@@ -334,7 +395,22 @@ export function ApiConnectionsClient({
   }
 
   function startNewConnection() {
-    setForm(defaultFormState);
+    setForm(cloneFormState(defaultFormState));
+    setMessage(null);
+  }
+
+  function applyJoshuaProjectPgicPreset() {
+    setForm(cloneFormState(joshuaProjectPgicPreset));
+    setMessage(null);
+  }
+
+  function applyImbPeopleGroupsPreset() {
+    setForm(cloneFormState(imbPeopleGroupsPreset));
+    setMessage(null);
+  }
+
+  function applyEtnopediaPreset() {
+    setForm(cloneFormState(etnopediaPreset));
     setMessage(null);
   }
 
@@ -413,7 +489,7 @@ export function ApiConnectionsClient({
         current.filter((connection) => connection.id !== deletedId),
       );
       setRuns((current) => current.filter((run) => run.connectionId !== deletedId));
-      setForm(defaultFormState);
+      setForm(cloneFormState(defaultFormState));
       setMessage({
         title: "Connection deleted",
         detail: "The saved request was removed.",
@@ -488,6 +564,37 @@ export function ApiConnectionsClient({
   return (
     <div className="grid gap-6 lg:grid-cols-[22rem_minmax(0,1fr)]">
       <aside className="space-y-4">
+        <section className="space-y-2">
+          <h2 className="text-lg font-semibold">Presets</h2>
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full justify-start"
+            onClick={applyJoshuaProjectPgicPreset}
+          >
+            <Globe2Icon className="size-4" />
+            Joshua Project (PGIC)
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full justify-start"
+            onClick={applyImbPeopleGroupsPreset}
+          >
+            <MapPinnedIcon className="size-4" />
+            IMB (People Groups)
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full justify-start"
+            onClick={applyEtnopediaPreset}
+          >
+            <BookOpenTextIcon className="size-4" />
+            Etnopedia
+          </Button>
+        </section>
+
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-lg font-semibold">Saved requests</h2>
           <Button
@@ -708,7 +815,7 @@ export function ApiConnectionsClient({
                 <Input
                   id="api-response-path"
                   value={form.responseDataPath}
-                  disabled={form.responseFormat === "csv"}
+                  disabled={form.responseFormat !== "json"}
                   onChange={(event) =>
                     updateForm({ responseDataPath: event.target.value })
                   }

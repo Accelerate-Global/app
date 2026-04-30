@@ -8,6 +8,7 @@ import { ApiConnectionsClient } from "@/components/dashboard/api-connections-cli
 describe("ApiConnectionsClient", () => {
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.unstubAllGlobals();
   });
 
   it("creates a saved API connection with a secret header", async () => {
@@ -70,6 +71,140 @@ describe("ApiConnectionsClient", () => {
       { name: "Authorization", value: "Bearer token", isSecret: true },
     ]);
     expect(await screen.findByText("Connection saved")).toBeTruthy();
+  });
+
+  it("fills the Joshua Project PGIC preset without embedding the API key", () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ runs: [] }),
+      }),
+    );
+
+    render(
+      <ApiConnectionsClient
+        initialConnections={[]}
+        initialRuns={[]}
+        datasets={[]}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Joshua Project (PGIC)" }));
+
+    const url = (screen.getByLabelText("URL") as HTMLInputElement).value;
+
+    expect((screen.getByLabelText("Name") as HTMLInputElement).value).toBe(
+      "Joshua Project (PGIC)",
+    );
+    expect(url).toContain(
+      "https://api.joshuaproject.net/v1/people_groups.json",
+    );
+    expect(url).toContain("include_profile_text=Y");
+    expect(url).toContain("include_resources=Y");
+    expect(url).toContain("page=1");
+    expect(url).toContain("limit=100000");
+    expect(url).not.toContain("api_key");
+    expect((screen.getByLabelText("Response format") as HTMLSelectElement).value).toBe(
+      "json",
+    );
+    expect((screen.getByLabelText("JSON path") as HTMLInputElement).value).toBe("");
+    expect((screen.getByLabelText("Dataset name") as HTMLInputElement).value).toBe(
+      "joshua-project-pgic.csv",
+    );
+    expect(
+      (screen.getByLabelText("Classification") as HTMLSelectElement).value,
+    ).toBe("PGIC");
+    expect((screen.getByLabelText("Header name") as HTMLInputElement).value).toBe(
+      "api_key",
+    );
+    expect((screen.getByLabelText("Header value") as HTMLInputElement).value).toBe(
+      "",
+    );
+  });
+
+  it("fills the IMB People Groups ArcGIS preset", () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ runs: [] }),
+      }),
+    );
+
+    render(
+      <ApiConnectionsClient
+        initialConnections={[]}
+        initialRuns={[]}
+        datasets={[]}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "IMB (People Groups)" }));
+
+    expect((screen.getByLabelText("Name") as HTMLInputElement).value).toBe(
+      "IMB (People Groups)",
+    );
+    expect((screen.getByLabelText("URL") as HTMLInputElement).value).toBe(
+      "https://services1.arcgis.com/mICk7VdFTP86wcbI/arcgis/rest/services/pIMBpeoplePublic/FeatureServer/0/query",
+    );
+    expect((screen.getByLabelText("Response format") as HTMLSelectElement).value).toBe(
+      "json",
+    );
+    expect((screen.getByLabelText("JSON path") as HTMLInputElement).value).toBe(
+      "features",
+    );
+    expect((screen.getByLabelText("JSON path") as HTMLInputElement).disabled).toBe(
+      false,
+    );
+    expect((screen.getByLabelText("Dataset name") as HTMLInputElement).value).toBe(
+      "imb-people-groups.csv",
+    );
+    expect(
+      (screen.getByLabelText("Classification") as HTMLSelectElement).value,
+    ).toBe("PGIC");
+    expect(screen.getByText("No headers configured.")).toBeTruthy();
+  });
+
+  it("fills the Etnopedia MediaWiki preset", () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ runs: [] }),
+      }),
+    );
+
+    render(
+      <ApiConnectionsClient
+        initialConnections={[]}
+        initialRuns={[]}
+        datasets={[]}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Etnopedia" }));
+
+    expect((screen.getByLabelText("Name") as HTMLInputElement).value).toBe(
+      "Etnopedia",
+    );
+    expect((screen.getByLabelText("URL") as HTMLInputElement).value).toBe(
+      "https://en.etnopedia.org/api.php",
+    );
+    expect((screen.getByLabelText("Response format") as HTMLSelectElement).value).toBe(
+      "json",
+    );
+    expect((screen.getByLabelText("JSON path") as HTMLInputElement).value).toBe("");
+    expect((screen.getByLabelText("JSON path") as HTMLInputElement).disabled).toBe(
+      false,
+    );
+    expect((screen.getByLabelText("Dataset name") as HTMLInputElement).value).toBe(
+      "etnopedia-people.csv",
+    );
+    expect(
+      (screen.getByLabelText("Classification") as HTMLSelectElement).value,
+    ).toBe("PGIC");
+    expect(screen.getByText("No headers configured.")).toBeTruthy();
   });
 
   it("queues a saved connection in import mode", async () => {

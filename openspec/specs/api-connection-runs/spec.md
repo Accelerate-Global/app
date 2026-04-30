@@ -2,7 +2,6 @@
 
 ## Purpose
 Define the admin-only lifecycle for running saved API connection profiles asynchronously, persisting run progress, archiving normalized outputs, and exposing JSON/CSV downloads while preserving existing API connection safety and dataset import behavior.
-
 ## Requirements
 ### Requirement: Admin starts asynchronous API connection runs
 The system SHALL allow dataset admins to start a saved API connection run and receive a queued run record without waiting for the upstream request and output processing to finish.
@@ -73,3 +72,106 @@ The system SHALL preserve existing API connection security and compatibility con
 #### Scenario: Existing profile behavior remains compatible
 - **WHEN** admins create, update, delete, test, or import saved API connection profiles
 - **THEN** the system preserves existing profile fields, secret-header behavior, and create-or-replace dataset import semantics
+
+### Requirement: API connection runs support ArcGIS FeatureServer features
+The system SHALL allow dataset admins to configure a saved JSON API connection for ArcGIS FeatureServer feature query endpoints and run that connection through the existing admin-only API connection lifecycle.
+
+#### Scenario: Admin saves ArcGIS feature connection
+- **WHEN** a dataset admin saves an API connection for a FeatureServer query endpoint with JSON response format and `features` response path
+- **THEN** the system accepts the connection profile using the existing JSON response format
+
+#### Scenario: Admin runs paged ArcGIS feature connection
+- **WHEN** a dataset admin runs a matching ArcGIS FeatureServer JSON `features` API connection
+- **THEN** the system fetches all available pages from the FeatureServer query endpoint and records normal run status, logs, row count, output metadata, and archived downloads
+
+#### Scenario: Non-admin cannot run ArcGIS feature connection
+- **WHEN** an unauthenticated user or non-admin user attempts to create, update, or run an ArcGIS features API connection
+- **THEN** the system rejects the request using the existing API connection admin authorization behavior
+
+### Requirement: ArcGIS feature rows use IMB-compatible flattening
+The system SHALL normalize ArcGIS feature rows by preserving all feature attribute keys as columns and flattening geometry keys into `geometry_*` columns in first-seen order.
+
+#### Scenario: Feature attributes and geometry are flattened
+- **WHEN** an ArcGIS FeatureServer response contains features with `attributes` and `geometry`
+- **THEN** the normalized rows include every attribute key, include geometry values under `geometry_*` column names, and preserve scalar values as strings for dataset import and CSV download
+
+#### Scenario: Raw ArcGIS output remains inspectable
+- **WHEN** an ArcGIS features run succeeds
+- **THEN** the archived JSON output includes the raw feature list used for normalization without exposing secret header values
+
+### Requirement: Admin can start with the IMB People Groups preset
+The system SHALL provide an admin UI preset for the public IMB People Groups ArcGIS layer so admins can create the saved connection without manually translating the working script into app fields.
+
+#### Scenario: Admin applies IMB preset
+- **WHEN** a dataset admin applies the `IMB (People Groups)` preset on the API Connections page
+- **THEN** the connection form is populated with the public IMB FeatureServer query endpoint, JSON `features` response path, create-dataset import settings, `imb-people-groups.csv`, and PGIC classification
+
+### Requirement: Admin can create a Joshua Project PGIC connection from a preset
+The system SHALL provide an admin-only Joshua Project (PGIC) setup option that pre-fills the saved API connection fields needed to fetch Joshua Project people-group data while requiring the API key to be entered as a stored secret.
+
+#### Scenario: Admin applies the preset
+- **WHEN** a dataset admin chooses the Joshua Project (PGIC) setup option on the API Connections page
+- **THEN** the form uses `GET`, targets the Joshua Project people-groups endpoint with `include_profile_text=Y`, `include_resources=Y`, `page=1`, and `limit=100000`, sets JSON response handling, sets PGIC dataset classification, and includes a secret `api_key` field without a committed value
+
+#### Scenario: Preset key is not exposed in tracked code
+- **WHEN** the Joshua Project preset is rendered in the browser
+- **THEN** the provided API key is not present in client source, saved connection URLs, or preset defaults, and the admin must save it through the existing secret field flow
+
+### Requirement: Joshua Project PGIC runs send the stored key as an upstream query parameter
+The system SHALL translate the stored `api_key` secret into the Joshua Project upstream query parameter for Joshua Project people-groups runs while preserving existing API connection safety controls and secret redaction.
+
+#### Scenario: Stored key is appended at run time
+- **WHEN** a saved Joshua Project PGIC connection with a stored `api_key` secret runs
+- **THEN** the upstream request includes `api_key` as a query parameter and does not send that secret as a normal request header
+
+#### Scenario: Secret remains redacted
+- **WHEN** a Joshua Project PGIC run completes or fails
+- **THEN** run logs, response previews, raw output artifacts, and saved connection URLs do not expose the stored API key
+
+### Requirement: Joshua Project PGIC output matches script-compatible resource flattening
+The system SHALL parse Joshua Project people-group JSON responses into import rows that preserve top-level fields and flatten `Resources` into indexed resource columns while retaining the raw resource payload.
+
+#### Scenario: Resources are flattened
+- **WHEN** the Joshua Project response includes a people-group record with `Resources`
+- **THEN** the parsed rows include `Resource_01_ROL3`, `Resource_01_Category`, `Resource_01_WebText`, `Resource_01_URL`, subsequent indexed resource columns as needed, and `Resources_raw`
+
+#### Scenario: Existing generic parsers remain compatible
+- **WHEN** a non-Joshua API connection run parses JSON or CSV
+- **THEN** the system uses the existing generic parsing behavior and does not apply Joshua Project resource flattening
+
+### Requirement: Admin can create an Etnopedia connection from a preset
+The system SHALL provide an admin-only Etnopedia setup option that pre-fills the saved API connection fields needed to fetch Etnopedia people-group data.
+
+#### Scenario: Admin applies the preset
+- **WHEN** a dataset admin chooses the `Etnopedia` setup option on the API Connections page
+- **THEN** the form uses `GET`, targets `https://en.etnopedia.org/api.php`, sets JSON response handling, sets PGIC dataset classification, and uses an Etnopedia dataset filename
+
+#### Scenario: Existing admin authorization remains unchanged
+- **WHEN** an unauthenticated user or non-admin user attempts to create, update, or run the saved Etnopedia connection
+- **THEN** the system rejects the request using the existing API connection admin authorization behavior
+
+### Requirement: Etnopedia runs execute the MediaWiki export flow
+The system SHALL run Etnopedia API connections by listing people-group category members, fetching main and talk page revisions in batches, and recording progress through the existing API connection run lifecycle.
+
+#### Scenario: Admin runs an Etnopedia connection
+- **WHEN** a dataset admin starts an Etnopedia API connection run
+- **THEN** the system fetches `Category:Peoples_by_name`, retrieves main and `Talk:` revisions for each title, records progress logs, and completes with normal run status, row count, output metadata, and archived downloads
+
+#### Scenario: Etnopedia request fails
+- **WHEN** an Etnopedia category or revision request fails, returns invalid JSON, or returns an upstream error
+- **THEN** the system records a failed API connection run with an error log and does not create or replace an imported dataset
+
+### Requirement: Etnopedia output matches the proven export shape
+The system SHALL normalize Etnopedia people-group data into the script-compatible CSV columns and preserve structured records in the JSON output artifact.
+
+#### Scenario: CSV output uses script columns
+- **WHEN** an Etnopedia run succeeds
+- **THEN** the normalized rows include the script-compatible fields for provenance, main-page attributes, map data, references, body sections, talk-page IDs, and progress indicators
+
+#### Scenario: Structured JSON remains inspectable
+- **WHEN** an Etnopedia run succeeds
+- **THEN** the archived JSON output includes structured records with `urls`, `provenance`, `main`, and `talk` objects for each people-group title
+
+#### Scenario: Existing generic parsers remain compatible
+- **WHEN** a non-Etnopedia API connection run parses JSON or CSV
+- **THEN** the system uses the existing generic parsing behavior and does not apply Etnopedia MediaWiki fetching or wikitext parsing

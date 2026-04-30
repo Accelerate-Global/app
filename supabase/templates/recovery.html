@@ -3,101 +3,217 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="supported-color-schemes" content="light dark" />
     <title>Reset your password</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        supported-color-schemes: light dark;
+      }
+
+      body,
+      .ag-page {
+        background: #f7f6ef;
+        color: #262531;
+      }
+
+      .ag-heading {
+        color: #262531;
+      }
+
+      .ag-muted {
+        color: rgba(38, 37, 49, 0.68);
+      }
+
+      .ag-button-cell,
+      .ag-button {
+        background: #262531;
+        color: #f7f6ef !important;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        body,
+        .ag-page {
+          background: #181720 !important;
+          color: #f5f1e8 !important;
+        }
+
+        .ag-heading {
+          color: #f5f1e8 !important;
+        }
+
+        .ag-muted {
+          color: rgba(245, 241, 232, 0.72) !important;
+        }
+
+        .ag-button-cell,
+        .ag-button {
+          background: #f5f1e8 !important;
+          color: #181720 !important;
+        }
+      }
+
+      @media screen and (max-width: 640px) {
+        .ag-shell {
+          padding: 30px 22px 52px !important;
+        }
+
+        .ag-logo {
+          width: 190px !important;
+        }
+
+        .ag-spacer {
+          height: 58px !important;
+          line-height: 58px !important;
+        }
+
+        .ag-content {
+          padding-left: 0 !important;
+        }
+
+        .ag-heading {
+          font-size: 42px !important;
+        }
+
+        .ag-body {
+          font-size: 16px !important;
+        }
+      }
+    </style>
   </head>
-  <body style="margin: 0; padding: 32px 16px; background: #f5f0e8; color: #262531;">
+  <body style="margin: 0; padding: 0;">
     <table
       role="presentation"
       cellpadding="0"
       cellspacing="0"
       width="100%"
-      style="max-width: 640px; margin: 0 auto; border-collapse: collapse;"
+      class="ag-page"
+      style="
+        width: 100%;
+        border-collapse: collapse;
+        background: #f7f6ef;
+        color: #262531;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      "
     >
       <tr>
         <td
+          align="left"
+          class="ag-shell"
           style="
-            border: 1px solid rgba(38, 37, 49, 0.12);
-            border-radius: 24px;
-            background: #fffdfa;
-            padding: 40px 32px;
-            box-shadow: 0 24px 70px -36px rgba(38, 37, 49, 0.42);
+            padding: 30px 68px 82px;
           "
         >
-          <p
-            style="
-              margin: 0 0 12px;
-              font-family: Georgia, 'Times New Roman', serif;
-              font-size: 16px;
-              font-weight: 700;
-              letter-spacing: 0.08em;
-              text-transform: uppercase;
-              color: #6c6a75;
-            "
+          <table
+            role="presentation"
+            cellpadding="0"
+            cellspacing="0"
+            width="100%"
+            style="width: 100%; border-collapse: collapse;"
           >
-            Accelerate Global Data
-          </p>
-          <h1
-            style="
-              margin: 0 0 20px;
-              font-family: Georgia, 'Times New Roman', serif;
-              font-size: 40px;
-              line-height: 1.05;
-              color: #262531;
-            "
-          >
-            Reset your password
-          </h1>
-          <p
-            style="
-              margin: 0 0 16px;
-              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-              font-size: 17px;
-              line-height: 1.65;
-              color: #4d4a58;
-            "
-          >
-            We received a request to reset the password for {{ .Email }}.
-          </p>
-          <p
-            style="
-              margin: 0 0 32px;
-              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-              font-size: 17px;
-              line-height: 1.65;
-              color: #4d4a58;
-            "
-          >
-            Use the button below to choose a new password. If you did not request this,
-            you can safely ignore this email.
-          </p>
-          <a
-            href="{{ .RedirectTo }}&amp;token_hash={{ .TokenHash }}&amp;type=recovery"
-            style="
-              display: inline-block;
-              border-radius: 999px;
-              background: #262531;
-              padding: 14px 24px;
-              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-              font-size: 16px;
-              font-weight: 600;
-              color: #fffdfa;
-              text-decoration: none;
-            "
-          >
-            Reset password
-          </a>
-          <p
-            style="
-              margin: 32px 0 0;
-              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-              font-size: 14px;
-              line-height: 1.6;
-              color: #6c6a75;
-            "
-          >
-            This link will open the password reset flow at
-            <a href="{{ .SiteURL }}" style="color: #262531;">{{ .SiteURL }}</a>.
-          </p>
+            <tr>
+              <td align="left" style="padding: 0;">
+                <img
+                  src="https://data.accelerateglobal.org/ag-logo.svg"
+                  width="235"
+                  height="68"
+                  alt="Accelerate Global"
+                  class="ag-logo"
+                  style="display: block; width: 235px; max-width: 100%; height: auto; border: 0;"
+                />
+              </td>
+            </tr>
+            <tr>
+              <td class="ag-spacer" style="height: 84px; line-height: 84px; font-size: 1px;">
+                &nbsp;
+              </td>
+            </tr>
+            <tr>
+              <td align="left" class="ag-content" style="padding-left: 220px;">
+                <table
+                  role="presentation"
+                  cellpadding="0"
+                  cellspacing="0"
+                  width="100%"
+                  style="max-width: 760px; width: 100%; border-collapse: collapse;"
+                >
+                  <tr>
+                    <td align="left" style="padding: 0;">
+                      <h1
+                        class="ag-heading"
+                        style="
+                          margin: 0 0 20px;
+                          font-family: 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', Georgia, serif;
+                          font-size: 52px;
+                          line-height: 1.08;
+                          font-weight: 600;
+                          letter-spacing: 0;
+                          color: #262531;
+                        "
+                      >
+                        Reset your password
+                      </h1>
+                      <p
+                        class="ag-muted ag-body"
+                        style="
+                          margin: 0 0 18px;
+                          max-width: 720px;
+                          font-size: 18px;
+                          line-height: 1.65;
+                          color: rgba(38, 37, 49, 0.68);
+                        "
+                      >
+                        We received a request to reset the password for your Accelerate Global
+                        Data account.
+                      </p>
+                      <p
+                        class="ag-muted ag-body"
+                        style="
+                          margin: 0 0 32px;
+                          max-width: 720px;
+                          font-size: 18px;
+                          line-height: 1.65;
+                          color: rgba(38, 37, 49, 0.68);
+                        "
+                      >
+                        Use the button below to choose a new password. If you did not request
+                        this, you can safely ignore this email.
+                      </p>
+                      <table
+                        role="presentation"
+                        cellpadding="0"
+                        cellspacing="0"
+                        style="border-collapse: collapse;"
+                      >
+                        <tr>
+                          <td class="ag-button-cell" style="border-radius: 6px; background: #262531;">
+                            <a
+                              href="{{ .RedirectTo }}&amp;token_hash={{ .TokenHash }}&amp;type=recovery"
+                              class="ag-button"
+                              style="
+                                display: inline-block;
+                                border-radius: 6px;
+                                background: #262531;
+                                padding: 12px 18px;
+                                font-size: 15px;
+                                line-height: 1.2;
+                                font-weight: 600;
+                                color: #f7f6ef;
+                                text-decoration: none;
+                              "
+                            >
+                              Reset password
+                            </a>
+                          </td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
         </td>
       </tr>
     </table>
