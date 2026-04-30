@@ -85,6 +85,52 @@ describe("/auth/confirm", () => {
     );
   });
 
+  it("redirects successful invite verification to reset-password", async () => {
+    const verifyOtp = vi.fn().mockResolvedValue({ error: null });
+
+    createServerClientMock.mockReturnValue({
+      auth: { exchangeCodeForSession: vi.fn(), verifyOtp },
+    } as never);
+
+    const response = await GET(
+      new NextRequest(
+        "http://localhost/auth/confirm?token_hash=hash&type=invite&next=/reset-password",
+      ),
+    );
+
+    expect(verifyOtp).toHaveBeenCalledWith({
+      type: "invite",
+      token_hash: "hash",
+    });
+    expect(response.headers.get("location")).toBe(
+      "http://localhost/reset-password",
+    );
+  });
+
+  it("preserves the forwarded origin when redirecting after token verification", async () => {
+    const verifyOtp = vi.fn().mockResolvedValue({ error: null });
+
+    createServerClientMock.mockReturnValue({
+      auth: { exchangeCodeForSession: vi.fn(), verifyOtp },
+    } as never);
+
+    const response = await GET(
+      new NextRequest(
+        "http://localhost:3100/auth/confirm?token_hash=hash&type=recovery&next=/reset-password",
+        {
+          headers: {
+            "x-forwarded-host": "127.0.0.1:3100",
+            "x-forwarded-proto": "http",
+          },
+        },
+      ),
+    );
+
+    expect(response.headers.get("location")).toBe(
+      "http://127.0.0.1:3100/reset-password",
+    );
+  });
+
   it("redirects failed recovery links back to forgot password", async () => {
     const exchangeCodeForSession = vi
       .fn()

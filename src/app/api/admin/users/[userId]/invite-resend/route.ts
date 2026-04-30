@@ -1,4 +1,5 @@
 import { getCurrentIdentity } from "@/lib/auth";
+import { buildAuthConfirmUrl } from "@/lib/auth-redirect";
 import { logError } from "@/lib/error-logging";
 import { jsonAdminOnlyError, jsonError } from "@/lib/http";
 import {
@@ -30,7 +31,10 @@ export async function POST(request: Request, context: UserInviteResendContext) {
     const user = await resendWorkspaceUserInviteEmail({
       currentUserRole: identity.workspaceRole,
       userId,
-      redirectTo: new URL("/reset-password", request.url).toString(),
+      redirectTo: buildAuthConfirmUrl(
+        new URL(request.url).origin,
+        "/reset-password",
+      ),
     });
 
     return Response.json({ user });

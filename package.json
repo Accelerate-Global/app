@@ -40,7 +40,7 @@
     "db:test": "supabase test db",
     "db:test:remote": "dotenv -e .env.local -- node scripts/run-remote-db-tests.mjs",
     "db:security:started": "pnpm db:check-rls:local && pnpm db:lint && pnpm db:test",
-    "db:security": "supabase start && supabase db reset --local --no-seed --yes && pnpm run db:security:started",
+    "db:security": "node --import tsx scripts/run-db-security.ts",
     "db:security:remote": "pnpm db:check-rls && pnpm db:lint:remote && pnpm db:test:remote",
     "db:check-migration-drift": "node --import tsx scripts/check-linked-migration-drift.ts",
     "field-sources:seed": "node --import tsx scripts/seed-field-sources.ts",

@@ -6,10 +6,12 @@ import {
   DEFAULT_AUTH_REDIRECT_PATH,
   sanitizeAuthRedirectPath,
 } from "@/lib/auth-redirect";
+import { getEffectiveRequestOrigin } from "@/lib/request-security";
 import { getSupabaseConfig, hasSupabaseConfig } from "@/lib/supabase/config";
 
 export async function GET(request: NextRequest) {
-  const { searchParams, origin } = new URL(request.url);
+  const { searchParams } = new URL(request.url);
+  const origin = getEffectiveRequestOrigin(request);
   const code = searchParams.get("code");
   const tokenHash = searchParams.get("token_hash");
   const type = searchParams.get("type") as EmailOtpType | null;

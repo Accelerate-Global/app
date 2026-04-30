@@ -149,7 +149,7 @@ describe("/api/admin/users", () => {
       email: "pro@example.com",
       fullName: "Pro User",
       workspaceRole: "pro",
-      redirectTo: "http://localhost/reset-password",
+      redirectTo: "http://localhost/auth/confirm?next=%2Freset-password",
     });
   });
 

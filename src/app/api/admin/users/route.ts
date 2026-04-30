@@ -1,4 +1,5 @@
 import { getCurrentIdentity } from "@/lib/auth";
+import { buildAuthConfirmUrl } from "@/lib/auth-redirect";
 import { logError } from "@/lib/error-logging";
 import { jsonAdminOnlyError, jsonError } from "@/lib/http";
 import {
@@ -46,14 +47,17 @@ export async function POST(request: Request) {
   }
 
   try {
-    const redirectUrl = new URL("/reset-password", request.url);
+    const redirectUrl = buildAuthConfirmUrl(
+      new URL(request.url).origin,
+      "/reset-password",
+    );
 
     const user = await inviteWorkspaceUser({
       currentUserRole: identity.workspaceRole,
       email: parsed.data.email,
       fullName: parsed.data.fullName,
       workspaceRole: parsed.data.workspaceRole,
-      redirectTo: redirectUrl.toString(),
+      redirectTo: redirectUrl,
     });
 
     return Response.json({ user }, { status: 201 });
