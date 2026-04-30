@@ -274,6 +274,27 @@ export const smokeRouteSpecs: SmokeRouteSpec[] = [
     pageId: "api-connections",
   },
   {
+    id: "api-connection-detail-pro-redirect",
+    role: "pro",
+    pageFile: "src/app/dashboard/api-connections/[connectionId]/page.tsx",
+    path: "/dashboard/api-connections/6f9f6ef2-1188-4f71-9c24-ef01debf7a01",
+    redirectTo: "/dashboard",
+  },
+  {
+    id: "api-connection-detail-basic-redirect",
+    role: "basic",
+    pageFile: "src/app/dashboard/api-connections/[connectionId]/page.tsx",
+    path: "/dashboard/api-connections/6f9f6ef2-1188-4f71-9c24-ef01debf7a01",
+    redirectTo: "/dashboard",
+  },
+  {
+    id: "api-connection-detail-admin",
+    role: "admin",
+    pageFile: "src/app/dashboard/api-connections/[connectionId]/page.tsx",
+    path: "/dashboard/api-connections/6f9f6ef2-1188-4f71-9c24-ef01debf7a01",
+    pageId: "api-connection-detail",
+  },
+  {
     id: "upload-pro-redirect",
     role: "pro",
     pageFile: "src/app/dashboard/upload/page.tsx",
