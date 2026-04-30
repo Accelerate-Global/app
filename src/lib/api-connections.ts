@@ -26,6 +26,9 @@ import {
   replaceDatasetContents,
 } from "@/lib/datasets";
 import {
+  API_CONNECTION_RUN_ARTIFACT_CONTENT_TYPE,
+  getApiConnectionRunArtifactReadBuckets,
+  getApiConnectionRunArtifactStorageBucket,
   createApiConnectionRunOutputStoragePath,
   createDatasetStoragePath,
   getDatasetStorageBucket,
@@ -1747,16 +1750,19 @@ async function uploadRunArtifact(input: {
   runId: string;
   fileName: string;
   content: string;
-  contentType: string;
 }) {
   const path = createApiConnectionRunOutputStoragePath(input.runId, input.fileName);
   const supabase = createSupabaseAdminClient();
   const result = await supabase.storage
-    .from(getDatasetStorageBucket())
-    .upload(path, new Blob([input.content], { type: input.contentType }), {
-      contentType: input.contentType,
-      upsert: false,
-    });
+    .from(getApiConnectionRunArtifactStorageBucket())
+    .upload(
+      path,
+      new Blob([input.content], { type: API_CONNECTION_RUN_ARTIFACT_CONTENT_TYPE }),
+      {
+        contentType: API_CONNECTION_RUN_ARTIFACT_CONTENT_TYPE,
+        upsert: false,
+      },
+    );
 
   if (result.error) {
     throw result.error;
@@ -1794,13 +1800,11 @@ async function persistRunOutput(input: {
       runId: input.run.id,
       fileName: "rows.json",
       content: rowsArtifact,
-      contentType: "application/json;charset=utf-8",
     }),
     uploadRunArtifact({
       runId: input.run.id,
       fileName: "raw-response.json",
       content: rawArtifact,
-      contentType: "application/json;charset=utf-8",
     }),
   ]);
   const [output] = await getDb()
@@ -2235,13 +2239,22 @@ export async function getApiConnectionRunDetail(input: {
 
 async function downloadStorageText(path: string) {
   const supabase = createSupabaseAdminClient();
-  const result = await supabase.storage.from(getDatasetStorageBucket()).download(path);
 
-  if (result.error) {
-    throw result.error;
+  for (const bucket of getApiConnectionRunArtifactReadBuckets()) {
+    const result = await supabase.storage.from(bucket).download(path);
+
+    if (!result.error) {
+      return result.data.text();
+    }
+
+    if (result.error.status !== 404) {
+      throw result.error;
+    }
   }
 
-  return result.data.text();
+  throw Object.assign(new Error("API connection run artifact was not found."), {
+    status: 404,
+  });
 }
 
 function getOutputFileName(input: { runId: string; format: "json" | "csv" }) {

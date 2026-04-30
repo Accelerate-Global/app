@@ -1,6 +1,5 @@
 // @vitest-environment jsdom
 
-import type { ReactNode } from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -18,64 +17,6 @@ vi.mock("next/navigation", () => ({
     push: pushMock,
   }),
 }));
-
-vi.mock("@/components/ui/select", async () => {
-  const React = await import("react");
-  const SelectContext = React.createContext<{
-    value: string;
-    onValueChange?: (value: string) => void;
-  }>({ value: "" });
-
-  return {
-    Select: ({
-      value,
-      onValueChange,
-      children,
-    }: {
-      value: string;
-      onValueChange?: (value: string) => void;
-      children?: ReactNode;
-    }) => (
-      <SelectContext.Provider value={{ value, onValueChange }}>
-        <div>{children}</div>
-      </SelectContext.Provider>
-    ),
-    SelectContent: ({ children }: { children?: ReactNode }) => (
-      <div>{children}</div>
-    ),
-    SelectItem: ({
-      value,
-      children,
-    }: {
-      value: string;
-      children?: ReactNode;
-    }) => {
-      const context = React.useContext(SelectContext);
-
-      return (
-        <button type="button" onClick={() => context.onValueChange?.(value)}>
-          {children}
-        </button>
-      );
-    },
-    SelectTrigger: ({ children }: { children?: ReactNode }) => (
-      <div>{children}</div>
-    ),
-    SelectValue: ({
-      children,
-    }: {
-      children?: ReactNode | ((value: string) => ReactNode);
-    }) => {
-      const context = React.useContext(SelectContext);
-
-      return (
-        <span>
-          {typeof children === "function" ? children(context.value) : children}
-        </span>
-      );
-    },
-  };
-});
 
 const pgacConnection: ApiConnection = {
   id: "11111111-1111-4111-8111-111111111111",
@@ -157,7 +98,7 @@ describe("ApiConnectionsClient", () => {
     pushMock.mockReset();
   });
 
-  it("renders connections in the Users-style table without web profile controls", () => {
+  it("renders connections in the simplified table without filters or web profile controls", () => {
     render(
       <ApiConnectionsClient
         initialConnections={[pgacConnection, pgicConnection]}
@@ -166,15 +107,20 @@ describe("ApiConnectionsClient", () => {
       />,
     );
 
-    expect(screen.getByText("Available API Connections")).toBeTruthy();
+    expect(screen.getByText("Connections")).toBeTruthy();
     expect(screen.getByText("Connection")).toBeTruthy();
     expect(screen.getByText("Classification")).toBeTruthy();
     expect(screen.getByText("Last ingestion")).toBeTruthy();
-    expect(screen.getByText("Status")).toBeTruthy();
+    expect(screen.queryByText("Status")).toBeNull();
     expect(screen.getByText("People API")).toBeTruthy();
     expect(screen.getByText("IMB (People Groups)")).toBeTruthy();
-    expect(screen.getAllByText("Success").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Queued").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Success")).toBeNull();
+    expect(screen.queryByText("Queued")).toBeNull();
+    expect(
+      screen.queryByPlaceholderText("Search connection, dataset, or classification"),
+    ).toBeNull();
+    expect(screen.queryByText("All classifications")).toBeNull();
+    expect(screen.queryByText("All statuses")).toBeNull();
 
     expect(screen.queryByRole("button", { name: "New API connection" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Test" })).toBeNull();
@@ -182,39 +128,6 @@ describe("ApiConnectionsClient", () => {
     expect(screen.queryByLabelText("URL")).toBeNull();
     expect(screen.queryByLabelText("Response format")).toBeNull();
     expect(screen.queryByRole("button", { name: "Save" })).toBeNull();
-  });
-
-  it("supports search and select filters", () => {
-    render(
-      <ApiConnectionsClient
-        initialConnections={[pgacConnection, pgicConnection]}
-        initialRuns={[successfulRun, queuedRun]}
-        initialResources={[]}
-      />,
-    );
-
-    fireEvent.change(
-      screen.getByPlaceholderText("Search connection, dataset, or classification"),
-      { target: { value: "imb" } },
-    );
-
-    expect(screen.getByText("IMB (People Groups)")).toBeTruthy();
-    expect(screen.queryByText("People API")).toBeNull();
-
-    fireEvent.change(
-      screen.getByPlaceholderText("Search connection, dataset, or classification"),
-      { target: { value: "" } },
-    );
-    fireEvent.click(screen.getByRole("button", { name: "PGAC" }));
-
-    expect(screen.getByText("People API")).toBeTruthy();
-    expect(screen.queryByText("IMB (People Groups)")).toBeNull();
-
-    fireEvent.click(screen.getByRole("button", { name: "All classifications" }));
-    fireEvent.click(screen.getByRole("button", { name: "Queued" }));
-
-    expect(screen.queryByText("People API")).toBeNull();
-    expect(screen.getByText("IMB (People Groups)")).toBeTruthy();
   });
 
   it("routes to the detail page when a row is clicked or keyboard-selected", () => {
@@ -257,7 +170,7 @@ describe("ApiConnectionsClient", () => {
       />,
     );
 
-    expect(screen.getByText("No API connections are available.")).toBeTruthy();
+    expect(screen.getByText("No connections are available.")).toBeTruthy();
     expect(screen.getByText("No resources have been captured yet.")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "New API connection" })).toBeNull();
   });

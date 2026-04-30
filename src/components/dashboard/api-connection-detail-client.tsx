@@ -2,6 +2,7 @@
 
 import {
   CheckCircle2Icon,
+  ChevronDownIcon,
   CircleDashedIcon,
   ClockIcon,
   DatabaseIcon,
@@ -24,7 +25,7 @@ import {
   type RowSelectionState,
   type SortingState,
 } from "@tanstack/react-table";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { DataGrid, DataGridContainer } from "@/components/reui/data-grid/data-grid";
 import { DataGridColumnHeader } from "@/components/reui/data-grid/data-grid-column-header";
@@ -88,6 +89,9 @@ const pipelineStages = [
     icon: DatabaseIcon,
   },
 ];
+
+const INGESTION_HISTORY_VISIBLE_ROW_LIMIT = 5;
+const INGESTION_HISTORY_SCROLL_AREA_HEIGHT = "h-[268px]";
 
 async function getErrorMessage(response: Response, fallback: string) {
   try {
@@ -261,6 +265,58 @@ function DetailEmptyState() {
   );
 }
 
+function CollapsibleRunCard({
+  title,
+  description,
+  contentId,
+  open,
+  onOpenChange,
+  children,
+}: {
+  title: string;
+  description: string;
+  contentId: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  children: ReactNode;
+}) {
+  const titleId = `${contentId}-title`;
+
+  return (
+    <Card>
+      <CardHeader className="gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0 space-y-1">
+            <CardTitle id={titleId} className="text-2xl">
+              {title}
+            </CardTitle>
+            <CardDescription>{description}</CardDescription>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            aria-expanded={open}
+            aria-controls={contentId}
+            onClick={() => onOpenChange(!open)}
+          >
+            <ChevronDownIcon
+              aria-hidden="true"
+              className={cn("size-3.5 transition-transform", open ? "rotate-180" : "")}
+            />
+            {open ? "Collapse" : "Expand"} {title}
+          </Button>
+        </div>
+      </CardHeader>
+      {open ? (
+        <CardContent id={contentId} aria-labelledby={titleId}>
+          {children}
+        </CardContent>
+      ) : null}
+    </Card>
+  );
+}
+
 export function ApiConnectionDetailClient({
   connection,
   initialRuns,
@@ -282,6 +338,8 @@ export function ApiConnectionDetailClient({
     null,
   );
   const [message, setMessage] = useState<DetailMessage | null>(null);
+  const [isRunDetailOpen, setIsRunDetailOpen] = useState(false);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const selectedRun = useMemo(
     () => runs.find((run) => run.id === selectedRunId) ?? null,
     [runs, selectedRunId],
@@ -633,6 +691,10 @@ export function ApiConnectionDetailClient({
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
   });
+  const historyScrollAreaClassName =
+    runs.length > INGESTION_HISTORY_VISIBLE_ROW_LIMIT
+      ? INGESTION_HISTORY_SCROLL_AREA_HEIGHT
+      : undefined;
 
   return (
     <div className="space-y-6">
@@ -756,47 +818,13 @@ export function ApiConnectionDetailClient({
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader className="gap-1">
-          <CardTitle className="text-2xl">Ingestion History</CardTitle>
-          <CardDescription>
-            Initiated test and import runs for {connection.name}.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <DataGrid
-            table={table}
-            recordCount={runs.length}
-            emptyMessage="No ingestions have been initiated yet."
-            onRowClick={selectRun}
-            tableLayout={{
-              columnsPinnable: true,
-              columnsResizable: true,
-              headerSticky: true,
-              rowBorder: true,
-            }}
-            tableClassNames={{
-              headerSticky: "sticky top-0 z-10 bg-muted/90 backdrop-blur-xs",
-              bodyRow: "[&>td]:align-top [&>td]:py-2.5",
-            }}
-          >
-            <DataGridContainer>
-              <DataGridScrollArea className="h-[430px]">
-                <DataGridTable />
-              </DataGridScrollArea>
-            </DataGridContainer>
-          </DataGrid>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="gap-1">
-          <CardTitle className="text-2xl">Run Detail</CardTitle>
-          <CardDescription>
-            Select an ingestion row to inspect logs, output, preview, and errors.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+      <CollapsibleRunCard
+        title="Run Detail"
+        description="Select an ingestion row to inspect logs, output, preview, and errors."
+        contentId="api-connection-run-detail-panel"
+        open={isRunDetailOpen}
+        onOpenChange={setIsRunDetailOpen}
+      >
           {!selectedRun ? (
             <DetailEmptyState />
           ) : (
@@ -881,8 +909,38 @@ export function ApiConnectionDetailClient({
               </div>
             </div>
           )}
-        </CardContent>
-      </Card>
+      </CollapsibleRunCard>
+
+      <CollapsibleRunCard
+        title="Ingestion History"
+        description={`Initiated test and import runs for ${connection.name}.`}
+        contentId="api-connection-ingestion-history-panel"
+        open={isHistoryOpen}
+        onOpenChange={setIsHistoryOpen}
+      >
+        <DataGrid
+          table={table}
+          recordCount={runs.length}
+          emptyMessage="No ingestions have been initiated yet."
+          onRowClick={selectRun}
+          tableLayout={{
+            columnsPinnable: true,
+            columnsResizable: true,
+            headerSticky: true,
+            rowBorder: true,
+          }}
+          tableClassNames={{
+            headerSticky: "sticky top-0 z-10 bg-muted/90 backdrop-blur-xs",
+            bodyRow: "h-11 [&>td]:align-top [&>td]:py-2.5",
+          }}
+        >
+          <DataGridContainer>
+            <DataGridScrollArea className={historyScrollAreaClassName}>
+              <DataGridTable />
+            </DataGridScrollArea>
+          </DataGridContainer>
+        </DataGrid>
+      </CollapsibleRunCard>
     </div>
   );
 }

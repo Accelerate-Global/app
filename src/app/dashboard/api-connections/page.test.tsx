@@ -151,9 +151,7 @@ describe("/dashboard/api-connections", () => {
     });
     render(await ApiConnectionsPage());
 
-    expect(
-      screen.getByRole("heading", { name: "API Connections" }),
-    ).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Datasets" })).toBeTruthy();
     expect(screen.getByText("IMB (People Groups)")).toBeTruthy();
     expect(screen.getByText("Etnopedia")).toBeTruthy();
     expect(screen.getByText("https://example.com/resource")).toBeTruthy();

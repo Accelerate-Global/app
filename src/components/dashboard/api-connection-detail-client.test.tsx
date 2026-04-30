@@ -24,32 +24,35 @@ vi.mock("@/components/reui/data-grid/data-grid", async () => {
       dataGridSpy(props);
 
       return (
-        <table data-testid="data-grid">
-          <thead>
-            {props.table.getHeaderGroups().map((headerGroup) => (
-              <tr key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
-                  <th key={header.id}>
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(header.column.columnDef.header, header.getContext())}
-                  </th>
-                ))}
-              </tr>
-            ))}
-          </thead>
-          <tbody>
-            {props.table.getRowModel().rows.map((row) => (
-              <tr key={row.id} onClick={() => props.onRowClick?.(row.original)}>
-                {row.getVisibleCells().map((cell) => (
-                  <td key={cell.id}>
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div>
+          {props.children}
+          <table data-testid="data-grid">
+            <thead>
+              {props.table.getHeaderGroups().map((headerGroup) => (
+                <tr key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => (
+                    <th key={header.id}>
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(header.column.columnDef.header, header.getContext())}
+                    </th>
+                  ))}
+                </tr>
+              ))}
+            </thead>
+            <tbody>
+              {props.table.getRowModel().rows.map((row) => (
+                <tr key={row.id} onClick={() => props.onRowClick?.(row.original)}>
+                  {row.getVisibleCells().map((cell) => (
+                    <td key={cell.id}>
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       );
     },
     DataGridContainer: ({ children }: { children?: ReactNode }) => (
@@ -63,8 +66,16 @@ vi.mock("@/components/reui/data-grid/data-grid-column-header", () => ({
 }));
 
 vi.mock("@/components/reui/data-grid/data-grid-scroll-area", () => ({
-  DataGridScrollArea: ({ children }: { children?: ReactNode }) => (
-    <div>{children}</div>
+  DataGridScrollArea: ({
+    children,
+    className,
+  }: {
+    children?: ReactNode;
+    className?: string;
+  }) => (
+    <div data-testid="data-grid-scroll-area" className={className}>
+      {children}
+    </div>
   ),
 }));
 
@@ -130,6 +141,42 @@ const successfulRun: ApiConnectionRun = {
   },
 };
 
+function createHistoryRun(index: number): ApiConnectionRun {
+  const runId = `history-run-${index}`;
+  const createdAt = new Date(
+    Date.parse(successfulRun.createdAt) + index * 60_000,
+  ).toISOString();
+  const startedAt = new Date(
+    Date.parse(successfulRun.startedAt ?? successfulRun.createdAt) +
+      index * 60_000,
+  ).toISOString();
+  const completedAt = new Date(
+    Date.parse(successfulRun.completedAt ?? successfulRun.createdAt) +
+      index * 60_000,
+  ).toISOString();
+
+  return {
+    ...successfulRun,
+    id: runId,
+    actorEmail: `admin-${index}@example.com`,
+    createdAt,
+    startedAt,
+    completedAt,
+    logs: (successfulRun.logs ?? []).map((log) => ({
+      ...log,
+      id: `${log.id}-${index}`,
+      runId,
+    })),
+    output: successfulRun.output
+      ? {
+          ...successfulRun.output,
+          id: `${successfulRun.output.id}-${index}`,
+          runId,
+        }
+      : null,
+  };
+}
+
 describe("ApiConnectionDetailClient", () => {
   afterEach(() => {
     vi.restoreAllMocks();
@@ -137,7 +184,7 @@ describe("ApiConnectionDetailClient", () => {
     dataGridSpy.mockReset();
   });
 
-  it("renders pipeline skeleton stages, DataGrid rows, artifact links, and selected run detail", () => {
+  it("renders pipeline skeleton stages and starts run panels collapsed in detail-first order", () => {
     render(
       <ApiConnectionDetailClient
         connection={connection}
@@ -157,14 +204,38 @@ describe("ApiConnectionDetailClient", () => {
       ),
     ).toBe(true);
 
+    const runDetailTitle = screen.getByText("Run Detail");
+    const historyTitle = screen.getByText("Ingestion History");
+    expect(
+      runDetailTitle.compareDocumentPosition(historyTitle) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "Expand Run Detail" }).getAttribute(
+        "aria-expanded",
+      ),
+    ).toBe("false");
+    expect(
+      screen
+        .getByRole("button", { name: "Expand Ingestion History" })
+        .getAttribute("aria-expanded"),
+    ).toBe("false");
+    expect(screen.queryByText("Initiated At")).toBeNull();
+    expect(screen.queryByText("Archived output artifacts.")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Expand Run Detail" }));
+    expect(screen.getByText("Archived output artifacts.")).toBeTruthy();
+    expect(screen.getByText("[{\"name\":\"Alpha\"}]")).toBeTruthy();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Expand Ingestion History" }),
+    );
     expect(screen.getByText("Initiated At")).toBeTruthy();
     expect(screen.getByText("Mode")).toBeTruthy();
     expect(screen.getByText("Actor")).toBeTruthy();
     expect(screen.getByText("Artifacts")).toBeTruthy();
     expect(screen.getAllByText("Test").length).toBeGreaterThan(0);
     expect(screen.getByText("admin@example.com")).toBeTruthy();
-    expect(screen.getByText("Archived output artifacts.")).toBeTruthy();
-    expect(screen.getByText("[{\"name\":\"Alpha\"}]")).toBeTruthy();
     expect(
       screen.getAllByRole("link", { name: "JSON" })[0]?.getAttribute("href"),
     ).toBe(
@@ -269,6 +340,7 @@ describe("ApiConnectionDetailClient", () => {
         }),
       );
     });
+    fireEvent.click(screen.getByRole("button", { name: "Expand Run Detail" }));
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
         "/api/admin/api-connections/11111111-1111-4111-8111-111111111111/runs/66666666-6666-4666-8666-666666666666",
@@ -314,11 +386,38 @@ describe("ApiConnectionDetailClient", () => {
       />,
     );
 
+    const detailToggle = screen.getByRole("button", { name: "Expand Run Detail" });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Expand Ingestion History" }),
+    );
     expect(screen.getAllByText("Test failed").length).toBeGreaterThan(0);
     fireEvent.click(screen.getByText("success@example.com").closest("tr")!);
 
+    expect(detailToggle.getAttribute("aria-expanded")).toBe("false");
+    expect(screen.queryByText("Archived output artifacts.")).toBeNull();
+    fireEvent.click(detailToggle);
     expect(screen.getAllByText("Test passed").length).toBeGreaterThan(0);
     expect(screen.getByText("Archived output artifacts.")).toBeTruthy();
     expect(screen.getByText("[{\"name\":\"Alpha\"}]")).toBeTruthy();
+  });
+
+  it("caps ingestion history to a five-row viewport when more runs are available", () => {
+    render(
+      <ApiConnectionDetailClient
+        connection={connection}
+        initialRuns={Array.from({ length: 6 }, (_, index) =>
+          createHistoryRun(index),
+        )}
+      />,
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Expand Ingestion History" }),
+    );
+
+    expect(screen.getByTestId("data-grid-scroll-area").className).toContain(
+      "h-[268px]",
+    );
+    expect(dataGridSpy.mock.lastCall?.[0].recordCount).toBe(6);
   });
 });

@@ -438,6 +438,24 @@ describe("fetchArcgisFeaturePages", () => {
   });
 });
 
+describe("api connection run artifact storage", () => {
+  it("uploads archived artifacts with the dedicated bucket and bare JSON content type", async () => {
+    const source = await readFile(
+      path.join(process.cwd(), "src/lib/api-connections.ts"),
+      "utf8",
+    );
+
+    expect(source).toContain(".from(getApiConnectionRunArtifactStorageBucket())");
+    expect(source).toContain(
+      "new Blob([input.content], { type: API_CONNECTION_RUN_ARTIFACT_CONTENT_TYPE })",
+    );
+    expect(source).toContain(
+      "contentType: API_CONNECTION_RUN_ARTIFACT_CONTENT_TYPE",
+    );
+    expect(source).not.toContain('contentType: "application/json;charset=utf-8"');
+  });
+});
+
 describe("createApiConnectionRunRequest", () => {
   it("sends Joshua Project api_key secrets as query params instead of headers", () => {
     const request = createApiConnectionRunRequest({

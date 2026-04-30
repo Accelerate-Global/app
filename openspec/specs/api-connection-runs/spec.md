@@ -196,15 +196,12 @@ The system SHALL materialize a repo-owned API connection into the existing priva
 - **THEN** the system exposes only the required secret header name and does not include a secret value in tracked source, saved connection URLs, logs, previews, or output artifacts
 
 ### Requirement: API Connections index lists available connections
-The system SHALL present the admin API Connections index as a searchable, filterable table of available API connection records.
+The system SHALL present `/dashboard/api-connections` as an admin-only Datasets surface with a simple table of available API connection records.
 
 #### Scenario: Admin browses available connections
 - **WHEN** a dataset admin opens `/dashboard/api-connections`
-- **THEN** the page shows available API connections in a table with connection, classification, last ingestion, and status columns
-
-#### Scenario: Admin filters available connections
-- **WHEN** a dataset admin searches by connection text or filters by classification or status
-- **THEN** the list updates without exposing URL, header, body, response parsing, or web profile editing controls
+- **THEN** the page shows a `Datasets` heading and a `Connections` table with connection, classification, and last ingestion columns
+- **AND** the page does not show search, classification filter, status filter, or index status column controls
 
 #### Scenario: Admin selects a connection
 - **WHEN** a dataset admin clicks or keyboard-selects an API connection row
@@ -215,7 +212,8 @@ The system SHALL provide an admin-only detail page for each API connection that 
 
 #### Scenario: Admin views a connection detail page
 - **WHEN** a dataset admin opens `/dashboard/api-connections/{connectionId}` for a known materialized or repo-owned connection
-- **THEN** the page shows the connection name, description, current status, pipeline skeleton, run actions, ingestion history, and selected run detail
+- **THEN** the page shows the connection name, description, current status, pipeline skeleton, run actions, collapsed Run Detail section, and collapsed Ingestion History section
+- **AND** Run Detail appears before Ingestion History
 
 #### Scenario: Unknown connection detail page
 - **WHEN** a dataset admin opens `/dashboard/api-connections/{connectionId}` for an unknown connection
@@ -240,12 +238,15 @@ The system SHALL show pipeline stages for a selected API connection while keepin
 The system SHALL list each initiated run for a connection as an ingestion row using the existing DataGrid table interface.
 
 #### Scenario: Admin views ingestion history
-- **WHEN** a dataset admin views a connection detail page
+- **WHEN** a dataset admin expands Ingestion History on a connection detail page
 - **THEN** the DataGrid lists runs with initiated time, mode, status, started time, completed time, duration, row count, HTTP status, actor, and artifact actions
+- **AND** at most five run rows are visible before the history table scrolls
 
 #### Scenario: Admin selects an ingestion row
 - **WHEN** a dataset admin selects an ingestion row
-- **THEN** the page shows that run's logs, error, preview, output downloads, and imported dataset link when available
+- **THEN** that run becomes the selected run for Run Detail
+- **AND** the page does not automatically expand the Run Detail section
+- **AND** when the admin expands Run Detail, the page shows that run's logs, error, preview, output downloads, and imported dataset link when available
 
 ### Requirement: API connection runs persist referenced resources
 The system SHALL persist referenced document resources extracted from successful API connection output rows while preserving run history.
@@ -272,4 +273,19 @@ The system SHALL show a second read-only Resources grid on the admin API Connect
 #### Scenario: No resources exist
 - **WHEN** no resources have been captured
 - **THEN** the Resources grid shows an empty state without offering create, update, or delete controls
+
+### Requirement: API connection run artifacts use isolated JSON storage
+The system SHALL archive successful API connection run JSON artifacts in a private Storage bucket dedicated to API connection artifacts, while preserving admin download compatibility for artifacts previously stored in the legacy dataset bucket.
+
+#### Scenario: Successful run archives JSON artifacts in artifact storage
+- **WHEN** a saved API connection run succeeds and output artifacts are archived
+- **THEN** the system uploads the normalized rows artifact and redacted raw response artifact to the API connection artifact bucket using `application/json` content type
+
+#### Scenario: Admin downloads a legacy output artifact
+- **WHEN** a dataset admin downloads a run output whose stored object path exists only in the legacy dataset bucket
+- **THEN** the system returns the same JSON or CSV download response as it would for an artifact stored in the dedicated artifact bucket
+
+#### Scenario: Dataset CSV uploads remain isolated
+- **WHEN** a dataset admin requests a signed upload for a CSV dataset file
+- **THEN** the system continues to use the dataset Storage bucket and CSV upload restrictions without allowing direct CSV upload access to the API connection artifact bucket
 
