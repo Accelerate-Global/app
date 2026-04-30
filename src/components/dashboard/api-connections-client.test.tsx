@@ -4,6 +4,65 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ApiConnectionsClient } from "@/components/dashboard/api-connections-client";
+import type { ApiConnection, ApiConnectionRun } from "@/lib/api-types";
+
+const connection: ApiConnection = {
+  id: "11111111-1111-4111-8111-111111111111",
+  name: "People API",
+  description: "Imports people data.",
+  method: "GET",
+  url: "https://api.example.com/people",
+  headers: [],
+  bodyTemplate: "",
+  responseFormat: "json",
+  responseDataPath: "data",
+  importMode: "create",
+  targetDatasetId: null,
+  datasetName: "people.csv",
+  datasetClassification: "PGAC",
+  createdAt: "2026-04-24T12:00:00.000Z",
+  updatedAt: "2026-04-24T12:00:00.000Z",
+};
+
+const successfulRun: ApiConnectionRun = {
+  id: "22222222-2222-4222-8222-222222222222",
+  connectionId: connection.id,
+  actorOwnerId: "admin-1",
+  actorEmail: "admin@example.com",
+  mode: "test",
+  status: "success",
+  httpStatus: 200,
+  durationMs: 33,
+  rowCount: 2,
+  datasetId: null,
+  errorMessage: null,
+  responsePreview: "[{\"name\":\"Alpha\"}]",
+  startedAt: "2026-04-24T12:00:01.000Z",
+  completedAt: "2026-04-24T12:00:02.000Z",
+  createdAt: "2026-04-24T12:00:00.000Z",
+  logs: [
+    {
+      id: "44444444-4444-4444-8444-444444444444",
+      runId: "22222222-2222-4222-8222-222222222222",
+      connectionId: connection.id,
+      level: "info",
+      message: "Archived output artifacts.",
+      createdAt: "2026-04-24T12:00:02.000Z",
+    },
+  ],
+  output: {
+    id: "55555555-5555-4555-8555-555555555555",
+    runId: "22222222-2222-4222-8222-222222222222",
+    connectionId: connection.id,
+    rowCount: 2,
+    columns: [{ key: "name", label: "Name", sourceIndex: 0 }],
+    rowsStoragePath: "api-connection-runs/run/rows.json",
+    rawStoragePath: "api-connection-runs/run/raw-response.json",
+    rowsSizeBytes: 20,
+    rawSizeBytes: 24,
+    createdAt: "2026-04-24T12:00:02.000Z",
+  },
+};
 
 describe("ApiConnectionsClient", () => {
   afterEach(() => {
@@ -11,69 +70,7 @@ describe("ApiConnectionsClient", () => {
     vi.unstubAllGlobals();
   });
 
-  it("creates a saved API connection with a secret header", async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        connection: {
-          id: "11111111-1111-4111-8111-111111111111",
-          name: "People API",
-          description: "",
-          method: "GET",
-          url: "https://api.example.com/people",
-          headers: [{ name: "Authorization", value: "", isSecret: true }],
-          bodyTemplate: "",
-          responseFormat: "json",
-          responseDataPath: "data",
-          importMode: "create",
-          targetDatasetId: null,
-          datasetName: "people.csv",
-          datasetClassification: "PGAC",
-          createdAt: "2026-04-24T12:00:00.000Z",
-          updatedAt: "2026-04-24T12:00:00.000Z",
-        },
-      }),
-    });
-    vi.stubGlobal("fetch", fetchMock);
-
-    render(
-      <ApiConnectionsClient
-        initialConnections={[]}
-        initialRuns={[]}
-        datasets={[]}
-      />,
-    );
-
-    fireEvent.change(screen.getByLabelText("Name"), {
-      target: { value: "People API" },
-    });
-    fireEvent.change(screen.getByLabelText("URL"), {
-      target: { value: "https://api.example.com/people" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Secret" }));
-    fireEvent.change(screen.getByLabelText("Header name"), {
-      target: { value: "Authorization" },
-    });
-    fireEvent.change(screen.getByLabelText("Header value"), {
-      target: { value: "Bearer token" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
-
-    await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith("/api/admin/api-connections", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: expect.any(String),
-      });
-    });
-    const body = JSON.parse(fetchMock.mock.calls[0]![1].body as string);
-    expect(body.headers).toEqual([
-      { name: "Authorization", value: "Bearer token", isSecret: true },
-    ]);
-    expect(await screen.findByText("Connection saved")).toBeTruthy();
-  });
-
-  it("fills the Joshua Project PGIC preset without embedding the API key", () => {
+  it("renders saved connections as a run-only dashboard", () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue({
@@ -84,163 +81,53 @@ describe("ApiConnectionsClient", () => {
 
     render(
       <ApiConnectionsClient
-        initialConnections={[]}
+        initialConnections={[connection]}
         initialRuns={[]}
-        datasets={[]}
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Joshua Project (PGIC)" }));
+    expect(screen.getByRole("button", { name: /People API/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Test" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Import" })).toBeTruthy();
 
-    const url = (screen.getByLabelText("URL") as HTMLInputElement).value;
-
-    expect((screen.getByLabelText("Name") as HTMLInputElement).value).toBe(
-      "Joshua Project (PGIC)",
-    );
-    expect(url).toContain(
-      "https://api.joshuaproject.net/v1/people_groups.json",
-    );
-    expect(url).toContain("include_profile_text=Y");
-    expect(url).toContain("include_resources=Y");
-    expect(url).toContain("page=1");
-    expect(url).toContain("limit=100000");
-    expect(url).not.toContain("api_key");
-    expect((screen.getByLabelText("Response format") as HTMLSelectElement).value).toBe(
-      "json",
-    );
-    expect((screen.getByLabelText("JSON path") as HTMLInputElement).value).toBe("");
-    expect((screen.getByLabelText("Dataset name") as HTMLInputElement).value).toBe(
-      "joshua-project-pgic.csv",
-    );
-    expect(
-      (screen.getByLabelText("Classification") as HTMLSelectElement).value,
-    ).toBe("PGIC");
-    expect((screen.getByLabelText("Header name") as HTMLInputElement).value).toBe(
-      "api_key",
-    );
-    expect((screen.getByLabelText("Header value") as HTMLInputElement).value).toBe(
-      "",
-    );
+    expect(screen.queryByRole("button", { name: "New API connection" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Save" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Delete" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Joshua Project (PGIC)" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "IMB (People Groups)" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Etnopedia" })).toBeNull();
+    expect(screen.queryByLabelText("URL")).toBeNull();
+    expect(screen.queryByLabelText("Method")).toBeNull();
+    expect(screen.queryByLabelText("Header name")).toBeNull();
+    expect(screen.queryByLabelText("Response format")).toBeNull();
+    expect(screen.queryByLabelText("Dataset name")).toBeNull();
   });
 
-  it("fills the IMB People Groups ArcGIS preset", () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({ runs: [] }),
-      }),
-    );
-
+  it("does not offer web creation when no saved connections exist", () => {
     render(
       <ApiConnectionsClient
         initialConnections={[]}
         initialRuns={[]}
-        datasets={[]}
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "IMB (People Groups)" }));
-
-    expect((screen.getByLabelText("Name") as HTMLInputElement).value).toBe(
-      "IMB (People Groups)",
-    );
-    expect((screen.getByLabelText("URL") as HTMLInputElement).value).toBe(
-      "https://services1.arcgis.com/mICk7VdFTP86wcbI/arcgis/rest/services/pIMBpeoplePublic/FeatureServer/0/query",
-    );
-    expect((screen.getByLabelText("Response format") as HTMLSelectElement).value).toBe(
-      "json",
-    );
-    expect((screen.getByLabelText("JSON path") as HTMLInputElement).value).toBe(
-      "features",
-    );
-    expect((screen.getByLabelText("JSON path") as HTMLInputElement).disabled).toBe(
-      false,
-    );
-    expect((screen.getByLabelText("Dataset name") as HTMLInputElement).value).toBe(
-      "imb-people-groups.csv",
-    );
-    expect(
-      (screen.getByLabelText("Classification") as HTMLSelectElement).value,
-    ).toBe("PGIC");
-    expect(screen.getByText("No headers configured.")).toBeTruthy();
-  });
-
-  it("fills the Etnopedia MediaWiki preset", () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({ runs: [] }),
-      }),
-    );
-
-    render(
-      <ApiConnectionsClient
-        initialConnections={[]}
-        initialRuns={[]}
-        datasets={[]}
-      />,
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: "Etnopedia" }));
-
-    expect((screen.getByLabelText("Name") as HTMLInputElement).value).toBe(
-      "Etnopedia",
-    );
-    expect((screen.getByLabelText("URL") as HTMLInputElement).value).toBe(
-      "https://en.etnopedia.org/api.php",
-    );
-    expect((screen.getByLabelText("Response format") as HTMLSelectElement).value).toBe(
-      "json",
-    );
-    expect((screen.getByLabelText("JSON path") as HTMLInputElement).value).toBe("");
-    expect((screen.getByLabelText("JSON path") as HTMLInputElement).disabled).toBe(
-      false,
-    );
-    expect((screen.getByLabelText("Dataset name") as HTMLInputElement).value).toBe(
-      "etnopedia-people.csv",
-    );
-    expect(
-      (screen.getByLabelText("Classification") as HTMLSelectElement).value,
-    ).toBe("PGIC");
-    expect(screen.getByText("No headers configured.")).toBeTruthy();
+    expect(screen.getByText("No API connections are available.")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "New API connection" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Test" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Import" })).toBeNull();
   });
 
   it("queues a saved connection in import mode", async () => {
-    const connection = {
-      id: "11111111-1111-4111-8111-111111111111",
-      name: "People API",
-      description: "",
-      method: "GET" as const,
-      url: "https://api.example.com/people",
-      headers: [],
-      bodyTemplate: "",
-      responseFormat: "json" as const,
-      responseDataPath: "data",
-      importMode: "create" as const,
-      targetDatasetId: null,
-      datasetName: "people.csv",
-      datasetClassification: "PGAC" as const,
-      createdAt: "2026-04-24T12:00:00.000Z",
-      updatedAt: "2026-04-24T12:00:00.000Z",
-    };
-    const run = {
-      id: "22222222-2222-4222-8222-222222222222",
-      connectionId: connection.id,
-      actorOwnerId: "admin-1",
-      actorEmail: "admin@example.com",
-      mode: "import" as const,
-      status: "queued" as const,
+    const run: ApiConnectionRun = {
+      ...successfulRun,
+      mode: "import",
+      status: "queued",
       httpStatus: null,
       durationMs: 0,
       rowCount: null,
-      datasetId: null,
-      errorMessage: null,
       responsePreview: "",
       startedAt: null,
       completedAt: null,
-      createdAt: "2026-04-24T12:00:00.000Z",
       logs: [],
       output: null,
     };
@@ -272,7 +159,6 @@ describe("ApiConnectionsClient", () => {
       <ApiConnectionsClient
         initialConnections={[connection]}
         initialRuns={[]}
-        datasets={[]}
       />,
     );
 
@@ -304,67 +190,8 @@ describe("ApiConnectionsClient", () => {
 
     render(
       <ApiConnectionsClient
-        initialConnections={[
-          {
-            id: "11111111-1111-4111-8111-111111111111",
-            name: "People API",
-            description: "",
-            method: "GET",
-            url: "https://api.example.com/people",
-            headers: [],
-            bodyTemplate: "",
-            responseFormat: "json",
-            responseDataPath: "data",
-            importMode: "create",
-            targetDatasetId: null,
-            datasetName: "people.csv",
-            datasetClassification: "PGAC",
-            createdAt: "2026-04-24T12:00:00.000Z",
-            updatedAt: "2026-04-24T12:00:00.000Z",
-          },
-        ]}
-        initialRuns={[
-          {
-            id: "22222222-2222-4222-8222-222222222222",
-            connectionId: "11111111-1111-4111-8111-111111111111",
-            actorOwnerId: "admin-1",
-            actorEmail: "admin@example.com",
-            mode: "test",
-            status: "success",
-            httpStatus: 200,
-            durationMs: 33,
-            rowCount: 2,
-            datasetId: null,
-            errorMessage: null,
-            responsePreview: "[{\"name\":\"Alpha\"}]",
-            startedAt: "2026-04-24T12:00:01.000Z",
-            completedAt: "2026-04-24T12:00:02.000Z",
-            createdAt: "2026-04-24T12:00:00.000Z",
-            logs: [
-              {
-                id: "44444444-4444-4444-8444-444444444444",
-                runId: "22222222-2222-4222-8222-222222222222",
-                connectionId: "11111111-1111-4111-8111-111111111111",
-                level: "info",
-                message: "Archived output artifacts.",
-                createdAt: "2026-04-24T12:00:02.000Z",
-              },
-            ],
-            output: {
-              id: "55555555-5555-4555-8555-555555555555",
-              runId: "22222222-2222-4222-8222-222222222222",
-              connectionId: "11111111-1111-4111-8111-111111111111",
-              rowCount: 2,
-              columns: [{ key: "name", label: "Name", sourceIndex: 0 }],
-              rowsStoragePath: "api-connection-runs/run/rows.json",
-              rawStoragePath: "api-connection-runs/run/raw-response.json",
-              rowsSizeBytes: 20,
-              rawSizeBytes: 24,
-              createdAt: "2026-04-24T12:00:02.000Z",
-            },
-          },
-        ]}
-        datasets={[]}
+        initialConnections={[connection]}
+        initialRuns={[successfulRun]}
       />,
     );
 

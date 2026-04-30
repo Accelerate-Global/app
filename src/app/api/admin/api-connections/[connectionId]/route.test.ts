@@ -59,10 +59,6 @@ const validPayload = {
   datasetClassification: "PGAC",
 };
 
-const context = {
-  params: Promise.resolve({ connectionId: connection.id }),
-};
-
 describe("/api/admin/api-connections/[connectionId]", () => {
   beforeEach(() => {
     vi.resetAllMocks();
@@ -80,59 +76,34 @@ describe("/api/admin/api-connections/[connectionId]", () => {
         method: "PATCH",
         body: JSON.stringify(validPayload),
       }),
-      context,
     );
 
     expect(response.status).toBe(403);
     expect(updateApiConnectionMock).not.toHaveBeenCalled();
   });
 
-  it("updates API connections for admins", async () => {
-    updateApiConnectionMock.mockResolvedValue(connection);
-
+  it("rejects admin updates because profiles are code-managed", async () => {
     const response = await PATCH(
       new Request(`http://localhost/api/admin/api-connections/${connection.id}`, {
         method: "PATCH",
         body: JSON.stringify(validPayload),
       }),
-      context,
     );
 
-    expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toEqual({ connection });
-    expect(updateApiConnectionMock).toHaveBeenCalledWith({
-      connectionId: connection.id,
-      actorOwnerId: "admin-1",
-      connection: validPayload,
+    expect(response.status).toBe(405);
+    await expect(response.json()).resolves.toEqual({
+      error: "API connection profiles are managed from the codebase.",
     });
+    expect(updateApiConnectionMock).not.toHaveBeenCalled();
   });
 
-  it("returns not found when updates miss", async () => {
-    updateApiConnectionMock.mockResolvedValue(null);
+  it("rejects admin deletes because profiles are code-managed", async () => {
+    const response = await DELETE();
 
-    const response = await PATCH(
-      new Request(`http://localhost/api/admin/api-connections/${connection.id}`, {
-        method: "PATCH",
-        body: JSON.stringify(validPayload),
-      }),
-      context,
-    );
-
-    expect(response.status).toBe(404);
-  });
-
-  it("deletes API connections for admins", async () => {
-    deleteApiConnectionMock.mockResolvedValue(connection);
-
-    const response = await DELETE(
-      new Request(`http://localhost/api/admin/api-connections/${connection.id}`, {
-        method: "DELETE",
-      }),
-      context,
-    );
-
-    expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toEqual({ connection });
-    expect(deleteApiConnectionMock).toHaveBeenCalledWith(connection.id);
+    expect(response.status).toBe(405);
+    await expect(response.json()).resolves.toEqual({
+      error: "API connection profiles are managed from the codebase.",
+    });
+    expect(deleteApiConnectionMock).not.toHaveBeenCalled();
   });
 });
