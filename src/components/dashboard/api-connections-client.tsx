@@ -1,18 +1,11 @@
 "use client";
 
 import {
-  BookOpenTextIcon,
   CheckCircle2Icon,
   DownloadIcon,
   ExternalLinkIcon,
-  Globe2Icon,
-  KeyRoundIcon,
   Loader2Icon,
-  MapPinnedIcon,
   PlayIcon,
-  PlusIcon,
-  SaveIcon,
-  Trash2Icon,
   UploadCloudIcon,
   XCircleIcon,
 } from "lucide-react";
@@ -28,103 +21,19 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import type {
   ApiConnection,
-  ApiConnectionHeader,
-  ApiConnectionResponse,
   ApiConnectionRun,
   ApiConnectionRunDetailResponse,
   ApiConnectionRunResponse,
   ApiConnectionRunsResponse,
-  DatasetClassification,
-  DatasetSummary,
 } from "@/lib/api-types";
-import { DATASET_CLASSIFICATION_OPTIONS } from "@/lib/dataset-tags";
 import { cn } from "@/lib/utils";
 
 type ApiConnectionsClientProps = {
   initialConnections: ApiConnection[];
   initialRuns: ApiConnectionRun[];
-  datasets: DatasetSummary[];
 };
-
-type FormState = Omit<ApiConnection, "id" | "createdAt" | "updatedAt"> & {
-  id: string | null;
-};
-
-const defaultFormState: FormState = {
-  id: null,
-  name: "",
-  description: "",
-  method: "GET",
-  url: "",
-  headers: [],
-  bodyTemplate: "",
-  responseFormat: "json",
-  responseDataPath: "",
-  importMode: "create",
-  targetDatasetId: null,
-  datasetName: "api-import.csv",
-  datasetClassification: "PGAC",
-};
-
-const joshuaProjectPgicPreset: FormState = {
-  id: null,
-  name: "Joshua Project (PGIC)",
-  description: "Joshua Project people groups with profile text and resources.",
-  method: "GET",
-  url: "https://api.joshuaproject.net/v1/people_groups.json?include_profile_text=Y&include_resources=Y&page=1&limit=100000",
-  headers: [{ name: "api_key", value: "", isSecret: true }],
-  bodyTemplate: "",
-  responseFormat: "json",
-  responseDataPath: "",
-  importMode: "create",
-  targetDatasetId: null,
-  datasetName: "joshua-project-pgic.csv",
-  datasetClassification: "PGIC",
-};
-
-const imbPeopleGroupsPreset: FormState = {
-  id: null,
-  name: "IMB (People Groups)",
-  description: "IMB public ArcGIS people groups layer.",
-  method: "GET",
-  url:
-    "https://services1.arcgis.com/mICk7VdFTP86wcbI/arcgis/rest/services/pIMBpeoplePublic/FeatureServer/0/query",
-  headers: [],
-  bodyTemplate: "",
-  responseFormat: "json",
-  responseDataPath: "features",
-  importMode: "create",
-  targetDatasetId: null,
-  datasetName: "imb-people-groups.csv",
-  datasetClassification: "PGIC",
-};
-
-const etnopediaPreset: FormState = {
-  id: null,
-  name: "Etnopedia",
-  description: "Etnopedia MediaWiki people-group export.",
-  method: "GET",
-  url: "https://en.etnopedia.org/api.php",
-  headers: [],
-  bodyTemplate: "",
-  responseFormat: "json",
-  responseDataPath: "",
-  importMode: "create",
-  targetDatasetId: null,
-  datasetName: "etnopedia-people.csv",
-  datasetClassification: "PGIC",
-};
-
-function cloneFormState(formState: FormState): FormState {
-  return {
-    ...formState,
-    headers: formState.headers.map((header) => ({ ...header })),
-  };
-}
 
 async function getErrorMessage(response: Response, fallback: string) {
   try {
@@ -133,41 +42,6 @@ async function getErrorMessage(response: Response, fallback: string) {
   } catch {
     return fallback;
   }
-}
-
-function toFormState(connection: ApiConnection): FormState {
-  return {
-    id: connection.id,
-    name: connection.name,
-    description: connection.description,
-    method: connection.method,
-    url: connection.url,
-    headers: connection.headers,
-    bodyTemplate: connection.bodyTemplate,
-    responseFormat: connection.responseFormat,
-    responseDataPath: connection.responseDataPath,
-    importMode: connection.importMode,
-    targetDatasetId: connection.targetDatasetId,
-    datasetName: connection.datasetName,
-    datasetClassification: connection.datasetClassification,
-  };
-}
-
-function buildPayload(form: FormState) {
-  return {
-    name: form.name,
-    description: form.description,
-    method: form.method,
-    url: form.url,
-    headers: form.headers.filter((header) => header.name.trim()),
-    bodyTemplate: form.method === "GET" ? "" : form.bodyTemplate,
-    responseFormat: form.responseFormat,
-    responseDataPath: form.responseDataPath,
-    importMode: form.importMode,
-    targetDatasetId: form.importMode === "replace" ? form.targetDatasetId : null,
-    datasetName: form.datasetName,
-    datasetClassification: form.datasetClassification,
-  };
 }
 
 function formatTimestamp(value: string) {
@@ -264,14 +138,11 @@ function RunDownloadLinks({ run }: { run: ApiConnectionRun }) {
 export function ApiConnectionsClient({
   initialConnections,
   initialRuns,
-  datasets,
 }: ApiConnectionsClientProps) {
   const [connections, setConnections] = useState(initialConnections);
   const [runs, setRuns] = useState(initialRuns);
-  const [form, setForm] = useState<FormState>(
-    initialConnections[0]
-      ? toFormState(initialConnections[0])
-      : cloneFormState(defaultFormState),
+  const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(
+    initialConnections[0]?.id ?? null,
   );
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [message, setMessage] = useState<{
@@ -280,7 +151,14 @@ export function ApiConnectionsClient({
     tone: "success" | "error";
   } | null>(null);
 
-  const selectedConnectionId = form.id;
+  const selectedConnection = useMemo(
+    () =>
+      selectedConnectionId
+        ? (connections.find((connection) => connection.id === selectedConnectionId) ??
+          null)
+        : null,
+    [connections, selectedConnectionId],
+  );
   const selectedRuns = useMemo(
     () =>
       selectedConnectionId
@@ -362,156 +240,13 @@ export function ApiConnectionsClient({
     };
   }, [latestRun, selectedConnectionId, upsertRun]);
 
-  function updateForm(updates: Partial<FormState>) {
-    setForm((current) => ({ ...current, ...updates }));
-  }
-
-  function updateHeader(index: number, updates: Partial<ApiConnectionHeader>) {
-    setForm((current) => ({
-      ...current,
-      headers: current.headers.map((header, headerIndex) =>
-        headerIndex === index ? { ...header, ...updates } : header,
-      ),
-    }));
-  }
-
-  function appendHeader(isSecret = false) {
-    setForm((current) => ({
-      ...current,
-      headers: [...current.headers, { name: "", value: "", isSecret }],
-    }));
-  }
-
-  function removeHeader(index: number) {
-    setForm((current) => ({
-      ...current,
-      headers: current.headers.filter((_, headerIndex) => headerIndex !== index),
-    }));
-  }
-
   function selectConnection(connection: ApiConnection) {
-    setForm(toFormState(connection));
+    setSelectedConnectionId(connection.id);
     setMessage(null);
-  }
-
-  function startNewConnection() {
-    setForm(cloneFormState(defaultFormState));
-    setMessage(null);
-  }
-
-  function applyJoshuaProjectPgicPreset() {
-    setForm(cloneFormState(joshuaProjectPgicPreset));
-    setMessage(null);
-  }
-
-  function applyImbPeopleGroupsPreset() {
-    setForm(cloneFormState(imbPeopleGroupsPreset));
-    setMessage(null);
-  }
-
-  function applyEtnopediaPreset() {
-    setForm(cloneFormState(etnopediaPreset));
-    setMessage(null);
-  }
-
-  async function handleSave() {
-    setBusyAction("save");
-    setMessage(null);
-
-    try {
-      const response = await fetch(
-        form.id ? `/api/admin/api-connections/${form.id}` : "/api/admin/api-connections",
-        {
-          method: form.id ? "PATCH" : "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(buildPayload(form)),
-        },
-      );
-
-      if (!response.ok) {
-        throw new Error(
-          await getErrorMessage(response, "The API connection could not be saved."),
-        );
-      }
-
-      const payload = (await response.json()) as ApiConnectionResponse;
-      setConnections((current) => {
-        const existing = current.some(
-          (connection) => connection.id === payload.connection.id,
-        );
-        return existing
-          ? current.map((connection) =>
-              connection.id === payload.connection.id ? payload.connection : connection,
-            )
-          : [payload.connection, ...current];
-      });
-      setForm(toFormState(payload.connection));
-      setMessage({
-        title: "Connection saved",
-        detail: payload.connection.name,
-        tone: "success",
-      });
-    } catch (error) {
-      setMessage({
-        title: "Save failed",
-        detail:
-          error instanceof Error
-            ? error.message
-            : "The API connection could not be saved.",
-        tone: "error",
-      });
-    } finally {
-      setBusyAction(null);
-    }
-  }
-
-  async function handleDelete() {
-    if (!form.id) {
-      return;
-    }
-
-    setBusyAction("delete");
-    setMessage(null);
-
-    try {
-      const response = await fetch(`/api/admin/api-connections/${form.id}`, {
-        method: "DELETE",
-      });
-
-      if (!response.ok) {
-        throw new Error(
-          await getErrorMessage(response, "The API connection could not be deleted."),
-        );
-      }
-
-      const deletedId = form.id;
-      setConnections((current) =>
-        current.filter((connection) => connection.id !== deletedId),
-      );
-      setRuns((current) => current.filter((run) => run.connectionId !== deletedId));
-      setForm(cloneFormState(defaultFormState));
-      setMessage({
-        title: "Connection deleted",
-        detail: "The saved request was removed.",
-        tone: "success",
-      });
-    } catch (error) {
-      setMessage({
-        title: "Delete failed",
-        detail:
-          error instanceof Error
-            ? error.message
-            : "The API connection could not be deleted.",
-        tone: "error",
-      });
-    } finally {
-      setBusyAction(null);
-    }
   }
 
   async function handleRun(importEnabled: boolean) {
-    if (!form.id) {
-      await handleSave();
+    if (!selectedConnection) {
       return;
     }
 
@@ -519,11 +254,14 @@ export function ApiConnectionsClient({
     setMessage(null);
 
     try {
-      const response = await fetch(`/api/admin/api-connections/${form.id}/run`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ importEnabled }),
-      });
+      const response = await fetch(
+        `/api/admin/api-connections/${selectedConnection.id}/run`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ importEnabled }),
+        },
+      );
 
       if (!response.ok) {
         throw new Error(
@@ -537,6 +275,7 @@ export function ApiConnectionsClient({
           connection.id === payload.connection.id ? payload.connection : connection,
         ),
       );
+      setSelectedConnectionId(payload.connection.id);
       upsertRun(payload.run);
       setMessage({
         title: getRunLabel(payload.run),
@@ -546,8 +285,7 @@ export function ApiConnectionsClient({
             : payload.run.status === "success"
               ? `${payload.run.durationMs} ms`
               : (payload.run.errorMessage ?? "The run failed."),
-        tone:
-          payload.run.status === "failed" ? "error" : "success",
+        tone: payload.run.status === "failed" ? "error" : "success",
       });
     } catch (error) {
       setMessage({
@@ -564,54 +302,13 @@ export function ApiConnectionsClient({
   return (
     <div className="grid gap-6 lg:grid-cols-[22rem_minmax(0,1fr)]">
       <aside className="space-y-4">
-        <section className="space-y-2">
-          <h2 className="text-lg font-semibold">Presets</h2>
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full justify-start"
-            onClick={applyJoshuaProjectPgicPreset}
-          >
-            <Globe2Icon className="size-4" />
-            Joshua Project (PGIC)
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full justify-start"
-            onClick={applyImbPeopleGroupsPreset}
-          >
-            <MapPinnedIcon className="size-4" />
-            IMB (People Groups)
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full justify-start"
-            onClick={applyEtnopediaPreset}
-          >
-            <BookOpenTextIcon className="size-4" />
-            Etnopedia
-          </Button>
-        </section>
-
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold">Saved requests</h2>
-          <Button
-            type="button"
-            size="icon"
-            variant="outline"
-            onClick={startNewConnection}
-            aria-label="New API connection"
-          >
-            <PlusIcon className="size-4" />
-          </Button>
-        </div>
+        <h2 className="text-lg font-semibold">Saved connections</h2>
         <div className="space-y-2">
           {connections.length === 0 ? (
             <Card>
-              <CardContent className="py-6 text-sm text-muted-foreground">
-                No API connections yet.
+              <CardContent className="space-y-2 py-6 text-sm text-muted-foreground">
+                <p>No API connections are available.</p>
+                <p>Add saved connections from the codebase to run them here.</p>
               </CardContent>
             </Card>
           ) : (
@@ -622,14 +319,15 @@ export function ApiConnectionsClient({
                 onClick={() => selectConnection(connection)}
                 className={cn(
                   "w-full rounded-lg border border-border bg-background px-4 py-3 text-left transition-colors hover:bg-accent/35",
-                  connection.id === form.id && "border-primary bg-accent/50",
+                  connection.id === selectedConnectionId &&
+                    "border-primary bg-accent/50",
                 )}
               >
                 <span className="block truncate text-sm font-semibold">
                   {connection.name}
                 </span>
-                <span className="mt-1 block truncate font-mono text-xs text-muted-foreground">
-                  {connection.method} {connection.url}
+                <span className="mt-1 block truncate text-xs text-muted-foreground">
+                  {connection.description || "Code-managed connection"}
                 </span>
               </button>
             ))
@@ -652,301 +350,49 @@ export function ApiConnectionsClient({
 
         <Card>
           <CardHeader>
-            <CardTitle>Connection</CardTitle>
+            <CardTitle>
+              {selectedConnection ? selectedConnection.name : "No connection selected"}
+            </CardTitle>
             <CardDescription>
-              {form.id ? "Edit saved request settings." : "Create a saved request."}
+              {selectedConnection
+                ? selectedConnection.description || "Code-managed connection"
+                : "Add saved connections from the codebase to run them here."}
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-5">
-            <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_8rem]">
-              <div className="space-y-2">
-                <Label htmlFor="api-connection-name">Name</Label>
-                <Input
-                  id="api-connection-name"
-                  value={form.name}
-                  onChange={(event) => updateForm({ name: event.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="api-connection-method">Method</Label>
-                <select
-                  id="api-connection-method"
-                  value={form.method}
-                  onChange={(event) =>
-                    updateForm({
-                      method: event.target.value as FormState["method"],
-                      bodyTemplate:
-                        event.target.value === "GET" ? "" : form.bodyTemplate,
-                    })
-                  }
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                >
-                  <option value="GET">GET</option>
-                  <option value="POST">POST</option>
-                  <option value="PUT">PUT</option>
-                  <option value="PATCH">PATCH</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="api-connection-url">URL</Label>
-              <Input
-                id="api-connection-url"
-                type="url"
-                value={form.url}
-                onChange={(event) => updateForm({ url: event.target.value })}
-                placeholder="https://api.example.com/resources"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="api-connection-description">Description</Label>
-              <Input
-                id="api-connection-description"
-                value={form.description}
-                onChange={(event) => updateForm({ description: event.target.value })}
-              />
-            </div>
-
-            <section className="space-y-3">
-              <div className="flex items-center justify-between gap-3">
-                <h3 className="text-sm font-semibold">Headers</h3>
-                <div className="flex gap-2">
-                  <Button type="button" variant="outline" onClick={() => appendHeader()}>
-                    <PlusIcon className="size-4" />
-                    Header
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => appendHeader(true)}
-                  >
-                    <KeyRoundIcon className="size-4" />
-                    Secret
-                  </Button>
-                </div>
-              </div>
-              <div className="space-y-2">
-                {form.headers.length === 0 ? (
-                  <div className="rounded-lg border border-dashed border-border px-4 py-5 text-sm text-muted-foreground">
-                    No headers configured.
-                  </div>
-                ) : (
-                  form.headers.map((header, index) => (
-                    <div
-                      key={`${index}:${header.isSecret ? "secret" : "plain"}`}
-                      className="grid gap-2 rounded-lg border border-border p-3 md:grid-cols-[minmax(0,12rem)_minmax(0,1fr)_auto]"
-                    >
-                      <Input
-                        aria-label="Header name"
-                        value={header.name}
-                        onChange={(event) =>
-                          updateHeader(index, { name: event.target.value })
-                        }
-                        placeholder="Authorization"
-                      />
-                      <Input
-                        aria-label="Header value"
-                        type={header.isSecret ? "password" : "text"}
-                        value={header.value}
-                        onChange={(event) =>
-                          updateHeader(index, { value: event.target.value })
-                        }
-                        placeholder={header.isSecret ? "Stored secret" : "Header value"}
-                      />
-                      <div className="flex items-center justify-end gap-2">
-                        {header.isSecret ? <Badge variant="outline">Secret</Badge> : null}
-                        <Button
-                          type="button"
-                          size="icon"
-                          variant="ghost"
-                          onClick={() => removeHeader(index)}
-                          aria-label="Remove header"
-                        >
-                          <Trash2Icon className="size-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </section>
-
-            {form.method !== "GET" ? (
-              <div className="space-y-2">
-                <Label htmlFor="api-connection-body">Body</Label>
-                <textarea
-                  id="api-connection-body"
-                  value={form.bodyTemplate}
-                  onChange={(event) => updateForm({ bodyTemplate: event.target.value })}
-                  className="min-h-32 w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-sm"
-                />
-              </div>
-            ) : null}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Response and import</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-5">
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="api-response-format">Response format</Label>
-                <select
-                  id="api-response-format"
-                  value={form.responseFormat}
-                  onChange={(event) =>
-                    updateForm({
-                      responseFormat:
-                        event.target.value as FormState["responseFormat"],
-                    })
-                  }
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                >
-                  <option value="json">JSON</option>
-                  <option value="csv">CSV</option>
-                </select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="api-response-path">JSON path</Label>
-                <Input
-                  id="api-response-path"
-                  value={form.responseDataPath}
-                  disabled={form.responseFormat !== "json"}
-                  onChange={(event) =>
-                    updateForm({ responseDataPath: event.target.value })
-                  }
-                  placeholder="data.items"
-                />
-              </div>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-3">
-              <div className="space-y-2">
-                <Label htmlFor="api-import-mode">Import mode</Label>
-                <select
-                  id="api-import-mode"
-                  value={form.importMode}
-                  onChange={(event) =>
-                    updateForm({
-                      importMode: event.target.value as FormState["importMode"],
-                      targetDatasetId:
-                        event.target.value === "replace" ? form.targetDatasetId : null,
-                    })
-                  }
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                >
-                  <option value="create">Create dataset</option>
-                  <option value="replace">Replace dataset</option>
-                </select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="api-dataset-name">Dataset name</Label>
-                <Input
-                  id="api-dataset-name"
-                  value={form.datasetName}
-                  onChange={(event) => updateForm({ datasetName: event.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="api-dataset-classification">Classification</Label>
-                <select
-                  id="api-dataset-classification"
-                  value={form.datasetClassification}
-                  onChange={(event) =>
-                    updateForm({
-                      datasetClassification: event.target.value as DatasetClassification,
-                    })
-                  }
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                >
-                  {DATASET_CLASSIFICATION_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.value}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {form.importMode === "replace" ? (
-              <div className="space-y-2">
-                <Label htmlFor="api-target-dataset">Target dataset</Label>
-                <select
-                  id="api-target-dataset"
-                  value={form.targetDatasetId ?? ""}
-                  onChange={(event) =>
-                    updateForm({ targetDatasetId: event.target.value || null })
-                  }
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                >
-                  <option value="">Choose a dataset</option>
-                  {datasets.map((dataset) => (
-                    <option key={dataset.id} value={dataset.id}>
-                      {dataset.fileName}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            ) : null}
-
-            <div className="flex flex-wrap gap-2">
-              <Button type="button" disabled={isBusy} onClick={handleSave}>
-                {busyAction === "save" ? (
-                  <Loader2Icon className="size-4 animate-spin" />
-                ) : (
-                  <SaveIcon className="size-4" />
-                )}
-                Save
-              </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                disabled={isBusy || !form.id || hasActiveRun}
-                onClick={() => handleRun(false)}
-                data-smoke-api-connection-test
-              >
-                {busyAction === "test" ? (
-                  <Loader2Icon className="size-4 animate-spin" />
-                ) : (
-                  <PlayIcon className="size-4" />
-                )}
-                Test
-              </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                disabled={isBusy || !form.id || hasActiveRun}
-                onClick={() => handleRun(true)}
-                data-smoke-api-connection-import
-              >
-                {busyAction === "import" ? (
-                  <Loader2Icon className="size-4 animate-spin" />
-                ) : (
-                  <UploadCloudIcon className="size-4" />
-                )}
-                Import
-              </Button>
-              {form.id ? (
+          {selectedConnection ? (
+            <CardContent>
+              <div className="flex flex-wrap gap-2">
                 <Button
                   type="button"
-                  variant="destructive"
-                  disabled={isBusy}
-                  onClick={handleDelete}
+                  variant="secondary"
+                  disabled={isBusy || hasActiveRun}
+                  onClick={() => handleRun(false)}
+                  data-smoke-api-connection-test
                 >
-                  {busyAction === "delete" ? (
+                  {busyAction === "test" ? (
                     <Loader2Icon className="size-4 animate-spin" />
                   ) : (
-                    <Trash2Icon className="size-4" />
+                    <PlayIcon className="size-4" />
                   )}
-                  Delete
+                  Test
                 </Button>
-              ) : null}
-            </div>
-          </CardContent>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={isBusy || hasActiveRun}
+                  onClick={() => handleRun(true)}
+                  data-smoke-api-connection-import
+                >
+                  {busyAction === "import" ? (
+                    <Loader2Icon className="size-4 animate-spin" />
+                  ) : (
+                    <UploadCloudIcon className="size-4" />
+                  )}
+                  Import
+                </Button>
+              </div>
+            </CardContent>
+          ) : null}
         </Card>
 
         <section className="grid gap-6 xl:grid-cols-2">

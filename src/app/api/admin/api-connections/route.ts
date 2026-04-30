@@ -1,12 +1,7 @@
-import {
-  ApiConnectionError,
-  createApiConnection,
-  listApiConnections,
-} from "@/lib/api-connections";
+import { listApiConnections } from "@/lib/api-connections";
 import { getCurrentIdentity } from "@/lib/auth";
 import { logError } from "@/lib/error-logging";
 import { jsonAdminOnlyError, jsonError } from "@/lib/http";
-import { apiConnectionCreateSchema } from "@/lib/validation";
 
 export async function GET() {
   const identity = await getCurrentIdentity();
@@ -38,25 +33,6 @@ export async function POST(request: Request) {
     return jsonAdminOnlyError("manage API connections");
   }
 
-  const parsed = apiConnectionCreateSchema.safeParse(await request.json());
-
-  if (!parsed.success) {
-    return jsonError("API connection payload is invalid.");
-  }
-
-  try {
-    const connection = await createApiConnection({
-      actorOwnerId: identity.ownerId,
-      connection: parsed.data,
-    });
-
-    return Response.json({ connection }, { status: 201 });
-  } catch (error) {
-    if (error instanceof ApiConnectionError) {
-      return jsonError(error.message, error.status);
-    }
-
-    logError("Failed to create API connection", error);
-    return jsonError("Could not create the API connection.", 500);
-  }
+  await request.body?.cancel();
+  return jsonError("API connection profiles are managed from the codebase.", 405);
 }

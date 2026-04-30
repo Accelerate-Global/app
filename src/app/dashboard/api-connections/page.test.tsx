@@ -1,13 +1,12 @@
 // @vitest-environment jsdom
 
 import { render, screen } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { redirect } from "next/navigation";
 
 import { listApiConnections } from "@/lib/api-connections";
 import { getCurrentIdentity } from "@/lib/auth";
-import { listDatasets } from "@/lib/datasets";
 import ApiConnectionsPage from "./page";
 
 vi.mock("next/navigation", () => ({
@@ -24,22 +23,28 @@ vi.mock("@/lib/api-connections", () => ({
   listApiConnections: vi.fn(),
 }));
 
-vi.mock("@/lib/datasets", () => ({
-  listDatasets: vi.fn(),
-}));
-
 vi.mock("@/components/layout/site-header", () => ({
   SiteHeader: () => null,
 }));
 
 const getCurrentIdentityMock = vi.mocked(getCurrentIdentity);
 const listApiConnectionsMock = vi.mocked(listApiConnections);
-const listDatasetsMock = vi.mocked(listDatasets);
 const redirectMock = vi.mocked(redirect);
 
 describe("/dashboard/api-connections", () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ runs: [] }),
+      }),
+    );
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   it("redirects anonymous users home", async () => {
@@ -94,8 +99,6 @@ describe("/dashboard/api-connections", () => {
       ],
       runs: [],
     });
-    listDatasetsMock.mockResolvedValue([]);
-
     render(await ApiConnectionsPage());
 
     expect(
@@ -105,5 +108,7 @@ describe("/dashboard/api-connections", () => {
     expect(screen.getByRole("button", { name: "Test" }).hasAttribute("disabled")).toBe(
       false,
     );
+    expect(screen.queryByLabelText("URL")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Save" })).toBeNull();
   });
 });

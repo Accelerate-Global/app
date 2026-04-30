@@ -7,7 +7,6 @@ import { SiteHeader } from "@/components/layout/site-header";
 import { buttonVariants } from "@/components/ui/button";
 import { getCurrentIdentity } from "@/lib/auth";
 import { listApiConnections } from "@/lib/api-connections";
-import { listDatasets } from "@/lib/datasets";
 import { cn } from "@/lib/utils";
 
 export default async function ApiConnectionsPage() {
@@ -21,10 +20,7 @@ export default async function ApiConnectionsPage() {
     redirect("/dashboard");
   }
 
-  const [{ connections, runs }, datasets] = await Promise.all([
-    listApiConnections(),
-    listDatasets({ includeDisabled: true }),
-  ]);
+  const { connections, runs } = await listApiConnections();
 
   return (
     <main
@@ -54,8 +50,8 @@ export default async function ApiConnectionsPage() {
                 API Connections
               </h1>
               <p className="max-w-3xl text-base leading-7 text-muted-foreground sm:text-lg">
-                Configure reusable API requests, run them, and import responses into
-                shared datasets.
+                Run code-managed API connections and import responses into shared
+                datasets.
               </p>
             </div>
           </div>
@@ -64,7 +60,6 @@ export default async function ApiConnectionsPage() {
         <ApiConnectionsClient
           initialConnections={connections}
           initialRuns={runs}
-          datasets={datasets.filter((dataset) => !dataset.backingDatasetId)}
         />
       </div>
     </main>

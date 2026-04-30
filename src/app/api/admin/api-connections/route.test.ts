@@ -1,10 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import {
-  ApiConnectionError,
-  createApiConnection,
-  listApiConnections,
-} from "@/lib/api-connections";
+import { createApiConnection, listApiConnections } from "@/lib/api-connections";
 import { getCurrentIdentity } from "@/lib/auth";
 import { GET, POST } from "./route";
 
@@ -114,9 +110,7 @@ describe("/api/admin/api-connections", () => {
     });
   });
 
-  it("creates an API connection for admins", async () => {
-    createApiConnectionMock.mockResolvedValue(connection);
-
+  it("rejects admin create requests because profiles are code-managed", async () => {
     const response = await POST(
       new Request("http://localhost/api/admin/api-connections", {
         method: "POST",
@@ -124,77 +118,10 @@ describe("/api/admin/api-connections", () => {
       }),
     );
 
-    expect(response.status).toBe(201);
-    await expect(response.json()).resolves.toEqual({ connection });
-    expect(createApiConnectionMock).toHaveBeenCalledWith({
-      actorOwnerId: "admin-1",
-      connection: validPayload,
-    });
-  });
-
-  it("creates the IMB ArcGIS API connection preset for admins", async () => {
-    const imbPayload = {
-      ...validPayload,
-      name: "IMB (People Groups)",
-      url:
-        "https://services1.arcgis.com/mICk7VdFTP86wcbI/arcgis/rest/services/pIMBpeoplePublic/FeatureServer/0/query",
-      responseFormat: "json",
-      responseDataPath: "features",
-      datasetName: "imb-people-groups.csv",
-      datasetClassification: "PGIC",
-    };
-    const imbConnection = {
-      ...connection,
-      name: imbPayload.name,
-      url: imbPayload.url,
-      responseDataPath: imbPayload.responseDataPath,
-      datasetName: imbPayload.datasetName,
-      datasetClassification: "PGIC" as const,
-    };
-    createApiConnectionMock.mockResolvedValue(imbConnection);
-
-    const response = await POST(
-      new Request("http://localhost/api/admin/api-connections", {
-        method: "POST",
-        body: JSON.stringify(imbPayload),
-      }),
-    );
-
-    expect(response.status).toBe(201);
-    await expect(response.json()).resolves.toEqual({ connection: imbConnection });
-    expect(createApiConnectionMock).toHaveBeenCalledWith({
-      actorOwnerId: "admin-1",
-      connection: imbPayload,
-    });
-  });
-
-  it("returns validation errors for invalid payloads", async () => {
-    const response = await POST(
-      new Request("http://localhost/api/admin/api-connections", {
-        method: "POST",
-        body: JSON.stringify({ ...validPayload, url: "not-a-url" }),
-      }),
-    );
-
-    expect(response.status).toBe(400);
-    expect(createApiConnectionMock).not.toHaveBeenCalled();
-  });
-
-  it("returns domain errors from the helper", async () => {
-    createApiConnectionMock.mockRejectedValue(
-      new ApiConnectionError("Secret header values are required."),
-    );
-
-    const response = await POST(
-      new Request("http://localhost/api/admin/api-connections", {
-        method: "POST",
-        body: JSON.stringify(validPayload),
-      }),
-    );
-
-    expect(response.status).toBe(400);
+    expect(response.status).toBe(405);
     await expect(response.json()).resolves.toEqual({
-      error: "Secret header values are required.",
+      error: "API connection profiles are managed from the codebase.",
     });
+    expect(createApiConnectionMock).not.toHaveBeenCalled();
   });
 });

@@ -63,14 +63,14 @@ The system SHALL allow dataset admins to download a run output as JSON or CSV wh
 - **THEN** the system rejects the request and does not expose the artifact
 
 ### Requirement: Existing API connection safety controls remain enforced
-The system SHALL preserve existing API connection security and compatibility controls during async execution.
+The system SHALL preserve API connection security and compatibility controls during async execution while treating saved profile definitions as codebase-managed records outside the web UI.
 
 #### Scenario: Secrets and blocked URLs remain protected
 - **WHEN** an async run executes
 - **THEN** the system uses stored secret headers, redacts secret values from logs/previews/errors, requires safe HTTPS URLs, blocks disallowed networks, enforces redirect limits, enforces response-size limits, and uses the configured timeout
 
-#### Scenario: Existing profile behavior remains compatible
-- **WHEN** admins create, update, delete, test, or import saved API connection profiles
+#### Scenario: Existing run behavior remains compatible
+- **WHEN** admins test or import saved API connection profiles through the allowed run endpoints
 - **THEN** the system preserves existing profile fields, secret-header behavior, and create-or-replace dataset import semantics
 
 ### Requirement: API connection runs support ArcGIS FeatureServer features
@@ -99,24 +99,6 @@ The system SHALL normalize ArcGIS feature rows by preserving all feature attribu
 - **WHEN** an ArcGIS features run succeeds
 - **THEN** the archived JSON output includes the raw feature list used for normalization without exposing secret header values
 
-### Requirement: Admin can start with the IMB People Groups preset
-The system SHALL provide an admin UI preset for the public IMB People Groups ArcGIS layer so admins can create the saved connection without manually translating the working script into app fields.
-
-#### Scenario: Admin applies IMB preset
-- **WHEN** a dataset admin applies the `IMB (People Groups)` preset on the API Connections page
-- **THEN** the connection form is populated with the public IMB FeatureServer query endpoint, JSON `features` response path, create-dataset import settings, `imb-people-groups.csv`, and PGIC classification
-
-### Requirement: Admin can create a Joshua Project PGIC connection from a preset
-The system SHALL provide an admin-only Joshua Project (PGIC) setup option that pre-fills the saved API connection fields needed to fetch Joshua Project people-group data while requiring the API key to be entered as a stored secret.
-
-#### Scenario: Admin applies the preset
-- **WHEN** a dataset admin chooses the Joshua Project (PGIC) setup option on the API Connections page
-- **THEN** the form uses `GET`, targets the Joshua Project people-groups endpoint with `include_profile_text=Y`, `include_resources=Y`, `page=1`, and `limit=100000`, sets JSON response handling, sets PGIC dataset classification, and includes a secret `api_key` field without a committed value
-
-#### Scenario: Preset key is not exposed in tracked code
-- **WHEN** the Joshua Project preset is rendered in the browser
-- **THEN** the provided API key is not present in client source, saved connection URLs, or preset defaults, and the admin must save it through the existing secret field flow
-
 ### Requirement: Joshua Project PGIC runs send the stored key as an upstream query parameter
 The system SHALL translate the stored `api_key` secret into the Joshua Project upstream query parameter for Joshua Project people-groups runs while preserving existing API connection safety controls and secret redaction.
 
@@ -138,17 +120,6 @@ The system SHALL parse Joshua Project people-group JSON responses into import ro
 #### Scenario: Existing generic parsers remain compatible
 - **WHEN** a non-Joshua API connection run parses JSON or CSV
 - **THEN** the system uses the existing generic parsing behavior and does not apply Joshua Project resource flattening
-
-### Requirement: Admin can create an Etnopedia connection from a preset
-The system SHALL provide an admin-only Etnopedia setup option that pre-fills the saved API connection fields needed to fetch Etnopedia people-group data.
-
-#### Scenario: Admin applies the preset
-- **WHEN** a dataset admin chooses the `Etnopedia` setup option on the API Connections page
-- **THEN** the form uses `GET`, targets `https://en.etnopedia.org/api.php`, sets JSON response handling, sets PGIC dataset classification, and uses an Etnopedia dataset filename
-
-#### Scenario: Existing admin authorization remains unchanged
-- **WHEN** an unauthenticated user or non-admin user attempts to create, update, or run the saved Etnopedia connection
-- **THEN** the system rejects the request using the existing API connection admin authorization behavior
 
 ### Requirement: Etnopedia runs execute the MediaWiki export flow
 The system SHALL run Etnopedia API connections by listing people-group category members, fetching main and talk page revisions in batches, and recording progress through the existing API connection run lifecycle.
@@ -175,3 +146,25 @@ The system SHALL normalize Etnopedia people-group data into the script-compatibl
 #### Scenario: Existing generic parsers remain compatible
 - **WHEN** a non-Etnopedia API connection run parses JSON or CSV
 - **THEN** the system uses the existing generic parsing behavior and does not apply Etnopedia MediaWiki fetching or wikitext parsing
+
+### Requirement: API Connections web dashboard omits saved profile configuration
+The system SHALL present the admin API Connections page as an operational dashboard for saved API connection records without exposing saved request configuration or web profile creation controls.
+
+#### Scenario: Admin views saved connection without configuration fields
+- **WHEN** a dataset admin opens the API Connections page and saved connections exist
+- **THEN** the page shows selectable saved connections and operational run controls without showing URL, method, headers, body, response parsing, import configuration, preset, new, save, delete, or profile editing controls
+
+#### Scenario: Admin views empty saved connection list
+- **WHEN** a dataset admin opens the API Connections page and no saved connections exist
+- **THEN** the page explains that no API connections are available and does not offer a web control to create one
+
+### Requirement: API connection profile writes are unavailable through web HTTP endpoints
+The system SHALL keep API connection profile creation, update, and deletion unavailable through the admin web HTTP API while preserving authorized read, run, history, detail, and download behavior.
+
+#### Scenario: Admin attempts web profile creation
+- **WHEN** a dataset admin sends a create request to the admin API connection collection endpoint
+- **THEN** the system rejects the request without creating a saved API connection
+
+#### Scenario: Admin attempts web profile update or deletion
+- **WHEN** a dataset admin sends an update or delete request to an individual admin API connection endpoint
+- **THEN** the system rejects the request without changing or deleting the saved API connection
