@@ -99,7 +99,11 @@ describe("/api/admin/api-connections", () => {
   });
 
   it("lists API connections for admins", async () => {
-    listApiConnectionsMock.mockResolvedValue({ connections: [connection], runs: [] });
+    listApiConnectionsMock.mockResolvedValue({
+      connections: [connection],
+      runs: [],
+      resources: [],
+    });
 
     const response = await GET();
 
@@ -107,6 +111,7 @@ describe("/api/admin/api-connections", () => {
     await expect(response.json()).resolves.toEqual({
       connections: [connection],
       runs: [],
+      resources: [],
     });
   });
 

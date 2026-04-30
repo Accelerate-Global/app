@@ -32,6 +32,14 @@ Before finishing, if the run involved repo-local Docker or Supabase activity, th
 ### Final response footer
 Before finishing, the agent should use short footer sections instead of a prose-style operational summary, but only include sections that are relevant to the work performed in that run.
 
+### Completion before summary
+Before finalizing, agents must run a closure loop over their own summary:
+- If an `Open Items` bullet describes work the agent can still perform, do that work before finalizing.
+- If a `Next Step` bullet is an agent-executable command, fix, cleanup, verification rerun, or repo change, do it before finalizing.
+- Use `Open Items` only for true blockers, failed checks, explicit user-deferred scope, or external dependencies.
+- Use `Next Step` only for one immediate user-owned action or decision.
+- Do not use final footer sections as a parking lot for unfinished agent work.
+
 Use this footer structure:
 
 #### Verification
@@ -42,13 +50,15 @@ Use this footer structure:
 - Omit this section if no meaningful verification was run or discussed.
 
 #### Open Items
-- Include only unresolved blockers, failed checks, or intentionally unfinished work.
+- Include only unresolved blockers, failed checks, explicitly deferred scope, or external dependencies.
+- Do not include agent-executable implementation, cleanup, verification, or follow-up work.
 - Keep each bullet brief and outcome-focused.
 - Omit this section entirely if there is nothing unresolved.
 
 #### Next Step
 - Optional.
-- Include only when there is one obvious immediate follow-up for the user.
+- Include only when there is one obvious immediate user-owned follow-up, decision, approval, or access step.
+- Omit this section when the next step is agent-executable implementation, cleanup, verification, or repo work.
 - Keep it to a single short bullet.
 
 #### Docker / Supabase

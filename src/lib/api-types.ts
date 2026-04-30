@@ -256,9 +256,23 @@ export type ApiConnectionRunOutput = {
   createdAt: string;
 };
 
+export type ApiConnectionResource = {
+  id: string;
+  connectionId: string;
+  runId: string;
+  resourceUrl: string;
+  normalizedUrl: string;
+  category: string;
+  webText: string;
+  sourceRowIndex: number;
+  sourceResourceIndex: number;
+  createdAt: string;
+};
+
 export type ApiConnectionsResponse = {
   connections: ApiConnection[];
   runs: ApiConnectionRun[];
+  resources: ApiConnectionResource[];
 };
 
 export type ApiConnectionResponse = {

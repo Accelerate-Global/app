@@ -58,6 +58,21 @@ function createRunLogRecord(runId: string, connectionId: string) {
   };
 }
 
+function createResourceRecord(connectionId = codeManagedImbId) {
+  return {
+    id: "55555555-5555-4555-8555-555555555555",
+    connectionId,
+    runId: "22222222-2222-4222-8222-222222222222",
+    resourceUrl: "https://example.com/resource#details",
+    normalizedUrl: "https://example.com/resource",
+    category: "Film",
+    webText: "Watch",
+    sourceRowIndex: 0,
+    sourceResourceIndex: 1,
+    createdAt: new Date("2026-04-30T12:02:00.000Z"),
+  };
+}
+
 async function importApiConnectionsWithDb(db: unknown) {
   vi.resetModules();
   vi.doMock("@/db", () => ({
@@ -91,6 +106,7 @@ describe("code-managed API connection listing", () => {
       "Joshua Project (PGIC)",
     ]);
     expect(result.runs).toEqual([]);
+    expect(result.resources).toEqual([]);
   });
 
   it("uses materialized built-in rows without duplicating them", async () => {
@@ -100,6 +116,15 @@ describe("code-managed API connection listing", () => {
       .mockReturnValueOnce({
         from: vi.fn().mockReturnValue({
           orderBy: vi.fn().mockResolvedValue([materializedImb]),
+        }),
+      })
+      .mockReturnValueOnce({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            orderBy: vi.fn().mockReturnValue({
+              limit: vi.fn().mockResolvedValue([]),
+            }),
+          }),
         }),
       })
       .mockReturnValueOnce({
@@ -122,6 +147,58 @@ describe("code-managed API connection listing", () => {
       "Joshua Project (PGIC)",
     ]);
     expect(result.connections[0]?.description).toBe("Materialized description.");
+    expect(result.resources).toEqual([]);
+  });
+
+  it("returns the newest 500 persisted resources with the connection list", async () => {
+    const materializedImb = createConnectionRow();
+    const resource = createResourceRecord(materializedImb.id);
+    const resourcesLimit = vi.fn().mockResolvedValue([resource]);
+    const select = vi
+      .fn()
+      .mockReturnValueOnce({
+        from: vi.fn().mockReturnValue({
+          orderBy: vi.fn().mockResolvedValue([materializedImb]),
+        }),
+      })
+      .mockReturnValueOnce({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            orderBy: vi.fn().mockReturnValue({
+              limit: vi.fn().mockResolvedValue([]),
+            }),
+          }),
+        }),
+      })
+      .mockReturnValueOnce({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            orderBy: vi.fn().mockReturnValue({
+              limit: resourcesLimit,
+            }),
+          }),
+        }),
+      });
+    const db = { select };
+    const { listApiConnections } = await importApiConnectionsWithDb(db);
+
+    const result = await listApiConnections();
+
+    expect(resourcesLimit).toHaveBeenCalledWith(500);
+    expect(result.resources).toEqual([
+      {
+        id: resource.id,
+        connectionId: materializedImb.id,
+        runId: resource.runId,
+        resourceUrl: "https://example.com/resource#details",
+        normalizedUrl: "https://example.com/resource",
+        category: "Film",
+        webText: "Watch",
+        sourceRowIndex: 0,
+        sourceResourceIndex: 1,
+        createdAt: "2026-04-30T12:02:00.000Z",
+      },
+    ]);
   });
 });
 
@@ -268,5 +345,59 @@ describe("code-managed API connection materialization", () => {
     expect(result?.run.logs).toEqual([
       expect.objectContaining({ message: "Run queued." }),
     ]);
+  });
+});
+
+describe("API connection resource publishing", () => {
+  it("publishes resource rows for test and import run outputs", async () => {
+    const onConflictDoNothing = vi.fn().mockResolvedValue(undefined);
+    const values = vi.fn().mockReturnValue({ onConflictDoNothing });
+    const db = {
+      insert: vi.fn().mockReturnValue({ values }),
+    };
+    const { publishApiConnectionResources } = await importApiConnectionsWithDb(db);
+
+    await expect(
+      publishApiConnectionResources({
+        connectionId: "connection-1",
+        runId: "test-run",
+        rows: [
+          {
+            resource_01_category: "Audio",
+            resource_01_webtext: "Listen",
+            resource_01_url: "https://example.com/audio",
+          },
+        ],
+      }),
+    ).resolves.toBe(1);
+    await expect(
+      publishApiConnectionResources({
+        connectionId: "connection-1",
+        runId: "import-run",
+        rows: [
+          {
+            resource_01_category: "Film",
+            resource_01_webtext: "Watch",
+            resource_01_url: "https://example.com/film",
+          },
+        ],
+      }),
+    ).resolves.toBe(1);
+
+    expect(values).toHaveBeenNthCalledWith(1, [
+      expect.objectContaining({
+        connectionId: "connection-1",
+        runId: "test-run",
+        normalizedUrl: "https://example.com/audio",
+      }),
+    ]);
+    expect(values).toHaveBeenNthCalledWith(2, [
+      expect.objectContaining({
+        connectionId: "connection-1",
+        runId: "import-run",
+        normalizedUrl: "https://example.com/film",
+      }),
+    ]);
+    expect(onConflictDoNothing).toHaveBeenCalledTimes(2);
   });
 });

@@ -26,12 +26,17 @@ vi.mock("@/lib/api-connections", () => ({
 vi.mock("@/components/dashboard/api-connections-client", () => ({
   ApiConnectionsClient: ({
     initialConnections,
+    initialResources,
   }: {
     initialConnections: Array<{ name: string }>;
+    initialResources: Array<{ resourceUrl: string }>;
   }) => (
     <div data-testid="api-connections-client">
       {initialConnections.map((connection) => (
         <span key={connection.name}>{connection.name}</span>
+      ))}
+      {initialResources.map((resource) => (
+        <span key={resource.resourceUrl}>{resource.resourceUrl}</span>
       ))}
     </div>
   ),
@@ -129,6 +134,20 @@ describe("/dashboard/api-connections", () => {
         },
       ],
       runs: [],
+      resources: [
+        {
+          id: "55555555-5555-4555-8555-555555555555",
+          connectionId: "6f9f6ef2-1188-4f71-9c24-ef01debf7a03",
+          runId: "22222222-2222-4222-8222-222222222222",
+          resourceUrl: "https://example.com/resource",
+          normalizedUrl: "https://example.com/resource",
+          category: "Film",
+          webText: "Watch",
+          sourceRowIndex: 0,
+          sourceResourceIndex: 1,
+          createdAt: "2026-04-30T00:05:00.000Z",
+        },
+      ],
     });
     render(await ApiConnectionsPage());
 
@@ -137,6 +156,7 @@ describe("/dashboard/api-connections", () => {
     ).toBeTruthy();
     expect(screen.getByText("IMB (People Groups)")).toBeTruthy();
     expect(screen.getByText("Etnopedia")).toBeTruthy();
+    expect(screen.getByText("https://example.com/resource")).toBeTruthy();
     expect(screen.getByTestId("api-connections-client")).toBeTruthy();
     expect(screen.queryByLabelText("URL")).toBeNull();
     expect(screen.queryByRole("button", { name: "Save" })).toBeNull();

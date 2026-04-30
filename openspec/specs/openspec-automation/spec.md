@@ -132,3 +132,31 @@ full smoke suite when one command runs targeted smoke followed by full smoke.
 #### Scenario: Single-suite smoke does not refresh between suites
 - **WHEN** the UI smoke runner executes only targeted smoke or only full smoke
 - **THEN** it does not perform an extra between-suite bootstrap refresh
+
+### Requirement: Agent final summaries close executable work first
+The repository SHALL require agents to resolve their own agent-executable open
+items and next steps before finalizing a work session.
+
+#### Scenario: Agent can perform a listed open item
+- **WHEN** an agent's draft final summary includes an `Open Items` entry that
+  describes work the agent can complete without new user input
+- **THEN** the agent performs that work before finalizing
+- **AND** omits that entry from the final `Open Items` section
+
+#### Scenario: Agent can perform a listed next step
+- **WHEN** an agent's draft final summary includes a `Next Step` entry for an
+  executable command, fix, cleanup, verification rerun, or repo change
+- **THEN** the agent performs that work before finalizing
+- **AND** omits that entry from the final `Next Step` section
+
+#### Scenario: Work is genuinely blocked
+- **WHEN** a remaining item requires user input, external access, unavailable
+  services, failed verification resolution, or scope that the user explicitly
+  deferred
+- **THEN** the agent may include that item as an `Open Items` blocker or as a
+  single user-owned `Next Step`
+
+#### Scenario: No user-owned action remains
+- **WHEN** no immediate user-owned action or decision remains after the closure
+  loop
+- **THEN** the agent omits the `Next Step` section

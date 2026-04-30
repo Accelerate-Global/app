@@ -480,6 +480,40 @@ export const apiConnectionRunOutputs = privateSchema.table(
   ],
 );
 
+export const apiConnectionResources = privateSchema.table(
+  "api_connection_resources",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    connectionId: uuid("connection_id")
+      .notNull()
+      .references(() => apiConnections.id, { onDelete: "cascade" }),
+    runId: uuid("run_id")
+      .notNull()
+      .references(() => apiConnectionRuns.id, { onDelete: "cascade" }),
+    resourceUrl: text("resource_url").notNull(),
+    normalizedUrl: text("normalized_url").notNull(),
+    category: text("category").notNull().default(""),
+    webText: text("web_text").notNull().default(""),
+    sourceRowIndex: integer("source_row_index").notNull(),
+    sourceResourceIndex: integer("source_resource_index").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("api_connection_resources_run_url_idx").on(
+      table.connectionId,
+      table.runId,
+      table.normalizedUrl,
+    ),
+    index("api_connection_resources_created_idx").on(table.createdAt),
+    index("api_connection_resources_connection_created_idx").on(
+      table.connectionId,
+      table.createdAt,
+    ),
+  ],
+);
+
 export const analyticsEvents = privateSchema.table(
   "analytics_events",
   {

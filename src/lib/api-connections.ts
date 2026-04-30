@@ -6,6 +6,7 @@ import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 
 import { getDb } from "@/db";
 import {
+  apiConnectionResources,
   apiConnectionRunLogs,
   apiConnectionRunOutputs,
   apiConnectionRuns,
@@ -42,6 +43,7 @@ import type {
   ApiConnection,
   ApiConnectionHeader,
   ApiConnectionImportMode,
+  ApiConnectionResource,
   ApiConnectionResponseFormat,
   ApiConnectionRun,
   ApiConnectionRunLog,
@@ -68,6 +70,17 @@ type ApiConnectionRecord = typeof apiConnections.$inferSelect;
 type ApiConnectionRunRecord = typeof apiConnectionRuns.$inferSelect;
 type ApiConnectionRunLogRecord = typeof apiConnectionRunLogs.$inferSelect;
 type ApiConnectionRunOutputRecord = typeof apiConnectionRunOutputs.$inferSelect;
+type ApiConnectionResourceRecord = typeof apiConnectionResources.$inferSelect;
+type ExtractedApiConnectionResource = {
+  connectionId: string;
+  runId: string;
+  resourceUrl: string;
+  normalizedUrl: string;
+  category: string;
+  webText: string;
+  sourceRowIndex: number;
+  sourceResourceIndex: number;
+};
 
 type CodeManagedApiConnectionDefinition = {
   id: string;
@@ -369,6 +382,23 @@ function toApiConnectionRunOutput(
   };
 }
 
+function toApiConnectionResource(
+  row: ApiConnectionResourceRecord,
+): ApiConnectionResource {
+  return {
+    id: row.id,
+    connectionId: row.connectionId,
+    runId: row.runId,
+    resourceUrl: row.resourceUrl,
+    normalizedUrl: row.normalizedUrl,
+    category: row.category,
+    webText: row.webText,
+    sourceRowIndex: row.sourceRowIndex,
+    sourceResourceIndex: row.sourceResourceIndex,
+    createdAt: row.createdAt.toISOString(),
+  };
+}
+
 function normalizeConnectionInput(input: ApiConnectionInput) {
   const nonSecretHeaders: ApiConnectionHeader[] = [];
   const secretHeaders = new Map<string, string>();
@@ -541,19 +571,31 @@ export async function listApiConnections() {
     .from(apiConnections)
     .orderBy(desc(apiConnections.updatedAt));
   const ids = connectionRows.map((connection) => connection.id);
-  const runRows =
+  const [runRows, resourceRows]: [
+    ApiConnectionRunRecord[],
+    ApiConnectionResourceRecord[],
+  ] =
     ids.length === 0
-      ? []
-      : await getDb()
-          .select()
-          .from(apiConnectionRuns)
-          .where(inArray(apiConnectionRuns.connectionId, ids))
-          .orderBy(desc(apiConnectionRuns.createdAt))
-          .limit(50);
+      ? [[], []]
+      : await Promise.all([
+          getDb()
+            .select()
+            .from(apiConnectionRuns)
+            .where(inArray(apiConnectionRuns.connectionId, ids))
+            .orderBy(desc(apiConnectionRuns.createdAt))
+            .limit(50),
+          getDb()
+            .select()
+            .from(apiConnectionResources)
+            .where(inArray(apiConnectionResources.connectionId, ids))
+            .orderBy(desc(apiConnectionResources.createdAt))
+            .limit(500),
+        ]);
 
   return {
     connections: mergeCodeManagedApiConnections(connectionRows),
     runs: await hydrateRunDetails(runRows),
+    resources: resourceRows.map(toApiConnectionResource),
   };
 }
 
@@ -1429,6 +1471,84 @@ export function parseApiResponseRows(input: {
   };
 }
 
+function normalizeApiConnectionResourceUrl(value: string) {
+  const trimmedValue = value.trim();
+
+  if (!trimmedValue) {
+    return null;
+  }
+
+  try {
+    const url = new URL(trimmedValue);
+
+    if (url.protocol !== "http:" && url.protocol !== "https:") {
+      return null;
+    }
+
+    url.hash = "";
+
+    return {
+      resourceUrl: trimmedValue,
+      normalizedUrl: url.toString(),
+    };
+  } catch {
+    return null;
+  }
+}
+
+function mergeResourceText(current: string, next: string) {
+  return current || next.trim();
+}
+
+export function extractApiConnectionResources(input: {
+  connectionId: string;
+  runId: string;
+  rows: Record<string, string>[];
+}): ExtractedApiConnectionResource[] {
+  const resourcesByNormalizedUrl = new Map<string, ExtractedApiConnectionResource>();
+
+  input.rows.forEach((row, rowIndex) => {
+    for (const [key, value] of Object.entries(row)) {
+      const match = /^resource_(\d+)_url$/i.exec(key);
+
+      if (!match) {
+        continue;
+      }
+
+      const normalized = normalizeApiConnectionResourceUrl(value);
+
+      if (!normalized) {
+        continue;
+      }
+
+      const sourceResourceIndex = Number.parseInt(match[1]!, 10);
+      const resourcePrefix = `resource_${match[1]}`;
+      const category = row[`${resourcePrefix}_category`] ?? "";
+      const webText = row[`${resourcePrefix}_webtext`] ?? "";
+      const existing = resourcesByNormalizedUrl.get(normalized.normalizedUrl);
+
+      if (existing) {
+        existing.category = mergeResourceText(existing.category, category);
+        existing.webText = mergeResourceText(existing.webText, webText);
+        continue;
+      }
+
+      resourcesByNormalizedUrl.set(normalized.normalizedUrl, {
+        connectionId: input.connectionId,
+        runId: input.runId,
+        resourceUrl: normalized.resourceUrl,
+        normalizedUrl: normalized.normalizedUrl,
+        category: category.trim(),
+        webText: webText.trim(),
+        sourceRowIndex: rowIndex,
+        sourceResourceIndex,
+      });
+    }
+  });
+
+  return [...resourcesByNormalizedUrl.values()];
+}
+
 function escapeCsvCell(value: string) {
   return /[",\r\n]/u.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
 }
@@ -1700,6 +1820,35 @@ async function persistRunOutput(input: {
   return toApiConnectionRunOutput(output);
 }
 
+export async function publishApiConnectionResources(input: {
+  connectionId: string;
+  runId: string;
+  rows: Record<string, string>[];
+}) {
+  const resources = extractApiConnectionResources({
+    connectionId: input.connectionId,
+    runId: input.runId,
+    rows: input.rows,
+  });
+
+  if (resources.length === 0) {
+    return 0;
+  }
+
+  await getDb()
+    .insert(apiConnectionResources)
+    .values(resources)
+    .onConflictDoNothing({
+      target: [
+        apiConnectionResources.connectionId,
+        apiConnectionResources.runId,
+        apiConnectionResources.normalizedUrl,
+      ],
+    });
+
+  return resources.length;
+}
+
 export async function startApiConnectionRun(input: {
   connectionId: string;
   identity: CurrentIdentity;
@@ -1961,6 +2110,20 @@ export async function executeApiConnectionRun(input: { runId: string }) {
       connectionId: connection.id,
       message: "Archived output artifacts.",
     });
+
+    const resourceCount = await publishApiConnectionResources({
+      connectionId: connection.id,
+      runId: run.id,
+      rows: parsed.rows,
+    });
+
+    if (resourceCount > 0) {
+      await insertRunLog({
+        runId: run.id,
+        connectionId: connection.id,
+        message: `Published ${resourceCount} resources.`,
+      });
+    }
 
     await updateRun({
       runId: run.id,

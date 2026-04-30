@@ -4,6 +4,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
+  apiConnectionResources,
   apiConnectionRuns,
   apiConnectionRunLogs,
   apiConnectionRunOutputs,
@@ -307,6 +308,12 @@ describe("apiConnections schema", () => {
     expect(apiConnectionRunLogs.message.name).toBe("message");
     expect(apiConnectionRunOutputs.rowsStoragePath.name).toBe("rows_storage_path");
     expect(apiConnectionRunOutputs.rawStoragePath.name).toBe("raw_storage_path");
+    expect(apiConnectionResources.resourceUrl.name).toBe("resource_url");
+    expect(apiConnectionResources.normalizedUrl.name).toBe("normalized_url");
+    expect(apiConnectionResources.webText.name).toBe("web_text");
+    expect(apiConnectionResources.sourceResourceIndex.name).toBe(
+      "source_resource_index",
+    );
   });
 
   it("creates the API connections migration", async () => {
@@ -346,6 +353,28 @@ describe("apiConnections schema", () => {
     );
     expect(migration).toContain(
       "revoke all on private.api_connection_run_outputs",
+    );
+  });
+
+  it("creates the API connection resources migration", async () => {
+    const migrationPath = path.join(
+      process.cwd(),
+      "supabase/migrations/20260430172440_api_connection_resources.sql",
+    );
+
+    const migration = await readFile(migrationPath, "utf8");
+
+    expect(migration).toContain(
+      "create table if not exists private.api_connection_resources",
+    );
+    expect(migration).toContain(
+      "api_connection_resources_run_url_idx",
+    );
+    expect(migration).toContain(
+      "alter table private.api_connection_resources enable row level security",
+    );
+    expect(migration).toContain(
+      "revoke all on private.api_connection_resources",
     );
   });
 });
