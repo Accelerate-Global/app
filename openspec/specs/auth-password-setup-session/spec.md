@@ -2,9 +2,7 @@
 
 Define the expected password setup session behavior for Supabase invite and
 password recovery callbacks.
-
 ## Requirements
-
 ### Requirement: Password setup keeps the verified session
 The system SHALL keep the Supabase callback session active after a successful
 invite or recovery password setup and SHALL send the user to the authenticated
@@ -51,3 +49,19 @@ token-hash verification step before showing the password setup form.
 - **WHEN** `/reset-password` receives a supported Supabase token hash callback
 - **THEN** the page verifies the token hash
 - **AND** the password setup form is shown after successful verification
+
+### Requirement: Branded password setup emails preserve verified sessions
+The system SHALL preserve the existing token-hash password setup callback
+contract when changing the visual design of invite and recovery emails.
+
+#### Scenario: Restyled recovery email keeps verified callback session
+- **WHEN** a password recovery email is rendered with branded styling
+- **THEN** the action link still targets `/auth/confirm` through
+  `{{ .RedirectTo }}` with a Supabase token hash, `type=recovery`, and
+  `next=/reset-password`
+
+#### Scenario: Restyled invite email keeps verified callback session
+- **WHEN** an invite email is rendered with branded styling
+- **THEN** the action link still targets `/auth/confirm` through
+  `{{ .RedirectTo }}` with a Supabase token hash, `type=invite`, and
+  `next=/reset-password`

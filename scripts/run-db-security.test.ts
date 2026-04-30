@@ -37,7 +37,7 @@ describe("runDbSecurity", () => {
     await runDbSecurity();
 
     expect(runCommandMock.mock.calls).toEqual([
-      ["supabase", ["start"], { allowFailure: true }],
+      ["supabase", ["start", "--ignore-health-check"], { allowFailure: true }],
       [
         "supabase",
         ["db", "reset", "--local", "--no-seed", "--yes"],
@@ -64,7 +64,7 @@ describe("runDbSecurity", () => {
     await runDbSecurity();
 
     expect(runCommandMock.mock.calls).toEqual([
-      ["supabase", ["start"], { allowFailure: true }],
+      ["supabase", ["start", "--ignore-health-check"], { allowFailure: true }],
       [
         "supabase",
         ["status"],
@@ -99,7 +99,7 @@ describe("runDbSecurity", () => {
     await runDbSecurity();
 
     expect(runCommandMock.mock.calls).toEqual([
-      ["supabase", ["start"], { allowFailure: true }],
+      ["supabase", ["start", "--ignore-health-check"], { allowFailure: true }],
       [
         "supabase",
         ["db", "reset", "--local", "--no-seed", "--yes"],
@@ -123,7 +123,7 @@ describe("runDbSecurity", () => {
     await expect(runDbSecurity()).rejects.toThrow("Supabase start failed.");
 
     expect(runCommandMock.mock.calls).toEqual([
-      ["supabase", ["start"], { allowFailure: true }],
+      ["supabase", ["start", "--ignore-health-check"], { allowFailure: true }],
     ]);
   });
 });

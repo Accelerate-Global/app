@@ -64,7 +64,7 @@ async function runSupabaseLifecycleCommand(label: string, args: string[]) {
 }
 
 export async function runDbSecurity() {
-  await runSupabaseLifecycleCommand("start", ["start"]);
+  await runSupabaseLifecycleCommand("start", ["start", "--ignore-health-check"]);
   await runSupabaseLifecycleCommand("db reset", [
     "db",
     "reset",
