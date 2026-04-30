@@ -160,6 +160,7 @@ describe("/dashboard/api-connections/[connectionId]", () => {
     expect(
       container.querySelector('[data-smoke-page="api-connection-detail"]'),
     ).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Back to Datasets/ })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "IMB (People Groups)" })).toBeTruthy();
     expect(screen.getByText("Success")).toBeTruthy();
     expect(screen.getByTestId("api-connection-detail-client").textContent).toBe(

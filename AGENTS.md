@@ -36,6 +36,9 @@ Before finishing, the agent should use short footer sections instead of a prose-
 Before finalizing, agents must run a closure loop over their own summary:
 - If an `Open Items` bullet describes work the agent can still perform, do that work before finalizing.
 - If a `Next Step` bullet is an agent-executable command, fix, cleanup, verification rerun, or repo change, do it before finalizing.
+- Treat a draft final summary that still contains agent-executable `Open Items` or `Next Step` bullets as failing the closure loop. Do not finalize it; perform the work, rerun the relevant verification, and rewrite the footer.
+- Available follow-through work includes migration pushes after the user has asked for implementation or release follow-through, verification reruns after fixing or unblocking the cause, local service restarts, Docker/Supabase cleanup, repo edits, and generated artifact updates.
+- If an item feels sensitive because it mutates a linked remote or production-adjacent service, decide before finalizing: perform it when the user has already authorized the implementation/release action and credentials/scripts are available; otherwise ask for that specific authorization instead of burying it in `Next Step`.
 - Use `Open Items` only for true blockers, failed checks, explicit user-deferred scope, or external dependencies.
 - Use `Next Step` only for one immediate user-owned action or decision.
 - Do not use final footer sections as a parking lot for unfinished agent work.

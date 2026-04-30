@@ -47,7 +47,7 @@ export default async function ApiConnectionsPage() {
             </span>
             <div className="space-y-2">
               <h1 className="text-4xl font-semibold tracking-[-0.04em] sm:text-[3.1rem]">
-                API Connections
+                Datasets
               </h1>
               <p className="max-w-3xl text-base leading-7 text-muted-foreground sm:text-lg">
                 Run code-managed API connections and import responses into shared

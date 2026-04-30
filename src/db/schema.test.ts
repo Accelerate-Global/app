@@ -377,4 +377,18 @@ describe("apiConnections schema", () => {
       "revoke all on private.api_connection_resources",
     );
   });
+
+  it("creates the API connection artifact bucket migration", async () => {
+    const migrationPath = path.join(
+      process.cwd(),
+      "supabase/migrations/20260430203342_api_connection_artifact_bucket.sql",
+    );
+
+    const migration = await readFile(migrationPath, "utf8");
+
+    expect(migration).toContain("'api-connection-artifacts'");
+    expect(migration).toContain("array['application/json']::text[]");
+    expect(migration).toContain("134217728");
+    expect(migration).toContain("on conflict (id) do update");
+  });
 });

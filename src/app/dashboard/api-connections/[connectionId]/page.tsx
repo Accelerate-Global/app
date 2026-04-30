@@ -87,7 +87,7 @@ export default async function ApiConnectionDetailPage({
             )}
           >
             <ChevronLeftIcon className="size-3.5" />
-            Back to API connections
+            Back to Datasets
           </Link>
           <div className="flex items-start gap-3">
             <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-muted text-foreground">

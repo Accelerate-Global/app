@@ -1,7 +1,7 @@
 "use client";
 
 import { CableIcon, ExternalLinkIcon, FileTextIcon } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useRouter } from "next/navigation";
 
 import { Badge } from "@/components/ui/badge";
@@ -12,14 +12,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -32,32 +24,12 @@ import type {
   ApiConnection,
   ApiConnectionResource,
   ApiConnectionRun,
-  ApiConnectionRunStatus,
-  DatasetClassification,
 } from "@/lib/api-types";
-import { cn } from "@/lib/utils";
 
 type ApiConnectionsClientProps = {
   initialConnections: ApiConnection[];
   initialRuns: ApiConnectionRun[];
   initialResources: ApiConnectionResource[];
-};
-
-type ConnectionStatus = ApiConnectionRunStatus | "idle";
-
-const CLASSIFICATION_FILTER_LABELS: Record<DatasetClassification | "all", string> = {
-  all: "All classifications",
-  PGAC: "PGAC",
-  PGIC: "PGIC",
-};
-
-const STATUS_FILTER_LABELS: Record<ConnectionStatus | "all", string> = {
-  all: "All statuses",
-  idle: "Idle",
-  queued: "Queued",
-  running: "Running",
-  success: "Success",
-  failed: "Failed",
 };
 
 function formatTimestamp(value: string | null) {
@@ -88,80 +60,15 @@ function getLatestRunsByConnection(runs: ApiConnectionRun[]) {
   return latestRuns;
 }
 
-function getConnectionStatus(run: ApiConnectionRun | null): ConnectionStatus {
-  return run?.status ?? "idle";
-}
-
-function statusBadgeClass(status: ConnectionStatus) {
-  if (status === "success") {
-    return "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300";
-  }
-
-  if (status === "queued") {
-    return "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300";
-  }
-
-  if (status === "running") {
-    return "border-sky-500/30 bg-sky-500/10 text-sky-700 dark:text-sky-300";
-  }
-
-  if (status === "failed") {
-    return "border-destructive/30 bg-destructive/10 text-destructive";
-  }
-
-  return "border-border bg-muted/60 text-muted-foreground";
-}
-
-function connectionMatchesSearch(connection: ApiConnection, searchQuery: string) {
-  const normalizedQuery = searchQuery.trim().toLowerCase();
-
-  if (!normalizedQuery) {
-    return true;
-  }
-
-  return [
-    connection.name,
-    connection.description,
-    connection.datasetName,
-    connection.datasetClassification,
-  ].some((value) => value.toLowerCase().includes(normalizedQuery));
-}
-
 export function ApiConnectionsClient({
   initialConnections,
   initialRuns,
   initialResources,
 }: ApiConnectionsClientProps) {
   const router = useRouter();
-  const [searchQuery, setSearchQuery] = useState("");
-  const [classificationFilter, setClassificationFilter] = useState<
-    DatasetClassification | "all"
-  >("all");
-  const [statusFilter, setStatusFilter] = useState<ConnectionStatus | "all">("all");
   const latestRunsByConnection = useMemo(
     () => getLatestRunsByConnection(initialRuns),
     [initialRuns],
-  );
-  const filteredConnections = useMemo(
-    () =>
-      initialConnections.filter((connection) => {
-        const latestRun = latestRunsByConnection.get(connection.id) ?? null;
-        const status = getConnectionStatus(latestRun);
-
-        return (
-          connectionMatchesSearch(connection, searchQuery) &&
-          (classificationFilter === "all" ||
-            connection.datasetClassification === classificationFilter) &&
-          (statusFilter === "all" || status === statusFilter)
-        );
-      }),
-    [
-      classificationFilter,
-      initialConnections,
-      latestRunsByConnection,
-      searchQuery,
-      statusFilter,
-    ],
   );
 
   function openConnection(connectionId: string) {
@@ -172,82 +79,22 @@ export function ApiConnectionsClient({
     <div className="space-y-6">
       <Card>
         <CardHeader className="gap-3">
-          <div className="flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
+          <div className="flex flex-col gap-2">
             <div>
               <CardTitle className="flex items-center gap-2 text-2xl">
                 <CableIcon className="size-5 text-muted-foreground" />
-                Available API Connections
+                Connections
               </CardTitle>
               <CardDescription>
-                Search, filter, and open code-managed API connections.
+                Open code-managed connections.
               </CardDescription>
-            </div>
-            <div className="grid gap-2 sm:grid-cols-3 lg:min-w-[46rem]">
-              <Input
-                value={searchQuery}
-                placeholder="Search connection, dataset, or classification"
-                onChange={(event) => setSearchQuery(event.target.value)}
-              />
-              <Select
-                value={classificationFilter}
-                onValueChange={(value) =>
-                  setClassificationFilter(value as DatasetClassification | "all")
-                }
-              >
-                <SelectTrigger className="w-full justify-between">
-                  <SelectValue>
-                    {(selectedValue) =>
-                      CLASSIFICATION_FILTER_LABELS[
-                        (typeof selectedValue === "string"
-                          ? selectedValue
-                          : "all") as DatasetClassification | "all"
-                      ]
-                    }
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent align="start">
-                  <SelectItem value="all">All classifications</SelectItem>
-                  <SelectItem value="PGAC">PGAC</SelectItem>
-                  <SelectItem value="PGIC">PGIC</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select
-                value={statusFilter}
-                onValueChange={(value) =>
-                  setStatusFilter(value as ConnectionStatus | "all")
-                }
-              >
-                <SelectTrigger className="w-full justify-between">
-                  <SelectValue>
-                    {(selectedValue) =>
-                      STATUS_FILTER_LABELS[
-                        (typeof selectedValue === "string"
-                          ? selectedValue
-                          : "all") as ConnectionStatus | "all"
-                      ]
-                    }
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent align="start">
-                  <SelectItem value="all">All statuses</SelectItem>
-                  <SelectItem value="idle">Idle</SelectItem>
-                  <SelectItem value="queued">Queued</SelectItem>
-                  <SelectItem value="running">Running</SelectItem>
-                  <SelectItem value="success">Success</SelectItem>
-                  <SelectItem value="failed">Failed</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
           </div>
         </CardHeader>
         <CardContent>
           {initialConnections.length === 0 ? (
             <div className="rounded-xl border border-dashed border-border px-4 py-8 text-sm text-muted-foreground">
-              No API connections are available.
-            </div>
-          ) : filteredConnections.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-border px-4 py-8 text-sm text-muted-foreground">
-              No API connections match the current filters.
+              No connections are available.
             </div>
           ) : (
             <Table>
@@ -256,14 +103,12 @@ export function ApiConnectionsClient({
                   <TableHead>Connection</TableHead>
                   <TableHead>Classification</TableHead>
                   <TableHead>Last ingestion</TableHead>
-                  <TableHead>Status</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredConnections.map((connection) => {
+                {initialConnections.map((connection) => {
                   const latestRun =
                     latestRunsByConnection.get(connection.id) ?? null;
-                  const status = getConnectionStatus(latestRun);
 
                   return (
                     <TableRow
@@ -298,14 +143,6 @@ export function ApiConnectionsClient({
                       </TableCell>
                       <TableCell className="font-mono text-xs text-muted-foreground">
                         {formatTimestamp(latestRun?.createdAt ?? null)}
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant="outline"
-                          className={cn("capitalize", statusBadgeClass(status))}
-                        >
-                          {STATUS_FILTER_LABELS[status]}
-                        </Badge>
                       </TableCell>
                     </TableRow>
                   );

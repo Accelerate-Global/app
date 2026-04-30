@@ -201,7 +201,7 @@ export function AccountControl({ identity }: AccountControlProps) {
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => navigateTo("/dashboard/api-connections")}>
                 <CableIcon aria-hidden="true" />
-                API Connections
+                Datasets
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => navigateTo("/dashboard/analytics")}>
                 <ActivityIcon aria-hidden="true" />
