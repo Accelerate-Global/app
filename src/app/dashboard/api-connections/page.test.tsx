@@ -23,6 +23,20 @@ vi.mock("@/lib/api-connections", () => ({
   listApiConnections: vi.fn(),
 }));
 
+vi.mock("@/components/dashboard/api-connections-client", () => ({
+  ApiConnectionsClient: ({
+    initialConnections,
+  }: {
+    initialConnections: Array<{ name: string }>;
+  }) => (
+    <div data-testid="api-connections-client">
+      {initialConnections.map((connection) => (
+        <span key={connection.name}>{connection.name}</span>
+      ))}
+    </div>
+  ),
+}));
+
 vi.mock("@/components/layout/site-header", () => ({
   SiteHeader: () => null,
 }));
@@ -80,21 +94,38 @@ describe("/dashboard/api-connections", () => {
     listApiConnectionsMock.mockResolvedValue({
       connections: [
         {
-          id: "11111111-1111-4111-8111-111111111111",
-          name: "People API",
-          description: "",
+          id: "6f9f6ef2-1188-4f71-9c24-ef01debf7a01",
+          name: "IMB (People Groups)",
+          description: "IMB public ArcGIS people groups layer.",
           method: "GET",
-          url: "https://api.example.com/people",
+          url: "https://services1.arcgis.com/mICk7VdFTP86wcbI/arcgis/rest/services/pIMBpeoplePublic/FeatureServer/0/query",
           headers: [],
           bodyTemplate: "",
           responseFormat: "json",
-          responseDataPath: "data",
+          responseDataPath: "features",
           importMode: "create",
           targetDatasetId: null,
-          datasetName: "people.csv",
-          datasetClassification: "PGAC",
-          createdAt: "2026-04-24T12:00:00.000Z",
-          updatedAt: "2026-04-24T12:00:00.000Z",
+          datasetName: "imb-people-groups.csv",
+          datasetClassification: "PGIC",
+          createdAt: "2026-04-30T00:00:00.000Z",
+          updatedAt: "2026-04-30T00:00:00.000Z",
+        },
+        {
+          id: "6f9f6ef2-1188-4f71-9c24-ef01debf7a02",
+          name: "Etnopedia",
+          description: "Etnopedia MediaWiki people-group export.",
+          method: "GET",
+          url: "https://en.etnopedia.org/api.php",
+          headers: [],
+          bodyTemplate: "",
+          responseFormat: "json",
+          responseDataPath: "",
+          importMode: "create",
+          targetDatasetId: null,
+          datasetName: "etnopedia-people.csv",
+          datasetClassification: "PGIC",
+          createdAt: "2026-04-30T00:00:00.000Z",
+          updatedAt: "2026-04-30T00:00:00.000Z",
         },
       ],
       runs: [],
@@ -104,10 +135,9 @@ describe("/dashboard/api-connections", () => {
     expect(
       screen.getByRole("heading", { name: "API Connections" }),
     ).toBeTruthy();
-    expect(screen.getByRole("button", { name: /People API/ })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Test" }).hasAttribute("disabled")).toBe(
-      false,
-    );
+    expect(screen.getByText("IMB (People Groups)")).toBeTruthy();
+    expect(screen.getByText("Etnopedia")).toBeTruthy();
+    expect(screen.getByTestId("api-connections-client")).toBeTruthy();
     expect(screen.queryByLabelText("URL")).toBeNull();
     expect(screen.queryByRole("button", { name: "Save" })).toBeNull();
   });

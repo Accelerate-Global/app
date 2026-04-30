@@ -168,3 +168,82 @@ The system SHALL keep API connection profile creation, update, and deletion unav
 #### Scenario: Admin attempts web profile update or deletion
 - **WHEN** a dataset admin sends an update or delete request to an individual admin API connection endpoint
 - **THEN** the system rejects the request without changing or deleting the saved API connection
+
+### Requirement: Repo-owned API connections are available from code
+The system SHALL include repo-owned API connection definitions in the admin API Connections list even when matching private database rows have not yet been materialized.
+
+#### Scenario: Admin views built-in connections before first run
+- **WHEN** a dataset admin opens the API Connections page and the database has no matching row for a repo-owned API connection
+- **THEN** the page shows the repo-owned connection as a selectable saved connection with the existing test and import actions
+
+#### Scenario: Existing materialized connection is not duplicated
+- **WHEN** a repo-owned API connection already exists in the private profile table with its deterministic identifier
+- **THEN** the API Connections list returns the materialized row once and includes its associated recent runs
+
+### Requirement: Repo-owned API connections materialize before execution
+The system SHALL materialize a repo-owned API connection into the existing private profile table before creating a run for that connection.
+
+#### Scenario: Admin starts first run for repo-owned connection
+- **WHEN** a dataset admin starts a test or import run for a repo-owned API connection that has not been materialized
+- **THEN** the system creates the private profile row using the repo-owned definition and then starts the normal queued run lifecycle
+
+#### Scenario: Non-admin cannot materialize repo-owned connection
+- **WHEN** an unauthenticated user or non-admin user attempts to start a run for a repo-owned API connection
+- **THEN** the system rejects the request and does not create a private profile row or run record
+
+#### Scenario: Provider secrets are not committed
+- **WHEN** a repo-owned API connection requires a provider secret
+- **THEN** the system exposes only the required secret header name and does not include a secret value in tracked source, saved connection URLs, logs, previews, or output artifacts
+
+### Requirement: API Connections index lists available connections
+The system SHALL present the admin API Connections index as a searchable, filterable table of available API connection records.
+
+#### Scenario: Admin browses available connections
+- **WHEN** a dataset admin opens `/dashboard/api-connections`
+- **THEN** the page shows available API connections in a table with connection, classification, last ingestion, and status columns
+
+#### Scenario: Admin filters available connections
+- **WHEN** a dataset admin searches by connection text or filters by classification or status
+- **THEN** the list updates without exposing URL, header, body, response parsing, or web profile editing controls
+
+#### Scenario: Admin selects a connection
+- **WHEN** a dataset admin clicks or keyboard-selects an API connection row
+- **THEN** the system navigates to that connection's dedicated dashboard page
+
+### Requirement: API connection detail dashboard supports run operations
+The system SHALL provide an admin-only detail page for each API connection that supports existing test and import run operations.
+
+#### Scenario: Admin views a connection detail page
+- **WHEN** a dataset admin opens `/dashboard/api-connections/{connectionId}` for a known materialized or repo-owned connection
+- **THEN** the page shows the connection name, description, current status, pipeline skeleton, run actions, ingestion history, and selected run detail
+
+#### Scenario: Unknown connection detail page
+- **WHEN** a dataset admin opens `/dashboard/api-connections/{connectionId}` for an unknown connection
+- **THEN** the system returns the normal not-found route behavior
+
+#### Scenario: Non-admin cannot view detail page
+- **WHEN** an unauthenticated user or non-admin user opens a connection detail page
+- **THEN** the system applies the existing API Connections admin redirect behavior
+
+### Requirement: Pipeline stages are visual skeleton only
+The system SHALL show pipeline stages for a selected API connection while keeping independent stage execution disabled in v1.
+
+#### Scenario: Admin views pipeline skeleton
+- **WHEN** a dataset admin views an API connection detail page
+- **THEN** the page shows Configure, Fetch, Normalize, Archive Output, and Import Dataset stages as disabled coming-soon controls
+
+#### Scenario: Admin starts supported v1 work
+- **WHEN** a dataset admin starts a run from the detail page
+- **THEN** `Run test` uses the existing test run behavior and `Start ingestion` uses the existing import run behavior
+
+### Requirement: Ingestion history uses DataGrid
+The system SHALL list each initiated run for a connection as an ingestion row using the existing DataGrid table interface.
+
+#### Scenario: Admin views ingestion history
+- **WHEN** a dataset admin views a connection detail page
+- **THEN** the DataGrid lists runs with initiated time, mode, status, started time, completed time, duration, row count, HTTP status, actor, and artifact actions
+
+#### Scenario: Admin selects an ingestion row
+- **WHEN** a dataset admin selects an ingestion row
+- **THEN** the page shows that run's logs, error, preview, output downloads, and imported dataset link when available
+

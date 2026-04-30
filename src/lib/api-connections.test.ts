@@ -11,6 +11,7 @@ import {
   ApiConnectionError,
   createApiConnectionRunRequest,
   fetchArcgisFeaturePages,
+  listCodeManagedApiConnections,
   parseArcgisFeatureRows,
   parseApiResponseRows,
 } from "@/lib/api-connections";
@@ -18,6 +19,27 @@ import type { EtnopediaRecord } from "@/lib/etnopedia-api";
 
 afterEach(() => {
   vi.unstubAllGlobals();
+});
+
+describe("listCodeManagedApiConnections", () => {
+  it("exposes the repo-owned API connections without committed secret values", () => {
+    const connections = listCodeManagedApiConnections();
+
+    expect(connections.map((connection) => connection.name)).toEqual([
+      "IMB (People Groups)",
+      "Etnopedia",
+      "Joshua Project (PGIC)",
+    ]);
+    expect(connections.map((connection) => connection.id)).toEqual([
+      "6f9f6ef2-1188-4f71-9c24-ef01debf7a01",
+      "6f9f6ef2-1188-4f71-9c24-ef01debf7a02",
+      "6f9f6ef2-1188-4f71-9c24-ef01debf7a03",
+    ]);
+    expect(connections[2]?.headers).toEqual([
+      { name: "api_key", value: "", isSecret: true },
+    ]);
+    expect(connections[2]?.url).not.toContain("api_key=");
+  });
 });
 
 describe("parseApiResponseRows", () => {

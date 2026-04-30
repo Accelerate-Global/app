@@ -69,6 +69,23 @@ type ApiConnectionRunRecord = typeof apiConnectionRuns.$inferSelect;
 type ApiConnectionRunLogRecord = typeof apiConnectionRunLogs.$inferSelect;
 type ApiConnectionRunOutputRecord = typeof apiConnectionRunOutputs.$inferSelect;
 
+type CodeManagedApiConnectionDefinition = {
+  id: string;
+  name: string;
+  description: string;
+  method: ApiConnection["method"];
+  url: string;
+  requestHeaders: ApiConnectionHeader[];
+  secretHeaderNames: string[];
+  bodyTemplate: string;
+  responseFormat: ApiConnectionResponseFormat;
+  responseDataPath: string;
+  importMode: ApiConnectionImportMode;
+  targetDatasetId: string | null;
+  datasetName: string;
+  datasetClassification: DatasetClassification;
+};
+
 export type ApiConnectionRunRequestInput = {
   method: ApiConnection["method"];
   url: string;
@@ -100,6 +117,173 @@ export class ApiConnectionError extends Error {
     this.name = "ApiConnectionError";
     this.status = status;
   }
+}
+
+const CODE_MANAGED_CONNECTION_TIMESTAMP = "2026-04-30T00:00:00.000Z";
+
+const CODE_MANAGED_API_CONNECTIONS: CodeManagedApiConnectionDefinition[] = [
+  {
+    id: "6f9f6ef2-1188-4f71-9c24-ef01debf7a01",
+    name: "IMB (People Groups)",
+    description: "IMB public ArcGIS people groups layer.",
+    method: "GET",
+    url: "https://services1.arcgis.com/mICk7VdFTP86wcbI/arcgis/rest/services/pIMBpeoplePublic/FeatureServer/0/query",
+    requestHeaders: [],
+    secretHeaderNames: [],
+    bodyTemplate: "",
+    responseFormat: "json",
+    responseDataPath: "features",
+    importMode: "create",
+    targetDatasetId: null,
+    datasetName: "imb-people-groups.csv",
+    datasetClassification: "PGIC",
+  },
+  {
+    id: "6f9f6ef2-1188-4f71-9c24-ef01debf7a02",
+    name: "Etnopedia",
+    description: "Etnopedia MediaWiki people-group export.",
+    method: "GET",
+    url: "https://en.etnopedia.org/api.php",
+    requestHeaders: [],
+    secretHeaderNames: [],
+    bodyTemplate: "",
+    responseFormat: "json",
+    responseDataPath: "",
+    importMode: "create",
+    targetDatasetId: null,
+    datasetName: "etnopedia-people.csv",
+    datasetClassification: "PGIC",
+  },
+  {
+    id: "6f9f6ef2-1188-4f71-9c24-ef01debf7a03",
+    name: "Joshua Project (PGIC)",
+    description:
+      "Joshua Project people groups with profile text and resources. Requires the api_key secret.",
+    method: "GET",
+    url: "https://api.joshuaproject.net/v1/people_groups.json?include_profile_text=Y&include_resources=Y&page=1&limit=100000",
+    requestHeaders: [],
+    secretHeaderNames: [JOSHUA_PROJECT_API_KEY_NAME],
+    bodyTemplate: "",
+    responseFormat: "json",
+    responseDataPath: "",
+    importMode: "create",
+    targetDatasetId: null,
+    datasetName: "joshua-project-pgic.csv",
+    datasetClassification: "PGIC",
+  },
+];
+
+const codeManagedApiConnectionById = new Map(
+  CODE_MANAGED_API_CONNECTIONS.map((connection) => [connection.id, connection]),
+);
+
+function toApiConnectionFromCodeManagedDefinition(
+  definition: CodeManagedApiConnectionDefinition,
+): ApiConnection {
+  return {
+    id: definition.id,
+    name: definition.name,
+    description: definition.description,
+    method: definition.method,
+    url: definition.url,
+    headers: [
+      ...definition.requestHeaders,
+      ...definition.secretHeaderNames.map((name) => ({
+        name,
+        value: "",
+        isSecret: true,
+      })),
+    ],
+    bodyTemplate: definition.bodyTemplate,
+    responseFormat: definition.responseFormat,
+    responseDataPath: definition.responseDataPath,
+    importMode: definition.importMode,
+    targetDatasetId: definition.targetDatasetId,
+    datasetName: definition.datasetName,
+    datasetClassification: definition.datasetClassification,
+    createdAt: CODE_MANAGED_CONNECTION_TIMESTAMP,
+    updatedAt: CODE_MANAGED_CONNECTION_TIMESTAMP,
+  };
+}
+
+export function listCodeManagedApiConnections() {
+  return CODE_MANAGED_API_CONNECTIONS.map(toApiConnectionFromCodeManagedDefinition);
+}
+
+function getCodeManagedApiConnectionDefinition(connectionId: string) {
+  return codeManagedApiConnectionById.get(connectionId) ?? null;
+}
+
+function mergeCodeManagedApiConnections(connectionRows: ApiConnectionRecord[]) {
+  const materializedById = new Map(
+    connectionRows.map((connection) => [connection.id, connection]),
+  );
+  const codeManagedConnections = CODE_MANAGED_API_CONNECTIONS.map(
+    (definition) => {
+      const materialized = materializedById.get(definition.id);
+
+      return materialized
+        ? toApiConnection(materialized)
+        : toApiConnectionFromCodeManagedDefinition(definition);
+    },
+  );
+  const customConnections = connectionRows
+    .filter((connection) => !codeManagedApiConnectionById.has(connection.id))
+    .map(toApiConnection);
+
+  return [
+    ...codeManagedConnections,
+    ...customConnections,
+  ];
+}
+
+async function materializeCodeManagedApiConnection(input: {
+  definition: CodeManagedApiConnectionDefinition;
+  actorOwnerId: string;
+}) {
+  const [connection] = await getDb()
+    .insert(apiConnections)
+    .values({
+      id: input.definition.id,
+      name: input.definition.name,
+      description: input.definition.description,
+      method: input.definition.method,
+      url: input.definition.url,
+      requestHeaders: input.definition.requestHeaders,
+      secretHeaderNames: input.definition.secretHeaderNames,
+      bodyTemplate: input.definition.bodyTemplate,
+      responseFormat: input.definition.responseFormat,
+      responseDataPath: input.definition.responseDataPath,
+      importMode: input.definition.importMode,
+      targetDatasetId: input.definition.targetDatasetId,
+      datasetName: input.definition.datasetName,
+      datasetClassification: input.definition.datasetClassification,
+      createdByOwnerId: input.actorOwnerId,
+      updatedByOwnerId: input.actorOwnerId,
+    })
+    .onConflictDoUpdate({
+      target: apiConnections.id,
+      set: {
+        name: sql`excluded.name`,
+        description: sql`excluded.description`,
+        method: sql`excluded.method`,
+        url: sql`excluded.url`,
+        requestHeaders: sql`excluded.request_headers`,
+        secretHeaderNames: sql`excluded.secret_header_names`,
+        bodyTemplate: sql`excluded.body_template`,
+        responseFormat: sql`excluded.response_format`,
+        responseDataPath: sql`excluded.response_data_path`,
+        importMode: sql`excluded.import_mode`,
+        targetDatasetId: sql`excluded.target_dataset_id`,
+        datasetName: sql`excluded.dataset_name`,
+        datasetClassification: sql`excluded.dataset_classification`,
+        updatedByOwnerId: input.actorOwnerId,
+        updatedAt: new Date(),
+      },
+    })
+    .returning();
+
+  return connection;
 }
 
 function toApiConnection(row: ApiConnectionRecord): ApiConnection {
@@ -368,9 +552,27 @@ export async function listApiConnections() {
           .limit(50);
 
   return {
-    connections: connectionRows.map(toApiConnection),
+    connections: mergeCodeManagedApiConnections(connectionRows),
     runs: await hydrateRunDetails(runRows),
   };
+}
+
+export async function getApiConnection(connectionId: string) {
+  const [connection] = await getDb()
+    .select()
+    .from(apiConnections)
+    .where(eq(apiConnections.id, connectionId))
+    .limit(1);
+
+  if (connection) {
+    return toApiConnection(connection);
+  }
+
+  const codeManagedDefinition = getCodeManagedApiConnectionDefinition(connectionId);
+
+  return codeManagedDefinition
+    ? toApiConnectionFromCodeManagedDefinition(codeManagedDefinition)
+    : null;
 }
 
 export async function createApiConnection(input: {
@@ -1503,14 +1705,25 @@ export async function startApiConnectionRun(input: {
   identity: CurrentIdentity;
   importEnabled: boolean;
 }) {
-  const [connection] = await getDb()
+  let [connection] = await getDb()
     .select()
     .from(apiConnections)
     .where(eq(apiConnections.id, input.connectionId))
     .limit(1);
 
   if (!connection) {
-    return null;
+    const codeManagedDefinition = getCodeManagedApiConnectionDefinition(
+      input.connectionId,
+    );
+
+    if (!codeManagedDefinition) {
+      return null;
+    }
+
+    connection = await materializeCodeManagedApiConnection({
+      definition: codeManagedDefinition,
+      actorOwnerId: input.identity.ownerId,
+    });
   }
 
   const run = await insertRun({
