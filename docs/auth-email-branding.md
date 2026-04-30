@@ -7,8 +7,11 @@ template content, and auth-link branding are controlled by hosted Supabase Auth.
 ## Current state
 
 - Project ref: `uuyntfbqksnclyvlpecx`
-- Password reset requests already route back through
-  `https://data.accelerateglobal.org/auth/confirm?next=/reset-password`
+- Password reset and invite templates should route through
+  `{{ .RedirectTo }}&token_hash={{ .TokenHash }}&type=<type>`
+  so the app verifies the token hash server-side before rendering the password
+  setup page. The app passes `{{ .RedirectTo }}` as
+  `https://data.accelerateglobal.org/auth/confirm?next=/reset-password`.
 - The project is currently using Supabase's default email sender
   (`noreply@mail.app.supabase.io`)
 - `supabase domains get --project-ref uuyntfbqksnclyvlpecx` currently reports that
@@ -69,9 +72,11 @@ before activation.
 - In hosted Supabase, copy that HTML into Authentication -> Email Templates -> Recovery
 - Use the subject:
   `Reset your Accelerate Global Data password`
-- Keep the CTA link based on `{{ .ConfirmationURL }}` so Supabase continues to generate
-  the signed recovery link; once the custom domain is active, that URL will use the
-  branded host automatically
+- Use the token-hash confirmation URL from `supabase/templates/recovery.html`:
+  `{{ .RedirectTo }}&token_hash={{ .TokenHash }}&type=recovery`
+- Do not use `{{ .ConfirmationURL }}` for the recovery CTA in this SSR app; the
+  app needs `/auth/confirm` to verify the token hash and set session cookies
+  before `/reset-password` renders
 
 ## Invite email template
 
@@ -84,6 +89,8 @@ before activation.
   avoids email clients auto-linking the site URL and pulling attention away from
   the real CTA:
   `Accept the invite`
+- Use the token-hash confirmation URL from `supabase/templates/invite.html`:
+  `{{ .RedirectTo }}&token_hash={{ .TokenHash }}&type=invite`
 
 ## Verification checklist
 
@@ -94,7 +101,9 @@ before activation.
    link outside the CTA.
 3. Submit a forgot-password request from `https://data.accelerateglobal.org/forgot-password`
 4. Confirm the sender shows `Accelerate Global Data <noreply@accelerateglobal.org>`
-5. Confirm the reset CTA host is `auth.data.accelerateglobal.org`
+5. Confirm the reset CTA path is `/auth/confirm` with `token_hash`, `type=recovery`,
+   and `next=/reset-password`
 6. Complete the flow and verify it lands on
    `https://data.accelerateglobal.org/reset-password`
-7. Set a new password and sign in successfully
+7. Set a new password and verify the browser lands on
+   `https://data.accelerateglobal.org/dashboard`

@@ -19,6 +19,7 @@ import {
   withAnalyticsContext,
 } from "@/lib/analytics";
 import { trackAppEvent } from "@/lib/analytics-client";
+import { buildAuthConfirmUrl } from "@/lib/auth-redirect";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 type ForgotPasswordFormProps = {
@@ -66,7 +67,10 @@ export function ForgotPasswordForm({ message }: ForgotPasswordFormProps) {
     try {
       const supabase = createSupabaseBrowserClient();
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: new URL("/reset-password", window.location.origin).toString(),
+        redirectTo: buildAuthConfirmUrl(
+          window.location.origin,
+          "/reset-password",
+        ),
       });
 
       if (error) {

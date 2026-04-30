@@ -173,7 +173,7 @@ export const DEFAULT_UI_SMOKE_APP_PORT_RELEASE_WAIT = {
   retryDelayMs: 1_000,
 } as const;
 export const DEFAULT_SUPABASE_STATUS_OUTPUT_RETRY = {
-  attempts: 5,
+  attempts: 30,
   retryDelayMs: 2_000,
 } as const;
 export const DEFAULT_UI_SMOKE_PROJECT_GROUP_RETRY = {

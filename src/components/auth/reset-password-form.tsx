@@ -1,5 +1,6 @@
 "use client";
 
+import type { EmailOtpType } from "@supabase/supabase-js";
 import { Loader2Icon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -26,6 +27,8 @@ type ResetPasswordFormProps = {
   initialCanReset: boolean;
 };
 
+const passwordSetupOtpTypes = new Set<EmailOtpType>(["invite", "recovery"]);
+
 function hasAuthCallbackHash() {
   if (typeof window === "undefined") {
     return false;
@@ -47,8 +50,31 @@ function getAuthCallbackCodeFromQuery() {
   return new URL(window.location.href).searchParams.get("code");
 }
 
+function getAuthCallbackOtpFromQuery() {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const searchParams = new URL(window.location.href).searchParams;
+  const tokenHash = searchParams.get("token_hash");
+  const type = searchParams.get("type");
+
+  if (!tokenHash || !type || !passwordSetupOtpTypes.has(type as EmailOtpType)) {
+    return null;
+  }
+
+  return {
+    token_hash: tokenHash,
+    type: type as EmailOtpType,
+  };
+}
+
 function hasAuthCallbackParams() {
-  return hasAuthCallbackHash() || Boolean(getAuthCallbackCodeFromQuery());
+  return (
+    hasAuthCallbackHash() ||
+    Boolean(getAuthCallbackCodeFromQuery()) ||
+    Boolean(getAuthCallbackOtpFromQuery())
+  );
 }
 
 function getAuthCallbackSessionFromHash() {
@@ -102,6 +128,24 @@ export function ResetPasswordForm({
     }, 3_000);
 
     void (async () => {
+      const recoveryOtp = getAuthCallbackOtpFromQuery();
+
+      if (recoveryOtp) {
+        const { error } = await supabase.auth.verifyOtp(recoveryOtp);
+
+        if (!error) {
+          setCanReset(true);
+          setIsResolvingRecovery(false);
+          window.clearTimeout(recoveryResolutionTimeout);
+          window.history.replaceState(
+            {},
+            document.title,
+            window.location.pathname,
+          );
+          return;
+        }
+      }
+
       const recoveryCode = getAuthCallbackCodeFromQuery();
 
       if (recoveryCode) {
@@ -199,12 +243,6 @@ export function ResetPasswordForm({
         throw error;
       }
 
-      const { error: signOutError } = await supabase.auth.signOut();
-
-      if (signOutError) {
-        throw signOutError;
-      }
-
       trackAppEvent(
         "password_reset_completed",
         withAnalyticsContext(analyticsContext, {
@@ -213,7 +251,7 @@ export function ResetPasswordForm({
           duration_ms: Date.now() - startedAt,
         }),
       );
-      router.push("/?message=Password updated. Sign in with your new password.");
+      router.push("/dashboard");
       router.refresh();
     } catch (submitError) {
       trackAppEvent(

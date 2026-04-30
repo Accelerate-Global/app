@@ -85,7 +85,7 @@ function extractRecoveryLink(detail: MailpitMessageDetail) {
 
   for (const candidate of candidates) {
     const match = candidate.match(
-      /https?:\/\/[^\s"'<>)]*\/auth\/v1\/verify\?[^\s"'<>)]*/u,
+      /https?:\/\/[^\s"'<>)]*\/auth\/(?:v1\/verify|confirm)\?[^\s"'<>)]*/u,
     );
 
     if (match) {
@@ -251,13 +251,8 @@ test("password reset completes", async ({ page }, testInfo) => {
       bootstrap.authFlows.passwordReset.nextPassword,
     );
     await page.getByRole("button", { name: "Save new password" }).click();
-    await page.waitForURL(/\/\?message=Password/);
-    await expect(page.locator('[data-smoke-page="home-sign-in"]')).toBeVisible();
-
-    await signInWithPassword(page, {
-      email: bootstrap.users.reset.email,
-      password: bootstrap.authFlows.passwordReset.nextPassword,
-    });
+    await waitForDashboardPath(page);
+    await expect(page.locator('[data-smoke-page="dashboard"]')).toBeVisible();
   });
 });
 

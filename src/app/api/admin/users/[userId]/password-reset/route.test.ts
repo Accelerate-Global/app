@@ -89,7 +89,7 @@ describe("/api/admin/users/[userId]/password-reset", () => {
     expect(sendWorkspaceUserPasswordResetEmailMock).toHaveBeenCalledWith({
       currentUserRole: "admin",
       userId: "user-1",
-      redirectTo: "http://localhost/reset-password",
+      redirectTo: "http://localhost/auth/confirm?next=%2Freset-password",
     });
   });
 

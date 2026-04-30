@@ -40,7 +40,7 @@ describe("ResetPasswordForm", () => {
     cleanup();
   });
 
-  it("tracks successful password resets", async () => {
+  it("keeps the verified session after successful password setup", async () => {
     const updateUser = vi.fn().mockResolvedValue({ error: null });
     const signOut = vi.fn().mockResolvedValue({ error: null });
 
@@ -62,8 +62,8 @@ describe("ResetPasswordForm", () => {
       expect(updateUser).toHaveBeenCalledWith({
         password: "SmokePass123!",
       });
-      expect(signOut).toHaveBeenCalled();
     });
+    expect(signOut).not.toHaveBeenCalled();
     expect(trackAppEventMock).toHaveBeenCalledWith(
       "password_reset_completed",
       expect.objectContaining({
@@ -72,9 +72,7 @@ describe("ResetPasswordForm", () => {
         success: true,
       }),
     );
-    expect(pushMock).toHaveBeenCalledWith(
-      "/?message=Password updated. Sign in with your new password.",
-    );
+    expect(pushMock).toHaveBeenCalledWith("/dashboard");
     expect(refreshMock).toHaveBeenCalled();
   });
 
@@ -164,5 +162,38 @@ describe("ResetPasswordForm", () => {
       expect(exchangeCodeForSession).toHaveBeenCalledWith("invite-code");
       expect(screen.getByLabelText("New password")).toBeTruthy();
     });
+  });
+
+  it("restores token hash callback sessions before password setup", async () => {
+    const verifyOtp = vi.fn().mockResolvedValue({ error: null });
+
+    createSupabaseBrowserClientMock.mockReturnValue({
+      auth: {
+        onAuthStateChange: vi.fn().mockReturnValue({
+          data: {
+            subscription: {
+              unsubscribe: vi.fn(),
+            },
+          },
+        }),
+        verifyOtp,
+      },
+    } as never);
+    window.history.replaceState(
+      {},
+      "",
+      "/reset-password?token_hash=recovery-hash&type=recovery",
+    );
+
+    render(<ResetPasswordForm initialCanReset={false} />);
+
+    await waitFor(() => {
+      expect(verifyOtp).toHaveBeenCalledWith({
+        token_hash: "recovery-hash",
+        type: "recovery",
+      });
+      expect(screen.getByLabelText("New password")).toBeTruthy();
+    });
+    expect(window.location.search).toBe("");
   });
 });

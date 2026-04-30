@@ -226,7 +226,7 @@ describe("run-ui-smoke", () => {
 
   it("retries incomplete Supabase status env output a bounded number of times", () => {
     expect(DEFAULT_SUPABASE_STATUS_OUTPUT_RETRY).toEqual({
-      attempts: 5,
+      attempts: 30,
       retryDelayMs: 2_000,
     });
   });
