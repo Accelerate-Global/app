@@ -1,17 +1,56 @@
+import { readFile } from "node:fs/promises";
+import path from "node:path";
+
+import Papa from "papaparse";
+
 import generatedIsoCountryCodes from "@/data/iso-country-codes.generated.json";
 
 export const ISO_COUNTRY_CODES_SOURCE_URL =
   "https://www.iso.org/obp/ui/#search/code/";
 export const ISO_COUNTRY_CODES_COLLECTION_URL =
   "https://www.iso.org/publication/PUB500001.html";
+export const GENC_COUNTRY_CODES_SOURCE_URL =
+  "https://evs.nci.nih.gov/ftp1/GENC/NCIt-GENC_Terminology.txt";
+export const GENC_COUNTRY_CODES_ABOUT_URL =
+  "https://evs.nci.nih.gov/ftp1/GENC/About.html";
+export const LEGACY_FIPS_COUNTRY_CODES_SOURCE_URL =
+  "https://nief.org/attribute-registry/codesets/FIPS10-4CountryCode/";
+export const FIPS_WITHDRAWAL_SOURCE_URL =
+  "https://csrc.nist.gov/news/2008/announcing-approval-of-the-withdrawal-of-ten-fip-s";
+export const COUNTRY_CODE_OVERLAY_SOURCE_NAME =
+  "Accelerate Global - Spec Sheet - ISO3.csv";
+export const COUNTRY_CODE_OVERLAY_PATH = path.join(
+  process.cwd(),
+  "src/data/country-codes/accelerate-global-iso3-overlay.csv",
+);
 export const ISO_COUNTRY_CODES_MINIMUM_COUNT = 240;
+export const GENC_COUNTRY_CODES_MINIMUM_COUNT = 270;
+export const LEGACY_FIPS_COUNTRY_CODES_MINIMUM_COUNT = 200;
+export const COUNTRY_CODE_OVERLAY_EXPECTED_COUNT = 273;
+export const COUNTRY_CODE_OVERLAY_EXPECTED_ACTIVE_COUNT = 259;
+
+export type CountryCodeClassification =
+  | "iso-official"
+  | "genc-supported"
+  | "duplicate-iso-territory"
+  | "legacy-fips-only"
+  | "csv-only"
+  | "non-official-code";
 
 export type IsoCountryCodeEntry = {
-  alpha2: string;
-  alpha3: string;
-  englishShortName: string;
-  numeric: string;
-  uri: string;
+  displayName: string;
+  active: boolean;
+  primaryAlpha3: string | null;
+  officialIsoAlpha2: string | null;
+  officialIsoAlpha3: string | null;
+  officialIsoNumeric: string | null;
+  gencAlpha2: string | null;
+  gencAlpha3: string | null;
+  gencNumeric: string | null;
+  fips: string | null;
+  alternativeNames: string[];
+  classification: CountryCodeClassification;
+  sourceUri: string | null;
 };
 
 export type IsoCountryCodeResource = {
@@ -19,8 +58,45 @@ export type IsoCountryCodeResource = {
   sourceUrl: string;
   sourceRetrievedAt: string;
   sourceCollectionUrl: string;
+  gencSourceUrl: string;
+  gencAboutUrl: string;
+  fipsSourceUrl: string;
+  fipsWithdrawalUrl: string;
+  overlaySourceName: string;
   entryCount: number;
+  officialIsoCount: number;
+  activeCount: number;
   entries: IsoCountryCodeEntry[];
+};
+
+export type OfficialIsoCountryCodeEntry = {
+  alpha2: string;
+  alpha3: string;
+  englishShortName: string;
+  numeric: string;
+  uri: string;
+};
+
+export type GencCountryCodeEntry = {
+  ncitCode: string;
+  preferredName: string;
+  gencName: string;
+  alpha2: string | null;
+  alpha3: string;
+  numeric: string;
+};
+
+export type LegacyFipsCountryCodeEntry = {
+  code: string;
+  name: string;
+};
+
+export type CountryCodeOverlayRow = {
+  displayName: string;
+  active: boolean;
+  primaryAlpha3: string | null;
+  fips: string | null;
+  alternativeNames: string[];
 };
 
 type VaadinMessage = {
@@ -29,6 +105,16 @@ type VaadinMessage = {
   clientId?: number;
   state?: Record<string, { caption?: string; enabled?: boolean; text?: string }>;
   rpc?: unknown[];
+};
+
+type BuildIsoCountryCodeResourceInput = {
+  officialEntries: OfficialIsoCountryCodeEntry[];
+  gencEntries: GencCountryCodeEntry[];
+  fipsEntries: LegacyFipsCountryCodeEntry[];
+  overlayRows: CountryCodeOverlayRow[];
+  sourceRetrievedAt?: string;
+  expectedOverlayCount?: number;
+  expectedActiveCount?: number;
 };
 
 const GRID_FIELD_IDS = {
@@ -41,16 +127,158 @@ const GRID_FIELD_IDS = {
   status: "176",
 } as const;
 
+const CLASSIFICATIONS = new Set<CountryCodeClassification>([
+  "iso-official",
+  "genc-supported",
+  "duplicate-iso-territory",
+  "legacy-fips-only",
+  "csv-only",
+  "non-official-code",
+]);
+
 function assertString(value: unknown, label: string) {
   if (typeof value !== "string" || value.trim().length === 0) {
-    throw new Error(`ISO country code entry is missing ${label}.`);
+    throw new Error(`Country code entry is missing ${label}.`);
   }
 
   return value.trim();
 }
 
-export function validateIsoCountryCodeEntries(
-  entries: IsoCountryCodeEntry[],
+function nullableCode(value: unknown) {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed.toUpperCase() : null;
+}
+
+function normalizeName(value: string) {
+  return value
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/\bthe\b/g, " ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
+function dedupeAlternativeNames(displayName: string, values: unknown[]) {
+  const displayNameKey = displayName.trim().toLocaleLowerCase();
+  const seen = new Set<string>([displayNameKey]);
+  const alternativeNames: string[] = [];
+
+  for (const value of values) {
+    if (typeof value !== "string") {
+      continue;
+    }
+
+    const trimmed = value.trim();
+    const key = trimmed.toLocaleLowerCase();
+
+    if (!trimmed || seen.has(key)) {
+      continue;
+    }
+
+    seen.add(key);
+    alternativeNames.push(trimmed);
+  }
+
+  return alternativeNames;
+}
+
+function parseBoolean(value: unknown, label: string) {
+  if (value === "TRUE") {
+    return true;
+  }
+
+  if (value === "FALSE") {
+    return false;
+  }
+
+  throw new Error(`Invalid boolean value for ${label}.`);
+}
+
+function parseDelimitedRows(text: string) {
+  const parsed = Papa.parse<string[]>(text, {
+    skipEmptyLines: false,
+  });
+
+  if (parsed.errors.length > 0) {
+    throw new Error(`Could not parse country-code CSV: ${parsed.errors[0].message}`);
+  }
+
+  return parsed.data.filter((row) => row.some((value) => value.trim().length > 0));
+}
+
+export function parseCountryCodeOverlayCsv(text: string) {
+  const rows = parseDelimitedRows(text);
+  const rowsByLabel = new Map<string, string[]>();
+
+  for (const row of rows) {
+    const [label, ...values] = row;
+
+    if (label) {
+      rowsByLabel.set(label.trim(), values);
+    }
+  }
+
+  function getRow(label: string) {
+    const row = rowsByLabel.get(label);
+
+    if (!row) {
+      throw new Error(`Country-code overlay is missing ${label}.`);
+    }
+
+    return row;
+  }
+
+  const countryNames = getRow("Country / Territory");
+  const activeValues = getRow("Active");
+  const primaryAlpha3Values = getRow("ISO3");
+  const fipsValues = getRow("FIPS");
+  const alternativeNameRows = [...rowsByLabel.entries()]
+    .filter(([label]) => /^Country Alt Names \d+$/.test(label))
+    .sort(([a], [b]) => {
+      const aIndex = Number(a.replace("Country Alt Names ", ""));
+      const bIndex = Number(b.replace("Country Alt Names ", ""));
+      return aIndex - bIndex;
+    })
+    .map(([, row]) => row);
+
+  if (alternativeNameRows.length !== 12) {
+    throw new Error("Country-code overlay must include 12 alternative-name rows.");
+  }
+
+  return countryNames.map((countryName, index) => {
+    const displayName = assertString(
+      countryName,
+      `country/territory name at column ${index + 2}`,
+    );
+    const alternativeNames = dedupeAlternativeNames(
+      displayName,
+      alternativeNameRows.map((row) => row[index] ?? ""),
+    );
+
+    return {
+      displayName,
+      active: parseBoolean(activeValues[index], displayName),
+      primaryAlpha3: nullableCode(primaryAlpha3Values[index]),
+      fips: nullableCode(fipsValues[index]),
+      alternativeNames,
+    };
+  });
+}
+
+export async function readCountryCodeOverlayRows() {
+  const text = await readFile(COUNTRY_CODE_OVERLAY_PATH, "utf8");
+  return parseCountryCodeOverlayCsv(text);
+}
+
+export function validateOfficialIsoCountryCodeEntries(
+  entries: OfficialIsoCountryCodeEntry[],
   minimumCount = ISO_COUNTRY_CODES_MINIMUM_COUNT,
 ) {
   if (entries.length < minimumCount) {
@@ -92,39 +320,382 @@ export function validateIsoCountryCodeEntries(
   }
 }
 
-function sortIsoCountryCodeEntries(entries: IsoCountryCodeEntry[]) {
-  return [...entries].sort((a, b) =>
-    a.englishShortName.localeCompare(b.englishShortName, "en", {
-      sensitivity: "base",
-    }),
+export function validateGencCountryCodeEntries(
+  entries: GencCountryCodeEntry[],
+  minimumCount = GENC_COUNTRY_CODES_MINIMUM_COUNT,
+) {
+  if (entries.length < minimumCount) {
+    throw new Error(
+      `GENC country code refresh returned ${entries.length} entries; expected at least ${minimumCount}.`,
+    );
+  }
+
+  const alpha3Values = new Set<string>();
+
+  for (const entry of entries) {
+    if (!entry.preferredName || !entry.gencName) {
+      throw new Error(`GENC entry ${entry.alpha3} is missing a name.`);
+    }
+
+    if (entry.alpha2 && !/^[A-Z0-9]{2}$/.test(entry.alpha2)) {
+      throw new Error(`Invalid GENC alpha-2 code: ${entry.alpha2}`);
+    }
+
+    if (!/^[A-Z0-9]{3}$/.test(entry.alpha3)) {
+      throw new Error(`Invalid GENC alpha-3 code: ${entry.alpha3}`);
+    }
+
+    if (!/^\d{3}$/.test(entry.numeric)) {
+      throw new Error(`Invalid GENC numeric code for ${entry.alpha3}.`);
+    }
+
+    if (alpha3Values.has(entry.alpha3)) {
+      throw new Error(`Duplicate GENC alpha-3 code: ${entry.alpha3}`);
+    }
+
+    alpha3Values.add(entry.alpha3);
+  }
+}
+
+export function validateLegacyFipsCountryCodeEntries(
+  entries: LegacyFipsCountryCodeEntry[],
+  minimumCount = LEGACY_FIPS_COUNTRY_CODES_MINIMUM_COUNT,
+) {
+  if (entries.length < minimumCount) {
+    throw new Error(
+      `Legacy FIPS refresh returned ${entries.length} entries; expected at least ${minimumCount}.`,
+    );
+  }
+
+  const codeValues = new Set<string>();
+
+  for (const entry of entries) {
+    if (!/^[A-Z]{2}$/.test(entry.code)) {
+      throw new Error(`Invalid legacy FIPS code: ${entry.code}`);
+    }
+
+    if (!entry.name) {
+      throw new Error(`Legacy FIPS entry ${entry.code} is missing a name.`);
+    }
+
+    if (codeValues.has(entry.code)) {
+      throw new Error(`Duplicate legacy FIPS code: ${entry.code}`);
+    }
+
+    codeValues.add(entry.code);
+  }
+}
+
+function validateCountryCodeOverlayRows(
+  rows: CountryCodeOverlayRow[],
+  expectedCount = COUNTRY_CODE_OVERLAY_EXPECTED_COUNT,
+  expectedActiveCount = COUNTRY_CODE_OVERLAY_EXPECTED_ACTIVE_COUNT,
+) {
+  if (rows.length !== expectedCount) {
+    throw new Error(
+      `Country-code overlay returned ${rows.length} rows; expected ${expectedCount}.`,
+    );
+  }
+
+  const activeCount = rows.filter((row) => row.active).length;
+
+  if (activeCount !== expectedActiveCount) {
+    throw new Error(
+      `Country-code overlay returned ${activeCount} active rows; expected ${expectedActiveCount}.`,
+    );
+  }
+
+  for (const row of rows) {
+    assertString(row.displayName, "display name");
+
+    if (row.primaryAlpha3 && !/^[A-Z0-9]{3}$/.test(row.primaryAlpha3)) {
+      throw new Error(`Invalid primary alpha-3 code for ${row.displayName}.`);
+    }
+
+    if (row.fips && !/^[A-Z]{2}$/.test(row.fips)) {
+      throw new Error(`Invalid FIPS code for ${row.displayName}.`);
+    }
+  }
+}
+
+function getPrimaryAlpha3Counts(rows: CountryCodeOverlayRow[]) {
+  const counts = new Map<string, number>();
+
+  for (const row of rows) {
+    if (row.primaryAlpha3) {
+      counts.set(row.primaryAlpha3, (counts.get(row.primaryAlpha3) ?? 0) + 1);
+    }
+  }
+
+  return counts;
+}
+
+function getActivePrimaryAlpha3Counts(rows: CountryCodeOverlayRow[]) {
+  const counts = new Map<string, number>();
+
+  for (const row of rows) {
+    if (row.primaryAlpha3 && row.active) {
+      counts.set(row.primaryAlpha3, (counts.get(row.primaryAlpha3) ?? 0) + 1);
+    }
+  }
+
+  return counts;
+}
+
+function buildNameIndex<T>(
+  entries: T[],
+  getNames: (entry: T) => Array<string | null | undefined>,
+) {
+  const index = new Map<string, T>();
+
+  for (const entry of entries) {
+    for (const name of getNames(entry)) {
+      if (!name) {
+        continue;
+      }
+
+      const normalizedName = normalizeName(name);
+
+      if (normalizedName && !index.has(normalizedName)) {
+        index.set(normalizedName, entry);
+      }
+    }
+  }
+
+  return index;
+}
+
+function findGencEntry(
+  row: CountryCodeOverlayRow,
+  gencByAlpha3: Map<string, GencCountryCodeEntry>,
+  gencByName: Map<string, GencCountryCodeEntry>,
+) {
+  if (row.primaryAlpha3) {
+    const codeMatch = gencByAlpha3.get(row.primaryAlpha3);
+
+    if (codeMatch) {
+      return codeMatch;
+    }
+  }
+
+  for (const name of [row.displayName, ...row.alternativeNames]) {
+    const nameMatch = gencByName.get(normalizeName(name));
+
+    if (nameMatch) {
+      return nameMatch;
+    }
+  }
+
+  return null;
+}
+
+function isCanonicalOfficialRow(
+  row: CountryCodeOverlayRow,
+  official: OfficialIsoCountryCodeEntry | undefined,
+  duplicatePrimaryAlpha3: boolean,
+  activePrimaryAlpha3Count: number,
+) {
+  if (!official) {
+    return false;
+  }
+
+  if (!duplicatePrimaryAlpha3) {
+    return true;
+  }
+
+  const officialName = normalizeName(official.englishShortName);
+
+  if (normalizeName(row.displayName) === officialName) {
+    return true;
+  }
+
+  return (
+    row.active &&
+    activePrimaryAlpha3Count === 1 &&
+    row.alternativeNames.some((name) => normalizeName(name) === officialName)
   );
 }
 
-export function buildIsoCountryCodeResource(input: {
-  entries: IsoCountryCodeEntry[];
-  sourceRetrievedAt?: string;
-}): IsoCountryCodeResource {
-  const entries = sortIsoCountryCodeEntries(input.entries);
-  validateIsoCountryCodeEntries(entries);
+function classifyCountryCodeRow(input: {
+  row: CountryCodeOverlayRow;
+  official: OfficialIsoCountryCodeEntry | undefined;
+  genc: GencCountryCodeEntry | null;
+  fips: LegacyFipsCountryCodeEntry | undefined;
+  duplicatePrimaryAlpha3: boolean;
+  canonicalOfficial: boolean;
+}): CountryCodeClassification {
+  if (input.official && input.duplicatePrimaryAlpha3 && !input.canonicalOfficial) {
+    return "duplicate-iso-territory";
+  }
 
-  return {
-    sourceName: "ISO Online Browsing Platform",
+  if (input.official) {
+    return "iso-official";
+  }
+
+  if (
+    input.row.primaryAlpha3 &&
+    input.genc &&
+    input.row.primaryAlpha3 !== input.genc.alpha3
+  ) {
+    return "non-official-code";
+  }
+
+  if (input.genc) {
+    return "genc-supported";
+  }
+
+  if (input.row.fips || input.fips) {
+    return "legacy-fips-only";
+  }
+
+  return "csv-only";
+}
+
+export function buildIsoCountryCodeResource(input: BuildIsoCountryCodeResourceInput) {
+  validateOfficialIsoCountryCodeEntries(input.officialEntries);
+  validateGencCountryCodeEntries(input.gencEntries);
+  validateLegacyFipsCountryCodeEntries(input.fipsEntries);
+  validateCountryCodeOverlayRows(
+    input.overlayRows,
+    input.expectedOverlayCount,
+    input.expectedActiveCount,
+  );
+
+  const officialByAlpha3 = new Map(
+    input.officialEntries.map((entry) => [entry.alpha3, entry]),
+  );
+  const gencByAlpha3 = new Map(input.gencEntries.map((entry) => [entry.alpha3, entry]));
+  const gencByName = buildNameIndex(input.gencEntries, (entry) => [
+    entry.preferredName,
+    entry.gencName,
+  ]);
+  const fipsByCode = new Map(input.fipsEntries.map((entry) => [entry.code, entry]));
+  const primaryAlpha3Counts = getPrimaryAlpha3Counts(input.overlayRows);
+  const activePrimaryAlpha3Counts = getActivePrimaryAlpha3Counts(input.overlayRows);
+
+  const entries = input.overlayRows.map((row) => {
+    const official = row.primaryAlpha3
+      ? officialByAlpha3.get(row.primaryAlpha3)
+      : undefined;
+    const genc = findGencEntry(row, gencByAlpha3, gencByName);
+    const fips = row.fips ? fipsByCode.get(row.fips) : undefined;
+    const duplicatePrimaryAlpha3 = row.primaryAlpha3
+      ? (primaryAlpha3Counts.get(row.primaryAlpha3) ?? 0) > 1
+      : false;
+    const canonicalOfficial = isCanonicalOfficialRow(
+      row,
+      official,
+      duplicatePrimaryAlpha3,
+      row.primaryAlpha3 ? (activePrimaryAlpha3Counts.get(row.primaryAlpha3) ?? 0) : 0,
+    );
+    const classification = classifyCountryCodeRow({
+      row,
+      official,
+      genc,
+      fips,
+      duplicatePrimaryAlpha3,
+      canonicalOfficial,
+    });
+
+    return {
+      displayName: row.displayName,
+      active: row.active,
+      primaryAlpha3: row.primaryAlpha3,
+      officialIsoAlpha2: official?.alpha2 ?? null,
+      officialIsoAlpha3: official?.alpha3 ?? null,
+      officialIsoNumeric: official?.numeric ?? null,
+      gencAlpha2: genc?.alpha2 ?? null,
+      gencAlpha3: genc?.alpha3 ?? null,
+      gencNumeric: genc?.numeric ?? null,
+      fips: row.fips,
+      alternativeNames: row.alternativeNames,
+      classification,
+      sourceUri: official?.uri ?? null,
+    } satisfies IsoCountryCodeEntry;
+  });
+
+  const resource = {
+    sourceName: "ISO OBP, GENC, legacy FIPS, and curated Accelerate Global overlay",
     sourceUrl: ISO_COUNTRY_CODES_SOURCE_URL,
     sourceCollectionUrl: ISO_COUNTRY_CODES_COLLECTION_URL,
+    gencSourceUrl: GENC_COUNTRY_CODES_SOURCE_URL,
+    gencAboutUrl: GENC_COUNTRY_CODES_ABOUT_URL,
+    fipsSourceUrl: LEGACY_FIPS_COUNTRY_CODES_SOURCE_URL,
+    fipsWithdrawalUrl: FIPS_WITHDRAWAL_SOURCE_URL,
+    overlaySourceName: COUNTRY_CODE_OVERLAY_SOURCE_NAME,
     sourceRetrievedAt: input.sourceRetrievedAt ?? new Date().toISOString(),
     entryCount: entries.length,
+    officialIsoCount: input.officialEntries.length,
+    activeCount: entries.filter((entry) => entry.active).length,
     entries,
-  };
+  } satisfies IsoCountryCodeResource;
+
+  validateIsoCountryCodeResource(resource);
+
+  return resource;
+}
+
+export function validateIsoCountryCodeResource(resource: IsoCountryCodeResource) {
+  if (resource.entryCount !== resource.entries.length) {
+    throw new Error("Generated country-code entry count is stale.");
+  }
+
+  if (resource.activeCount !== resource.entries.filter((entry) => entry.active).length) {
+    throw new Error("Generated country-code active count is stale.");
+  }
+
+  if (resource.officialIsoCount < ISO_COUNTRY_CODES_MINIMUM_COUNT) {
+    throw new Error("Generated official ISO country-code count is stale.");
+  }
+
+  for (const entry of resource.entries) {
+    assertString(entry.displayName, "display name");
+
+    if (entry.primaryAlpha3 && !/^[A-Z0-9]{3}$/.test(entry.primaryAlpha3)) {
+      throw new Error(`Invalid primary alpha-3 code for ${entry.displayName}.`);
+    }
+
+    if (entry.officialIsoAlpha2 && !/^[A-Z]{2}$/.test(entry.officialIsoAlpha2)) {
+      throw new Error(`Invalid official ISO alpha-2 code for ${entry.displayName}.`);
+    }
+
+    if (entry.officialIsoAlpha3 && !/^[A-Z]{3}$/.test(entry.officialIsoAlpha3)) {
+      throw new Error(`Invalid official ISO alpha-3 code for ${entry.displayName}.`);
+    }
+
+    if (entry.officialIsoNumeric && !/^\d{3}$/.test(entry.officialIsoNumeric)) {
+      throw new Error(`Invalid official ISO numeric code for ${entry.displayName}.`);
+    }
+
+    if (entry.gencAlpha2 && !/^[A-Z0-9]{2}$/.test(entry.gencAlpha2)) {
+      throw new Error(`Invalid GENC alpha-2 code for ${entry.displayName}.`);
+    }
+
+    if (entry.gencAlpha3 && !/^[A-Z0-9]{3}$/.test(entry.gencAlpha3)) {
+      throw new Error(`Invalid GENC alpha-3 code for ${entry.displayName}.`);
+    }
+
+    if (entry.gencNumeric && !/^\d{3}$/.test(entry.gencNumeric)) {
+      throw new Error(`Invalid GENC numeric code for ${entry.displayName}.`);
+    }
+
+    if (entry.fips && !/^[A-Z]{2}$/.test(entry.fips)) {
+      throw new Error(`Invalid FIPS code for ${entry.displayName}.`);
+    }
+
+    if (!CLASSIFICATIONS.has(entry.classification)) {
+      throw new Error(`Invalid classification for ${entry.displayName}.`);
+    }
+
+    if (entry.alternativeNames.some((name) => name.trim().length === 0)) {
+      throw new Error(`Invalid empty alias for ${entry.displayName}.`);
+    }
+  }
 }
 
 export function getGeneratedIsoCountryCodeResource(): IsoCountryCodeResource {
   const resource = generatedIsoCountryCodes as IsoCountryCodeResource;
-  validateIsoCountryCodeEntries(resource.entries);
-
-  if (resource.entryCount !== resource.entries.length) {
-    throw new Error("Generated ISO country code entry count is stale.");
-  }
-
+  validateIsoCountryCodeResource(resource);
   return resource;
 }
 
@@ -210,7 +781,7 @@ function getRpcEntries(message: VaadinMessage) {
 }
 
 function readIsoRows(message: VaadinMessage) {
-  const entries: IsoCountryCodeEntry[] = [];
+  const entries: OfficialIsoCountryCodeEntry[] = [];
 
   for (const rpc of getRpcEntries(message)) {
     if (!Array.isArray(rpc) || rpc[2] !== "setData") {
@@ -353,7 +924,7 @@ async function fetchWithCookies(input: {
     ...input.init,
     headers: {
       "User-Agent":
-        "Mozilla/5.0 (compatible; AccelerateGlobalIsoCountryCodeRefresh/1.0)",
+        "Mozilla/5.0 (compatible; AccelerateGlobalCountryCodeRefresh/1.0)",
       Accept: "application/json,text/html,*/*",
       Cookie: serializeCookies(input.cookies),
       ...input.init?.headers,
@@ -369,7 +940,23 @@ async function fetchWithCookies(input: {
   return response.text();
 }
 
-export async function refreshIsoCountryCodeResourceFromOfficialSource() {
+async function fetchTextSource(url: string, label: string) {
+  const response = await fetch(url, {
+    headers: {
+      "User-Agent":
+        "Mozilla/5.0 (compatible; AccelerateGlobalCountryCodeRefresh/1.0)",
+      Accept: "text/plain,text/html,*/*",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`${label} request failed with ${response.status}.`);
+  }
+
+  return response.text();
+}
+
+export async function refreshOfficialIsoCountryCodeEntriesFromOfficialSource() {
   const cookies = new Map<string, string>();
 
   await fetchWithCookies({
@@ -399,11 +986,11 @@ export async function refreshIsoCountryCodeResourceFromOfficialSource() {
     throw new Error("ISO OBP response did not include refresh session metadata.");
   }
 
-  const entriesByAlpha2 = new Map<string, IsoCountryCodeEntry>();
+  const entriesByAlpha2 = new Map<string, OfficialIsoCountryCodeEntry>();
   let syncId = message.syncId ?? 0;
   let clientId = message.clientId ?? 0;
 
-  function addEntries(nextEntries: IsoCountryCodeEntry[]) {
+  function addEntries(nextEntries: OfficialIsoCountryCodeEntry[]) {
     for (const entry of nextEntries) {
       entriesByAlpha2.set(entry.alpha2, entry);
     }
@@ -441,13 +1028,11 @@ export async function refreshIsoCountryCodeResourceFromOfficialSource() {
     syncId = message.syncId ?? syncId;
     clientId = message.clientId ?? clientId;
 
-    const rowRequestSyncId = syncId;
-    const rowRequestClientId = clientId;
     const rowRequestPayload = createRowsPayload({
       csrfToken,
       dataConnectorId,
-      syncId: rowRequestSyncId,
-      clientId: rowRequestClientId,
+      syncId,
+      clientId,
     });
     let rowMessages = parseVaadinMessages(
       await fetchWithCookies({
@@ -485,7 +1070,84 @@ export async function refreshIsoCountryCodeResourceFromOfficialSource() {
     addEntries(readIsoRows(message));
   }
 
+  const entries = [...entriesByAlpha2.values()];
+  validateOfficialIsoCountryCodeEntries(entries);
+  return entries;
+}
+
+export function parseGencCountryCodeEntries(text: string) {
+  const parsed = Papa.parse<Record<string, string>>(text, {
+    delimiter: "\t",
+    header: true,
+    skipEmptyLines: true,
+  });
+
+  if (parsed.errors.length > 0) {
+    throw new Error(`Could not parse GENC source: ${parsed.errors[0].message}`);
+  }
+
+  const entries = parsed.data.map((row) => ({
+    ncitCode: assertString(row["NCIt Concept Code"], "NCIt concept code"),
+    preferredName: assertString(row["NCIt Preferred Term"], "NCIt preferred term"),
+    gencName: assertString(row["GENC Name (FDA Standard)"], "GENC name"),
+    alpha2: nullableCode(row["GENC 2 Letter Code"]),
+    alpha3: assertString(
+      row["GENC 3 Letter Code (FDA Standard)"],
+      "GENC alpha-3 code",
+    ).toUpperCase(),
+    numeric: assertString(row["GENC Number"], "GENC numeric code"),
+  }));
+
+  validateGencCountryCodeEntries(entries);
+  return entries;
+}
+
+export async function fetchGencCountryCodeEntriesFromSource() {
+  const text = await fetchTextSource(GENC_COUNTRY_CODES_SOURCE_URL, "GENC");
+  return parseGencCountryCodeEntries(text);
+}
+
+function decodeHtmlEntities(value: string) {
+  return value
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, " ");
+}
+
+export function parseLegacyFipsCountryCodeEntries(text: string) {
+  const entries = [...text.matchAll(/<tr><td>([A-Z]{2})<\/td><td>(.*?)<\/td><\/tr>/g)]
+    .map((match) => ({
+      code: match[1],
+      name: decodeHtmlEntities(match[2]).trim(),
+    }))
+    .filter((entry) => entry.name.length > 0);
+
+  validateLegacyFipsCountryCodeEntries(entries);
+  return entries;
+}
+
+export async function fetchLegacyFipsCountryCodeEntriesFromSource() {
+  const text = await fetchTextSource(
+    LEGACY_FIPS_COUNTRY_CODES_SOURCE_URL,
+    "Legacy FIPS",
+  );
+  return parseLegacyFipsCountryCodeEntries(text);
+}
+
+export async function refreshIsoCountryCodeResourceFromOfficialSource() {
+  const [officialEntries, gencEntries, fipsEntries, overlayRows] =
+    await Promise.all([
+      refreshOfficialIsoCountryCodeEntriesFromOfficialSource(),
+      fetchGencCountryCodeEntriesFromSource(),
+      fetchLegacyFipsCountryCodeEntriesFromSource(),
+      readCountryCodeOverlayRows(),
+    ]);
+
   return buildIsoCountryCodeResource({
-    entries: [...entriesByAlpha2.values()],
+    officialEntries,
+    gencEntries,
+    fipsEntries,
+    overlayRows,
   });
 }

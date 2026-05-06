@@ -168,7 +168,7 @@ describe("DashboardClient", () => {
     expect(editLink.getAttribute("href")).toBe("/dashboard/datasets/dataset-1/edit");
     expect(
       screen
-        .getByRole("link", { name: "ISO3 country code list" })
+        .getByRole("link", { name: "Country & territory code resource" })
         .getAttribute("href"),
     ).toBe("/dashboard/country-codes");
     expect(screen.queryByRole("dialog", { name: "Edit dataset" })).toBeNull();

@@ -14,7 +14,7 @@ export async function GET() {
     const resource = await refreshIsoCountryCodeResourceFromOfficialSource();
     return Response.json(resource);
   } catch (error) {
-    logError("Failed to refresh ISO country codes", error);
-    return jsonError("Could not refresh ISO country codes from ISO.", 502);
+    logError("Failed to refresh country and territory codes", error);
+    return jsonError("Could not refresh country and territory codes.", 502);
   }
 }
