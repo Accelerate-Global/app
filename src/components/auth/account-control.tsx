@@ -21,7 +21,6 @@ import {
   applyDocumentThemePreference,
   getDocumentThemeState,
   subscribeToSystemThemeChanges,
-  type ResolvedTheme,
   type ThemePreference,
   type ThemeState,
 } from "@/components/theme/theme-toggle";
@@ -231,16 +230,11 @@ export function AccountControl({ identity }: AccountControlProps) {
             <div className="mb-2 flex items-center gap-2 text-sm font-medium text-foreground">
               <MonitorIcon className="size-4" aria-hidden="true" />
               <span>Appearance</span>
-              <span className="text-xs font-normal text-muted-foreground">
-                {themeState.preference === "system"
-                  ? `System (${formatResolvedTheme(themeState.resolvedTheme)})`
-                  : formatThemePreference(themeState.preference)}
-              </span>
             </div>
             <div
               role="group"
               aria-label="Appearance"
-              className="grid grid-cols-3 gap-1 rounded-lg bg-muted p-1"
+              className="grid grid-cols-3 gap-2"
             >
               {themeOptions.map((option) => (
                 <Toggle
@@ -252,7 +246,7 @@ export function AccountControl({ identity }: AccountControlProps) {
                       selectThemePreference(option.preference);
                     }
                   }}
-                  className="h-7 rounded-md data-[state=on]:bg-background data-[state=on]:shadow-sm"
+                  className="h-9 rounded-lg bg-transparent px-3 text-sm font-semibold hover:bg-muted data-[state=on]:bg-muted data-[state=on]:shadow-none"
                 >
                   {option.label}
                 </Toggle>
@@ -297,20 +291,4 @@ export function AccountControl({ identity }: AccountControlProps) {
       </DropdownMenuContent>
     </DropdownMenu>
   );
-}
-
-function formatResolvedTheme(theme: ResolvedTheme) {
-  return theme === "dark" ? "Dark" : "Light";
-}
-
-function formatThemePreference(preference: ThemePreference) {
-  if (preference === "dark") {
-    return "Dark";
-  }
-
-  if (preference === "light") {
-    return "Light";
-  }
-
-  return "System";
 }
