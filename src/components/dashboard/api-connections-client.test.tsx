@@ -171,7 +171,13 @@ describe("ApiConnectionsClient", () => {
     );
 
     expect(screen.getByText("No connections are available.")).toBeTruthy();
-    expect(screen.getByText("No resources have been captured yet.")).toBeTruthy();
+    expect(screen.getByText("ISO3 country code list")).toBeTruthy();
+    expect(
+      screen
+        .getByRole("link", { name: "Open ISO3 country code list" })
+        .getAttribute("href"),
+    ).toBe("/dashboard/country-codes");
+    expect(screen.getByText("No API-run resources have been captured yet.")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "New API connection" })).toBeNull();
   });
 
@@ -185,13 +191,14 @@ describe("ApiConnectionsClient", () => {
     );
 
     expect(screen.getByText("Resources")).toBeTruthy();
+    expect(screen.getByText("ISO3 country code list")).toBeTruthy();
     expect(screen.getByText("Category")).toBeTruthy();
     expect(screen.getByText("Display text")).toBeTruthy();
     expect(screen.getByText("URL")).toBeTruthy();
     expect(screen.getByText("Film")).toBeTruthy();
     expect(screen.getByText("Watch")).toBeTruthy();
     expect(screen.getByText("https://example.com/film#watch")).toBeTruthy();
-    expect(screen.getByRole("link", { name: /Open/ }).getAttribute("href")).toBe(
+    expect(screen.getByRole("link", { name: "Open Watch" }).getAttribute("href")).toBe(
       "https://example.com/film#watch",
     );
   });

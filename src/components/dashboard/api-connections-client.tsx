@@ -1,6 +1,7 @@
 "use client";
 
 import { CableIcon, ExternalLinkIcon, FileTextIcon } from "lucide-react";
+import Link from "next/link";
 import { useMemo } from "react";
 import { useRouter } from "next/navigation";
 
@@ -31,6 +32,15 @@ type ApiConnectionsClientProps = {
   initialRuns: ApiConnectionRun[];
   initialResources: ApiConnectionResource[];
 };
+
+const builtInResources = [
+  {
+    id: "iso3-country-codes",
+    category: "Built-in",
+    webText: "ISO3 country code list",
+    resourceUrl: "/dashboard/country-codes",
+  },
+] as const;
 
 function formatTimestamp(value: string | null) {
   if (!value) {
@@ -159,58 +169,82 @@ export function ApiConnectionsClient({
             Resources
           </CardTitle>
           <CardDescription>
-            Referenced documents captured from successful API connection runs.
+            Built-in references and documents captured from successful API
+            connection runs.
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Category</TableHead>
+                <TableHead>Display text</TableHead>
+                <TableHead>URL</TableHead>
+                <TableHead className="w-24 text-right">Open</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {builtInResources.map((resource) => (
+                <TableRow key={resource.id}>
+                  <TableCell className="max-w-48 whitespace-normal">
+                    {resource.category}
+                  </TableCell>
+                  <TableCell className="max-w-72 whitespace-normal">
+                    {resource.webText}
+                  </TableCell>
+                  <TableCell className="max-w-[34rem] whitespace-normal font-mono text-xs text-muted-foreground break-all">
+                    {resource.resourceUrl}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Link
+                      href={resource.resourceUrl}
+                      aria-label={`Open ${resource.webText}`}
+                      className="inline-flex items-center justify-end gap-1 text-sm font-medium text-foreground underline-offset-4 hover:underline"
+                    >
+                      <ExternalLinkIcon className="size-3.5" />
+                      Open
+                    </Link>
+                  </TableCell>
+                </TableRow>
+              ))}
+              {initialResources.map((resource) => (
+                <TableRow key={resource.id}>
+                  <TableCell className="max-w-48 whitespace-normal">
+                    {resource.category || (
+                      <span className="text-muted-foreground">Uncategorized</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="max-w-72 whitespace-normal">
+                    {resource.webText || (
+                      <span className="text-muted-foreground">
+                        No display text
+                      </span>
+                    )}
+                  </TableCell>
+                  <TableCell className="max-w-[34rem] whitespace-normal font-mono text-xs text-muted-foreground break-all">
+                    {resource.resourceUrl}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <a
+                      href={resource.resourceUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      aria-label={`Open ${resource.webText || resource.resourceUrl}`}
+                      className="inline-flex items-center justify-end gap-1 text-sm font-medium text-foreground underline-offset-4 hover:underline"
+                    >
+                      <ExternalLinkIcon className="size-3.5" />
+                      Open
+                    </a>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
           {initialResources.length === 0 ? (
             <div className="rounded-xl border border-dashed border-border px-4 py-8 text-sm text-muted-foreground">
-              No resources have been captured yet.
+              No API-run resources have been captured yet.
             </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Display text</TableHead>
-                  <TableHead>URL</TableHead>
-                  <TableHead className="w-24 text-right">Open</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {initialResources.map((resource) => (
-                  <TableRow key={resource.id}>
-                    <TableCell className="max-w-48 whitespace-normal">
-                      {resource.category || (
-                        <span className="text-muted-foreground">Uncategorized</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="max-w-72 whitespace-normal">
-                      {resource.webText || (
-                        <span className="text-muted-foreground">
-                          No display text
-                        </span>
-                      )}
-                    </TableCell>
-                    <TableCell className="max-w-[34rem] whitespace-normal font-mono text-xs text-muted-foreground break-all">
-                      {resource.resourceUrl}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <a
-                        href={resource.resourceUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center justify-end gap-1 text-sm font-medium text-foreground underline-offset-4 hover:underline"
-                      >
-                        <ExternalLinkIcon className="size-3.5" />
-                        Open
-                      </a>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
+          ) : null}
         </CardContent>
       </Card>
     </div>
