@@ -29,7 +29,11 @@ vi.mock("@/lib/analytics-client", () => ({
 }));
 
 function openMenu() {
-  fireEvent.click(screen.getByRole("button"));
+  const trigger = document.querySelector(
+    '[data-smoke-trigger="account-menu"]',
+  ) as HTMLElement | null;
+  expect(trigger).toBeTruthy();
+  fireEvent.click(trigger!);
   const menu = document.querySelector('[data-smoke-surface="account-menu"]');
   expect(menu).toBeTruthy();
   return menu as HTMLElement;
@@ -165,9 +169,7 @@ describe("AccountControl", () => {
       "Profile",
       "Dashboard",
       "Definitions",
-      "System (Light)",
-      "Light",
-      "Dark",
+      "Resources",
       "separator",
       "Manage Field Sources",
       "Datasets",
@@ -207,9 +209,7 @@ describe("AccountControl", () => {
       "Profile",
       "Dashboard",
       "Definitions",
-      "System (Light)",
-      "Light",
-      "Dark",
+      "Resources",
       "separator",
       "Sign out",
     ]);
@@ -271,12 +271,10 @@ describe("AccountControl", () => {
     expect(localStorageStore.get("ag-theme")).toBeUndefined();
     expect(localStorageStore.get("ag-theme-preference")).toBe("system");
     expect(document.documentElement.classList.contains("dark")).toBe(false);
-    expect(
-      screen
-        .getByText("System")
-        .closest('[data-slot="dropdown-menu-item"]')
-        ?.getAttribute("aria-current"),
-    ).toBe("true");
+    expect(screen.getByRole("group", { name: "Appearance" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "System" }).getAttribute("aria-pressed"))
+      .toBe("true");
+    expect(screen.getByText("System (Light)")).toBeTruthy();
   });
 
   it("tracks theme preference changes using the current pathname route", () => {
@@ -296,7 +294,7 @@ describe("AccountControl", () => {
     );
 
     fireEvent.click(screen.getByRole("button"));
-    fireEvent.click(screen.getByText("Dark"));
+    fireEvent.click(screen.getByRole("button", { name: "Dark" }));
 
     expect(trackAppEventMock).toHaveBeenCalledWith(
       "theme_toggled",
@@ -336,13 +334,12 @@ describe("AccountControl", () => {
     openMenu();
     expect(document.documentElement.classList.contains("dark")).toBe(false);
 
-    fireEvent.click(screen.getByText("Light"));
+    fireEvent.click(screen.getByRole("button", { name: "Light" }));
 
     expect(localStorageStore.get("ag-theme-preference")).toBe("light");
     expect(document.documentElement.classList.contains("dark")).toBe(false);
 
-    openMenu();
-    fireEvent.click(screen.getByText("Dark"));
+    fireEvent.click(screen.getByRole("button", { name: "Dark" }));
 
     expect(localStorageStore.get("ag-theme-preference")).toBe("dark");
     expect(document.documentElement.classList.contains("dark")).toBe(true);
@@ -366,7 +363,7 @@ describe("AccountControl", () => {
     );
 
     openMenu();
-    fireEvent.click(screen.getByText("System"));
+    fireEvent.click(screen.getByRole("button", { name: "System" }));
 
     expect(localStorageStore.get("ag-theme-preference")).toBe("system");
     expect(document.documentElement.classList.contains("dark")).toBe(true);

@@ -475,6 +475,11 @@ export const fieldDefinitionPatchSchema = z.object({
   hideFromViewerFieldDefinitions: z.boolean(),
 });
 
+export const isoCountryCodeAlternativeNamesPatchSchema = z.object({
+  displayName: z.string().trim().min(1).max(200),
+  alternativeNames: z.array(z.string().trim().min(1).max(200)).max(48),
+});
+
 export const datasetPatchSchema = z.union([
   datasetStatusPatchSchema,
   datasetMetadataPatchSchema,

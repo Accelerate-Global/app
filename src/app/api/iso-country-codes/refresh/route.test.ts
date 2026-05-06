@@ -1,7 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getCurrentIdentity } from "@/lib/auth";
-import { refreshIsoCountryCodeResourceFromOfficialSource } from "@/lib/iso-country-codes";
+import {
+  mergeIsoCountryCodeEntryOverrides,
+  refreshIsoCountryCodeResourceFromOfficialSource,
+} from "@/lib/iso-country-codes";
 import type { IsoCountryCodeResource } from "@/lib/iso-country-codes";
 import { GET } from "./route";
 
@@ -14,10 +17,14 @@ vi.mock("@/lib/error-logging", () => ({
 }));
 
 vi.mock("@/lib/iso-country-codes", () => ({
+  mergeIsoCountryCodeEntryOverrides: vi.fn(),
   refreshIsoCountryCodeResourceFromOfficialSource: vi.fn(),
 }));
 
 const getCurrentIdentityMock = vi.mocked(getCurrentIdentity);
+const mergeIsoCountryCodeEntryOverridesMock = vi.mocked(
+  mergeIsoCountryCodeEntryOverrides,
+);
 const refreshIsoCountryCodeResourceFromOfficialSourceMock = vi.mocked(
   refreshIsoCountryCodeResourceFromOfficialSource,
 );
@@ -96,12 +103,23 @@ describe("/api/iso-country-codes/refresh", () => {
       isDatasetAdmin: true,
       mode: "supabase",
     });
+    const mergedResource = {
+      ...resource,
+      entries: [
+        {
+          ...resource.entries[0],
+          alternativeNames: ["Persisted alias"],
+        },
+      ],
+    } satisfies IsoCountryCodeResource;
     refreshIsoCountryCodeResourceFromOfficialSourceMock.mockResolvedValue(resource);
+    mergeIsoCountryCodeEntryOverridesMock.mockResolvedValue(mergedResource);
 
     const response = await GET();
 
     expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toEqual(resource);
+    expect(mergeIsoCountryCodeEntryOverridesMock).toHaveBeenCalledWith(resource);
+    await expect(response.json()).resolves.toEqual(mergedResource);
   });
 
   it("returns a gateway error when source refresh fails", async () => {

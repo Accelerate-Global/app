@@ -514,6 +514,24 @@ export const apiConnectionResources = privateSchema.table(
   ],
 );
 
+export const isoCountryCodeEntryOverrides = privateSchema.table(
+  "iso_country_code_entry_overrides",
+  {
+    displayName: text("display_name").primaryKey(),
+    alternativeNames: jsonb("alternative_names")
+      .$type<string[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    updatedByOwnerId: text("updated_by_owner_id").notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("iso_country_code_entry_overrides_updated_idx").on(table.updatedAt),
+  ],
+);
+
 export const analyticsEvents = privateSchema.table(
   "analytics_events",
   {

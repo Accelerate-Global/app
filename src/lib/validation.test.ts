@@ -7,6 +7,7 @@ import {
   createDatasetSchema,
   datasetAssignDerivedViewSchema,
   datasetMetadataPatchSchema,
+  isoCountryCodeAlternativeNamesPatchSchema,
   replaceDatasetSchema,
   workspaceUserInviteSchema,
   workspaceUserPatchSchema,
@@ -507,6 +508,43 @@ describe("apiConnectionCreateSchema", () => {
     });
 
     expect(result.success).toBe(false);
+  });
+});
+
+describe("isoCountryCodeAlternativeNamesPatchSchema", () => {
+  it("accepts trimmed display names and alternate names", () => {
+    const result = isoCountryCodeAlternativeNamesPatchSchema.safeParse({
+      displayName: " Afghanistan ",
+      alternativeNames: [" Afganistan ", "Republic of Afghanistan"],
+    });
+
+    expect(result.success).toBe(true);
+    if (!result.success) {
+      return;
+    }
+
+    expect(result.data).toEqual({
+      displayName: "Afghanistan",
+      alternativeNames: ["Afganistan", "Republic of Afghanistan"],
+    });
+  });
+
+  it("allows deleting all alternate names", () => {
+    expect(
+      isoCountryCodeAlternativeNamesPatchSchema.safeParse({
+        displayName: "Afghanistan",
+        alternativeNames: [],
+      }).success,
+    ).toBe(true);
+  });
+
+  it("rejects blank alternate names", () => {
+    expect(
+      isoCountryCodeAlternativeNamesPatchSchema.safeParse({
+        displayName: "Afghanistan",
+        alternativeNames: [""],
+      }).success,
+    ).toBe(false);
   });
 });
 

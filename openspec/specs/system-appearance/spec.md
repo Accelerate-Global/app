@@ -2,7 +2,6 @@
 
 ## Purpose
 Define how the app resolves light and dark appearance from the user's operating system preference, while preserving explicit manual overrides from the account menu.
-
 ## Requirements
 ### Requirement: System appearance default
 The system SHALL default to a `system` appearance preference and resolve the rendered theme from the user's operating system color scheme.
@@ -23,12 +22,21 @@ The system SHALL update rendered light/dark appearance when the operating system
 - **THEN** the page updates the `.dark` document class and CSS `color-scheme` to match the new system value
 
 ### Requirement: Manual appearance choices
-The account menu SHALL expose explicit `System`, `Light`, and `Dark` appearance choices.
+The account menu SHALL expose explicit `System`, `Light`, and `Dark` appearance
+choices as one compact segmented control.
+
+#### Scenario: User views appearance choices
+- **WHEN** a signed-in user opens the account menu
+- **THEN** the menu shows one Appearance row with System, Light, and Dark
+  options
+- **AND** the menu does not show three separate System, Light, and Dark rows
 
 #### Scenario: User selects an explicit dark override
-- **WHEN** a user selects `Dark` in the account menu
-- **THEN** the page uses dark appearance regardless of the current operating system color scheme
+- **WHEN** a user selects `Dark` from the Appearance segmented control
+- **THEN** the page uses dark appearance regardless of the current operating
+  system color scheme
 
 #### Scenario: User returns to system preference
-- **WHEN** a user selects `System` in the account menu
-- **THEN** the page resolves appearance from the operating system color scheme again
+- **WHEN** a user selects `System` from the Appearance segmented control
+- **THEN** the page resolves appearance from the operating system color scheme
+  again
