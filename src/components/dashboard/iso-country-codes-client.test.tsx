@@ -1,6 +1,12 @@
 // @vitest-environment jsdom
 
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { IsoCountryCodesClient } from "./iso-country-codes-client";
@@ -94,10 +100,20 @@ describe("IsoCountryCodesClient", () => {
     vi.unstubAllGlobals();
   });
 
-  it("filters entries by name, alias, FIPS code, and classification", () => {
+  it("renders compact columns and filters by hidden detail fields", () => {
     render(<IsoCountryCodesClient initialResource={initialResource} />);
 
-    expect(screen.getByText("Country & Territory Codes")).toBeTruthy();
+    expect(screen.getByRole("columnheader", { name: "Country/Territory" })).toBeTruthy();
+    expect(screen.getByRole("columnheader", { name: "Status" })).toBeTruthy();
+    expect(screen.getByRole("columnheader", { name: "ISO3" })).toBeTruthy();
+    expect(screen.getByRole("columnheader", { name: "FIPS" })).toBeTruthy();
+    expect(screen.getByRole("columnheader", { name: "GENC3" })).toBeTruthy();
+    expect(screen.queryByRole("columnheader", { name: "ISO2" })).toBeNull();
+    expect(screen.queryByRole("columnheader", { name: "Numeric" })).toBeNull();
+    expect(screen.queryByRole("columnheader", { name: "Alternative Names" })).toBeNull();
+    expect(screen.queryByRole("columnheader", { name: "Classification" })).toBeNull();
+    expect(screen.queryByRole("columnheader", { name: "Copy" })).toBeNull();
+    expect(screen.queryByText(/curated rows/)).toBeNull();
     expect(screen.getByText("Afghanistan")).toBeTruthy();
     expect(screen.getByText("Akrotiri")).toBeTruthy();
     expect(screen.getByText("Baker Island")).toBeTruthy();
@@ -124,29 +140,79 @@ describe("IsoCountryCodesClient", () => {
     expect(screen.getByText("1 visible")).toBeTruthy();
   });
 
-  it("copies primary, fallback GENC, and FIPS codes", async () => {
+  it("opens a right-side detail sheet with hidden fields and smoke markers", () => {
+    render(<IsoCountryCodesClient initialResource={initialResource} />);
+
+    fireEvent.click(screen.getByText("Afghanistan"));
+
+    expect(screen.getByText("Primary ISO3")).toBeTruthy();
+    expect(screen.getByText("ISO2")).toBeTruthy();
+    expect(screen.getByText("Numeric")).toBeTruthy();
+    expect(screen.getByText("Classification")).toBeTruthy();
+    expect(screen.getByText("Source URI")).toBeTruthy();
+    expect(screen.getByText("Afganistan")).toBeTruthy();
+    expect(screen.getByText("Islamic Republic of Afghanistan")).toBeTruthy();
+    expect(screen.getAllByText("004").length).toBeGreaterThan(0);
+    expect(screen.getByText("ISO official")).toBeTruthy();
+    expect(
+      document.querySelector('[data-smoke-ready="country-code-detail-sheet"]'),
+    ).toBeTruthy();
+  });
+
+  it("copies primary, fallback GENC, and FIPS codes from the detail sheet", async () => {
     writeTextMock.mockResolvedValue(undefined);
     render(<IsoCountryCodesClient initialResource={initialResource} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Copy AFG" }));
+    fireEvent.click(screen.getByText("Afghanistan"));
+    fireEvent.click(screen.getByRole("button", { name: "Copy primary code AFG" }));
 
     await waitFor(() => {
       expect(writeTextMock).toHaveBeenCalledWith("AFG");
     });
     expect(screen.getByText("Copied AFG")).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("button", { name: "Copy XQZ" }));
+    fireEvent.click(screen.getByText("Akrotiri"));
+    fireEvent.click(screen.getByRole("button", { name: "Copy primary code XQZ" }));
 
     await waitFor(() => {
       expect(writeTextMock).toHaveBeenCalledWith("XQZ");
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "Copy FIPS AF" }));
+    fireEvent.click(screen.getByRole("button", { name: "Copy FIPS AX" }));
 
     await waitFor(() => {
-      expect(writeTextMock).toHaveBeenCalledWith("AF");
+      expect(writeTextMock).toHaveBeenCalledWith("AX");
     });
-    expect(screen.getByText("Copied FIPS AF")).toBeTruthy();
+    expect(screen.getByText("Copied FIPS AX")).toBeTruthy();
+  });
+
+  it("updates status and alternative names for the current session", () => {
+    render(<IsoCountryCodesClient initialResource={initialResource} />);
+
+    const afghanistanRow = screen.getByText("Afghanistan").closest("tr");
+    expect(afghanistanRow).toBeTruthy();
+    expect(within(afghanistanRow!).getByText("Active")).toBeTruthy();
+
+    fireEvent.click(screen.getByText("Afghanistan"));
+    fireEvent.click(
+      screen.getByRole("switch", { name: "Set Afghanistan active status" }),
+    );
+
+    expect(within(afghanistanRow!).getByText("Inactive")).toBeTruthy();
+
+    fireEvent.change(screen.getByLabelText("Alternative name"), {
+      target: { value: "Afghan Republic" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Add" }));
+
+    expect(screen.getByText("Afghan Republic")).toBeTruthy();
+
+    fireEvent.change(screen.getByPlaceholderText(/Search name/), {
+      target: { value: "Afghan Republic" },
+    });
+
+    expect(screen.getAllByText("Afghanistan").length).toBeGreaterThan(0);
+    expect(screen.getByText("1 visible")).toBeTruthy();
   });
 
   it("refreshes visible entries from the authenticated API", async () => {
