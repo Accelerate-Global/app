@@ -1,0 +1,1752 @@
+{
+  "sourceName": "ISO Online Browsing Platform",
+  "sourceUrl": "https://www.iso.org/obp/ui/#search/code/",
+  "sourceCollectionUrl": "https://www.iso.org/publication/PUB500001.html",
+  "sourceRetrievedAt": "2026-05-06T04:51:04.481Z",
+  "entryCount": 249,
+  "entries": [
+    {
+      "alpha2": "AF",
+      "alpha3": "AFG",
+      "englishShortName": "Afghanistan",
+      "numeric": "004",
+      "uri": "iso:code:3166:AF"
+    },
+    {
+      "alpha2": "AX",
+      "alpha3": "ALA",
+      "englishShortName": "Åland Islands",
+      "numeric": "248",
+      "uri": "iso:code:3166:AX"
+    },
+    {
+      "alpha2": "AL",
+      "alpha3": "ALB",
+      "englishShortName": "Albania",
+      "numeric": "008",
+      "uri": "iso:code:3166:AL"
+    },
+    {
+      "alpha2": "DZ",
+      "alpha3": "DZA",
+      "englishShortName": "Algeria",
+      "numeric": "012",
+      "uri": "iso:code:3166:DZ"
+    },
+    {
+      "alpha2": "AS",
+      "alpha3": "ASM",
+      "englishShortName": "American Samoa",
+      "numeric": "016",
+      "uri": "iso:code:3166:AS"
+    },
+    {
+      "alpha2": "AD",
+      "alpha3": "AND",
+      "englishShortName": "Andorra",
+      "numeric": "020",
+      "uri": "iso:code:3166:AD"
+    },
+    {
+      "alpha2": "AO",
+      "alpha3": "AGO",
+      "englishShortName": "Angola",
+      "numeric": "024",
+      "uri": "iso:code:3166:AO"
+    },
+    {
+      "alpha2": "AI",
+      "alpha3": "AIA",
+      "englishShortName": "Anguilla",
+      "numeric": "660",
+      "uri": "iso:code:3166:AI"
+    },
+    {
+      "alpha2": "AQ",
+      "alpha3": "ATA",
+      "englishShortName": "Antarctica",
+      "numeric": "010",
+      "uri": "iso:code:3166:AQ"
+    },
+    {
+      "alpha2": "AG",
+      "alpha3": "ATG",
+      "englishShortName": "Antigua and Barbuda",
+      "numeric": "028",
+      "uri": "iso:code:3166:AG"
+    },
+    {
+      "alpha2": "AR",
+      "alpha3": "ARG",
+      "englishShortName": "Argentina",
+      "numeric": "032",
+      "uri": "iso:code:3166:AR"
+    },
+    {
+      "alpha2": "AM",
+      "alpha3": "ARM",
+      "englishShortName": "Armenia",
+      "numeric": "051",
+      "uri": "iso:code:3166:AM"
+    },
+    {
+      "alpha2": "AW",
+      "alpha3": "ABW",
+      "englishShortName": "Aruba",
+      "numeric": "533",
+      "uri": "iso:code:3166:AW"
+    },
+    {
+      "alpha2": "AU",
+      "alpha3": "AUS",
+      "englishShortName": "Australia",
+      "numeric": "036",
+      "uri": "iso:code:3166:AU"
+    },
+    {
+      "alpha2": "AT",
+      "alpha3": "AUT",
+      "englishShortName": "Austria",
+      "numeric": "040",
+      "uri": "iso:code:3166:AT"
+    },
+    {
+      "alpha2": "AZ",
+      "alpha3": "AZE",
+      "englishShortName": "Azerbaijan",
+      "numeric": "031",
+      "uri": "iso:code:3166:AZ"
+    },
+    {
+      "alpha2": "BS",
+      "alpha3": "BHS",
+      "englishShortName": "Bahamas (The)",
+      "numeric": "044",
+      "uri": "iso:code:3166:BS"
+    },
+    {
+      "alpha2": "BH",
+      "alpha3": "BHR",
+      "englishShortName": "Bahrain",
+      "numeric": "048",
+      "uri": "iso:code:3166:BH"
+    },
+    {
+      "alpha2": "BD",
+      "alpha3": "BGD",
+      "englishShortName": "Bangladesh",
+      "numeric": "050",
+      "uri": "iso:code:3166:BD"
+    },
+    {
+      "alpha2": "BB",
+      "alpha3": "BRB",
+      "englishShortName": "Barbados",
+      "numeric": "052",
+      "uri": "iso:code:3166:BB"
+    },
+    {
+      "alpha2": "BY",
+      "alpha3": "BLR",
+      "englishShortName": "Belarus",
+      "numeric": "112",
+      "uri": "iso:code:3166:BY"
+    },
+    {
+      "alpha2": "BE",
+      "alpha3": "BEL",
+      "englishShortName": "Belgium",
+      "numeric": "056",
+      "uri": "iso:code:3166:BE"
+    },
+    {
+      "alpha2": "BZ",
+      "alpha3": "BLZ",
+      "englishShortName": "Belize",
+      "numeric": "084",
+      "uri": "iso:code:3166:BZ"
+    },
+    {
+      "alpha2": "BJ",
+      "alpha3": "BEN",
+      "englishShortName": "Benin",
+      "numeric": "204",
+      "uri": "iso:code:3166:BJ"
+    },
+    {
+      "alpha2": "BM",
+      "alpha3": "BMU",
+      "englishShortName": "Bermuda",
+      "numeric": "060",
+      "uri": "iso:code:3166:BM"
+    },
+    {
+      "alpha2": "BT",
+      "alpha3": "BTN",
+      "englishShortName": "Bhutan",
+      "numeric": "064",
+      "uri": "iso:code:3166:BT"
+    },
+    {
+      "alpha2": "BO",
+      "alpha3": "BOL",
+      "englishShortName": "Bolivia (Plurinational State of)",
+      "numeric": "068",
+      "uri": "iso:code:3166:BO"
+    },
+    {
+      "alpha2": "BQ",
+      "alpha3": "BES",
+      "englishShortName": "Bonaire, Sint Eustatius and Saba",
+      "numeric": "535",
+      "uri": "iso:code:3166:BQ"
+    },
+    {
+      "alpha2": "BA",
+      "alpha3": "BIH",
+      "englishShortName": "Bosnia and Herzegovina",
+      "numeric": "070",
+      "uri": "iso:code:3166:BA"
+    },
+    {
+      "alpha2": "BW",
+      "alpha3": "BWA",
+      "englishShortName": "Botswana",
+      "numeric": "072",
+      "uri": "iso:code:3166:BW"
+    },
+    {
+      "alpha2": "BV",
+      "alpha3": "BVT",
+      "englishShortName": "Bouvet Island",
+      "numeric": "074",
+      "uri": "iso:code:3166:BV"
+    },
+    {
+      "alpha2": "BR",
+      "alpha3": "BRA",
+      "englishShortName": "Brazil",
+      "numeric": "076",
+      "uri": "iso:code:3166:BR"
+    },
+    {
+      "alpha2": "IO",
+      "alpha3": "IOT",
+      "englishShortName": "British Indian Ocean Territory (the)",
+      "numeric": "086",
+      "uri": "iso:code:3166:IO"
+    },
+    {
+      "alpha2": "BN",
+      "alpha3": "BRN",
+      "englishShortName": "Brunei Darussalam",
+      "numeric": "096",
+      "uri": "iso:code:3166:BN"
+    },
+    {
+      "alpha2": "BG",
+      "alpha3": "BGR",
+      "englishShortName": "Bulgaria",
+      "numeric": "100",
+      "uri": "iso:code:3166:BG"
+    },
+    {
+      "alpha2": "BF",
+      "alpha3": "BFA",
+      "englishShortName": "Burkina Faso",
+      "numeric": "854",
+      "uri": "iso:code:3166:BF"
+    },
+    {
+      "alpha2": "BI",
+      "alpha3": "BDI",
+      "englishShortName": "Burundi",
+      "numeric": "108",
+      "uri": "iso:code:3166:BI"
+    },
+    {
+      "alpha2": "CV",
+      "alpha3": "CPV",
+      "englishShortName": "Cabo Verde",
+      "numeric": "132",
+      "uri": "iso:code:3166:CV"
+    },
+    {
+      "alpha2": "KH",
+      "alpha3": "KHM",
+      "englishShortName": "Cambodia",
+      "numeric": "116",
+      "uri": "iso:code:3166:KH"
+    },
+    {
+      "alpha2": "CM",
+      "alpha3": "CMR",
+      "englishShortName": "Cameroon",
+      "numeric": "120",
+      "uri": "iso:code:3166:CM"
+    },
+    {
+      "alpha2": "CA",
+      "alpha3": "CAN",
+      "englishShortName": "Canada",
+      "numeric": "124",
+      "uri": "iso:code:3166:CA"
+    },
+    {
+      "alpha2": "KY",
+      "alpha3": "CYM",
+      "englishShortName": "Cayman Islands (the)",
+      "numeric": "136",
+      "uri": "iso:code:3166:KY"
+    },
+    {
+      "alpha2": "CF",
+      "alpha3": "CAF",
+      "englishShortName": "Central African Republic (the)",
+      "numeric": "140",
+      "uri": "iso:code:3166:CF"
+    },
+    {
+      "alpha2": "TD",
+      "alpha3": "TCD",
+      "englishShortName": "Chad",
+      "numeric": "148",
+      "uri": "iso:code:3166:TD"
+    },
+    {
+      "alpha2": "CL",
+      "alpha3": "CHL",
+      "englishShortName": "Chile",
+      "numeric": "152",
+      "uri": "iso:code:3166:CL"
+    },
+    {
+      "alpha2": "CN",
+      "alpha3": "CHN",
+      "englishShortName": "China",
+      "numeric": "156",
+      "uri": "iso:code:3166:CN"
+    },
+    {
+      "alpha2": "CX",
+      "alpha3": "CXR",
+      "englishShortName": "Christmas Island",
+      "numeric": "162",
+      "uri": "iso:code:3166:CX"
+    },
+    {
+      "alpha2": "CC",
+      "alpha3": "CCK",
+      "englishShortName": "Cocos (Keeling) Islands (the)",
+      "numeric": "166",
+      "uri": "iso:code:3166:CC"
+    },
+    {
+      "alpha2": "CO",
+      "alpha3": "COL",
+      "englishShortName": "Colombia",
+      "numeric": "170",
+      "uri": "iso:code:3166:CO"
+    },
+    {
+      "alpha2": "KM",
+      "alpha3": "COM",
+      "englishShortName": "Comoros (the)",
+      "numeric": "174",
+      "uri": "iso:code:3166:KM"
+    },
+    {
+      "alpha2": "CD",
+      "alpha3": "COD",
+      "englishShortName": "Congo (the Democratic Republic of the)",
+      "numeric": "180",
+      "uri": "iso:code:3166:CD"
+    },
+    {
+      "alpha2": "CG",
+      "alpha3": "COG",
+      "englishShortName": "Congo (the)",
+      "numeric": "178",
+      "uri": "iso:code:3166:CG"
+    },
+    {
+      "alpha2": "CK",
+      "alpha3": "COK",
+      "englishShortName": "Cook Islands (the)",
+      "numeric": "184",
+      "uri": "iso:code:3166:CK"
+    },
+    {
+      "alpha2": "CR",
+      "alpha3": "CRI",
+      "englishShortName": "Costa Rica",
+      "numeric": "188",
+      "uri": "iso:code:3166:CR"
+    },
+    {
+      "alpha2": "CI",
+      "alpha3": "CIV",
+      "englishShortName": "Côte d'Ivoire",
+      "numeric": "384",
+      "uri": "iso:code:3166:CI"
+    },
+    {
+      "alpha2": "HR",
+      "alpha3": "HRV",
+      "englishShortName": "Croatia",
+      "numeric": "191",
+      "uri": "iso:code:3166:HR"
+    },
+    {
+      "alpha2": "CU",
+      "alpha3": "CUB",
+      "englishShortName": "Cuba",
+      "numeric": "192",
+      "uri": "iso:code:3166:CU"
+    },
+    {
+      "alpha2": "CW",
+      "alpha3": "CUW",
+      "englishShortName": "Curaçao",
+      "numeric": "531",
+      "uri": "iso:code:3166:CW"
+    },
+    {
+      "alpha2": "CY",
+      "alpha3": "CYP",
+      "englishShortName": "Cyprus",
+      "numeric": "196",
+      "uri": "iso:code:3166:CY"
+    },
+    {
+      "alpha2": "CZ",
+      "alpha3": "CZE",
+      "englishShortName": "Czechia",
+      "numeric": "203",
+      "uri": "iso:code:3166:CZ"
+    },
+    {
+      "alpha2": "DK",
+      "alpha3": "DNK",
+      "englishShortName": "Denmark",
+      "numeric": "208",
+      "uri": "iso:code:3166:DK"
+    },
+    {
+      "alpha2": "DJ",
+      "alpha3": "DJI",
+      "englishShortName": "Djibouti",
+      "numeric": "262",
+      "uri": "iso:code:3166:DJ"
+    },
+    {
+      "alpha2": "DM",
+      "alpha3": "DMA",
+      "englishShortName": "Dominica",
+      "numeric": "212",
+      "uri": "iso:code:3166:DM"
+    },
+    {
+      "alpha2": "DO",
+      "alpha3": "DOM",
+      "englishShortName": "Dominican Republic (the)",
+      "numeric": "214",
+      "uri": "iso:code:3166:DO"
+    },
+    {
+      "alpha2": "EC",
+      "alpha3": "ECU",
+      "englishShortName": "Ecuador",
+      "numeric": "218",
+      "uri": "iso:code:3166:EC"
+    },
+    {
+      "alpha2": "EG",
+      "alpha3": "EGY",
+      "englishShortName": "Egypt",
+      "numeric": "818",
+      "uri": "iso:code:3166:EG"
+    },
+    {
+      "alpha2": "SV",
+      "alpha3": "SLV",
+      "englishShortName": "El Salvador",
+      "numeric": "222",
+      "uri": "iso:code:3166:SV"
+    },
+    {
+      "alpha2": "GQ",
+      "alpha3": "GNQ",
+      "englishShortName": "Equatorial Guinea",
+      "numeric": "226",
+      "uri": "iso:code:3166:GQ"
+    },
+    {
+      "alpha2": "ER",
+      "alpha3": "ERI",
+      "englishShortName": "Eritrea",
+      "numeric": "232",
+      "uri": "iso:code:3166:ER"
+    },
+    {
+      "alpha2": "EE",
+      "alpha3": "EST",
+      "englishShortName": "Estonia",
+      "numeric": "233",
+      "uri": "iso:code:3166:EE"
+    },
+    {
+      "alpha2": "SZ",
+      "alpha3": "SWZ",
+      "englishShortName": "Eswatini",
+      "numeric": "748",
+      "uri": "iso:code:3166:SZ"
+    },
+    {
+      "alpha2": "ET",
+      "alpha3": "ETH",
+      "englishShortName": "Ethiopia",
+      "numeric": "231",
+      "uri": "iso:code:3166:ET"
+    },
+    {
+      "alpha2": "FK",
+      "alpha3": "FLK",
+      "englishShortName": "Falkland Islands (the) [Malvinas]",
+      "numeric": "238",
+      "uri": "iso:code:3166:FK"
+    },
+    {
+      "alpha2": "FO",
+      "alpha3": "FRO",
+      "englishShortName": "Faroe Islands (the)",
+      "numeric": "234",
+      "uri": "iso:code:3166:FO"
+    },
+    {
+      "alpha2": "FJ",
+      "alpha3": "FJI",
+      "englishShortName": "Fiji",
+      "numeric": "242",
+      "uri": "iso:code:3166:FJ"
+    },
+    {
+      "alpha2": "FI",
+      "alpha3": "FIN",
+      "englishShortName": "Finland",
+      "numeric": "246",
+      "uri": "iso:code:3166:FI"
+    },
+    {
+      "alpha2": "FR",
+      "alpha3": "FRA",
+      "englishShortName": "France",
+      "numeric": "250",
+      "uri": "iso:code:3166:FR"
+    },
+    {
+      "alpha2": "GF",
+      "alpha3": "GUF",
+      "englishShortName": "French Guiana",
+      "numeric": "254",
+      "uri": "iso:code:3166:GF"
+    },
+    {
+      "alpha2": "PF",
+      "alpha3": "PYF",
+      "englishShortName": "French Polynesia",
+      "numeric": "258",
+      "uri": "iso:code:3166:PF"
+    },
+    {
+      "alpha2": "TF",
+      "alpha3": "ATF",
+      "englishShortName": "French Southern Territories (the)",
+      "numeric": "260",
+      "uri": "iso:code:3166:TF"
+    },
+    {
+      "alpha2": "GA",
+      "alpha3": "GAB",
+      "englishShortName": "Gabon",
+      "numeric": "266",
+      "uri": "iso:code:3166:GA"
+    },
+    {
+      "alpha2": "GM",
+      "alpha3": "GMB",
+      "englishShortName": "Gambia (the)",
+      "numeric": "270",
+      "uri": "iso:code:3166:GM"
+    },
+    {
+      "alpha2": "GE",
+      "alpha3": "GEO",
+      "englishShortName": "Georgia",
+      "numeric": "268",
+      "uri": "iso:code:3166:GE"
+    },
+    {
+      "alpha2": "DE",
+      "alpha3": "DEU",
+      "englishShortName": "Germany",
+      "numeric": "276",
+      "uri": "iso:code:3166:DE"
+    },
+    {
+      "alpha2": "GH",
+      "alpha3": "GHA",
+      "englishShortName": "Ghana",
+      "numeric": "288",
+      "uri": "iso:code:3166:GH"
+    },
+    {
+      "alpha2": "GI",
+      "alpha3": "GIB",
+      "englishShortName": "Gibraltar",
+      "numeric": "292",
+      "uri": "iso:code:3166:GI"
+    },
+    {
+      "alpha2": "GR",
+      "alpha3": "GRC",
+      "englishShortName": "Greece",
+      "numeric": "300",
+      "uri": "iso:code:3166:GR"
+    },
+    {
+      "alpha2": "GL",
+      "alpha3": "GRL",
+      "englishShortName": "Greenland",
+      "numeric": "304",
+      "uri": "iso:code:3166:GL"
+    },
+    {
+      "alpha2": "GD",
+      "alpha3": "GRD",
+      "englishShortName": "Grenada",
+      "numeric": "308",
+      "uri": "iso:code:3166:GD"
+    },
+    {
+      "alpha2": "GP",
+      "alpha3": "GLP",
+      "englishShortName": "Guadeloupe",
+      "numeric": "312",
+      "uri": "iso:code:3166:GP"
+    },
+    {
+      "alpha2": "GU",
+      "alpha3": "GUM",
+      "englishShortName": "Guam",
+      "numeric": "316",
+      "uri": "iso:code:3166:GU"
+    },
+    {
+      "alpha2": "GT",
+      "alpha3": "GTM",
+      "englishShortName": "Guatemala",
+      "numeric": "320",
+      "uri": "iso:code:3166:GT"
+    },
+    {
+      "alpha2": "GG",
+      "alpha3": "GGY",
+      "englishShortName": "Guernsey",
+      "numeric": "831",
+      "uri": "iso:code:3166:GG"
+    },
+    {
+      "alpha2": "GN",
+      "alpha3": "GIN",
+      "englishShortName": "Guinea",
+      "numeric": "324",
+      "uri": "iso:code:3166:GN"
+    },
+    {
+      "alpha2": "GW",
+      "alpha3": "GNB",
+      "englishShortName": "Guinea-Bissau",
+      "numeric": "624",
+      "uri": "iso:code:3166:GW"
+    },
+    {
+      "alpha2": "GY",
+      "alpha3": "GUY",
+      "englishShortName": "Guyana",
+      "numeric": "328",
+      "uri": "iso:code:3166:GY"
+    },
+    {
+      "alpha2": "HT",
+      "alpha3": "HTI",
+      "englishShortName": "Haiti",
+      "numeric": "332",
+      "uri": "iso:code:3166:HT"
+    },
+    {
+      "alpha2": "HM",
+      "alpha3": "HMD",
+      "englishShortName": "Heard Island and McDonald Islands",
+      "numeric": "334",
+      "uri": "iso:code:3166:HM"
+    },
+    {
+      "alpha2": "VA",
+      "alpha3": "VAT",
+      "englishShortName": "Holy See (the)",
+      "numeric": "336",
+      "uri": "iso:code:3166:VA"
+    },
+    {
+      "alpha2": "HN",
+      "alpha3": "HND",
+      "englishShortName": "Honduras",
+      "numeric": "340",
+      "uri": "iso:code:3166:HN"
+    },
+    {
+      "alpha2": "HK",
+      "alpha3": "HKG",
+      "englishShortName": "Hong Kong",
+      "numeric": "344",
+      "uri": "iso:code:3166:HK"
+    },
+    {
+      "alpha2": "HU",
+      "alpha3": "HUN",
+      "englishShortName": "Hungary",
+      "numeric": "348",
+      "uri": "iso:code:3166:HU"
+    },
+    {
+      "alpha2": "IS",
+      "alpha3": "ISL",
+      "englishShortName": "Iceland",
+      "numeric": "352",
+      "uri": "iso:code:3166:IS"
+    },
+    {
+      "alpha2": "IN",
+      "alpha3": "IND",
+      "englishShortName": "India",
+      "numeric": "356",
+      "uri": "iso:code:3166:IN"
+    },
+    {
+      "alpha2": "ID",
+      "alpha3": "IDN",
+      "englishShortName": "Indonesia",
+      "numeric": "360",
+      "uri": "iso:code:3166:ID"
+    },
+    {
+      "alpha2": "IR",
+      "alpha3": "IRN",
+      "englishShortName": "Iran (Islamic Republic of)",
+      "numeric": "364",
+      "uri": "iso:code:3166:IR"
+    },
+    {
+      "alpha2": "IQ",
+      "alpha3": "IRQ",
+      "englishShortName": "Iraq",
+      "numeric": "368",
+      "uri": "iso:code:3166:IQ"
+    },
+    {
+      "alpha2": "IE",
+      "alpha3": "IRL",
+      "englishShortName": "Ireland",
+      "numeric": "372",
+      "uri": "iso:code:3166:IE"
+    },
+    {
+      "alpha2": "IM",
+      "alpha3": "IMN",
+      "englishShortName": "Isle of Man",
+      "numeric": "833",
+      "uri": "iso:code:3166:IM"
+    },
+    {
+      "alpha2": "IL",
+      "alpha3": "ISR",
+      "englishShortName": "Israel",
+      "numeric": "376",
+      "uri": "iso:code:3166:IL"
+    },
+    {
+      "alpha2": "IT",
+      "alpha3": "ITA",
+      "englishShortName": "Italy",
+      "numeric": "380",
+      "uri": "iso:code:3166:IT"
+    },
+    {
+      "alpha2": "JM",
+      "alpha3": "JAM",
+      "englishShortName": "Jamaica",
+      "numeric": "388",
+      "uri": "iso:code:3166:JM"
+    },
+    {
+      "alpha2": "JP",
+      "alpha3": "JPN",
+      "englishShortName": "Japan",
+      "numeric": "392",
+      "uri": "iso:code:3166:JP"
+    },
+    {
+      "alpha2": "JE",
+      "alpha3": "JEY",
+      "englishShortName": "Jersey",
+      "numeric": "832",
+      "uri": "iso:code:3166:JE"
+    },
+    {
+      "alpha2": "JO",
+      "alpha3": "JOR",
+      "englishShortName": "Jordan",
+      "numeric": "400",
+      "uri": "iso:code:3166:JO"
+    },
+    {
+      "alpha2": "KZ",
+      "alpha3": "KAZ",
+      "englishShortName": "Kazakhstan",
+      "numeric": "398",
+      "uri": "iso:code:3166:KZ"
+    },
+    {
+      "alpha2": "KE",
+      "alpha3": "KEN",
+      "englishShortName": "Kenya",
+      "numeric": "404",
+      "uri": "iso:code:3166:KE"
+    },
+    {
+      "alpha2": "KI",
+      "alpha3": "KIR",
+      "englishShortName": "Kiribati",
+      "numeric": "296",
+      "uri": "iso:code:3166:KI"
+    },
+    {
+      "alpha2": "KP",
+      "alpha3": "PRK",
+      "englishShortName": "Korea (the Democratic People's Republic of)",
+      "numeric": "408",
+      "uri": "iso:code:3166:KP"
+    },
+    {
+      "alpha2": "KR",
+      "alpha3": "KOR",
+      "englishShortName": "Korea (the Republic of)",
+      "numeric": "410",
+      "uri": "iso:code:3166:KR"
+    },
+    {
+      "alpha2": "KW",
+      "alpha3": "KWT",
+      "englishShortName": "Kuwait",
+      "numeric": "414",
+      "uri": "iso:code:3166:KW"
+    },
+    {
+      "alpha2": "KG",
+      "alpha3": "KGZ",
+      "englishShortName": "Kyrgyzstan",
+      "numeric": "417",
+      "uri": "iso:code:3166:KG"
+    },
+    {
+      "alpha2": "LA",
+      "alpha3": "LAO",
+      "englishShortName": "Lao People's Democratic Republic (the)",
+      "numeric": "418",
+      "uri": "iso:code:3166:LA"
+    },
+    {
+      "alpha2": "LV",
+      "alpha3": "LVA",
+      "englishShortName": "Latvia",
+      "numeric": "428",
+      "uri": "iso:code:3166:LV"
+    },
+    {
+      "alpha2": "LB",
+      "alpha3": "LBN",
+      "englishShortName": "Lebanon",
+      "numeric": "422",
+      "uri": "iso:code:3166:LB"
+    },
+    {
+      "alpha2": "LS",
+      "alpha3": "LSO",
+      "englishShortName": "Lesotho",
+      "numeric": "426",
+      "uri": "iso:code:3166:LS"
+    },
+    {
+      "alpha2": "LR",
+      "alpha3": "LBR",
+      "englishShortName": "Liberia",
+      "numeric": "430",
+      "uri": "iso:code:3166:LR"
+    },
+    {
+      "alpha2": "LY",
+      "alpha3": "LBY",
+      "englishShortName": "Libya",
+      "numeric": "434",
+      "uri": "iso:code:3166:LY"
+    },
+    {
+      "alpha2": "LI",
+      "alpha3": "LIE",
+      "englishShortName": "Liechtenstein",
+      "numeric": "438",
+      "uri": "iso:code:3166:LI"
+    },
+    {
+      "alpha2": "LT",
+      "alpha3": "LTU",
+      "englishShortName": "Lithuania",
+      "numeric": "440",
+      "uri": "iso:code:3166:LT"
+    },
+    {
+      "alpha2": "LU",
+      "alpha3": "LUX",
+      "englishShortName": "Luxembourg",
+      "numeric": "442",
+      "uri": "iso:code:3166:LU"
+    },
+    {
+      "alpha2": "MO",
+      "alpha3": "MAC",
+      "englishShortName": "Macao",
+      "numeric": "446",
+      "uri": "iso:code:3166:MO"
+    },
+    {
+      "alpha2": "MG",
+      "alpha3": "MDG",
+      "englishShortName": "Madagascar",
+      "numeric": "450",
+      "uri": "iso:code:3166:MG"
+    },
+    {
+      "alpha2": "MW",
+      "alpha3": "MWI",
+      "englishShortName": "Malawi",
+      "numeric": "454",
+      "uri": "iso:code:3166:MW"
+    },
+    {
+      "alpha2": "MY",
+      "alpha3": "MYS",
+      "englishShortName": "Malaysia",
+      "numeric": "458",
+      "uri": "iso:code:3166:MY"
+    },
+    {
+      "alpha2": "MV",
+      "alpha3": "MDV",
+      "englishShortName": "Maldives",
+      "numeric": "462",
+      "uri": "iso:code:3166:MV"
+    },
+    {
+      "alpha2": "ML",
+      "alpha3": "MLI",
+      "englishShortName": "Mali",
+      "numeric": "466",
+      "uri": "iso:code:3166:ML"
+    },
+    {
+      "alpha2": "MT",
+      "alpha3": "MLT",
+      "englishShortName": "Malta",
+      "numeric": "470",
+      "uri": "iso:code:3166:MT"
+    },
+    {
+      "alpha2": "MH",
+      "alpha3": "MHL",
+      "englishShortName": "Marshall Islands (the)",
+      "numeric": "584",
+      "uri": "iso:code:3166:MH"
+    },
+    {
+      "alpha2": "MQ",
+      "alpha3": "MTQ",
+      "englishShortName": "Martinique",
+      "numeric": "474",
+      "uri": "iso:code:3166:MQ"
+    },
+    {
+      "alpha2": "MR",
+      "alpha3": "MRT",
+      "englishShortName": "Mauritania",
+      "numeric": "478",
+      "uri": "iso:code:3166:MR"
+    },
+    {
+      "alpha2": "MU",
+      "alpha3": "MUS",
+      "englishShortName": "Mauritius",
+      "numeric": "480",
+      "uri": "iso:code:3166:MU"
+    },
+    {
+      "alpha2": "YT",
+      "alpha3": "MYT",
+      "englishShortName": "Mayotte",
+      "numeric": "175",
+      "uri": "iso:code:3166:YT"
+    },
+    {
+      "alpha2": "MX",
+      "alpha3": "MEX",
+      "englishShortName": "Mexico",
+      "numeric": "484",
+      "uri": "iso:code:3166:MX"
+    },
+    {
+      "alpha2": "FM",
+      "alpha3": "FSM",
+      "englishShortName": "Micronesia (Federated States of)",
+      "numeric": "583",
+      "uri": "iso:code:3166:FM"
+    },
+    {
+      "alpha2": "MD",
+      "alpha3": "MDA",
+      "englishShortName": "Moldova (the Republic of)",
+      "numeric": "498",
+      "uri": "iso:code:3166:MD"
+    },
+    {
+      "alpha2": "MC",
+      "alpha3": "MCO",
+      "englishShortName": "Monaco",
+      "numeric": "492",
+      "uri": "iso:code:3166:MC"
+    },
+    {
+      "alpha2": "MN",
+      "alpha3": "MNG",
+      "englishShortName": "Mongolia",
+      "numeric": "496",
+      "uri": "iso:code:3166:MN"
+    },
+    {
+      "alpha2": "ME",
+      "alpha3": "MNE",
+      "englishShortName": "Montenegro",
+      "numeric": "499",
+      "uri": "iso:code:3166:ME"
+    },
+    {
+      "alpha2": "MS",
+      "alpha3": "MSR",
+      "englishShortName": "Montserrat",
+      "numeric": "500",
+      "uri": "iso:code:3166:MS"
+    },
+    {
+      "alpha2": "MA",
+      "alpha3": "MAR",
+      "englishShortName": "Morocco",
+      "numeric": "504",
+      "uri": "iso:code:3166:MA"
+    },
+    {
+      "alpha2": "MZ",
+      "alpha3": "MOZ",
+      "englishShortName": "Mozambique",
+      "numeric": "508",
+      "uri": "iso:code:3166:MZ"
+    },
+    {
+      "alpha2": "MM",
+      "alpha3": "MMR",
+      "englishShortName": "Myanmar",
+      "numeric": "104",
+      "uri": "iso:code:3166:MM"
+    },
+    {
+      "alpha2": "NA",
+      "alpha3": "NAM",
+      "englishShortName": "Namibia",
+      "numeric": "516",
+      "uri": "iso:code:3166:NA"
+    },
+    {
+      "alpha2": "NR",
+      "alpha3": "NRU",
+      "englishShortName": "Nauru",
+      "numeric": "520",
+      "uri": "iso:code:3166:NR"
+    },
+    {
+      "alpha2": "NP",
+      "alpha3": "NPL",
+      "englishShortName": "Nepal",
+      "numeric": "524",
+      "uri": "iso:code:3166:NP"
+    },
+    {
+      "alpha2": "NL",
+      "alpha3": "NLD",
+      "englishShortName": "Netherlands (Kingdom of the)",
+      "numeric": "528",
+      "uri": "iso:code:3166:NL"
+    },
+    {
+      "alpha2": "NC",
+      "alpha3": "NCL",
+      "englishShortName": "New Caledonia",
+      "numeric": "540",
+      "uri": "iso:code:3166:NC"
+    },
+    {
+      "alpha2": "NZ",
+      "alpha3": "NZL",
+      "englishShortName": "New Zealand",
+      "numeric": "554",
+      "uri": "iso:code:3166:NZ"
+    },
+    {
+      "alpha2": "NI",
+      "alpha3": "NIC",
+      "englishShortName": "Nicaragua",
+      "numeric": "558",
+      "uri": "iso:code:3166:NI"
+    },
+    {
+      "alpha2": "NE",
+      "alpha3": "NER",
+      "englishShortName": "Niger (the)",
+      "numeric": "562",
+      "uri": "iso:code:3166:NE"
+    },
+    {
+      "alpha2": "NG",
+      "alpha3": "NGA",
+      "englishShortName": "Nigeria",
+      "numeric": "566",
+      "uri": "iso:code:3166:NG"
+    },
+    {
+      "alpha2": "NU",
+      "alpha3": "NIU",
+      "englishShortName": "Niue",
+      "numeric": "570",
+      "uri": "iso:code:3166:NU"
+    },
+    {
+      "alpha2": "NF",
+      "alpha3": "NFK",
+      "englishShortName": "Norfolk Island",
+      "numeric": "574",
+      "uri": "iso:code:3166:NF"
+    },
+    {
+      "alpha2": "MK",
+      "alpha3": "MKD",
+      "englishShortName": "North Macedonia",
+      "numeric": "807",
+      "uri": "iso:code:3166:MK"
+    },
+    {
+      "alpha2": "MP",
+      "alpha3": "MNP",
+      "englishShortName": "Northern Mariana Islands (the)",
+      "numeric": "580",
+      "uri": "iso:code:3166:MP"
+    },
+    {
+      "alpha2": "NO",
+      "alpha3": "NOR",
+      "englishShortName": "Norway",
+      "numeric": "578",
+      "uri": "iso:code:3166:NO"
+    },
+    {
+      "alpha2": "OM",
+      "alpha3": "OMN",
+      "englishShortName": "Oman",
+      "numeric": "512",
+      "uri": "iso:code:3166:OM"
+    },
+    {
+      "alpha2": "PK",
+      "alpha3": "PAK",
+      "englishShortName": "Pakistan",
+      "numeric": "586",
+      "uri": "iso:code:3166:PK"
+    },
+    {
+      "alpha2": "PW",
+      "alpha3": "PLW",
+      "englishShortName": "Palau",
+      "numeric": "585",
+      "uri": "iso:code:3166:PW"
+    },
+    {
+      "alpha2": "PS",
+      "alpha3": "PSE",
+      "englishShortName": "Palestine, State of",
+      "numeric": "275",
+      "uri": "iso:code:3166:PS"
+    },
+    {
+      "alpha2": "PA",
+      "alpha3": "PAN",
+      "englishShortName": "Panama",
+      "numeric": "591",
+      "uri": "iso:code:3166:PA"
+    },
+    {
+      "alpha2": "PG",
+      "alpha3": "PNG",
+      "englishShortName": "Papua New Guinea",
+      "numeric": "598",
+      "uri": "iso:code:3166:PG"
+    },
+    {
+      "alpha2": "PY",
+      "alpha3": "PRY",
+      "englishShortName": "Paraguay",
+      "numeric": "600",
+      "uri": "iso:code:3166:PY"
+    },
+    {
+      "alpha2": "PE",
+      "alpha3": "PER",
+      "englishShortName": "Peru",
+      "numeric": "604",
+      "uri": "iso:code:3166:PE"
+    },
+    {
+      "alpha2": "PH",
+      "alpha3": "PHL",
+      "englishShortName": "Philippines (the)",
+      "numeric": "608",
+      "uri": "iso:code:3166:PH"
+    },
+    {
+      "alpha2": "PN",
+      "alpha3": "PCN",
+      "englishShortName": "Pitcairn",
+      "numeric": "612",
+      "uri": "iso:code:3166:PN"
+    },
+    {
+      "alpha2": "PL",
+      "alpha3": "POL",
+      "englishShortName": "Poland",
+      "numeric": "616",
+      "uri": "iso:code:3166:PL"
+    },
+    {
+      "alpha2": "PT",
+      "alpha3": "PRT",
+      "englishShortName": "Portugal",
+      "numeric": "620",
+      "uri": "iso:code:3166:PT"
+    },
+    {
+      "alpha2": "PR",
+      "alpha3": "PRI",
+      "englishShortName": "Puerto Rico",
+      "numeric": "630",
+      "uri": "iso:code:3166:PR"
+    },
+    {
+      "alpha2": "QA",
+      "alpha3": "QAT",
+      "englishShortName": "Qatar",
+      "numeric": "634",
+      "uri": "iso:code:3166:QA"
+    },
+    {
+      "alpha2": "RE",
+      "alpha3": "REU",
+      "englishShortName": "Réunion",
+      "numeric": "638",
+      "uri": "iso:code:3166:RE"
+    },
+    {
+      "alpha2": "RO",
+      "alpha3": "ROU",
+      "englishShortName": "Romania",
+      "numeric": "642",
+      "uri": "iso:code:3166:RO"
+    },
+    {
+      "alpha2": "RU",
+      "alpha3": "RUS",
+      "englishShortName": "Russian Federation (the)",
+      "numeric": "643",
+      "uri": "iso:code:3166:RU"
+    },
+    {
+      "alpha2": "RW",
+      "alpha3": "RWA",
+      "englishShortName": "Rwanda",
+      "numeric": "646",
+      "uri": "iso:code:3166:RW"
+    },
+    {
+      "alpha2": "BL",
+      "alpha3": "BLM",
+      "englishShortName": "Saint Barthélemy",
+      "numeric": "652",
+      "uri": "iso:code:3166:BL"
+    },
+    {
+      "alpha2": "SH",
+      "alpha3": "SHN",
+      "englishShortName": "Saint Helena, Ascension and Tristan da Cunha",
+      "numeric": "654",
+      "uri": "iso:code:3166:SH"
+    },
+    {
+      "alpha2": "KN",
+      "alpha3": "KNA",
+      "englishShortName": "Saint Kitts and Nevis",
+      "numeric": "659",
+      "uri": "iso:code:3166:KN"
+    },
+    {
+      "alpha2": "LC",
+      "alpha3": "LCA",
+      "englishShortName": "Saint Lucia",
+      "numeric": "662",
+      "uri": "iso:code:3166:LC"
+    },
+    {
+      "alpha2": "MF",
+      "alpha3": "MAF",
+      "englishShortName": "Saint Martin (French part)",
+      "numeric": "663",
+      "uri": "iso:code:3166:MF"
+    },
+    {
+      "alpha2": "PM",
+      "alpha3": "SPM",
+      "englishShortName": "Saint Pierre and Miquelon",
+      "numeric": "666",
+      "uri": "iso:code:3166:PM"
+    },
+    {
+      "alpha2": "VC",
+      "alpha3": "VCT",
+      "englishShortName": "Saint Vincent and the Grenadines",
+      "numeric": "670",
+      "uri": "iso:code:3166:VC"
+    },
+    {
+      "alpha2": "WS",
+      "alpha3": "WSM",
+      "englishShortName": "Samoa",
+      "numeric": "882",
+      "uri": "iso:code:3166:WS"
+    },
+    {
+      "alpha2": "SM",
+      "alpha3": "SMR",
+      "englishShortName": "San Marino",
+      "numeric": "674",
+      "uri": "iso:code:3166:SM"
+    },
+    {
+      "alpha2": "ST",
+      "alpha3": "STP",
+      "englishShortName": "Sao Tome and Principe",
+      "numeric": "678",
+      "uri": "iso:code:3166:ST"
+    },
+    {
+      "alpha2": "SA",
+      "alpha3": "SAU",
+      "englishShortName": "Saudi Arabia",
+      "numeric": "682",
+      "uri": "iso:code:3166:SA"
+    },
+    {
+      "alpha2": "SN",
+      "alpha3": "SEN",
+      "englishShortName": "Senegal",
+      "numeric": "686",
+      "uri": "iso:code:3166:SN"
+    },
+    {
+      "alpha2": "RS",
+      "alpha3": "SRB",
+      "englishShortName": "Serbia",
+      "numeric": "688",
+      "uri": "iso:code:3166:RS"
+    },
+    {
+      "alpha2": "SC",
+      "alpha3": "SYC",
+      "englishShortName": "Seychelles",
+      "numeric": "690",
+      "uri": "iso:code:3166:SC"
+    },
+    {
+      "alpha2": "SL",
+      "alpha3": "SLE",
+      "englishShortName": "Sierra Leone",
+      "numeric": "694",
+      "uri": "iso:code:3166:SL"
+    },
+    {
+      "alpha2": "SG",
+      "alpha3": "SGP",
+      "englishShortName": "Singapore",
+      "numeric": "702",
+      "uri": "iso:code:3166:SG"
+    },
+    {
+      "alpha2": "SX",
+      "alpha3": "SXM",
+      "englishShortName": "Sint Maarten (Dutch part)",
+      "numeric": "534",
+      "uri": "iso:code:3166:SX"
+    },
+    {
+      "alpha2": "SK",
+      "alpha3": "SVK",
+      "englishShortName": "Slovakia",
+      "numeric": "703",
+      "uri": "iso:code:3166:SK"
+    },
+    {
+      "alpha2": "SI",
+      "alpha3": "SVN",
+      "englishShortName": "Slovenia",
+      "numeric": "705",
+      "uri": "iso:code:3166:SI"
+    },
+    {
+      "alpha2": "SB",
+      "alpha3": "SLB",
+      "englishShortName": "Solomon Islands",
+      "numeric": "090",
+      "uri": "iso:code:3166:SB"
+    },
+    {
+      "alpha2": "SO",
+      "alpha3": "SOM",
+      "englishShortName": "Somalia",
+      "numeric": "706",
+      "uri": "iso:code:3166:SO"
+    },
+    {
+      "alpha2": "ZA",
+      "alpha3": "ZAF",
+      "englishShortName": "South Africa",
+      "numeric": "710",
+      "uri": "iso:code:3166:ZA"
+    },
+    {
+      "alpha2": "GS",
+      "alpha3": "SGS",
+      "englishShortName": "South Georgia and the South Sandwich Islands",
+      "numeric": "239",
+      "uri": "iso:code:3166:GS"
+    },
+    {
+      "alpha2": "SS",
+      "alpha3": "SSD",
+      "englishShortName": "South Sudan",
+      "numeric": "728",
+      "uri": "iso:code:3166:SS"
+    },
+    {
+      "alpha2": "ES",
+      "alpha3": "ESP",
+      "englishShortName": "Spain",
+      "numeric": "724",
+      "uri": "iso:code:3166:ES"
+    },
+    {
+      "alpha2": "LK",
+      "alpha3": "LKA",
+      "englishShortName": "Sri Lanka",
+      "numeric": "144",
+      "uri": "iso:code:3166:LK"
+    },
+    {
+      "alpha2": "SD",
+      "alpha3": "SDN",
+      "englishShortName": "Sudan (the)",
+      "numeric": "729",
+      "uri": "iso:code:3166:SD"
+    },
+    {
+      "alpha2": "SR",
+      "alpha3": "SUR",
+      "englishShortName": "Suriname",
+      "numeric": "740",
+      "uri": "iso:code:3166:SR"
+    },
+    {
+      "alpha2": "SJ",
+      "alpha3": "SJM",
+      "englishShortName": "Svalbard and Jan Mayen",
+      "numeric": "744",
+      "uri": "iso:code:3166:SJ"
+    },
+    {
+      "alpha2": "SE",
+      "alpha3": "SWE",
+      "englishShortName": "Sweden",
+      "numeric": "752",
+      "uri": "iso:code:3166:SE"
+    },
+    {
+      "alpha2": "CH",
+      "alpha3": "CHE",
+      "englishShortName": "Switzerland",
+      "numeric": "756",
+      "uri": "iso:code:3166:CH"
+    },
+    {
+      "alpha2": "SY",
+      "alpha3": "SYR",
+      "englishShortName": "Syrian Arab Republic (the)",
+      "numeric": "760",
+      "uri": "iso:code:3166:SY"
+    },
+    {
+      "alpha2": "TW",
+      "alpha3": "TWN",
+      "englishShortName": "Taiwan (Province of China)",
+      "numeric": "158",
+      "uri": "iso:code:3166:TW"
+    },
+    {
+      "alpha2": "TJ",
+      "alpha3": "TJK",
+      "englishShortName": "Tajikistan",
+      "numeric": "762",
+      "uri": "iso:code:3166:TJ"
+    },
+    {
+      "alpha2": "TZ",
+      "alpha3": "TZA",
+      "englishShortName": "Tanzania, the United Republic of",
+      "numeric": "834",
+      "uri": "iso:code:3166:TZ"
+    },
+    {
+      "alpha2": "TH",
+      "alpha3": "THA",
+      "englishShortName": "Thailand",
+      "numeric": "764",
+      "uri": "iso:code:3166:TH"
+    },
+    {
+      "alpha2": "TL",
+      "alpha3": "TLS",
+      "englishShortName": "Timor-Leste",
+      "numeric": "626",
+      "uri": "iso:code:3166:TL"
+    },
+    {
+      "alpha2": "TG",
+      "alpha3": "TGO",
+      "englishShortName": "Togo",
+      "numeric": "768",
+      "uri": "iso:code:3166:TG"
+    },
+    {
+      "alpha2": "TK",
+      "alpha3": "TKL",
+      "englishShortName": "Tokelau",
+      "numeric": "772",
+      "uri": "iso:code:3166:TK"
+    },
+    {
+      "alpha2": "TO",
+      "alpha3": "TON",
+      "englishShortName": "Tonga",
+      "numeric": "776",
+      "uri": "iso:code:3166:TO"
+    },
+    {
+      "alpha2": "TT",
+      "alpha3": "TTO",
+      "englishShortName": "Trinidad and Tobago",
+      "numeric": "780",
+      "uri": "iso:code:3166:TT"
+    },
+    {
+      "alpha2": "TN",
+      "alpha3": "TUN",
+      "englishShortName": "Tunisia",
+      "numeric": "788",
+      "uri": "iso:code:3166:TN"
+    },
+    {
+      "alpha2": "TR",
+      "alpha3": "TUR",
+      "englishShortName": "Türkiye",
+      "numeric": "792",
+      "uri": "iso:code:3166:TR"
+    },
+    {
+      "alpha2": "TM",
+      "alpha3": "TKM",
+      "englishShortName": "Turkmenistan",
+      "numeric": "795",
+      "uri": "iso:code:3166:TM"
+    },
+    {
+      "alpha2": "TC",
+      "alpha3": "TCA",
+      "englishShortName": "Turks and Caicos Islands (the)",
+      "numeric": "796",
+      "uri": "iso:code:3166:TC"
+    },
+    {
+      "alpha2": "TV",
+      "alpha3": "TUV",
+      "englishShortName": "Tuvalu",
+      "numeric": "798",
+      "uri": "iso:code:3166:TV"
+    },
+    {
+      "alpha2": "UG",
+      "alpha3": "UGA",
+      "englishShortName": "Uganda",
+      "numeric": "800",
+      "uri": "iso:code:3166:UG"
+    },
+    {
+      "alpha2": "UA",
+      "alpha3": "UKR",
+      "englishShortName": "Ukraine",
+      "numeric": "804",
+      "uri": "iso:code:3166:UA"
+    },
+    {
+      "alpha2": "AE",
+      "alpha3": "ARE",
+      "englishShortName": "United Arab Emirates (the)",
+      "numeric": "784",
+      "uri": "iso:code:3166:AE"
+    },
+    {
+      "alpha2": "GB",
+      "alpha3": "GBR",
+      "englishShortName": "United Kingdom of Great Britain and Northern Ireland (the)",
+      "numeric": "826",
+      "uri": "iso:code:3166:GB"
+    },
+    {
+      "alpha2": "UM",
+      "alpha3": "UMI",
+      "englishShortName": "United States Minor Outlying Islands (the)",
+      "numeric": "581",
+      "uri": "iso:code:3166:UM"
+    },
+    {
+      "alpha2": "US",
+      "alpha3": "USA",
+      "englishShortName": "United States of America (the)",
+      "numeric": "840",
+      "uri": "iso:code:3166:US"
+    },
+    {
+      "alpha2": "UY",
+      "alpha3": "URY",
+      "englishShortName": "Uruguay",
+      "numeric": "858",
+      "uri": "iso:code:3166:UY"
+    },
+    {
+      "alpha2": "UZ",
+      "alpha3": "UZB",
+      "englishShortName": "Uzbekistan",
+      "numeric": "860",
+      "uri": "iso:code:3166:UZ"
+    },
+    {
+      "alpha2": "VU",
+      "alpha3": "VUT",
+      "englishShortName": "Vanuatu",
+      "numeric": "548",
+      "uri": "iso:code:3166:VU"
+    },
+    {
+      "alpha2": "VE",
+      "alpha3": "VEN",
+      "englishShortName": "Venezuela (Bolivarian Republic of)",
+      "numeric": "862",
+      "uri": "iso:code:3166:VE"
+    },
+    {
+      "alpha2": "VN",
+      "alpha3": "VNM",
+      "englishShortName": "Viet Nam",
+      "numeric": "704",
+      "uri": "iso:code:3166:VN"
+    },
+    {
+      "alpha2": "VG",
+      "alpha3": "VGB",
+      "englishShortName": "Virgin Islands (British)",
+      "numeric": "092",
+      "uri": "iso:code:3166:VG"
+    },
+    {
+      "alpha2": "VI",
+      "alpha3": "VIR",
+      "englishShortName": "Virgin Islands (U.S.)",
+      "numeric": "850",
+      "uri": "iso:code:3166:VI"
+    },
+    {
+      "alpha2": "WF",
+      "alpha3": "WLF",
+      "englishShortName": "Wallis and Futuna",
+      "numeric": "876",
+      "uri": "iso:code:3166:WF"
+    },
+    {
+      "alpha2": "EH",
+      "alpha3": "ESH",
+      "englishShortName": "Western Sahara*",
+      "numeric": "732",
+      "uri": "iso:code:3166:EH"
+    },
+    {
+      "alpha2": "YE",
+      "alpha3": "YEM",
+      "englishShortName": "Yemen",
+      "numeric": "887",
+      "uri": "iso:code:3166:YE"
+    },
+    {
+      "alpha2": "ZM",
+      "alpha3": "ZMB",
+      "englishShortName": "Zambia",
+      "numeric": "894",
+      "uri": "iso:code:3166:ZM"
+    },
+    {
+      "alpha2": "ZW",
+      "alpha3": "ZWE",
+      "englishShortName": "Zimbabwe",
+      "numeric": "716",
+      "uri": "iso:code:3166:ZW"
+    }
+  ]
+}

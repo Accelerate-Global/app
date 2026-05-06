@@ -166,6 +166,11 @@ describe("DashboardClient", () => {
     const editLink = screen.getByRole("link", { name: "Edit" });
 
     expect(editLink.getAttribute("href")).toBe("/dashboard/datasets/dataset-1/edit");
+    expect(
+      screen
+        .getByRole("link", { name: "ISO3 country code list" })
+        .getAttribute("href"),
+    ).toBe("/dashboard/country-codes");
     expect(screen.queryByRole("dialog", { name: "Edit dataset" })).toBeNull();
     expect(trackAppEventMock).toHaveBeenCalledWith(
       "dashboard_viewed",

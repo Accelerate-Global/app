@@ -185,6 +185,27 @@ export const smokeRouteSpecs: SmokeRouteSpec[] = [
     journeys: ["admin can review field source mappings"],
   },
   {
+    id: "iso-country-codes-pro",
+    role: "pro",
+    pageFile: "src/app/dashboard/country-codes/page.tsx",
+    path: "/dashboard/country-codes",
+    pageId: "iso-country-codes",
+  },
+  {
+    id: "iso-country-codes-basic",
+    role: "basic",
+    pageFile: "src/app/dashboard/country-codes/page.tsx",
+    path: "/dashboard/country-codes",
+    pageId: "iso-country-codes",
+  },
+  {
+    id: "iso-country-codes-admin",
+    role: "admin",
+    pageFile: "src/app/dashboard/country-codes/page.tsx",
+    path: "/dashboard/country-codes",
+    pageId: "iso-country-codes",
+  },
+  {
     id: "profile-pro",
     role: "pro",
     pageFile: "src/app/dashboard/profile/page.tsx",
