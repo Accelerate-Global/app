@@ -660,9 +660,6 @@ export function IsoCountryCodesClient({
               />
             </label>
             <div className="flex flex-wrap items-center gap-2">
-              <Badge variant="outline" className="w-fit">
-                {visibleEntries.length} visible
-              </Badge>
               {canRefresh ? (
                 <Button
                   type="button"

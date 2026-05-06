@@ -154,7 +154,7 @@ describe("DashboardClient", () => {
     cleanup();
   });
 
-  it("renders admin edit links to the standalone dataset edit page", () => {
+  it("renders admin edit links and omits resource and empty saved-dataset sections", () => {
     render(
       <DashboardClient
         initialDatasets={[createDataset()]}
@@ -166,11 +166,10 @@ describe("DashboardClient", () => {
     const editLink = screen.getByRole("link", { name: "Edit" });
 
     expect(editLink.getAttribute("href")).toBe("/dashboard/datasets/dataset-1/edit");
-    expect(
-      screen
-        .getByRole("link", { name: "Browse reference resources" })
-        .getAttribute("href"),
-    ).toBe("/dashboard/resources");
+    expect(screen.queryByText("Reference Resources")).toBeNull();
+    expect(screen.queryByRole("link", { name: "Browse reference resources" })).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Saved Datasets" })).toBeNull();
+    expect(screen.queryByText("No saved tables yet.")).toBeNull();
     expect(screen.queryByRole("dialog", { name: "Edit dataset" })).toBeNull();
     expect(trackAppEventMock).toHaveBeenCalledWith(
       "dashboard_viewed",
@@ -282,6 +281,7 @@ describe("DashboardClient", () => {
       />,
     );
 
+    expect(screen.getByRole("heading", { name: "Saved Datasets" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Details" }));
 
     const dialog = await screen.findByRole("dialog", {

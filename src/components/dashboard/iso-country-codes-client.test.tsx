@@ -155,7 +155,8 @@ describe("IsoCountryCodesClient", () => {
     });
 
     expect(screen.getByText("Baker Island")).toBeTruthy();
-    expect(screen.getByText("1 visible")).toBeTruthy();
+    expect(screen.queryByText("1 visible")).toBeNull();
+    expect(screen.queryByText("3 visible")).toBeNull();
   });
 
   it("opens a right-side detail sheet with hidden fields and smoke markers", () => {
@@ -288,7 +289,7 @@ describe("IsoCountryCodesClient", () => {
     });
 
     expect(screen.getAllByText("Afghanistan").length).toBeGreaterThan(0);
-    expect(screen.getByText("1 visible")).toBeTruthy();
+    expect(screen.queryByText("1 visible")).toBeNull();
 
     fireEvent.change(screen.getByPlaceholderText(/Search name/), {
       target: { value: "" },
