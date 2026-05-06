@@ -24,6 +24,7 @@
     "verify:fast": "pnpm run typecheck && pnpm run verify:app -- --lint --test",
     "verify:app": "node --import tsx scripts/verify-app.ts",
     "verify:release": "node --import tsx scripts/verify-ship-local.ts --deprecated-alias",
+    "data:refresh:iso-country-codes": "node --import tsx scripts/refresh-iso-country-codes.ts",
     "spec:validate": "openspec validate --all --strict --no-interactive",
     "spec:status": "openspec list --json && openspec list --specs --json",
     "spec:archive": "node --import tsx scripts/openspec-archive.ts",
