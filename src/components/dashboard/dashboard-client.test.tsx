@@ -168,9 +168,9 @@ describe("DashboardClient", () => {
     expect(editLink.getAttribute("href")).toBe("/dashboard/datasets/dataset-1/edit");
     expect(
       screen
-        .getByRole("link", { name: "Country & territory code resource" })
+        .getByRole("link", { name: "Browse reference resources" })
         .getAttribute("href"),
-    ).toBe("/dashboard/country-codes");
+    ).toBe("/dashboard/resources");
     expect(screen.queryByRole("dialog", { name: "Edit dataset" })).toBeNull();
     expect(trackAppEventMock).toHaveBeenCalledWith(
       "dashboard_viewed",

@@ -8,16 +8,29 @@ import "./globals.css";
 
 const themeScript = `
 (() => {
-  const storageKey = "ag-theme";
+  const storageKey = "ag-theme-preference";
+  const legacyStorageKey = "ag-theme";
   const root = document.documentElement;
-  const storedTheme = localStorage.getItem(storageKey);
+  const storedPreference = localStorage.getItem(storageKey);
+  localStorage.removeItem(legacyStorageKey);
   const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-  const theme = storedTheme === "light" || storedTheme === "dark"
-    ? storedTheme
+  const preference =
+    storedPreference === "system" ||
+    storedPreference === "light" ||
+    storedPreference === "dark"
+      ? storedPreference
+      : "system";
+  const theme = preference === "light" || preference === "dark"
+    ? preference
     : prefersDark
       ? "dark"
       : "light";
 
+  if (preference === "system") {
+    localStorage.setItem(storageKey, "system");
+  } else if (preference !== storedPreference) {
+    localStorage.removeItem(storageKey);
+  }
   root.classList.toggle("dark", theme === "dark");
   root.style.colorScheme = theme;
 })();

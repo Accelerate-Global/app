@@ -234,4 +234,13 @@ describe("analytics helpers", () => {
       "to_status",
     ]);
   });
+
+  it("exposes theme preference analytics event property keys", () => {
+    expect(getAnalyticsEventPropertyKeys("theme_toggled")).toEqual([
+      "from_preference",
+      "to_preference",
+      "from_theme",
+      "to_theme",
+    ]);
+  });
 });
