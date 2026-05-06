@@ -172,16 +172,20 @@ describe("ApiConnectionsClient", () => {
 
     expect(screen.getByText("No connections are available.")).toBeTruthy();
     expect(screen.getByText("Country & territory code resource")).toBeTruthy();
+    expect(screen.queryByRole("columnheader", { name: "Open" })).toBeNull();
     expect(
-      screen
-        .getByRole("link", { name: "Open Country & territory code resource" })
-        .getAttribute("href"),
-    ).toBe("/dashboard/country-codes");
+      screen.queryByRole("link", {
+        name: "Open Country & territory code resource",
+      }),
+    ).toBeNull();
+    fireEvent.click(screen.getByText("Country & territory code resource").closest("tr")!);
+    expect(pushMock).toHaveBeenCalledWith("/dashboard/country-codes");
     expect(screen.getByText("No API-run resources have been captured yet.")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "New API connection" })).toBeNull();
   });
 
   it("renders captured resources in a second read-only grid", () => {
+    const openMock = vi.spyOn(window, "open").mockImplementation(() => null);
     render(
       <ApiConnectionsClient
         initialConnections={[pgicConnection]}
@@ -195,11 +199,25 @@ describe("ApiConnectionsClient", () => {
     expect(screen.getByText("Category")).toBeTruthy();
     expect(screen.getByText("Display text")).toBeTruthy();
     expect(screen.getByText("URL")).toBeTruthy();
+    expect(screen.queryByRole("columnheader", { name: "Open" })).toBeNull();
     expect(screen.getByText("Film")).toBeTruthy();
     expect(screen.getByText("Watch")).toBeTruthy();
     expect(screen.getByText("https://example.com/film#watch")).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Open Watch" }).getAttribute("href")).toBe(
+    expect(screen.queryByRole("link", { name: "Open Watch" })).toBeNull();
+
+    fireEvent.click(screen.getByText("Watch").closest("tr")!);
+    expect(openMock).toHaveBeenCalledWith(
       "https://example.com/film#watch",
+      "_blank",
+      "noreferrer",
+    );
+
+    openMock.mockClear();
+    fireEvent.keyDown(screen.getByText("Watch").closest("tr")!, { key: "Enter" });
+    expect(openMock).toHaveBeenCalledWith(
+      "https://example.com/film#watch",
+      "_blank",
+      "noreferrer",
     );
   });
 });

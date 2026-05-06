@@ -1,10 +1,5 @@
-# reference-resources Specification
+## MODIFIED Requirements
 
-## Purpose
-Define how authenticated users discover built-in reference resources that
-support dataset review and cleanup work without exposing admin-only API
-connection run resources.
-## Requirements
 ### Requirement: Authenticated users can discover built-in reference resources
 The system SHALL provide logged-in users with discoverable built-in reference
 resources without exposing admin-only API connection run resources.

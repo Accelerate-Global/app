@@ -1,8 +1,7 @@
 "use client";
 
-import { CableIcon, ExternalLinkIcon, FileTextIcon } from "lucide-react";
-import Link from "next/link";
-import { useMemo } from "react";
+import { CableIcon, FileTextIcon } from "lucide-react";
+import { useMemo, type KeyboardEvent } from "react";
 import { useRouter } from "next/navigation";
 
 import { Badge } from "@/components/ui/badge";
@@ -83,6 +82,24 @@ export function ApiConnectionsClient({
 
   function openConnection(connectionId: string) {
     router.push(`/dashboard/api-connections/${connectionId}`);
+  }
+
+  function openBuiltInResource(resourceUrl: string) {
+    router.push(resourceUrl);
+  }
+
+  function openCapturedResource(resourceUrl: string) {
+    window.open(resourceUrl, "_blank", "noreferrer");
+  }
+
+  function handleResourceRowKeyDown(
+    event: KeyboardEvent<HTMLTableRowElement>,
+    openResource: () => void,
+  ) {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      openResource();
+    }
   }
 
   return (
@@ -180,12 +197,22 @@ export function ApiConnectionsClient({
                 <TableHead>Category</TableHead>
                 <TableHead>Display text</TableHead>
                 <TableHead>URL</TableHead>
-                <TableHead className="w-24 text-right">Open</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {builtInResources.map((resource) => (
-                <TableRow key={resource.id}>
+                <TableRow
+                  key={resource.id}
+                  tabIndex={0}
+                  aria-label={`Open ${resource.webText}`}
+                  className="cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-2"
+                  onClick={() => openBuiltInResource(resource.resourceUrl)}
+                  onKeyDown={(event) =>
+                    handleResourceRowKeyDown(event, () =>
+                      openBuiltInResource(resource.resourceUrl),
+                    )
+                  }
+                >
                   <TableCell className="max-w-48 whitespace-normal">
                     {resource.category}
                   </TableCell>
@@ -195,20 +222,21 @@ export function ApiConnectionsClient({
                   <TableCell className="max-w-[34rem] whitespace-normal font-mono text-xs text-muted-foreground break-all">
                     {resource.resourceUrl}
                   </TableCell>
-                  <TableCell className="text-right">
-                    <Link
-                      href={resource.resourceUrl}
-                      aria-label={`Open ${resource.webText}`}
-                      className="inline-flex items-center justify-end gap-1 text-sm font-medium text-foreground underline-offset-4 hover:underline"
-                    >
-                      <ExternalLinkIcon className="size-3.5" />
-                      Open
-                    </Link>
-                  </TableCell>
                 </TableRow>
               ))}
               {initialResources.map((resource) => (
-                <TableRow key={resource.id}>
+                <TableRow
+                  key={resource.id}
+                  tabIndex={0}
+                  aria-label={`Open ${resource.webText || resource.resourceUrl}`}
+                  className="cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-2"
+                  onClick={() => openCapturedResource(resource.resourceUrl)}
+                  onKeyDown={(event) =>
+                    handleResourceRowKeyDown(event, () =>
+                      openCapturedResource(resource.resourceUrl),
+                    )
+                  }
+                >
                   <TableCell className="max-w-48 whitespace-normal">
                     {resource.category || (
                       <span className="text-muted-foreground">Uncategorized</span>
@@ -223,18 +251,6 @@ export function ApiConnectionsClient({
                   </TableCell>
                   <TableCell className="max-w-[34rem] whitespace-normal font-mono text-xs text-muted-foreground break-all">
                     {resource.resourceUrl}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <a
-                      href={resource.resourceUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      aria-label={`Open ${resource.webText || resource.resourceUrl}`}
-                      className="inline-flex items-center justify-end gap-1 text-sm font-medium text-foreground underline-offset-4 hover:underline"
-                    >
-                      <ExternalLinkIcon className="size-3.5" />
-                      Open
-                    </a>
                   </TableCell>
                 </TableRow>
               ))}

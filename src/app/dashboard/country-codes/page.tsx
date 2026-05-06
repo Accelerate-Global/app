@@ -28,14 +28,14 @@ export default async function CountryCodesPage() {
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 py-10 sm:px-6 lg:px-8">
         <section className="space-y-2">
           <Link
-            href="/dashboard"
+            href="/dashboard/resources"
             className={cn(
               buttonVariants({ variant: "link", size: "sm" }),
               "inline-flex items-center gap-1 px-0 text-[0.78rem] font-black uppercase tracking-[0.12em] no-underline hover:no-underline",
             )}
           >
             <ChevronLeftIcon className="size-3.5" />
-            Back to dashboard
+            Back to resources
           </Link>
           <div className="flex items-start gap-3">
             <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-muted text-foreground">

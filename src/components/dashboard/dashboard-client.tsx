@@ -1,7 +1,5 @@
 "use client";
 
-import { Globe2Icon } from "lucide-react";
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 import {
@@ -12,13 +10,6 @@ import {
 import { DatasetsGrid } from "@/components/dashboard/datasets-grid";
 import { SavedTableDetailSheet } from "@/components/dashboard/saved-table-detail-sheet";
 import { SavedTablesGrid } from "@/components/dashboard/saved-tables-grid";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import {
   buildAnalyticsContext,
   getEnabledFilterSections,
@@ -265,29 +256,12 @@ export function DashboardClient({
 
   return (
     <>
-      <Card>
-        <CardHeader className="gap-1">
-          <CardTitle className="flex items-center gap-2 text-2xl">
-            <Globe2Icon className="size-5 text-muted-foreground" />
-            Reference Resources
-          </CardTitle>
-          <CardDescription>
-            Reusable lookup data for dataset review and cleanup work.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Link
-            href="/dashboard/resources"
-            className="inline-flex items-center gap-2 text-sm font-medium text-foreground underline-offset-4 hover:underline"
-          >
-            Browse reference resources
-          </Link>
-        </CardContent>
-      </Card>
-      <SavedTablesGrid
-        savedTables={savedTables}
-        onOpenDetails={setActiveSavedTableId}
-      />
+      {savedTables.length > 0 ? (
+        <SavedTablesGrid
+          savedTables={savedTables}
+          onOpenDetails={setActiveSavedTableId}
+        />
+      ) : null}
       <DatasetsGrid
         datasets={datasets}
         canManageDatasets={canManageDatasets}

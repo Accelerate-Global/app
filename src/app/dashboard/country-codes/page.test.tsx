@@ -100,6 +100,9 @@ describe("/dashboard/country-codes", () => {
     render(await CountryCodesPage());
 
     expect(screen.getByText("Country & Territory Codes")).toBeTruthy();
+    expect(
+      screen.getByRole("link", { name: "Back to resources" }).getAttribute("href"),
+    ).toBe("/dashboard/resources");
     expect(isoCountryCodesClientMock).toHaveBeenCalledWith(
       expect.objectContaining({
         initialResource: resource,
