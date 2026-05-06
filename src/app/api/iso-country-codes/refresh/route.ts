@@ -1,7 +1,10 @@
 import { getCurrentIdentity } from "@/lib/auth";
 import { logError } from "@/lib/error-logging";
 import { jsonAdminOnlyError, jsonError } from "@/lib/http";
-import { refreshIsoCountryCodeResourceFromOfficialSource } from "@/lib/iso-country-codes";
+import {
+  mergeIsoCountryCodeEntryOverrides,
+  refreshIsoCountryCodeResourceFromOfficialSource,
+} from "@/lib/iso-country-codes";
 
 export async function GET() {
   const identity = await getCurrentIdentity();
@@ -16,7 +19,7 @@ export async function GET() {
 
   try {
     const resource = await refreshIsoCountryCodeResourceFromOfficialSource();
-    return Response.json(resource);
+    return Response.json(await mergeIsoCountryCodeEntryOverrides(resource));
   } catch (error) {
     logError("Failed to refresh country and territory codes", error);
     return jsonError("Could not refresh country and territory codes.", 502);

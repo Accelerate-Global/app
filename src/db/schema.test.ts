@@ -15,6 +15,7 @@ import {
   datasetVersions,
   datasets,
   fieldDefinitions,
+  isoCountryCodeEntryOverrides,
   savedDatasetTables,
 } from "./schema";
 
@@ -375,6 +376,32 @@ describe("apiConnections schema", () => {
     );
     expect(migration).toContain(
       "revoke all on private.api_connection_resources",
+    );
+  });
+
+  it("declares country-code alternate-name override schema", async () => {
+    expect(isoCountryCodeEntryOverrides.displayName.name).toBe("display_name");
+    expect(isoCountryCodeEntryOverrides.alternativeNames.name).toBe(
+      "alternative_names",
+    );
+    expect(isoCountryCodeEntryOverrides.updatedByOwnerId.name).toBe(
+      "updated_by_owner_id",
+    );
+
+    const migrationPath = path.join(
+      process.cwd(),
+      "supabase/migrations/20260506171502_iso_country_code_entry_overrides.sql",
+    );
+    const migration = await readFile(migrationPath, "utf8");
+
+    expect(migration).toContain(
+      "create table if not exists private.iso_country_code_entry_overrides",
+    );
+    expect(migration).toContain(
+      "alter table private.iso_country_code_entry_overrides enable row level security",
+    );
+    expect(migration).toContain(
+      "revoke all on private.iso_country_code_entry_overrides",
     );
   });
 

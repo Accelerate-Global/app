@@ -3,6 +3,8 @@ import path from "node:path";
 
 import Papa from "papaparse";
 
+import { getDb } from "@/db";
+import { isoCountryCodeEntryOverrides } from "@/db/schema";
 import generatedIsoCountryCodes from "@/data/iso-country-codes.generated.json";
 
 export const ISO_COUNTRY_CODES_SOURCE_URL =
@@ -67,6 +69,11 @@ export type IsoCountryCodeResource = {
   officialIsoCount: number;
   activeCount: number;
   entries: IsoCountryCodeEntry[];
+};
+
+export type IsoCountryCodeEntryOverride = {
+  displayName: string;
+  alternativeNames: string[];
 };
 
 export type OfficialIsoCountryCodeEntry = {
@@ -187,6 +194,13 @@ function dedupeAlternativeNames(displayName: string, values: unknown[]) {
   }
 
   return alternativeNames;
+}
+
+export function normalizeCountryCodeAlternativeNames(
+  displayName: string,
+  values: unknown[],
+) {
+  return dedupeAlternativeNames(displayName, values);
 }
 
 function parseBoolean(value: unknown, label: string) {
@@ -697,6 +711,116 @@ export function getGeneratedIsoCountryCodeResource(): IsoCountryCodeResource {
   const resource = generatedIsoCountryCodes as IsoCountryCodeResource;
   validateIsoCountryCodeResource(resource);
   return resource;
+}
+
+export function applyIsoCountryCodeEntryOverrides(
+  resource: IsoCountryCodeResource,
+  overrides: IsoCountryCodeEntryOverride[],
+) {
+  if (overrides.length === 0) {
+    return resource;
+  }
+
+  const overridesByDisplayName = new Map(
+    overrides.map((override) => [
+      override.displayName,
+      normalizeCountryCodeAlternativeNames(
+        override.displayName,
+        override.alternativeNames,
+      ),
+    ]),
+  );
+
+  const nextResource = {
+    ...resource,
+    entries: resource.entries.map((entry) => {
+      const alternativeNames = overridesByDisplayName.get(entry.displayName);
+
+      if (!alternativeNames) {
+        return entry;
+      }
+
+      return {
+        ...entry,
+        alternativeNames,
+      };
+    }),
+  } satisfies IsoCountryCodeResource;
+
+  validateIsoCountryCodeResource(nextResource);
+  return nextResource;
+}
+
+export async function listIsoCountryCodeEntryOverrides() {
+  return getDb()
+    .select({
+      displayName: isoCountryCodeEntryOverrides.displayName,
+      alternativeNames: isoCountryCodeEntryOverrides.alternativeNames,
+    })
+    .from(isoCountryCodeEntryOverrides);
+}
+
+export async function mergeIsoCountryCodeEntryOverrides(
+  resource: IsoCountryCodeResource,
+) {
+  const overrides = await listIsoCountryCodeEntryOverrides();
+  return applyIsoCountryCodeEntryOverrides(resource, overrides);
+}
+
+export async function getGeneratedIsoCountryCodeResourceWithOverrides() {
+  return mergeIsoCountryCodeEntryOverrides(getGeneratedIsoCountryCodeResource());
+}
+
+export async function updateIsoCountryCodeAlternativeNames(input: {
+  displayName: string;
+  alternativeNames: string[];
+  updatedByOwnerId: string;
+}) {
+  const generatedResource = getGeneratedIsoCountryCodeResource();
+  const entry = generatedResource.entries.find(
+    (resourceEntry) => resourceEntry.displayName === input.displayName,
+  );
+
+  if (!entry) {
+    return null;
+  }
+
+  const alternativeNames = normalizeCountryCodeAlternativeNames(
+    entry.displayName,
+    input.alternativeNames,
+  );
+  const updatedAt = new Date();
+
+  await getDb()
+    .insert(isoCountryCodeEntryOverrides)
+    .values({
+      displayName: entry.displayName,
+      alternativeNames,
+      updatedByOwnerId: input.updatedByOwnerId,
+      updatedAt,
+    })
+    .onConflictDoUpdate({
+      target: isoCountryCodeEntryOverrides.displayName,
+      set: {
+        alternativeNames,
+        updatedByOwnerId: input.updatedByOwnerId,
+        updatedAt,
+      },
+    });
+
+  const resource = await getGeneratedIsoCountryCodeResourceWithOverrides();
+  const updatedEntry = resource.entries.find(
+    (resourceEntry) => resourceEntry.displayName === entry.displayName,
+  );
+
+  if (!updatedEntry) {
+    return null;
+  }
+
+  return {
+    entry: updatedEntry,
+    resource,
+  };
 }
 
 function getSetCookies(headers: Headers) {

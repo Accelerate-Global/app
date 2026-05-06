@@ -5,15 +5,12 @@ import {
   CableIcon,
   ChevronDownIcon,
   DatabaseIcon,
+  FileTextIcon,
   LayoutDashboardIcon,
   ActivityIcon,
-  CheckIcon,
   LogOutIcon,
   MonitorIcon,
-  MoonIcon,
   UploadIcon,
-  SunIcon,
-  type LucideIcon,
   UserIcon,
   UsersIcon,
 } from "lucide-react";
@@ -29,6 +26,7 @@ import {
   type ThemeState,
 } from "@/components/theme/theme-toggle";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Toggle } from "@/components/ui/toggle";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -55,7 +53,6 @@ type AccountControlProps = {
 type ThemeOption = {
   preference: ThemePreference;
   label: string;
-  icon: LucideIcon;
 };
 
 const DEFAULT_THEME_STATE: ThemeState = {
@@ -67,17 +64,14 @@ const themeOptions: ThemeOption[] = [
   {
     preference: "system",
     label: "System",
-    icon: MonitorIcon,
   },
   {
     preference: "light",
     label: "Light",
-    icon: SunIcon,
   },
   {
     preference: "dark",
     label: "Dark",
-    icon: MoonIcon,
   },
 ];
 
@@ -229,29 +223,42 @@ export function AccountControl({ identity }: AccountControlProps) {
             <BookTextIcon aria-hidden="true" />
             Definitions
           </DropdownMenuItem>
-          {themeOptions.map((option) => {
-            const Icon = option.icon;
-            const isSelected = themeState.preference === option.preference;
-            const suffix =
-              option.preference === "system"
-                ? ` (${formatResolvedTheme(themeState.resolvedTheme)})`
-                : "";
-
-            return (
-              <DropdownMenuItem
-                key={option.preference}
-                aria-current={isSelected ? "true" : undefined}
-                onClick={() => selectThemePreference(option.preference)}
-              >
-                <Icon aria-hidden="true" />
-                {option.label}
-                <span className="text-xs text-muted-foreground">{suffix}</span>
-                {isSelected ? (
-                  <CheckIcon className="ml-auto" aria-hidden="true" />
-                ) : null}
-              </DropdownMenuItem>
-            );
-          })}
+          <DropdownMenuItem onClick={() => navigateTo("/dashboard/resources")}>
+            <FileTextIcon aria-hidden="true" />
+            Resources
+          </DropdownMenuItem>
+          <div className="px-2 py-2" data-slot="appearance-control">
+            <div className="mb-2 flex items-center gap-2 text-sm font-medium text-foreground">
+              <MonitorIcon className="size-4" aria-hidden="true" />
+              <span>Appearance</span>
+              <span className="text-xs font-normal text-muted-foreground">
+                {themeState.preference === "system"
+                  ? `System (${formatResolvedTheme(themeState.resolvedTheme)})`
+                  : formatThemePreference(themeState.preference)}
+              </span>
+            </div>
+            <div
+              role="group"
+              aria-label="Appearance"
+              className="grid grid-cols-3 gap-1 rounded-lg bg-muted p-1"
+            >
+              {themeOptions.map((option) => (
+                <Toggle
+                  key={option.preference}
+                  size="sm"
+                  pressed={themeState.preference === option.preference}
+                  onPressedChange={(pressed) => {
+                    if (pressed) {
+                      selectThemePreference(option.preference);
+                    }
+                  }}
+                  className="h-7 rounded-md data-[state=on]:bg-background data-[state=on]:shadow-sm"
+                >
+                  {option.label}
+                </Toggle>
+              ))}
+            </div>
+          </div>
           {identity.isDatasetAdmin ? <DropdownMenuSeparator /> : null}
           {identity.isDatasetAdmin ? (
             <>
@@ -294,4 +301,16 @@ export function AccountControl({ identity }: AccountControlProps) {
 
 function formatResolvedTheme(theme: ResolvedTheme) {
   return theme === "dark" ? "Dark" : "Light";
+}
+
+function formatThemePreference(preference: ThemePreference) {
+  if (preference === "dark") {
+    return "Dark";
+  }
+
+  if (preference === "light") {
+    return "Light";
+  }
+
+  return "System";
 }

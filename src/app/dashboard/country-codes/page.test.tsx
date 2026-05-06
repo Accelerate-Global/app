@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { redirect } from "next/navigation";
 
 import { getCurrentIdentity } from "@/lib/auth";
-import { getGeneratedIsoCountryCodeResource } from "@/lib/iso-country-codes";
+import { getGeneratedIsoCountryCodeResourceWithOverrides } from "@/lib/iso-country-codes";
 import type { IsoCountryCodeResource } from "@/lib/iso-country-codes";
 import CountryCodesPage from "./page";
 
@@ -25,7 +25,7 @@ vi.mock("@/lib/auth", () => ({
 }));
 
 vi.mock("@/lib/iso-country-codes", () => ({
-  getGeneratedIsoCountryCodeResource: vi.fn(),
+  getGeneratedIsoCountryCodeResourceWithOverrides: vi.fn(),
 }));
 
 vi.mock("@/components/layout/site-header", () => ({
@@ -37,8 +37,8 @@ vi.mock("@/components/dashboard/iso-country-codes-client", () => ({
 }));
 
 const getCurrentIdentityMock = vi.mocked(getCurrentIdentity);
-const getGeneratedIsoCountryCodeResourceMock = vi.mocked(
-  getGeneratedIsoCountryCodeResource,
+const getGeneratedIsoCountryCodeResourceWithOverridesMock = vi.mocked(
+  getGeneratedIsoCountryCodeResourceWithOverrides,
 );
 const redirectMock = vi.mocked(redirect);
 
@@ -95,13 +95,56 @@ describe("/dashboard/country-codes", () => {
       isDatasetAdmin: false,
       mode: "supabase",
     });
-    getGeneratedIsoCountryCodeResourceMock.mockReturnValue(resource);
+    getGeneratedIsoCountryCodeResourceWithOverridesMock.mockResolvedValue(resource);
 
     render(await CountryCodesPage());
 
     expect(screen.getByText("Country & Territory Codes")).toBeTruthy();
     expect(isoCountryCodesClientMock).toHaveBeenCalledWith(
-      expect.objectContaining({ initialResource: resource, canRefresh: false }),
+      expect.objectContaining({
+        initialResource: resource,
+        canRefresh: false,
+        canEditAlternativeNames: false,
+      }),
+      undefined,
+    );
+  });
+
+  it("passes admin alternate-name editing capability", async () => {
+    const resource = {
+      sourceName: "ISO OBP, GENC, legacy FIPS, and curated Accelerate Global overlay",
+      sourceUrl: "https://www.iso.org/obp/ui/#search/code/",
+      sourceCollectionUrl: "https://www.iso.org/publication/PUB500001.html",
+      gencSourceUrl: "https://evs.nci.nih.gov/ftp1/GENC/NCIt-GENC_Terminology.txt",
+      gencAboutUrl: "https://evs.nci.nih.gov/ftp1/GENC/About.html",
+      fipsSourceUrl: "https://nief.org/attribute-registry/codesets/FIPS10-4CountryCode/",
+      fipsWithdrawalUrl:
+        "https://csrc.nist.gov/news/2008/announcing-approval-of-the-withdrawal-of-ten-fip-s",
+      overlaySourceName: "Accelerate Global - Spec Sheet - ISO3.csv",
+      sourceRetrievedAt: "2026-05-06T00:00:00.000Z",
+      entryCount: 0,
+      officialIsoCount: 1,
+      activeCount: 0,
+      entries: [],
+    } satisfies IsoCountryCodeResource;
+    getCurrentIdentityMock.mockResolvedValue({
+      ownerId: "owner-1",
+      email: "admin@example.com",
+      fullName: "Admin",
+      workspaceRole: "admin",
+      isDatasetAdmin: true,
+      mode: "supabase",
+    });
+    getGeneratedIsoCountryCodeResourceWithOverridesMock.mockResolvedValue(resource);
+
+    render(await CountryCodesPage());
+
+    expect(isoCountryCodesClientMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        initialResource: resource,
+        canRefresh: true,
+        canEditAlternativeNames: true,
+      }),
       undefined,
     );
   });

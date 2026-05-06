@@ -2,14 +2,16 @@
 
 import {
   CheckIcon,
-  CopyIcon,
   DownloadIcon,
   PlusIcon,
   RefreshCwIcon,
   SearchIcon,
+  XIcon,
 } from "lucide-react";
 import {
+  useEffect,
   useMemo,
+  useRef,
   useState,
   type FormEvent,
   type KeyboardEvent,
@@ -24,7 +26,6 @@ import { Progress } from "@/components/ui/progress";
 import {
   Sheet,
   SheetContent,
-  SheetDescription,
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
@@ -46,12 +47,17 @@ import type {
 type IsoCountryCodesClientProps = {
   initialResource: IsoCountryCodeResource;
   canRefresh: boolean;
+  canEditAlternativeNames: boolean;
 };
 
 type RefreshProgress = {
-  phase: "running" | "ready" | "failed";
   progress: number;
   message: string;
+};
+
+type AlternativeNameSaveResult = {
+  entry: IsoCountryCodeEntry;
+  resource: IsoCountryCodeResource;
 };
 
 const classificationLabels: Record<CountryCodeClassification, string> = {
@@ -72,10 +78,6 @@ function formatTimestamp(value: string) {
 
 function formatCode(value: string | null) {
   return value ?? "Not listed";
-}
-
-function getPrimaryCopyCode(entry: IsoCountryCodeEntry) {
-  return entry.primaryAlpha3 ?? entry.gencAlpha3;
 }
 
 function getEntryKey(entry: IsoCountryCodeEntry) {
@@ -201,32 +203,66 @@ function DetailValue({
   );
 }
 
+function withAddedAlternativeName(entry: IsoCountryCodeEntry, value: string) {
+  const alias = value.trim();
+
+  if (!alias) {
+    return entry.alternativeNames;
+  }
+
+  const normalizedAlias = alias.toLocaleLowerCase();
+  const existingNames = [
+    entry.displayName,
+    ...entry.alternativeNames,
+  ].map((name) => name.trim().toLocaleLowerCase());
+
+  if (existingNames.includes(normalizedAlias)) {
+    return entry.alternativeNames;
+  }
+
+  return [...entry.alternativeNames, alias];
+}
+
+function withoutAlternativeName(entry: IsoCountryCodeEntry, value: string) {
+  return entry.alternativeNames.filter((name) => name !== value);
+}
+
+function areAlternativeNamesEqual(left: string[], right: string[]) {
+  return left.length === right.length && left.every((value, index) => value === right[index]);
+}
+
 type CountryCodeDetailSheetProps = {
   entry: IsoCountryCodeEntry | null;
   resource: IsoCountryCodeResource;
   open: boolean;
+  canEditAlternativeNames: boolean;
+  isSavingAlternativeNames: boolean;
+  alternativeNameError: string | null;
   onOpenChange: (open: boolean) => void;
-  onCopyCode: (value: string, label?: string) => void;
   onActiveChange: (entry: IsoCountryCodeEntry, active: boolean) => void;
-  onAddAlternativeName: (entry: IsoCountryCodeEntry, value: string) => void;
+  onAddAlternativeName: (
+    entry: IsoCountryCodeEntry,
+    value: string,
+  ) => Promise<boolean>;
+  onDeleteAlternativeName: (
+    entry: IsoCountryCodeEntry,
+    value: string,
+  ) => Promise<boolean>;
 };
 
 function CountryCodeDetailSheet({
   entry,
   resource,
   open,
+  canEditAlternativeNames,
+  isSavingAlternativeNames,
+  alternativeNameError,
   onOpenChange,
-  onCopyCode,
   onActiveChange,
   onAddAlternativeName,
+  onDeleteAlternativeName,
 }: CountryCodeDetailSheetProps) {
   const [aliasInput, setAliasInput] = useState("");
-  const primaryCopyCode = entry ? getPrimaryCopyCode(entry) : null;
-  const summaryCodes = entry
-    ? [primaryCopyCode, entry.fips ? `FIPS ${entry.fips}` : null, entry.gencAlpha3]
-        .filter(Boolean)
-        .filter((value, index, values) => values.indexOf(value) === index)
-    : [];
 
   function handleAddAlias(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -235,8 +271,11 @@ function CountryCodeDetailSheet({
       return;
     }
 
-    onAddAlternativeName(entry, aliasInput);
-    setAliasInput("");
+    void onAddAlternativeName(entry, aliasInput).then((saved) => {
+      if (saved) {
+        setAliasInput("");
+      }
+    });
   }
 
   return (
@@ -251,7 +290,6 @@ function CountryCodeDetailSheet({
           <div className="flex h-full flex-col">
             <SheetHeader className="border-b border-border px-6 py-5">
               <SheetTitle>{entry.displayName}</SheetTitle>
-              <SheetDescription>{summaryCodes.join(" / ")}</SheetDescription>
             </SheetHeader>
 
             <div className="flex-1 space-y-6 overflow-y-auto overscroll-contain px-6 py-5">
@@ -299,34 +337,10 @@ function CountryCodeDetailSheet({
                     {formatCode(entry.gencNumeric)}
                   </DetailValue>
                 </div>
-                <div className="flex flex-wrap gap-2 pt-1">
-                  {primaryCopyCode ? (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => onCopyCode(primaryCopyCode)}
-                      aria-label={`Copy primary code ${primaryCopyCode}`}
-                    >
-                      <CopyIcon />
-                      Primary {primaryCopyCode}
-                    </Button>
-                  ) : null}
-                  {entry.fips ? (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => onCopyCode(entry.fips!, `FIPS ${entry.fips}`)}
-                      aria-label={`Copy FIPS ${entry.fips}`}
-                    >
-                      <CopyIcon />
-                      FIPS {entry.fips}
-                    </Button>
-                  ) : null}
-                </div>
               </section>
 
               <section className="space-y-4 rounded-lg border border-border bg-card px-4 py-4">
-                <div className="space-y-1">
+                <div className="space-y-2">
                   <p className="text-sm font-medium text-foreground">
                     Alternative Names
                   </p>
@@ -334,7 +348,22 @@ function CountryCodeDetailSheet({
                     <ul className="flex flex-wrap gap-2">
                       {entry.alternativeNames.map((name) => (
                         <li key={name}>
-                          <Badge variant="outline">{name}</Badge>
+                          <span className="inline-flex min-h-6 items-center gap-1 rounded-lg border border-border bg-background px-2 py-0.5 text-xs font-medium text-foreground">
+                            {name}
+                            {canEditAlternativeNames ? (
+                              <button
+                                type="button"
+                                className="-mr-1 inline-flex size-4 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                aria-label={`Delete alternate name ${name}`}
+                                disabled={isSavingAlternativeNames}
+                                onClick={() => {
+                                  void onDeleteAlternativeName(entry, name);
+                                }}
+                              >
+                                <XIcon className="size-3" aria-hidden="true" />
+                              </button>
+                            ) : null}
+                          </span>
                         </li>
                       ))}
                     </ul>
@@ -342,21 +371,35 @@ function CountryCodeDetailSheet({
                     <p className="text-sm text-muted-foreground">None</p>
                   )}
                 </div>
-                <form className="flex gap-2" onSubmit={handleAddAlias}>
-                  <label className="sr-only" htmlFor="country-code-alias">
-                    Alternative name
-                  </label>
-                  <Input
-                    id="country-code-alias"
-                    value={aliasInput}
-                    onChange={(event) => setAliasInput(event.target.value)}
-                    placeholder="Add alternative name"
-                  />
-                  <Button type="submit" disabled={!aliasInput.trim()}>
-                    <PlusIcon />
-                    Add
-                  </Button>
-                </form>
+                {canEditAlternativeNames ? (
+                  <form className="flex gap-2" onSubmit={handleAddAlias}>
+                    <label className="sr-only" htmlFor="country-code-alias">
+                      Alternative name
+                    </label>
+                    <Input
+                      id="country-code-alias"
+                      value={aliasInput}
+                      onChange={(event) => setAliasInput(event.target.value)}
+                      placeholder="Add alternative name"
+                      disabled={isSavingAlternativeNames}
+                    />
+                    <Button
+                      type="submit"
+                      disabled={!aliasInput.trim() || isSavingAlternativeNames}
+                    >
+                      <PlusIcon />
+                      Add
+                    </Button>
+                  </form>
+                ) : null}
+                {isSavingAlternativeNames ? (
+                  <p className="text-sm text-muted-foreground">
+                    Saving alternate names...
+                  </p>
+                ) : null}
+                {alternativeNameError ? (
+                  <p className="text-sm text-destructive">{alternativeNameError}</p>
+                ) : null}
               </section>
 
               <section className="space-y-4 rounded-lg border border-border bg-card px-4 py-4">
@@ -387,16 +430,22 @@ function CountryCodeDetailSheet({
 export function IsoCountryCodesClient({
   initialResource,
   canRefresh,
+  canEditAlternativeNames,
 }: IsoCountryCodesClientProps) {
   const [resource, setResource] = useState(initialResource);
   const [searchTerm, setSearchTerm] = useState("");
-  const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [refreshSucceeded, setRefreshSucceeded] = useState(false);
   const [refreshProgress, setRefreshProgress] = useState<RefreshProgress | null>(
     null,
   );
   const [refreshError, setRefreshError] = useState<string | null>(null);
   const [selectedEntryKey, setSelectedEntryKey] = useState<string | null>(null);
+  const [isSavingAlternativeNames, setIsSavingAlternativeNames] = useState(false);
+  const [alternativeNameError, setAlternativeNameError] = useState<string | null>(
+    null,
+  );
+  const refreshSuccessTimer = useRef<number | null>(null);
   const visibleEntries = useMemo(
     () => filterEntries(resource.entries, searchTerm),
     [resource.entries, searchTerm],
@@ -410,9 +459,26 @@ export function IsoCountryCodesClient({
     [resource.entries, selectedEntryKey],
   );
 
-  async function copyCode(value: string, label = value) {
-    await navigator.clipboard.writeText(value);
-    setCopiedCode(label);
+  useEffect(
+    () => () => {
+      if (refreshSuccessTimer.current !== null) {
+        window.clearTimeout(refreshSuccessTimer.current);
+      }
+    },
+    [],
+  );
+
+  function showRefreshSuccess() {
+    setRefreshSucceeded(true);
+
+    if (refreshSuccessTimer.current !== null) {
+      window.clearTimeout(refreshSuccessTimer.current);
+    }
+
+    refreshSuccessTimer.current = window.setTimeout(() => {
+      setRefreshSucceeded(false);
+      refreshSuccessTimer.current = null;
+    }, 5000);
   }
 
   async function refreshFromIso() {
@@ -421,26 +487,23 @@ export function IsoCountryCodesClient({
     }
 
     setIsRefreshing(true);
+    setRefreshSucceeded(false);
     setRefreshError(null);
     setRefreshProgress({
-      phase: "running",
       progress: 10,
       message: "Starting refresh",
     });
 
     const progressStages: RefreshProgress[] = [
       {
-        phase: "running",
         progress: 35,
         message: "Fetching ISO, GENC, and FIPS sources",
       },
       {
-        phase: "running",
         progress: 65,
         message: "Applying curated overlay",
       },
       {
-        phase: "running",
         progress: 85,
         message: "Preparing updated rows",
       },
@@ -448,7 +511,7 @@ export function IsoCountryCodesClient({
     let stageIndex = 0;
     const stageTimer = window.setInterval(() => {
       setRefreshProgress((current) => {
-        if (!current || current.phase !== "running") {
+        if (!current) {
           return current;
         }
 
@@ -468,26 +531,18 @@ export function IsoCountryCodesClient({
 
       const nextResource = (await response.json()) as IsoCountryCodeResource;
       setRefreshProgress({
-        phase: "running",
         progress: 95,
         message: "Updating visible list",
       });
       setResource(nextResource);
       setSelectedEntryKey(null);
-      setRefreshProgress({
-        phase: "ready",
-        progress: 100,
-        message: "Refresh complete",
-      });
+      setRefreshProgress(null);
+      showRefreshSuccess();
     } catch {
       setRefreshError(
         "Could not refresh country and territory codes. The generated resource is still shown.",
       );
-      setRefreshProgress({
-        phase: "failed",
-        progress: 100,
-        message: "Refresh failed",
-      });
+      setRefreshProgress(null);
     } finally {
       window.clearInterval(stageTimer);
       setIsRefreshing(false);
@@ -520,29 +575,57 @@ export function IsoCountryCodesClient({
     }));
   }
 
-  function handleAddAlternativeName(entry: IsoCountryCodeEntry, value: string) {
-    const alias = value.trim();
-
-    if (!alias) {
-      return;
+  async function saveAlternativeNames(
+    entry: IsoCountryCodeEntry,
+    alternativeNames: string[],
+  ) {
+    if (!canEditAlternativeNames) {
+      return false;
     }
 
-    updateEntry(entry, (currentEntry) => {
-      const normalizedAlias = alias.toLocaleLowerCase();
-      const existingNames = [
-        currentEntry.displayName,
-        ...currentEntry.alternativeNames,
-      ].map((name) => name.trim().toLocaleLowerCase());
+    if (areAlternativeNamesEqual(entry.alternativeNames, alternativeNames)) {
+      return true;
+    }
 
-      if (existingNames.includes(normalizedAlias)) {
-        return currentEntry;
+    setAlternativeNameError(null);
+    setIsSavingAlternativeNames(true);
+
+    try {
+      const response = await fetch("/api/iso-country-codes/alternative-names", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          displayName: entry.displayName,
+          alternativeNames,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Save failed.");
       }
 
-      return {
-        ...currentEntry,
-        alternativeNames: [...currentEntry.alternativeNames, alias],
-      };
-    });
+      const payload = (await response.json()) as AlternativeNameSaveResult;
+      setResource(payload.resource);
+      setSelectedEntryKey(getEntryKey(payload.entry));
+      return true;
+    } catch {
+      setAlternativeNameError(
+        "Could not save alternate names. The current resource is still shown.",
+      );
+      return false;
+    } finally {
+      setIsSavingAlternativeNames(false);
+    }
+  }
+
+  function handleAddAlternativeName(entry: IsoCountryCodeEntry, value: string) {
+    return saveAlternativeNames(entry, withAddedAlternativeName(entry, value));
+  }
+
+  function handleDeleteAlternativeName(entry: IsoCountryCodeEntry, value: string) {
+    return saveAlternativeNames(entry, withoutAlternativeName(entry, value));
   }
 
   function openEntry(entry: IsoCountryCodeEntry) {
@@ -587,26 +670,24 @@ export function IsoCountryCodesClient({
                   onClick={refreshFromIso}
                   disabled={isRefreshing}
                 >
-                  <RefreshCwIcon className={isRefreshing ? "animate-spin" : ""} />
+                  {refreshSucceeded ? (
+                    <CheckIcon className="text-emerald-600" />
+                  ) : (
+                    <RefreshCwIcon className={isRefreshing ? "animate-spin" : ""} />
+                  )}
                   Refresh
                 </Button>
               ) : null}
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => downloadResource(visibleEntries)}
-            >
-              <DownloadIcon />
-              Download
-            </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => downloadResource(visibleEntries)}
+              >
+                <DownloadIcon />
+                Download
+              </Button>
             </div>
           </div>
-          {copiedCode ? (
-            <p className="flex items-center gap-2 text-sm text-muted-foreground">
-              <CheckIcon className="size-4" />
-              Copied {copiedCode}
-            </p>
-          ) : null}
           {refreshError ? (
             <p className="text-sm text-destructive">{refreshError}</p>
           ) : null}
@@ -619,15 +700,7 @@ export function IsoCountryCodesClient({
                     {refreshProgress.message}
                   </p>
                 </div>
-                {refreshProgress.phase === "ready" ? (
-                  <CheckIcon className="size-5 text-emerald-600" />
-                ) : refreshProgress.phase === "failed" ? (
-                  <span className="text-sm font-medium text-destructive">
-                    Failed
-                  </span>
-                ) : (
-                  <RefreshCwIcon className="size-5 animate-spin text-muted-foreground" />
-                )}
+                <RefreshCwIcon className="size-5 animate-spin text-muted-foreground" />
               </div>
               <Progress value={refreshProgress.progress} />
             </div>
@@ -684,14 +757,17 @@ export function IsoCountryCodesClient({
         entry={selectedEntry}
         resource={resource}
         open={Boolean(selectedEntry)}
+        canEditAlternativeNames={canEditAlternativeNames}
+        isSavingAlternativeNames={isSavingAlternativeNames}
+        alternativeNameError={alternativeNameError}
         onOpenChange={(open) => {
           if (!open) {
             setSelectedEntryKey(null);
           }
         }}
-        onCopyCode={(value, label) => void copyCode(value, label)}
         onActiveChange={handleActiveChange}
         onAddAlternativeName={handleAddAlternativeName}
+        onDeleteAlternativeName={handleDeleteAlternativeName}
       />
     </>
   );

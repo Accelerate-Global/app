@@ -4,7 +4,9 @@ import {
   GENC_COUNTRY_CODES_SOURCE_URL,
   ISO_COUNTRY_CODES_SOURCE_URL,
   LEGACY_FIPS_COUNTRY_CODES_SOURCE_URL,
+  applyIsoCountryCodeEntryOverrides,
   getGeneratedIsoCountryCodeResource,
+  normalizeCountryCodeAlternativeNames,
   parseCountryCodeOverlayCsv,
   refreshIsoCountryCodeResourceFromOfficialSource,
   validateOfficialIsoCountryCodeEntries,
@@ -184,6 +186,37 @@ Country Alt Names 12,,,,
     expect(resource.entries.filter((entry) => entry.primaryAlpha3 === "PSE")).toHaveLength(
       3,
     );
+  });
+
+  it("normalizes and applies persisted alternate-name overrides", () => {
+    const resource = getGeneratedIsoCountryCodeResource();
+    const afghanistan = resource.entries.find(
+      (entry) => entry.displayName === "Afghanistan",
+    );
+    expect(afghanistan).toBeTruthy();
+
+    expect(
+      normalizeCountryCodeAlternativeNames("Afghanistan", [
+        "Afghanistan",
+        "Afganistan",
+        "Afganistan",
+        "",
+        "Republic of Afghanistan",
+      ]),
+    ).toEqual(["Afganistan", "Republic of Afghanistan"]);
+
+    const updatedResource = applyIsoCountryCodeEntryOverrides(resource, [
+      {
+        displayName: "Afghanistan",
+        alternativeNames: ["Persisted alias"],
+      },
+    ]);
+
+    expect(
+      updatedResource.entries.find((entry) => entry.displayName === "Afghanistan"),
+    ).toMatchObject({
+      alternativeNames: ["Persisted alias"],
+    });
   });
 
   it("rejects duplicate official ISO3 entries", () => {
