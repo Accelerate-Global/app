@@ -271,10 +271,17 @@ describe("AccountControl", () => {
     expect(localStorageStore.get("ag-theme")).toBeUndefined();
     expect(localStorageStore.get("ag-theme-preference")).toBe("system");
     expect(document.documentElement.classList.contains("dark")).toBe(false);
-    expect(screen.getByRole("group", { name: "Appearance" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "System" }).getAttribute("aria-pressed"))
-      .toBe("true");
-    expect(screen.getByText("System (Light)")).toBeTruthy();
+    const appearanceGroup = screen.getByRole("group", { name: "Appearance" });
+    const systemOption = screen.getByRole("button", { name: "System" });
+    const lightOption = screen.getByRole("button", { name: "Light" });
+
+    expect(appearanceGroup).toBeTruthy();
+    expect(appearanceGroup.className).not.toContain("bg-muted");
+    expect(systemOption.getAttribute("aria-pressed")).toBe("true");
+    expect(lightOption.getAttribute("aria-pressed")).toBe("false");
+    expect(systemOption.className).toContain("hover:bg-muted");
+    expect(systemOption.className).toContain("data-[state=on]:bg-muted");
+    expect(screen.queryByText("System (Light)")).toBeNull();
   });
 
   it("tracks theme preference changes using the current pathname route", () => {
