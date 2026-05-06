@@ -1,6 +1,6 @@
 import { getCurrentIdentity } from "@/lib/auth";
 import { logError } from "@/lib/error-logging";
-import { jsonError } from "@/lib/http";
+import { jsonAdminOnlyError, jsonError } from "@/lib/http";
 import { refreshIsoCountryCodeResourceFromOfficialSource } from "@/lib/iso-country-codes";
 
 export async function GET() {
@@ -8,6 +8,10 @@ export async function GET() {
 
   if (!identity) {
     return jsonError("Unauthorized.", 401);
+  }
+
+  if (!identity.isDatasetAdmin) {
+    return jsonAdminOnlyError("refresh country and territory codes");
   }
 
   try {

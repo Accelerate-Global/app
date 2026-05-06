@@ -277,10 +277,10 @@ export function DashboardClient({
         </CardHeader>
         <CardContent>
           <Link
-            href="/dashboard/country-codes"
+            href="/dashboard/resources"
             className="inline-flex items-center gap-2 text-sm font-medium text-foreground underline-offset-4 hover:underline"
           >
-            Country & territory code resource
+            Browse reference resources
           </Link>
         </CardContent>
       </Card>

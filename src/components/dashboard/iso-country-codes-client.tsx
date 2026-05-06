@@ -20,6 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Progress } from "@/components/ui/progress";
 import {
   Sheet,
   SheetContent,
@@ -44,6 +45,13 @@ import type {
 
 type IsoCountryCodesClientProps = {
   initialResource: IsoCountryCodeResource;
+  canRefresh: boolean;
+};
+
+type RefreshProgress = {
+  phase: "running" | "ready" | "failed";
+  progress: number;
+  message: string;
 };
 
 const classificationLabels: Record<CountryCodeClassification, string> = {
@@ -109,15 +117,57 @@ function filterEntries(entries: IsoCountryCodeEntry[], searchTerm: string) {
   );
 }
 
-function downloadResource(resource: IsoCountryCodeResource) {
-  const blob = new Blob([`${JSON.stringify(resource, null, 2)}\n`], {
-    type: "application/json;charset=utf-8",
+const csvColumns = [
+  ["Country/Territory", (entry: IsoCountryCodeEntry) => entry.displayName],
+  ["Status", (entry: IsoCountryCodeEntry) => (entry.active ? "Active" : "Inactive")],
+  ["ISO3", (entry: IsoCountryCodeEntry) => entry.primaryAlpha3],
+  ["ISO2", (entry: IsoCountryCodeEntry) => entry.officialIsoAlpha2],
+  ["Numeric", (entry: IsoCountryCodeEntry) => entry.officialIsoNumeric],
+  ["FIPS", (entry: IsoCountryCodeEntry) => entry.fips],
+  ["GENC3", (entry: IsoCountryCodeEntry) => entry.gencAlpha3],
+  ["GENC2", (entry: IsoCountryCodeEntry) => entry.gencAlpha2],
+  ["GENC numeric", (entry: IsoCountryCodeEntry) => entry.gencNumeric],
+  [
+    "Classification",
+    (entry: IsoCountryCodeEntry) => classificationLabels[entry.classification],
+  ],
+  [
+    "Alternative names",
+    (entry: IsoCountryCodeEntry) => entry.alternativeNames.join("; "),
+  ],
+  ["Source URI", (entry: IsoCountryCodeEntry) => entry.sourceUri],
+] as const;
+
+function escapeCsvValue(value: string | null) {
+  const text = value ?? "";
+
+  if (/[",\n\r]/.test(text)) {
+    return `"${text.replaceAll('"', '""')}"`;
+  }
+
+  return text;
+}
+
+function buildCsv(entries: IsoCountryCodeEntry[]) {
+  const header = csvColumns.map(([label]) => escapeCsvValue(label)).join(",");
+  const rows = entries.map((entry) =>
+    csvColumns
+      .map(([, getValue]) => escapeCsvValue(getValue(entry)))
+      .join(","),
+  );
+
+  return `${[header, ...rows].join("\n")}\n`;
+}
+
+function downloadResource(entries: IsoCountryCodeEntry[]) {
+  const blob = new Blob([buildCsv(entries)], {
+    type: "text/csv;charset=utf-8",
   });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
 
   link.href = url;
-  link.download = "country-territory-codes.json";
+  link.download = "country-territory-codes.csv";
   document.body.append(link);
   link.click();
   link.remove();
@@ -336,11 +386,15 @@ function CountryCodeDetailSheet({
 
 export function IsoCountryCodesClient({
   initialResource,
+  canRefresh,
 }: IsoCountryCodesClientProps) {
   const [resource, setResource] = useState(initialResource);
   const [searchTerm, setSearchTerm] = useState("");
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [refreshProgress, setRefreshProgress] = useState<RefreshProgress | null>(
+    null,
+  );
   const [refreshError, setRefreshError] = useState<string | null>(null);
   const [selectedEntryKey, setSelectedEntryKey] = useState<string | null>(null);
   const visibleEntries = useMemo(
@@ -362,12 +416,48 @@ export function IsoCountryCodesClient({
   }
 
   async function refreshFromIso() {
-    if (isRefreshing) {
+    if (isRefreshing || !canRefresh) {
       return;
     }
 
     setIsRefreshing(true);
     setRefreshError(null);
+    setRefreshProgress({
+      phase: "running",
+      progress: 10,
+      message: "Starting refresh",
+    });
+
+    const progressStages: RefreshProgress[] = [
+      {
+        phase: "running",
+        progress: 35,
+        message: "Fetching ISO, GENC, and FIPS sources",
+      },
+      {
+        phase: "running",
+        progress: 65,
+        message: "Applying curated overlay",
+      },
+      {
+        phase: "running",
+        progress: 85,
+        message: "Preparing updated rows",
+      },
+    ];
+    let stageIndex = 0;
+    const stageTimer = window.setInterval(() => {
+      setRefreshProgress((current) => {
+        if (!current || current.phase !== "running") {
+          return current;
+        }
+
+        const nextStage = progressStages[stageIndex];
+        stageIndex = Math.min(stageIndex + 1, progressStages.length - 1);
+
+        return nextStage;
+      });
+    }, 900);
 
     try {
       const response = await fetch("/api/iso-country-codes/refresh");
@@ -377,13 +467,29 @@ export function IsoCountryCodesClient({
       }
 
       const nextResource = (await response.json()) as IsoCountryCodeResource;
+      setRefreshProgress({
+        phase: "running",
+        progress: 95,
+        message: "Updating visible list",
+      });
       setResource(nextResource);
       setSelectedEntryKey(null);
+      setRefreshProgress({
+        phase: "ready",
+        progress: 100,
+        message: "Refresh complete",
+      });
     } catch {
       setRefreshError(
         "Could not refresh country and territory codes. The generated resource is still shown.",
       );
+      setRefreshProgress({
+        phase: "failed",
+        progress: 100,
+        message: "Refresh failed",
+      });
     } finally {
+      window.clearInterval(stageTimer);
       setIsRefreshing(false);
     }
   }
@@ -459,27 +565,8 @@ export function IsoCountryCodesClient({
     <>
       <Card>
         <CardHeader className="gap-4">
-          <div className="flex flex-wrap items-center justify-end gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={refreshFromIso}
-              disabled={isRefreshing}
-            >
-              <RefreshCwIcon className={isRefreshing ? "animate-spin" : ""} />
-              Refresh
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => downloadResource(resource)}
-            >
-              <DownloadIcon />
-              JSON
-            </Button>
-          </div>
-          <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
-            <label className="relative block">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+            <label className="relative block min-w-0 flex-1">
               <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
               <span className="sr-only">Search country and territory codes</span>
               <Input
@@ -489,9 +576,30 @@ export function IsoCountryCodesClient({
                 className="h-10 pl-9"
               />
             </label>
-            <Badge variant="outline" className="w-fit">
-              {visibleEntries.length} visible
-            </Badge>
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="outline" className="w-fit">
+                {visibleEntries.length} visible
+              </Badge>
+              {canRefresh ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={refreshFromIso}
+                  disabled={isRefreshing}
+                >
+                  <RefreshCwIcon className={isRefreshing ? "animate-spin" : ""} />
+                  Refresh
+                </Button>
+              ) : null}
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => downloadResource(visibleEntries)}
+            >
+              <DownloadIcon />
+              Download
+            </Button>
+            </div>
           </div>
           {copiedCode ? (
             <p className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -501,6 +609,28 @@ export function IsoCountryCodesClient({
           ) : null}
           {refreshError ? (
             <p className="text-sm text-destructive">{refreshError}</p>
+          ) : null}
+          {refreshProgress ? (
+            <div className="space-y-3 rounded-lg border bg-background p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <p className="text-sm font-medium">Refresh source data</p>
+                  <p className="text-sm text-muted-foreground">
+                    {refreshProgress.message}
+                  </p>
+                </div>
+                {refreshProgress.phase === "ready" ? (
+                  <CheckIcon className="size-5 text-emerald-600" />
+                ) : refreshProgress.phase === "failed" ? (
+                  <span className="text-sm font-medium text-destructive">
+                    Failed
+                  </span>
+                ) : (
+                  <RefreshCwIcon className="size-5 animate-spin text-muted-foreground" />
+                )}
+              </div>
+              <Progress value={refreshProgress.progress} />
+            </div>
           ) : null}
         </CardHeader>
         <CardContent>

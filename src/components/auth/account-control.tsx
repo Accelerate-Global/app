@@ -7,20 +7,26 @@ import {
   DatabaseIcon,
   LayoutDashboardIcon,
   ActivityIcon,
+  CheckIcon,
   LogOutIcon,
+  MonitorIcon,
   MoonIcon,
   UploadIcon,
   SunIcon,
+  type LucideIcon,
   UserIcon,
   UsersIcon,
 } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 
 import {
-  applyDocumentTheme,
-  getDocumentTheme,
-  type AppTheme,
+  applyDocumentThemePreference,
+  getDocumentThemeState,
+  subscribeToSystemThemeChanges,
+  type ResolvedTheme,
+  type ThemePreference,
+  type ThemeState,
 } from "@/components/theme/theme-toggle";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -46,6 +52,35 @@ type AccountControlProps = {
   identity: CurrentIdentity;
 };
 
+type ThemeOption = {
+  preference: ThemePreference;
+  label: string;
+  icon: LucideIcon;
+};
+
+const DEFAULT_THEME_STATE: ThemeState = {
+  preference: "system",
+  resolvedTheme: "light",
+};
+
+const themeOptions: ThemeOption[] = [
+  {
+    preference: "system",
+    label: "System",
+    icon: MonitorIcon,
+  },
+  {
+    preference: "light",
+    label: "Light",
+    icon: SunIcon,
+  },
+  {
+    preference: "dark",
+    label: "Dark",
+    icon: MoonIcon,
+  },
+];
+
 function subscribeToHydration(callback: () => void) {
   queueMicrotask(callback);
   return () => undefined;
@@ -60,8 +95,10 @@ export function AccountControl({ identity }: AccountControlProps) {
     () => true,
     () => false,
   );
-  const [theme, setTheme] = useState<AppTheme>(() =>
-    typeof document === "undefined" ? "light" : getDocumentTheme(),
+  const [themeState, setThemeState] = useState<ThemeState>(() =>
+    typeof document === "undefined"
+      ? DEFAULT_THEME_STATE
+      : getDocumentThemeState(),
   );
   const displayName = useMemo(() => getIdentityDisplayName(identity), [identity]);
   const initials = useMemo(
@@ -77,6 +114,11 @@ export function AccountControl({ identity }: AccountControlProps) {
       }),
     [identity.ownerId, identity.workspaceRole, pathname],
   );
+
+  useEffect(() => {
+    applyDocumentThemePreference(getDocumentThemeState().preference);
+    return subscribeToSystemThemeChanges(setThemeState);
+  }, []);
 
   async function signOut() {
     setIsSigningOut(true);
@@ -107,19 +149,22 @@ export function AccountControl({ identity }: AccountControlProps) {
     router.refresh();
   }
 
-  function toggleTheme() {
-    const nextTheme = theme === "dark" ? "light" : "dark";
+  function selectThemePreference(preference: ThemePreference) {
+    const previousThemeState = themeState;
+    const nextThemeState = applyDocumentThemePreference(preference);
+
     trackAppEvent(
       "theme_toggled",
       withAnalyticsContext(analyticsContext, {
         source_surface: "account_menu",
         success: true,
-        from_theme: theme,
-        to_theme: nextTheme,
+        from_preference: previousThemeState.preference,
+        to_preference: nextThemeState.preference,
+        from_theme: previousThemeState.resolvedTheme,
+        to_theme: nextThemeState.resolvedTheme,
       }),
     );
-    applyDocumentTheme(nextTheme);
-    setTheme(nextTheme);
+    setThemeState(nextThemeState);
   }
 
   function navigateTo(href: string) {
@@ -184,14 +229,29 @@ export function AccountControl({ identity }: AccountControlProps) {
             <BookTextIcon aria-hidden="true" />
             Definitions
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={toggleTheme}>
-            {theme === "dark" ? (
-              <SunIcon aria-hidden="true" />
-            ) : (
-              <MoonIcon aria-hidden="true" />
-            )}
-            {theme === "dark" ? "Light mode" : "Dark mode"}
-          </DropdownMenuItem>
+          {themeOptions.map((option) => {
+            const Icon = option.icon;
+            const isSelected = themeState.preference === option.preference;
+            const suffix =
+              option.preference === "system"
+                ? ` (${formatResolvedTheme(themeState.resolvedTheme)})`
+                : "";
+
+            return (
+              <DropdownMenuItem
+                key={option.preference}
+                aria-current={isSelected ? "true" : undefined}
+                onClick={() => selectThemePreference(option.preference)}
+              >
+                <Icon aria-hidden="true" />
+                {option.label}
+                <span className="text-xs text-muted-foreground">{suffix}</span>
+                {isSelected ? (
+                  <CheckIcon className="ml-auto" aria-hidden="true" />
+                ) : null}
+              </DropdownMenuItem>
+            );
+          })}
           {identity.isDatasetAdmin ? <DropdownMenuSeparator /> : null}
           {identity.isDatasetAdmin ? (
             <>
@@ -230,4 +290,8 @@ export function AccountControl({ identity }: AccountControlProps) {
       </DropdownMenuContent>
     </DropdownMenu>
   );
+}
+
+function formatResolvedTheme(theme: ResolvedTheme) {
+  return theme === "dark" ? "Dark" : "Light";
 }

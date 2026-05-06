@@ -101,7 +101,7 @@ describe("/dashboard/country-codes", () => {
 
     expect(screen.getByText("Country & Territory Codes")).toBeTruthy();
     expect(isoCountryCodesClientMock).toHaveBeenCalledWith(
-      expect.objectContaining({ initialResource: resource }),
+      expect.objectContaining({ initialResource: resource, canRefresh: false }),
       undefined,
     );
   });

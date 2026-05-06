@@ -9,6 +9,8 @@ const pushMock = vi.fn();
 const refreshMock = vi.fn();
 const fetchMock = vi.fn();
 const assignMock = vi.fn();
+const localStorageStore = new Map<string, string>();
+let setSystemDark: (matches: boolean) => void = () => undefined;
 const { pathnameMock, trackAppEventMock } = vi.hoisted(() => ({
   pathnameMock: vi.fn(),
   trackAppEventMock: vi.fn(),
@@ -43,9 +45,76 @@ function getMenuStructure(menu: HTMLElement) {
   );
 }
 
+function installLocalStorageMock() {
+  Object.defineProperty(window, "localStorage", {
+    configurable: true,
+    value: {
+      getItem: vi.fn((key: string) => localStorageStore.get(key) ?? null),
+      setItem: vi.fn((key: string, value: string) => {
+        localStorageStore.set(key, value);
+      }),
+      removeItem: vi.fn((key: string) => {
+        localStorageStore.delete(key);
+      }),
+    },
+  });
+}
+
+function installMatchMediaMock(initialMatches = false) {
+  const listeners = new Set<(event: MediaQueryListEvent) => void>();
+  let matches = initialMatches;
+  const media = "(prefers-color-scheme: dark)";
+  const mediaQueryList = {
+    media,
+    get matches() {
+      return matches;
+    },
+    onchange: null,
+    addEventListener: vi.fn(
+      (event: string, listener: (event: MediaQueryListEvent) => void) => {
+        if (event === "change") {
+          listeners.add(listener);
+        }
+      },
+    ),
+    removeEventListener: vi.fn(
+      (event: string, listener: (event: MediaQueryListEvent) => void) => {
+        if (event === "change") {
+          listeners.delete(listener);
+        }
+      },
+    ),
+    addListener: vi.fn((listener: (event: MediaQueryListEvent) => void) => {
+      listeners.add(listener);
+    }),
+    removeListener: vi.fn((listener: (event: MediaQueryListEvent) => void) => {
+      listeners.delete(listener);
+    }),
+    dispatchEvent: vi.fn(),
+  } as unknown as MediaQueryList;
+
+  Object.defineProperty(window, "matchMedia", {
+    configurable: true,
+    value: vi.fn(() => mediaQueryList),
+  });
+
+  setSystemDark = (nextMatches: boolean) => {
+    matches = nextMatches;
+    const event = {
+      matches,
+      media,
+    } as MediaQueryListEvent;
+
+    listeners.forEach((listener) => listener(event));
+  };
+}
+
 describe("AccountControl", () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    localStorageStore.clear();
+    installLocalStorageMock();
+    installMatchMediaMock(false);
     global.fetch = fetchMock as typeof fetch;
     pathnameMock.mockReturnValue("/dashboard");
     Object.defineProperty(window, "location", {
@@ -53,14 +122,6 @@ describe("AccountControl", () => {
       value: {
         ...window.location,
         assign: assignMock,
-      },
-    });
-    Object.defineProperty(window, "localStorage", {
-      configurable: true,
-      value: {
-        getItem: vi.fn(() => null),
-        setItem: vi.fn(),
-        removeItem: vi.fn(),
       },
     });
     document.documentElement.classList.remove("dark");
@@ -104,7 +165,9 @@ describe("AccountControl", () => {
       "Profile",
       "Dashboard",
       "Definitions",
-      "Dark mode",
+      "System (Light)",
+      "Light",
+      "Dark",
       "separator",
       "Manage Field Sources",
       "Datasets",
@@ -144,7 +207,9 @@ describe("AccountControl", () => {
       "Profile",
       "Dashboard",
       "Definitions",
-      "Dark mode",
+      "System (Light)",
+      "Light",
+      "Dark",
       "separator",
       "Sign out",
     ]);
@@ -185,7 +250,36 @@ describe("AccountControl", () => {
     expect(refreshMock).not.toHaveBeenCalled();
   });
 
-  it("tracks theme toggles using the current pathname route", () => {
+  it("selects system by default and clears legacy theme storage", () => {
+    localStorageStore.set("ag-theme", "dark");
+
+    render(
+      <AccountControl
+        identity={{
+          ownerId: "owner-1",
+          email: "pro@example.com",
+          fullName: null,
+          workspaceRole: "pro",
+          isDatasetAdmin: false,
+          mode: "supabase",
+        }}
+      />,
+    );
+
+    openMenu();
+
+    expect(localStorageStore.get("ag-theme")).toBeUndefined();
+    expect(localStorageStore.get("ag-theme-preference")).toBe("system");
+    expect(document.documentElement.classList.contains("dark")).toBe(false);
+    expect(
+      screen
+        .getByText("System")
+        .closest('[data-slot="dropdown-menu-item"]')
+        ?.getAttribute("aria-current"),
+    ).toBe("true");
+  });
+
+  it("tracks theme preference changes using the current pathname route", () => {
     pathnameMock.mockReturnValue("/dashboard/profile");
 
     render(
@@ -202,7 +296,7 @@ describe("AccountControl", () => {
     );
 
     fireEvent.click(screen.getByRole("button"));
-    fireEvent.click(screen.getByText("Dark mode"));
+    fireEvent.click(screen.getByText("Dark"));
 
     expect(trackAppEventMock).toHaveBeenCalledWith(
       "theme_toggled",
@@ -212,10 +306,94 @@ describe("AccountControl", () => {
         workspace_role: "pro",
         source_surface: "account_menu",
         success: true,
+        from_preference: "system",
+        to_preference: "dark",
         from_theme: "light",
         to_theme: "dark",
       }),
     );
+    expect(document.documentElement.classList.contains("dark")).toBe(true);
+    expect(localStorageStore.get("ag-theme-preference")).toBe("dark");
+  });
+
+  it("applies explicit light and dark overrides", () => {
+    localStorageStore.set("ag-theme-preference", "light");
+    installMatchMediaMock(true);
+
+    render(
+      <AccountControl
+        identity={{
+          ownerId: "owner-1",
+          email: "pro@example.com",
+          fullName: null,
+          workspaceRole: "pro",
+          isDatasetAdmin: false,
+          mode: "supabase",
+        }}
+      />,
+    );
+
+    openMenu();
+    expect(document.documentElement.classList.contains("dark")).toBe(false);
+
+    fireEvent.click(screen.getByText("Light"));
+
+    expect(localStorageStore.get("ag-theme-preference")).toBe("light");
+    expect(document.documentElement.classList.contains("dark")).toBe(false);
+
+    openMenu();
+    fireEvent.click(screen.getByText("Dark"));
+
+    expect(localStorageStore.get("ag-theme-preference")).toBe("dark");
+    expect(document.documentElement.classList.contains("dark")).toBe(true);
+  });
+
+  it("returns to system tracking after selecting System", () => {
+    localStorageStore.set("ag-theme-preference", "light");
+    installMatchMediaMock(true);
+
+    render(
+      <AccountControl
+        identity={{
+          ownerId: "owner-1",
+          email: "pro@example.com",
+          fullName: null,
+          workspaceRole: "pro",
+          isDatasetAdmin: false,
+          mode: "supabase",
+        }}
+      />,
+    );
+
+    openMenu();
+    fireEvent.click(screen.getByText("System"));
+
+    expect(localStorageStore.get("ag-theme-preference")).toBe("system");
+    expect(document.documentElement.classList.contains("dark")).toBe(true);
+  });
+
+  it("tracks operating system changes while the System preference is active", async () => {
+    render(
+      <AccountControl
+        identity={{
+          ownerId: "owner-1",
+          email: "pro@example.com",
+          fullName: null,
+          workspaceRole: "pro",
+          isDatasetAdmin: false,
+          mode: "supabase",
+        }}
+      />,
+    );
+
+    expect(document.documentElement.classList.contains("dark")).toBe(false);
+
+    setSystemDark(true);
+
+    await waitFor(() => {
+      expect(document.documentElement.classList.contains("dark")).toBe(true);
+      expect(document.documentElement.style.colorScheme).toBe("dark");
+    });
   });
 
   it("marks the account menu trigger as ready after hydration", async () => {

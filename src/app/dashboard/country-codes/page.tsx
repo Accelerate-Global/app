@@ -53,7 +53,10 @@ export default async function CountryCodesPage() {
           </div>
         </section>
 
-        <IsoCountryCodesClient initialResource={resource} />
+        <IsoCountryCodesClient
+          initialResource={resource}
+          canRefresh={identity.isDatasetAdmin}
+        />
       </div>
     </main>
   );

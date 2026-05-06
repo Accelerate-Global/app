@@ -206,6 +206,27 @@ export const smokeRouteSpecs: SmokeRouteSpec[] = [
     pageId: "iso-country-codes",
   },
   {
+    id: "resources-pro",
+    role: "pro",
+    pageFile: "src/app/dashboard/resources/page.tsx",
+    path: "/dashboard/resources",
+    pageId: "resources",
+  },
+  {
+    id: "resources-basic",
+    role: "basic",
+    pageFile: "src/app/dashboard/resources/page.tsx",
+    path: "/dashboard/resources",
+    pageId: "resources",
+  },
+  {
+    id: "resources-admin",
+    role: "admin",
+    pageFile: "src/app/dashboard/resources/page.tsx",
+    path: "/dashboard/resources",
+    pageId: "resources",
+  },
+  {
     id: "profile-pro",
     role: "pro",
     pageFile: "src/app/dashboard/profile/page.tsx",

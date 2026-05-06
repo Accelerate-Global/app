@@ -36,7 +36,26 @@ describe("/api/iso-country-codes/refresh", () => {
     expect(refreshIsoCountryCodeResourceFromOfficialSourceMock).not.toHaveBeenCalled();
   });
 
-  it("returns live country and territory code resource for authenticated users", async () => {
+  it("rejects non-admin refresh requests", async () => {
+    getCurrentIdentityMock.mockResolvedValue({
+      ownerId: "owner-1",
+      email: "reader@example.com",
+      fullName: null,
+      workspaceRole: "basic",
+      isDatasetAdmin: false,
+      mode: "supabase",
+    });
+
+    const response = await GET();
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toEqual({
+      error: "Only admins can refresh country and territory codes.",
+    });
+    expect(refreshIsoCountryCodeResourceFromOfficialSourceMock).not.toHaveBeenCalled();
+  });
+
+  it("returns live country and territory code resource for admins", async () => {
     const resource = {
       sourceName: "ISO OBP, GENC, legacy FIPS, and curated Accelerate Global overlay",
       sourceUrl: "https://www.iso.org/obp/ui/#search/code/",
@@ -71,10 +90,10 @@ describe("/api/iso-country-codes/refresh", () => {
     } satisfies IsoCountryCodeResource;
     getCurrentIdentityMock.mockResolvedValue({
       ownerId: "owner-1",
-      email: "reader@example.com",
+      email: "admin@example.com",
       fullName: null,
-      workspaceRole: "basic",
-      isDatasetAdmin: false,
+      workspaceRole: "admin",
+      isDatasetAdmin: true,
       mode: "supabase",
     });
     refreshIsoCountryCodeResourceFromOfficialSourceMock.mockResolvedValue(resource);
@@ -88,10 +107,10 @@ describe("/api/iso-country-codes/refresh", () => {
   it("returns a gateway error when source refresh fails", async () => {
     getCurrentIdentityMock.mockResolvedValue({
       ownerId: "owner-1",
-      email: "reader@example.com",
+      email: "admin@example.com",
       fullName: null,
-      workspaceRole: "basic",
-      isDatasetAdmin: false,
+      workspaceRole: "admin",
+      isDatasetAdmin: true,
       mode: "supabase",
     });
     refreshIsoCountryCodeResourceFromOfficialSourceMock.mockRejectedValue(

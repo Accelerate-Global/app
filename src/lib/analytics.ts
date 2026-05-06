@@ -5,6 +5,8 @@ import type {
 } from "@/lib/api-types";
 import type { WorkspaceRole } from "@/lib/workspace-role";
 
+export type AnalyticsThemePreference = "system" | "light" | "dark";
+export type AnalyticsResolvedTheme = "light" | "dark";
 export type AnalyticsWorkspaceRole = WorkspaceRole | "anonymous";
 
 export const APP_ANALYTICS_ROUTES = [
@@ -235,8 +237,10 @@ export type AppAnalyticsEventMap = {
   email_change_started: AppAnalyticsEventBase;
   account_disabled_self: AppAnalyticsEventBase;
   theme_toggled: AppAnalyticsEventBase & {
-    from_theme: "light" | "dark";
-    to_theme: "light" | "dark";
+    from_preference: AnalyticsThemePreference;
+    to_preference: AnalyticsThemePreference;
+    from_theme: AnalyticsResolvedTheme;
+    to_theme: AnalyticsResolvedTheme;
   };
   user_record_opened: AppAnalyticsEventBase & {
     target_user_id: string;
@@ -458,7 +462,12 @@ const APP_ANALYTICS_EVENT_PROPERTY_KEYS = {
   profile_name_updated: [],
   email_change_started: [],
   account_disabled_self: [],
-  theme_toggled: ["from_theme", "to_theme"],
+  theme_toggled: [
+    "from_preference",
+    "to_preference",
+    "from_theme",
+    "to_theme",
+  ],
   user_record_opened: ["target_status", "target_role"],
   user_invite_sent: ["to_role"],
   user_invite_failed: ["to_role"],

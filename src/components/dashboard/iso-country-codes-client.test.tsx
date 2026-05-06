@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import {
+  cleanup,
   fireEvent,
   render,
   screen,
@@ -14,6 +15,11 @@ import type { IsoCountryCodeResource } from "@/lib/iso-country-codes";
 
 const fetchMock = vi.fn();
 const writeTextMock = vi.fn();
+const createObjectUrlMock = vi.fn((_value: Blob | MediaSource) => {
+  void _value;
+  return "blob:country-codes";
+});
+const revokeObjectUrlMock = vi.fn();
 
 const initialResource: IsoCountryCodeResource = {
   sourceName: "ISO OBP, GENC, legacy FIPS, and curated Accelerate Global overlay",
@@ -89,6 +95,16 @@ describe("IsoCountryCodesClient", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     vi.stubGlobal("fetch", fetchMock);
+    createObjectUrlMock.mockReturnValue("blob:country-codes");
+    Object.defineProperty(URL, "createObjectURL", {
+      configurable: true,
+      value: createObjectUrlMock,
+    });
+    Object.defineProperty(URL, "revokeObjectURL", {
+      configurable: true,
+      value: revokeObjectUrlMock,
+    });
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
     Object.assign(navigator, {
       clipboard: {
         writeText: writeTextMock,
@@ -97,11 +113,15 @@ describe("IsoCountryCodesClient", () => {
   });
 
   afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
     vi.unstubAllGlobals();
   });
 
   it("renders compact columns and filters by hidden detail fields", () => {
-    render(<IsoCountryCodesClient initialResource={initialResource} />);
+    render(
+      <IsoCountryCodesClient initialResource={initialResource} canRefresh />,
+    );
 
     expect(screen.getByRole("columnheader", { name: "Country/Territory" })).toBeTruthy();
     expect(screen.getByRole("columnheader", { name: "Status" })).toBeTruthy();
@@ -141,7 +161,9 @@ describe("IsoCountryCodesClient", () => {
   });
 
   it("opens a right-side detail sheet with hidden fields and smoke markers", () => {
-    render(<IsoCountryCodesClient initialResource={initialResource} />);
+    render(
+      <IsoCountryCodesClient initialResource={initialResource} canRefresh />,
+    );
 
     fireEvent.click(screen.getByText("Afghanistan"));
 
@@ -161,7 +183,9 @@ describe("IsoCountryCodesClient", () => {
 
   it("copies primary, fallback GENC, and FIPS codes from the detail sheet", async () => {
     writeTextMock.mockResolvedValue(undefined);
-    render(<IsoCountryCodesClient initialResource={initialResource} />);
+    render(
+      <IsoCountryCodesClient initialResource={initialResource} canRefresh />,
+    );
 
     fireEvent.click(screen.getByText("Afghanistan"));
     fireEvent.click(screen.getByRole("button", { name: "Copy primary code AFG" }));
@@ -187,7 +211,9 @@ describe("IsoCountryCodesClient", () => {
   });
 
   it("updates status and alternative names for the current session", () => {
-    render(<IsoCountryCodesClient initialResource={initialResource} />);
+    render(
+      <IsoCountryCodesClient initialResource={initialResource} canRefresh />,
+    );
 
     const afghanistanRow = screen.getByText("Afghanistan").closest("tr");
     expect(afghanistanRow).toBeTruthy();
@@ -215,6 +241,34 @@ describe("IsoCountryCodesClient", () => {
     expect(screen.getByText("1 visible")).toBeTruthy();
   });
 
+  it("downloads the current visible resource rows as CSV", async () => {
+    render(
+      <IsoCountryCodesClient initialResource={initialResource} canRefresh={false} />,
+    );
+
+    expect(screen.queryByRole("button", { name: /Refresh/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: "JSON" })).toBeNull();
+
+    fireEvent.change(screen.getByPlaceholderText(/Search name/), {
+      target: { value: "Afganistan" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Download" }));
+
+    expect(createObjectUrlMock).toHaveBeenCalledTimes(1);
+    const blob = createObjectUrlMock.mock.calls[0]?.[0] as Blob;
+    const csv = await blob.text();
+
+    expect(blob.type).toBe("text/csv;charset=utf-8");
+    expect(csv).toContain(
+      "Country/Territory,Status,ISO3,ISO2,Numeric,FIPS,GENC3,GENC2,GENC numeric,Classification,Alternative names,Source URI",
+    );
+    expect(csv).toContain(
+      "Afghanistan,Active,AFG,AF,004,AF,AFG,AF,004,ISO official,Afganistan; Islamic Republic of Afghanistan,iso:code:3166:AF",
+    );
+    expect(csv).not.toContain("Akrotiri");
+    expect(revokeObjectUrlMock).toHaveBeenCalledWith("blob:country-codes");
+  });
+
   it("refreshes visible entries from the authenticated API", async () => {
     const refreshedResource: IsoCountryCodeResource = {
       ...initialResource,
@@ -239,7 +293,9 @@ describe("IsoCountryCodesClient", () => {
       ],
     };
     fetchMock.mockResolvedValue(buildJsonResponse(refreshedResource));
-    render(<IsoCountryCodesClient initialResource={initialResource} />);
+    render(
+      <IsoCountryCodesClient initialResource={initialResource} canRefresh />,
+    );
 
     fireEvent.click(screen.getByRole("button", { name: /Refresh/ }));
 
@@ -247,16 +303,20 @@ describe("IsoCountryCodesClient", () => {
       expect(fetchMock).toHaveBeenCalledWith("/api/iso-country-codes/refresh");
     });
     expect(await screen.findByText("Zimbabwe")).toBeTruthy();
+    expect(await screen.findByText("Refresh complete")).toBeTruthy();
     expect(screen.queryByText("Afghanistan")).toBeNull();
   });
 
   it("keeps generated entries visible when refresh fails", async () => {
     fetchMock.mockResolvedValue(buildJsonResponse({ error: "Nope" }, 502));
-    render(<IsoCountryCodesClient initialResource={initialResource} />);
+    render(
+      <IsoCountryCodesClient initialResource={initialResource} canRefresh />,
+    );
 
     fireEvent.click(screen.getByRole("button", { name: /Refresh/ }));
 
     expect(await screen.findByText(/Could not refresh country and territory/)).toBeTruthy();
+    expect(await screen.findByText("Refresh failed")).toBeTruthy();
     expect(screen.getByText("Afghanistan")).toBeTruthy();
   });
 });
