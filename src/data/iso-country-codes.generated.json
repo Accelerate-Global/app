@@ -1,1752 +1,4592 @@
 {
-  "sourceName": "ISO Online Browsing Platform",
+  "sourceName": "ISO OBP, GENC, legacy FIPS, and curated Accelerate Global overlay",
   "sourceUrl": "https://www.iso.org/obp/ui/#search/code/",
   "sourceCollectionUrl": "https://www.iso.org/publication/PUB500001.html",
-  "sourceRetrievedAt": "2026-05-06T04:51:04.481Z",
-  "entryCount": 249,
+  "gencSourceUrl": "https://evs.nci.nih.gov/ftp1/GENC/NCIt-GENC_Terminology.txt",
+  "gencAboutUrl": "https://evs.nci.nih.gov/ftp1/GENC/About.html",
+  "fipsSourceUrl": "https://nief.org/attribute-registry/codesets/FIPS10-4CountryCode/",
+  "fipsWithdrawalUrl": "https://csrc.nist.gov/news/2008/announcing-approval-of-the-withdrawal-of-ten-fip-s",
+  "overlaySourceName": "Accelerate Global - Spec Sheet - ISO3.csv",
+  "sourceRetrievedAt": "2026-05-06T05:56:54.158Z",
+  "entryCount": 273,
+  "officialIsoCount": 249,
+  "activeCount": 259,
   "entries": [
     {
-      "alpha2": "AF",
-      "alpha3": "AFG",
-      "englishShortName": "Afghanistan",
-      "numeric": "004",
-      "uri": "iso:code:3166:AF"
-    },
-    {
-      "alpha2": "AX",
-      "alpha3": "ALA",
-      "englishShortName": "Åland Islands",
-      "numeric": "248",
-      "uri": "iso:code:3166:AX"
-    },
-    {
-      "alpha2": "AL",
-      "alpha3": "ALB",
-      "englishShortName": "Albania",
-      "numeric": "008",
-      "uri": "iso:code:3166:AL"
-    },
-    {
-      "alpha2": "DZ",
-      "alpha3": "DZA",
-      "englishShortName": "Algeria",
-      "numeric": "012",
-      "uri": "iso:code:3166:DZ"
-    },
-    {
-      "alpha2": "AS",
-      "alpha3": "ASM",
-      "englishShortName": "American Samoa",
-      "numeric": "016",
-      "uri": "iso:code:3166:AS"
-    },
-    {
-      "alpha2": "AD",
-      "alpha3": "AND",
-      "englishShortName": "Andorra",
-      "numeric": "020",
-      "uri": "iso:code:3166:AD"
-    },
-    {
-      "alpha2": "AO",
-      "alpha3": "AGO",
-      "englishShortName": "Angola",
-      "numeric": "024",
-      "uri": "iso:code:3166:AO"
-    },
-    {
-      "alpha2": "AI",
-      "alpha3": "AIA",
-      "englishShortName": "Anguilla",
-      "numeric": "660",
-      "uri": "iso:code:3166:AI"
-    },
-    {
-      "alpha2": "AQ",
-      "alpha3": "ATA",
-      "englishShortName": "Antarctica",
-      "numeric": "010",
-      "uri": "iso:code:3166:AQ"
-    },
-    {
-      "alpha2": "AG",
-      "alpha3": "ATG",
-      "englishShortName": "Antigua and Barbuda",
-      "numeric": "028",
-      "uri": "iso:code:3166:AG"
-    },
-    {
-      "alpha2": "AR",
-      "alpha3": "ARG",
-      "englishShortName": "Argentina",
-      "numeric": "032",
-      "uri": "iso:code:3166:AR"
-    },
-    {
-      "alpha2": "AM",
-      "alpha3": "ARM",
-      "englishShortName": "Armenia",
-      "numeric": "051",
-      "uri": "iso:code:3166:AM"
-    },
-    {
-      "alpha2": "AW",
-      "alpha3": "ABW",
-      "englishShortName": "Aruba",
-      "numeric": "533",
-      "uri": "iso:code:3166:AW"
-    },
-    {
-      "alpha2": "AU",
-      "alpha3": "AUS",
-      "englishShortName": "Australia",
-      "numeric": "036",
-      "uri": "iso:code:3166:AU"
-    },
-    {
-      "alpha2": "AT",
-      "alpha3": "AUT",
-      "englishShortName": "Austria",
-      "numeric": "040",
-      "uri": "iso:code:3166:AT"
-    },
-    {
-      "alpha2": "AZ",
-      "alpha3": "AZE",
-      "englishShortName": "Azerbaijan",
-      "numeric": "031",
-      "uri": "iso:code:3166:AZ"
-    },
-    {
-      "alpha2": "BS",
-      "alpha3": "BHS",
-      "englishShortName": "Bahamas (The)",
-      "numeric": "044",
-      "uri": "iso:code:3166:BS"
-    },
-    {
-      "alpha2": "BH",
-      "alpha3": "BHR",
-      "englishShortName": "Bahrain",
-      "numeric": "048",
-      "uri": "iso:code:3166:BH"
-    },
-    {
-      "alpha2": "BD",
-      "alpha3": "BGD",
-      "englishShortName": "Bangladesh",
-      "numeric": "050",
-      "uri": "iso:code:3166:BD"
-    },
-    {
-      "alpha2": "BB",
-      "alpha3": "BRB",
-      "englishShortName": "Barbados",
-      "numeric": "052",
-      "uri": "iso:code:3166:BB"
-    },
-    {
-      "alpha2": "BY",
-      "alpha3": "BLR",
-      "englishShortName": "Belarus",
-      "numeric": "112",
-      "uri": "iso:code:3166:BY"
-    },
-    {
-      "alpha2": "BE",
-      "alpha3": "BEL",
-      "englishShortName": "Belgium",
-      "numeric": "056",
-      "uri": "iso:code:3166:BE"
-    },
-    {
-      "alpha2": "BZ",
-      "alpha3": "BLZ",
-      "englishShortName": "Belize",
-      "numeric": "084",
-      "uri": "iso:code:3166:BZ"
-    },
-    {
-      "alpha2": "BJ",
-      "alpha3": "BEN",
-      "englishShortName": "Benin",
-      "numeric": "204",
-      "uri": "iso:code:3166:BJ"
-    },
-    {
-      "alpha2": "BM",
-      "alpha3": "BMU",
-      "englishShortName": "Bermuda",
-      "numeric": "060",
-      "uri": "iso:code:3166:BM"
-    },
-    {
-      "alpha2": "BT",
-      "alpha3": "BTN",
-      "englishShortName": "Bhutan",
-      "numeric": "064",
-      "uri": "iso:code:3166:BT"
-    },
-    {
-      "alpha2": "BO",
-      "alpha3": "BOL",
-      "englishShortName": "Bolivia (Plurinational State of)",
-      "numeric": "068",
-      "uri": "iso:code:3166:BO"
-    },
-    {
-      "alpha2": "BQ",
-      "alpha3": "BES",
-      "englishShortName": "Bonaire, Sint Eustatius and Saba",
-      "numeric": "535",
-      "uri": "iso:code:3166:BQ"
-    },
-    {
-      "alpha2": "BA",
-      "alpha3": "BIH",
-      "englishShortName": "Bosnia and Herzegovina",
-      "numeric": "070",
-      "uri": "iso:code:3166:BA"
-    },
-    {
-      "alpha2": "BW",
-      "alpha3": "BWA",
-      "englishShortName": "Botswana",
-      "numeric": "072",
-      "uri": "iso:code:3166:BW"
-    },
-    {
-      "alpha2": "BV",
-      "alpha3": "BVT",
-      "englishShortName": "Bouvet Island",
-      "numeric": "074",
-      "uri": "iso:code:3166:BV"
-    },
-    {
-      "alpha2": "BR",
-      "alpha3": "BRA",
-      "englishShortName": "Brazil",
-      "numeric": "076",
-      "uri": "iso:code:3166:BR"
-    },
-    {
-      "alpha2": "IO",
-      "alpha3": "IOT",
-      "englishShortName": "British Indian Ocean Territory (the)",
-      "numeric": "086",
-      "uri": "iso:code:3166:IO"
-    },
-    {
-      "alpha2": "BN",
-      "alpha3": "BRN",
-      "englishShortName": "Brunei Darussalam",
-      "numeric": "096",
-      "uri": "iso:code:3166:BN"
-    },
-    {
-      "alpha2": "BG",
-      "alpha3": "BGR",
-      "englishShortName": "Bulgaria",
-      "numeric": "100",
-      "uri": "iso:code:3166:BG"
-    },
-    {
-      "alpha2": "BF",
-      "alpha3": "BFA",
-      "englishShortName": "Burkina Faso",
-      "numeric": "854",
-      "uri": "iso:code:3166:BF"
-    },
-    {
-      "alpha2": "BI",
-      "alpha3": "BDI",
-      "englishShortName": "Burundi",
-      "numeric": "108",
-      "uri": "iso:code:3166:BI"
-    },
-    {
-      "alpha2": "CV",
-      "alpha3": "CPV",
-      "englishShortName": "Cabo Verde",
-      "numeric": "132",
-      "uri": "iso:code:3166:CV"
-    },
-    {
-      "alpha2": "KH",
-      "alpha3": "KHM",
-      "englishShortName": "Cambodia",
-      "numeric": "116",
-      "uri": "iso:code:3166:KH"
-    },
-    {
-      "alpha2": "CM",
-      "alpha3": "CMR",
-      "englishShortName": "Cameroon",
-      "numeric": "120",
-      "uri": "iso:code:3166:CM"
-    },
-    {
-      "alpha2": "CA",
-      "alpha3": "CAN",
-      "englishShortName": "Canada",
-      "numeric": "124",
-      "uri": "iso:code:3166:CA"
-    },
-    {
-      "alpha2": "KY",
-      "alpha3": "CYM",
-      "englishShortName": "Cayman Islands (the)",
-      "numeric": "136",
-      "uri": "iso:code:3166:KY"
-    },
-    {
-      "alpha2": "CF",
-      "alpha3": "CAF",
-      "englishShortName": "Central African Republic (the)",
-      "numeric": "140",
-      "uri": "iso:code:3166:CF"
-    },
-    {
-      "alpha2": "TD",
-      "alpha3": "TCD",
-      "englishShortName": "Chad",
-      "numeric": "148",
-      "uri": "iso:code:3166:TD"
-    },
-    {
-      "alpha2": "CL",
-      "alpha3": "CHL",
-      "englishShortName": "Chile",
-      "numeric": "152",
-      "uri": "iso:code:3166:CL"
-    },
-    {
-      "alpha2": "CN",
-      "alpha3": "CHN",
-      "englishShortName": "China",
-      "numeric": "156",
-      "uri": "iso:code:3166:CN"
-    },
-    {
-      "alpha2": "CX",
-      "alpha3": "CXR",
-      "englishShortName": "Christmas Island",
-      "numeric": "162",
-      "uri": "iso:code:3166:CX"
-    },
-    {
-      "alpha2": "CC",
-      "alpha3": "CCK",
-      "englishShortName": "Cocos (Keeling) Islands (the)",
-      "numeric": "166",
-      "uri": "iso:code:3166:CC"
-    },
-    {
-      "alpha2": "CO",
-      "alpha3": "COL",
-      "englishShortName": "Colombia",
-      "numeric": "170",
-      "uri": "iso:code:3166:CO"
-    },
-    {
-      "alpha2": "KM",
-      "alpha3": "COM",
-      "englishShortName": "Comoros (the)",
-      "numeric": "174",
-      "uri": "iso:code:3166:KM"
-    },
-    {
-      "alpha2": "CD",
-      "alpha3": "COD",
-      "englishShortName": "Congo (the Democratic Republic of the)",
-      "numeric": "180",
-      "uri": "iso:code:3166:CD"
-    },
-    {
-      "alpha2": "CG",
-      "alpha3": "COG",
-      "englishShortName": "Congo (the)",
-      "numeric": "178",
-      "uri": "iso:code:3166:CG"
-    },
-    {
-      "alpha2": "CK",
-      "alpha3": "COK",
-      "englishShortName": "Cook Islands (the)",
-      "numeric": "184",
-      "uri": "iso:code:3166:CK"
-    },
-    {
-      "alpha2": "CR",
-      "alpha3": "CRI",
-      "englishShortName": "Costa Rica",
-      "numeric": "188",
-      "uri": "iso:code:3166:CR"
-    },
-    {
-      "alpha2": "CI",
-      "alpha3": "CIV",
-      "englishShortName": "Côte d'Ivoire",
-      "numeric": "384",
-      "uri": "iso:code:3166:CI"
-    },
-    {
-      "alpha2": "HR",
-      "alpha3": "HRV",
-      "englishShortName": "Croatia",
-      "numeric": "191",
-      "uri": "iso:code:3166:HR"
-    },
-    {
-      "alpha2": "CU",
-      "alpha3": "CUB",
-      "englishShortName": "Cuba",
-      "numeric": "192",
-      "uri": "iso:code:3166:CU"
-    },
-    {
-      "alpha2": "CW",
-      "alpha3": "CUW",
-      "englishShortName": "Curaçao",
-      "numeric": "531",
-      "uri": "iso:code:3166:CW"
-    },
-    {
-      "alpha2": "CY",
-      "alpha3": "CYP",
-      "englishShortName": "Cyprus",
-      "numeric": "196",
-      "uri": "iso:code:3166:CY"
-    },
-    {
-      "alpha2": "CZ",
-      "alpha3": "CZE",
-      "englishShortName": "Czechia",
-      "numeric": "203",
-      "uri": "iso:code:3166:CZ"
-    },
-    {
-      "alpha2": "DK",
-      "alpha3": "DNK",
-      "englishShortName": "Denmark",
-      "numeric": "208",
-      "uri": "iso:code:3166:DK"
-    },
-    {
-      "alpha2": "DJ",
-      "alpha3": "DJI",
-      "englishShortName": "Djibouti",
-      "numeric": "262",
-      "uri": "iso:code:3166:DJ"
-    },
-    {
-      "alpha2": "DM",
-      "alpha3": "DMA",
-      "englishShortName": "Dominica",
-      "numeric": "212",
-      "uri": "iso:code:3166:DM"
-    },
-    {
-      "alpha2": "DO",
-      "alpha3": "DOM",
-      "englishShortName": "Dominican Republic (the)",
-      "numeric": "214",
-      "uri": "iso:code:3166:DO"
-    },
-    {
-      "alpha2": "EC",
-      "alpha3": "ECU",
-      "englishShortName": "Ecuador",
-      "numeric": "218",
-      "uri": "iso:code:3166:EC"
-    },
-    {
-      "alpha2": "EG",
-      "alpha3": "EGY",
-      "englishShortName": "Egypt",
-      "numeric": "818",
-      "uri": "iso:code:3166:EG"
-    },
-    {
-      "alpha2": "SV",
-      "alpha3": "SLV",
-      "englishShortName": "El Salvador",
-      "numeric": "222",
-      "uri": "iso:code:3166:SV"
-    },
-    {
-      "alpha2": "GQ",
-      "alpha3": "GNQ",
-      "englishShortName": "Equatorial Guinea",
-      "numeric": "226",
-      "uri": "iso:code:3166:GQ"
-    },
-    {
-      "alpha2": "ER",
-      "alpha3": "ERI",
-      "englishShortName": "Eritrea",
-      "numeric": "232",
-      "uri": "iso:code:3166:ER"
-    },
-    {
-      "alpha2": "EE",
-      "alpha3": "EST",
-      "englishShortName": "Estonia",
-      "numeric": "233",
-      "uri": "iso:code:3166:EE"
-    },
-    {
-      "alpha2": "SZ",
-      "alpha3": "SWZ",
-      "englishShortName": "Eswatini",
-      "numeric": "748",
-      "uri": "iso:code:3166:SZ"
-    },
-    {
-      "alpha2": "ET",
-      "alpha3": "ETH",
-      "englishShortName": "Ethiopia",
-      "numeric": "231",
-      "uri": "iso:code:3166:ET"
-    },
-    {
-      "alpha2": "FK",
-      "alpha3": "FLK",
-      "englishShortName": "Falkland Islands (the) [Malvinas]",
-      "numeric": "238",
-      "uri": "iso:code:3166:FK"
-    },
-    {
-      "alpha2": "FO",
-      "alpha3": "FRO",
-      "englishShortName": "Faroe Islands (the)",
-      "numeric": "234",
-      "uri": "iso:code:3166:FO"
-    },
-    {
-      "alpha2": "FJ",
-      "alpha3": "FJI",
-      "englishShortName": "Fiji",
-      "numeric": "242",
-      "uri": "iso:code:3166:FJ"
-    },
-    {
-      "alpha2": "FI",
-      "alpha3": "FIN",
-      "englishShortName": "Finland",
-      "numeric": "246",
-      "uri": "iso:code:3166:FI"
-    },
-    {
-      "alpha2": "FR",
-      "alpha3": "FRA",
-      "englishShortName": "France",
-      "numeric": "250",
-      "uri": "iso:code:3166:FR"
-    },
-    {
-      "alpha2": "GF",
-      "alpha3": "GUF",
-      "englishShortName": "French Guiana",
-      "numeric": "254",
-      "uri": "iso:code:3166:GF"
-    },
-    {
-      "alpha2": "PF",
-      "alpha3": "PYF",
-      "englishShortName": "French Polynesia",
-      "numeric": "258",
-      "uri": "iso:code:3166:PF"
-    },
-    {
-      "alpha2": "TF",
-      "alpha3": "ATF",
-      "englishShortName": "French Southern Territories (the)",
-      "numeric": "260",
-      "uri": "iso:code:3166:TF"
-    },
-    {
-      "alpha2": "GA",
-      "alpha3": "GAB",
-      "englishShortName": "Gabon",
-      "numeric": "266",
-      "uri": "iso:code:3166:GA"
-    },
-    {
-      "alpha2": "GM",
-      "alpha3": "GMB",
-      "englishShortName": "Gambia (the)",
-      "numeric": "270",
-      "uri": "iso:code:3166:GM"
-    },
-    {
-      "alpha2": "GE",
-      "alpha3": "GEO",
-      "englishShortName": "Georgia",
-      "numeric": "268",
-      "uri": "iso:code:3166:GE"
-    },
-    {
-      "alpha2": "DE",
-      "alpha3": "DEU",
-      "englishShortName": "Germany",
-      "numeric": "276",
-      "uri": "iso:code:3166:DE"
-    },
-    {
-      "alpha2": "GH",
-      "alpha3": "GHA",
-      "englishShortName": "Ghana",
-      "numeric": "288",
-      "uri": "iso:code:3166:GH"
-    },
-    {
-      "alpha2": "GI",
-      "alpha3": "GIB",
-      "englishShortName": "Gibraltar",
-      "numeric": "292",
-      "uri": "iso:code:3166:GI"
-    },
-    {
-      "alpha2": "GR",
-      "alpha3": "GRC",
-      "englishShortName": "Greece",
-      "numeric": "300",
-      "uri": "iso:code:3166:GR"
-    },
-    {
-      "alpha2": "GL",
-      "alpha3": "GRL",
-      "englishShortName": "Greenland",
-      "numeric": "304",
-      "uri": "iso:code:3166:GL"
-    },
-    {
-      "alpha2": "GD",
-      "alpha3": "GRD",
-      "englishShortName": "Grenada",
-      "numeric": "308",
-      "uri": "iso:code:3166:GD"
-    },
-    {
-      "alpha2": "GP",
-      "alpha3": "GLP",
-      "englishShortName": "Guadeloupe",
-      "numeric": "312",
-      "uri": "iso:code:3166:GP"
-    },
-    {
-      "alpha2": "GU",
-      "alpha3": "GUM",
-      "englishShortName": "Guam",
-      "numeric": "316",
-      "uri": "iso:code:3166:GU"
-    },
-    {
-      "alpha2": "GT",
-      "alpha3": "GTM",
-      "englishShortName": "Guatemala",
-      "numeric": "320",
-      "uri": "iso:code:3166:GT"
-    },
-    {
-      "alpha2": "GG",
-      "alpha3": "GGY",
-      "englishShortName": "Guernsey",
-      "numeric": "831",
-      "uri": "iso:code:3166:GG"
-    },
-    {
-      "alpha2": "GN",
-      "alpha3": "GIN",
-      "englishShortName": "Guinea",
-      "numeric": "324",
-      "uri": "iso:code:3166:GN"
-    },
-    {
-      "alpha2": "GW",
-      "alpha3": "GNB",
-      "englishShortName": "Guinea-Bissau",
-      "numeric": "624",
-      "uri": "iso:code:3166:GW"
-    },
-    {
-      "alpha2": "GY",
-      "alpha3": "GUY",
-      "englishShortName": "Guyana",
-      "numeric": "328",
-      "uri": "iso:code:3166:GY"
-    },
-    {
-      "alpha2": "HT",
-      "alpha3": "HTI",
-      "englishShortName": "Haiti",
-      "numeric": "332",
-      "uri": "iso:code:3166:HT"
-    },
-    {
-      "alpha2": "HM",
-      "alpha3": "HMD",
-      "englishShortName": "Heard Island and McDonald Islands",
-      "numeric": "334",
-      "uri": "iso:code:3166:HM"
-    },
-    {
-      "alpha2": "VA",
-      "alpha3": "VAT",
-      "englishShortName": "Holy See (the)",
-      "numeric": "336",
-      "uri": "iso:code:3166:VA"
-    },
-    {
-      "alpha2": "HN",
-      "alpha3": "HND",
-      "englishShortName": "Honduras",
-      "numeric": "340",
-      "uri": "iso:code:3166:HN"
-    },
-    {
-      "alpha2": "HK",
-      "alpha3": "HKG",
-      "englishShortName": "Hong Kong",
-      "numeric": "344",
-      "uri": "iso:code:3166:HK"
-    },
-    {
-      "alpha2": "HU",
-      "alpha3": "HUN",
-      "englishShortName": "Hungary",
-      "numeric": "348",
-      "uri": "iso:code:3166:HU"
-    },
-    {
-      "alpha2": "IS",
-      "alpha3": "ISL",
-      "englishShortName": "Iceland",
-      "numeric": "352",
-      "uri": "iso:code:3166:IS"
-    },
-    {
-      "alpha2": "IN",
-      "alpha3": "IND",
-      "englishShortName": "India",
-      "numeric": "356",
-      "uri": "iso:code:3166:IN"
-    },
-    {
-      "alpha2": "ID",
-      "alpha3": "IDN",
-      "englishShortName": "Indonesia",
-      "numeric": "360",
-      "uri": "iso:code:3166:ID"
-    },
-    {
-      "alpha2": "IR",
-      "alpha3": "IRN",
-      "englishShortName": "Iran (Islamic Republic of)",
-      "numeric": "364",
-      "uri": "iso:code:3166:IR"
-    },
-    {
-      "alpha2": "IQ",
-      "alpha3": "IRQ",
-      "englishShortName": "Iraq",
-      "numeric": "368",
-      "uri": "iso:code:3166:IQ"
-    },
-    {
-      "alpha2": "IE",
-      "alpha3": "IRL",
-      "englishShortName": "Ireland",
-      "numeric": "372",
-      "uri": "iso:code:3166:IE"
-    },
-    {
-      "alpha2": "IM",
-      "alpha3": "IMN",
-      "englishShortName": "Isle of Man",
-      "numeric": "833",
-      "uri": "iso:code:3166:IM"
-    },
-    {
-      "alpha2": "IL",
-      "alpha3": "ISR",
-      "englishShortName": "Israel",
-      "numeric": "376",
-      "uri": "iso:code:3166:IL"
-    },
-    {
-      "alpha2": "IT",
-      "alpha3": "ITA",
-      "englishShortName": "Italy",
-      "numeric": "380",
-      "uri": "iso:code:3166:IT"
-    },
-    {
-      "alpha2": "JM",
-      "alpha3": "JAM",
-      "englishShortName": "Jamaica",
-      "numeric": "388",
-      "uri": "iso:code:3166:JM"
-    },
-    {
-      "alpha2": "JP",
-      "alpha3": "JPN",
-      "englishShortName": "Japan",
-      "numeric": "392",
-      "uri": "iso:code:3166:JP"
-    },
-    {
-      "alpha2": "JE",
-      "alpha3": "JEY",
-      "englishShortName": "Jersey",
-      "numeric": "832",
-      "uri": "iso:code:3166:JE"
-    },
-    {
-      "alpha2": "JO",
-      "alpha3": "JOR",
-      "englishShortName": "Jordan",
-      "numeric": "400",
-      "uri": "iso:code:3166:JO"
-    },
-    {
-      "alpha2": "KZ",
-      "alpha3": "KAZ",
-      "englishShortName": "Kazakhstan",
-      "numeric": "398",
-      "uri": "iso:code:3166:KZ"
-    },
-    {
-      "alpha2": "KE",
-      "alpha3": "KEN",
-      "englishShortName": "Kenya",
-      "numeric": "404",
-      "uri": "iso:code:3166:KE"
-    },
-    {
-      "alpha2": "KI",
-      "alpha3": "KIR",
-      "englishShortName": "Kiribati",
-      "numeric": "296",
-      "uri": "iso:code:3166:KI"
-    },
-    {
-      "alpha2": "KP",
-      "alpha3": "PRK",
-      "englishShortName": "Korea (the Democratic People's Republic of)",
-      "numeric": "408",
-      "uri": "iso:code:3166:KP"
-    },
-    {
-      "alpha2": "KR",
-      "alpha3": "KOR",
-      "englishShortName": "Korea (the Republic of)",
-      "numeric": "410",
-      "uri": "iso:code:3166:KR"
-    },
-    {
-      "alpha2": "KW",
-      "alpha3": "KWT",
-      "englishShortName": "Kuwait",
-      "numeric": "414",
-      "uri": "iso:code:3166:KW"
-    },
-    {
-      "alpha2": "KG",
-      "alpha3": "KGZ",
-      "englishShortName": "Kyrgyzstan",
-      "numeric": "417",
-      "uri": "iso:code:3166:KG"
-    },
-    {
-      "alpha2": "LA",
-      "alpha3": "LAO",
-      "englishShortName": "Lao People's Democratic Republic (the)",
-      "numeric": "418",
-      "uri": "iso:code:3166:LA"
-    },
-    {
-      "alpha2": "LV",
-      "alpha3": "LVA",
-      "englishShortName": "Latvia",
-      "numeric": "428",
-      "uri": "iso:code:3166:LV"
-    },
-    {
-      "alpha2": "LB",
-      "alpha3": "LBN",
-      "englishShortName": "Lebanon",
-      "numeric": "422",
-      "uri": "iso:code:3166:LB"
-    },
-    {
-      "alpha2": "LS",
-      "alpha3": "LSO",
-      "englishShortName": "Lesotho",
-      "numeric": "426",
-      "uri": "iso:code:3166:LS"
-    },
-    {
-      "alpha2": "LR",
-      "alpha3": "LBR",
-      "englishShortName": "Liberia",
-      "numeric": "430",
-      "uri": "iso:code:3166:LR"
-    },
-    {
-      "alpha2": "LY",
-      "alpha3": "LBY",
-      "englishShortName": "Libya",
-      "numeric": "434",
-      "uri": "iso:code:3166:LY"
-    },
-    {
-      "alpha2": "LI",
-      "alpha3": "LIE",
-      "englishShortName": "Liechtenstein",
-      "numeric": "438",
-      "uri": "iso:code:3166:LI"
-    },
-    {
-      "alpha2": "LT",
-      "alpha3": "LTU",
-      "englishShortName": "Lithuania",
-      "numeric": "440",
-      "uri": "iso:code:3166:LT"
-    },
-    {
-      "alpha2": "LU",
-      "alpha3": "LUX",
-      "englishShortName": "Luxembourg",
-      "numeric": "442",
-      "uri": "iso:code:3166:LU"
-    },
-    {
-      "alpha2": "MO",
-      "alpha3": "MAC",
-      "englishShortName": "Macao",
-      "numeric": "446",
-      "uri": "iso:code:3166:MO"
-    },
-    {
-      "alpha2": "MG",
-      "alpha3": "MDG",
-      "englishShortName": "Madagascar",
-      "numeric": "450",
-      "uri": "iso:code:3166:MG"
-    },
-    {
-      "alpha2": "MW",
-      "alpha3": "MWI",
-      "englishShortName": "Malawi",
-      "numeric": "454",
-      "uri": "iso:code:3166:MW"
-    },
-    {
-      "alpha2": "MY",
-      "alpha3": "MYS",
-      "englishShortName": "Malaysia",
-      "numeric": "458",
-      "uri": "iso:code:3166:MY"
-    },
-    {
-      "alpha2": "MV",
-      "alpha3": "MDV",
-      "englishShortName": "Maldives",
-      "numeric": "462",
-      "uri": "iso:code:3166:MV"
-    },
-    {
-      "alpha2": "ML",
-      "alpha3": "MLI",
-      "englishShortName": "Mali",
-      "numeric": "466",
-      "uri": "iso:code:3166:ML"
-    },
-    {
-      "alpha2": "MT",
-      "alpha3": "MLT",
-      "englishShortName": "Malta",
-      "numeric": "470",
-      "uri": "iso:code:3166:MT"
-    },
-    {
-      "alpha2": "MH",
-      "alpha3": "MHL",
-      "englishShortName": "Marshall Islands (the)",
-      "numeric": "584",
-      "uri": "iso:code:3166:MH"
-    },
-    {
-      "alpha2": "MQ",
-      "alpha3": "MTQ",
-      "englishShortName": "Martinique",
-      "numeric": "474",
-      "uri": "iso:code:3166:MQ"
-    },
-    {
-      "alpha2": "MR",
-      "alpha3": "MRT",
-      "englishShortName": "Mauritania",
-      "numeric": "478",
-      "uri": "iso:code:3166:MR"
-    },
-    {
-      "alpha2": "MU",
-      "alpha3": "MUS",
-      "englishShortName": "Mauritius",
-      "numeric": "480",
-      "uri": "iso:code:3166:MU"
-    },
-    {
-      "alpha2": "YT",
-      "alpha3": "MYT",
-      "englishShortName": "Mayotte",
-      "numeric": "175",
-      "uri": "iso:code:3166:YT"
-    },
-    {
-      "alpha2": "MX",
-      "alpha3": "MEX",
-      "englishShortName": "Mexico",
-      "numeric": "484",
-      "uri": "iso:code:3166:MX"
-    },
-    {
-      "alpha2": "FM",
-      "alpha3": "FSM",
-      "englishShortName": "Micronesia (Federated States of)",
-      "numeric": "583",
-      "uri": "iso:code:3166:FM"
-    },
-    {
-      "alpha2": "MD",
-      "alpha3": "MDA",
-      "englishShortName": "Moldova (the Republic of)",
-      "numeric": "498",
-      "uri": "iso:code:3166:MD"
-    },
-    {
-      "alpha2": "MC",
-      "alpha3": "MCO",
-      "englishShortName": "Monaco",
-      "numeric": "492",
-      "uri": "iso:code:3166:MC"
-    },
-    {
-      "alpha2": "MN",
-      "alpha3": "MNG",
-      "englishShortName": "Mongolia",
-      "numeric": "496",
-      "uri": "iso:code:3166:MN"
-    },
-    {
-      "alpha2": "ME",
-      "alpha3": "MNE",
-      "englishShortName": "Montenegro",
-      "numeric": "499",
-      "uri": "iso:code:3166:ME"
-    },
-    {
-      "alpha2": "MS",
-      "alpha3": "MSR",
-      "englishShortName": "Montserrat",
-      "numeric": "500",
-      "uri": "iso:code:3166:MS"
-    },
-    {
-      "alpha2": "MA",
-      "alpha3": "MAR",
-      "englishShortName": "Morocco",
-      "numeric": "504",
-      "uri": "iso:code:3166:MA"
-    },
-    {
-      "alpha2": "MZ",
-      "alpha3": "MOZ",
-      "englishShortName": "Mozambique",
-      "numeric": "508",
-      "uri": "iso:code:3166:MZ"
-    },
-    {
-      "alpha2": "MM",
-      "alpha3": "MMR",
-      "englishShortName": "Myanmar",
-      "numeric": "104",
-      "uri": "iso:code:3166:MM"
-    },
-    {
-      "alpha2": "NA",
-      "alpha3": "NAM",
-      "englishShortName": "Namibia",
-      "numeric": "516",
-      "uri": "iso:code:3166:NA"
-    },
-    {
-      "alpha2": "NR",
-      "alpha3": "NRU",
-      "englishShortName": "Nauru",
-      "numeric": "520",
-      "uri": "iso:code:3166:NR"
-    },
-    {
-      "alpha2": "NP",
-      "alpha3": "NPL",
-      "englishShortName": "Nepal",
-      "numeric": "524",
-      "uri": "iso:code:3166:NP"
-    },
-    {
-      "alpha2": "NL",
-      "alpha3": "NLD",
-      "englishShortName": "Netherlands (Kingdom of the)",
-      "numeric": "528",
-      "uri": "iso:code:3166:NL"
-    },
-    {
-      "alpha2": "NC",
-      "alpha3": "NCL",
-      "englishShortName": "New Caledonia",
-      "numeric": "540",
-      "uri": "iso:code:3166:NC"
-    },
-    {
-      "alpha2": "NZ",
-      "alpha3": "NZL",
-      "englishShortName": "New Zealand",
-      "numeric": "554",
-      "uri": "iso:code:3166:NZ"
-    },
-    {
-      "alpha2": "NI",
-      "alpha3": "NIC",
-      "englishShortName": "Nicaragua",
-      "numeric": "558",
-      "uri": "iso:code:3166:NI"
-    },
-    {
-      "alpha2": "NE",
-      "alpha3": "NER",
-      "englishShortName": "Niger (the)",
-      "numeric": "562",
-      "uri": "iso:code:3166:NE"
-    },
-    {
-      "alpha2": "NG",
-      "alpha3": "NGA",
-      "englishShortName": "Nigeria",
-      "numeric": "566",
-      "uri": "iso:code:3166:NG"
-    },
-    {
-      "alpha2": "NU",
-      "alpha3": "NIU",
-      "englishShortName": "Niue",
-      "numeric": "570",
-      "uri": "iso:code:3166:NU"
-    },
-    {
-      "alpha2": "NF",
-      "alpha3": "NFK",
-      "englishShortName": "Norfolk Island",
-      "numeric": "574",
-      "uri": "iso:code:3166:NF"
-    },
-    {
-      "alpha2": "MK",
-      "alpha3": "MKD",
-      "englishShortName": "North Macedonia",
-      "numeric": "807",
-      "uri": "iso:code:3166:MK"
-    },
-    {
-      "alpha2": "MP",
-      "alpha3": "MNP",
-      "englishShortName": "Northern Mariana Islands (the)",
-      "numeric": "580",
-      "uri": "iso:code:3166:MP"
-    },
-    {
-      "alpha2": "NO",
-      "alpha3": "NOR",
-      "englishShortName": "Norway",
-      "numeric": "578",
-      "uri": "iso:code:3166:NO"
-    },
-    {
-      "alpha2": "OM",
-      "alpha3": "OMN",
-      "englishShortName": "Oman",
-      "numeric": "512",
-      "uri": "iso:code:3166:OM"
-    },
-    {
-      "alpha2": "PK",
-      "alpha3": "PAK",
-      "englishShortName": "Pakistan",
-      "numeric": "586",
-      "uri": "iso:code:3166:PK"
-    },
-    {
-      "alpha2": "PW",
-      "alpha3": "PLW",
-      "englishShortName": "Palau",
-      "numeric": "585",
-      "uri": "iso:code:3166:PW"
-    },
-    {
-      "alpha2": "PS",
-      "alpha3": "PSE",
-      "englishShortName": "Palestine, State of",
-      "numeric": "275",
-      "uri": "iso:code:3166:PS"
-    },
-    {
-      "alpha2": "PA",
-      "alpha3": "PAN",
-      "englishShortName": "Panama",
-      "numeric": "591",
-      "uri": "iso:code:3166:PA"
-    },
-    {
-      "alpha2": "PG",
-      "alpha3": "PNG",
-      "englishShortName": "Papua New Guinea",
-      "numeric": "598",
-      "uri": "iso:code:3166:PG"
-    },
-    {
-      "alpha2": "PY",
-      "alpha3": "PRY",
-      "englishShortName": "Paraguay",
-      "numeric": "600",
-      "uri": "iso:code:3166:PY"
-    },
-    {
-      "alpha2": "PE",
-      "alpha3": "PER",
-      "englishShortName": "Peru",
-      "numeric": "604",
-      "uri": "iso:code:3166:PE"
-    },
-    {
-      "alpha2": "PH",
-      "alpha3": "PHL",
-      "englishShortName": "Philippines (the)",
-      "numeric": "608",
-      "uri": "iso:code:3166:PH"
-    },
-    {
-      "alpha2": "PN",
-      "alpha3": "PCN",
-      "englishShortName": "Pitcairn",
-      "numeric": "612",
-      "uri": "iso:code:3166:PN"
-    },
-    {
-      "alpha2": "PL",
-      "alpha3": "POL",
-      "englishShortName": "Poland",
-      "numeric": "616",
-      "uri": "iso:code:3166:PL"
-    },
-    {
-      "alpha2": "PT",
-      "alpha3": "PRT",
-      "englishShortName": "Portugal",
-      "numeric": "620",
-      "uri": "iso:code:3166:PT"
-    },
-    {
-      "alpha2": "PR",
-      "alpha3": "PRI",
-      "englishShortName": "Puerto Rico",
-      "numeric": "630",
-      "uri": "iso:code:3166:PR"
-    },
-    {
-      "alpha2": "QA",
-      "alpha3": "QAT",
-      "englishShortName": "Qatar",
-      "numeric": "634",
-      "uri": "iso:code:3166:QA"
-    },
-    {
-      "alpha2": "RE",
-      "alpha3": "REU",
-      "englishShortName": "Réunion",
-      "numeric": "638",
-      "uri": "iso:code:3166:RE"
-    },
-    {
-      "alpha2": "RO",
-      "alpha3": "ROU",
-      "englishShortName": "Romania",
-      "numeric": "642",
-      "uri": "iso:code:3166:RO"
-    },
-    {
-      "alpha2": "RU",
-      "alpha3": "RUS",
-      "englishShortName": "Russian Federation (the)",
-      "numeric": "643",
-      "uri": "iso:code:3166:RU"
-    },
-    {
-      "alpha2": "RW",
-      "alpha3": "RWA",
-      "englishShortName": "Rwanda",
-      "numeric": "646",
-      "uri": "iso:code:3166:RW"
-    },
-    {
-      "alpha2": "BL",
-      "alpha3": "BLM",
-      "englishShortName": "Saint Barthélemy",
-      "numeric": "652",
-      "uri": "iso:code:3166:BL"
-    },
-    {
-      "alpha2": "SH",
-      "alpha3": "SHN",
-      "englishShortName": "Saint Helena, Ascension and Tristan da Cunha",
-      "numeric": "654",
-      "uri": "iso:code:3166:SH"
-    },
-    {
-      "alpha2": "KN",
-      "alpha3": "KNA",
-      "englishShortName": "Saint Kitts and Nevis",
-      "numeric": "659",
-      "uri": "iso:code:3166:KN"
-    },
-    {
-      "alpha2": "LC",
-      "alpha3": "LCA",
-      "englishShortName": "Saint Lucia",
-      "numeric": "662",
-      "uri": "iso:code:3166:LC"
-    },
-    {
-      "alpha2": "MF",
-      "alpha3": "MAF",
-      "englishShortName": "Saint Martin (French part)",
-      "numeric": "663",
-      "uri": "iso:code:3166:MF"
-    },
-    {
-      "alpha2": "PM",
-      "alpha3": "SPM",
-      "englishShortName": "Saint Pierre and Miquelon",
-      "numeric": "666",
-      "uri": "iso:code:3166:PM"
-    },
-    {
-      "alpha2": "VC",
-      "alpha3": "VCT",
-      "englishShortName": "Saint Vincent and the Grenadines",
-      "numeric": "670",
-      "uri": "iso:code:3166:VC"
-    },
-    {
-      "alpha2": "WS",
-      "alpha3": "WSM",
-      "englishShortName": "Samoa",
-      "numeric": "882",
-      "uri": "iso:code:3166:WS"
-    },
-    {
-      "alpha2": "SM",
-      "alpha3": "SMR",
-      "englishShortName": "San Marino",
-      "numeric": "674",
-      "uri": "iso:code:3166:SM"
-    },
-    {
-      "alpha2": "ST",
-      "alpha3": "STP",
-      "englishShortName": "Sao Tome and Principe",
-      "numeric": "678",
-      "uri": "iso:code:3166:ST"
-    },
-    {
-      "alpha2": "SA",
-      "alpha3": "SAU",
-      "englishShortName": "Saudi Arabia",
-      "numeric": "682",
-      "uri": "iso:code:3166:SA"
-    },
-    {
-      "alpha2": "SN",
-      "alpha3": "SEN",
-      "englishShortName": "Senegal",
-      "numeric": "686",
-      "uri": "iso:code:3166:SN"
-    },
-    {
-      "alpha2": "RS",
-      "alpha3": "SRB",
-      "englishShortName": "Serbia",
-      "numeric": "688",
-      "uri": "iso:code:3166:RS"
-    },
-    {
-      "alpha2": "SC",
-      "alpha3": "SYC",
-      "englishShortName": "Seychelles",
-      "numeric": "690",
-      "uri": "iso:code:3166:SC"
-    },
-    {
-      "alpha2": "SL",
-      "alpha3": "SLE",
-      "englishShortName": "Sierra Leone",
-      "numeric": "694",
-      "uri": "iso:code:3166:SL"
-    },
-    {
-      "alpha2": "SG",
-      "alpha3": "SGP",
-      "englishShortName": "Singapore",
-      "numeric": "702",
-      "uri": "iso:code:3166:SG"
-    },
-    {
-      "alpha2": "SX",
-      "alpha3": "SXM",
-      "englishShortName": "Sint Maarten (Dutch part)",
-      "numeric": "534",
-      "uri": "iso:code:3166:SX"
-    },
-    {
-      "alpha2": "SK",
-      "alpha3": "SVK",
-      "englishShortName": "Slovakia",
-      "numeric": "703",
-      "uri": "iso:code:3166:SK"
-    },
-    {
-      "alpha2": "SI",
-      "alpha3": "SVN",
-      "englishShortName": "Slovenia",
-      "numeric": "705",
-      "uri": "iso:code:3166:SI"
-    },
-    {
-      "alpha2": "SB",
-      "alpha3": "SLB",
-      "englishShortName": "Solomon Islands",
-      "numeric": "090",
-      "uri": "iso:code:3166:SB"
-    },
-    {
-      "alpha2": "SO",
-      "alpha3": "SOM",
-      "englishShortName": "Somalia",
-      "numeric": "706",
-      "uri": "iso:code:3166:SO"
-    },
-    {
-      "alpha2": "ZA",
-      "alpha3": "ZAF",
-      "englishShortName": "South Africa",
-      "numeric": "710",
-      "uri": "iso:code:3166:ZA"
-    },
-    {
-      "alpha2": "GS",
-      "alpha3": "SGS",
-      "englishShortName": "South Georgia and the South Sandwich Islands",
-      "numeric": "239",
-      "uri": "iso:code:3166:GS"
-    },
-    {
-      "alpha2": "SS",
-      "alpha3": "SSD",
-      "englishShortName": "South Sudan",
-      "numeric": "728",
-      "uri": "iso:code:3166:SS"
-    },
-    {
-      "alpha2": "ES",
-      "alpha3": "ESP",
-      "englishShortName": "Spain",
-      "numeric": "724",
-      "uri": "iso:code:3166:ES"
-    },
-    {
-      "alpha2": "LK",
-      "alpha3": "LKA",
-      "englishShortName": "Sri Lanka",
-      "numeric": "144",
-      "uri": "iso:code:3166:LK"
-    },
-    {
-      "alpha2": "SD",
-      "alpha3": "SDN",
-      "englishShortName": "Sudan (the)",
-      "numeric": "729",
-      "uri": "iso:code:3166:SD"
-    },
-    {
-      "alpha2": "SR",
-      "alpha3": "SUR",
-      "englishShortName": "Suriname",
-      "numeric": "740",
-      "uri": "iso:code:3166:SR"
-    },
-    {
-      "alpha2": "SJ",
-      "alpha3": "SJM",
-      "englishShortName": "Svalbard and Jan Mayen",
-      "numeric": "744",
-      "uri": "iso:code:3166:SJ"
-    },
-    {
-      "alpha2": "SE",
-      "alpha3": "SWE",
-      "englishShortName": "Sweden",
-      "numeric": "752",
-      "uri": "iso:code:3166:SE"
-    },
-    {
-      "alpha2": "CH",
-      "alpha3": "CHE",
-      "englishShortName": "Switzerland",
-      "numeric": "756",
-      "uri": "iso:code:3166:CH"
-    },
-    {
-      "alpha2": "SY",
-      "alpha3": "SYR",
-      "englishShortName": "Syrian Arab Republic (the)",
-      "numeric": "760",
-      "uri": "iso:code:3166:SY"
-    },
-    {
-      "alpha2": "TW",
-      "alpha3": "TWN",
-      "englishShortName": "Taiwan (Province of China)",
-      "numeric": "158",
-      "uri": "iso:code:3166:TW"
-    },
-    {
-      "alpha2": "TJ",
-      "alpha3": "TJK",
-      "englishShortName": "Tajikistan",
-      "numeric": "762",
-      "uri": "iso:code:3166:TJ"
-    },
-    {
-      "alpha2": "TZ",
-      "alpha3": "TZA",
-      "englishShortName": "Tanzania, the United Republic of",
-      "numeric": "834",
-      "uri": "iso:code:3166:TZ"
-    },
-    {
-      "alpha2": "TH",
-      "alpha3": "THA",
-      "englishShortName": "Thailand",
-      "numeric": "764",
-      "uri": "iso:code:3166:TH"
-    },
-    {
-      "alpha2": "TL",
-      "alpha3": "TLS",
-      "englishShortName": "Timor-Leste",
-      "numeric": "626",
-      "uri": "iso:code:3166:TL"
-    },
-    {
-      "alpha2": "TG",
-      "alpha3": "TGO",
-      "englishShortName": "Togo",
-      "numeric": "768",
-      "uri": "iso:code:3166:TG"
-    },
-    {
-      "alpha2": "TK",
-      "alpha3": "TKL",
-      "englishShortName": "Tokelau",
-      "numeric": "772",
-      "uri": "iso:code:3166:TK"
-    },
-    {
-      "alpha2": "TO",
-      "alpha3": "TON",
-      "englishShortName": "Tonga",
-      "numeric": "776",
-      "uri": "iso:code:3166:TO"
-    },
-    {
-      "alpha2": "TT",
-      "alpha3": "TTO",
-      "englishShortName": "Trinidad and Tobago",
-      "numeric": "780",
-      "uri": "iso:code:3166:TT"
-    },
-    {
-      "alpha2": "TN",
-      "alpha3": "TUN",
-      "englishShortName": "Tunisia",
-      "numeric": "788",
-      "uri": "iso:code:3166:TN"
-    },
-    {
-      "alpha2": "TR",
-      "alpha3": "TUR",
-      "englishShortName": "Türkiye",
-      "numeric": "792",
-      "uri": "iso:code:3166:TR"
-    },
-    {
-      "alpha2": "TM",
-      "alpha3": "TKM",
-      "englishShortName": "Turkmenistan",
-      "numeric": "795",
-      "uri": "iso:code:3166:TM"
-    },
-    {
-      "alpha2": "TC",
-      "alpha3": "TCA",
-      "englishShortName": "Turks and Caicos Islands (the)",
-      "numeric": "796",
-      "uri": "iso:code:3166:TC"
-    },
-    {
-      "alpha2": "TV",
-      "alpha3": "TUV",
-      "englishShortName": "Tuvalu",
-      "numeric": "798",
-      "uri": "iso:code:3166:TV"
-    },
-    {
-      "alpha2": "UG",
-      "alpha3": "UGA",
-      "englishShortName": "Uganda",
-      "numeric": "800",
-      "uri": "iso:code:3166:UG"
-    },
-    {
-      "alpha2": "UA",
-      "alpha3": "UKR",
-      "englishShortName": "Ukraine",
-      "numeric": "804",
-      "uri": "iso:code:3166:UA"
-    },
-    {
-      "alpha2": "AE",
-      "alpha3": "ARE",
-      "englishShortName": "United Arab Emirates (the)",
-      "numeric": "784",
-      "uri": "iso:code:3166:AE"
-    },
-    {
-      "alpha2": "GB",
-      "alpha3": "GBR",
-      "englishShortName": "United Kingdom of Great Britain and Northern Ireland (the)",
-      "numeric": "826",
-      "uri": "iso:code:3166:GB"
-    },
-    {
-      "alpha2": "UM",
-      "alpha3": "UMI",
-      "englishShortName": "United States Minor Outlying Islands (the)",
-      "numeric": "581",
-      "uri": "iso:code:3166:UM"
-    },
-    {
-      "alpha2": "US",
-      "alpha3": "USA",
-      "englishShortName": "United States of America (the)",
-      "numeric": "840",
-      "uri": "iso:code:3166:US"
-    },
-    {
-      "alpha2": "UY",
-      "alpha3": "URY",
-      "englishShortName": "Uruguay",
-      "numeric": "858",
-      "uri": "iso:code:3166:UY"
-    },
-    {
-      "alpha2": "UZ",
-      "alpha3": "UZB",
-      "englishShortName": "Uzbekistan",
-      "numeric": "860",
-      "uri": "iso:code:3166:UZ"
-    },
-    {
-      "alpha2": "VU",
-      "alpha3": "VUT",
-      "englishShortName": "Vanuatu",
-      "numeric": "548",
-      "uri": "iso:code:3166:VU"
-    },
-    {
-      "alpha2": "VE",
-      "alpha3": "VEN",
-      "englishShortName": "Venezuela (Bolivarian Republic of)",
-      "numeric": "862",
-      "uri": "iso:code:3166:VE"
-    },
-    {
-      "alpha2": "VN",
-      "alpha3": "VNM",
-      "englishShortName": "Viet Nam",
-      "numeric": "704",
-      "uri": "iso:code:3166:VN"
-    },
-    {
-      "alpha2": "VG",
-      "alpha3": "VGB",
-      "englishShortName": "Virgin Islands (British)",
-      "numeric": "092",
-      "uri": "iso:code:3166:VG"
-    },
-    {
-      "alpha2": "VI",
-      "alpha3": "VIR",
-      "englishShortName": "Virgin Islands (U.S.)",
-      "numeric": "850",
-      "uri": "iso:code:3166:VI"
-    },
-    {
-      "alpha2": "WF",
-      "alpha3": "WLF",
-      "englishShortName": "Wallis and Futuna",
-      "numeric": "876",
-      "uri": "iso:code:3166:WF"
-    },
-    {
-      "alpha2": "EH",
-      "alpha3": "ESH",
-      "englishShortName": "Western Sahara*",
-      "numeric": "732",
-      "uri": "iso:code:3166:EH"
-    },
-    {
-      "alpha2": "YE",
-      "alpha3": "YEM",
-      "englishShortName": "Yemen",
-      "numeric": "887",
-      "uri": "iso:code:3166:YE"
-    },
-    {
-      "alpha2": "ZM",
-      "alpha3": "ZMB",
-      "englishShortName": "Zambia",
-      "numeric": "894",
-      "uri": "iso:code:3166:ZM"
-    },
-    {
-      "alpha2": "ZW",
-      "alpha3": "ZWE",
-      "englishShortName": "Zimbabwe",
-      "numeric": "716",
-      "uri": "iso:code:3166:ZW"
+      "displayName": "Afghanistan",
+      "active": true,
+      "primaryAlpha3": "AFG",
+      "officialIsoAlpha2": "AF",
+      "officialIsoAlpha3": "AFG",
+      "officialIsoNumeric": "004",
+      "gencAlpha2": "AF",
+      "gencAlpha3": "AFG",
+      "gencNumeric": "004",
+      "fips": "AF",
+      "alternativeNames": [
+        "Afganistan",
+        "Islamic Republic of Afghanistan",
+        "Republic of Afghanistan"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:AF"
+    },
+    {
+      "displayName": "Akrotiri",
+      "active": false,
+      "primaryAlpha3": null,
+      "officialIsoAlpha2": null,
+      "officialIsoAlpha3": null,
+      "officialIsoNumeric": null,
+      "gencAlpha2": "QZ",
+      "gencAlpha3": "XQZ",
+      "gencNumeric": "900",
+      "fips": "AX",
+      "alternativeNames": [],
+      "classification": "genc-supported",
+      "sourceUri": null
+    },
+    {
+      "displayName": "Aland Islands",
+      "active": true,
+      "primaryAlpha3": "ALA",
+      "officialIsoAlpha2": "AX",
+      "officialIsoAlpha3": "ALA",
+      "officialIsoNumeric": "248",
+      "gencAlpha2": null,
+      "gencAlpha3": null,
+      "gencNumeric": null,
+      "fips": null,
+      "alternativeNames": [
+        "oland Islands"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:AX"
+    },
+    {
+      "displayName": "Albania",
+      "active": true,
+      "primaryAlpha3": "ALB",
+      "officialIsoAlpha2": "AL",
+      "officialIsoAlpha3": "ALB",
+      "officialIsoNumeric": "008",
+      "gencAlpha2": "AL",
+      "gencAlpha3": "ALB",
+      "gencNumeric": "008",
+      "fips": "AL",
+      "alternativeNames": [
+        "Albanian",
+        "Republic of Albania"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:AL"
+    },
+    {
+      "displayName": "Algeria",
+      "active": true,
+      "primaryAlpha3": "DZA",
+      "officialIsoAlpha2": "DZ",
+      "officialIsoAlpha3": "DZA",
+      "officialIsoNumeric": "012",
+      "gencAlpha2": "DZ",
+      "gencAlpha3": "DZA",
+      "gencNumeric": "012",
+      "fips": "AG",
+      "alternativeNames": [
+        "People’s Democratic Republic of Algeria",
+        "Democratic Republic of Algeria"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:DZ"
+    },
+    {
+      "displayName": "American Samoa",
+      "active": true,
+      "primaryAlpha3": "ASM",
+      "officialIsoAlpha2": "AS",
+      "officialIsoAlpha3": "ASM",
+      "officialIsoNumeric": "016",
+      "gencAlpha2": "AS",
+      "gencAlpha3": "ASM",
+      "gencNumeric": "016",
+      "fips": "AQ",
+      "alternativeNames": [
+        "Territory of American Samoa"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:AS"
+    },
+    {
+      "displayName": "Andorra",
+      "active": true,
+      "primaryAlpha3": "AND",
+      "officialIsoAlpha2": "AD",
+      "officialIsoAlpha3": "AND",
+      "officialIsoNumeric": "020",
+      "gencAlpha2": "AD",
+      "gencAlpha3": "AND",
+      "gencNumeric": "020",
+      "fips": "AN",
+      "alternativeNames": [
+        "Andora",
+        "Principality of Andorra"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:AD"
+    },
+    {
+      "displayName": "Angola",
+      "active": true,
+      "primaryAlpha3": "AGO",
+      "officialIsoAlpha2": "AO",
+      "officialIsoAlpha3": "AGO",
+      "officialIsoNumeric": "024",
+      "gencAlpha2": "AO",
+      "gencAlpha3": "AGO",
+      "gencNumeric": "024",
+      "fips": "AO",
+      "alternativeNames": [
+        "Republic of Angola"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:AO"
+    },
+    {
+      "displayName": "Anguilla",
+      "active": true,
+      "primaryAlpha3": "AIA",
+      "officialIsoAlpha2": "AI",
+      "officialIsoAlpha3": "AIA",
+      "officialIsoNumeric": "660",
+      "gencAlpha2": "AI",
+      "gencAlpha3": "AIA",
+      "gencNumeric": "660",
+      "fips": "AV",
+      "alternativeNames": [
+        "Anguila"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:AI"
+    },
+    {
+      "displayName": "Antarctica",
+      "active": true,
+      "primaryAlpha3": "ATA",
+      "officialIsoAlpha2": "AQ",
+      "officialIsoAlpha3": "ATA",
+      "officialIsoNumeric": "010",
+      "gencAlpha2": "AQ",
+      "gencAlpha3": "ATA",
+      "gencNumeric": "010",
+      "fips": "AY",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:AQ"
+    },
+    {
+      "displayName": "Antigua and Barbuda",
+      "active": true,
+      "primaryAlpha3": "ATG",
+      "officialIsoAlpha2": "AG",
+      "officialIsoAlpha3": "ATG",
+      "officialIsoNumeric": "028",
+      "gencAlpha2": "AG",
+      "gencAlpha3": "ATG",
+      "gencNumeric": "028",
+      "fips": "AC",
+      "alternativeNames": [
+        "Antigua",
+        "Barbuda",
+        "Antigua & Barbuda"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:AG"
+    },
+    {
+      "displayName": "Argentina",
+      "active": true,
+      "primaryAlpha3": "ARG",
+      "officialIsoAlpha2": "AR",
+      "officialIsoAlpha3": "ARG",
+      "officialIsoNumeric": "032",
+      "gencAlpha2": "AR",
+      "gencAlpha3": "ARG",
+      "gencNumeric": "032",
+      "fips": "AR",
+      "alternativeNames": [
+        "Argentine Republic"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:AR"
+    },
+    {
+      "displayName": "Armenia",
+      "active": true,
+      "primaryAlpha3": "ARM",
+      "officialIsoAlpha2": "AM",
+      "officialIsoAlpha3": "ARM",
+      "officialIsoNumeric": "051",
+      "gencAlpha2": "AM",
+      "gencAlpha3": "ARM",
+      "gencNumeric": "051",
+      "fips": "AM",
+      "alternativeNames": [
+        "Republic of Armenia"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:AM"
+    },
+    {
+      "displayName": "Aruba",
+      "active": true,
+      "primaryAlpha3": "ABW",
+      "officialIsoAlpha2": "AW",
+      "officialIsoAlpha3": "ABW",
+      "officialIsoNumeric": "533",
+      "gencAlpha2": "AW",
+      "gencAlpha3": "ABW",
+      "gencNumeric": "533",
+      "fips": "AA",
+      "alternativeNames": [
+        "Country of Aruba"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:AW"
+    },
+    {
+      "displayName": "Ashmore and Cartier Islands",
+      "active": false,
+      "primaryAlpha3": null,
+      "officialIsoAlpha2": null,
+      "officialIsoAlpha3": null,
+      "officialIsoNumeric": null,
+      "gencAlpha2": "XA",
+      "gencAlpha3": "XAC",
+      "gencNumeric": "902",
+      "fips": "AT",
+      "alternativeNames": [
+        "Territory of Ashmore and Cartier Islands"
+      ],
+      "classification": "genc-supported",
+      "sourceUri": null
+    },
+    {
+      "displayName": "Australia",
+      "active": true,
+      "primaryAlpha3": "AUS",
+      "officialIsoAlpha2": "AU",
+      "officialIsoAlpha3": "AUS",
+      "officialIsoNumeric": "036",
+      "gencAlpha2": "AU",
+      "gencAlpha3": "AUS",
+      "gencNumeric": "036",
+      "fips": "AS",
+      "alternativeNames": [
+        "Austrailia",
+        "Commonwealth of Australia"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:AU"
+    },
+    {
+      "displayName": "Austria",
+      "active": true,
+      "primaryAlpha3": "AUT",
+      "officialIsoAlpha2": "AT",
+      "officialIsoAlpha3": "AUT",
+      "officialIsoNumeric": "040",
+      "gencAlpha2": "AT",
+      "gencAlpha3": "AUT",
+      "gencNumeric": "040",
+      "fips": "AU",
+      "alternativeNames": [
+        "Republic of Austria"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:AT"
+    },
+    {
+      "displayName": "Azerbaijan",
+      "active": true,
+      "primaryAlpha3": "AZE",
+      "officialIsoAlpha2": "AZ",
+      "officialIsoAlpha3": "AZE",
+      "officialIsoNumeric": "031",
+      "gencAlpha2": "AZ",
+      "gencAlpha3": "AZE",
+      "gencNumeric": "031",
+      "fips": "AJ",
+      "alternativeNames": [
+        "Republic of Azerbaijan"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:AZ"
+    },
+    {
+      "displayName": "Bahamas",
+      "active": true,
+      "primaryAlpha3": "BHS",
+      "officialIsoAlpha2": "BS",
+      "officialIsoAlpha3": "BHS",
+      "officialIsoNumeric": "044",
+      "gencAlpha2": "BS",
+      "gencAlpha3": "BHS",
+      "gencNumeric": "044",
+      "fips": "BF",
+      "alternativeNames": [
+        "Bahamas (the)",
+        "Bahamas, the",
+        "The Bahamas",
+        "Commonwealth of The Bahamas"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:BS"
+    },
+    {
+      "displayName": "Bahrain",
+      "active": true,
+      "primaryAlpha3": "BHR",
+      "officialIsoAlpha2": "BH",
+      "officialIsoAlpha3": "BHR",
+      "officialIsoNumeric": "048",
+      "gencAlpha2": "BH",
+      "gencAlpha3": "BHR",
+      "gencNumeric": "048",
+      "fips": "BA",
+      "alternativeNames": [
+        "Kingdom of Bahrain"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:BH"
+    },
+    {
+      "displayName": "Baker Island",
+      "active": true,
+      "primaryAlpha3": "UMI",
+      "officialIsoAlpha2": "UM",
+      "officialIsoAlpha3": "UMI",
+      "officialIsoNumeric": "581",
+      "gencAlpha2": "XB",
+      "gencAlpha3": "XBK",
+      "gencNumeric": "903",
+      "fips": "FQ",
+      "alternativeNames": [
+        "United States Minor Outlying Islands (the)",
+        "United States Minor Outlying Islands, the",
+        "United States Minor Outlying Islands"
+      ],
+      "classification": "duplicate-iso-territory",
+      "sourceUri": "iso:code:3166:UM"
+    },
+    {
+      "displayName": "Bangladesh",
+      "active": true,
+      "primaryAlpha3": "BGD",
+      "officialIsoAlpha2": "BD",
+      "officialIsoAlpha3": "BGD",
+      "officialIsoNumeric": "050",
+      "gencAlpha2": "BD",
+      "gencAlpha3": "BGD",
+      "gencNumeric": "050",
+      "fips": "BG",
+      "alternativeNames": [
+        "Bangladesch",
+        "People’s Republic of Bangladesh"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:BD"
+    },
+    {
+      "displayName": "Barbados",
+      "active": true,
+      "primaryAlpha3": "BRB",
+      "officialIsoAlpha2": "BB",
+      "officialIsoAlpha3": "BRB",
+      "officialIsoNumeric": "052",
+      "gencAlpha2": "BB",
+      "gencAlpha3": "BRB",
+      "gencNumeric": "052",
+      "fips": "BB",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:BB"
+    },
+    {
+      "displayName": "Bassas da India",
+      "active": false,
+      "primaryAlpha3": null,
+      "officialIsoAlpha2": null,
+      "officialIsoAlpha3": null,
+      "officialIsoNumeric": null,
+      "gencAlpha2": "QS",
+      "gencAlpha3": "XBI",
+      "gencNumeric": "904",
+      "fips": "BS",
+      "alternativeNames": [],
+      "classification": "genc-supported",
+      "sourceUri": null
+    },
+    {
+      "displayName": "Belarus",
+      "active": true,
+      "primaryAlpha3": "BLR",
+      "officialIsoAlpha2": "BY",
+      "officialIsoAlpha3": "BLR",
+      "officialIsoNumeric": "112",
+      "gencAlpha2": "BY",
+      "gencAlpha3": "BLR",
+      "gencNumeric": "112",
+      "fips": "BO",
+      "alternativeNames": [
+        "Republic of Belarus"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:BY"
+    },
+    {
+      "displayName": "Belgium",
+      "active": true,
+      "primaryAlpha3": "BEL",
+      "officialIsoAlpha2": "BE",
+      "officialIsoAlpha3": "BEL",
+      "officialIsoNumeric": "056",
+      "gencAlpha2": "BE",
+      "gencAlpha3": "BEL",
+      "gencNumeric": "056",
+      "fips": "BE",
+      "alternativeNames": [
+        "Kingdom of Belgium"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:BE"
+    },
+    {
+      "displayName": "Belize",
+      "active": true,
+      "primaryAlpha3": "BLZ",
+      "officialIsoAlpha2": "BZ",
+      "officialIsoAlpha3": "BLZ",
+      "officialIsoNumeric": "084",
+      "gencAlpha2": "BZ",
+      "gencAlpha3": "BLZ",
+      "gencNumeric": "084",
+      "fips": "BH",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:BZ"
+    },
+    {
+      "displayName": "Benin",
+      "active": true,
+      "primaryAlpha3": "BEN",
+      "officialIsoAlpha2": "BJ",
+      "officialIsoAlpha3": "BEN",
+      "officialIsoNumeric": "204",
+      "gencAlpha2": "BJ",
+      "gencAlpha3": "BEN",
+      "gencNumeric": "204",
+      "fips": "BN",
+      "alternativeNames": [
+        "Republic of Benin"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:BJ"
+    },
+    {
+      "displayName": "Bermuda",
+      "active": true,
+      "primaryAlpha3": "BMU",
+      "officialIsoAlpha2": "BM",
+      "officialIsoAlpha3": "BMU",
+      "officialIsoNumeric": "060",
+      "gencAlpha2": "BM",
+      "gencAlpha3": "BMU",
+      "gencNumeric": "060",
+      "fips": "BD",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:BM"
+    },
+    {
+      "displayName": "Bhutan",
+      "active": true,
+      "primaryAlpha3": "BTN",
+      "officialIsoAlpha2": "BT",
+      "officialIsoAlpha3": "BTN",
+      "officialIsoNumeric": "064",
+      "gencAlpha2": "BT",
+      "gencAlpha3": "BTN",
+      "gencNumeric": "064",
+      "fips": "BT",
+      "alternativeNames": [
+        "Kingdom of Bhutan"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:BT"
+    },
+    {
+      "displayName": "Bolivia",
+      "active": true,
+      "primaryAlpha3": "BOL",
+      "officialIsoAlpha2": "BO",
+      "officialIsoAlpha3": "BOL",
+      "officialIsoNumeric": "068",
+      "gencAlpha2": "BO",
+      "gencAlpha3": "BOL",
+      "gencNumeric": "068",
+      "fips": "BL",
+      "alternativeNames": [
+        "Bolivia (Plurinational State of)",
+        "Bolivia, Plurinational State of"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:BO"
+    },
+    {
+      "displayName": "Bonaire, Sint Eustatius and Saba",
+      "active": true,
+      "primaryAlpha3": "BES",
+      "officialIsoAlpha2": "BQ",
+      "officialIsoAlpha3": "BES",
+      "officialIsoNumeric": "535",
+      "gencAlpha2": "BQ",
+      "gencAlpha3": "BES",
+      "gencNumeric": "535",
+      "fips": "NT",
+      "alternativeNames": [
+        "Netherlands Antilles",
+        "Bonaire, Sint Eustatius, and Saba"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:BQ"
+    },
+    {
+      "displayName": "Bosnia and Herzegovina",
+      "active": true,
+      "primaryAlpha3": "BIH",
+      "officialIsoAlpha2": "BA",
+      "officialIsoAlpha3": "BIH",
+      "officialIsoNumeric": "070",
+      "gencAlpha2": "BA",
+      "gencAlpha3": "BIH",
+      "gencNumeric": "070",
+      "fips": "BK",
+      "alternativeNames": [
+        "Bosnia-Herzegovina"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:BA"
+    },
+    {
+      "displayName": "Botswana",
+      "active": true,
+      "primaryAlpha3": "BWA",
+      "officialIsoAlpha2": "BW",
+      "officialIsoAlpha3": "BWA",
+      "officialIsoNumeric": "072",
+      "gencAlpha2": "BW",
+      "gencAlpha3": "BWA",
+      "gencNumeric": "072",
+      "fips": "BC",
+      "alternativeNames": [
+        "Republic of Botswana"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:BW"
+    },
+    {
+      "displayName": "Bouvet Island",
+      "active": true,
+      "primaryAlpha3": "BVT",
+      "officialIsoAlpha2": "BV",
+      "officialIsoAlpha3": "BVT",
+      "officialIsoNumeric": "074",
+      "gencAlpha2": "BV",
+      "gencAlpha3": "BVT",
+      "gencNumeric": "074",
+      "fips": "BV",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:BV"
+    },
+    {
+      "displayName": "Brazil",
+      "active": true,
+      "primaryAlpha3": "BRA",
+      "officialIsoAlpha2": "BR",
+      "officialIsoAlpha3": "BRA",
+      "officialIsoNumeric": "076",
+      "gencAlpha2": "BR",
+      "gencAlpha3": "BRA",
+      "gencNumeric": "076",
+      "fips": "BR",
+      "alternativeNames": [
+        "Federative Republic of Brazil"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:BR"
+    },
+    {
+      "displayName": "British Indian Ocean Territory",
+      "active": true,
+      "primaryAlpha3": "IOT",
+      "officialIsoAlpha2": "IO",
+      "officialIsoAlpha3": "IOT",
+      "officialIsoNumeric": "086",
+      "gencAlpha2": "IO",
+      "gencAlpha3": "IOT",
+      "gencNumeric": "086",
+      "fips": "IO",
+      "alternativeNames": [
+        "British Indian Ocean Territory (the)",
+        "British Indian Ocean Territory, the"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:IO"
+    },
+    {
+      "displayName": "Brunei Darussalam",
+      "active": true,
+      "primaryAlpha3": "BRN",
+      "officialIsoAlpha2": "BN",
+      "officialIsoAlpha3": "BRN",
+      "officialIsoNumeric": "096",
+      "gencAlpha2": "BN",
+      "gencAlpha3": "BRN",
+      "gencNumeric": "096",
+      "fips": "BX",
+      "alternativeNames": [
+        "Brunei"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:BN"
+    },
+    {
+      "displayName": "Bulgaria",
+      "active": true,
+      "primaryAlpha3": "BGR",
+      "officialIsoAlpha2": "BG",
+      "officialIsoAlpha3": "BGR",
+      "officialIsoNumeric": "100",
+      "gencAlpha2": "BG",
+      "gencAlpha3": "BGR",
+      "gencNumeric": "100",
+      "fips": "BU",
+      "alternativeNames": [
+        "Republic of Bulgaria"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:BG"
+    },
+    {
+      "displayName": "Burkina Faso",
+      "active": true,
+      "primaryAlpha3": "BFA",
+      "officialIsoAlpha2": "BF",
+      "officialIsoAlpha3": "BFA",
+      "officialIsoNumeric": "854",
+      "gencAlpha2": "BF",
+      "gencAlpha3": "BFA",
+      "gencNumeric": "854",
+      "fips": "UV",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:BF"
+    },
+    {
+      "displayName": "Burundi",
+      "active": true,
+      "primaryAlpha3": "BDI",
+      "officialIsoAlpha2": "BI",
+      "officialIsoAlpha3": "BDI",
+      "officialIsoNumeric": "108",
+      "gencAlpha2": "BI",
+      "gencAlpha3": "BDI",
+      "gencNumeric": "108",
+      "fips": "BY",
+      "alternativeNames": [
+        "Republic of Burundi"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:BI"
+    },
+    {
+      "displayName": "Cabo Verde",
+      "active": true,
+      "primaryAlpha3": "CPV",
+      "officialIsoAlpha2": "CV",
+      "officialIsoAlpha3": "CPV",
+      "officialIsoNumeric": "132",
+      "gencAlpha2": "CV",
+      "gencAlpha3": "CPV",
+      "gencNumeric": "132",
+      "fips": "CV",
+      "alternativeNames": [
+        "Cape Verde",
+        "Republic of Cabo Verde"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:CV"
+    },
+    {
+      "displayName": "Cambodia",
+      "active": true,
+      "primaryAlpha3": "KHM",
+      "officialIsoAlpha2": "KH",
+      "officialIsoAlpha3": "KHM",
+      "officialIsoNumeric": "116",
+      "gencAlpha2": "KH",
+      "gencAlpha3": "KHM",
+      "gencNumeric": "116",
+      "fips": "CB",
+      "alternativeNames": [
+        "Kingdom of Cambodia"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:KH"
+    },
+    {
+      "displayName": "Cameroon",
+      "active": true,
+      "primaryAlpha3": "CMR",
+      "officialIsoAlpha2": "CM",
+      "officialIsoAlpha3": "CMR",
+      "officialIsoNumeric": "120",
+      "gencAlpha2": "CM",
+      "gencAlpha3": "CMR",
+      "gencNumeric": "120",
+      "fips": "CM",
+      "alternativeNames": [
+        "Republic of Cameroon"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:CM"
+    },
+    {
+      "displayName": "Canada",
+      "active": true,
+      "primaryAlpha3": "CAN",
+      "officialIsoAlpha2": "CA",
+      "officialIsoAlpha3": "CAN",
+      "officialIsoNumeric": "124",
+      "gencAlpha2": "CA",
+      "gencAlpha3": "CAN",
+      "gencNumeric": "124",
+      "fips": "CA",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:CA"
+    },
+    {
+      "displayName": "Cayman Islands",
+      "active": true,
+      "primaryAlpha3": "CYM",
+      "officialIsoAlpha2": "KY",
+      "officialIsoAlpha3": "CYM",
+      "officialIsoNumeric": "136",
+      "gencAlpha2": "KY",
+      "gencAlpha3": "CYM",
+      "gencNumeric": "136",
+      "fips": "CJ",
+      "alternativeNames": [
+        "Cayman Islands (the)",
+        "Cayman Islands, the"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:KY"
+    },
+    {
+      "displayName": "Central African Republic",
+      "active": true,
+      "primaryAlpha3": "CAF",
+      "officialIsoAlpha2": "CF",
+      "officialIsoAlpha3": "CAF",
+      "officialIsoNumeric": "140",
+      "gencAlpha2": "CF",
+      "gencAlpha3": "CAF",
+      "gencNumeric": "140",
+      "fips": "CT",
+      "alternativeNames": [
+        "Central African Republic (the)",
+        "Central African Republic, the"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:CF"
+    },
+    {
+      "displayName": "Chad",
+      "active": true,
+      "primaryAlpha3": "TCD",
+      "officialIsoAlpha2": "TD",
+      "officialIsoAlpha3": "TCD",
+      "officialIsoNumeric": "148",
+      "gencAlpha2": "TD",
+      "gencAlpha3": "TCD",
+      "gencNumeric": "148",
+      "fips": "CD",
+      "alternativeNames": [
+        "Republic of Chad"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:TD"
+    },
+    {
+      "displayName": "Chile",
+      "active": true,
+      "primaryAlpha3": "CHL",
+      "officialIsoAlpha2": "CL",
+      "officialIsoAlpha3": "CHL",
+      "officialIsoNumeric": "152",
+      "gencAlpha2": "CL",
+      "gencAlpha3": "CHL",
+      "gencNumeric": "152",
+      "fips": "CI",
+      "alternativeNames": [
+        "Republic of Chile"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:CL"
+    },
+    {
+      "displayName": "China",
+      "active": true,
+      "primaryAlpha3": "CHN",
+      "officialIsoAlpha2": "CN",
+      "officialIsoAlpha3": "CHN",
+      "officialIsoNumeric": "156",
+      "gencAlpha2": "CN",
+      "gencAlpha3": "CHN",
+      "gencNumeric": "156",
+      "fips": "CH",
+      "alternativeNames": [
+        "People’s Republic of China"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:CN"
+    },
+    {
+      "displayName": "Christmas Island",
+      "active": true,
+      "primaryAlpha3": "CXR",
+      "officialIsoAlpha2": "CX",
+      "officialIsoAlpha3": "CXR",
+      "officialIsoNumeric": "162",
+      "gencAlpha2": "CX",
+      "gencAlpha3": "CXR",
+      "gencNumeric": "162",
+      "fips": "KT",
+      "alternativeNames": [
+        "Territory of Christmas Island"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:CX"
+    },
+    {
+      "displayName": "Clipperton Island",
+      "active": false,
+      "primaryAlpha3": "CPT",
+      "officialIsoAlpha2": null,
+      "officialIsoAlpha3": null,
+      "officialIsoNumeric": null,
+      "gencAlpha2": "CP",
+      "gencAlpha3": "CPT",
+      "gencNumeric": "905",
+      "fips": "IP",
+      "alternativeNames": [],
+      "classification": "genc-supported",
+      "sourceUri": null
+    },
+    {
+      "displayName": "Cocos Islands",
+      "active": true,
+      "primaryAlpha3": "CCK",
+      "officialIsoAlpha2": "CC",
+      "officialIsoAlpha3": "CCK",
+      "officialIsoNumeric": "166",
+      "gencAlpha2": "CC",
+      "gencAlpha3": "CCK",
+      "gencNumeric": "166",
+      "fips": "CK",
+      "alternativeNames": [
+        "Cocos (Keeling) Islands (the)",
+        "Cocos Islands, the",
+        "Cocos (Keeling) Islands, the",
+        "Keeling Islands",
+        "Cocos (Keeling) Islands"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:CC"
+    },
+    {
+      "displayName": "Colombia",
+      "active": true,
+      "primaryAlpha3": "COL",
+      "officialIsoAlpha2": "CO",
+      "officialIsoAlpha3": "COL",
+      "officialIsoNumeric": "170",
+      "gencAlpha2": "CO",
+      "gencAlpha3": "COL",
+      "gencNumeric": "170",
+      "fips": "CO",
+      "alternativeNames": [
+        "Republic of Colombia"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:CO"
+    },
+    {
+      "displayName": "Comoros",
+      "active": true,
+      "primaryAlpha3": "COM",
+      "officialIsoAlpha2": "KM",
+      "officialIsoAlpha3": "COM",
+      "officialIsoNumeric": "174",
+      "gencAlpha2": "KM",
+      "gencAlpha3": "COM",
+      "gencNumeric": "174",
+      "fips": "CN",
+      "alternativeNames": [
+        "Comoros (the)",
+        "Comoros, the",
+        "Union of the Comoros"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:KM"
+    },
+    {
+      "displayName": "Congo",
+      "active": true,
+      "primaryAlpha3": "COG",
+      "officialIsoAlpha2": "CG",
+      "officialIsoAlpha3": "COG",
+      "officialIsoNumeric": "178",
+      "gencAlpha2": "CG",
+      "gencAlpha3": "COG",
+      "gencNumeric": "178",
+      "fips": "CF",
+      "alternativeNames": [
+        "Congo (the)",
+        "Congo, Republic of the",
+        "Congo, the",
+        "Congo, Republic of",
+        "Republic of the Congo",
+        "Congo (Brazzaville)",
+        "Brazzaville",
+        "Congo Brazzaville",
+        "The Republic Of Congo",
+        "the Republic of the Congo",
+        "Republic of the; Congo"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:CG"
+    },
+    {
+      "displayName": "Cook Islands",
+      "active": true,
+      "primaryAlpha3": "COK",
+      "officialIsoAlpha2": "CK",
+      "officialIsoAlpha3": "COK",
+      "officialIsoNumeric": "184",
+      "gencAlpha2": "CK",
+      "gencAlpha3": "COK",
+      "gencNumeric": "184",
+      "fips": "CW",
+      "alternativeNames": [
+        "Cook Islands (the)",
+        "Cook Islands, the"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:CK"
+    },
+    {
+      "displayName": "Costa Rica",
+      "active": true,
+      "primaryAlpha3": "CRI",
+      "officialIsoAlpha2": "CR",
+      "officialIsoAlpha3": "CRI",
+      "officialIsoNumeric": "188",
+      "gencAlpha2": "CR",
+      "gencAlpha3": "CRI",
+      "gencNumeric": "188",
+      "fips": "CS",
+      "alternativeNames": [
+        "Republic of Costa Rica"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:CR"
+    },
+    {
+      "displayName": "Croatia",
+      "active": true,
+      "primaryAlpha3": "HRV",
+      "officialIsoAlpha2": "HR",
+      "officialIsoAlpha3": "HRV",
+      "officialIsoNumeric": "191",
+      "gencAlpha2": "HR",
+      "gencAlpha3": "HRV",
+      "gencNumeric": "191",
+      "fips": "HR",
+      "alternativeNames": [
+        "Republic of Croatia"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:HR"
+    },
+    {
+      "displayName": "Cuba",
+      "active": true,
+      "primaryAlpha3": "CUB",
+      "officialIsoAlpha2": "CU",
+      "officialIsoAlpha3": "CUB",
+      "officialIsoNumeric": "192",
+      "gencAlpha2": "CU",
+      "gencAlpha3": "CUB",
+      "gencNumeric": "192",
+      "fips": "CU",
+      "alternativeNames": [
+        "Republic of Cuba"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:CU"
+    },
+    {
+      "displayName": "Curacao",
+      "active": true,
+      "primaryAlpha3": "CUW",
+      "officialIsoAlpha2": "CW",
+      "officialIsoAlpha3": "CUW",
+      "officialIsoNumeric": "531",
+      "gencAlpha2": "CW",
+      "gencAlpha3": "CUW",
+      "gencNumeric": "531",
+      "fips": "UC",
+      "alternativeNames": [
+        "Curaçao",
+        "Country of Curaçao"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:CW"
+    },
+    {
+      "displayName": "Cyprus",
+      "active": true,
+      "primaryAlpha3": "CYP",
+      "officialIsoAlpha2": "CY",
+      "officialIsoAlpha3": "CYP",
+      "officialIsoNumeric": "196",
+      "gencAlpha2": "CY",
+      "gencAlpha3": "CYP",
+      "gencNumeric": "196",
+      "fips": "CY",
+      "alternativeNames": [
+        "Republic of Cyprus"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:CY"
+    },
+    {
+      "displayName": "Czechia",
+      "active": true,
+      "primaryAlpha3": "CZE",
+      "officialIsoAlpha2": "CZ",
+      "officialIsoAlpha3": "CZE",
+      "officialIsoNumeric": "203",
+      "gencAlpha2": "CZ",
+      "gencAlpha3": "CZE",
+      "gencNumeric": "203",
+      "fips": "EZ",
+      "alternativeNames": [
+        "Czech Republic",
+        "the Czech Republic"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:CZ"
+    },
+    {
+      "displayName": "Democratic Republic of the Congo",
+      "active": true,
+      "primaryAlpha3": "COD",
+      "officialIsoAlpha2": "CD",
+      "officialIsoAlpha3": "COD",
+      "officialIsoNumeric": "180",
+      "gencAlpha2": "CD",
+      "gencAlpha3": "COD",
+      "gencNumeric": "180",
+      "fips": "CG",
+      "alternativeNames": [
+        "Congo (the Democratic Republic of the)",
+        "Congo, the Democratic Republic of the",
+        "Congo (Kinshasa)",
+        "Congo Kinshasa",
+        "Kinshasa",
+        "Congo, Democratic Republic of",
+        "Democratic Republic of Congo",
+        "Democratic Republic Of The; Congo",
+        "the Democratic Republic of the Congo",
+        "Congo, Democratic Republic (Kinshasa)",
+        "Congo DR"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:CD"
+    },
+    {
+      "displayName": "Denmark",
+      "active": true,
+      "primaryAlpha3": "DNK",
+      "officialIsoAlpha2": "DK",
+      "officialIsoAlpha3": "DNK",
+      "officialIsoNumeric": "208",
+      "gencAlpha2": "DK",
+      "gencAlpha3": "DNK",
+      "gencNumeric": "208",
+      "fips": "DA",
+      "alternativeNames": [
+        "Kingdom of Denmark"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:DK"
+    },
+    {
+      "displayName": "Dhekelia",
+      "active": false,
+      "primaryAlpha3": null,
+      "officialIsoAlpha2": null,
+      "officialIsoAlpha3": null,
+      "officialIsoNumeric": null,
+      "gencAlpha2": "XD",
+      "gencAlpha3": "XXD",
+      "gencNumeric": "907",
+      "fips": "DX",
+      "alternativeNames": [],
+      "classification": "genc-supported",
+      "sourceUri": null
+    },
+    {
+      "displayName": "Djibouti",
+      "active": true,
+      "primaryAlpha3": "DJI",
+      "officialIsoAlpha2": "DJ",
+      "officialIsoAlpha3": "DJI",
+      "officialIsoNumeric": "262",
+      "gencAlpha2": "DJ",
+      "gencAlpha3": "DJI",
+      "gencNumeric": "262",
+      "fips": "DJ",
+      "alternativeNames": [
+        "Republic of Djibouti"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:DJ"
+    },
+    {
+      "displayName": "Dominica",
+      "active": true,
+      "primaryAlpha3": "DMA",
+      "officialIsoAlpha2": "DM",
+      "officialIsoAlpha3": "DMA",
+      "officialIsoNumeric": "212",
+      "gencAlpha2": "DM",
+      "gencAlpha3": "DMA",
+      "gencNumeric": "212",
+      "fips": "DO",
+      "alternativeNames": [
+        "Commonwealth of Dominica"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:DM"
+    },
+    {
+      "displayName": "Dominican Republic",
+      "active": true,
+      "primaryAlpha3": "DOM",
+      "officialIsoAlpha2": "DO",
+      "officialIsoAlpha3": "DOM",
+      "officialIsoNumeric": "214",
+      "gencAlpha2": "DO",
+      "gencAlpha3": "DOM",
+      "gencNumeric": "214",
+      "fips": "DR",
+      "alternativeNames": [
+        "Dominican Republic (the)",
+        "Dominican Republic, the"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:DO"
+    },
+    {
+      "displayName": "Ecuador",
+      "active": true,
+      "primaryAlpha3": "ECU",
+      "officialIsoAlpha2": "EC",
+      "officialIsoAlpha3": "ECU",
+      "officialIsoNumeric": "218",
+      "gencAlpha2": "EC",
+      "gencAlpha3": "ECU",
+      "gencNumeric": "218",
+      "fips": "EC",
+      "alternativeNames": [
+        "Republic of Ecuador"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:EC"
+    },
+    {
+      "displayName": "Egypt",
+      "active": true,
+      "primaryAlpha3": "EGY",
+      "officialIsoAlpha2": "EG",
+      "officialIsoAlpha3": "EGY",
+      "officialIsoNumeric": "818",
+      "gencAlpha2": "EG",
+      "gencAlpha3": "EGY",
+      "gencNumeric": "818",
+      "fips": "EG",
+      "alternativeNames": [
+        "Arab Republic of Egypt"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:EG"
+    },
+    {
+      "displayName": "El Salvador",
+      "active": true,
+      "primaryAlpha3": "SLV",
+      "officialIsoAlpha2": "SV",
+      "officialIsoAlpha3": "SLV",
+      "officialIsoNumeric": "222",
+      "gencAlpha2": "SV",
+      "gencAlpha3": "SLV",
+      "gencNumeric": "222",
+      "fips": "ES",
+      "alternativeNames": [
+        "Republic of El Salvador"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:SV"
+    },
+    {
+      "displayName": "Equatorial Guinea",
+      "active": true,
+      "primaryAlpha3": "GNQ",
+      "officialIsoAlpha2": "GQ",
+      "officialIsoAlpha3": "GNQ",
+      "officialIsoNumeric": "226",
+      "gencAlpha2": "GQ",
+      "gencAlpha3": "GNQ",
+      "gencNumeric": "226",
+      "fips": "EK",
+      "alternativeNames": [
+        "Republic of Equatorial Guinea"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:GQ"
+    },
+    {
+      "displayName": "Eritrea",
+      "active": true,
+      "primaryAlpha3": "ERI",
+      "officialIsoAlpha2": "ER",
+      "officialIsoAlpha3": "ERI",
+      "officialIsoNumeric": "232",
+      "gencAlpha2": "ER",
+      "gencAlpha3": "ERI",
+      "gencNumeric": "232",
+      "fips": "ER",
+      "alternativeNames": [
+        "State of Eritrea"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:ER"
+    },
+    {
+      "displayName": "Estonia",
+      "active": true,
+      "primaryAlpha3": "EST",
+      "officialIsoAlpha2": "EE",
+      "officialIsoAlpha3": "EST",
+      "officialIsoNumeric": "233",
+      "gencAlpha2": "EE",
+      "gencAlpha3": "EST",
+      "gencNumeric": "233",
+      "fips": "EN",
+      "alternativeNames": [
+        "Republic of Estonia"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:EE"
+    },
+    {
+      "displayName": "Eswatini",
+      "active": true,
+      "primaryAlpha3": "SWZ",
+      "officialIsoAlpha2": "SZ",
+      "officialIsoAlpha3": "SWZ",
+      "officialIsoNumeric": "748",
+      "gencAlpha2": "SZ",
+      "gencAlpha3": "SWZ",
+      "gencNumeric": "748",
+      "fips": "WZ",
+      "alternativeNames": [
+        "Swaziland",
+        "Kingdom of Eswatini, the",
+        "The Kingdom of Eswatini",
+        "Kingdom of Eswatini"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:SZ"
+    },
+    {
+      "displayName": "Ethiopia",
+      "active": true,
+      "primaryAlpha3": "ETH",
+      "officialIsoAlpha2": "ET",
+      "officialIsoAlpha3": "ETH",
+      "officialIsoNumeric": "231",
+      "gencAlpha2": "ET",
+      "gencAlpha3": "ETH",
+      "gencNumeric": "231",
+      "fips": "ET",
+      "alternativeNames": [
+        "Federal Democratic Republic of Ethiopia"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:ET"
+    },
+    {
+      "displayName": "Etorofu, Habomai, Kunashiri, and Shikotan Islands",
+      "active": false,
+      "primaryAlpha3": null,
+      "officialIsoAlpha2": null,
+      "officialIsoAlpha3": null,
+      "officialIsoNumeric": null,
+      "gencAlpha2": null,
+      "gencAlpha3": null,
+      "gencNumeric": null,
+      "fips": "PJ",
+      "alternativeNames": [
+        "Etorofu",
+        "Shikotan",
+        "Kunashiri",
+        "Habomai"
+      ],
+      "classification": "legacy-fips-only",
+      "sourceUri": null
+    },
+    {
+      "displayName": "Europa Island",
+      "active": false,
+      "primaryAlpha3": null,
+      "officialIsoAlpha2": null,
+      "officialIsoAlpha3": null,
+      "officialIsoNumeric": null,
+      "gencAlpha2": "XE",
+      "gencAlpha3": "XEU",
+      "gencNumeric": "915",
+      "fips": "EU",
+      "alternativeNames": [],
+      "classification": "genc-supported",
+      "sourceUri": null
+    },
+    {
+      "displayName": "Falkland Islands",
+      "active": true,
+      "primaryAlpha3": "FLK",
+      "officialIsoAlpha2": "FK",
+      "officialIsoAlpha3": "FLK",
+      "officialIsoNumeric": "238",
+      "gencAlpha2": "FK",
+      "gencAlpha3": "FLK",
+      "gencNumeric": "238",
+      "fips": "FK",
+      "alternativeNames": [
+        "Falkland Islands (the Malvinas)",
+        "Falkland Islands, the Malvinas",
+        "Falkland Islands (Malvinas)",
+        "Islas Malvinas",
+        "Falkland Islands (Islas Malvinas)",
+        "Malvinas, the",
+        "The Malvinas",
+        "Malvinas"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:FK"
+    },
+    {
+      "displayName": "Faroe Islands",
+      "active": true,
+      "primaryAlpha3": "FRO",
+      "officialIsoAlpha2": "FO",
+      "officialIsoAlpha3": "FRO",
+      "officialIsoNumeric": "234",
+      "gencAlpha2": "FO",
+      "gencAlpha3": "FRO",
+      "gencNumeric": "234",
+      "fips": "FO",
+      "alternativeNames": [
+        "Faroe Islands (the)",
+        "Faroe Islands, the",
+        "Faeroe Islands"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:FO"
+    },
+    {
+      "displayName": "Fiji",
+      "active": true,
+      "primaryAlpha3": "FJI",
+      "officialIsoAlpha2": "FJ",
+      "officialIsoAlpha3": "FJI",
+      "officialIsoNumeric": "242",
+      "gencAlpha2": "FJ",
+      "gencAlpha3": "FJI",
+      "gencNumeric": "242",
+      "fips": "FJ",
+      "alternativeNames": [
+        "Republic of Fiji"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:FJ"
+    },
+    {
+      "displayName": "Finland",
+      "active": true,
+      "primaryAlpha3": "FIN",
+      "officialIsoAlpha2": "FI",
+      "officialIsoAlpha3": "FIN",
+      "officialIsoNumeric": "246",
+      "gencAlpha2": "FI",
+      "gencAlpha3": "FIN",
+      "gencNumeric": "246",
+      "fips": "FI",
+      "alternativeNames": [
+        "Republic of Finland"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:FI"
+    },
+    {
+      "displayName": "France",
+      "active": true,
+      "primaryAlpha3": "FRA",
+      "officialIsoAlpha2": "FR",
+      "officialIsoAlpha3": "FRA",
+      "officialIsoNumeric": "250",
+      "gencAlpha2": "FR",
+      "gencAlpha3": "FRA",
+      "gencNumeric": "250",
+      "fips": "FR",
+      "alternativeNames": [
+        "Republic of Finland"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:FR"
+    },
+    {
+      "displayName": "French Guiana",
+      "active": true,
+      "primaryAlpha3": "GUF",
+      "officialIsoAlpha2": "GF",
+      "officialIsoAlpha3": "GUF",
+      "officialIsoNumeric": "254",
+      "gencAlpha2": "GF",
+      "gencAlpha3": "GUF",
+      "gencNumeric": "254",
+      "fips": "FG",
+      "alternativeNames": [
+        "Territorial Collectivity of Guiana"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:GF"
+    },
+    {
+      "displayName": "French Polynesia",
+      "active": true,
+      "primaryAlpha3": "PYF",
+      "officialIsoAlpha2": "PF",
+      "officialIsoAlpha3": "PYF",
+      "officialIsoNumeric": "258",
+      "gencAlpha2": "PF",
+      "gencAlpha3": "PYF",
+      "gencNumeric": "258",
+      "fips": "FP",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:PF"
+    },
+    {
+      "displayName": "French Southern and Antarctic Lands",
+      "active": true,
+      "primaryAlpha3": "ATF",
+      "officialIsoAlpha2": "TF",
+      "officialIsoAlpha3": "ATF",
+      "officialIsoNumeric": "260",
+      "gencAlpha2": "TF",
+      "gencAlpha3": "ATF",
+      "gencNumeric": "260",
+      "fips": "FS",
+      "alternativeNames": [
+        "French Southern Territories (the)",
+        "French Southern Territories, the",
+        "French Southern",
+        "French Southern Territories"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:TF"
+    },
+    {
+      "displayName": "Gabon",
+      "active": true,
+      "primaryAlpha3": "GAB",
+      "officialIsoAlpha2": "GA",
+      "officialIsoAlpha3": "GAB",
+      "officialIsoNumeric": "266",
+      "gencAlpha2": "GA",
+      "gencAlpha3": "GAB",
+      "gencNumeric": "266",
+      "fips": "GB",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:GA"
+    },
+    {
+      "displayName": "Gambia",
+      "active": true,
+      "primaryAlpha3": "GMB",
+      "officialIsoAlpha2": "GM",
+      "officialIsoAlpha3": "GMB",
+      "officialIsoNumeric": "270",
+      "gencAlpha2": "GM",
+      "gencAlpha3": "GMB",
+      "gencNumeric": "270",
+      "fips": "GA",
+      "alternativeNames": [
+        "Gambia (the)",
+        "Gambia, the",
+        "The Gambia"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:GM"
+    },
+    {
+      "displayName": "Gaza Strip",
+      "active": false,
+      "primaryAlpha3": "PSE",
+      "officialIsoAlpha2": "PS",
+      "officialIsoAlpha3": "PSE",
+      "officialIsoNumeric": "275",
+      "gencAlpha2": "XG",
+      "gencAlpha3": "XGZ",
+      "gencNumeric": "916",
+      "fips": "GZ",
+      "alternativeNames": [
+        "Palestine, State of",
+        "Palestine"
+      ],
+      "classification": "duplicate-iso-territory",
+      "sourceUri": "iso:code:3166:PS"
+    },
+    {
+      "displayName": "Georgia",
+      "active": true,
+      "primaryAlpha3": "GEO",
+      "officialIsoAlpha2": "GE",
+      "officialIsoAlpha3": "GEO",
+      "officialIsoNumeric": "268",
+      "gencAlpha2": "GE",
+      "gencAlpha3": "GEO",
+      "gencNumeric": "268",
+      "fips": "GG",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:GE"
+    },
+    {
+      "displayName": "Germany",
+      "active": true,
+      "primaryAlpha3": "DEU",
+      "officialIsoAlpha2": "DE",
+      "officialIsoAlpha3": "DEU",
+      "officialIsoNumeric": "276",
+      "gencAlpha2": "DE",
+      "gencAlpha3": "DEU",
+      "gencNumeric": "276",
+      "fips": "GM",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:DE"
+    },
+    {
+      "displayName": "Ghana",
+      "active": true,
+      "primaryAlpha3": "GHA",
+      "officialIsoAlpha2": "GH",
+      "officialIsoAlpha3": "GHA",
+      "officialIsoNumeric": "288",
+      "gencAlpha2": "GH",
+      "gencAlpha3": "GHA",
+      "gencNumeric": "288",
+      "fips": "GH",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:GH"
+    },
+    {
+      "displayName": "Gibraltar",
+      "active": true,
+      "primaryAlpha3": "GIB",
+      "officialIsoAlpha2": "GI",
+      "officialIsoAlpha3": "GIB",
+      "officialIsoNumeric": "292",
+      "gencAlpha2": "GI",
+      "gencAlpha3": "GIB",
+      "gencNumeric": "292",
+      "fips": "GI",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:GI"
+    },
+    {
+      "displayName": "Greece",
+      "active": true,
+      "primaryAlpha3": "GRC",
+      "officialIsoAlpha2": "GR",
+      "officialIsoAlpha3": "GRC",
+      "officialIsoNumeric": "300",
+      "gencAlpha2": "GR",
+      "gencAlpha3": "GRC",
+      "gencNumeric": "300",
+      "fips": "GR",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:GR"
+    },
+    {
+      "displayName": "Greenland",
+      "active": true,
+      "primaryAlpha3": "GRL",
+      "officialIsoAlpha2": "GL",
+      "officialIsoAlpha3": "GRL",
+      "officialIsoNumeric": "304",
+      "gencAlpha2": "GL",
+      "gencAlpha3": "GRL",
+      "gencNumeric": "304",
+      "fips": "GL",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:GL"
+    },
+    {
+      "displayName": "Grenada",
+      "active": true,
+      "primaryAlpha3": "GRD",
+      "officialIsoAlpha2": "GD",
+      "officialIsoAlpha3": "GRD",
+      "officialIsoNumeric": "308",
+      "gencAlpha2": "GD",
+      "gencAlpha3": "GRD",
+      "gencNumeric": "308",
+      "fips": "GJ",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:GD"
+    },
+    {
+      "displayName": "Guadeloupe",
+      "active": true,
+      "primaryAlpha3": "GLP",
+      "officialIsoAlpha2": "GP",
+      "officialIsoAlpha3": "GLP",
+      "officialIsoNumeric": "312",
+      "gencAlpha2": "GP",
+      "gencAlpha3": "GLP",
+      "gencNumeric": "312",
+      "fips": "GP",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:GP"
+    },
+    {
+      "displayName": "Guam",
+      "active": true,
+      "primaryAlpha3": "GUM",
+      "officialIsoAlpha2": "GU",
+      "officialIsoAlpha3": "GUM",
+      "officialIsoNumeric": "316",
+      "gencAlpha2": "GU",
+      "gencAlpha3": "GUM",
+      "gencNumeric": "316",
+      "fips": "GQ",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:GU"
+    },
+    {
+      "displayName": "Guatemala",
+      "active": true,
+      "primaryAlpha3": "GTM",
+      "officialIsoAlpha2": "GT",
+      "officialIsoAlpha3": "GTM",
+      "officialIsoNumeric": "320",
+      "gencAlpha2": "GT",
+      "gencAlpha3": "GTM",
+      "gencNumeric": "320",
+      "fips": "GT",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:GT"
+    },
+    {
+      "displayName": "Guernsey",
+      "active": true,
+      "primaryAlpha3": "GGY",
+      "officialIsoAlpha2": "GG",
+      "officialIsoAlpha3": "GGY",
+      "officialIsoNumeric": "831",
+      "gencAlpha2": "GG",
+      "gencAlpha3": "GGY",
+      "gencNumeric": "831",
+      "fips": "GK",
+      "alternativeNames": [
+        "Channel Islands"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:GG"
+    },
+    {
+      "displayName": "Guinea",
+      "active": true,
+      "primaryAlpha3": "GIN",
+      "officialIsoAlpha2": "GN",
+      "officialIsoAlpha3": "GIN",
+      "officialIsoNumeric": "324",
+      "gencAlpha2": "GN",
+      "gencAlpha3": "GIN",
+      "gencNumeric": "324",
+      "fips": "GV",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:GN"
+    },
+    {
+      "displayName": "Guinea-Bissau",
+      "active": true,
+      "primaryAlpha3": "GNB",
+      "officialIsoAlpha2": "GW",
+      "officialIsoAlpha3": "GNB",
+      "officialIsoNumeric": "624",
+      "gencAlpha2": "GW",
+      "gencAlpha3": "GNB",
+      "gencNumeric": "624",
+      "fips": "PU",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:GW"
+    },
+    {
+      "displayName": "Guyana",
+      "active": true,
+      "primaryAlpha3": "GUY",
+      "officialIsoAlpha2": "GY",
+      "officialIsoAlpha3": "GUY",
+      "officialIsoNumeric": "328",
+      "gencAlpha2": "GY",
+      "gencAlpha3": "GUY",
+      "gencNumeric": "328",
+      "fips": "GY",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:GY"
+    },
+    {
+      "displayName": "Haiti",
+      "active": true,
+      "primaryAlpha3": "HTI",
+      "officialIsoAlpha2": "HT",
+      "officialIsoAlpha3": "HTI",
+      "officialIsoNumeric": "332",
+      "gencAlpha2": "HT",
+      "gencAlpha3": "HTI",
+      "gencNumeric": "332",
+      "fips": "HA",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:HT"
+    },
+    {
+      "displayName": "Heard Island and McDonald Islands",
+      "active": true,
+      "primaryAlpha3": "HMD",
+      "officialIsoAlpha2": "HM",
+      "officialIsoAlpha3": "HMD",
+      "officialIsoNumeric": "334",
+      "gencAlpha2": "HM",
+      "gencAlpha3": "HMD",
+      "gencNumeric": "334",
+      "fips": "HM",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:HM"
+    },
+    {
+      "displayName": "Holy See",
+      "active": true,
+      "primaryAlpha3": "VAT",
+      "officialIsoAlpha2": "VA",
+      "officialIsoAlpha3": "VAT",
+      "officialIsoNumeric": "336",
+      "gencAlpha2": "VA",
+      "gencAlpha3": "VAT",
+      "gencNumeric": "336",
+      "fips": "VT",
+      "alternativeNames": [
+        "Holy See (the)",
+        "Holy See, the",
+        "Vatican (the)",
+        "Vatican, the",
+        "Vatican City"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:VA"
+    },
+    {
+      "displayName": "Honduras",
+      "active": true,
+      "primaryAlpha3": "HND",
+      "officialIsoAlpha2": "HN",
+      "officialIsoAlpha3": "HND",
+      "officialIsoNumeric": "340",
+      "gencAlpha2": "HN",
+      "gencAlpha3": "HND",
+      "gencNumeric": "340",
+      "fips": "HO",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:HN"
+    },
+    {
+      "displayName": "Hong Kong",
+      "active": true,
+      "primaryAlpha3": "HKG",
+      "officialIsoAlpha2": "HK",
+      "officialIsoAlpha3": "HKG",
+      "officialIsoNumeric": "344",
+      "gencAlpha2": "HK",
+      "gencAlpha3": "HKG",
+      "gencNumeric": "344",
+      "fips": "HK",
+      "alternativeNames": [
+        "China, Hong Kong"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:HK"
+    },
+    {
+      "displayName": "Howland Island",
+      "active": true,
+      "primaryAlpha3": "UMI",
+      "officialIsoAlpha2": "UM",
+      "officialIsoAlpha3": "UMI",
+      "officialIsoNumeric": "581",
+      "gencAlpha2": "XH",
+      "gencAlpha3": "XHO",
+      "gencNumeric": "919",
+      "fips": "HQ",
+      "alternativeNames": [
+        "United States Minor Outlying Islands (the)",
+        "United States Minor Outlying Islands, the",
+        "United States Minor Outlying Islands"
+      ],
+      "classification": "duplicate-iso-territory",
+      "sourceUri": "iso:code:3166:UM"
+    },
+    {
+      "displayName": "Hungary",
+      "active": true,
+      "primaryAlpha3": "HUN",
+      "officialIsoAlpha2": "HU",
+      "officialIsoAlpha3": "HUN",
+      "officialIsoNumeric": "348",
+      "gencAlpha2": "HU",
+      "gencAlpha3": "HUN",
+      "gencNumeric": "348",
+      "fips": "HU",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:HU"
+    },
+    {
+      "displayName": "Iceland",
+      "active": true,
+      "primaryAlpha3": "ISL",
+      "officialIsoAlpha2": "IS",
+      "officialIsoAlpha3": "ISL",
+      "officialIsoNumeric": "352",
+      "gencAlpha2": "IS",
+      "gencAlpha3": "ISL",
+      "gencNumeric": "352",
+      "fips": "IC",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:IS"
+    },
+    {
+      "displayName": "India",
+      "active": true,
+      "primaryAlpha3": "IND",
+      "officialIsoAlpha2": "IN",
+      "officialIsoAlpha3": "IND",
+      "officialIsoNumeric": "356",
+      "gencAlpha2": "IN",
+      "gencAlpha3": "IND",
+      "gencNumeric": "356",
+      "fips": "IN",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:IN"
+    },
+    {
+      "displayName": "Indonesia",
+      "active": true,
+      "primaryAlpha3": "IDN",
+      "officialIsoAlpha2": "ID",
+      "officialIsoAlpha3": "IDN",
+      "officialIsoNumeric": "360",
+      "gencAlpha2": "ID",
+      "gencAlpha3": "IDN",
+      "gencNumeric": "360",
+      "fips": "ID",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:ID"
+    },
+    {
+      "displayName": "Iran",
+      "active": true,
+      "primaryAlpha3": "IRN",
+      "officialIsoAlpha2": "IR",
+      "officialIsoAlpha3": "IRN",
+      "officialIsoNumeric": "364",
+      "gencAlpha2": "IR",
+      "gencAlpha3": "IRN",
+      "gencNumeric": "364",
+      "fips": "IR",
+      "alternativeNames": [
+        "Iran (Islamic Republic of)",
+        "Iran, Islamic Republic of"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:IR"
+    },
+    {
+      "displayName": "Iraq",
+      "active": true,
+      "primaryAlpha3": "IRQ",
+      "officialIsoAlpha2": "IQ",
+      "officialIsoAlpha3": "IRQ",
+      "officialIsoNumeric": "368",
+      "gencAlpha2": "IQ",
+      "gencAlpha3": "IRQ",
+      "gencNumeric": "368",
+      "fips": "IZ",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:IQ"
+    },
+    {
+      "displayName": "Ireland",
+      "active": true,
+      "primaryAlpha3": "IRL",
+      "officialIsoAlpha2": "IE",
+      "officialIsoAlpha3": "IRL",
+      "officialIsoNumeric": "372",
+      "gencAlpha2": "IE",
+      "gencAlpha3": "IRL",
+      "gencNumeric": "372",
+      "fips": "EI",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:IE"
+    },
+    {
+      "displayName": "Isle of Man",
+      "active": true,
+      "primaryAlpha3": "IMN",
+      "officialIsoAlpha2": "IM",
+      "officialIsoAlpha3": "IMN",
+      "officialIsoNumeric": "833",
+      "gencAlpha2": "IM",
+      "gencAlpha3": "IMN",
+      "gencNumeric": "833",
+      "fips": "IM",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:IM"
+    },
+    {
+      "displayName": "Israel",
+      "active": true,
+      "primaryAlpha3": "ISR",
+      "officialIsoAlpha2": "IL",
+      "officialIsoAlpha3": "ISR",
+      "officialIsoNumeric": "376",
+      "gencAlpha2": "IL",
+      "gencAlpha3": "ISR",
+      "gencNumeric": "376",
+      "fips": "IS",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:IL"
+    },
+    {
+      "displayName": "Italy",
+      "active": true,
+      "primaryAlpha3": "ITA",
+      "officialIsoAlpha2": "IT",
+      "officialIsoAlpha3": "ITA",
+      "officialIsoNumeric": "380",
+      "gencAlpha2": "IT",
+      "gencAlpha3": "ITA",
+      "gencNumeric": "380",
+      "fips": "IT",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:IT"
+    },
+    {
+      "displayName": "Ivory Coast",
+      "active": true,
+      "primaryAlpha3": "CIV",
+      "officialIsoAlpha2": "CI",
+      "officialIsoAlpha3": "CIV",
+      "officialIsoNumeric": "384",
+      "gencAlpha2": "CI",
+      "gencAlpha3": "CIV",
+      "gencNumeric": "384",
+      "fips": "IV",
+      "alternativeNames": [
+        "Cote d'Ivoire / Ivory Coast",
+        "Côte d'Ivoire",
+        "Côte d'Ivoir",
+        "Cote d'Ivoire",
+        "Côte d’Ivoire",
+        "Cote d’Ivoire"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:CI"
+    },
+    {
+      "displayName": "Jamaica",
+      "active": true,
+      "primaryAlpha3": "JAM",
+      "officialIsoAlpha2": "JM",
+      "officialIsoAlpha3": "JAM",
+      "officialIsoNumeric": "388",
+      "gencAlpha2": "JM",
+      "gencAlpha3": "JAM",
+      "gencNumeric": "388",
+      "fips": "JM",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:JM"
+    },
+    {
+      "displayName": "Jan Mayen",
+      "active": false,
+      "primaryAlpha3": null,
+      "officialIsoAlpha2": null,
+      "officialIsoAlpha3": null,
+      "officialIsoNumeric": null,
+      "gencAlpha2": "XJ",
+      "gencAlpha3": "XJM",
+      "gencNumeric": "920",
+      "fips": "JN",
+      "alternativeNames": [],
+      "classification": "genc-supported",
+      "sourceUri": null
+    },
+    {
+      "displayName": "Japan",
+      "active": true,
+      "primaryAlpha3": "JPN",
+      "officialIsoAlpha2": "JP",
+      "officialIsoAlpha3": "JPN",
+      "officialIsoNumeric": "392",
+      "gencAlpha2": "JP",
+      "gencAlpha3": "JPN",
+      "gencNumeric": "392",
+      "fips": "JA",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:JP"
+    },
+    {
+      "displayName": "Jarvis Island",
+      "active": true,
+      "primaryAlpha3": "UMI",
+      "officialIsoAlpha2": "UM",
+      "officialIsoAlpha3": "UMI",
+      "officialIsoNumeric": "581",
+      "gencAlpha2": "XQ",
+      "gencAlpha3": "XJV",
+      "gencNumeric": "921",
+      "fips": "DQ",
+      "alternativeNames": [
+        "United States Minor Outlying Islands (the)",
+        "United States Minor Outlying Islands, the",
+        "United States Minor Outlying Islands"
+      ],
+      "classification": "duplicate-iso-territory",
+      "sourceUri": "iso:code:3166:UM"
+    },
+    {
+      "displayName": "Jersey",
+      "active": true,
+      "primaryAlpha3": "JEY",
+      "officialIsoAlpha2": "JE",
+      "officialIsoAlpha3": "JEY",
+      "officialIsoNumeric": "832",
+      "gencAlpha2": "JE",
+      "gencAlpha3": "JEY",
+      "gencNumeric": "832",
+      "fips": "JE",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:JE"
+    },
+    {
+      "displayName": "Johnston Atoll",
+      "active": true,
+      "primaryAlpha3": "UMI",
+      "officialIsoAlpha2": "UM",
+      "officialIsoAlpha3": "UMI",
+      "officialIsoNumeric": "581",
+      "gencAlpha2": "XU",
+      "gencAlpha3": "XJA",
+      "gencNumeric": "922",
+      "fips": "JQ",
+      "alternativeNames": [
+        "United States Minor Outlying Islands (the)",
+        "United States Minor Outlying Islands, the",
+        "United States Minor Outlying Islands"
+      ],
+      "classification": "duplicate-iso-territory",
+      "sourceUri": "iso:code:3166:UM"
+    },
+    {
+      "displayName": "Jordan",
+      "active": true,
+      "primaryAlpha3": "JOR",
+      "officialIsoAlpha2": "JO",
+      "officialIsoAlpha3": "JOR",
+      "officialIsoNumeric": "400",
+      "gencAlpha2": "JO",
+      "gencAlpha3": "JOR",
+      "gencNumeric": "400",
+      "fips": "JO",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:JO"
+    },
+    {
+      "displayName": "Juan de Nova Island",
+      "active": false,
+      "primaryAlpha3": null,
+      "officialIsoAlpha2": null,
+      "officialIsoAlpha3": null,
+      "officialIsoNumeric": null,
+      "gencAlpha2": "QU",
+      "gencAlpha3": "XJN",
+      "gencNumeric": "923",
+      "fips": "JU",
+      "alternativeNames": [],
+      "classification": "genc-supported",
+      "sourceUri": null
+    },
+    {
+      "displayName": "Kazakhstan",
+      "active": true,
+      "primaryAlpha3": "KAZ",
+      "officialIsoAlpha2": "KZ",
+      "officialIsoAlpha3": "KAZ",
+      "officialIsoNumeric": "398",
+      "gencAlpha2": "KZ",
+      "gencAlpha3": "KAZ",
+      "gencNumeric": "398",
+      "fips": "KZ",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:KZ"
+    },
+    {
+      "displayName": "Kenya",
+      "active": true,
+      "primaryAlpha3": "KEN",
+      "officialIsoAlpha2": "KE",
+      "officialIsoAlpha3": "KEN",
+      "officialIsoNumeric": "404",
+      "gencAlpha2": "KE",
+      "gencAlpha3": "KEN",
+      "gencNumeric": "404",
+      "fips": "KE",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:KE"
+    },
+    {
+      "displayName": "Kingman Reef",
+      "active": true,
+      "primaryAlpha3": "UMI",
+      "officialIsoAlpha2": "UM",
+      "officialIsoAlpha3": "UMI",
+      "officialIsoNumeric": "581",
+      "gencAlpha2": "XM",
+      "gencAlpha3": "XKR",
+      "gencNumeric": "924",
+      "fips": "KQ",
+      "alternativeNames": [
+        "United States Minor Outlying Islands (the)",
+        "United States Minor Outlying Islands, the",
+        "United States Minor Outlying Islands"
+      ],
+      "classification": "duplicate-iso-territory",
+      "sourceUri": "iso:code:3166:UM"
+    },
+    {
+      "displayName": "Kiribati",
+      "active": true,
+      "primaryAlpha3": "KIR",
+      "officialIsoAlpha2": "KI",
+      "officialIsoAlpha3": "KIR",
+      "officialIsoNumeric": "296",
+      "gencAlpha2": "KI",
+      "gencAlpha3": "KIR",
+      "gencNumeric": "296",
+      "fips": "KR",
+      "alternativeNames": [
+        "Kiribati (Gilbert)"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:KI"
+    },
+    {
+      "displayName": "Kosovo",
+      "active": true,
+      "primaryAlpha3": "KOS",
+      "officialIsoAlpha2": null,
+      "officialIsoAlpha3": null,
+      "officialIsoNumeric": null,
+      "gencAlpha2": "XK",
+      "gencAlpha3": "XKS",
+      "gencNumeric": "901",
+      "fips": "KV",
+      "alternativeNames": [
+        "The Republic of Kosovo",
+        "Republic of Kosovo, the"
+      ],
+      "classification": "non-official-code",
+      "sourceUri": null
+    },
+    {
+      "displayName": "Kuwait",
+      "active": true,
+      "primaryAlpha3": "KWT",
+      "officialIsoAlpha2": "KW",
+      "officialIsoAlpha3": "KWT",
+      "officialIsoNumeric": "414",
+      "gencAlpha2": "KW",
+      "gencAlpha3": "KWT",
+      "gencNumeric": "414",
+      "fips": "KU",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:KW"
+    },
+    {
+      "displayName": "Kyrgyzstan",
+      "active": true,
+      "primaryAlpha3": "KGZ",
+      "officialIsoAlpha2": "KG",
+      "officialIsoAlpha3": "KGZ",
+      "officialIsoNumeric": "417",
+      "gencAlpha2": "KG",
+      "gencAlpha3": "KGZ",
+      "gencNumeric": "417",
+      "fips": "KG",
+      "alternativeNames": [
+        "Kyrgystan"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:KG"
+    },
+    {
+      "displayName": "Lao",
+      "active": true,
+      "primaryAlpha3": "LAO",
+      "officialIsoAlpha2": "LA",
+      "officialIsoAlpha3": "LAO",
+      "officialIsoNumeric": "418",
+      "gencAlpha2": "LA",
+      "gencAlpha3": "LAO",
+      "gencNumeric": "418",
+      "fips": "LA",
+      "alternativeNames": [
+        "Lao People's Democratic Republic (the)",
+        "Lao Peoples Democratic Republic, the",
+        "Lao Peoples Democratic Republic",
+        "Lao Peoples Democratic Republic (the)",
+        "Lao People's Democratic Republic, the",
+        "Lao People's Democratic Republic",
+        "Laos"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:LA"
+    },
+    {
+      "displayName": "Latvia",
+      "active": true,
+      "primaryAlpha3": "LVA",
+      "officialIsoAlpha2": "LV",
+      "officialIsoAlpha3": "LVA",
+      "officialIsoNumeric": "428",
+      "gencAlpha2": "LV",
+      "gencAlpha3": "LVA",
+      "gencNumeric": "428",
+      "fips": "LG",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:LV"
+    },
+    {
+      "displayName": "Lebanon",
+      "active": true,
+      "primaryAlpha3": "LBN",
+      "officialIsoAlpha2": "LB",
+      "officialIsoAlpha3": "LBN",
+      "officialIsoNumeric": "422",
+      "gencAlpha2": "LB",
+      "gencAlpha3": "LBN",
+      "gencNumeric": "422",
+      "fips": "LE",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:LB"
+    },
+    {
+      "displayName": "Lesotho",
+      "active": true,
+      "primaryAlpha3": "LSO",
+      "officialIsoAlpha2": "LS",
+      "officialIsoAlpha3": "LSO",
+      "officialIsoNumeric": "426",
+      "gencAlpha2": "LS",
+      "gencAlpha3": "LSO",
+      "gencNumeric": "426",
+      "fips": "LT",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:LS"
+    },
+    {
+      "displayName": "Liberia",
+      "active": true,
+      "primaryAlpha3": "LBR",
+      "officialIsoAlpha2": "LR",
+      "officialIsoAlpha3": "LBR",
+      "officialIsoNumeric": "430",
+      "gencAlpha2": "LR",
+      "gencAlpha3": "LBR",
+      "gencNumeric": "430",
+      "fips": "LI",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:LR"
+    },
+    {
+      "displayName": "Libya",
+      "active": true,
+      "primaryAlpha3": "LBY",
+      "officialIsoAlpha2": "LY",
+      "officialIsoAlpha3": "LBY",
+      "officialIsoNumeric": "434",
+      "gencAlpha2": "LY",
+      "gencAlpha3": "LBY",
+      "gencNumeric": "434",
+      "fips": "LY",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:LY"
+    },
+    {
+      "displayName": "Liechtenstein",
+      "active": true,
+      "primaryAlpha3": "LIE",
+      "officialIsoAlpha2": "LI",
+      "officialIsoAlpha3": "LIE",
+      "officialIsoNumeric": "438",
+      "gencAlpha2": "LI",
+      "gencAlpha3": "LIE",
+      "gencNumeric": "438",
+      "fips": "LS",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:LI"
+    },
+    {
+      "displayName": "Lithuania",
+      "active": true,
+      "primaryAlpha3": "LTU",
+      "officialIsoAlpha2": "LT",
+      "officialIsoAlpha3": "LTU",
+      "officialIsoNumeric": "440",
+      "gencAlpha2": "LT",
+      "gencAlpha3": "LTU",
+      "gencNumeric": "440",
+      "fips": "LH",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:LT"
+    },
+    {
+      "displayName": "Luxembourg",
+      "active": true,
+      "primaryAlpha3": "LUX",
+      "officialIsoAlpha2": "LU",
+      "officialIsoAlpha3": "LUX",
+      "officialIsoNumeric": "442",
+      "gencAlpha2": "LU",
+      "gencAlpha3": "LUX",
+      "gencNumeric": "442",
+      "fips": "LU",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:LU"
+    },
+    {
+      "displayName": "Macao",
+      "active": true,
+      "primaryAlpha3": "MAC",
+      "officialIsoAlpha2": "MO",
+      "officialIsoAlpha3": "MAC",
+      "officialIsoNumeric": "446",
+      "gencAlpha2": "MO",
+      "gencAlpha3": "MAC",
+      "gencNumeric": "446",
+      "fips": "MC",
+      "alternativeNames": [
+        "China, Macau",
+        "China (Macao)",
+        "China, Macao",
+        "China (Macau)",
+        "Macau"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:MO"
+    },
+    {
+      "displayName": "Madagascar",
+      "active": true,
+      "primaryAlpha3": "MDG",
+      "officialIsoAlpha2": "MG",
+      "officialIsoAlpha3": "MDG",
+      "officialIsoNumeric": "450",
+      "gencAlpha2": "MG",
+      "gencAlpha3": "MDG",
+      "gencNumeric": "450",
+      "fips": "MA",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:MG"
+    },
+    {
+      "displayName": "Malawi",
+      "active": true,
+      "primaryAlpha3": "MWI",
+      "officialIsoAlpha2": "MW",
+      "officialIsoAlpha3": "MWI",
+      "officialIsoNumeric": "454",
+      "gencAlpha2": "MW",
+      "gencAlpha3": "MWI",
+      "gencNumeric": "454",
+      "fips": "MI",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:MW"
+    },
+    {
+      "displayName": "Malaysia",
+      "active": true,
+      "primaryAlpha3": "MYS",
+      "officialIsoAlpha2": "MY",
+      "officialIsoAlpha3": "MYS",
+      "officialIsoNumeric": "458",
+      "gencAlpha2": "MY",
+      "gencAlpha3": "MYS",
+      "gencNumeric": "458",
+      "fips": "MY",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:MY"
+    },
+    {
+      "displayName": "Maldives",
+      "active": true,
+      "primaryAlpha3": "MDV",
+      "officialIsoAlpha2": "MV",
+      "officialIsoAlpha3": "MDV",
+      "officialIsoNumeric": "462",
+      "gencAlpha2": "MV",
+      "gencAlpha3": "MDV",
+      "gencNumeric": "462",
+      "fips": "MV",
+      "alternativeNames": [
+        "the Maldives"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:MV"
+    },
+    {
+      "displayName": "Mali",
+      "active": true,
+      "primaryAlpha3": "MLI",
+      "officialIsoAlpha2": "ML",
+      "officialIsoAlpha3": "MLI",
+      "officialIsoNumeric": "466",
+      "gencAlpha2": "ML",
+      "gencAlpha3": "MLI",
+      "gencNumeric": "466",
+      "fips": "ML",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:ML"
+    },
+    {
+      "displayName": "Malta",
+      "active": true,
+      "primaryAlpha3": "MLT",
+      "officialIsoAlpha2": "MT",
+      "officialIsoAlpha3": "MLT",
+      "officialIsoNumeric": "470",
+      "gencAlpha2": "MT",
+      "gencAlpha3": "MLT",
+      "gencNumeric": "470",
+      "fips": "MT",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:MT"
+    },
+    {
+      "displayName": "Marshall Islands",
+      "active": true,
+      "primaryAlpha3": "MHL",
+      "officialIsoAlpha2": "MH",
+      "officialIsoAlpha3": "MHL",
+      "officialIsoNumeric": "584",
+      "gencAlpha2": "MH",
+      "gencAlpha3": "MHL",
+      "gencNumeric": "584",
+      "fips": "RM",
+      "alternativeNames": [
+        "Marshall Islands (the)",
+        "Marshall Islands, the",
+        "Marshall Island",
+        "the Marshall Islands"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:MH"
+    },
+    {
+      "displayName": "Martinique",
+      "active": true,
+      "primaryAlpha3": "MTQ",
+      "officialIsoAlpha2": "MQ",
+      "officialIsoAlpha3": "MTQ",
+      "officialIsoNumeric": "474",
+      "gencAlpha2": "MQ",
+      "gencAlpha3": "MTQ",
+      "gencNumeric": "474",
+      "fips": "MB",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:MQ"
+    },
+    {
+      "displayName": "Mauritania",
+      "active": true,
+      "primaryAlpha3": "MRT",
+      "officialIsoAlpha2": "MR",
+      "officialIsoAlpha3": "MRT",
+      "officialIsoNumeric": "478",
+      "gencAlpha2": "MR",
+      "gencAlpha3": "MRT",
+      "gencNumeric": "478",
+      "fips": "MR",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:MR"
+    },
+    {
+      "displayName": "Mauritius",
+      "active": true,
+      "primaryAlpha3": "MUS",
+      "officialIsoAlpha2": "MU",
+      "officialIsoAlpha3": "MUS",
+      "officialIsoNumeric": "480",
+      "gencAlpha2": "MU",
+      "gencAlpha3": "MUS",
+      "gencNumeric": "480",
+      "fips": "MP",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:MU"
+    },
+    {
+      "displayName": "Mayotte",
+      "active": true,
+      "primaryAlpha3": "MYT",
+      "officialIsoAlpha2": "YT",
+      "officialIsoAlpha3": "MYT",
+      "officialIsoNumeric": "175",
+      "gencAlpha2": "YT",
+      "gencAlpha3": "MYT",
+      "gencNumeric": "175",
+      "fips": "MF",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:YT"
+    },
+    {
+      "displayName": "Mexico",
+      "active": true,
+      "primaryAlpha3": "MEX",
+      "officialIsoAlpha2": "MX",
+      "officialIsoAlpha3": "MEX",
+      "officialIsoNumeric": "484",
+      "gencAlpha2": "MX",
+      "gencAlpha3": "MEX",
+      "gencNumeric": "484",
+      "fips": "MX",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:MX"
+    },
+    {
+      "displayName": "Micronesia",
+      "active": true,
+      "primaryAlpha3": "FSM",
+      "officialIsoAlpha2": "FM",
+      "officialIsoAlpha3": "FSM",
+      "officialIsoNumeric": "583",
+      "gencAlpha2": "FM",
+      "gencAlpha3": "FSM",
+      "gencNumeric": "583",
+      "fips": "FM",
+      "alternativeNames": [
+        "Micronesia (Federated States of)",
+        "Micronesia, Federated States",
+        "Micronesia, Federated States of",
+        "Federated States of Micronesia",
+        "the Federated States of Micronesia"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:FM"
+    },
+    {
+      "displayName": "Midway Islands",
+      "active": true,
+      "primaryAlpha3": "UMI",
+      "officialIsoAlpha2": "UM",
+      "officialIsoAlpha3": "UMI",
+      "officialIsoNumeric": "581",
+      "gencAlpha2": "QM",
+      "gencAlpha3": "XMW",
+      "gencNumeric": "925",
+      "fips": "MQ",
+      "alternativeNames": [
+        "United States Minor Outlying Islands (the)",
+        "United States Minor Outlying Islands, the",
+        "United States Minor Outlying Islands"
+      ],
+      "classification": "duplicate-iso-territory",
+      "sourceUri": "iso:code:3166:UM"
+    },
+    {
+      "displayName": "Moldova",
+      "active": true,
+      "primaryAlpha3": "MDA",
+      "officialIsoAlpha2": "MD",
+      "officialIsoAlpha3": "MDA",
+      "officialIsoNumeric": "498",
+      "gencAlpha2": "MD",
+      "gencAlpha3": "MDA",
+      "gencNumeric": "498",
+      "fips": "MD",
+      "alternativeNames": [
+        "Moldova (the Republic of)",
+        "Moldova, the Republic of"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:MD"
+    },
+    {
+      "displayName": "Monaco",
+      "active": true,
+      "primaryAlpha3": "MCO",
+      "officialIsoAlpha2": "MC",
+      "officialIsoAlpha3": "MCO",
+      "officialIsoNumeric": "492",
+      "gencAlpha2": "MC",
+      "gencAlpha3": "MCO",
+      "gencNumeric": "492",
+      "fips": "MN",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:MC"
+    },
+    {
+      "displayName": "Mongolia",
+      "active": true,
+      "primaryAlpha3": "MNG",
+      "officialIsoAlpha2": "MN",
+      "officialIsoAlpha3": "MNG",
+      "officialIsoNumeric": "496",
+      "gencAlpha2": "MN",
+      "gencAlpha3": "MNG",
+      "gencNumeric": "496",
+      "fips": "MG",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:MN"
+    },
+    {
+      "displayName": "Montenegro",
+      "active": true,
+      "primaryAlpha3": "MNE",
+      "officialIsoAlpha2": "ME",
+      "officialIsoAlpha3": "MNE",
+      "officialIsoNumeric": "499",
+      "gencAlpha2": "ME",
+      "gencAlpha3": "MNE",
+      "gencNumeric": "499",
+      "fips": "MJ",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:ME"
+    },
+    {
+      "displayName": "Montserrat",
+      "active": true,
+      "primaryAlpha3": "MSR",
+      "officialIsoAlpha2": "MS",
+      "officialIsoAlpha3": "MSR",
+      "officialIsoNumeric": "500",
+      "gencAlpha2": "MS",
+      "gencAlpha3": "MSR",
+      "gencNumeric": "500",
+      "fips": "MH",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:MS"
+    },
+    {
+      "displayName": "Morocco",
+      "active": true,
+      "primaryAlpha3": "MAR",
+      "officialIsoAlpha2": "MA",
+      "officialIsoAlpha3": "MAR",
+      "officialIsoNumeric": "504",
+      "gencAlpha2": "MA",
+      "gencAlpha3": "MAR",
+      "gencNumeric": "504",
+      "fips": "MO",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:MA"
+    },
+    {
+      "displayName": "Mozambique",
+      "active": true,
+      "primaryAlpha3": "MOZ",
+      "officialIsoAlpha2": "MZ",
+      "officialIsoAlpha3": "MOZ",
+      "officialIsoNumeric": "508",
+      "gencAlpha2": "MZ",
+      "gencAlpha3": "MOZ",
+      "gencNumeric": "508",
+      "fips": "MZ",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:MZ"
+    },
+    {
+      "displayName": "Myanmar",
+      "active": true,
+      "primaryAlpha3": "MMR",
+      "officialIsoAlpha2": "MM",
+      "officialIsoAlpha3": "MMR",
+      "officialIsoNumeric": "104",
+      "gencAlpha2": "MM",
+      "gencAlpha3": "MMR",
+      "gencNumeric": "104",
+      "fips": "BM",
+      "alternativeNames": [
+        "Burma",
+        "Myanmar (Burma)"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:MM"
+    },
+    {
+      "displayName": "Namibia",
+      "active": true,
+      "primaryAlpha3": "NAM",
+      "officialIsoAlpha2": "NA",
+      "officialIsoAlpha3": "NAM",
+      "officialIsoNumeric": "516",
+      "gencAlpha2": "NA",
+      "gencAlpha3": "NAM",
+      "gencNumeric": "516",
+      "fips": "WA",
+      "alternativeNames": [
+        "Namibia."
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:NA"
+    },
+    {
+      "displayName": "Nauru",
+      "active": true,
+      "primaryAlpha3": "NRU",
+      "officialIsoAlpha2": "NR",
+      "officialIsoAlpha3": "NRU",
+      "officialIsoNumeric": "520",
+      "gencAlpha2": "NR",
+      "gencAlpha3": "NRU",
+      "gencNumeric": "520",
+      "fips": "NR",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:NR"
+    },
+    {
+      "displayName": "Navassa Island",
+      "active": true,
+      "primaryAlpha3": "UMI",
+      "officialIsoAlpha2": "UM",
+      "officialIsoAlpha3": "UMI",
+      "officialIsoNumeric": "581",
+      "gencAlpha2": "XV",
+      "gencAlpha3": "XNV",
+      "gencNumeric": "926",
+      "fips": "BQ",
+      "alternativeNames": [
+        "United States Minor Outlying Islands (the)",
+        "United States Minor Outlying Islands, the",
+        "United States Minor Outlying Islands"
+      ],
+      "classification": "duplicate-iso-territory",
+      "sourceUri": "iso:code:3166:UM"
+    },
+    {
+      "displayName": "Nepal",
+      "active": true,
+      "primaryAlpha3": "NPL",
+      "officialIsoAlpha2": "NP",
+      "officialIsoAlpha3": "NPL",
+      "officialIsoNumeric": "524",
+      "gencAlpha2": "NP",
+      "gencAlpha3": "NPL",
+      "gencNumeric": "524",
+      "fips": "NP",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:NP"
+    },
+    {
+      "displayName": "Netherlands",
+      "active": true,
+      "primaryAlpha3": "NLD",
+      "officialIsoAlpha2": "NL",
+      "officialIsoAlpha3": "NLD",
+      "officialIsoNumeric": "528",
+      "gencAlpha2": "NL",
+      "gencAlpha3": "NLD",
+      "gencNumeric": "528",
+      "fips": "NL",
+      "alternativeNames": [
+        "Netherlands (Kingdom of the)",
+        "Netherlands, Kingdom of the",
+        "the Netherlands"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:NL"
+    },
+    {
+      "displayName": "New Caledonia",
+      "active": true,
+      "primaryAlpha3": "NCL",
+      "officialIsoAlpha2": "NC",
+      "officialIsoAlpha3": "NCL",
+      "officialIsoNumeric": "540",
+      "gencAlpha2": "NC",
+      "gencAlpha3": "NCL",
+      "gencNumeric": "540",
+      "fips": "NC",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:NC"
+    },
+    {
+      "displayName": "New Zealand",
+      "active": true,
+      "primaryAlpha3": "NZL",
+      "officialIsoAlpha2": "NZ",
+      "officialIsoAlpha3": "NZL",
+      "officialIsoNumeric": "554",
+      "gencAlpha2": "NZ",
+      "gencAlpha3": "NZL",
+      "gencNumeric": "554",
+      "fips": "NZ",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:NZ"
+    },
+    {
+      "displayName": "Nicaragua",
+      "active": true,
+      "primaryAlpha3": "NIC",
+      "officialIsoAlpha2": "NI",
+      "officialIsoAlpha3": "NIC",
+      "officialIsoNumeric": "558",
+      "gencAlpha2": "NI",
+      "gencAlpha3": "NIC",
+      "gencNumeric": "558",
+      "fips": "NU",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:NI"
+    },
+    {
+      "displayName": "Niger",
+      "active": true,
+      "primaryAlpha3": "NER",
+      "officialIsoAlpha2": "NE",
+      "officialIsoAlpha3": "NER",
+      "officialIsoNumeric": "562",
+      "gencAlpha2": "NE",
+      "gencAlpha3": "NER",
+      "gencNumeric": "562",
+      "fips": "NG",
+      "alternativeNames": [
+        "Niger (the)",
+        "Niger, the"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:NE"
+    },
+    {
+      "displayName": "Nigeria",
+      "active": true,
+      "primaryAlpha3": "NGA",
+      "officialIsoAlpha2": "NG",
+      "officialIsoAlpha3": "NGA",
+      "officialIsoNumeric": "566",
+      "gencAlpha2": "NG",
+      "gencAlpha3": "NGA",
+      "gencNumeric": "566",
+      "fips": "NI",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:NG"
+    },
+    {
+      "displayName": "Niue",
+      "active": true,
+      "primaryAlpha3": "NIU",
+      "officialIsoAlpha2": "NU",
+      "officialIsoAlpha3": "NIU",
+      "officialIsoNumeric": "570",
+      "gencAlpha2": "NU",
+      "gencAlpha3": "NIU",
+      "gencNumeric": "570",
+      "fips": "NE",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:NU"
+    },
+    {
+      "displayName": "Norfolk Island",
+      "active": true,
+      "primaryAlpha3": "NFK",
+      "officialIsoAlpha2": "NF",
+      "officialIsoAlpha3": "NFK",
+      "officialIsoNumeric": "574",
+      "gencAlpha2": "NF",
+      "gencAlpha3": "NFK",
+      "gencNumeric": "574",
+      "fips": "NF",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:NF"
+    },
+    {
+      "displayName": "North Korea",
+      "active": true,
+      "primaryAlpha3": "PRK",
+      "officialIsoAlpha2": "KP",
+      "officialIsoAlpha3": "PRK",
+      "officialIsoNumeric": "408",
+      "gencAlpha2": "KP",
+      "gencAlpha3": "PRK",
+      "gencNumeric": "408",
+      "fips": "KN",
+      "alternativeNames": [
+        "Korea (the Democratic People's Republic of)",
+        "Korea, Democrative People's Republic of",
+        "Korea, North"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:KP"
+    },
+    {
+      "displayName": "North Macedonia",
+      "active": true,
+      "primaryAlpha3": "MKD",
+      "officialIsoAlpha2": "MK",
+      "officialIsoAlpha3": "MKD",
+      "officialIsoNumeric": "807",
+      "gencAlpha2": "MK",
+      "gencAlpha3": "MKD",
+      "gencNumeric": "807",
+      "fips": "MK",
+      "alternativeNames": [
+        "Macedonia"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:MK"
+    },
+    {
+      "displayName": "Northern Mariana Islands",
+      "active": true,
+      "primaryAlpha3": "MNP",
+      "officialIsoAlpha2": "MP",
+      "officialIsoAlpha3": "MNP",
+      "officialIsoNumeric": "580",
+      "gencAlpha2": "MP",
+      "gencAlpha3": "MNP",
+      "gencNumeric": "580",
+      "fips": "CQ",
+      "alternativeNames": [
+        "Northern Mariana Islands (the)",
+        "Northern Mariana Islands, the",
+        "the Northern Mariana Islands",
+        "Northern Mariana Is"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:MP"
+    },
+    {
+      "displayName": "Norway",
+      "active": true,
+      "primaryAlpha3": "NOR",
+      "officialIsoAlpha2": "NO",
+      "officialIsoAlpha3": "NOR",
+      "officialIsoNumeric": "578",
+      "gencAlpha2": "NO",
+      "gencAlpha3": "NOR",
+      "gencNumeric": "578",
+      "fips": "NO",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:NO"
+    },
+    {
+      "displayName": "Oman",
+      "active": true,
+      "primaryAlpha3": "OMN",
+      "officialIsoAlpha2": "OM",
+      "officialIsoAlpha3": "OMN",
+      "officialIsoNumeric": "512",
+      "gencAlpha2": "OM",
+      "gencAlpha3": "OMN",
+      "gencNumeric": "512",
+      "fips": "MU",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:OM"
+    },
+    {
+      "displayName": "Pakistan",
+      "active": true,
+      "primaryAlpha3": "PAK",
+      "officialIsoAlpha2": "PK",
+      "officialIsoAlpha3": "PAK",
+      "officialIsoNumeric": "586",
+      "gencAlpha2": "PK",
+      "gencAlpha3": "PAK",
+      "gencNumeric": "586",
+      "fips": "PK",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:PK"
+    },
+    {
+      "displayName": "Palau",
+      "active": true,
+      "primaryAlpha3": "PLW",
+      "officialIsoAlpha2": "PW",
+      "officialIsoAlpha3": "PLW",
+      "officialIsoNumeric": "585",
+      "gencAlpha2": "PW",
+      "gencAlpha3": "PLW",
+      "gencNumeric": "585",
+      "fips": "PS",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:PW"
+    },
+    {
+      "displayName": "Palestine",
+      "active": true,
+      "primaryAlpha3": "PSE",
+      "officialIsoAlpha2": "PS",
+      "officialIsoAlpha3": "PSE",
+      "officialIsoNumeric": "275",
+      "gencAlpha2": "XW",
+      "gencAlpha3": "XWB",
+      "gencNumeric": "934",
+      "fips": null,
+      "alternativeNames": [
+        "Palestine, State of",
+        "Gaza",
+        "West Bank",
+        "West Bank / Gaza",
+        "Palestine, The State of",
+        "Gaza Strip"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:PS"
+    },
+    {
+      "displayName": "Palmyra Atoll",
+      "active": true,
+      "primaryAlpha3": "UMI",
+      "officialIsoAlpha2": "UM",
+      "officialIsoAlpha3": "UMI",
+      "officialIsoNumeric": "581",
+      "gencAlpha2": "XL",
+      "gencAlpha3": "XPL",
+      "gencNumeric": "927",
+      "fips": "LQ",
+      "alternativeNames": [
+        "United States Minor Outlying Islands (the)",
+        "United States Minor Outlying Islands, the",
+        "United States Minor Outlying Islands"
+      ],
+      "classification": "duplicate-iso-territory",
+      "sourceUri": "iso:code:3166:UM"
+    },
+    {
+      "displayName": "Panama",
+      "active": true,
+      "primaryAlpha3": "PAN",
+      "officialIsoAlpha2": "PA",
+      "officialIsoAlpha3": "PAN",
+      "officialIsoNumeric": "591",
+      "gencAlpha2": "PA",
+      "gencAlpha3": "PAN",
+      "gencNumeric": "591",
+      "fips": "PM",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:PA"
+    },
+    {
+      "displayName": "Papua New Guinea",
+      "active": true,
+      "primaryAlpha3": "PNG",
+      "officialIsoAlpha2": "PG",
+      "officialIsoAlpha3": "PNG",
+      "officialIsoNumeric": "598",
+      "gencAlpha2": "PG",
+      "gencAlpha3": "PNG",
+      "gencNumeric": "598",
+      "fips": "PP",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:PG"
+    },
+    {
+      "displayName": "Paracel Islands",
+      "active": false,
+      "primaryAlpha3": null,
+      "officialIsoAlpha2": null,
+      "officialIsoAlpha3": null,
+      "officialIsoNumeric": null,
+      "gencAlpha2": "XP",
+      "gencAlpha3": "XPR",
+      "gencNumeric": "928",
+      "fips": "PF",
+      "alternativeNames": [
+        "Paracel"
+      ],
+      "classification": "genc-supported",
+      "sourceUri": null
+    },
+    {
+      "displayName": "Paraguay",
+      "active": true,
+      "primaryAlpha3": "PRY",
+      "officialIsoAlpha2": "PY",
+      "officialIsoAlpha3": "PRY",
+      "officialIsoNumeric": "600",
+      "gencAlpha2": "PY",
+      "gencAlpha3": "PRY",
+      "gencNumeric": "600",
+      "fips": "PA",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:PY"
+    },
+    {
+      "displayName": "Peru",
+      "active": true,
+      "primaryAlpha3": "PER",
+      "officialIsoAlpha2": "PE",
+      "officialIsoAlpha3": "PER",
+      "officialIsoNumeric": "604",
+      "gencAlpha2": "PE",
+      "gencAlpha3": "PER",
+      "gencNumeric": "604",
+      "fips": "PE",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:PE"
+    },
+    {
+      "displayName": "Philippines",
+      "active": true,
+      "primaryAlpha3": "PHL",
+      "officialIsoAlpha2": "PH",
+      "officialIsoAlpha3": "PHL",
+      "officialIsoNumeric": "608",
+      "gencAlpha2": "PH",
+      "gencAlpha3": "PHL",
+      "gencNumeric": "608",
+      "fips": "RP",
+      "alternativeNames": [
+        "Philippines (the)",
+        "Philippines, the",
+        "the Philippines"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:PH"
+    },
+    {
+      "displayName": "Pitcairn",
+      "active": true,
+      "primaryAlpha3": "PCN",
+      "officialIsoAlpha2": "PN",
+      "officialIsoAlpha3": "PCN",
+      "officialIsoNumeric": "612",
+      "gencAlpha2": "PN",
+      "gencAlpha3": "PCN",
+      "gencNumeric": "612",
+      "fips": "PC",
+      "alternativeNames": [
+        "Pitcairn Islands",
+        "the Pitcairn Islands"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:PN"
+    },
+    {
+      "displayName": "Poland",
+      "active": true,
+      "primaryAlpha3": "POL",
+      "officialIsoAlpha2": "PL",
+      "officialIsoAlpha3": "POL",
+      "officialIsoNumeric": "616",
+      "gencAlpha2": "PL",
+      "gencAlpha3": "POL",
+      "gencNumeric": "616",
+      "fips": "PL",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:PL"
+    },
+    {
+      "displayName": "Portugal",
+      "active": true,
+      "primaryAlpha3": "PRT",
+      "officialIsoAlpha2": "PT",
+      "officialIsoAlpha3": "PRT",
+      "officialIsoNumeric": "620",
+      "gencAlpha2": "PT",
+      "gencAlpha3": "PRT",
+      "gencNumeric": "620",
+      "fips": "PO",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:PT"
+    },
+    {
+      "displayName": "Puerto Rico",
+      "active": true,
+      "primaryAlpha3": "PRI",
+      "officialIsoAlpha2": "PR",
+      "officialIsoAlpha3": "PRI",
+      "officialIsoNumeric": "630",
+      "gencAlpha2": "PR",
+      "gencAlpha3": "PRI",
+      "gencNumeric": "630",
+      "fips": "RQ",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:PR"
+    },
+    {
+      "displayName": "Qatar",
+      "active": true,
+      "primaryAlpha3": "QAT",
+      "officialIsoAlpha2": "QA",
+      "officialIsoAlpha3": "QAT",
+      "officialIsoNumeric": "634",
+      "gencAlpha2": "QA",
+      "gencAlpha3": "QAT",
+      "gencNumeric": "634",
+      "fips": "QA",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:QA"
+    },
+    {
+      "displayName": "Reunion",
+      "active": true,
+      "primaryAlpha3": "REU",
+      "officialIsoAlpha2": "RE",
+      "officialIsoAlpha3": "REU",
+      "officialIsoNumeric": "638",
+      "gencAlpha2": "RE",
+      "gencAlpha3": "REU",
+      "gencNumeric": "638",
+      "fips": "RE",
+      "alternativeNames": [
+        "Réunion"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:RE"
+    },
+    {
+      "displayName": "Romania",
+      "active": true,
+      "primaryAlpha3": "ROU",
+      "officialIsoAlpha2": "RO",
+      "officialIsoAlpha3": "ROU",
+      "officialIsoNumeric": "642",
+      "gencAlpha2": "RO",
+      "gencAlpha3": "ROU",
+      "gencNumeric": "642",
+      "fips": "RO",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:RO"
+    },
+    {
+      "displayName": "Russia",
+      "active": true,
+      "primaryAlpha3": "RUS",
+      "officialIsoAlpha2": "RU",
+      "officialIsoAlpha3": "RUS",
+      "officialIsoNumeric": "643",
+      "gencAlpha2": "RU",
+      "gencAlpha3": "RUS",
+      "gencNumeric": "643",
+      "fips": "RS",
+      "alternativeNames": [
+        "Russian Federation (the)",
+        "Russian Federation, the",
+        "Russian Federation",
+        "the Russian Federation"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:RU"
+    },
+    {
+      "displayName": "Rwanda",
+      "active": true,
+      "primaryAlpha3": "RWA",
+      "officialIsoAlpha2": "RW",
+      "officialIsoAlpha3": "RWA",
+      "officialIsoNumeric": "646",
+      "gencAlpha2": "RW",
+      "gencAlpha3": "RWA",
+      "gencNumeric": "646",
+      "fips": "RW",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:RW"
+    },
+    {
+      "displayName": "Saint Barthelemy",
+      "active": true,
+      "primaryAlpha3": "BLM",
+      "officialIsoAlpha2": "BL",
+      "officialIsoAlpha3": "BLM",
+      "officialIsoNumeric": "652",
+      "gencAlpha2": "BL",
+      "gencAlpha3": "BLM",
+      "gencNumeric": "652",
+      "fips": "TB",
+      "alternativeNames": [
+        "Saint Barthélemy"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:BL"
+    },
+    {
+      "displayName": "Saint Helena, Ascension and Tristan da Cunha",
+      "active": true,
+      "primaryAlpha3": "SHN",
+      "officialIsoAlpha2": "SH",
+      "officialIsoAlpha3": "SHN",
+      "officialIsoNumeric": "654",
+      "gencAlpha2": "SH",
+      "gencAlpha3": "SHN",
+      "gencNumeric": "654",
+      "fips": "SH",
+      "alternativeNames": [
+        "Saint Helena",
+        "Ascension and Tristan da Cunha",
+        "Saint Helena, Ascension, and Tristan da Cunha"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:SH"
+    },
+    {
+      "displayName": "Saint Kitts and Nevis",
+      "active": true,
+      "primaryAlpha3": "KNA",
+      "officialIsoAlpha2": "KN",
+      "officialIsoAlpha3": "KNA",
+      "officialIsoNumeric": "659",
+      "gencAlpha2": "KN",
+      "gencAlpha3": "KNA",
+      "gencNumeric": "659",
+      "fips": "SC",
+      "alternativeNames": [
+        "Nevis",
+        "Saint Kitts",
+        "Kitts",
+        "Saint Kitts & Nevis"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:KN"
+    },
+    {
+      "displayName": "Saint Lucia",
+      "active": true,
+      "primaryAlpha3": "LCA",
+      "officialIsoAlpha2": "LC",
+      "officialIsoAlpha3": "LCA",
+      "officialIsoNumeric": "662",
+      "gencAlpha2": "LC",
+      "gencAlpha3": "LCA",
+      "gencNumeric": "662",
+      "fips": "ST",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:LC"
+    },
+    {
+      "displayName": "Saint Maarten (Dutch)",
+      "active": true,
+      "primaryAlpha3": "SXM",
+      "officialIsoAlpha2": "SX",
+      "officialIsoAlpha3": "SXM",
+      "officialIsoNumeric": "534",
+      "gencAlpha2": "SX",
+      "gencAlpha3": "SXM",
+      "gencNumeric": "534",
+      "fips": "NN",
+      "alternativeNames": [
+        "Sint Maarten (Dutch part)",
+        "Saint Marten",
+        "Sint Maarten",
+        "Saint Martin (Dutch part)"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:SX"
+    },
+    {
+      "displayName": "Saint Martin (French)",
+      "active": true,
+      "primaryAlpha3": "MAF",
+      "officialIsoAlpha2": "MF",
+      "officialIsoAlpha3": "MAF",
+      "officialIsoNumeric": "663",
+      "gencAlpha2": "MF",
+      "gencAlpha3": "MAF",
+      "gencNumeric": "663",
+      "fips": "RN",
+      "alternativeNames": [
+        "Saint Martin (French part)",
+        "Saint Martin",
+        "Sint Maarten (French part)"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:MF"
+    },
+    {
+      "displayName": "Saint Pierre and Miquelon",
+      "active": true,
+      "primaryAlpha3": "SPM",
+      "officialIsoAlpha2": "PM",
+      "officialIsoAlpha3": "SPM",
+      "officialIsoNumeric": "666",
+      "gencAlpha2": "PM",
+      "gencAlpha3": "SPM",
+      "gencNumeric": "666",
+      "fips": "SB",
+      "alternativeNames": [
+        "Saint Pierre & Miquelon"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:PM"
+    },
+    {
+      "displayName": "Saint Vincent and the Grenadines",
+      "active": true,
+      "primaryAlpha3": "VCT",
+      "officialIsoAlpha2": "VC",
+      "officialIsoAlpha3": "VCT",
+      "officialIsoNumeric": "670",
+      "gencAlpha2": "VC",
+      "gencAlpha3": "VCT",
+      "gencNumeric": "670",
+      "fips": "VC",
+      "alternativeNames": [
+        "Grenadines",
+        "St Vincent and Grenadines",
+        "Grenadines, the",
+        "the Grenadines",
+        "St Vincent",
+        "Saint Vincent",
+        "St. Vincent and the Grenadines",
+        "St. Vincent"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:VC"
+    },
+    {
+      "displayName": "Samoa",
+      "active": true,
+      "primaryAlpha3": "WSM",
+      "officialIsoAlpha2": "WS",
+      "officialIsoAlpha3": "WSM",
+      "officialIsoNumeric": "882",
+      "gencAlpha2": "WS",
+      "gencAlpha3": "WSM",
+      "gencNumeric": "882",
+      "fips": "WS",
+      "alternativeNames": [
+        "Samoa (Western)"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:WS"
+    },
+    {
+      "displayName": "San Marino",
+      "active": true,
+      "primaryAlpha3": "SMR",
+      "officialIsoAlpha2": "SM",
+      "officialIsoAlpha3": "SMR",
+      "officialIsoNumeric": "674",
+      "gencAlpha2": "SM",
+      "gencAlpha3": "SMR",
+      "gencNumeric": "674",
+      "fips": "SM",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:SM"
+    },
+    {
+      "displayName": "Sao Tome and Principe",
+      "active": true,
+      "primaryAlpha3": "STP",
+      "officialIsoAlpha2": "ST",
+      "officialIsoAlpha3": "STP",
+      "officialIsoNumeric": "678",
+      "gencAlpha2": "ST",
+      "gencAlpha3": "STP",
+      "gencNumeric": "678",
+      "fips": "TP",
+      "alternativeNames": [
+        "Principe",
+        "São Tomé and Príncipe",
+        "Sao Tome",
+        "Sao Tome & Principe"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:ST"
+    },
+    {
+      "displayName": "Saudi Arabia",
+      "active": true,
+      "primaryAlpha3": "SAU",
+      "officialIsoAlpha2": "SA",
+      "officialIsoAlpha3": "SAU",
+      "officialIsoNumeric": "682",
+      "gencAlpha2": "SA",
+      "gencAlpha3": "SAU",
+      "gencNumeric": "682",
+      "fips": "SA",
+      "alternativeNames": [
+        "Saudi Arabian",
+        "Kingdom of Saudi Arabia, the",
+        "The Kingdom",
+        "The Kingdom of Saudi Arabia"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:SA"
+    },
+    {
+      "displayName": "Senegal",
+      "active": true,
+      "primaryAlpha3": "SEN",
+      "officialIsoAlpha2": "SN",
+      "officialIsoAlpha3": "SEN",
+      "officialIsoNumeric": "686",
+      "gencAlpha2": "SN",
+      "gencAlpha3": "SEN",
+      "gencNumeric": "686",
+      "fips": "SG",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:SN"
+    },
+    {
+      "displayName": "Serbia",
+      "active": true,
+      "primaryAlpha3": "SRB",
+      "officialIsoAlpha2": "RS",
+      "officialIsoAlpha3": "SRB",
+      "officialIsoNumeric": "688",
+      "gencAlpha2": "RS",
+      "gencAlpha3": "SRB",
+      "gencNumeric": "688",
+      "fips": "RI",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:RS"
+    },
+    {
+      "displayName": "Seychelles",
+      "active": true,
+      "primaryAlpha3": "SYC",
+      "officialIsoAlpha2": "SC",
+      "officialIsoAlpha3": "SYC",
+      "officialIsoNumeric": "690",
+      "gencAlpha2": "SC",
+      "gencAlpha3": "SYC",
+      "gencNumeric": "690",
+      "fips": "SE",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:SC"
+    },
+    {
+      "displayName": "Sierra Leone",
+      "active": true,
+      "primaryAlpha3": "SLE",
+      "officialIsoAlpha2": "SL",
+      "officialIsoAlpha3": "SLE",
+      "officialIsoNumeric": "694",
+      "gencAlpha2": "SL",
+      "gencAlpha3": "SLE",
+      "gencNumeric": "694",
+      "fips": "SL",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:SL"
+    },
+    {
+      "displayName": "Singapore",
+      "active": true,
+      "primaryAlpha3": "SGP",
+      "officialIsoAlpha2": "SG",
+      "officialIsoAlpha3": "SGP",
+      "officialIsoNumeric": "702",
+      "gencAlpha2": "SG",
+      "gencAlpha3": "SGP",
+      "gencNumeric": "702",
+      "fips": "SN",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:SG"
+    },
+    {
+      "displayName": "Slovakia",
+      "active": true,
+      "primaryAlpha3": "SVK",
+      "officialIsoAlpha2": "SK",
+      "officialIsoAlpha3": "SVK",
+      "officialIsoNumeric": "703",
+      "gencAlpha2": "SK",
+      "gencAlpha3": "SVK",
+      "gencNumeric": "703",
+      "fips": "LO",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:SK"
+    },
+    {
+      "displayName": "Slovenia",
+      "active": true,
+      "primaryAlpha3": "SVN",
+      "officialIsoAlpha2": "SI",
+      "officialIsoAlpha3": "SVN",
+      "officialIsoNumeric": "705",
+      "gencAlpha2": "SI",
+      "gencAlpha3": "SVN",
+      "gencNumeric": "705",
+      "fips": "SI",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:SI"
+    },
+    {
+      "displayName": "Solomon Islands",
+      "active": true,
+      "primaryAlpha3": "SLB",
+      "officialIsoAlpha2": "SB",
+      "officialIsoAlpha3": "SLB",
+      "officialIsoNumeric": "090",
+      "gencAlpha2": "SB",
+      "gencAlpha3": "SLB",
+      "gencNumeric": "090",
+      "fips": "BP",
+      "alternativeNames": [
+        "the Solomon Islands"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:SB"
+    },
+    {
+      "displayName": "Somalia",
+      "active": true,
+      "primaryAlpha3": "SOM",
+      "officialIsoAlpha2": "SO",
+      "officialIsoAlpha3": "SOM",
+      "officialIsoNumeric": "706",
+      "gencAlpha2": "SO",
+      "gencAlpha3": "SOM",
+      "gencNumeric": "706",
+      "fips": "SO",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:SO"
+    },
+    {
+      "displayName": "South Africa",
+      "active": true,
+      "primaryAlpha3": "ZAF",
+      "officialIsoAlpha2": "ZA",
+      "officialIsoAlpha3": "ZAF",
+      "officialIsoNumeric": "710",
+      "gencAlpha2": "ZA",
+      "gencAlpha3": "ZAF",
+      "gencNumeric": "710",
+      "fips": "SF",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:ZA"
+    },
+    {
+      "displayName": "South Georgia and the South Sandwich Islands",
+      "active": true,
+      "primaryAlpha3": "SGS",
+      "officialIsoAlpha2": "GS",
+      "officialIsoAlpha3": "SGS",
+      "officialIsoNumeric": "239",
+      "gencAlpha2": "GS",
+      "gencAlpha3": "SGS",
+      "gencNumeric": "239",
+      "fips": "SX",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:GS"
+    },
+    {
+      "displayName": "South Korea",
+      "active": true,
+      "primaryAlpha3": "KOR",
+      "officialIsoAlpha2": "KR",
+      "officialIsoAlpha3": "KOR",
+      "officialIsoNumeric": "410",
+      "gencAlpha2": "KR",
+      "gencAlpha3": "KOR",
+      "gencNumeric": "410",
+      "fips": "KS",
+      "alternativeNames": [
+        "Korea (the Republic of)",
+        "Korea, Republic of",
+        "Korea, South"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:KR"
+    },
+    {
+      "displayName": "South Sudan",
+      "active": true,
+      "primaryAlpha3": "SSD",
+      "officialIsoAlpha2": "SS",
+      "officialIsoAlpha3": "SSD",
+      "officialIsoNumeric": "728",
+      "gencAlpha2": "SS",
+      "gencAlpha3": "SSD",
+      "gencNumeric": "728",
+      "fips": "OD",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:SS"
+    },
+    {
+      "displayName": "Spain",
+      "active": true,
+      "primaryAlpha3": "ESP",
+      "officialIsoAlpha2": "ES",
+      "officialIsoAlpha3": "ESP",
+      "officialIsoNumeric": "724",
+      "gencAlpha2": "ES",
+      "gencAlpha3": "ESP",
+      "gencNumeric": "724",
+      "fips": "SP",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:ES"
+    },
+    {
+      "displayName": "Spratly Islands",
+      "active": false,
+      "primaryAlpha3": null,
+      "officialIsoAlpha2": null,
+      "officialIsoAlpha3": null,
+      "officialIsoNumeric": null,
+      "gencAlpha2": "XS",
+      "gencAlpha3": "XSP",
+      "gencNumeric": "929",
+      "fips": "PG",
+      "alternativeNames": [
+        "Spratly"
+      ],
+      "classification": "genc-supported",
+      "sourceUri": null
+    },
+    {
+      "displayName": "Sri Lanka",
+      "active": true,
+      "primaryAlpha3": "LKA",
+      "officialIsoAlpha2": "LK",
+      "officialIsoAlpha3": "LKA",
+      "officialIsoNumeric": "144",
+      "gencAlpha2": "LK",
+      "gencAlpha3": "LKA",
+      "gencNumeric": "144",
+      "fips": "CE",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:LK"
+    },
+    {
+      "displayName": "Sudan",
+      "active": true,
+      "primaryAlpha3": "SDN",
+      "officialIsoAlpha2": "SD",
+      "officialIsoAlpha3": "SDN",
+      "officialIsoNumeric": "729",
+      "gencAlpha2": "SD",
+      "gencAlpha3": "SDN",
+      "gencNumeric": "729",
+      "fips": "SU",
+      "alternativeNames": [
+        "Sudan (the)",
+        "Sudan, the"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:SD"
+    },
+    {
+      "displayName": "Suriname",
+      "active": true,
+      "primaryAlpha3": "SUR",
+      "officialIsoAlpha2": "SR",
+      "officialIsoAlpha3": "SUR",
+      "officialIsoNumeric": "740",
+      "gencAlpha2": "SR",
+      "gencAlpha3": "SUR",
+      "gencNumeric": "740",
+      "fips": "NS",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:SR"
+    },
+    {
+      "displayName": "Svalbard and Jan Mayen",
+      "active": true,
+      "primaryAlpha3": "SJM",
+      "officialIsoAlpha2": "SJ",
+      "officialIsoAlpha3": "SJM",
+      "officialIsoNumeric": "744",
+      "gencAlpha2": "XR",
+      "gencAlpha3": "XSV",
+      "gencNumeric": "930",
+      "fips": "SV",
+      "alternativeNames": [
+        "Svalbard",
+        "Jan Mayen"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:SJ"
+    },
+    {
+      "displayName": "Sweden",
+      "active": true,
+      "primaryAlpha3": "SWE",
+      "officialIsoAlpha2": "SE",
+      "officialIsoAlpha3": "SWE",
+      "officialIsoNumeric": "752",
+      "gencAlpha2": "SE",
+      "gencAlpha3": "SWE",
+      "gencNumeric": "752",
+      "fips": "SW",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:SE"
+    },
+    {
+      "displayName": "Switzerland",
+      "active": true,
+      "primaryAlpha3": "CHE",
+      "officialIsoAlpha2": "CH",
+      "officialIsoAlpha3": "CHE",
+      "officialIsoNumeric": "756",
+      "gencAlpha2": "CH",
+      "gencAlpha3": "CHE",
+      "gencNumeric": "756",
+      "fips": "SZ",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:CH"
+    },
+    {
+      "displayName": "Syria",
+      "active": true,
+      "primaryAlpha3": "SYR",
+      "officialIsoAlpha2": "SY",
+      "officialIsoAlpha3": "SYR",
+      "officialIsoNumeric": "760",
+      "gencAlpha2": "SY",
+      "gencAlpha3": "SYR",
+      "gencNumeric": "760",
+      "fips": "SY",
+      "alternativeNames": [
+        "Syrian Arab Republic (the)",
+        "Syrian Arab Republic, the",
+        "Syrian Arab Republic"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:SY"
+    },
+    {
+      "displayName": "Taiwan",
+      "active": true,
+      "primaryAlpha3": "TWN",
+      "officialIsoAlpha2": "TW",
+      "officialIsoAlpha3": "TWN",
+      "officialIsoNumeric": "158",
+      "gencAlpha2": "TW",
+      "gencAlpha3": "TWN",
+      "gencNumeric": "158",
+      "fips": "TW",
+      "alternativeNames": [
+        "Taiwan (Province of China)",
+        "Taiwan, Province of China"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:TW"
+    },
+    {
+      "displayName": "Tajikistan",
+      "active": true,
+      "primaryAlpha3": "TJK",
+      "officialIsoAlpha2": "TJ",
+      "officialIsoAlpha3": "TJK",
+      "officialIsoNumeric": "762",
+      "gencAlpha2": "TJ",
+      "gencAlpha3": "TJK",
+      "gencNumeric": "762",
+      "fips": "TI",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:TJ"
+    },
+    {
+      "displayName": "Tanzania, the United Republic of",
+      "active": true,
+      "primaryAlpha3": "TZA",
+      "officialIsoAlpha2": "TZ",
+      "officialIsoAlpha3": "TZA",
+      "officialIsoNumeric": "834",
+      "gencAlpha2": "TZ",
+      "gencAlpha3": "TZA",
+      "gencNumeric": "834",
+      "fips": "TZ",
+      "alternativeNames": [
+        "Tanzania",
+        "Tanzania, United Republic of",
+        "The United Republic of Tanzania"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:TZ"
+    },
+    {
+      "displayName": "Thailand",
+      "active": true,
+      "primaryAlpha3": "THA",
+      "officialIsoAlpha2": "TH",
+      "officialIsoAlpha3": "THA",
+      "officialIsoNumeric": "764",
+      "gencAlpha2": "TH",
+      "gencAlpha3": "THA",
+      "gencNumeric": "764",
+      "fips": "TH",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:TH"
+    },
+    {
+      "displayName": "Timor-Leste",
+      "active": true,
+      "primaryAlpha3": "TLS",
+      "officialIsoAlpha2": "TL",
+      "officialIsoAlpha3": "TLS",
+      "officialIsoNumeric": "626",
+      "gencAlpha2": "TL",
+      "gencAlpha3": "TLS",
+      "gencNumeric": "626",
+      "fips": "TT",
+      "alternativeNames": [
+        "East Timor",
+        "Timor Leste"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:TL"
+    },
+    {
+      "displayName": "Togo",
+      "active": true,
+      "primaryAlpha3": "TGO",
+      "officialIsoAlpha2": "TG",
+      "officialIsoAlpha3": "TGO",
+      "officialIsoNumeric": "768",
+      "gencAlpha2": "TG",
+      "gencAlpha3": "TGO",
+      "gencNumeric": "768",
+      "fips": "TO",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:TG"
+    },
+    {
+      "displayName": "Tokelau",
+      "active": true,
+      "primaryAlpha3": "TKL",
+      "officialIsoAlpha2": "TK",
+      "officialIsoAlpha3": "TKL",
+      "officialIsoNumeric": "772",
+      "gencAlpha2": "TK",
+      "gencAlpha3": "TKL",
+      "gencNumeric": "772",
+      "fips": "TL",
+      "alternativeNames": [
+        "Tokelau Islands"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:TK"
+    },
+    {
+      "displayName": "Tonga",
+      "active": true,
+      "primaryAlpha3": "TON",
+      "officialIsoAlpha2": "TO",
+      "officialIsoAlpha3": "TON",
+      "officialIsoNumeric": "776",
+      "gencAlpha2": "TO",
+      "gencAlpha3": "TON",
+      "gencNumeric": "776",
+      "fips": "TN",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:TO"
+    },
+    {
+      "displayName": "Trinidad and Tobago",
+      "active": true,
+      "primaryAlpha3": "TTO",
+      "officialIsoAlpha2": "TT",
+      "officialIsoAlpha3": "TTO",
+      "officialIsoNumeric": "780",
+      "gencAlpha2": "TT",
+      "gencAlpha3": "TTO",
+      "gencNumeric": "780",
+      "fips": "TD",
+      "alternativeNames": [
+        "Tobago",
+        "Trinidad",
+        "Trinidad & Tobago"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:TT"
+    },
+    {
+      "displayName": "Tromelin Island",
+      "active": false,
+      "primaryAlpha3": null,
+      "officialIsoAlpha2": null,
+      "officialIsoAlpha3": null,
+      "officialIsoNumeric": null,
+      "gencAlpha2": "XT",
+      "gencAlpha3": "XTR",
+      "gencNumeric": "931",
+      "fips": "TE",
+      "alternativeNames": [],
+      "classification": "genc-supported",
+      "sourceUri": null
+    },
+    {
+      "displayName": "Tunisia",
+      "active": true,
+      "primaryAlpha3": "TUN",
+      "officialIsoAlpha2": "TN",
+      "officialIsoAlpha3": "TUN",
+      "officialIsoNumeric": "788",
+      "gencAlpha2": "TN",
+      "gencAlpha3": "TUN",
+      "gencNumeric": "788",
+      "fips": "TS",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:TN"
+    },
+    {
+      "displayName": "Turkey",
+      "active": true,
+      "primaryAlpha3": "TUR",
+      "officialIsoAlpha2": "TR",
+      "officialIsoAlpha3": "TUR",
+      "officialIsoNumeric": "792",
+      "gencAlpha2": "TR",
+      "gencAlpha3": "TUR",
+      "gencNumeric": "792",
+      "fips": "TU",
+      "alternativeNames": [
+        "Turkiye",
+        "Türkiye (Turkey)"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:TR"
+    },
+    {
+      "displayName": "Turkmenistan",
+      "active": true,
+      "primaryAlpha3": "TKM",
+      "officialIsoAlpha2": "TM",
+      "officialIsoAlpha3": "TKM",
+      "officialIsoNumeric": "795",
+      "gencAlpha2": "TM",
+      "gencAlpha3": "TKM",
+      "gencNumeric": "795",
+      "fips": "TX",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:TM"
+    },
+    {
+      "displayName": "Turks and Caicos Islands",
+      "active": true,
+      "primaryAlpha3": "TCA",
+      "officialIsoAlpha2": "TC",
+      "officialIsoAlpha3": "TCA",
+      "officialIsoNumeric": "796",
+      "gencAlpha2": "TC",
+      "gencAlpha3": "TCA",
+      "gencNumeric": "796",
+      "fips": "TK",
+      "alternativeNames": [
+        "Turks and Caicos Islands (the)",
+        "Turks and Caicos Islands, the",
+        "the Turks and Caicos Islands",
+        "Turks & Caicos Is"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:TC"
+    },
+    {
+      "displayName": "Tuvalu",
+      "active": true,
+      "primaryAlpha3": "TUV",
+      "officialIsoAlpha2": "TV",
+      "officialIsoAlpha3": "TUV",
+      "officialIsoNumeric": "798",
+      "gencAlpha2": "TV",
+      "gencAlpha3": "TUV",
+      "gencNumeric": "798",
+      "fips": "TV",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:TV"
+    },
+    {
+      "displayName": "Uganda",
+      "active": true,
+      "primaryAlpha3": "UGA",
+      "officialIsoAlpha2": "UG",
+      "officialIsoAlpha3": "UGA",
+      "officialIsoNumeric": "800",
+      "gencAlpha2": "UG",
+      "gencAlpha3": "UGA",
+      "gencNumeric": "800",
+      "fips": "UG",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:UG"
+    },
+    {
+      "displayName": "Ukraine",
+      "active": true,
+      "primaryAlpha3": "UKR",
+      "officialIsoAlpha2": "UA",
+      "officialIsoAlpha3": "UKR",
+      "officialIsoNumeric": "804",
+      "gencAlpha2": "UA",
+      "gencAlpha3": "UKR",
+      "gencNumeric": "804",
+      "fips": "UP",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:UA"
+    },
+    {
+      "displayName": "United Arab Emirates",
+      "active": true,
+      "primaryAlpha3": "ARE",
+      "officialIsoAlpha2": "AE",
+      "officialIsoAlpha3": "ARE",
+      "officialIsoNumeric": "784",
+      "gencAlpha2": "AE",
+      "gencAlpha3": "ARE",
+      "gencNumeric": "784",
+      "fips": "AE",
+      "alternativeNames": [
+        "United Arab Emirates (the)",
+        "United Arab Emirates, the",
+        "the United Arab Emirates"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:AE"
+    },
+    {
+      "displayName": "United Kingdom of Great Britain and Northern Ireland",
+      "active": true,
+      "primaryAlpha3": "GBR",
+      "officialIsoAlpha2": "GB",
+      "officialIsoAlpha3": "GBR",
+      "officialIsoNumeric": "826",
+      "gencAlpha2": "GB",
+      "gencAlpha3": "GBR",
+      "gencNumeric": "826",
+      "fips": "UK",
+      "alternativeNames": [
+        "United Kingdom",
+        "the United Kingdom"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:GB"
+    },
+    {
+      "displayName": "United States Minor Outlying Islands",
+      "active": true,
+      "primaryAlpha3": "UMI",
+      "officialIsoAlpha2": "UM",
+      "officialIsoAlpha3": "UMI",
+      "officialIsoNumeric": "581",
+      "gencAlpha2": null,
+      "gencAlpha3": null,
+      "gencNumeric": null,
+      "fips": null,
+      "alternativeNames": [
+        "United States Minor Outlying Islands (the)"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:UM"
+    },
+    {
+      "displayName": "United States of America",
+      "active": true,
+      "primaryAlpha3": "USA",
+      "officialIsoAlpha2": "US",
+      "officialIsoAlpha3": "USA",
+      "officialIsoNumeric": "840",
+      "gencAlpha2": "US",
+      "gencAlpha3": "USA",
+      "gencNumeric": "840",
+      "fips": "US",
+      "alternativeNames": [
+        "United States of America (the)",
+        "United States of America, the",
+        "United States",
+        "the United States"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:US"
+    },
+    {
+      "displayName": "Uruguay",
+      "active": true,
+      "primaryAlpha3": "URY",
+      "officialIsoAlpha2": "UY",
+      "officialIsoAlpha3": "URY",
+      "officialIsoNumeric": "858",
+      "gencAlpha2": "UY",
+      "gencAlpha3": "URY",
+      "gencNumeric": "858",
+      "fips": "UY",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:UY"
+    },
+    {
+      "displayName": "Uzbekistan",
+      "active": true,
+      "primaryAlpha3": "UZB",
+      "officialIsoAlpha2": "UZ",
+      "officialIsoAlpha3": "UZB",
+      "officialIsoNumeric": "860",
+      "gencAlpha2": "UZ",
+      "gencAlpha3": "UZB",
+      "gencNumeric": "860",
+      "fips": "UZ",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:UZ"
+    },
+    {
+      "displayName": "Vanuatu",
+      "active": true,
+      "primaryAlpha3": "VUT",
+      "officialIsoAlpha2": "VU",
+      "officialIsoAlpha3": "VUT",
+      "officialIsoNumeric": "548",
+      "gencAlpha2": "VU",
+      "gencAlpha3": "VUT",
+      "gencNumeric": "548",
+      "fips": "NH",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:VU"
+    },
+    {
+      "displayName": "Venezuela",
+      "active": true,
+      "primaryAlpha3": "VEN",
+      "officialIsoAlpha2": "VE",
+      "officialIsoAlpha3": "VEN",
+      "officialIsoNumeric": "862",
+      "gencAlpha2": "VE",
+      "gencAlpha3": "VEN",
+      "gencNumeric": "862",
+      "fips": "VE",
+      "alternativeNames": [
+        "Venezuela (Bolivarian Republic of)",
+        "Venezuela, Bolivarian Republic of"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:VE"
+    },
+    {
+      "displayName": "Vietnam",
+      "active": true,
+      "primaryAlpha3": "VNM",
+      "officialIsoAlpha2": "VN",
+      "officialIsoAlpha3": "VNM",
+      "officialIsoNumeric": "704",
+      "gencAlpha2": "VN",
+      "gencAlpha3": "VNM",
+      "gencNumeric": "704",
+      "fips": "VM",
+      "alternativeNames": [
+        "Viet Nam"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:VN"
+    },
+    {
+      "displayName": "Virgin Islands",
+      "active": true,
+      "primaryAlpha3": "VIR",
+      "officialIsoAlpha2": "VI",
+      "officialIsoAlpha3": "VIR",
+      "officialIsoNumeric": "850",
+      "gencAlpha2": "VI",
+      "gencAlpha3": "VIR",
+      "gencNumeric": "850",
+      "fips": "VQ",
+      "alternativeNames": [
+        "U.S. Virigin Islands",
+        "Virgin Islands (U.S.)",
+        "United States Virgin Islands",
+        "the Virgin Islands",
+        "United States Virgin Is"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:VI"
+    },
+    {
+      "displayName": "the British Virgin Islands",
+      "active": true,
+      "primaryAlpha3": "VGB",
+      "officialIsoAlpha2": "VG",
+      "officialIsoAlpha3": "VGB",
+      "officialIsoNumeric": "092",
+      "gencAlpha2": "VG",
+      "gencAlpha3": "VGB",
+      "gencNumeric": "092",
+      "fips": "VI",
+      "alternativeNames": [
+        "British Virgin Islands"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:VG"
+    },
+    {
+      "displayName": "Wake Island",
+      "active": true,
+      "primaryAlpha3": "UMI",
+      "officialIsoAlpha2": "UM",
+      "officialIsoAlpha3": "UMI",
+      "officialIsoNumeric": "581",
+      "gencAlpha2": "QW",
+      "gencAlpha3": "XWK",
+      "gencNumeric": "933",
+      "fips": "WQ",
+      "alternativeNames": [
+        "United States Minor Outlying Islands (the)",
+        "United States Minor Outlying Islands, the",
+        "United States Minor Outlying Islands"
+      ],
+      "classification": "duplicate-iso-territory",
+      "sourceUri": "iso:code:3166:UM"
+    },
+    {
+      "displayName": "Wallis and Futuna",
+      "active": true,
+      "primaryAlpha3": "WLF",
+      "officialIsoAlpha2": "WF",
+      "officialIsoAlpha3": "WLF",
+      "officialIsoNumeric": "876",
+      "gencAlpha2": "WF",
+      "gencAlpha3": "WLF",
+      "gencNumeric": "876",
+      "fips": "WF",
+      "alternativeNames": [
+        "Futuna Islands",
+        "Wallis and Futuna Islands",
+        "Futuna",
+        "Wallis",
+        "Wallis & Futuna Islands"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:WF"
+    },
+    {
+      "displayName": "West Bank",
+      "active": false,
+      "primaryAlpha3": "PSE",
+      "officialIsoAlpha2": "PS",
+      "officialIsoAlpha3": "PSE",
+      "officialIsoNumeric": "275",
+      "gencAlpha2": "XW",
+      "gencAlpha3": "XWB",
+      "gencNumeric": "934",
+      "fips": "WE",
+      "alternativeNames": [
+        "Palestine, State of",
+        "Palestine"
+      ],
+      "classification": "duplicate-iso-territory",
+      "sourceUri": "iso:code:3166:PS"
+    },
+    {
+      "displayName": "Western Sahara",
+      "active": true,
+      "primaryAlpha3": "ESH",
+      "officialIsoAlpha2": "EH",
+      "officialIsoAlpha3": "ESH",
+      "officialIsoNumeric": "732",
+      "gencAlpha2": "EH",
+      "gencAlpha3": "ESH",
+      "gencNumeric": "732",
+      "fips": "WI",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:EH"
+    },
+    {
+      "displayName": "Yemen",
+      "active": true,
+      "primaryAlpha3": "YEM",
+      "officialIsoAlpha2": "YE",
+      "officialIsoAlpha3": "YEM",
+      "officialIsoNumeric": "887",
+      "gencAlpha2": "YE",
+      "gencAlpha3": "YEM",
+      "gencNumeric": "887",
+      "fips": "YM",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:YE"
+    },
+    {
+      "displayName": "Zambia",
+      "active": true,
+      "primaryAlpha3": "ZMB",
+      "officialIsoAlpha2": "ZM",
+      "officialIsoAlpha3": "ZMB",
+      "officialIsoNumeric": "894",
+      "gencAlpha2": "ZM",
+      "gencAlpha3": "ZMB",
+      "gencNumeric": "894",
+      "fips": "ZA",
+      "alternativeNames": [],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:ZM"
+    },
+    {
+      "displayName": "Zimbabwe",
+      "active": true,
+      "primaryAlpha3": "ZWE",
+      "officialIsoAlpha2": "ZW",
+      "officialIsoAlpha3": "ZWE",
+      "officialIsoNumeric": "716",
+      "gencAlpha2": "ZW",
+      "gencAlpha3": "ZWE",
+      "gencNumeric": "716",
+      "fips": "ZI",
+      "alternativeNames": [
+        "Zimbawe"
+      ],
+      "classification": "iso-official",
+      "sourceUri": "iso:code:3166:ZW"
     }
   ]
 }

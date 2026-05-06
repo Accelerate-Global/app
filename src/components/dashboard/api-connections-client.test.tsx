@@ -171,10 +171,10 @@ describe("ApiConnectionsClient", () => {
     );
 
     expect(screen.getByText("No connections are available.")).toBeTruthy();
-    expect(screen.getByText("ISO3 country code list")).toBeTruthy();
+    expect(screen.getByText("Country & territory code resource")).toBeTruthy();
     expect(
       screen
-        .getByRole("link", { name: "Open ISO3 country code list" })
+        .getByRole("link", { name: "Open Country & territory code resource" })
         .getAttribute("href"),
     ).toBe("/dashboard/country-codes");
     expect(screen.getByText("No API-run resources have been captured yet.")).toBeTruthy();
@@ -191,7 +191,7 @@ describe("ApiConnectionsClient", () => {
     );
 
     expect(screen.getByText("Resources")).toBeTruthy();
-    expect(screen.getByText("ISO3 country code list")).toBeTruthy();
+    expect(screen.getByText("Country & territory code resource")).toBeTruthy();
     expect(screen.getByText("Category")).toBeTruthy();
     expect(screen.getByText("Display text")).toBeTruthy();
     expect(screen.getByText("URL")).toBeTruthy();

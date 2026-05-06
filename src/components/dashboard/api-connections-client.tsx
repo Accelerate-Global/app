@@ -37,7 +37,7 @@ const builtInResources = [
   {
     id: "iso3-country-codes",
     category: "Built-in",
-    webText: "ISO3 country code list",
+    webText: "Country & territory code resource",
     resourceUrl: "/dashboard/country-codes",
   },
 ] as const;

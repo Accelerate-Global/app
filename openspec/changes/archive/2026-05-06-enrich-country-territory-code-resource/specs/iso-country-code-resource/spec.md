@@ -1,10 +1,5 @@
-# iso-country-code-resource Specification
+## MODIFIED Requirements
 
-## Purpose
-Define the authenticated country and territory code reference resource,
-including ISO, GENC, legacy FIPS, curated-overlay refresh behavior, validation
-expectations, interactive lookup behavior, and UI smoke coverage.
-## Requirements
 ### Requirement: Country and territory code resource is available in the app
 The system SHALL provide an authenticated country and territory code resource
 whose rows come from the curated Accelerate Global ISO3 overlay and whose code
@@ -79,15 +74,6 @@ row universe.
 - **WHEN** a source returns malformed rows or the overlay merge omits curated
   rows
 - **THEN** the refresh fails without replacing the generated resource
-
-### Requirement: Country-code resource has UI smoke coverage
-The system SHALL register the country-code page in the UI smoke route registry
-and expose the required smoke markers.
-
-#### Scenario: UI smoke route sweep visits the resource
-- **WHEN** UI smoke route coverage is checked
-- **THEN** the country-code page has a route-registry entry and exposes a
-  matching `data-smoke-page` marker
 
 ### Requirement: Country-code resource appears in API Connections Resources
 The system SHALL show the country and territory code resource as a built-in

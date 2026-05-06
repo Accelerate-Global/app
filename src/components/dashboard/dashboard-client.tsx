@@ -280,7 +280,7 @@ export function DashboardClient({
             href="/dashboard/country-codes"
             className="inline-flex items-center gap-2 text-sm font-medium text-foreground underline-offset-4 hover:underline"
           >
-            ISO3 country code list
+            Country & territory code resource
           </Link>
         </CardContent>
       </Card>

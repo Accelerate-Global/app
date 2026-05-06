@@ -14,7 +14,7 @@ async function main() {
   await writeFile(outputPath, `${JSON.stringify(resource, null, 2)}\n`, "utf8");
 
   console.log(
-    `Refreshed ${resource.entryCount} ISO country code entries from ${resource.sourceUrl}`,
+    `Refreshed ${resource.entryCount} country and territory code entries from ${resource.sourceUrl}`,
   );
 }
 

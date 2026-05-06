@@ -43,11 +43,11 @@ export default async function CountryCodesPage() {
             </span>
             <div className="space-y-2">
               <h1 className="text-4xl font-semibold tracking-[-0.04em] sm:text-[3.1rem]">
-                ISO3 Country Codes
+                Country & Territory Codes
               </h1>
               <p className="max-w-3xl text-base leading-7 text-muted-foreground sm:text-lg">
-                Search the official ISO 3166-1 country name to alpha-3 code
-                resource used for shared dataset work.
+                Search curated country and territory codes enriched with ISO,
+                GENC, legacy FIPS, and alternative names for shared dataset work.
               </p>
             </div>
           </div>
