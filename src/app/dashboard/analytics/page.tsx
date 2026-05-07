@@ -2,6 +2,7 @@ import { ActivityIcon, ChevronLeftIcon } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { DashboardPageShell } from "@/components/layout/dashboard-page-shell";
 import { SiteHeader } from "@/components/layout/site-header";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
@@ -192,7 +193,7 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
       className="min-h-svh bg-background"
     >
       <SiteHeader identity={identity} />
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 py-10 sm:px-6 lg:px-8">
+      <DashboardPageShell>
         <section className="space-y-2">
           <Link
             href="/dashboard"
@@ -560,7 +561,7 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
             </div>
           </CardContent>
         </Card>
-      </div>
+      </DashboardPageShell>
     </main>
   );
 }

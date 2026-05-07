@@ -2,6 +2,7 @@ import { ChevronLeftIcon, FileTextIcon } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { DashboardPageShell } from "@/components/layout/dashboard-page-shell";
 import { SiteHeader } from "@/components/layout/site-header";
 import { buttonVariants } from "@/components/ui/button";
 import {
@@ -38,7 +39,7 @@ export default async function ResourcesPage() {
       className="min-h-svh bg-background"
     >
       <SiteHeader identity={identity} />
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-10 sm:px-6 lg:px-8">
+      <DashboardPageShell>
         <section className="space-y-2">
           <Link
             href="/dashboard"
@@ -65,7 +66,7 @@ export default async function ResourcesPage() {
           </div>
         </section>
 
-        <section className="grid gap-4 sm:grid-cols-2">
+        <section className="grid gap-4">
           {builtInResources.map((resource) => (
             <Card key={resource.id}>
               <CardHeader className="gap-2">
@@ -83,7 +84,7 @@ export default async function ResourcesPage() {
             </Card>
           ))}
         </section>
-      </div>
+      </DashboardPageShell>
     </main>
   );
 }

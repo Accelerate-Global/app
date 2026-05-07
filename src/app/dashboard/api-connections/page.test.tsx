@@ -151,6 +151,7 @@ describe("/dashboard/api-connections", () => {
     });
     render(await ApiConnectionsPage());
 
+    expect(document.querySelector(".max-w-7xl")).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Datasets" })).toBeTruthy();
     expect(screen.getByText("IMB (People Groups)")).toBeTruthy();
     expect(screen.getByText("Etnopedia")).toBeTruthy();

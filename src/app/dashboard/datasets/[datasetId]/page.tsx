@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { DatasetDetailClient } from "@/components/dashboard/dataset-detail-client";
+import { DashboardPageShell } from "@/components/layout/dashboard-page-shell";
 import { SiteHeader } from "@/components/layout/site-header";
 import { buttonVariants } from "@/components/ui/button";
 import {
@@ -113,7 +114,7 @@ export default async function DatasetPage({
       className="min-h-svh bg-background"
     >
       <SiteHeader identity={identity} />
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-10 sm:px-6 lg:px-8">
+      <DashboardPageShell gap="compact">
         <section className="min-w-0 space-y-2">
           <Link
             href="/dashboard"
@@ -154,7 +155,7 @@ export default async function DatasetPage({
               : null
           }
         />
-      </div>
+      </DashboardPageShell>
     </main>
   );
 }

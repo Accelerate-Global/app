@@ -195,6 +195,7 @@ describe("/dashboard/datasets/[datasetId]", () => {
       }),
     );
 
+    expect(document.querySelector(".max-w-7xl")).toBeTruthy();
     const props = datasetDetailClientSpy.mock.lastCall?.[0] as {
       initialFilters: unknown;
       initialSorting?: unknown;

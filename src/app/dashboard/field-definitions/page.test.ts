@@ -64,6 +64,7 @@ describe("/dashboard/field-definitions", () => {
 
     render(await FieldDefinitionsPage());
 
+    expect(document.querySelector(".max-w-7xl")).toBeTruthy();
     expect(
       screen.getByRole("heading", { name: "Definitions", level: 1 }),
     ).toBeTruthy();

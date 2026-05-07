@@ -81,6 +81,7 @@ describe("/dashboard/field-sources", () => {
 
     render(await FieldSourcesPage());
 
+    expect(document.querySelector(".max-w-7xl")).toBeTruthy();
     expect(listFieldSourceGridDataMock).toHaveBeenCalledWith();
     expect(
       screen.getByText(

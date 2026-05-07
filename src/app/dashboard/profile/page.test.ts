@@ -1,3 +1,6 @@
+// @vitest-environment jsdom
+
+import { render } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { redirect } from "next/navigation";
@@ -51,5 +54,7 @@ describe("/dashboard/profile", () => {
     const view = await ProfilePage();
 
     expect(view).toBeTruthy();
+    render(view);
+    expect(document.querySelector(".max-w-7xl")).toBeTruthy();
   });
 });

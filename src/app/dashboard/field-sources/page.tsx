@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { FieldSourcesClient } from "@/components/dashboard/field-sources-client";
+import { DashboardPageShell } from "@/components/layout/dashboard-page-shell";
 import { SiteHeader } from "@/components/layout/site-header";
 import { buttonVariants } from "@/components/ui/button";
 import { getCurrentIdentity } from "@/lib/auth";
@@ -29,7 +30,7 @@ export default async function FieldSourcesPage() {
       className="min-h-svh bg-background"
     >
       <SiteHeader identity={identity} />
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 py-10 sm:px-6 lg:px-8">
+      <DashboardPageShell>
         <section className="space-y-3">
           <Link
             href="/dashboard"
@@ -59,7 +60,7 @@ export default async function FieldSourcesPage() {
           initialFieldSourceTypes={fieldSourceTypes}
           initialFieldSources={fieldSources}
         />
-      </div>
+      </DashboardPageShell>
     </main>
   );
 }

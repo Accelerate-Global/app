@@ -83,6 +83,7 @@ describe("/dashboard/user-management", () => {
     expect(view).toBeTruthy();
     expect(listWorkspaceUsersMock).toHaveBeenCalledWith();
     render(view);
+    expect(document.querySelector(".max-w-7xl")).toBeTruthy();
     expect(userManagementClientSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         currentUserId: "owner-1",
