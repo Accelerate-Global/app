@@ -50,7 +50,7 @@ describe("/dashboard/resources", () => {
     render(await ResourcesPage());
 
     expect(document.querySelector(".max-w-7xl")).toBeTruthy();
-    expect(document.querySelector(".sm\\:grid-cols-2")).toBeNull();
+    expect(document.querySelector(".sm\\:grid-cols-2")).toBeTruthy();
     expect(screen.getByText("Resources")).toBeTruthy();
     expect(screen.getByText("Country & territory code resource")).toBeTruthy();
     expect(
@@ -58,6 +58,10 @@ describe("/dashboard/resources", () => {
         .getByRole("link", { name: /Country & territory code resource/ })
         .getAttribute("href"),
     ).toBe("/dashboard/country-codes");
+    expect(screen.getByText("ROP Codes resource")).toBeTruthy();
+    expect(
+      screen.getByRole("link", { name: /ROP Codes resource/ }).getAttribute("href"),
+    ).toBe("/dashboard/rop-codes");
     expect(screen.queryByText("Open resource")).toBeNull();
     expect(document.querySelector('[data-smoke-page="resources"]')).toBeTruthy();
   });
