@@ -49,6 +49,8 @@ describe("/dashboard/resources", () => {
 
     render(await ResourcesPage());
 
+    expect(document.querySelector(".max-w-7xl")).toBeTruthy();
+    expect(document.querySelector(".sm\\:grid-cols-2")).toBeNull();
     expect(screen.getByText("Resources")).toBeTruthy();
     expect(screen.getByText("Country & territory code resource")).toBeTruthy();
     expect(

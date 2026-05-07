@@ -170,6 +170,7 @@ describe("/dashboard/datasets/[datasetId]/edit", () => {
       }),
     );
 
+    expect(document.querySelector(".max-w-7xl")).toBeTruthy();
     expect(screen.getByText("Edit dataset")).toBeTruthy();
     expect(screen.getByText(/Update Global and manage/i)).toBeTruthy();
 

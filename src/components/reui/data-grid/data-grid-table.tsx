@@ -642,7 +642,7 @@ function DataGridTableHeadRowCell<TData>({
         isLastLeftPinned ? "left" : isFirstRightPinned ? "right" : undefined
       }
       className={cn(
-        "text-secondary-foreground/80 h-9 relative text-left align-middle font-normal rtl:text-right [&:has([role=checkbox])]:pe-0",
+        "text-secondary-foreground/80 h-9 relative select-none text-left align-middle font-normal rtl:text-right [&:has([role=checkbox])]:pe-0",
         headerCellSpacing,
         props.tableLayout?.cellBorder && "border-e",
         props.tableLayout?.columnsResizable &&

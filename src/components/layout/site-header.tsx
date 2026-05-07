@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { AccountControl } from "@/components/auth/account-control";
+import { DASHBOARD_CONTENT_WIDTH_CLASS } from "@/components/layout/dashboard-page-shell";
 import type { CurrentIdentity } from "@/lib/auth";
 import { buttonVariants } from "@/components/ui/button";
 import { getSiteNavLinks } from "@/lib/site-navigation";
@@ -26,7 +27,8 @@ export function SiteHeader({
     <header className="bg-background">
       <div
         className={cn(
-          "mx-auto flex w-full max-w-[1500px] px-4 py-6 sm:px-6 lg:px-8 lg:py-7",
+          "mx-auto flex w-full px-4 py-6 sm:px-6 lg:px-8 lg:py-7",
+          DASHBOARD_CONTENT_WIDTH_CLASS,
           showRightCluster
             ? "flex-col gap-6 lg:flex-row lg:items-center lg:justify-between lg:gap-8"
             : "items-start",

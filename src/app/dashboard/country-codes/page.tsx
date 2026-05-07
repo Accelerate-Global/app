@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { IsoCountryCodesClient } from "@/components/dashboard/iso-country-codes-client";
+import { DashboardPageShell } from "@/components/layout/dashboard-page-shell";
 import { SiteHeader } from "@/components/layout/site-header";
 import { buttonVariants } from "@/components/ui/button";
 import { getCurrentIdentity } from "@/lib/auth";
@@ -25,7 +26,7 @@ export default async function CountryCodesPage() {
       className="min-h-svh bg-background"
     >
       <SiteHeader identity={identity} />
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 py-10 sm:px-6 lg:px-8">
+      <DashboardPageShell>
         <section className="space-y-2">
           <Link
             href="/dashboard/resources"
@@ -58,7 +59,7 @@ export default async function CountryCodesPage() {
           canRefresh={identity.isDatasetAdmin}
           canEditAlternativeNames={identity.isDatasetAdmin}
         />
-      </div>
+      </DashboardPageShell>
     </main>
   );
 }

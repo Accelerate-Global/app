@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { FieldDefinitionsClient } from "@/components/dashboard/field-definitions-client";
+import { DashboardPageShell } from "@/components/layout/dashboard-page-shell";
 import { SiteHeader } from "@/components/layout/site-header";
 import { buttonVariants } from "@/components/ui/button";
 import { getCurrentIdentity } from "@/lib/auth";
@@ -28,7 +29,7 @@ export default async function FieldDefinitionsPage() {
       className="min-h-svh bg-background"
     >
       <SiteHeader identity={identity} />
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-10 sm:px-6 lg:px-8">
+      <DashboardPageShell>
         <section className="space-y-2">
           <Link
             href="/dashboard"
@@ -54,7 +55,7 @@ export default async function FieldDefinitionsPage() {
           actorOwnerId={identity.ownerId}
           workspaceRole={getAnalyticsWorkspaceRole(identity.workspaceRole)}
         />
-      </div>
+      </DashboardPageShell>
     </main>
   );
 }

@@ -159,6 +159,7 @@ describe("/dashboard/analytics", () => {
 
     render(await AnalyticsPage({ searchParams: Promise.resolve({}) }));
 
+    expect(document.querySelector(".max-w-7xl")).toBeTruthy();
     expect(
       screen.getByRole("heading", { name: "Analytics" }),
     ).toBeTruthy();

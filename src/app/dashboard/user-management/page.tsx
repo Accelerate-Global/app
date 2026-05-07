@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { UserManagementClient } from "@/components/dashboard/user-management-client";
+import { DashboardPageShell } from "@/components/layout/dashboard-page-shell";
 import { SiteHeader } from "@/components/layout/site-header";
 import { buttonVariants } from "@/components/ui/button";
 import { getAnalyticsWorkspaceRole } from "@/lib/analytics";
@@ -30,7 +31,7 @@ export default async function UserManagementPage() {
       className="min-h-svh bg-background"
     >
       <SiteHeader identity={identity} />
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 py-10 sm:px-6 lg:px-8">
+      <DashboardPageShell>
         <section className="space-y-2">
           <Link
             href="/dashboard"
@@ -63,7 +64,7 @@ export default async function UserManagementPage() {
           actorOwnerId={identity.ownerId}
           workspaceRole={getAnalyticsWorkspaceRole(identity.workspaceRole)}
         />
-      </div>
+      </DashboardPageShell>
     </main>
   );
 }

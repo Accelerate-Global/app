@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { AccountProfileForm } from "@/components/auth/account-profile-form";
+import { DashboardPageShell } from "@/components/layout/dashboard-page-shell";
 import { SiteHeader } from "@/components/layout/site-header";
 import { buttonVariants } from "@/components/ui/button";
 import { getCurrentIdentity } from "@/lib/auth";
@@ -22,7 +23,7 @@ export default async function ProfilePage() {
       className="min-h-svh bg-background"
     >
       <SiteHeader identity={identity} />
-      <div className="mx-auto flex w-full max-w-4xl flex-col gap-8 px-4 py-10 sm:px-6 lg:px-8">
+      <DashboardPageShell>
         <section className="space-y-2">
           <Link
             href="/dashboard"
@@ -42,7 +43,7 @@ export default async function ProfilePage() {
           </p>
         </section>
         <AccountProfileForm identity={identity} />
-      </div>
+      </DashboardPageShell>
     </main>
   );
 }

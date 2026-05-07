@@ -99,6 +99,7 @@ describe("/dashboard/country-codes", () => {
 
     render(await CountryCodesPage());
 
+    expect(document.querySelector(".max-w-7xl")).toBeTruthy();
     expect(screen.getByText("Country & Territory Codes")).toBeTruthy();
     expect(
       screen.getByRole("link", { name: "Back to resources" }).getAttribute("href"),
