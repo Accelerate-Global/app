@@ -1,20 +1,27 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { strToU8, zipSync } from "fflate";
 
 import {
   GENC_COUNTRY_CODES_SOURCE_URL,
   ISO_COUNTRY_CODES_SOURCE_URL,
   LEGACY_FIPS_COUNTRY_CODES_SOURCE_URL,
+  M49_COUNTRY_CODES_SOURCE_URL,
+  UNTERM_COUNTRY_NAMES_SOURCE_URL,
   applyIsoCountryCodeEntryOverrides,
   getGeneratedIsoCountryCodeResource,
   normalizeCountryCodeAlternativeNames,
+  parseM49CountryCodeEntries,
   parseCountryCodeOverlayCsv,
+  parseUntermCountryNamesWorkbook,
   refreshIsoCountryCodeResourceFromOfficialSource,
   validateOfficialIsoCountryCodeEntries,
 } from "@/lib/iso-country-codes";
 import type {
   GencCountryCodeEntry,
   LegacyFipsCountryCodeEntry,
+  M49CountryCodeEntry,
   OfficialIsoCountryCodeEntry,
+  UntermCountryNameEntry,
 } from "@/lib/iso-country-codes";
 
 function createCode(index: number, length: 2 | 3) {
@@ -60,6 +67,112 @@ function createFipsEntries(count: number): LegacyFipsCountryCodeEntry[] {
     code: createCode(index, 2),
     name: `FIPS COUNTRY ${String(index).padStart(3, "0")}`,
   }));
+}
+
+function createUntermEntries(
+  officialEntries: OfficialIsoCountryCodeEntry[],
+): UntermCountryNameEntry[] {
+  return officialEntries.slice(0, 190).map((entry) => ({
+    englishShortName: entry.englishShortName,
+    englishFormalName: `the Republic of ${entry.englishShortName}`,
+  }));
+}
+
+function createM49Entries(
+  officialEntries: OfficialIsoCountryCodeEntry[],
+): M49CountryCodeEntry[] {
+  return officialEntries.map((entry, index) => ({
+    countryOrArea: entry.englishShortName,
+    m49Code: String(index).padStart(3, "0"),
+    alpha3: entry.alpha3,
+  }));
+}
+
+function columnName(index: number) {
+  let value = index + 1;
+  let column = "";
+
+  while (value > 0) {
+    const remainder = (value - 1) % 26;
+    column = String.fromCharCode(65 + remainder) + column;
+    value = Math.floor((value - 1) / 26);
+  }
+
+  return column;
+}
+
+function toUntermWorkbook(entries: UntermCountryNameEntry[]) {
+  const values = [
+    [
+      "English short",
+      "French short",
+      "Spanish short",
+      "Russian short",
+      "Chinese short",
+      "Arabic short",
+      "English formal",
+      "French formal",
+      "Spanish formal",
+      "Russian formal",
+      "Chinese formal",
+      "Arabic formal",
+    ],
+    ...entries.map((entry) => [
+      entry.englishShortName,
+      "",
+      "",
+      "",
+      "",
+      "",
+      entry.englishFormalName,
+      "",
+      "",
+      "",
+      "",
+      "",
+    ]),
+  ];
+  const sharedStrings = values.flat();
+  let sharedIndex = 0;
+  const rows = values
+    .map((row, rowIndex) => {
+      const cells = row
+        .map((_, columnIndex) => {
+          const cell = `${columnName(columnIndex)}${rowIndex + 1}`;
+          const value = sharedIndex;
+          sharedIndex += 1;
+          return `<c r="${cell}" t="s"><v>${value}</v></c>`;
+        })
+        .join("");
+      return `<row r="${rowIndex + 1}">${cells}</row>`;
+    })
+    .join("");
+  const sharedStringsXml = `<?xml version="1.0" encoding="UTF-8"?><sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="${sharedStrings.length}" uniqueCount="${sharedStrings.length}">${sharedStrings
+    .map((value) => `<si><t>${value}</t></si>`)
+    .join("")}</sst>`;
+  const sheetXml = `<?xml version="1.0" encoding="UTF-8"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>${rows}</sheetData></worksheet>`;
+
+  const bytes = zipSync({
+    xl: {
+      "sharedStrings.xml": strToU8(sharedStringsXml),
+      worksheets: {
+        "sheet1.xml": strToU8(sheetXml),
+      },
+    },
+  });
+  return bytes.buffer.slice(
+    bytes.byteOffset,
+    bytes.byteOffset + bytes.byteLength,
+  ) as ArrayBuffer;
+}
+
+function toM49Html(entries: M49CountryCodeEntry[]) {
+  return `<table id = "downloadTableEN"><thead><tr><td>Global Code</td><td>Global Name</td><td>Region Code</td><td>Region Name</td><td>Sub-region Code</td><td>Sub-region Name</td><td>Intermediate Region Code</td><td>Intermediate Region Name</td><td>Country or Area</td><td>M49 Code</td><td>ISO-alpha2 Code</td><td>ISO-alpha3 Code</td></tr></thead><tbody>${entries
+    .map(
+      (entry) =>
+        `<tr><td>001</td><td>World</td><td>002</td><td>Africa</td><td>015</td><td>Northern Africa</td><td></td><td></td><td>${entry.countryOrArea}</td><td>${entry.m49Code}</td><td></td><td>${entry.alpha3}</td></tr>`,
+    )
+    .join("")}</tbody></table>`;
 }
 
 function toGencTsv(entries: GencCountryCodeEntry[]) {
@@ -186,6 +299,53 @@ Country Alt Names 12,,,,
     expect(resource.entries.filter((entry) => entry.primaryAlpha3 === "PSE")).toHaveLength(
       3,
     );
+    expect(
+      resource.entries.find((entry) => entry.displayName === "Afghanistan"),
+    ).toMatchObject({
+      untermEnglishShortName: "Afghanistan",
+      untermEnglishFormalName: expect.stringContaining("Afghanistan"),
+      untermNameSource: "unterm-m49",
+    });
+  });
+
+  it("parses UNTERM country-name workbooks", () => {
+    const entries = parseUntermCountryNamesWorkbook(
+      toUntermWorkbook([
+        {
+          englishShortName: "Afghanistan",
+          englishFormalName: "the Islamic Republic of Afghanistan",
+        },
+      ]),
+      1,
+    );
+
+    expect(entries).toEqual([
+      {
+        englishShortName: "Afghanistan",
+        englishFormalName: "the Islamic Republic of Afghanistan",
+      },
+    ]);
+  });
+
+  it("parses M49 country names and ISO3 bridge rows", () => {
+    expect(
+      parseM49CountryCodeEntries(
+        toM49Html([
+          {
+            countryOrArea: "Afghanistan",
+            m49Code: "004",
+            alpha3: "AFG",
+          },
+        ]),
+        1,
+      ),
+    ).toEqual([
+      {
+        countryOrArea: "Afghanistan",
+        m49Code: "004",
+        alpha3: "AFG",
+      },
+    ]);
   });
 
   it("normalizes and applies persisted alternate-name overrides", () => {
@@ -236,8 +396,43 @@ Country Alt Names 12,,,,
 
   it("refreshes from ISO OBP, GENC, FIPS, and the curated overlay", async () => {
     const officialEntries = createOfficialEntries(240);
+    officialEntries[0] = {
+      alpha2: "AF",
+      alpha3: "AFG",
+      englishShortName: "Afghanistan",
+      numeric: "004",
+      uri: "iso:code:3166:AF",
+    };
+    const duplicateAfgIndex = officialEntries.findIndex(
+      (entry, index) => index > 0 && entry.alpha3 === "AFG",
+    );
+    const duplicateAfIndex = officialEntries.findIndex(
+      (entry, index) => index > 0 && entry.alpha2 === "AF",
+    );
+
+    if (duplicateAfgIndex >= 0) {
+      officialEntries[duplicateAfgIndex] = {
+        alpha2: "ZY",
+        alpha3: "ZZZ",
+        englishShortName: "Country ZZZ",
+        numeric: "999",
+        uri: "iso:code:3166:ZY",
+      };
+    }
+
+    if (duplicateAfIndex >= 0 && duplicateAfIndex !== duplicateAfgIndex) {
+      officialEntries[duplicateAfIndex] = {
+        alpha2: "ZZ",
+        alpha3: "ZZY",
+        englishShortName: "Country ZZY",
+        numeric: "998",
+        uri: "iso:code:3166:ZZ",
+      };
+    }
     const gencEntries = createGencEntries(270);
     const fipsEntries = createFipsEntries(200);
+    const untermEntries = createUntermEntries(officialEntries);
+    const m49Entries = createM49Entries(officialEntries);
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
 
@@ -274,6 +469,14 @@ Country Alt Names 12,,,,
         return new Response(toFipsHtml(fipsEntries));
       }
 
+      if (url === UNTERM_COUNTRY_NAMES_SOURCE_URL) {
+        return new Response(toUntermWorkbook(untermEntries));
+      }
+
+      if (url === M49_COUNTRY_CODES_SOURCE_URL) {
+        return new Response(toM49Html(m49Entries));
+      }
+
       throw new Error(`Unexpected fetch: ${url}`);
     });
     vi.stubGlobal("fetch", fetchMock);
@@ -287,6 +490,9 @@ Country Alt Names 12,,,,
       displayName: "Afghanistan",
       primaryAlpha3: "AFG",
       fips: "AF",
+      untermEnglishShortName: "Afghanistan",
+      untermEnglishFormalName: "the Republic of Afghanistan",
+      untermNameSource: "unterm-m49",
     });
     expect(fetchMock).toHaveBeenCalledWith(
       GENC_COUNTRY_CODES_SOURCE_URL,
@@ -296,6 +502,16 @@ Country Alt Names 12,,,,
       LEGACY_FIPS_COUNTRY_CODES_SOURCE_URL,
       expect.any(Object),
     );
+    expect(fetchMock).toHaveBeenCalledWith(
+      UNTERM_COUNTRY_NAMES_SOURCE_URL,
+      expect.any(Object),
+    );
+    expect(fetchMock).toHaveBeenCalledWith(
+      M49_COUNTRY_CODES_SOURCE_URL,
+      expect.any(Object),
+    );
     expect(resource.sourceUrl).toBe(ISO_COUNTRY_CODES_SOURCE_URL);
+    expect(resource.untermSourceUrl).toBe(UNTERM_COUNTRY_NAMES_SOURCE_URL);
+    expect(resource.m49SourceUrl).toBe(M49_COUNTRY_CODES_SOURCE_URL);
   });
 });

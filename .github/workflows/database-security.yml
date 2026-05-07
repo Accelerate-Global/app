@@ -20,13 +20,14 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: ./.github/actions/setup-pnpm-node
-
       - id: preinstall_selection
         run: node scripts/ci-preinstall-select.mjs --base "${{ github.event.pull_request.base.sha }}" --head "${{ github.event.pull_request.head.sha }}"
 
       - if: steps.preinstall_selection.outputs.run_database_security != 'true'
         run: echo "No database or security-relevant files changed."
+
+      - if: steps.preinstall_selection.outputs.run_database_security == 'true'
+        uses: ./.github/actions/setup-pnpm-node
 
       - if: steps.preinstall_selection.outputs.run_database_security == 'true'
         run: pnpm install --frozen-lockfile

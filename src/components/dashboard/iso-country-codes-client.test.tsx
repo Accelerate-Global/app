@@ -21,7 +21,8 @@ const createObjectUrlMock = vi.fn((_value: Blob | MediaSource) => {
 const revokeObjectUrlMock = vi.fn();
 
 const initialResource: IsoCountryCodeResource = {
-  sourceName: "ISO OBP, GENC, legacy FIPS, and curated Accelerate Global overlay",
+  sourceName:
+    "ISO OBP, UNTERM, UNSD M49, GENC, legacy FIPS, and curated Accelerate Global overlay",
   sourceUrl: "https://www.iso.org/obp/ui/#search/code/",
   sourceCollectionUrl: "https://www.iso.org/publication/PUB500001.html",
   gencSourceUrl: "https://evs.nci.nih.gov/ftp1/GENC/NCIt-GENC_Terminology.txt",
@@ -29,6 +30,8 @@ const initialResource: IsoCountryCodeResource = {
   fipsSourceUrl: "https://nief.org/attribute-registry/codesets/FIPS10-4CountryCode/",
   fipsWithdrawalUrl:
     "https://csrc.nist.gov/news/2008/announcing-approval-of-the-withdrawal-of-ten-fip-s",
+  untermSourceUrl: "https://conferences.unite.un.org/untermapi/api/term/downloadCountries",
+  m49SourceUrl: "https://unstats.un.org/unsd/methodology/m49/overview/",
   overlaySourceName: "Accelerate Global - Spec Sheet - ISO3.csv",
   sourceRetrievedAt: "2026-05-06T00:00:00.000Z",
   entryCount: 3,
@@ -42,6 +45,9 @@ const initialResource: IsoCountryCodeResource = {
       officialIsoAlpha2: "AF",
       officialIsoAlpha3: "AFG",
       officialIsoNumeric: "004",
+      untermEnglishShortName: "Afghanistan",
+      untermEnglishFormalName: "the Islamic Republic of Afghanistan",
+      untermNameSource: "unterm-m49",
       gencAlpha2: "AF",
       gencAlpha3: "AFG",
       gencNumeric: "004",
@@ -57,6 +63,9 @@ const initialResource: IsoCountryCodeResource = {
       officialIsoAlpha2: null,
       officialIsoAlpha3: null,
       officialIsoNumeric: null,
+      untermEnglishShortName: null,
+      untermEnglishFormalName: null,
+      untermNameSource: null,
       gencAlpha2: "QZ",
       gencAlpha3: "XQZ",
       gencNumeric: "900",
@@ -72,6 +81,9 @@ const initialResource: IsoCountryCodeResource = {
       officialIsoAlpha2: "UM",
       officialIsoAlpha3: "UMI",
       officialIsoNumeric: "581",
+      untermEnglishShortName: null,
+      untermEnglishFormalName: null,
+      untermNameSource: null,
       gencAlpha2: "XB",
       gencAlpha3: "XBK",
       gencNumeric: "903",
@@ -157,6 +169,13 @@ describe("IsoCountryCodesClient", () => {
     expect(screen.getByText("Baker Island")).toBeTruthy();
     expect(screen.queryByText("1 visible")).toBeNull();
     expect(screen.queryByText("3 visible")).toBeNull();
+
+    fireEvent.change(screen.getByPlaceholderText(/Search name/), {
+      target: { value: "Islamic Republic" },
+    });
+
+    expect(screen.getByText("Afghanistan")).toBeTruthy();
+    expect(screen.queryByText("Baker Island")).toBeNull();
   });
 
   it("opens a right-side detail sheet with hidden fields and smoke markers", () => {
@@ -174,6 +193,11 @@ describe("IsoCountryCodesClient", () => {
     expect(screen.getByText("ISO2")).toBeTruthy();
     expect(screen.getByText("Numeric")).toBeTruthy();
     expect(screen.getByText("Classification")).toBeTruthy();
+    expect(screen.getByText("Official UN Names")).toBeTruthy();
+    expect(screen.getByText("Official UN short name")).toBeTruthy();
+    expect(screen.getByText("Official UN formal name")).toBeTruthy();
+    expect(screen.getByText("the Islamic Republic of Afghanistan")).toBeTruthy();
+    expect(screen.getByText("unterm-m49")).toBeTruthy();
     expect(screen.getByText("Source URI")).toBeTruthy();
     expect(screen.getByText("Afganistan")).toBeTruthy();
     expect(screen.getByText("Islamic Republic of Afghanistan")).toBeTruthy();
@@ -339,10 +363,10 @@ describe("IsoCountryCodesClient", () => {
 
     expect(blob.type).toBe("text/csv;charset=utf-8");
     expect(csv).toContain(
-      "Country/Territory,Status,ISO3,ISO2,Numeric,FIPS,GENC3,GENC2,GENC numeric,Classification,Alternative names,Source URI",
+      "Country/Territory,Status,ISO3,ISO2,Numeric,Official UN short name,Official UN formal name,Official name source,FIPS,GENC3,GENC2,GENC numeric,Classification,Alternative names,Source URI",
     );
     expect(csv).toContain(
-      "Afghanistan,Active,AFG,AF,004,AF,AFG,AF,004,ISO official,Afganistan; Islamic Republic of Afghanistan,iso:code:3166:AF",
+      "Afghanistan,Active,AFG,AF,004,Afghanistan,the Islamic Republic of Afghanistan,unterm-m49,AF,AFG,AF,004,ISO official,Afganistan; Islamic Republic of Afghanistan,iso:code:3166:AF",
     );
     expect(csv).not.toContain("Akrotiri");
     expect(revokeObjectUrlMock).toHaveBeenCalledWith("blob:country-codes");
@@ -361,6 +385,9 @@ describe("IsoCountryCodesClient", () => {
           officialIsoAlpha2: "ZW",
           officialIsoAlpha3: "ZWE",
           officialIsoNumeric: "716",
+          untermEnglishShortName: "Zimbabwe",
+          untermEnglishFormalName: "the Republic of Zimbabwe",
+          untermNameSource: "unterm-m49",
           gencAlpha2: "ZW",
           gencAlpha3: "ZWE",
           gencNumeric: "716",
