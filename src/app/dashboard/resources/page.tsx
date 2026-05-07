@@ -22,6 +22,13 @@ const builtInResources = [
       "Search and download shared ISO, GENC, and FIPS country and territory codes.",
     href: "/dashboard/country-codes",
   },
+  {
+    id: "rop-codes",
+    title: "ROP Codes resource",
+    description:
+      "Search and download matched HIS ROP1, ROP2, ROP25, and ROP3 codes.",
+    href: "/dashboard/rop-codes",
+  },
 ] as const;
 
 export default async function ResourcesPage() {
@@ -65,7 +72,7 @@ export default async function ResourcesPage() {
           </div>
         </section>
 
-        <section className="grid gap-4">
+        <section className="grid gap-4 sm:grid-cols-2">
           {builtInResources.map((resource) => (
             <Link
               key={resource.id}

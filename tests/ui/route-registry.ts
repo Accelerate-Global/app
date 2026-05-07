@@ -206,6 +206,27 @@ export const smokeRouteSpecs: SmokeRouteSpec[] = [
     pageId: "iso-country-codes",
   },
   {
+    id: "rop-codes-pro",
+    role: "pro",
+    pageFile: "src/app/dashboard/rop-codes/page.tsx",
+    path: "/dashboard/rop-codes",
+    pageId: "rop-codes",
+  },
+  {
+    id: "rop-codes-basic",
+    role: "basic",
+    pageFile: "src/app/dashboard/rop-codes/page.tsx",
+    path: "/dashboard/rop-codes",
+    pageId: "rop-codes",
+  },
+  {
+    id: "rop-codes-admin",
+    role: "admin",
+    pageFile: "src/app/dashboard/rop-codes/page.tsx",
+    path: "/dashboard/rop-codes",
+    pageId: "rop-codes",
+  },
+  {
     id: "resources-pro",
     role: "pro",
     pageFile: "src/app/dashboard/resources/page.tsx",

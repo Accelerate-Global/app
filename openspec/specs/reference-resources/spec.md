@@ -38,3 +38,8 @@ resources without exposing admin-only API connection run resources.
 - **THEN** each built-in resource card is a link to its resource
 - **AND** the card does not show a separate Open resource action
 
+#### Scenario: Resources page includes ROP codes
+- **WHEN** a signed-in user views the Resources page
+- **THEN** the built-in resource list includes the ROP Codes resource
+- **AND** the ROP Codes card links to `/dashboard/rop-codes`
+- **AND** the card is a direct link without a separate Open resource action
