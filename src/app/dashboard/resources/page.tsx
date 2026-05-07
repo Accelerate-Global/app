@@ -7,7 +7,6 @@ import { SiteHeader } from "@/components/layout/site-header";
 import { buttonVariants } from "@/components/ui/button";
 import {
   Card,
-  CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
@@ -68,20 +67,18 @@ export default async function ResourcesPage() {
 
         <section className="grid gap-4">
           {builtInResources.map((resource) => (
-            <Card key={resource.id}>
-              <CardHeader className="gap-2">
-                <CardTitle className="text-xl">{resource.title}</CardTitle>
-                <CardDescription>{resource.description}</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Link
-                  href={resource.href}
-                  className="inline-flex items-center gap-2 text-sm font-medium text-foreground underline-offset-4 hover:underline"
-                >
-                  Open resource
-                </Link>
-              </CardContent>
-            </Card>
+            <Link
+              key={resource.id}
+              href={resource.href}
+              className="block rounded-lg no-underline outline-none transition-opacity hover:opacity-85 focus-visible:ring-[3px] focus-visible:ring-ring/50"
+            >
+              <Card className="h-full cursor-pointer transition-colors hover:bg-muted/30">
+                <CardHeader className="gap-2">
+                  <CardTitle className="text-xl">{resource.title}</CardTitle>
+                  <CardDescription>{resource.description}</CardDescription>
+                </CardHeader>
+              </Card>
+            </Link>
           ))}
         </section>
       </DashboardPageShell>

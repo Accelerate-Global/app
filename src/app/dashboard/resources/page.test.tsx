@@ -54,8 +54,11 @@ describe("/dashboard/resources", () => {
     expect(screen.getByText("Resources")).toBeTruthy();
     expect(screen.getByText("Country & territory code resource")).toBeTruthy();
     expect(
-      screen.getByRole("link", { name: "Open resource" }).getAttribute("href"),
+      screen
+        .getByRole("link", { name: /Country & territory code resource/ })
+        .getAttribute("href"),
     ).toBe("/dashboard/country-codes");
+    expect(screen.queryByText("Open resource")).toBeNull();
     expect(document.querySelector('[data-smoke-page="resources"]')).toBeTruthy();
   });
 });
