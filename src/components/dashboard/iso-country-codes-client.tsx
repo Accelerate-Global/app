@@ -105,6 +105,9 @@ function filterEntries(entries: IsoCountryCodeEntry[], searchTerm: string) {
       entry.officialIsoAlpha2,
       entry.officialIsoAlpha3,
       entry.officialIsoNumeric,
+      entry.untermEnglishShortName,
+      entry.untermEnglishFormalName,
+      entry.untermNameSource,
       entry.gencAlpha2,
       entry.gencAlpha3,
       entry.gencNumeric,
@@ -125,6 +128,15 @@ const csvColumns = [
   ["ISO3", (entry: IsoCountryCodeEntry) => entry.primaryAlpha3],
   ["ISO2", (entry: IsoCountryCodeEntry) => entry.officialIsoAlpha2],
   ["Numeric", (entry: IsoCountryCodeEntry) => entry.officialIsoNumeric],
+  [
+    "Official UN short name",
+    (entry: IsoCountryCodeEntry) => entry.untermEnglishShortName,
+  ],
+  [
+    "Official UN formal name",
+    (entry: IsoCountryCodeEntry) => entry.untermEnglishFormalName,
+  ],
+  ["Official name source", (entry: IsoCountryCodeEntry) => entry.untermNameSource],
   ["FIPS", (entry: IsoCountryCodeEntry) => entry.fips],
   ["GENC3", (entry: IsoCountryCodeEntry) => entry.gencAlpha3],
   ["GENC2", (entry: IsoCountryCodeEntry) => entry.gencAlpha2],
@@ -213,8 +225,12 @@ function withAddedAlternativeName(entry: IsoCountryCodeEntry, value: string) {
   const normalizedAlias = alias.toLocaleLowerCase();
   const existingNames = [
     entry.displayName,
+    entry.untermEnglishShortName,
+    entry.untermEnglishFormalName,
     ...entry.alternativeNames,
-  ].map((name) => name.trim().toLocaleLowerCase());
+  ]
+    .filter((name): name is string => Boolean(name))
+    .map((name) => name.trim().toLocaleLowerCase());
 
   if (existingNames.includes(normalizedAlias)) {
     return entry.alternativeNames;
@@ -335,6 +351,23 @@ function CountryCodeDetailSheet({
                   </DetailValue>
                   <DetailValue label="GENC numeric" mono>
                     {formatCode(entry.gencNumeric)}
+                  </DetailValue>
+                </div>
+              </section>
+
+              <section className="space-y-4 rounded-lg border border-border bg-card px-4 py-4">
+                <p className="text-sm font-medium text-foreground">
+                  Official UN Names
+                </p>
+                <div className="grid gap-4">
+                  <DetailValue label="Official UN short name">
+                    {formatCode(entry.untermEnglishShortName)}
+                  </DetailValue>
+                  <DetailValue label="Official UN formal name">
+                    {formatCode(entry.untermEnglishFormalName)}
+                  </DetailValue>
+                  <DetailValue label="Official name source" mono>
+                    {formatCode(entry.untermNameSource)}
                   </DetailValue>
                 </div>
               </section>
@@ -497,7 +530,7 @@ export function IsoCountryCodesClient({
     const progressStages: RefreshProgress[] = [
       {
         progress: 35,
-        message: "Fetching ISO, GENC, and FIPS sources",
+        message: "Fetching ISO, UNTERM, M49, GENC, and FIPS sources",
       },
       {
         progress: 65,

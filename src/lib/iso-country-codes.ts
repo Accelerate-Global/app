@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
+import { unzipSync } from "fflate";
 import Papa from "papaparse";
 
 import { getDb } from "@/db";
@@ -19,6 +20,10 @@ export const LEGACY_FIPS_COUNTRY_CODES_SOURCE_URL =
   "https://nief.org/attribute-registry/codesets/FIPS10-4CountryCode/";
 export const FIPS_WITHDRAWAL_SOURCE_URL =
   "https://csrc.nist.gov/news/2008/announcing-approval-of-the-withdrawal-of-ten-fip-s";
+export const UNTERM_COUNTRY_NAMES_SOURCE_URL =
+  "https://conferences.unite.un.org/untermapi/api/term/downloadCountries";
+export const M49_COUNTRY_CODES_SOURCE_URL =
+  "https://unstats.un.org/unsd/methodology/m49/overview/";
 export const COUNTRY_CODE_OVERLAY_SOURCE_NAME =
   "Accelerate Global - Spec Sheet - ISO3.csv";
 export const COUNTRY_CODE_OVERLAY_PATH = path.join(
@@ -28,8 +33,12 @@ export const COUNTRY_CODE_OVERLAY_PATH = path.join(
 export const ISO_COUNTRY_CODES_MINIMUM_COUNT = 240;
 export const GENC_COUNTRY_CODES_MINIMUM_COUNT = 270;
 export const LEGACY_FIPS_COUNTRY_CODES_MINIMUM_COUNT = 200;
+export const UNTERM_COUNTRY_NAMES_MINIMUM_COUNT = 190;
+export const M49_COUNTRY_CODES_MINIMUM_COUNT = 240;
 export const COUNTRY_CODE_OVERLAY_EXPECTED_COUNT = 273;
 export const COUNTRY_CODE_OVERLAY_EXPECTED_ACTIVE_COUNT = 259;
+
+export type UntermNameSource = "unterm-m49";
 
 export type CountryCodeClassification =
   | "iso-official"
@@ -46,6 +55,9 @@ export type IsoCountryCodeEntry = {
   officialIsoAlpha2: string | null;
   officialIsoAlpha3: string | null;
   officialIsoNumeric: string | null;
+  untermEnglishShortName: string | null;
+  untermEnglishFormalName: string | null;
+  untermNameSource: UntermNameSource | null;
   gencAlpha2: string | null;
   gencAlpha3: string | null;
   gencNumeric: string | null;
@@ -64,6 +76,8 @@ export type IsoCountryCodeResource = {
   gencAboutUrl: string;
   fipsSourceUrl: string;
   fipsWithdrawalUrl: string;
+  untermSourceUrl: string;
+  m49SourceUrl: string;
   overlaySourceName: string;
   entryCount: number;
   officialIsoCount: number;
@@ -98,6 +112,17 @@ export type LegacyFipsCountryCodeEntry = {
   name: string;
 };
 
+export type UntermCountryNameEntry = {
+  englishShortName: string;
+  englishFormalName: string | null;
+};
+
+export type M49CountryCodeEntry = {
+  countryOrArea: string;
+  m49Code: string;
+  alpha3: string;
+};
+
 export type CountryCodeOverlayRow = {
   displayName: string;
   active: boolean;
@@ -118,6 +143,8 @@ type BuildIsoCountryCodeResourceInput = {
   officialEntries: OfficialIsoCountryCodeEntry[];
   gencEntries: GencCountryCodeEntry[];
   fipsEntries: LegacyFipsCountryCodeEntry[];
+  untermEntries: UntermCountryNameEntry[];
+  m49Entries: M49CountryCodeEntry[];
   overlayRows: CountryCodeOverlayRow[];
   sourceRetrievedAt?: string;
   expectedOverlayCount?: number;
@@ -225,6 +252,179 @@ function parseDelimitedRows(text: string) {
   }
 
   return parsed.data.filter((row) => row.some((value) => value.trim().length > 0));
+}
+
+function decodeXmlText(value: string) {
+  return value
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&amp;/g, "&");
+}
+
+function decodeHtmlText(value: string) {
+  return decodeXmlText(
+    value
+      .replace(/&#(\d+);/g, (_match, codePoint: string) =>
+        String.fromCodePoint(Number(codePoint)),
+      )
+      .replace(/&#x([0-9a-f]+);/giu, (_match, codePoint: string) =>
+        String.fromCodePoint(Number.parseInt(codePoint, 16)),
+      )
+      .replace(/&nbsp;/g, " "),
+  )
+    .replace(/<[^>]+>/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function getXlsxTextFile(files: Record<string, Uint8Array>, filePath: string) {
+  const file = files[filePath];
+
+  if (!file) {
+    throw new Error(`UNTERM workbook is missing ${filePath}.`);
+  }
+
+  return new TextDecoder().decode(file);
+}
+
+function parseSharedStrings(xml: string) {
+  return Array.from(xml.matchAll(/<si\b[^>]*>([\s\S]*?)<\/si>/g)).map((match) => {
+    const textParts = Array.from(match[1].matchAll(/<t\b[^>]*>([\s\S]*?)<\/t>/g));
+    return textParts.map((part) => decodeXmlText(part[1])).join("");
+  });
+}
+
+function getColumnIndex(cellReference: string) {
+  const column = cellReference.replace(/\d+/g, "");
+  let index = 0;
+
+  for (const char of column) {
+    index = index * 26 + char.charCodeAt(0) - 64;
+  }
+
+  return index - 1;
+}
+
+export function parseXlsxFirstSheetRows(input: ArrayBuffer | Uint8Array) {
+  const bytes = input instanceof Uint8Array ? input : new Uint8Array(input);
+  const files = unzipSync(bytes);
+  const sharedStrings = parseSharedStrings(
+    getXlsxTextFile(files, "xl/sharedStrings.xml"),
+  );
+  const sheetXml = getXlsxTextFile(files, "xl/worksheets/sheet1.xml");
+
+  return Array.from(sheetXml.matchAll(/<row\b[^>]*>([\s\S]*?)<\/row>/g))
+    .map((rowMatch) => {
+      const row: string[] = [];
+
+      for (const cellMatch of rowMatch[1].matchAll(/<c\b([^>]*)>([\s\S]*?)<\/c>/g)) {
+        const attrs = cellMatch[1];
+        const body = cellMatch[2];
+        const reference = attrs.match(/\br="([^"]+)"/)?.[1];
+        const columnIndex = reference ? getColumnIndex(reference) : row.length;
+        const type = attrs.match(/\bt="([^"]+)"/)?.[1];
+        const value = body.match(/<v>([\s\S]*?)<\/v>/)?.[1];
+        const inlineText = body.match(/<t\b[^>]*>([\s\S]*?)<\/t>/)?.[1];
+
+        if (value === undefined && inlineText === undefined) {
+          row[columnIndex] = "";
+          continue;
+        }
+
+        row[columnIndex] =
+          type === "s" && value !== undefined
+            ? sharedStrings[Number(value)] ?? ""
+            : decodeXmlText(inlineText ?? value ?? "");
+      }
+
+      return row.map((value) => value.trim());
+    })
+    .filter((row) => row.some((value) => value.length > 0));
+}
+
+export function parseUntermCountryNamesWorkbook(
+  input: ArrayBuffer | Uint8Array,
+  minimumCount = UNTERM_COUNTRY_NAMES_MINIMUM_COUNT,
+) {
+  const rows = parseXlsxFirstSheetRows(input);
+  const header = rows[0] ?? [];
+  const englishShortIndex = header.indexOf("English short");
+  const englishFormalIndex = header.indexOf("English formal");
+
+  if (englishShortIndex < 0 || englishFormalIndex < 0) {
+    throw new Error("UNTERM country names workbook is missing required columns.");
+  }
+
+  const entries = rows.slice(1).flatMap((row) => {
+    const englishShortName = row[englishShortIndex]?.trim() ?? "";
+    const englishFormalName = row[englishFormalIndex]?.trim() ?? "";
+
+    if (!englishShortName) {
+      return [];
+    }
+
+    return [
+      {
+        englishShortName,
+        englishFormalName: englishFormalName || null,
+      },
+    ];
+  });
+
+  validateUntermCountryNameEntries(entries, minimumCount);
+  return entries;
+}
+
+export function parseM49CountryCodeEntries(
+  html: string,
+  minimumCount = M49_COUNTRY_CODES_MINIMUM_COUNT,
+) {
+  const tableMatch = html.match(
+    /<table[^>]*id\s*=\s*["']?downloadTableEN["']?[^>]*>([\s\S]*?)<\/table>/i,
+  );
+
+  if (!tableMatch) {
+    throw new Error("M49 page is missing the English countries table.");
+  }
+
+  const rows = Array.from(tableMatch[1].matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi))
+    .map((rowMatch) =>
+      Array.from(rowMatch[1].matchAll(/<t[dh]\b[^>]*>([\s\S]*?)<\/t[dh]>/gi)).map(
+        (cellMatch) => decodeHtmlText(cellMatch[1]),
+      ),
+    )
+    .filter((row) => row.length > 0);
+  const header = rows[0] ?? [];
+  const countryIndex = header.indexOf("Country or Area");
+  const m49Index = header.indexOf("M49 Code");
+  const alpha3Index = header.indexOf("ISO-alpha3 Code");
+
+  if (countryIndex < 0 || m49Index < 0 || alpha3Index < 0) {
+    throw new Error("M49 page is missing required country-code columns.");
+  }
+
+  const entries = rows.slice(1).flatMap((row) => {
+    const countryOrArea = row[countryIndex]?.trim() ?? "";
+    const m49Code = row[m49Index]?.trim() ?? "";
+    const alpha3 = row[alpha3Index]?.trim().toUpperCase() ?? "";
+
+    if (!countryOrArea || !m49Code || !alpha3) {
+      return [];
+    }
+
+    return [
+      {
+        countryOrArea,
+        m49Code,
+        alpha3,
+      },
+    ];
+  });
+
+  validateM49CountryCodeEntries(entries, minimumCount);
+  return entries;
 }
 
 export function parseCountryCodeOverlayCsv(text: string) {
@@ -400,6 +600,62 @@ export function validateLegacyFipsCountryCodeEntries(
   }
 }
 
+export function validateUntermCountryNameEntries(
+  entries: UntermCountryNameEntry[],
+  minimumCount = UNTERM_COUNTRY_NAMES_MINIMUM_COUNT,
+) {
+  if (entries.length < minimumCount) {
+    throw new Error(
+      `UNTERM country-name refresh returned ${entries.length} entries; expected at least ${minimumCount}.`,
+    );
+  }
+
+  const shortNames = new Set<string>();
+
+  for (const entry of entries) {
+    assertString(entry.englishShortName, "UNTERM English short name");
+
+    const normalizedName = normalizeName(entry.englishShortName);
+
+    if (shortNames.has(normalizedName)) {
+      throw new Error(`Duplicate UNTERM country name: ${entry.englishShortName}`);
+    }
+
+    shortNames.add(normalizedName);
+  }
+}
+
+export function validateM49CountryCodeEntries(
+  entries: M49CountryCodeEntry[],
+  minimumCount = M49_COUNTRY_CODES_MINIMUM_COUNT,
+) {
+  if (entries.length < minimumCount) {
+    throw new Error(
+      `M49 country-code refresh returned ${entries.length} entries; expected at least ${minimumCount}.`,
+    );
+  }
+
+  const alpha3Values = new Set<string>();
+
+  for (const entry of entries) {
+    assertString(entry.countryOrArea, "M49 country or area");
+
+    if (!/^\d{3}$/.test(entry.m49Code)) {
+      throw new Error(`Invalid M49 code for ${entry.countryOrArea}.`);
+    }
+
+    if (!/^[A-Z]{3}$/.test(entry.alpha3)) {
+      throw new Error(`Invalid M49 ISO alpha-3 code: ${entry.alpha3}`);
+    }
+
+    if (alpha3Values.has(entry.alpha3)) {
+      throw new Error(`Duplicate M49 ISO alpha-3 code: ${entry.alpha3}`);
+    }
+
+    alpha3Values.add(entry.alpha3);
+  }
+}
+
 function validateCountryCodeOverlayRows(
   rows: CountryCodeOverlayRow[],
   expectedCount = COUNTRY_CODE_OVERLAY_EXPECTED_COUNT,
@@ -503,6 +759,26 @@ function findGencEntry(
   return null;
 }
 
+function buildUntermNamesByAlpha3(
+  untermEntries: UntermCountryNameEntry[],
+  m49Entries: M49CountryCodeEntry[],
+) {
+  const untermByName = buildNameIndex(untermEntries, (entry) => [
+    entry.englishShortName,
+  ]);
+  const untermByAlpha3 = new Map<string, UntermCountryNameEntry>();
+
+  for (const m49Entry of m49Entries) {
+    const untermEntry = untermByName.get(normalizeName(m49Entry.countryOrArea));
+
+    if (untermEntry && !untermByAlpha3.has(m49Entry.alpha3)) {
+      untermByAlpha3.set(m49Entry.alpha3, untermEntry);
+    }
+  }
+
+  return untermByAlpha3;
+}
+
 function isCanonicalOfficialRow(
   row: CountryCodeOverlayRow,
   official: OfficialIsoCountryCodeEntry | undefined,
@@ -569,6 +845,8 @@ export function buildIsoCountryCodeResource(input: BuildIsoCountryCodeResourceIn
   validateOfficialIsoCountryCodeEntries(input.officialEntries);
   validateGencCountryCodeEntries(input.gencEntries);
   validateLegacyFipsCountryCodeEntries(input.fipsEntries);
+  validateUntermCountryNameEntries(input.untermEntries);
+  validateM49CountryCodeEntries(input.m49Entries);
   validateCountryCodeOverlayRows(
     input.overlayRows,
     input.expectedOverlayCount,
@@ -583,6 +861,10 @@ export function buildIsoCountryCodeResource(input: BuildIsoCountryCodeResourceIn
     entry.preferredName,
     entry.gencName,
   ]);
+  const untermByAlpha3 = buildUntermNamesByAlpha3(
+    input.untermEntries,
+    input.m49Entries,
+  );
   const fipsByCode = new Map(input.fipsEntries.map((entry) => [entry.code, entry]));
   const primaryAlpha3Counts = getPrimaryAlpha3Counts(input.overlayRows);
   const activePrimaryAlpha3Counts = getActivePrimaryAlpha3Counts(input.overlayRows);
@@ -590,6 +872,9 @@ export function buildIsoCountryCodeResource(input: BuildIsoCountryCodeResourceIn
   const entries = input.overlayRows.map((row) => {
     const official = row.primaryAlpha3
       ? officialByAlpha3.get(row.primaryAlpha3)
+      : undefined;
+    const unterm = row.primaryAlpha3
+      ? untermByAlpha3.get(row.primaryAlpha3)
       : undefined;
     const genc = findGencEntry(row, gencByAlpha3, gencByName);
     const fips = row.fips ? fipsByCode.get(row.fips) : undefined;
@@ -618,6 +903,9 @@ export function buildIsoCountryCodeResource(input: BuildIsoCountryCodeResourceIn
       officialIsoAlpha2: official?.alpha2 ?? null,
       officialIsoAlpha3: official?.alpha3 ?? null,
       officialIsoNumeric: official?.numeric ?? null,
+      untermEnglishShortName: unterm?.englishShortName ?? null,
+      untermEnglishFormalName: unterm?.englishFormalName ?? null,
+      untermNameSource: unterm ? "unterm-m49" : null,
       gencAlpha2: genc?.alpha2 ?? null,
       gencAlpha3: genc?.alpha3 ?? null,
       gencNumeric: genc?.numeric ?? null,
@@ -629,13 +917,16 @@ export function buildIsoCountryCodeResource(input: BuildIsoCountryCodeResourceIn
   });
 
   const resource = {
-    sourceName: "ISO OBP, GENC, legacy FIPS, and curated Accelerate Global overlay",
+    sourceName:
+      "ISO OBP, UNTERM, UNSD M49, GENC, legacy FIPS, and curated Accelerate Global overlay",
     sourceUrl: ISO_COUNTRY_CODES_SOURCE_URL,
     sourceCollectionUrl: ISO_COUNTRY_CODES_COLLECTION_URL,
     gencSourceUrl: GENC_COUNTRY_CODES_SOURCE_URL,
     gencAboutUrl: GENC_COUNTRY_CODES_ABOUT_URL,
     fipsSourceUrl: LEGACY_FIPS_COUNTRY_CODES_SOURCE_URL,
     fipsWithdrawalUrl: FIPS_WITHDRAWAL_SOURCE_URL,
+    untermSourceUrl: UNTERM_COUNTRY_NAMES_SOURCE_URL,
+    m49SourceUrl: M49_COUNTRY_CODES_SOURCE_URL,
     overlaySourceName: COUNTRY_CODE_OVERLAY_SOURCE_NAME,
     sourceRetrievedAt: input.sourceRetrievedAt ?? new Date().toISOString(),
     entryCount: entries.length,
@@ -679,6 +970,21 @@ export function validateIsoCountryCodeResource(resource: IsoCountryCodeResource)
 
     if (entry.officialIsoNumeric && !/^\d{3}$/.test(entry.officialIsoNumeric)) {
       throw new Error(`Invalid official ISO numeric code for ${entry.displayName}.`);
+    }
+
+    if (entry.untermNameSource !== null && entry.untermNameSource !== "unterm-m49") {
+      throw new Error(`Invalid UNTERM name source for ${entry.displayName}.`);
+    }
+
+    if (entry.untermNameSource && !entry.untermEnglishShortName) {
+      throw new Error(`UNTERM fields are incomplete for ${entry.displayName}.`);
+    }
+
+    if (
+      !entry.untermNameSource &&
+      (entry.untermEnglishShortName || entry.untermEnglishFormalName)
+    ) {
+      throw new Error(`UNTERM source is missing for ${entry.displayName}.`);
     }
 
     if (entry.gencAlpha2 && !/^[A-Z0-9]{2}$/.test(entry.gencAlpha2)) {
@@ -1080,6 +1386,23 @@ async function fetchTextSource(url: string, label: string) {
   return response.text();
 }
 
+async function fetchBinarySource(url: string, label: string) {
+  const response = await fetch(url, {
+    headers: {
+      "User-Agent":
+        "Mozilla/5.0 (compatible; AccelerateGlobalCountryCodeRefresh/1.0)",
+      Accept:
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,*/*",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`${label} request failed with ${response.status}.`);
+  }
+
+  return response.arrayBuffer();
+}
+
 export async function refreshOfficialIsoCountryCodeEntriesFromOfficialSource() {
   const cookies = new Map<string, string>();
 
@@ -1259,12 +1582,34 @@ export async function fetchLegacyFipsCountryCodeEntriesFromSource() {
   return parseLegacyFipsCountryCodeEntries(text);
 }
 
+export async function fetchUntermCountryNameEntriesFromSource() {
+  const workbook = await fetchBinarySource(
+    UNTERM_COUNTRY_NAMES_SOURCE_URL,
+    "UNTERM",
+  );
+  return parseUntermCountryNamesWorkbook(workbook);
+}
+
+export async function fetchM49CountryCodeEntriesFromSource() {
+  const html = await fetchTextSource(M49_COUNTRY_CODES_SOURCE_URL, "M49");
+  return parseM49CountryCodeEntries(html);
+}
+
 export async function refreshIsoCountryCodeResourceFromOfficialSource() {
-  const [officialEntries, gencEntries, fipsEntries, overlayRows] =
+  const [
+    officialEntries,
+    gencEntries,
+    fipsEntries,
+    untermEntries,
+    m49Entries,
+    overlayRows,
+  ] =
     await Promise.all([
       refreshOfficialIsoCountryCodeEntriesFromOfficialSource(),
       fetchGencCountryCodeEntriesFromSource(),
       fetchLegacyFipsCountryCodeEntriesFromSource(),
+      fetchUntermCountryNameEntriesFromSource(),
+      fetchM49CountryCodeEntriesFromSource(),
       readCountryCodeOverlayRows(),
     ]);
 
@@ -1272,6 +1617,8 @@ export async function refreshIsoCountryCodeResourceFromOfficialSource() {
     officialEntries,
     gencEntries,
     fipsEntries,
+    untermEntries,
+    m49Entries,
     overlayRows,
   });
 }

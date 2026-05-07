@@ -32,6 +32,9 @@ const entry: IsoCountryCodeEntry = {
   officialIsoAlpha2: "AF",
   officialIsoAlpha3: "AFG",
   officialIsoNumeric: "004",
+  untermEnglishShortName: "Afghanistan",
+  untermEnglishFormalName: "the Islamic Republic of Afghanistan",
+  untermNameSource: "unterm-m49",
   gencAlpha2: "AF",
   gencAlpha3: "AFG",
   gencNumeric: "004",
@@ -42,7 +45,8 @@ const entry: IsoCountryCodeEntry = {
 };
 
 const resource: IsoCountryCodeResource = {
-  sourceName: "ISO OBP, GENC, legacy FIPS, and curated Accelerate Global overlay",
+  sourceName:
+    "ISO OBP, UNTERM, UNSD M49, GENC, legacy FIPS, and curated Accelerate Global overlay",
   sourceUrl: "https://www.iso.org/obp/ui/#search/code/",
   sourceCollectionUrl: "https://www.iso.org/publication/PUB500001.html",
   gencSourceUrl: "https://evs.nci.nih.gov/ftp1/GENC/NCIt-GENC_Terminology.txt",
@@ -50,6 +54,8 @@ const resource: IsoCountryCodeResource = {
   fipsSourceUrl: "https://nief.org/attribute-registry/codesets/FIPS10-4CountryCode/",
   fipsWithdrawalUrl:
     "https://csrc.nist.gov/news/2008/announcing-approval-of-the-withdrawal-of-ten-fip-s",
+  untermSourceUrl: "https://conferences.unite.un.org/untermapi/api/term/downloadCountries",
+  m49SourceUrl: "https://unstats.un.org/unsd/methodology/m49/overview/",
   overlaySourceName: "Accelerate Global - Spec Sheet - ISO3.csv",
   sourceRetrievedAt: "2026-05-06T00:00:00.000Z",
   entryCount: 1,
