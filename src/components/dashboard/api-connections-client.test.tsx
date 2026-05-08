@@ -85,7 +85,6 @@ const resource: ApiConnectionResource = {
   runId: queuedRun.id,
   resourceUrl: "https://example.com/film#watch",
   normalizedUrl: "https://example.com/film",
-  category: "Film",
   webText: "Watch",
   sourceRowIndex: 0,
   sourceResourceIndex: 1,
@@ -172,6 +171,8 @@ describe("ApiConnectionsClient", () => {
 
     expect(screen.getByText("No connections are available.")).toBeTruthy();
     expect(screen.getByText("Country & territory code resource")).toBeTruthy();
+    expect(screen.getByText("ROP Codes resource")).toBeTruthy();
+    expect(screen.queryByText("Category")).toBeNull();
     expect(screen.queryByRole("columnheader", { name: "Open" })).toBeNull();
     expect(
       screen.queryByRole("link", {
@@ -180,6 +181,14 @@ describe("ApiConnectionsClient", () => {
     ).toBeNull();
     fireEvent.click(screen.getByText("Country & territory code resource").closest("tr")!);
     expect(pushMock).toHaveBeenCalledWith("/dashboard/country-codes");
+    pushMock.mockClear();
+    fireEvent.click(screen.getByText("ROP Codes resource").closest("tr")!);
+    expect(pushMock).toHaveBeenCalledWith("/dashboard/rop-codes");
+    pushMock.mockClear();
+    fireEvent.keyDown(screen.getByText("ROP Codes resource").closest("tr")!, {
+      key: "Enter",
+    });
+    expect(pushMock).toHaveBeenCalledWith("/dashboard/rop-codes");
     expect(screen.getByText("No API-run resources have been captured yet.")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "New API connection" })).toBeNull();
   });
@@ -196,11 +205,12 @@ describe("ApiConnectionsClient", () => {
 
     expect(screen.getByText("Resources")).toBeTruthy();
     expect(screen.getByText("Country & territory code resource")).toBeTruthy();
-    expect(screen.getByText("Category")).toBeTruthy();
+    expect(screen.getByText("ROP Codes resource")).toBeTruthy();
+    expect(screen.queryByText("Category")).toBeNull();
+    expect(screen.queryByText("Uncategorized")).toBeNull();
     expect(screen.getByText("Display text")).toBeTruthy();
     expect(screen.getByText("URL")).toBeTruthy();
     expect(screen.queryByRole("columnheader", { name: "Open" })).toBeNull();
-    expect(screen.getByText("Film")).toBeTruthy();
     expect(screen.getByText("Watch")).toBeTruthy();
     expect(screen.getByText("https://example.com/film#watch")).toBeTruthy();
     expect(screen.queryByRole("link", { name: "Open Watch" })).toBeNull();

@@ -311,6 +311,7 @@ describe("apiConnections schema", () => {
     expect(apiConnectionRunOutputs.rawStoragePath.name).toBe("raw_storage_path");
     expect(apiConnectionResources.resourceUrl.name).toBe("resource_url");
     expect(apiConnectionResources.normalizedUrl.name).toBe("normalized_url");
+    expect(apiConnectionResources).not.toHaveProperty("category");
     expect(apiConnectionResources.webText.name).toBe("web_text");
     expect(apiConnectionResources.sourceResourceIndex.name).toBe(
       "source_resource_index",
@@ -377,6 +378,20 @@ describe("apiConnections schema", () => {
     expect(migration).toContain(
       "revoke all on private.api_connection_resources",
     );
+  });
+
+  it("drops API connection resource category metadata", async () => {
+    const migrationPath = path.join(
+      process.cwd(),
+      "supabase/migrations/20260508092905_drop_api_connection_resource_category.sql",
+    );
+
+    const migration = await readFile(migrationPath, "utf8");
+
+    expect(migration).toContain(
+      "alter table private.api_connection_resources",
+    );
+    expect(migration).toContain("drop column if exists category");
   });
 
   it("declares country-code alternate-name override schema", async () => {

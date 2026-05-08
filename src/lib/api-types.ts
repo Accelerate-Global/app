@@ -262,7 +262,6 @@ export type ApiConnectionResource = {
   runId: string;
   resourceUrl: string;
   normalizedUrl: string;
-  category: string;
   webText: string;
   sourceRowIndex: number;
   sourceResourceIndex: number;

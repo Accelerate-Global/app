@@ -492,7 +492,6 @@ export const apiConnectionResources = privateSchema.table(
       .references(() => apiConnectionRuns.id, { onDelete: "cascade" }),
     resourceUrl: text("resource_url").notNull(),
     normalizedUrl: text("normalized_url").notNull(),
-    category: text("category").notNull().default(""),
     webText: text("web_text").notNull().default(""),
     sourceRowIndex: integer("source_row_index").notNull(),
     sourceResourceIndex: integer("source_resource_index").notNull(),

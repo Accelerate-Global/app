@@ -373,7 +373,6 @@ describe("extractApiConnectionResources", () => {
         runId: "run-1",
         resourceUrl: "https://example.com/audio#player",
         normalizedUrl: "https://example.com/audio",
-        category: "Audio",
         webText: "Listen",
         sourceRowIndex: 0,
         sourceResourceIndex: 1,

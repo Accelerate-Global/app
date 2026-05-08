@@ -79,7 +79,6 @@ type ExtractedApiConnectionResource = {
   runId: string;
   resourceUrl: string;
   normalizedUrl: string;
-  category: string;
   webText: string;
   sourceRowIndex: number;
   sourceResourceIndex: number;
@@ -394,7 +393,6 @@ function toApiConnectionResource(
     runId: row.runId,
     resourceUrl: row.resourceUrl,
     normalizedUrl: row.normalizedUrl,
-    category: row.category,
     webText: row.webText,
     sourceRowIndex: row.sourceRowIndex,
     sourceResourceIndex: row.sourceResourceIndex,
@@ -1526,12 +1524,10 @@ export function extractApiConnectionResources(input: {
 
       const sourceResourceIndex = Number.parseInt(match[1]!, 10);
       const resourcePrefix = `resource_${match[1]}`;
-      const category = row[`${resourcePrefix}_category`] ?? "";
       const webText = row[`${resourcePrefix}_webtext`] ?? "";
       const existing = resourcesByNormalizedUrl.get(normalized.normalizedUrl);
 
       if (existing) {
-        existing.category = mergeResourceText(existing.category, category);
         existing.webText = mergeResourceText(existing.webText, webText);
         continue;
       }
@@ -1541,7 +1537,6 @@ export function extractApiConnectionResources(input: {
         runId: input.runId,
         resourceUrl: normalized.resourceUrl,
         normalizedUrl: normalized.normalizedUrl,
-        category: category.trim(),
         webText: webText.trim(),
         sourceRowIndex: rowIndex,
         sourceResourceIndex,
