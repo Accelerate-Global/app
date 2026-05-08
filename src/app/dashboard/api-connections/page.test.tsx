@@ -141,7 +141,6 @@ describe("/dashboard/api-connections", () => {
           runId: "22222222-2222-4222-8222-222222222222",
           resourceUrl: "https://example.com/resource",
           normalizedUrl: "https://example.com/resource",
-          category: "Film",
           webText: "Watch",
           sourceRowIndex: 0,
           sourceResourceIndex: 1,

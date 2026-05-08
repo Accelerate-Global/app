@@ -35,9 +35,13 @@ type ApiConnectionsClientProps = {
 const builtInResources = [
   {
     id: "iso3-country-codes",
-    category: "Built-in",
     webText: "Country & territory code resource",
     resourceUrl: "/dashboard/country-codes",
+  },
+  {
+    id: "rop-codes",
+    webText: "ROP Codes resource",
+    resourceUrl: "/dashboard/rop-codes",
   },
 ] as const;
 
@@ -194,7 +198,6 @@ export function ApiConnectionsClient({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Category</TableHead>
                 <TableHead>Display text</TableHead>
                 <TableHead>URL</TableHead>
               </TableRow>
@@ -213,9 +216,6 @@ export function ApiConnectionsClient({
                     )
                   }
                 >
-                  <TableCell className="max-w-48 whitespace-normal">
-                    {resource.category}
-                  </TableCell>
                   <TableCell className="max-w-72 whitespace-normal">
                     {resource.webText}
                   </TableCell>
@@ -237,11 +237,6 @@ export function ApiConnectionsClient({
                     )
                   }
                 >
-                  <TableCell className="max-w-48 whitespace-normal">
-                    {resource.category || (
-                      <span className="text-muted-foreground">Uncategorized</span>
-                    )}
-                  </TableCell>
                   <TableCell className="max-w-72 whitespace-normal">
                     {resource.webText || (
                       <span className="text-muted-foreground">

@@ -65,7 +65,6 @@ function createResourceRecord(connectionId = codeManagedImbId) {
     runId: "22222222-2222-4222-8222-222222222222",
     resourceUrl: "https://example.com/resource#details",
     normalizedUrl: "https://example.com/resource",
-    category: "Film",
     webText: "Watch",
     sourceRowIndex: 0,
     sourceResourceIndex: 1,
@@ -192,7 +191,6 @@ describe("code-managed API connection listing", () => {
         runId: resource.runId,
         resourceUrl: "https://example.com/resource#details",
         normalizedUrl: "https://example.com/resource",
-        category: "Film",
         webText: "Watch",
         sourceRowIndex: 0,
         sourceResourceIndex: 1,
@@ -389,15 +387,19 @@ describe("API connection resource publishing", () => {
         connectionId: "connection-1",
         runId: "test-run",
         normalizedUrl: "https://example.com/audio",
+        webText: "Listen",
       }),
     ]);
+    expect(values.mock.calls[0]?.[0]?.[0]).not.toHaveProperty("category");
     expect(values).toHaveBeenNthCalledWith(2, [
       expect.objectContaining({
         connectionId: "connection-1",
         runId: "import-run",
         normalizedUrl: "https://example.com/film",
+        webText: "Watch",
       }),
     ]);
+    expect(values.mock.calls[1]?.[0]?.[0]).not.toHaveProperty("category");
     expect(onConflictDoNothing).toHaveBeenCalledTimes(2);
   });
 });
