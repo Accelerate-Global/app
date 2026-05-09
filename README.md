@@ -41,12 +41,19 @@ Fill in:
 - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `SUPABASE_STORAGE_BUCKET` (defaults to `datasets`)
+- `GOOGLE_SHEETS_OAUTH_CLIENT_ID`
+- `GOOGLE_SHEETS_OAUTH_CLIENT_SECRET`
 - `DATABASE_URL`
 
 Raw CSV files are stored in Supabase Storage. Uploads require a server-side
 `SUPABASE_SERVICE_ROLE_KEY`, and runtime admin access is derived from
 `auth.users.raw_app_meta_data.workspace_role`. All signed-in users can browse
 shared datasets and rows.
+
+Google Sheets connections require a Google OAuth client with the redirect URI
+`/api/admin/api-connections/google-sheets/oauth/callback` configured for each app
+origin. The app requests read-only Sheets access and stores refresh tokens
+server-side in Supabase Vault.
 
 Bootstrap for the first admin remains an environment-specific migration or
 provider task. Review that bootstrap path manually for each environment instead

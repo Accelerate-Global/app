@@ -484,3 +484,19 @@ describe("api connection run actor identity", () => {
     expect(source).toContain('workspaceRole: "admin"');
   });
 });
+
+describe("Google Sheets provider runs", () => {
+  it("routes Google Sheets connections through fixed provider helpers and redacts OAuth secrets", async () => {
+    const source = await readFile(
+      path.join(process.cwd(), "src/lib/api-connections.ts"),
+      "utf8",
+    );
+
+    expect(source).toContain("if (connection.provider === GOOGLE_SHEETS_PROVIDER)");
+    expect(source).toContain("fetchGoogleSheetsConnectionOutput");
+    expect(source).toContain('input.secrets.set("google_refresh_token"');
+    expect(source).toContain('input.secrets.set("google_access_token"');
+    expect(source).toContain("const redactedBody = redactSecrets(body, secrets)");
+    expect(source).toContain("await bindGoogleSheetsConnectionTarget");
+  });
+});

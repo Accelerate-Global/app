@@ -4,6 +4,8 @@ import type {
   ApiConnectionHeader,
   ApiConnectionImportMode,
   ApiConnectionMethod,
+  ApiConnectionProvider,
+  ApiConnectionProviderConfig,
   ApiConnectionResponseFormat,
   ApiConnectionRunLogLevel,
   ApiConnectionRunMode,
@@ -12,6 +14,7 @@ import type {
   DatasetStatus,
   DatasetTag,
   DatasetVersionAction,
+  GoogleSheetsDraftTab,
 } from "@/lib/api-types";
 import type { SavedDatasetFilterState } from "@/lib/api-types";
 import {
@@ -339,6 +342,32 @@ export const signupEmailAllowlist = pgTable("signup_email_allowlist", {
 
 const privateSchema = pgSchema("private");
 
+export const apiConnectionOAuthCredentials = privateSchema.table(
+  "api_connection_oauth_credentials",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    provider: text("provider").notNull().default("google_sheets"),
+    actorOwnerId: text("actor_owner_id").notNull(),
+    actorEmail: text("actor_email"),
+    scopes: jsonb("scopes").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+    secretVaultId: uuid("secret_vault_id").notNull(),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("api_connection_oauth_credentials_actor_idx").on(
+      table.actorOwnerId,
+      table.createdAt,
+    ),
+    index("api_connection_oauth_credentials_revoked_idx").on(table.revokedAt),
+  ],
+);
+
 export const apiConnections = privateSchema.table(
   "api_connections",
   {
@@ -374,6 +403,20 @@ export const apiConnections = privateSchema.table(
       .$type<"PGAC" | "PGIC">()
       .notNull()
       .default("PGAC"),
+    provider: text("provider")
+      .$type<ApiConnectionProvider>()
+      .notNull()
+      .default("http_api"),
+    providerConfig: jsonb("provider_config")
+      .$type<ApiConnectionProviderConfig>()
+      .notNull()
+      .default(sql`'{"provider":"http_api"}'::jsonb`),
+    oauthCredentialId: uuid("oauth_credential_id").references(
+      () => apiConnectionOAuthCredentials.id,
+      {
+        onDelete: "set null",
+      },
+    ),
     createdByOwnerId: text("created_by_owner_id").notNull(),
     updatedByOwnerId: text("updated_by_owner_id").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
@@ -386,6 +429,48 @@ export const apiConnections = privateSchema.table(
   (table) => [
     index("api_connections_created_at_idx").on(table.createdAt),
     index("api_connections_updated_at_idx").on(table.updatedAt),
+    index("api_connections_provider_idx").on(table.provider, table.updatedAt),
+    index("api_connections_oauth_credential_idx").on(table.oauthCredentialId),
+  ],
+);
+
+export const googleSheetsConnectionDrafts = privateSchema.table(
+  "google_sheets_connection_drafts",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    stateHash: text("state_hash").notNull(),
+    actorOwnerId: text("actor_owner_id").notNull(),
+    actorEmail: text("actor_email"),
+    spreadsheetUrl: text("spreadsheet_url").notNull(),
+    spreadsheetId: text("spreadsheet_id").notNull(),
+    spreadsheetTitle: text("spreadsheet_title"),
+    sheets: jsonb("sheets")
+      .$type<GoogleSheetsDraftTab[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    oauthCredentialId: uuid("oauth_credential_id").references(
+      () => apiConnectionOAuthCredentials.id,
+      {
+        onDelete: "set null",
+      },
+    ),
+    status: text("status").notNull().default("pending_oauth"),
+    error: text("error"),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("google_sheets_connection_drafts_state_idx").on(table.stateHash),
+    index("google_sheets_connection_drafts_actor_idx").on(
+      table.actorOwnerId,
+      table.createdAt,
+    ),
+    index("google_sheets_connection_drafts_expires_idx").on(table.expiresAt),
   ],
 );
 

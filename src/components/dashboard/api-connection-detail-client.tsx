@@ -321,6 +321,15 @@ export function ApiConnectionDetailClient({
   connection,
   initialRuns,
 }: ApiConnectionDetailClientProps) {
+  const isGoogleSheetsConnection = connection.provider === "google_sheets";
+  const importActionLabel = isGoogleSheetsConnection
+    ? connection.targetDatasetId
+      ? "Refresh dataset"
+      : "Import sheet"
+    : "Start ingestion";
+  const pipelineDescription = isGoogleSheetsConnection
+    ? "Runs read the selected Google Sheet tab and import or refresh the dataset target."
+    : "Stage controls are visible as the target pipeline shape. In v1, run operations use the existing test and import actions.";
   const [runs, setRuns] = useState(() => sortRuns(initialRuns));
   const [selectedRunId, setSelectedRunId] = useState<string | null>(
     initialRuns[0]?.id ?? null,
@@ -718,10 +727,7 @@ export function ApiConnectionDetailClient({
                 <CircleDashedIcon className="size-5 text-muted-foreground" />
                 Pipeline
               </CardTitle>
-              <CardDescription>
-                Stage controls are visible as the target pipeline shape. In v1,
-                run operations use the existing test and import actions.
-              </CardDescription>
+              <CardDescription>{pipelineDescription}</CardDescription>
             </div>
             <div className="flex flex-wrap gap-2">
               <Button
@@ -750,7 +756,7 @@ export function ApiConnectionDetailClient({
                 ) : (
                   <UploadCloudIcon className="size-4" />
                 )}
-                Start ingestion
+                {importActionLabel}
               </Button>
               <Button
                 type="button"

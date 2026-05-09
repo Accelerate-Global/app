@@ -353,6 +353,38 @@ describe("ApiConnectionDetailClient", () => {
     expect(screen.getByText("[{\"name\":\"Beta\"}]")).toBeTruthy();
   });
 
+  it("labels Google Sheets import actions as dataset refreshes after first import", () => {
+    render(
+      <ApiConnectionDetailClient
+        connection={{
+          ...connection,
+          provider: "google_sheets",
+          providerConfig: {
+            provider: "google_sheets",
+            spreadsheetId: "sheet_123",
+            spreadsheetUrl:
+              "https://docs.google.com/spreadsheets/d/sheet_123/edit",
+            spreadsheetTitle: "Mission Sheet",
+            sheetId: 1,
+            sheetTitle: "Alpha",
+            rangeMode: "full_tab",
+          },
+          importMode: "replace",
+          targetDatasetId: "dataset-1",
+        }}
+        initialRuns={[]}
+      />,
+    );
+
+    expect(screen.getByText("Refresh dataset")).toBeTruthy();
+    expect(screen.queryByText("Start ingestion")).toBeNull();
+    expect(
+      screen.getByText(
+        "Runs read the selected Google Sheet tab and import or refresh the dataset target.",
+      ),
+    ).toBeTruthy();
+  });
+
   it("selects a run row and updates the run detail panel", () => {
     const passedRun: ApiConnectionRun = {
       ...successfulRun,
