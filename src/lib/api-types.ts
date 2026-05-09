@@ -186,9 +186,29 @@ export type DatasetUploadAuthorizationResponse = {
 export type ApiConnectionMethod = "GET" | "POST" | "PUT" | "PATCH";
 export type ApiConnectionResponseFormat = "json" | "csv";
 export type ApiConnectionImportMode = "create" | "replace";
+export type ApiConnectionProvider = "http_api" | "google_sheets";
 export type ApiConnectionRunMode = "test" | "import";
 export type ApiConnectionRunStatus = "queued" | "running" | "success" | "failed";
 export type ApiConnectionRunLogLevel = "info" | "error";
+export type GoogleSheetsRangeMode = "full_tab";
+
+export type HttpApiConnectionProviderConfig = {
+  provider: "http_api";
+};
+
+export type GoogleSheetsConnectionProviderConfig = {
+  provider: "google_sheets";
+  spreadsheetId: string;
+  spreadsheetUrl: string;
+  spreadsheetTitle: string;
+  sheetId: number;
+  sheetTitle: string;
+  rangeMode: GoogleSheetsRangeMode;
+};
+
+export type ApiConnectionProviderConfig =
+  | HttpApiConnectionProviderConfig
+  | GoogleSheetsConnectionProviderConfig;
 
 export type ApiConnectionHeader = {
   name: string;
@@ -210,8 +230,39 @@ export type ApiConnection = {
   targetDatasetId: string | null;
   datasetName: string;
   datasetClassification: DatasetClassification;
+  provider?: ApiConnectionProvider;
+  providerConfig?: ApiConnectionProviderConfig;
   createdAt: string;
   updatedAt: string;
+};
+
+export type GoogleSheetsDraftTab = {
+  sheetId: number;
+  title: string;
+  index: number;
+};
+
+export type GoogleSheetsConnectionDraft = {
+  id: string;
+  spreadsheetId: string;
+  spreadsheetUrl: string;
+  spreadsheetTitle: string;
+  sheets: GoogleSheetsDraftTab[];
+  expiresAt: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type GoogleSheetsOAuthStartResponse = {
+  authorizationUrl: string;
+};
+
+export type GoogleSheetsConnectionDraftResponse = {
+  draft: GoogleSheetsConnectionDraft;
+};
+
+export type GoogleSheetsConnectionConfirmResponse = {
+  connections: ApiConnection[];
 };
 
 export type ApiConnectionRun = {

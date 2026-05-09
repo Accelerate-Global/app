@@ -1,16 +1,19 @@
 import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
+import { randomUUID } from "node:crypto";
 
 import Papa from "papaparse";
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 
 import { getDb } from "@/db";
 import {
+  apiConnectionOAuthCredentials,
   apiConnectionResources,
   apiConnectionRunLogs,
   apiConnectionRunOutputs,
   apiConnectionRuns,
   apiConnections,
+  googleSheetsConnectionDrafts,
 } from "@/db/schema";
 import {
   parseApiConnectionRowsArtifact,
@@ -41,11 +44,28 @@ import {
 } from "@/lib/etnopedia-api";
 import type { EtnopediaRecord } from "@/lib/etnopedia-api";
 import { logError } from "@/lib/error-logging";
+import {
+  GOOGLE_SHEETS_PROVIDER,
+  GOOGLE_SHEETS_READONLY_SCOPE,
+  GoogleSheetsError,
+  assertGoogleSheetsImportSize,
+  createGoogleSheetsAuthorizationUrl,
+  createGoogleSheetsOAuthState,
+  exchangeGoogleSheetsOAuthCode,
+  fetchGoogleSheetsSpreadsheetMetadata,
+  fetchGoogleSheetsTabValues,
+  hashGoogleSheetsOAuthState,
+  parseGoogleSheetUrl,
+  parseGoogleSheetsValuesToRows,
+  refreshGoogleSheetsAccessToken,
+  type GoogleSheetsOAuthSecret,
+} from "@/lib/google-sheets";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import type {
   ApiConnection,
   ApiConnectionHeader,
   ApiConnectionImportMode,
+  ApiConnectionProviderConfig,
   ApiConnectionResource,
   ApiConnectionResponseFormat,
   ApiConnectionRun,
@@ -57,6 +77,8 @@ import type {
   CsvColumn,
   DatasetClassification,
   DatasetSummary,
+  GoogleSheetsConnectionDraft,
+  GoogleSheetsConnectionProviderConfig,
 } from "@/lib/api-types";
 
 const MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
@@ -65,11 +87,19 @@ const ARCGIS_FEATURE_PAGE_SIZE = 2000;
 const MAX_PREVIEW_LENGTH = 8 * 1024;
 const REQUEST_TIMEOUT_MS = 20_000;
 const MAX_REDIRECTS = 3;
+const GOOGLE_SHEETS_DRAFT_TTL_MS = 15 * 60 * 1000;
 const JOSHUA_PROJECT_API_HOST = "api.joshuaproject.net";
 const JOSHUA_PROJECT_PEOPLE_GROUPS_PATH = "/v1/people_groups.json";
 const JOSHUA_PROJECT_API_KEY_NAME = "api_key";
+const HTTP_API_PROVIDER_CONFIG: ApiConnectionProviderConfig = {
+  provider: "http_api",
+};
 
 type ApiConnectionRecord = typeof apiConnections.$inferSelect;
+type ApiConnectionOAuthCredentialRecord =
+  typeof apiConnectionOAuthCredentials.$inferSelect;
+type GoogleSheetsConnectionDraftRecord =
+  typeof googleSheetsConnectionDrafts.$inferSelect;
 type ApiConnectionRunRecord = typeof apiConnectionRuns.$inferSelect;
 type ApiConnectionRunLogRecord = typeof apiConnectionRunLogs.$inferSelect;
 type ApiConnectionRunOutputRecord = typeof apiConnectionRunOutputs.$inferSelect;
@@ -216,6 +246,8 @@ function toApiConnectionFromCodeManagedDefinition(
     targetDatasetId: definition.targetDatasetId,
     datasetName: definition.datasetName,
     datasetClassification: definition.datasetClassification,
+    provider: "http_api",
+    providerConfig: HTTP_API_PROVIDER_CONFIG,
     createdAt: CODE_MANAGED_CONNECTION_TIMESTAMP,
     updatedAt: CODE_MANAGED_CONNECTION_TIMESTAMP,
   };
@@ -273,6 +305,9 @@ async function materializeCodeManagedApiConnection(input: {
       targetDatasetId: input.definition.targetDatasetId,
       datasetName: input.definition.datasetName,
       datasetClassification: input.definition.datasetClassification,
+      provider: "http_api",
+      providerConfig: HTTP_API_PROVIDER_CONFIG,
+      oauthCredentialId: null,
       createdByOwnerId: input.actorOwnerId,
       updatedByOwnerId: input.actorOwnerId,
     })
@@ -292,6 +327,9 @@ async function materializeCodeManagedApiConnection(input: {
         targetDatasetId: sql`excluded.target_dataset_id`,
         datasetName: sql`excluded.dataset_name`,
         datasetClassification: sql`excluded.dataset_classification`,
+        provider: sql`excluded.provider`,
+        providerConfig: sql`excluded.provider_config`,
+        oauthCredentialId: sql`excluded.oauth_credential_id`,
         updatedByOwnerId: input.actorOwnerId,
         updatedAt: new Date(),
       },
@@ -327,6 +365,50 @@ function toApiConnection(row: ApiConnectionRecord): ApiConnection {
     targetDatasetId: row.targetDatasetId,
     datasetName: row.datasetName,
     datasetClassification: row.datasetClassification,
+    provider: row.provider ?? "http_api",
+    providerConfig: normalizeApiConnectionProviderConfig(
+      row.providerConfig,
+      row.provider,
+    ),
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+  };
+}
+
+function normalizeApiConnectionProviderConfig(
+  value: ApiConnectionProviderConfig,
+  provider: ApiConnection["provider"] = "http_api",
+): ApiConnectionProviderConfig {
+  if (provider === GOOGLE_SHEETS_PROVIDER && value?.provider === GOOGLE_SHEETS_PROVIDER) {
+    return value;
+  }
+
+  return HTTP_API_PROVIDER_CONFIG;
+}
+
+function getGoogleSheetsProviderConfig(
+  connection: ApiConnectionRecord,
+): GoogleSheetsConnectionProviderConfig | null {
+  const providerConfig = normalizeApiConnectionProviderConfig(
+    connection.providerConfig,
+    connection.provider,
+  );
+
+  return providerConfig.provider === GOOGLE_SHEETS_PROVIDER
+    ? providerConfig
+    : null;
+}
+
+function toGoogleSheetsConnectionDraft(
+  row: GoogleSheetsConnectionDraftRecord,
+): GoogleSheetsConnectionDraft {
+  return {
+    id: row.id,
+    spreadsheetId: row.spreadsheetId,
+    spreadsheetUrl: row.spreadsheetUrl,
+    spreadsheetTitle: row.spreadsheetTitle || "Google Sheet",
+    sheets: row.sheets,
+    expiresAt: row.expiresAt.toISOString(),
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
@@ -433,21 +515,37 @@ function getVaultSecretName(connectionId: string) {
   return `api_connection_${connectionId}_headers`;
 }
 
+function getGoogleSheetsCredentialSecretName(credentialId: string) {
+  return `api_connection_google_sheets_${credentialId}`;
+}
+
+async function createNamedVaultSecret(input: {
+  secret: string;
+  name: string;
+  description: string;
+}) {
+  const rows = (await getDb().execute(sql`
+    select vault.create_secret(
+      ${input.secret},
+      ${input.name},
+      ${input.description}
+    ) as id
+  `)) as Array<{ id: string }>;
+
+  return rows[0]?.id ?? null;
+}
+
 async function createVaultSecret(connectionId: string, secretHeaders: Map<string, string>) {
   if (secretHeaders.size === 0) {
     return null;
   }
 
   const secret = JSON.stringify(Object.fromEntries(secretHeaders));
-  const rows = (await getDb().execute(sql`
-    select vault.create_secret(
-      ${secret},
-      ${getVaultSecretName(connectionId)},
-      'API connection secret headers'
-    ) as id
-  `)) as Array<{ id: string }>;
-
-  return rows[0]?.id ?? null;
+  return createNamedVaultSecret({
+    secret,
+    name: getVaultSecretName(connectionId),
+    description: "API connection secret headers",
+  });
 }
 
 async function updateVaultSecret(input: {
@@ -477,17 +575,7 @@ async function updateVaultSecret(input: {
 }
 
 async function readVaultSecret(vaultId: string | null) {
-  if (!vaultId) {
-    return new Map<string, string>();
-  }
-
-  const rows = (await getDb().execute(sql`
-    select decrypted_secret
-    from vault.decrypted_secrets
-    where id = ${vaultId}::uuid
-    limit 1
-  `)) as Array<{ decrypted_secret: string | null }>;
-  const rawSecret = rows[0]?.decrypted_secret;
+  const rawSecret = await readVaultSecretText(vaultId);
 
   if (!rawSecret) {
     return new Map<string, string>();
@@ -506,12 +594,100 @@ async function readVaultSecret(vaultId: string | null) {
   }
 }
 
+async function readVaultSecretText(vaultId: string | null) {
+  if (!vaultId) {
+    return null;
+  }
+
+  const rows = (await getDb().execute(sql`
+    select decrypted_secret
+    from vault.decrypted_secrets
+    where id = ${vaultId}::uuid
+    limit 1
+  `)) as Array<{ decrypted_secret: string | null }>;
+  return rows[0]?.decrypted_secret ?? null;
+}
+
 async function deleteVaultSecret(vaultId: string | null) {
   if (!vaultId) {
     return;
   }
 
   await getDb().execute(sql`delete from vault.secrets where id = ${vaultId}::uuid`);
+}
+
+async function createGoogleSheetsOAuthCredential(input: {
+  identity: CurrentIdentity;
+  secret: GoogleSheetsOAuthSecret;
+}) {
+  const credentialId = randomUUID();
+  const secretVaultId = await createNamedVaultSecret({
+    secret: JSON.stringify(input.secret),
+    name: getGoogleSheetsCredentialSecretName(credentialId),
+    description: "Google Sheets OAuth refresh token",
+  });
+
+  if (!secretVaultId) {
+    throw new ApiConnectionError("Could not store Google Sheets credential.", 500);
+  }
+
+  const [credential] = await getDb()
+    .insert(apiConnectionOAuthCredentials)
+    .values({
+      id: credentialId,
+      provider: GOOGLE_SHEETS_PROVIDER,
+      actorOwnerId: input.identity.ownerId,
+      actorEmail: input.identity.email,
+      scopes: [GOOGLE_SHEETS_READONLY_SCOPE],
+      secretVaultId,
+    })
+    .returning();
+
+  return credential;
+}
+
+async function readGoogleSheetsOAuthSecret(
+  credential: ApiConnectionOAuthCredentialRecord,
+) {
+  const rawSecret = await readVaultSecretText(credential.secretVaultId);
+
+  if (!rawSecret) {
+    throw new ApiConnectionError("Google Sheets credential was not found.", 400);
+  }
+
+  try {
+    const parsed = JSON.parse(rawSecret) as Partial<GoogleSheetsOAuthSecret>;
+
+    if (!parsed.refreshToken) {
+      throw new Error("Missing refresh token.");
+    }
+
+    return {
+      refreshToken: parsed.refreshToken,
+      scope: parsed.scope ?? GOOGLE_SHEETS_READONLY_SCOPE,
+      tokenType: parsed.tokenType ?? "Bearer",
+    } satisfies GoogleSheetsOAuthSecret;
+  } catch {
+    throw new ApiConnectionError("Google Sheets credential is invalid.", 400);
+  }
+}
+
+async function getGoogleSheetsOAuthCredential(credentialId: string | null) {
+  if (!credentialId) {
+    throw new ApiConnectionError("Google Sheets credential is missing.", 400);
+  }
+
+  const [credential] = await getDb()
+    .select()
+    .from(apiConnectionOAuthCredentials)
+    .where(eq(apiConnectionOAuthCredentials.id, credentialId))
+    .limit(1);
+
+  if (!credential || credential.revokedAt) {
+    throw new ApiConnectionError("Google Sheets credential is unavailable.", 400);
+  }
+
+  return credential;
 }
 
 function mergeSecretHeaders(input: {
@@ -529,6 +705,216 @@ function mergeSecretHeaders(input: {
   }
 
   return merged;
+}
+
+function getGoogleSheetsCallbackUrl(requestUrl: string) {
+  return new URL(
+    "/api/admin/api-connections/google-sheets/oauth/callback",
+    requestUrl,
+  ).toString();
+}
+
+export async function startGoogleSheetsConnectionOAuth(input: {
+  identity: CurrentIdentity;
+  spreadsheetUrl: string;
+  requestUrl: string;
+}) {
+  const parsedUrl = parseGoogleSheetUrl(input.spreadsheetUrl);
+  const state = createGoogleSheetsOAuthState();
+  const authorizationUrl = createGoogleSheetsAuthorizationUrl({
+    redirectUri: getGoogleSheetsCallbackUrl(input.requestUrl),
+    state: state.value,
+  });
+  const [draft] = await getDb()
+    .insert(googleSheetsConnectionDrafts)
+    .values({
+      stateHash: state.hash,
+      actorOwnerId: input.identity.ownerId,
+      actorEmail: input.identity.email,
+      spreadsheetUrl: parsedUrl.spreadsheetUrl,
+      spreadsheetId: parsedUrl.spreadsheetId,
+      expiresAt: new Date(Date.now() + GOOGLE_SHEETS_DRAFT_TTL_MS),
+    })
+    .returning();
+
+  return {
+    draftId: draft.id,
+    authorizationUrl,
+  };
+}
+
+export async function completeGoogleSheetsConnectionOAuth(input: {
+  identity: CurrentIdentity;
+  code: string;
+  state: string;
+  requestUrl: string;
+}) {
+  const stateHash = hashGoogleSheetsOAuthState(input.state);
+  const [draft] = await getDb()
+    .select()
+    .from(googleSheetsConnectionDrafts)
+    .where(eq(googleSheetsConnectionDrafts.stateHash, stateHash))
+    .limit(1);
+
+  if (
+    !draft ||
+    draft.actorOwnerId !== input.identity.ownerId ||
+    draft.status !== "pending_oauth" ||
+    draft.expiresAt.getTime() < Date.now()
+  ) {
+    throw new ApiConnectionError("Google Sheets connection session is invalid.", 400);
+  }
+
+  const token = await exchangeGoogleSheetsOAuthCode({
+    code: input.code,
+    redirectUri: getGoogleSheetsCallbackUrl(input.requestUrl),
+  });
+
+  if (!token.refreshToken) {
+    throw new ApiConnectionError(
+      "Google did not return a refresh token. Start the connection again.",
+      400,
+    );
+  }
+
+  const metadata = await fetchGoogleSheetsSpreadsheetMetadata({
+    spreadsheetId: draft.spreadsheetId,
+    accessToken: token.accessToken,
+  });
+  const credential = await createGoogleSheetsOAuthCredential({
+    identity: input.identity,
+    secret: {
+      refreshToken: token.refreshToken,
+      scope: token.scope || GOOGLE_SHEETS_READONLY_SCOPE,
+      tokenType: token.tokenType,
+    },
+  });
+  const [updated] = await getDb()
+    .update(googleSheetsConnectionDrafts)
+    .set({
+      spreadsheetTitle: metadata.spreadsheetTitle,
+      sheets: metadata.sheets,
+      oauthCredentialId: credential.id,
+      status: "ready",
+      updatedAt: new Date(),
+    })
+    .where(eq(googleSheetsConnectionDrafts.id, draft.id))
+    .returning();
+
+  return toGoogleSheetsConnectionDraft(updated);
+}
+
+export async function getGoogleSheetsConnectionDraft(input: {
+  identity: CurrentIdentity;
+  draftId: string;
+}) {
+  const [draft] = await getDb()
+    .select()
+    .from(googleSheetsConnectionDrafts)
+    .where(eq(googleSheetsConnectionDrafts.id, input.draftId))
+    .limit(1);
+
+  if (
+    !draft ||
+    draft.actorOwnerId !== input.identity.ownerId ||
+    draft.status !== "ready" ||
+    draft.expiresAt.getTime() < Date.now()
+  ) {
+    return null;
+  }
+
+  return toGoogleSheetsConnectionDraft(draft);
+}
+
+function sanitizeGoogleSheetDatasetName(input: {
+  spreadsheetTitle: string;
+  sheetTitle: string;
+}) {
+  return sanitizeFileName(`${input.spreadsheetTitle}-${input.sheetTitle}.csv`);
+}
+
+export async function confirmGoogleSheetsConnectionDraft(input: {
+  identity: CurrentIdentity;
+  draftId: string;
+  selectedSheetIds: number[];
+  datasetClassification: DatasetClassification;
+}) {
+  const [draft] = await getDb()
+    .select()
+    .from(googleSheetsConnectionDrafts)
+    .where(eq(googleSheetsConnectionDrafts.id, input.draftId))
+    .limit(1);
+
+  if (
+    !draft ||
+    draft.actorOwnerId !== input.identity.ownerId ||
+    draft.status !== "ready" ||
+    draft.expiresAt.getTime() < Date.now() ||
+    !draft.oauthCredentialId
+  ) {
+    throw new ApiConnectionError("Google Sheets connection draft is unavailable.", 404);
+  }
+
+  const selectedIds = new Set(input.selectedSheetIds);
+  const selectedSheets = draft.sheets.filter((sheet) => selectedIds.has(sheet.sheetId));
+
+  if (selectedSheets.length === 0 || selectedSheets.length !== selectedIds.size) {
+    throw new ApiConnectionError("Choose at least one valid Google Sheet tab.", 400);
+  }
+
+  const spreadsheetTitle = draft.spreadsheetTitle || "Google Sheet";
+  const created = await getDb().transaction(async (tx) => {
+    const rows = await tx
+      .insert(apiConnections)
+      .values(
+        selectedSheets.map((sheet) => {
+          const providerConfig = {
+            provider: GOOGLE_SHEETS_PROVIDER,
+            spreadsheetId: draft.spreadsheetId,
+            spreadsheetUrl: draft.spreadsheetUrl,
+            spreadsheetTitle,
+            sheetId: sheet.sheetId,
+            sheetTitle: sheet.title,
+            rangeMode: "full_tab",
+          } satisfies GoogleSheetsConnectionProviderConfig;
+
+          return {
+            name: `${spreadsheetTitle} - ${sheet.title}`,
+            description: "Private Google Sheets tab.",
+            method: "GET" as const,
+            url: draft.spreadsheetUrl,
+            requestHeaders: [],
+            secretHeaderNames: [],
+            secretVaultId: null,
+            bodyTemplate: "",
+            responseFormat: "csv" as const,
+            responseDataPath: "",
+            importMode: "create" as const,
+            targetDatasetId: null,
+            datasetName: sanitizeGoogleSheetDatasetName({
+              spreadsheetTitle,
+              sheetTitle: sheet.title,
+            }),
+            datasetClassification: input.datasetClassification,
+            provider: GOOGLE_SHEETS_PROVIDER,
+            providerConfig,
+            oauthCredentialId: draft.oauthCredentialId,
+            createdByOwnerId: input.identity.ownerId,
+            updatedByOwnerId: input.identity.ownerId,
+          };
+        }),
+      )
+      .returning();
+
+    await tx
+      .update(googleSheetsConnectionDrafts)
+      .set({ status: "consumed", updatedAt: new Date() })
+      .where(eq(googleSheetsConnectionDrafts.id, draft.id));
+
+    return rows;
+  });
+
+  return created.map(toApiConnection);
 }
 
 async function hydrateRunDetails(runRows: ApiConnectionRunRecord[]) {
@@ -644,6 +1030,9 @@ export async function createApiConnection(input: {
       targetDatasetId: normalized.targetDatasetId,
       datasetName: normalized.datasetName,
       datasetClassification: normalized.datasetClassification,
+      provider: "http_api",
+      providerConfig: HTTP_API_PROVIDER_CONFIG,
+      oauthCredentialId: null,
       createdByOwnerId: input.actorOwnerId,
       updatedByOwnerId: input.actorOwnerId,
     })
@@ -718,6 +1107,9 @@ export async function updateApiConnection(input: {
       targetDatasetId: normalized.targetDatasetId,
       datasetName: normalized.datasetName,
       datasetClassification: normalized.datasetClassification,
+      provider: "http_api",
+      providerConfig: HTTP_API_PROVIDER_CONFIG,
+      oauthCredentialId: null,
       updatedByOwnerId: input.actorOwnerId,
       updatedAt: new Date(),
     })
@@ -738,6 +1130,59 @@ export async function deleteApiConnection(connectionId: string) {
   }
 
   await deleteVaultSecret(deleted.secretVaultId);
+  return toApiConnection(deleted);
+}
+
+export async function disconnectGoogleSheetsConnection(input: {
+  connectionId: string;
+  identity: CurrentIdentity;
+}) {
+  const [connection] = await getDb()
+    .select()
+    .from(apiConnections)
+    .where(eq(apiConnections.id, input.connectionId))
+    .limit(1);
+
+  if (!connection || connection.provider !== GOOGLE_SHEETS_PROVIDER) {
+    return null;
+  }
+
+  const [deleted] = await getDb()
+    .delete(apiConnections)
+    .where(eq(apiConnections.id, connection.id))
+    .returning();
+
+  if (!deleted) {
+    return null;
+  }
+
+  if (connection.oauthCredentialId) {
+    const [remainingConnection] = await getDb()
+      .select({ id: apiConnections.id })
+      .from(apiConnections)
+      .where(eq(apiConnections.oauthCredentialId, connection.oauthCredentialId))
+      .limit(1);
+
+    if (!remainingConnection) {
+      const [credential] = await getDb()
+        .select()
+        .from(apiConnectionOAuthCredentials)
+        .where(eq(apiConnectionOAuthCredentials.id, connection.oauthCredentialId))
+        .limit(1);
+
+      if (credential) {
+        await getDb()
+          .update(apiConnectionOAuthCredentials)
+          .set({
+            revokedAt: new Date(),
+            updatedAt: new Date(),
+          })
+          .where(eq(apiConnectionOAuthCredentials.id, credential.id));
+        await deleteVaultSecret(credential.secretVaultId);
+      }
+    }
+  }
+
   return toApiConnection(deleted);
 }
 
@@ -1630,13 +2075,25 @@ async function persistImportedRows(input: {
   const chunks = chunkRows(input.rows);
 
   if (chunks.length === 0) {
-    return insertDatasetRowBatch({
+    const latestDataset = await insertDatasetRowBatch({
       datasetId: dataset.id,
       startIndex: 0,
       rows: [],
       isFinalBatch: true,
       totalRows: 0,
     });
+
+    if (!latestDataset) {
+      throw new ApiConnectionError("Import target dataset was not found.", 404);
+    }
+
+    await bindGoogleSheetsConnectionTarget({
+      connection: input.connection,
+      datasetId: latestDataset.id,
+      actorOwnerId: input.identity.ownerId,
+    });
+
+    return latestDataset;
   }
 
   let latestDataset: DatasetSummary | null = dataset;
@@ -1652,7 +2109,38 @@ async function persistImportedRows(input: {
     startIndex += rows.length;
   }
 
+  if (latestDataset) {
+    await bindGoogleSheetsConnectionTarget({
+      connection: input.connection,
+      datasetId: latestDataset.id,
+      actorOwnerId: input.identity.ownerId,
+    });
+  }
+
   return latestDataset;
+}
+
+async function bindGoogleSheetsConnectionTarget(input: {
+  connection: ApiConnectionRecord;
+  datasetId: string;
+  actorOwnerId: string;
+}) {
+  if (
+    input.connection.provider !== GOOGLE_SHEETS_PROVIDER ||
+    input.connection.targetDatasetId
+  ) {
+    return;
+  }
+
+  await getDb()
+    .update(apiConnections)
+    .set({
+      importMode: "replace",
+      targetDatasetId: input.datasetId,
+      updatedByOwnerId: input.actorOwnerId,
+      updatedAt: new Date(),
+    })
+    .where(eq(apiConnections.id, input.connection.id));
 }
 
 async function insertRun(input: {
@@ -1913,6 +2401,45 @@ function identityFromRun(run: ApiConnectionRunRecord): CurrentIdentity {
   };
 }
 
+async function fetchGoogleSheetsConnectionOutput(input: {
+  connection: ApiConnectionRecord;
+  secrets: Map<string, string>;
+}) {
+  const providerConfig = getGoogleSheetsProviderConfig(input.connection);
+
+  if (!providerConfig) {
+    throw new ApiConnectionError("Google Sheets connection metadata is invalid.", 400);
+  }
+
+  const credential = await getGoogleSheetsOAuthCredential(input.connection.oauthCredentialId);
+  const secret = await readGoogleSheetsOAuthSecret(credential);
+  input.secrets.set("google_refresh_token", secret.refreshToken);
+  const accessToken = await refreshGoogleSheetsAccessToken(secret.refreshToken);
+  input.secrets.set("google_access_token", accessToken);
+  const values = await fetchGoogleSheetsTabValues({
+    spreadsheetId: providerConfig.spreadsheetId,
+    sheetTitle: providerConfig.sheetTitle,
+    accessToken,
+  });
+  const parsed = parseGoogleSheetsValuesToRows(values);
+  const csv = serializeRowsToCsv(parsed);
+
+  assertGoogleSheetsImportSize(csv);
+
+  return {
+    body: JSON.stringify({
+      provider: GOOGLE_SHEETS_PROVIDER,
+      spreadsheetId: providerConfig.spreadsheetId,
+      spreadsheetTitle: providerConfig.spreadsheetTitle,
+      sheetId: providerConfig.sheetId,
+      sheetTitle: providerConfig.sheetTitle,
+      values,
+    }),
+    parsed,
+    httpStatus: 200,
+  };
+}
+
 export async function executeApiConnectionRun(input: { runId: string }) {
   const [run] = await getDb()
     .select()
@@ -1975,6 +2502,10 @@ export async function executeApiConnectionRun(input: { runId: string }) {
     });
 
     let body: string;
+    let parsed: {
+      rows: Record<string, string>[];
+      columns: CsvColumn[];
+    } | null = null;
 
     const isArcgisRun = isArcgisFeatureConnection({
       url: requestConfig.url,
@@ -1982,7 +2513,22 @@ export async function executeApiConnectionRun(input: { runId: string }) {
       responseDataPath: connection.responseDataPath,
     });
 
-    if (isEtnopediaApiUrl(connection.url)) {
+    if (connection.provider === GOOGLE_SHEETS_PROVIDER) {
+      await insertRunLog({
+        runId: run.id,
+        connectionId: connection.id,
+        message: "Fetching Google Sheets tab.",
+      });
+
+      const result = await fetchGoogleSheetsConnectionOutput({
+        connection,
+        secrets,
+      });
+
+      body = result.body;
+      parsed = result.parsed;
+      httpStatus = result.httpStatus;
+    } else if (isEtnopediaApiUrl(connection.url)) {
       try {
         const result = await fetchEtnopediaPeopleGroups({
           requestJson: createEtnopediaRequestJson({
@@ -2063,7 +2609,7 @@ export async function executeApiConnectionRun(input: { runId: string }) {
       message: `Received HTTP ${httpStatus}.`,
     });
 
-    const parsed = isArcgisRun
+    parsed ??= isArcgisRun
       ? parseArcgisFeatureRows(JSON.parse(body) as unknown[])
       : parseApiResponseRows({
           body,
@@ -2165,11 +2711,13 @@ export async function executeApiConnectionRun(input: { runId: string }) {
     const message =
       error instanceof ApiConnectionError
         ? error.message
+        : error instanceof GoogleSheetsError
+          ? error.message
         : error instanceof Error && error.name === "AbortError"
           ? "API request timed out."
           : "API connection run failed.";
 
-    if (!(error instanceof ApiConnectionError)) {
+    if (!(error instanceof ApiConnectionError) && !(error instanceof GoogleSheetsError)) {
       logError("Failed to run API connection", error);
     }
 

@@ -55,7 +55,7 @@ for dataset review from the Datasets Resources card.
 - **AND** the Country & territory code row opens `/dashboard/country-codes`
 - **AND** the ROP Codes row opens `/dashboard/rop-codes`
 
-#### Scenario: Admin views Resources table columns
+#### Scenario: Admin views Resources rows
 - **WHEN** a dataset admin views the Resources card on `/dashboard/api-connections`
-- **THEN** the Resources table shows Display text and URL columns
-- **AND** the Resources table does not show a Category column
+- **THEN** the Resources card renders built-in and captured resources as label-only rows
+- **AND** the Resources card does not show visible Category, Display text, URL, or Open columns

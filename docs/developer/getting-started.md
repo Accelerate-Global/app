@@ -25,7 +25,14 @@ Fill in:
 - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `SUPABASE_STORAGE_BUCKET`
+- `GOOGLE_SHEETS_OAUTH_CLIENT_ID`
+- `GOOGLE_SHEETS_OAUTH_CLIENT_SECRET`
 - `DATABASE_URL`
+
+For Google Sheets dataset connections, configure a Google OAuth client with the
+app origin callback path
+`/api/admin/api-connections/google-sheets/oauth/callback`. The provider uses
+read-only Sheets access and server-side refresh tokens.
 
 For deployed environment values, use Vercel:
 
