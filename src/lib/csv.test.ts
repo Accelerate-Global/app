@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   chunkRows,
+  escapeCsvCell,
   normalizeHeader,
   normalizeHeaderIdentity,
   normalizeHeaders,
@@ -49,5 +50,23 @@ describe("csv utilities", () => {
   it("sanitizes uploaded filenames for blob paths", () => {
     expect(sanitizeFileName("sales / april.csv")).toBe("sales-april.csv");
     expect(sanitizeFileName("")).toBe("upload.csv");
+  });
+
+  it("neutralizes spreadsheet formula-leading CSV cells", () => {
+    expect(escapeCsvCell("=1+1")).toBe("'=1+1");
+    expect(escapeCsvCell("  +SUM(A1:A2)")).toBe("'  +SUM(A1:A2)");
+    expect(escapeCsvCell("-10")).toBe("'-10");
+    expect(escapeCsvCell("@cmd")).toBe("'@cmd");
+    expect(escapeCsvCell("\t=cmd")).toBe("'\t=cmd");
+    expect(escapeCsvCell("\r=cmd")).toBe("\"'\r=cmd\"");
+    expect(escapeCsvCell("\n=cmd")).toBe("\"'\n=cmd\"");
+  });
+
+  it("preserves normal CSV quoting behavior", () => {
+    expect(escapeCsvCell("plain value")).toBe("plain value");
+    expect(escapeCsvCell("Line \"two\"\nwrapped")).toBe(
+      "\"Line \"\"two\"\"\nwrapped\"",
+    );
+    expect(escapeCsvCell("value,with,commas")).toBe("\"value,with,commas\"");
   });
 });

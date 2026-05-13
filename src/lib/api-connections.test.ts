@@ -455,6 +455,22 @@ describe("api connection run artifact storage", () => {
   });
 });
 
+describe("api connection import snapshots", () => {
+  it("uses the shared CSV cell escaping helper for import snapshot CSV", async () => {
+    const source = await readFile(
+      path.join(process.cwd(), "src/lib/api-connections.ts"),
+      "utf8",
+    );
+
+    expect(source).toContain(
+      'import { chunkRows, escapeCsvCell, normalizeHeaders, sanitizeFileName } from "@/lib/csv";',
+    );
+    expect(source).toContain("input.columns.map((column) => escapeCsvCell(column.label))");
+    expect(source).toContain("input.columns.map((column) => escapeCsvCell(row[column.key] ?? \"\"))");
+    expect(source).not.toContain("function escapeCsvCell");
+  });
+});
+
 describe("createApiConnectionRunRequest", () => {
   it("sends Joshua Project api_key secrets as query params instead of headers", () => {
     const request = createApiConnectionRunRequest({

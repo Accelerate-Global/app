@@ -6,7 +6,7 @@ import {
   refreshIsoCountryCodeResourceFromOfficialSource,
 } from "@/lib/iso-country-codes";
 import type { IsoCountryCodeResource } from "@/lib/iso-country-codes";
-import { GET } from "./route";
+import { GET, POST } from "./route";
 
 vi.mock("@/lib/auth", () => ({
   getCurrentIdentity: vi.fn(),
@@ -34,10 +34,21 @@ describe("/api/iso-country-codes/refresh", () => {
     vi.resetAllMocks();
   });
 
+  it("rejects GET refresh requests", async () => {
+    const response = GET();
+
+    expect(response.status).toBe(405);
+    expect(response.headers.get("Allow")).toBe("POST");
+    await expect(response.json()).resolves.toEqual({
+      error: "Method not allowed.",
+    });
+    expect(refreshIsoCountryCodeResourceFromOfficialSourceMock).not.toHaveBeenCalled();
+  });
+
   it("rejects anonymous refresh requests", async () => {
     getCurrentIdentityMock.mockResolvedValue(null);
 
-    const response = await GET();
+    const response = await POST();
 
     expect(response.status).toBe(401);
     expect(refreshIsoCountryCodeResourceFromOfficialSourceMock).not.toHaveBeenCalled();
@@ -53,7 +64,7 @@ describe("/api/iso-country-codes/refresh", () => {
       mode: "supabase",
     });
 
-    const response = await GET();
+    const response = await POST();
 
     expect(response.status).toBe(403);
     await expect(response.json()).resolves.toEqual({
@@ -122,7 +133,7 @@ describe("/api/iso-country-codes/refresh", () => {
     refreshIsoCountryCodeResourceFromOfficialSourceMock.mockResolvedValue(resource);
     mergeIsoCountryCodeEntryOverridesMock.mockResolvedValue(mergedResource);
 
-    const response = await GET();
+    const response = await POST();
 
     expect(response.status).toBe(200);
     expect(mergeIsoCountryCodeEntryOverridesMock).toHaveBeenCalledWith(resource);
@@ -142,7 +153,7 @@ describe("/api/iso-country-codes/refresh", () => {
       new Error("ISO unavailable"),
     );
 
-    const response = await GET();
+    const response = await POST();
 
     expect(response.status).toBe(502);
     await expect(response.json()).resolves.toEqual({

@@ -3,21 +3,13 @@ import type {
   DatasetSummary,
   FieldDefinitionPresentation,
 } from "@/lib/api-types";
-import { sanitizeFileName } from "@/lib/csv";
+import { escapeCsvCell, sanitizeFileName } from "@/lib/csv";
 import {
   getDatasetCellValue,
   getDatasetColumnDisplayLabel,
 } from "@/lib/dataset-table-columns";
 
 type DatasetRow = DatasetRowsResponse["rows"][number];
-
-function escapeCsvCell(value: string) {
-  if (/[",\r\n]/u.test(value)) {
-    return `"${value.replace(/"/g, "\"\"")}"`;
-  }
-
-  return value;
-}
 
 function stripCsvExtension(value: string) {
   return value.trim().replace(/\.csv$/iu, "");

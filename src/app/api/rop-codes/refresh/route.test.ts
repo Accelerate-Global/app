@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getCurrentIdentity } from "@/lib/auth";
 import { refreshRopCodeResourceFromHis } from "@/lib/rop-codes";
 import type { RopCodeResource } from "@/lib/rop-codes";
-import { GET } from "./route";
+import { GET, POST } from "./route";
 
 vi.mock("@/lib/auth", () => ({
   getCurrentIdentity: vi.fn(),
@@ -49,10 +49,21 @@ describe("/api/rop-codes/refresh", () => {
     vi.resetAllMocks();
   });
 
+  it("rejects GET refresh requests", async () => {
+    const response = GET();
+
+    expect(response.status).toBe(405);
+    expect(response.headers.get("Allow")).toBe("POST");
+    await expect(response.json()).resolves.toEqual({
+      error: "Method not allowed.",
+    });
+    expect(refreshRopCodeResourceFromHisMock).not.toHaveBeenCalled();
+  });
+
   it("rejects anonymous refresh requests", async () => {
     getCurrentIdentityMock.mockResolvedValue(null);
 
-    const response = await GET();
+    const response = await POST();
 
     expect(response.status).toBe(401);
     expect(refreshRopCodeResourceFromHisMock).not.toHaveBeenCalled();
@@ -68,7 +79,7 @@ describe("/api/rop-codes/refresh", () => {
       mode: "supabase",
     });
 
-    const response = await GET();
+    const response = await POST();
 
     expect(response.status).toBe(403);
     await expect(response.json()).resolves.toEqual({
@@ -88,7 +99,7 @@ describe("/api/rop-codes/refresh", () => {
     });
     refreshRopCodeResourceFromHisMock.mockResolvedValue(resource);
 
-    const response = await GET();
+    const response = await POST();
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual(resource);
@@ -105,7 +116,7 @@ describe("/api/rop-codes/refresh", () => {
     });
     refreshRopCodeResourceFromHisMock.mockRejectedValue(new Error("HIS unavailable"));
 
-    const response = await GET();
+    const response = await POST();
 
     expect(response.status).toBe(502);
     await expect(response.json()).resolves.toEqual({

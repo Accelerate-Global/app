@@ -556,7 +556,9 @@ export function IsoCountryCodesClient({
     }, 900);
 
     try {
-      const response = await fetch("/api/iso-country-codes/refresh");
+      const response = await fetch("/api/iso-country-codes/refresh", {
+        method: "POST",
+      });
 
       if (!response.ok) {
         throw new Error("Refresh failed.");

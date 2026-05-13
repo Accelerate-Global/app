@@ -4,6 +4,8 @@ export const MAX_CSV_BYTES = 25 * 1024 * 1024;
 export const ROW_BATCH_SIZE = 500;
 
 const HEADER_MAX_LENGTH = 96;
+const CSV_FORMULA_TRIGGER_PATTERN = /^ *[=+\-@\t\r\n]/u;
+const CSV_QUOTE_PATTERN = /[",\r\n]/u;
 
 function normalizeHeaderFragment(value: string) {
   return value
@@ -24,6 +26,16 @@ export function sanitizeFileName(fileName: string) {
     .replace(/^-|-$/g, "");
 
   return cleaned || "upload.csv";
+}
+
+export function escapeCsvCell(value: string) {
+  const safeValue = CSV_FORMULA_TRIGGER_PATTERN.test(value) ? `'${value}` : value;
+
+  if (CSV_QUOTE_PATTERN.test(safeValue)) {
+    return `"${safeValue.replace(/"/g, "\"\"")}"`;
+  }
+
+  return safeValue;
 }
 
 export function normalizeHeaderIdentity(value: unknown, index = 0) {

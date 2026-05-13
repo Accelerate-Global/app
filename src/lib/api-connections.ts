@@ -22,7 +22,7 @@ import {
   serializeApiConnectionRowsToCsv,
 } from "@/lib/api-connection-output";
 import type { CurrentIdentity } from "@/lib/auth";
-import { chunkRows, normalizeHeaders, sanitizeFileName } from "@/lib/csv";
+import { chunkRows, escapeCsvCell, normalizeHeaders, sanitizeFileName } from "@/lib/csv";
 import {
   createDataset,
   insertDatasetRowBatch,
@@ -1990,10 +1990,6 @@ export function extractApiConnectionResources(input: {
   });
 
   return [...resourcesByNormalizedUrl.values()];
-}
-
-function escapeCsvCell(value: string) {
-  return /[",\r\n]/u.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
 }
 
 function serializeRowsToCsv(input: {

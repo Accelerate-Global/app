@@ -6,7 +6,14 @@ import {
   refreshIsoCountryCodeResourceFromOfficialSource,
 } from "@/lib/iso-country-codes";
 
-export async function GET() {
+export function GET() {
+  return Response.json(
+    { error: "Method not allowed." },
+    { status: 405, headers: { Allow: "POST" } },
+  );
+}
+
+export async function POST() {
   const identity = await getCurrentIdentity();
 
   if (!identity) {
