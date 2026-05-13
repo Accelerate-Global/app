@@ -410,7 +410,9 @@ describe("IsoCountryCodesClient", () => {
     fireEvent.click(screen.getByRole("button", { name: /Refresh/ }));
 
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith("/api/iso-country-codes/refresh");
+      expect(fetchMock).toHaveBeenCalledWith("/api/iso-country-codes/refresh", {
+        method: "POST",
+      });
     });
     expect(await screen.findByText("Zimbabwe")).toBeTruthy();
     expect(screen.queryByText("Refresh source data")).toBeNull();

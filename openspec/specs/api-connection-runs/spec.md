@@ -48,7 +48,7 @@ The system SHALL allow dataset admins to list recent runs for a connection, insp
 - **THEN** the UI lists archived runs newest first with status, timing, row count, and available output downloads
 
 ### Requirement: Admin can download outputs as JSON or CSV
-The system SHALL allow dataset admins to download a run output as JSON or CSV while preserving the configured encoding behavior.
+The system SHALL allow dataset admins to download a run output as JSON or CSV while preserving the configured encoding behavior and neutralizing spreadsheet formulas in CSV output.
 
 #### Scenario: JSON download
 - **WHEN** a dataset admin downloads a run output as JSON
@@ -56,7 +56,7 @@ The system SHALL allow dataset admins to download a run output as JSON or CSV wh
 
 #### Scenario: CSV download
 - **WHEN** a dataset admin downloads a run output as CSV
-- **THEN** the response uses `text/csv; charset=utf-8`, includes a UTF-8 BOM, uses CRLF line endings, and serializes the normalized rows and columns
+- **THEN** the response uses `text/csv; charset=utf-8`, includes a UTF-8 BOM, uses CRLF line endings, serializes the normalized rows and columns, and prefixes formula-leading cells so spreadsheet software treats them as text
 
 #### Scenario: Non-admin cannot download output
 - **WHEN** an unauthenticated user or non-admin user attempts to download an API connection run output
@@ -373,4 +373,21 @@ The system SHALL execute Google Sheets runs through fixed Google API endpoints w
 #### Scenario: Google credential is revoked or expired
 - **WHEN** a stored Google credential can no longer refresh an access token
 - **THEN** the system records a failed run and does not create or replace a dataset
+
+### Requirement: API connection import snapshots neutralize spreadsheet formulas
+The system SHALL store API connection import snapshots as CSV files that do not
+preserve executable spreadsheet formula cells.
+
+#### Scenario: Imported rows contain formula-leading values
+- **WHEN** an API connection import creates or replaces a dataset from upstream
+  rows containing a value whose first non-space character is `=`, `+`, `-`,
+  `@`, tab, carriage return, or newline
+- **THEN** the stored import snapshot CSV prefixes that value with an
+  apostrophe before dataset storage
+
+#### Scenario: Imported rows contain ordinary values
+- **WHEN** an API connection import creates or replaces a dataset from ordinary
+  row values
+- **THEN** the stored import snapshot preserves the existing column order and
+  CSV row structure
 

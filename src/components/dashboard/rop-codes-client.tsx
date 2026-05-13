@@ -449,7 +449,7 @@ export function RopCodesClient({
     }, 900);
 
     try {
-      const response = await fetch("/api/rop-codes/refresh");
+      const response = await fetch("/api/rop-codes/refresh", { method: "POST" });
 
       if (!response.ok) {
         throw new Error("Refresh failed.");

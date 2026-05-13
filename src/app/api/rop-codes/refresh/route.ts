@@ -3,7 +3,14 @@ import { logError } from "@/lib/error-logging";
 import { jsonAdminOnlyError, jsonError } from "@/lib/http";
 import { refreshRopCodeResourceFromHis } from "@/lib/rop-codes";
 
-export async function GET() {
+export function GET() {
+  return Response.json(
+    { error: "Method not allowed." },
+    { status: 405, headers: { Allow: "POST" } },
+  );
+}
+
+export async function POST() {
   const identity = await getCurrentIdentity();
 
   if (!identity) {

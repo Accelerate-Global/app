@@ -1,4 +1,5 @@
 import type { ApiConnectionRunMode, CsvColumn } from "@/lib/api-types";
+import { escapeCsvCell } from "@/lib/csv";
 
 export const UTF8_BOM = "\uFEFF";
 
@@ -17,10 +18,6 @@ export type ApiConnectionRawResponseArtifact = {
   rowCount: number;
   rawResponse: string;
 };
-
-function escapeCsvCell(value: string) {
-  return /[",\r\n]/u.test(value) ? `"${value.replace(/"/g, "\"\"")}"` : value;
-}
 
 export function serializeApiConnectionRowsToCsv(input: ApiConnectionRowsArtifact) {
   const lines = [

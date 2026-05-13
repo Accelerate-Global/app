@@ -236,7 +236,9 @@ describe("RopCodesClient", () => {
     await waitFor(() => {
       expect(screen.getByText("1 visible")).toBeTruthy();
     });
-    expect(fetch).toHaveBeenCalledWith("/api/rop-codes/refresh");
+    expect(fetch).toHaveBeenCalledWith("/api/rop-codes/refresh", {
+      method: "POST",
+    });
   });
 
   it("hides refresh for non-admin users", () => {
