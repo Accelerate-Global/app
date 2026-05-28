@@ -10,6 +10,9 @@ configuration, not intended future architecture.
 - Client-heavy dashboard interactions live in `src/components/dashboard`.
 - Shared primitives live in `src/components/ui`; every shared primitive needs a colocated smoke fixture when added.
 - Vercel Analytics is mounted from `src/app/layout.tsx` through `src/components/analytics/vercel-analytics.tsx`.
+- Outbound Vercel Web Analytics collection can be paused with
+  `NEXT_PUBLIC_VERCEL_ANALYTICS_PAUSED=1`; app-owned analytics events continue
+  to persist to Supabase while paused.
 
 ## Auth And Permissions
 
@@ -50,6 +53,12 @@ configuration, not intended future architecture.
 
 - Vercel is the deployment platform.
 - The standard release flow treats merge to `main` as the production deployment trigger.
+- The repo does not maintain a supported Vercel staging environment; PR checks
+  are the validation layer before merge, and production is deployed from `main`.
+- Vercel automatic builds are configured for the production branch only.
+- Public Vercel environment changes such as
+  `NEXT_PUBLIC_VERCEL_ANALYTICS_PAUSED` require a redeploy before browser code
+  sees the new value.
 - Supabase is the database, auth, and storage provider for deployed environments.
 - Vercel environment variables can be pulled locally with `vercel env pull .env.local`.
 - Release and production-health behavior is documented in `docs/release.md`.

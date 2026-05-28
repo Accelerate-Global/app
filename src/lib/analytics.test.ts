@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   getAnalyticsEventPropertyKeys,
@@ -8,10 +8,25 @@ import {
   getSortingKeys,
   isAppAnalyticsEventName,
   isAppAnalyticsRoute,
+  isVercelAnalyticsPaused,
   redactAnalyticsUrl,
 } from "@/lib/analytics";
 
 describe("analytics helpers", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("pauses Vercel analytics only when the public pause flag is 1", () => {
+    expect(isVercelAnalyticsPaused()).toBe(false);
+
+    vi.stubEnv("NEXT_PUBLIC_VERCEL_ANALYTICS_PAUSED", "1");
+    expect(isVercelAnalyticsPaused()).toBe(true);
+
+    vi.stubEnv("NEXT_PUBLIC_VERCEL_ANALYTICS_PAUSED", "true");
+    expect(isVercelAnalyticsPaused()).toBe(false);
+  });
+
   it("redacts query params, hashes, and UUID path segments", () => {
     expect(
       redactAnalyticsUrl(

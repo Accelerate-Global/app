@@ -4,6 +4,10 @@ This repo now treats a merge to `main` as the production deployment trigger.
 Do not run `vercel --prod` as part of the normal release flow. Reserve manual
 Vercel production deploys for emergency recovery only.
 
+The repo does not maintain a supported Vercel staging environment or staging
+promotion path. Pull requests are validated by local and GitHub checks, then
+merged to `main` for the production Vercel deployment.
+
 ## Standard Flow
 
 1. Confirm the PR already passed the diff-aware local gate before review or ship:
@@ -68,6 +72,7 @@ Vercel production deploys for emergency recovery only.
   for the GitHub-backed Vercel production deployment and verifies the
   [data.accelerateglobal.org](https://data.accelerateglobal.org) production
   alias
+- does not deploy or promote through a Vercel staging target
 - fails fast if a `gh`, `git`, or release-critical `pnpm` step stops making
   progress because it is waiting on interactive input
 

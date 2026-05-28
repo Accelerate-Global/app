@@ -2,7 +2,7 @@
 
 import { Analytics, type BeforeSendEvent } from "@vercel/analytics/react";
 
-import { redactAnalyticsUrl } from "@/lib/analytics";
+import { isVercelAnalyticsPaused, redactAnalyticsUrl } from "@/lib/analytics";
 
 function beforeSendAnalyticsEvent(event: BeforeSendEvent) {
   return {
@@ -12,5 +12,9 @@ function beforeSendAnalyticsEvent(event: BeforeSendEvent) {
 }
 
 export function VercelAnalytics() {
+  if (isVercelAnalyticsPaused()) {
+    return null;
+  }
+
   return <Analytics beforeSend={beforeSendAnalyticsEvent} />;
 }
