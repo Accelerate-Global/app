@@ -18,8 +18,9 @@ source and Vercel Git-link change.
 - Keep the Vercel project name `online` and reconnect only its Git integration.
 - Make release deployment polling use GitHub CLI placeholders
   `repos/{owner}/{repo}/...`, matching existing `gh api` usage in `ship`.
-- Create the new GitHub repository private first, verify provider integration,
-  then switch it public.
+- Create the new GitHub repository private first for publication-safety
+  verification, then switch it public before Vercel Git connection because the
+  target Vercel Hobby project cannot connect private organization repositories.
 
 ## Risks
 
@@ -35,4 +36,6 @@ source and Vercel Git-link change.
 - Unit tests prove release deployment polling uses current-repo placeholders.
 - Provider checks prove `Accelerate-Global/app` owns the pushed clean `main`,
   Vercel links to that repo, and `data.accelerateglobal.org` remains healthy.
-- Publication-safety scans run before the public visibility flip.
+- Publication-safety scans run before the public visibility flip, and the first
+  Git-backed Vercel deployment is verified after the repository is public and
+  connected.
