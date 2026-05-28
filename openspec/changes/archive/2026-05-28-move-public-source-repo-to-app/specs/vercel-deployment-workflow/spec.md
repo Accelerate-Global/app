@@ -11,6 +11,8 @@ production domain.
 - **AND** Release Health verifies the production alias using the current GitHub
   repository's deployment records
 
+## ADDED Requirements
+
 ### Requirement: Canonical public source repository
 The system SHALL treat `Accelerate-Global/app` as the canonical public source
 repository and SHALL keep `Accelerate-Global/online` out of the supported public

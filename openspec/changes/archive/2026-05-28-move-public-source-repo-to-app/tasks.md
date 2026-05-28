@@ -8,11 +8,11 @@
 ## 2. Provider Migration
 
 - [x] 2.1 Create private `Accelerate-Global/app` and push only clean `main`.
-- [ ] 2.2 Configure new repo settings, Actions, Dependabot, and branch
+- [x] 2.2 Configure new repo settings, Actions, Dependabot, and branch
   protection/ruleset.
 - [x] 2.3 Reconnect the existing Vercel `online` project to
   `Accelerate-Global/app`.
-- [ ] 2.4 Verify production deployment records, `data.accelerateglobal.org`,
+- [x] 2.4 Verify production deployment records, `data.accelerateglobal.org`,
   Supabase drift, and release health.
 - [x] 2.5 Switch `Accelerate-Global/app` public after publication-safety scans
   and before Vercel Git connection because Vercel Hobby does not support private
