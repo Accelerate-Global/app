@@ -287,6 +287,10 @@ export type AppAnalyticsEventMap = {
 
 export type AppAnalyticsEventName = keyof AppAnalyticsEventMap;
 
+export function isVercelAnalyticsPaused() {
+  return process.env.NEXT_PUBLIC_VERCEL_ANALYTICS_PAUSED === "1";
+}
+
 type AppAnalyticsValue = string | number | boolean | null | undefined;
 type AnalyticsPayloadRecord = Record<string, unknown>;
 

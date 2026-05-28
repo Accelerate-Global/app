@@ -82,4 +82,5 @@ environment operation unless a tracked migration or runbook changes it.
 The standard release path is documented in `docs/release.md`. The repo treats a
 merge to `main` as the production deployment trigger through Vercel. `pnpm ship`
 waits for App Quality, OpenSpec, UI Smoke, Database Security, Dependency Audit,
-and Release Health signals.
+and Release Health signals. There is no supported Vercel staging environment or
+staging promotion step for this repo.

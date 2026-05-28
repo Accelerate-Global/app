@@ -3,7 +3,7 @@
 import { track } from "@vercel/analytics";
 
 import type { AppAnalyticsEventMap, AppAnalyticsEventName } from "@/lib/analytics";
-import { sanitizeAnalyticsPayload } from "@/lib/analytics";
+import { isVercelAnalyticsPaused, sanitizeAnalyticsPayload } from "@/lib/analytics";
 import { logError } from "@/lib/error-logging";
 
 const ANALYTICS_INGEST_PATH = "/api/analytics/events";
@@ -43,10 +43,12 @@ export function trackAppEvent<Name extends AppAnalyticsEventName>(
 ) {
   const sanitizedPayload = sanitizeAnalyticsPayload(payload);
 
-  try {
-    track(name, sanitizedPayload);
-  } catch (error) {
-    logError("Failed to track analytics event", error);
+  if (!isVercelAnalyticsPaused()) {
+    try {
+      track(name, sanitizedPayload);
+    } catch (error) {
+      logError("Failed to track analytics event", error);
+    }
   }
 
   try {
