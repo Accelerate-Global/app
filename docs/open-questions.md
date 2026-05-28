@@ -3,9 +3,6 @@
 - [ ] What exact provider procedure creates or restores the first admin in each environment?
   Evidence: README and AGENTS state first-admin bootstrap is manual/provider-owned, but no tracked runbook defines the steps.
 
-- [ ] Which Vercel project settings are required beyond tracked environment variables and GitHub deployment?
-  Evidence: `.vercel/project.json` is local and ignored; tracked docs identify Vercel as deployment but do not list dashboard settings.
-
 - [ ] What are the production Supabase backup, restore, retention, and incident response expectations?
   Evidence: Supabase config, migrations, and DB tests are tracked; production operational policy is not.
 
@@ -17,3 +14,7 @@
 
 - [ ] What external API endpoints are approved for admin API connections?
   Evidence: API connection code exists and validates requests, but no policy document defines allowed providers or data governance rules.
+
+- [ ] Should Google Sheets OAuth be supported in production after the repository move?
+  Evidence: `.env.example` documents Google OAuth env vars, but the latest Vercel
+  env inventory did not show those keys in the project.

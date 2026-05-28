@@ -4,6 +4,10 @@ This repo now treats a merge to `main` as the production deployment trigger.
 Do not run `vercel --prod` as part of the normal release flow. Reserve manual
 Vercel production deploys for emergency recovery only.
 
+The canonical public source repository is `Accelerate-Global/app`. The former
+`Accelerate-Global/online` repository is private historical archive state and is
+not part of the supported public release path.
+
 The repo does not maintain a supported Vercel staging environment or staging
 promotion path. Pull requests are validated by local and GitHub checks, then
 merged to `main` for the production Vercel deployment.
@@ -69,7 +73,7 @@ merged to `main` for the production Vercel deployment.
 - switches the local checkout back to `main`, pulls `--ff-only`, deletes the
   merged branch locally when safe, and prunes remote refs
 - waits for the `main` branch `Release Health` workflow, which in turn waits
-  for the GitHub-backed Vercel production deployment and verifies the
+  for the current repository's GitHub-backed Vercel production deployment and verifies the
   [data.accelerateglobal.org](https://data.accelerateglobal.org) production
   alias
 - does not deploy or promote through a Vercel staging target

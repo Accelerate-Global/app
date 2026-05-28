@@ -92,3 +92,7 @@ merge to `main` as the production deployment trigger through Vercel. `pnpm ship`
 waits for App Quality, OpenSpec, UI Smoke, Database Security, Dependency Audit,
 and Release Health signals. There is no supported Vercel staging environment or
 staging promotion step for this repo.
+
+Use `Accelerate-Global/app` as the canonical source repository. The historical
+`Accelerate-Global/online` repository remains private archive state and should
+not receive new public release work.

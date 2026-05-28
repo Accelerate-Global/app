@@ -281,6 +281,26 @@ describe("release", () => {
     ).rejects.toThrow(
       "GitHub deployment for merge-sha failed. Production deployment for merge-sha: id=42 state=failure url=https://online.example.vercel.app",
     );
+    expect(runCommandMock).toHaveBeenNthCalledWith(
+      1,
+      "gh",
+      ["api", "repos/{owner}/{repo}/deployments?sha=merge-sha"],
+      expect.objectContaining({
+        quiet: true,
+        stdinMode: "ignore",
+        timeoutMs: 30_000,
+      }),
+    );
+    expect(runCommandMock).toHaveBeenNthCalledWith(
+      2,
+      "gh",
+      ["api", "repos/{owner}/{repo}/deployments/42/statuses"],
+      expect.objectContaining({
+        quiet: true,
+        stdinMode: "ignore",
+        timeoutMs: 30_000,
+      }),
+    );
   });
 
   it("includes deployment id and last status in deployment timeouts", async () => {

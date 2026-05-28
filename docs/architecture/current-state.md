@@ -51,10 +51,15 @@ configuration, not intended future architecture.
 ## Deployment And Operations
 
 - Vercel is the deployment platform.
+- `Accelerate-Global/app` is the canonical public GitHub source repository.
+- `Accelerate-Global/online` is private historical archive state and should not
+  be made public because old GitHub pull-request refs are provider-retained.
 - The standard release flow treats merge to `main` as the production deployment trigger.
 - The repo does not maintain a supported Vercel staging environment; PR checks
   are the validation layer before merge, and production is deployed from `main`.
 - Vercel automatic builds are configured for the production branch only.
+- Release Health polls the current GitHub repository's deployment records rather
+  than a hardcoded historical repository name.
 - Public Vercel environment changes such as
   `NEXT_PUBLIC_VERCEL_ANALYTICS_PAUSED` require a redeploy before browser code
   sees the new value.

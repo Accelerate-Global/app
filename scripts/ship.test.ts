@@ -37,7 +37,7 @@ function buildPullRequest(overrides: Record<string, unknown> = {}) {
     number: 46,
     state: "OPEN",
     title: "[codex] test",
-    url: "https://github.com/Accelerate-Global/online/pull/46",
+    url: "https://github.com/Accelerate-Global/app/pull/46",
     ...overrides,
   };
 }

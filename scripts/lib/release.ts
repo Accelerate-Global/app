@@ -314,13 +314,13 @@ export async function waitForGitHubDeployment(options: WaitForDeploymentOptions)
 
   for (;;) {
     const deployments = await ghApi<GitHubDeployment[]>(
-      `repos/Accelerate-Global/online/deployments?sha=${options.commitSha}`,
+      `repos/{owner}/{repo}/deployments?sha=${options.commitSha}`,
     );
     const deployment = getLatestDeployment(deployments);
     const status = deployment
       ? getLatestDeploymentStatus(
-          await ghApi<GitHubDeploymentStatus[]>(
-            `repos/Accelerate-Global/online/deployments/${deployment.id}/statuses`,
+        await ghApi<GitHubDeploymentStatus[]>(
+            `repos/{owner}/{repo}/deployments/${deployment.id}/statuses`,
           ),
         )
       : null;

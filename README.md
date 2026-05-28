@@ -2,6 +2,9 @@
 
 A Vercel-hosted Next.js app for authenticated CSV uploads, Supabase-backed CSV storage, persisted parsed rows, and shared table exploration.
 
+Canonical source repository: `Accelerate-Global/app`. The former
+`Accelerate-Global/online` repository is private historical archive state.
+
 ## Stack
 
 - Next.js App Router, React, TypeScript, Tailwind CSS

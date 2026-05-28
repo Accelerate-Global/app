@@ -7,6 +7,12 @@
 - Vercel CLI if you need to pull provider environment variables.
 - OpenSpec CLI for future behavior-change planning. This repo is initialized under `openspec/`, but local assistant prompts are developer-machine tooling rather than required app runtime state.
 
+## Repository
+
+The canonical public repository is `Accelerate-Global/app`. If a local checkout
+still points at `Accelerate-Global/online`, update `origin` or reclone from the
+canonical repository before using release tooling.
+
 ## Install
 
 ```bash
