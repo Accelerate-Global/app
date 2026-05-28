@@ -11,7 +11,7 @@
 
 ## 3. Hosted Supabase Operations
 
-- [x] 3.1 Delete `member@example.com` from hosted Auth and `signup_email_allowlist`.
+- [x] 3.1 Delete `removed-user@example.com` from hosted Auth and `signup_email_allowlist`.
 - [x] 3.2 Publish the verified invite and recovery HTML to hosted Supabase Auth templates.
 - [x] 3.3 Verify hosted deletion readback and trigger a recovery email through hosted Auth.
 

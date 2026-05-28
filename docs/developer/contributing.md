@@ -62,6 +62,14 @@ Follow `docs/testing/verification-triage.md` when a command fails. Classify the
 failure as `environment`, `test gap`, `contract / harness`, or `product` before
 rerunning a narrow command.
 
+## Publication Safety
+
+The repo may become public, so tracked files must not contain real personal
+admin identifiers, provider secrets, local `.env` values, database exports, or
+private operational data. Use neutral `example.com` identities in tests, docs,
+OpenSpec artifacts, and legacy migration fixtures unless the value is a public
+project/domain identifier that must be documented.
+
 ## UI Changes
 
 Every `src/app/**/page.tsx` page must have an entry in

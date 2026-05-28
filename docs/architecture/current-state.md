@@ -26,9 +26,8 @@ configuration, not intended future architecture.
   for admins. Saved dataset tables remain owner-scoped and also require access
   to the underlying dataset.
 - First-admin account creation or restoration is not repo-owned; it remains an
-  environment/provider procedure. When an Auth user already exists for
-  `admin@example.com`, the tracked migration promotes that user to
-  `super_admin`.
+  environment/provider procedure. Legacy local-reset migrations use neutral
+  example identities only and must not publish real bootstrap account details.
 
 ## Data And Storage
 

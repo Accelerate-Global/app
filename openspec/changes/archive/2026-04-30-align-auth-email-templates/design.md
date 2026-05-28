@@ -56,6 +56,6 @@ this change only updates content and hosted templates.
 ## Migration Plan
 
 1. Update and verify repo templates and docs.
-2. Delete `member@example.com` from hosted Auth and `signup_email_allowlist`.
+2. Delete `removed-user@example.com` from hosted Auth and `signup_email_allowlist`.
 3. Publish the verified invite and recovery HTML into hosted Supabase Auth.
 4. Send a recovery email to confirm the hosted template and sender behavior.

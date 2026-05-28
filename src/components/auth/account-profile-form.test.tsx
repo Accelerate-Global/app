@@ -100,13 +100,13 @@ describe("AccountProfileForm", () => {
     render(<AccountProfileForm identity={identity} />);
 
     fireEvent.change(screen.getByLabelText("Email address"), {
-      target: { value: "updated@example.com" },
+      target: { value: "user@example.com" },
     });
     fireEvent.click(screen.getByText("Update email"));
 
     await waitFor(() => {
       expect(updateUser).toHaveBeenCalledWith(
-        { email: "updated@example.com" },
+        { email: "user@example.com" },
         expect.objectContaining({
           emailRedirectTo: expect.stringContaining(
             "/auth/confirm?next=%2Fdashboard%2Fprofile",

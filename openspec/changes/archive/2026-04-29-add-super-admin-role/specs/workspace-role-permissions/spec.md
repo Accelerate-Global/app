@@ -75,19 +75,19 @@ change another super admin's role or disabled status.
 - **WHEN** a mutation would disable or demote the last active `super_admin`
 - **THEN** the system rejects the request
 
-### Requirement: Blake account is promoted when present
+### Requirement: Bootstrap admin account is promoted when present
 
 The system SHALL promote the existing `admin@example.com` Auth user to
 `super_admin` through the tracked Supabase migration when that user exists.
 
-#### Scenario: Blake user exists during migration
+#### Scenario: Bootstrap admin user exists during migration
 
 - **WHEN** the super-admin migration runs and an Auth user with email
   `admin@example.com` exists
 - **THEN** the user's trusted app metadata stores `workspace_role` as
   `super_admin`
 
-#### Scenario: Blake user is absent during migration
+#### Scenario: Bootstrap admin user is absent during migration
 
 - **WHEN** the super-admin migration runs and no Auth user with email
   `admin@example.com` exists

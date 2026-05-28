@@ -119,23 +119,25 @@ change another super admin's role or disabled status.
 - **WHEN** a mutation would disable or demote the last active `super_admin`
 - **THEN** the system rejects the request
 
-### Requirement: Blake account is promoted when present
+### Requirement: First super-admin bootstrap is provider-owned
 
-The system SHALL promote the existing `admin@example.com` Auth user to
-`super_admin` through the tracked Supabase migration when that user exists.
+The system SHALL treat first super-admin bootstrap as an environment/provider
+operation instead of a tracked migration that names a real personal account.
 
-#### Scenario: Blake user exists during migration
+#### Scenario: Environment needs a first super admin
 
-- **WHEN** the super-admin migration runs and an Auth user with email
-  `admin@example.com` exists
-- **THEN** the user's trusted app metadata stores `workspace_role` as
+- **WHEN** a deployed environment has no active `super_admin`
+- **THEN** an operator must grant the first trusted app-metadata
+  `workspace_role` through a provider-owned administrative action
+- **AND** the repository does not publish a real personal email address as the
+  bootstrap target
+
+#### Scenario: Current permissions run after bootstrap
+
+- **WHEN** a user has trusted app metadata with `workspace_role` set to
   `super_admin`
-
-#### Scenario: Blake user is absent during migration
-
-- **WHEN** the super-admin migration runs and no Auth user with email
-  `admin@example.com` exists
-- **THEN** the migration does not create an Auth user
+- **THEN** the existing super-admin permissions and last-active-super-admin
+  protections apply unchanged
 
 ### Requirement: Accepted invited accounts are not pending invites
 The system SHALL treat invited accounts as pending only until the invite has
@@ -150,3 +152,4 @@ been accepted or the account is otherwise confirmed.
 - **WHEN** an invited user has no confirmed timestamp, no email confirmed
   timestamp, and no last login timestamp
 - **THEN** User Management reports the account as pending invite
+

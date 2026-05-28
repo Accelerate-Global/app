@@ -16,7 +16,7 @@ should match the application style and keep the single action link clear.
   flow.
 - Update the auth email runbook to reflect the current Resend SMTP setup and
   hosted-template publication steps.
-- Track the one-time hosted deletion of `member@example.com` from Auth and the
+- Track the one-time hosted deletion of `removed-user@example.com` from Auth and the
   signup allowlist as operational work.
 - Non-goals: no SMTP reconfiguration, no new transactional email provider, no
   changes to confirmation, magic-link, email-change, or app-level email code.
