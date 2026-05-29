@@ -28,9 +28,6 @@ vi.mock("@/lib/rop-codes", () => ({
   getGeneratedRopCodeResource: vi.fn(),
 }));
 
-vi.mock("@/components/layout/site-header", () => ({
-  SiteHeader: () => null,
-}));
 
 vi.mock("@/components/dashboard/rop-codes-client", () => ({
   RopCodesClient: ropCodesClientMock,

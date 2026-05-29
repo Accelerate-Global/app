@@ -4,7 +4,6 @@ import { redirect } from "next/navigation";
 
 import { FieldDefinitionsClient } from "@/components/dashboard/field-definitions-client";
 import { DashboardPageShell } from "@/components/layout/dashboard-page-shell";
-import { SiteHeader } from "@/components/layout/site-header";
 import { buttonVariants } from "@/components/ui/button";
 import { getCurrentIdentity } from "@/lib/auth";
 import { getAnalyticsWorkspaceRole } from "@/lib/analytics";
@@ -23,12 +22,10 @@ export default async function FieldDefinitionsPage() {
   });
 
   return (
-    <main
+    <div
       data-smoke-page="field-definitions"
       data-smoke-page-ready="field-definitions"
-      className="min-h-svh bg-background"
     >
-      <SiteHeader identity={identity} />
       <DashboardPageShell>
         <section className="space-y-2">
           <Link
@@ -56,6 +53,6 @@ export default async function FieldDefinitionsPage() {
           workspaceRole={getAnalyticsWorkspaceRole(identity.workspaceRole)}
         />
       </DashboardPageShell>
-    </main>
+    </div>
   );
 }

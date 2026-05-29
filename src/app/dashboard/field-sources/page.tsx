@@ -4,7 +4,6 @@ import { redirect } from "next/navigation";
 
 import { FieldSourcesClient } from "@/components/dashboard/field-sources-client";
 import { DashboardPageShell } from "@/components/layout/dashboard-page-shell";
-import { SiteHeader } from "@/components/layout/site-header";
 import { buttonVariants } from "@/components/ui/button";
 import { getCurrentIdentity } from "@/lib/auth";
 import { listFieldSourceGridData } from "@/lib/field-sources";
@@ -24,12 +23,10 @@ export default async function FieldSourcesPage() {
   const { fieldSourceTypes, fieldSources } = await listFieldSourceGridData();
 
   return (
-    <main
+    <div
       data-smoke-page="field-sources"
       data-smoke-page-ready="field-sources"
-      className="min-h-svh bg-background"
     >
-      <SiteHeader identity={identity} />
       <DashboardPageShell>
         <section className="space-y-3">
           <Link
@@ -61,6 +58,6 @@ export default async function FieldSourcesPage() {
           initialFieldSources={fieldSources}
         />
       </DashboardPageShell>
-    </main>
+    </div>
   );
 }

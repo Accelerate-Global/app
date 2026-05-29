@@ -4,7 +4,6 @@ import { redirect } from "next/navigation";
 
 import { AccountProfileForm } from "@/components/auth/account-profile-form";
 import { DashboardPageShell } from "@/components/layout/dashboard-page-shell";
-import { SiteHeader } from "@/components/layout/site-header";
 import { buttonVariants } from "@/components/ui/button";
 import { getCurrentIdentity } from "@/lib/auth";
 import { cn } from "@/lib/utils";
@@ -17,12 +16,10 @@ export default async function ProfilePage() {
   }
 
   return (
-    <main
+    <div
       data-smoke-page="profile"
       data-smoke-page-ready="profile"
-      className="min-h-svh bg-background"
     >
-      <SiteHeader identity={identity} />
       <DashboardPageShell>
         <section className="space-y-2">
           <Link
@@ -44,6 +41,6 @@ export default async function ProfilePage() {
         </section>
         <AccountProfileForm identity={identity} />
       </DashboardPageShell>
-    </main>
+    </div>
   );
 }

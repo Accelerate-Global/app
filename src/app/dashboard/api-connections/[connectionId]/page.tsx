@@ -4,7 +4,6 @@ import { notFound, redirect } from "next/navigation";
 
 import { ApiConnectionDetailClient } from "@/components/dashboard/api-connection-detail-client";
 import { DashboardPageShell } from "@/components/layout/dashboard-page-shell";
-import { SiteHeader } from "@/components/layout/site-header";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { getApiConnection, listApiConnectionRuns } from "@/lib/api-connections";
@@ -72,12 +71,10 @@ export default async function ApiConnectionDetailPage({
   const headerStatus = runs[0]?.status ?? "idle";
 
   return (
-    <main
+    <div
       data-smoke-page="api-connection-detail"
       data-smoke-page-ready="api-connection-detail"
-      className="min-h-svh bg-background"
     >
-      <SiteHeader identity={identity} />
       <DashboardPageShell>
         <section className="space-y-2">
           <Link
@@ -115,6 +112,6 @@ export default async function ApiConnectionDetailPage({
 
         <ApiConnectionDetailClient connection={connection} initialRuns={runs} />
       </DashboardPageShell>
-    </main>
+    </div>
   );
 }

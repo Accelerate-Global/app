@@ -4,7 +4,6 @@ import { redirect } from "next/navigation";
 
 import { UserManagementClient } from "@/components/dashboard/user-management-client";
 import { DashboardPageShell } from "@/components/layout/dashboard-page-shell";
-import { SiteHeader } from "@/components/layout/site-header";
 import { buttonVariants } from "@/components/ui/button";
 import { getAnalyticsWorkspaceRole } from "@/lib/analytics";
 import { getCurrentIdentity } from "@/lib/auth";
@@ -25,12 +24,10 @@ export default async function UserManagementPage() {
   const users = await listWorkspaceUsers();
 
   return (
-    <main
+    <div
       data-smoke-page="user-management"
       data-smoke-page-ready="user-management"
-      className="min-h-svh bg-background"
     >
-      <SiteHeader identity={identity} />
       <DashboardPageShell>
         <section className="space-y-2">
           <Link
@@ -65,6 +62,6 @@ export default async function UserManagementPage() {
           workspaceRole={getAnalyticsWorkspaceRole(identity.workspaceRole)}
         />
       </DashboardPageShell>
-    </main>
+    </div>
   );
 }

@@ -4,7 +4,6 @@ import { redirect } from "next/navigation";
 
 import { ApiConnectionsClient } from "@/components/dashboard/api-connections-client";
 import { DashboardPageShell } from "@/components/layout/dashboard-page-shell";
-import { SiteHeader } from "@/components/layout/site-header";
 import { buttonVariants } from "@/components/ui/button";
 import { getCurrentIdentity } from "@/lib/auth";
 import { listApiConnections } from "@/lib/api-connections";
@@ -24,12 +23,10 @@ export default async function ApiConnectionsPage() {
   const { connections, runs, resources } = await listApiConnections();
 
   return (
-    <main
+    <div
       data-smoke-page="api-connections"
       data-smoke-page-ready="api-connections"
-      className="min-h-svh bg-background"
     >
-      <SiteHeader identity={identity} />
       <DashboardPageShell>
         <section className="space-y-2">
           <Link
@@ -64,6 +61,6 @@ export default async function ApiConnectionsPage() {
           initialResources={resources}
         />
       </DashboardPageShell>
-    </main>
+    </div>
   );
 }

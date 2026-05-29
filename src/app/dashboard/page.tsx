@@ -2,7 +2,6 @@ import { redirect } from "next/navigation";
 
 import { DashboardClient } from "@/components/dashboard/dashboard-client";
 import { DashboardPageShell } from "@/components/layout/dashboard-page-shell";
-import { SiteHeader } from "@/components/layout/site-header";
 import { getAnalyticsWorkspaceRole } from "@/lib/analytics";
 import { getCurrentIdentity } from "@/lib/auth";
 import { listDatasets } from "@/lib/datasets";
@@ -23,12 +22,10 @@ export default async function DashboardPage() {
   ]);
 
   return (
-    <main
+    <div
       data-smoke-page="dashboard"
       data-smoke-page-ready="dashboard"
-      className="min-h-svh bg-background"
     >
-      <SiteHeader identity={identity} />
       <DashboardPageShell>
         <section className="space-y-2">
           <h1 className="text-4xl font-semibold tracking-[-0.04em] sm:text-[3.1rem]">
@@ -46,6 +43,6 @@ export default async function DashboardPage() {
           workspaceRole={getAnalyticsWorkspaceRole(identity.workspaceRole)}
         />
       </DashboardPageShell>
-    </main>
+    </div>
   );
 }

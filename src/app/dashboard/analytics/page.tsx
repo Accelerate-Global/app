@@ -3,7 +3,6 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { DashboardPageShell } from "@/components/layout/dashboard-page-shell";
-import { SiteHeader } from "@/components/layout/site-header";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -187,12 +186,10 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
   } as const;
 
   return (
-    <main
+    <div
       data-smoke-page="analytics"
       data-smoke-page-ready="analytics"
-      className="min-h-svh bg-background"
     >
-      <SiteHeader identity={identity} />
       <DashboardPageShell>
         <section className="space-y-2">
           <Link
@@ -562,6 +559,6 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
           </CardContent>
         </Card>
       </DashboardPageShell>
-    </main>
+    </div>
   );
 }

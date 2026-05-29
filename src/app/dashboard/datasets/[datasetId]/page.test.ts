@@ -49,9 +49,6 @@ vi.mock("@/lib/saved-dataset-tables", () => ({
   getSavedDatasetTable: vi.fn(),
 }));
 
-vi.mock("@/components/layout/site-header", () => ({
-  SiteHeader: () => null,
-}));
 
 vi.mock("@/components/dashboard/dataset-detail-client", () => ({
   DatasetDetailClient: (props: unknown) => {

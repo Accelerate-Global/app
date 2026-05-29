@@ -30,9 +30,6 @@ vi.mock("@/lib/datasets", () => ({
   listDatasets: vi.fn(),
 }));
 
-vi.mock("@/components/layout/site-header", () => ({
-  SiteHeader: () => null,
-}));
 
 vi.mock("@/components/dashboard/dataset-edit-page-client", () => ({
   DatasetEditPageClient: (props: unknown) => {

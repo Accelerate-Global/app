@@ -44,9 +44,6 @@ vi.mock("@/components/dashboard/api-connection-detail-client", () => ({
   ),
 }));
 
-vi.mock("@/components/layout/site-header", () => ({
-  SiteHeader: () => null,
-}));
 
 const getCurrentIdentityMock = vi.mocked(getCurrentIdentity);
 const getApiConnectionMock = vi.mocked(getApiConnection);

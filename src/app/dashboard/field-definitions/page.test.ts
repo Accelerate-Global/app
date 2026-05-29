@@ -27,9 +27,6 @@ vi.mock("@/lib/field-definitions", () => ({
   listFieldDefinitions: vi.fn(),
 }));
 
-vi.mock("@/components/layout/site-header", () => ({
-  SiteHeader: () => null,
-}));
 
 vi.mock("@/components/dashboard/field-definitions-client", () => ({
   FieldDefinitionsClient: fieldDefinitionsClientMock,
