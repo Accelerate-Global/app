@@ -37,9 +37,6 @@ vi.mock("@/lib/analytics-store", async () => {
   };
 });
 
-vi.mock("@/components/layout/site-header", () => ({
-  SiteHeader: () => null,
-}));
 
 const getCurrentIdentityMock = vi.mocked(getCurrentIdentity);
 const getAnalyticsDashboardDataMock = vi.mocked(getAnalyticsDashboardData);

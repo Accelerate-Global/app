@@ -2,7 +2,6 @@ import { redirect } from "next/navigation";
 
 import { DatasetUploadClient } from "@/components/dashboard/dataset-upload-client";
 import { DashboardPageShell } from "@/components/layout/dashboard-page-shell";
-import { SiteHeader } from "@/components/layout/site-header";
 import { getAnalyticsWorkspaceRole } from "@/lib/analytics";
 import { getCurrentIdentity } from "@/lib/auth";
 import { getDataset } from "@/lib/datasets";
@@ -41,12 +40,10 @@ export default async function UploadPage({ searchParams }: UploadPageProps) {
   }
 
   return (
-    <main
+    <div
       data-smoke-page="upload"
       data-smoke-page-ready="upload"
-      className="min-h-svh bg-background"
     >
-      <SiteHeader identity={identity} />
       <DashboardPageShell>
         <section className="space-y-2">
           <h1 className="text-4xl font-semibold tracking-[-0.04em] sm:text-[3.1rem]">
@@ -73,6 +70,6 @@ export default async function UploadPage({ searchParams }: UploadPageProps) {
           workspaceRole={getAnalyticsWorkspaceRole(identity.workspaceRole)}
         />
       </DashboardPageShell>
-    </main>
+    </div>
   );
 }

@@ -13,9 +13,11 @@ import {
   UploadIcon,
   UserIcon,
   UsersIcon,
+  type LucideIcon,
 } from "lucide-react";
+import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
 import {
   applyDocumentThemePreference,
@@ -54,6 +56,13 @@ type ThemeOption = {
   label: string;
 };
 
+type MenuNavigationItemProps = {
+  href: string;
+  icon: LucideIcon;
+  children: string;
+  onPrefetch: (href: string) => void;
+};
+
 const DEFAULT_THEME_STATE: ThemeState = {
   preference: "system",
   resolvedTheme: "light",
@@ -79,10 +88,34 @@ function subscribeToHydration(callback: () => void) {
   return () => undefined;
 }
 
+function MenuNavigationItem({
+  href,
+  icon: Icon,
+  children,
+  onPrefetch,
+}: MenuNavigationItemProps) {
+  return (
+    <DropdownMenuItem
+      render={
+        <Link
+          href={href}
+          prefetch={false}
+          onFocus={() => onPrefetch(href)}
+          onPointerEnter={() => onPrefetch(href)}
+        />
+      }
+    >
+      <Icon aria-hidden="true" />
+      {children}
+    </DropdownMenuItem>
+  );
+}
+
 export function AccountControl({ identity }: AccountControlProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const prefetchedRoutes = useRef(new Set<string>());
   const isTriggerReady = useSyncExternalStore(
     subscribeToHydration,
     () => true,
@@ -160,8 +193,13 @@ export function AccountControl({ identity }: AccountControlProps) {
     setThemeState(nextThemeState);
   }
 
-  function navigateTo(href: string) {
-    router.push(href);
+  function prefetchRoute(href: string) {
+    if (prefetchedRoutes.current.has(href)) {
+      return;
+    }
+
+    prefetchedRoutes.current.add(href);
+    router.prefetch(href);
   }
 
   return (
@@ -210,22 +248,34 @@ export function AccountControl({ identity }: AccountControlProps) {
             </div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={() => navigateTo("/dashboard/profile")}>
-            <UserIcon aria-hidden="true" />
+          <MenuNavigationItem
+            href="/dashboard/profile"
+            icon={UserIcon}
+            onPrefetch={prefetchRoute}
+          >
             Profile
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => navigateTo("/dashboard")}>
-            <LayoutDashboardIcon aria-hidden="true" />
+          </MenuNavigationItem>
+          <MenuNavigationItem
+            href="/dashboard"
+            icon={LayoutDashboardIcon}
+            onPrefetch={prefetchRoute}
+          >
             Dashboard
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => navigateTo("/dashboard/field-definitions")}>
-            <BookTextIcon aria-hidden="true" />
+          </MenuNavigationItem>
+          <MenuNavigationItem
+            href="/dashboard/field-definitions"
+            icon={BookTextIcon}
+            onPrefetch={prefetchRoute}
+          >
             Definitions
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => navigateTo("/dashboard/resources")}>
-            <FileTextIcon aria-hidden="true" />
+          </MenuNavigationItem>
+          <MenuNavigationItem
+            href="/dashboard/resources"
+            icon={FileTextIcon}
+            onPrefetch={prefetchRoute}
+          >
             Resources
-          </DropdownMenuItem>
+          </MenuNavigationItem>
           <div className="px-2 py-2" data-slot="appearance-control">
             <div className="mb-2 flex items-center gap-2 text-sm font-medium text-foreground">
               <MonitorIcon className="size-4" aria-hidden="true" />
@@ -256,26 +306,41 @@ export function AccountControl({ identity }: AccountControlProps) {
           {identity.isDatasetAdmin ? <DropdownMenuSeparator /> : null}
           {identity.isDatasetAdmin ? (
             <>
-              <DropdownMenuItem onClick={() => navigateTo("/dashboard/field-sources")}>
-                <DatabaseIcon aria-hidden="true" />
+              <MenuNavigationItem
+                href="/dashboard/field-sources"
+                icon={DatabaseIcon}
+                onPrefetch={prefetchRoute}
+              >
                 Manage Field Sources
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigateTo("/dashboard/api-connections")}>
-                <CableIcon aria-hidden="true" />
+              </MenuNavigationItem>
+              <MenuNavigationItem
+                href="/dashboard/api-connections"
+                icon={CableIcon}
+                onPrefetch={prefetchRoute}
+              >
                 Datasets
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigateTo("/dashboard/analytics")}>
-                <ActivityIcon aria-hidden="true" />
+              </MenuNavigationItem>
+              <MenuNavigationItem
+                href="/dashboard/analytics"
+                icon={ActivityIcon}
+                onPrefetch={prefetchRoute}
+              >
                 Analytics
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigateTo("/dashboard/user-management")}>
-                <UsersIcon aria-hidden="true" />
+              </MenuNavigationItem>
+              <MenuNavigationItem
+                href="/dashboard/user-management"
+                icon={UsersIcon}
+                onPrefetch={prefetchRoute}
+              >
                 User Management
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigateTo("/dashboard/upload")}>
-                <UploadIcon aria-hidden="true" />
+              </MenuNavigationItem>
+              <MenuNavigationItem
+                href="/dashboard/upload"
+                icon={UploadIcon}
+                onPrefetch={prefetchRoute}
+              >
                 Upload
-              </DropdownMenuItem>
+              </MenuNavigationItem>
             </>
           ) : null}
         </DropdownMenuGroup>

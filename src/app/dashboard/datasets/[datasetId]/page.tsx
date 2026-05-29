@@ -4,7 +4,6 @@ import { notFound, redirect } from "next/navigation";
 
 import { DatasetDetailClient } from "@/components/dashboard/dataset-detail-client";
 import { DashboardPageShell } from "@/components/layout/dashboard-page-shell";
-import { SiteHeader } from "@/components/layout/site-header";
 import { buttonVariants } from "@/components/ui/button";
 import {
   getAnalyticsWorkspaceRole,
@@ -108,12 +107,10 @@ export default async function DatasetPage({
     : [];
 
   return (
-    <main
+    <div
       data-smoke-page="dataset-detail"
       data-smoke-page-ready="dataset-detail"
-      className="min-h-svh bg-background"
     >
-      <SiteHeader identity={identity} />
       <DashboardPageShell gap="compact">
         <section className="min-w-0 space-y-2">
           <Link
@@ -156,6 +153,6 @@ export default async function DatasetPage({
           }
         />
       </DashboardPageShell>
-    </main>
+    </div>
   );
 }

@@ -1,5 +1,6 @@
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 
+import { readProxiedIdentityHeaders } from "@/lib/auth-identity-headers";
 import { logError } from "@/lib/error-logging";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
@@ -26,9 +27,25 @@ function isDynamicServerUsageError(error: unknown) {
   );
 }
 
+function toCurrentIdentity(
+  identity: Pick<CurrentIdentity, "ownerId" | "email" | "fullName" | "workspaceRole">,
+): CurrentIdentity {
+  return {
+    ...identity,
+    isDatasetAdmin: isWorkspaceAdmin(identity.workspaceRole),
+    mode: "supabase",
+  };
+}
+
 export async function getCurrentIdentity(): Promise<CurrentIdentity | null> {
   if (hasSupabaseConfig()) {
     try {
+      const proxiedIdentity = readProxiedIdentityHeaders(await headers());
+
+      if (proxiedIdentity) {
+        return toCurrentIdentity(proxiedIdentity);
+      }
+
       await cookies();
       const supabase = await createSupabaseServerClient();
       const {
@@ -45,14 +62,12 @@ export async function getCurrentIdentity(): Promise<CurrentIdentity | null> {
 
         const workspaceRole = getWorkspaceRole(user.app_metadata?.workspace_role);
 
-        return {
+        return toCurrentIdentity({
           ownerId: user.id,
           email,
           fullName,
           workspaceRole,
-          isDatasetAdmin: isWorkspaceAdmin(workspaceRole),
-          mode: "supabase",
-        };
+        });
       }
     } catch (error) {
       if (isDynamicServerUsageError(error)) {

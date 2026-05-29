@@ -34,11 +34,17 @@ describe("updateSession", () => {
     hasSupabaseConfigMock.mockReturnValue(false);
 
     const response = await updateSession(
-      new NextRequest("http://localhost/dashboard"),
+      new NextRequest("http://localhost/dashboard", {
+        headers: {
+          "x-ag-internal-auth-owner-id": "spoofed-owner",
+          "x-ag-internal-auth-workspace-role": "admin",
+        },
+      }),
     );
 
     expect(createServerClientMock).not.toHaveBeenCalled();
     expect(response.status).toBe(200);
+    expect(response.headers.get("x-middleware-request-x-ag-internal-auth-owner-id")).toBeNull();
   });
 
   it("propagates refreshed cookies and headers", async () => {
@@ -72,7 +78,21 @@ describe("updateSession", () => {
               { "x-auth-refresh": "1" },
             );
 
-            return { data: { user: null }, error: null };
+            return {
+              data: {
+                user: {
+                  id: "owner-1",
+                  email: "admin@example.com",
+                  app_metadata: {
+                    workspace_role: "admin",
+                  },
+                  user_metadata: {
+                    full_name: " Blake Lewis ",
+                  },
+                },
+              },
+              error: null,
+            };
           }),
         },
       } as never;
@@ -87,6 +107,54 @@ describe("updateSession", () => {
     expect(response.headers.get("x-auth-refresh")).toBe("1");
     expect(request.cookies.get("sb-access-token")?.value).toBe(
       "refreshed-token",
+    );
+    expect(response.headers.get("x-middleware-request-x-ag-internal-auth-owner-id")).toBe(
+      "owner-1",
+    );
+    expect(response.headers.get("x-middleware-request-x-ag-internal-auth-email")).toBe(
+      "admin%40example.com",
+    );
+    expect(response.headers.get("x-middleware-request-x-ag-internal-auth-full-name")).toBe(
+      "Blake%20Lewis",
+    );
+    expect(response.headers.get("x-middleware-request-x-ag-internal-auth-workspace-role")).toBe(
+      "admin",
+    );
+  });
+
+  it("strips spoofed identity headers before forwarding verified identity", async () => {
+    createServerClientMock.mockReturnValue({
+      auth: {
+        getUser: vi.fn(async () => ({
+          data: {
+            user: {
+              id: "owner-2",
+              email: "reader@example.com",
+              app_metadata: {
+                workspace_role: "basic",
+              },
+              user_metadata: {},
+            },
+          },
+          error: null,
+        })),
+      },
+    } as never);
+
+    const response = await updateSession(
+      new NextRequest("http://localhost/dashboard", {
+        headers: {
+          "x-ag-internal-auth-owner-id": "spoofed-owner",
+          "x-ag-internal-auth-workspace-role": "admin",
+        },
+      }),
+    );
+
+    expect(response.headers.get("x-middleware-request-x-ag-internal-auth-owner-id")).toBe(
+      "owner-2",
+    );
+    expect(response.headers.get("x-middleware-request-x-ag-internal-auth-workspace-role")).toBe(
+      "basic",
     );
   });
 

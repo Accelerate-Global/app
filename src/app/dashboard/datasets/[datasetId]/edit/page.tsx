@@ -4,7 +4,6 @@ import { notFound, redirect } from "next/navigation";
 
 import { DatasetEditPageClient } from "@/components/dashboard/dataset-edit-page-client";
 import { DashboardPageShell } from "@/components/layout/dashboard-page-shell";
-import { SiteHeader } from "@/components/layout/site-header";
 import { buttonVariants } from "@/components/ui/button";
 import { getAnalyticsWorkspaceRole } from "@/lib/analytics";
 import { getCurrentIdentity } from "@/lib/auth";
@@ -51,12 +50,10 @@ export default async function DatasetEditPage({
   );
 
   return (
-    <main
+    <div
       data-smoke-page="dataset-edit"
       data-smoke-page-ready="dataset-edit"
-      className="min-h-svh bg-background"
     >
-      <SiteHeader identity={identity} />
       <DashboardPageShell>
         <section className="space-y-2">
           <Link
@@ -87,6 +84,6 @@ export default async function DatasetEditPage({
           workspaceRole={getAnalyticsWorkspaceRole(identity.workspaceRole)}
         />
       </DashboardPageShell>
-    </main>
+    </div>
   );
 }

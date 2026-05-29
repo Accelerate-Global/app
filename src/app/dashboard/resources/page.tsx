@@ -3,7 +3,6 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { DashboardPageShell } from "@/components/layout/dashboard-page-shell";
-import { SiteHeader } from "@/components/layout/site-header";
 import { buttonVariants } from "@/components/ui/button";
 import {
   Card,
@@ -39,12 +38,10 @@ export default async function ResourcesPage() {
   }
 
   return (
-    <main
+    <div
       data-smoke-page="resources"
       data-smoke-page-ready="resources"
-      className="min-h-svh bg-background"
     >
-      <SiteHeader identity={identity} />
       <DashboardPageShell>
         <section className="space-y-2">
           <Link
@@ -89,6 +86,6 @@ export default async function ResourcesPage() {
           ))}
         </section>
       </DashboardPageShell>
-    </main>
+    </div>
   );
 }

@@ -25,9 +25,6 @@ vi.mock("@/lib/user-management", () => ({
   listWorkspaceUsers: vi.fn(),
 }));
 
-vi.mock("@/components/layout/site-header", () => ({
-  SiteHeader: () => null,
-}));
 
 vi.mock("@/components/dashboard/user-management-client", () => ({
   UserManagementClient: (props: unknown) => {

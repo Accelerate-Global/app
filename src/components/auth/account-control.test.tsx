@@ -7,6 +7,7 @@ import { AccountControl } from "./account-control";
 
 const pushMock = vi.fn();
 const refreshMock = vi.fn();
+const prefetchMock = vi.fn();
 const fetchMock = vi.fn();
 const assignMock = vi.fn();
 const localStorageStore = new Map<string, string>();
@@ -20,6 +21,7 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({
     push: pushMock,
     refresh: refreshMock,
+    prefetch: prefetchMock,
   }),
   usePathname: () => pathnameMock(),
 }));
@@ -179,6 +181,12 @@ describe("AccountControl", () => {
       "separator",
       "Sign out",
     ]);
+    expect(screen.getByText("Profile").closest("a")?.getAttribute("href")).toBe(
+      "/dashboard/profile",
+    );
+    expect(screen.getByText("User Management").closest("a")?.getAttribute("href")).toBe(
+      "/dashboard/user-management",
+    );
   });
 
   it("omits the admin section and extra divider for non-admin users", () => {
@@ -248,6 +256,38 @@ describe("AccountControl", () => {
     expect(assignMock).toHaveBeenCalledWith("/");
     expect(pushMock).not.toHaveBeenCalled();
     expect(refreshMock).not.toHaveBeenCalled();
+  });
+
+  it("prefetches only the hovered account menu destination once", () => {
+    render(
+      <AccountControl
+        identity={{
+          ownerId: "owner-1",
+          email: "pro@example.com",
+          fullName: null,
+          workspaceRole: "pro",
+          isDatasetAdmin: false,
+          mode: "supabase",
+        }}
+      />,
+    );
+
+    openMenu();
+
+    const profileLink = screen.getByText("Profile").closest("a");
+    const resourcesLink = screen.getByText("Resources").closest("a");
+
+    expect(profileLink?.getAttribute("href")).toBe("/dashboard/profile");
+    expect(resourcesLink?.getAttribute("href")).toBe("/dashboard/resources");
+
+    fireEvent.pointerEnter(profileLink!);
+    fireEvent.pointerEnter(profileLink!);
+    fireEvent.focus(resourcesLink!);
+
+    expect(prefetchMock).toHaveBeenCalledTimes(2);
+    expect(prefetchMock).toHaveBeenNthCalledWith(1, "/dashboard/profile");
+    expect(prefetchMock).toHaveBeenNthCalledWith(2, "/dashboard/resources");
+    expect(pushMock).not.toHaveBeenCalled();
   });
 
   it("selects system by default and clears legacy theme storage", () => {

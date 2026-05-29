@@ -28,9 +28,6 @@ vi.mock("@/lib/iso-country-codes", () => ({
   getGeneratedIsoCountryCodeResourceWithOverrides: vi.fn(),
 }));
 
-vi.mock("@/components/layout/site-header", () => ({
-  SiteHeader: () => null,
-}));
 
 vi.mock("@/components/dashboard/iso-country-codes-client", () => ({
   IsoCountryCodesClient: isoCountryCodesClientMock,

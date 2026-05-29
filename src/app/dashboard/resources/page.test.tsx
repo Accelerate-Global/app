@@ -18,9 +18,6 @@ vi.mock("@/lib/auth", () => ({
   getCurrentIdentity: vi.fn(),
 }));
 
-vi.mock("@/components/layout/site-header", () => ({
-  SiteHeader: () => null,
-}));
 
 const getCurrentIdentityMock = vi.mocked(getCurrentIdentity);
 const redirectMock = vi.mocked(redirect);

@@ -18,9 +18,6 @@ vi.mock("@/lib/auth", () => ({
   getCurrentIdentity: vi.fn(),
 }));
 
-vi.mock("@/components/layout/site-header", () => ({
-  SiteHeader: () => null,
-}));
 
 vi.mock("@/components/auth/account-profile-form", () => ({
   AccountProfileForm: () => null,

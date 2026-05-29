@@ -4,7 +4,6 @@ import { redirect } from "next/navigation";
 
 import { IsoCountryCodesClient } from "@/components/dashboard/iso-country-codes-client";
 import { DashboardPageShell } from "@/components/layout/dashboard-page-shell";
-import { SiteHeader } from "@/components/layout/site-header";
 import { buttonVariants } from "@/components/ui/button";
 import { getCurrentIdentity } from "@/lib/auth";
 import { getGeneratedIsoCountryCodeResourceWithOverrides } from "@/lib/iso-country-codes";
@@ -20,12 +19,10 @@ export default async function CountryCodesPage() {
   const resource = await getGeneratedIsoCountryCodeResourceWithOverrides();
 
   return (
-    <main
+    <div
       data-smoke-page="iso-country-codes"
       data-smoke-page-ready="iso-country-codes"
-      className="min-h-svh bg-background"
     >
-      <SiteHeader identity={identity} />
       <DashboardPageShell>
         <section className="space-y-2">
           <Link
@@ -60,6 +57,6 @@ export default async function CountryCodesPage() {
           canEditAlternativeNames={identity.isDatasetAdmin}
         />
       </DashboardPageShell>
-    </main>
+    </div>
   );
 }

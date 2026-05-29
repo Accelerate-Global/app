@@ -4,7 +4,6 @@ import { redirect } from "next/navigation";
 
 import { RopCodesClient } from "@/components/dashboard/rop-codes-client";
 import { DashboardPageShell } from "@/components/layout/dashboard-page-shell";
-import { SiteHeader } from "@/components/layout/site-header";
 import { buttonVariants } from "@/components/ui/button";
 import { getCurrentIdentity } from "@/lib/auth";
 import { getGeneratedRopCodeResource } from "@/lib/rop-codes";
@@ -18,12 +17,10 @@ export default async function RopCodesPage() {
   }
 
   return (
-    <main
+    <div
       data-smoke-page="rop-codes"
       data-smoke-page-ready="rop-codes"
-      className="min-h-svh bg-background"
     >
-      <SiteHeader identity={identity} />
       <DashboardPageShell>
         <section className="space-y-2">
           <Link
@@ -57,6 +54,6 @@ export default async function RopCodesPage() {
           canRefresh={identity.isDatasetAdmin}
         />
       </DashboardPageShell>
-    </main>
+    </div>
   );
 }
