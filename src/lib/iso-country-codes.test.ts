@@ -6,12 +6,14 @@ import {
   ISO_COUNTRY_CODES_SOURCE_URL,
   LEGACY_FIPS_COUNTRY_CODES_SOURCE_URL,
   M49_COUNTRY_CODES_SOURCE_URL,
+  ROG3_COUNTRY_CODES_SOURCE_URL,
   UNTERM_COUNTRY_NAMES_SOURCE_URL,
   applyIsoCountryCodeEntryOverrides,
   getGeneratedIsoCountryCodeResource,
   normalizeCountryCodeAlternativeNames,
   parseM49CountryCodeEntries,
   parseCountryCodeOverlayCsv,
+  parseRog3CountryCodeEntriesWorkbook,
   parseUntermCountryNamesWorkbook,
   refreshIsoCountryCodeResourceFromOfficialSource,
   validateOfficialIsoCountryCodeEntries,
@@ -21,6 +23,7 @@ import type {
   LegacyFipsCountryCodeEntry,
   M49CountryCodeEntry,
   OfficialIsoCountryCodeEntry,
+  Rog3CountryCodeEntry,
   UntermCountryNameEntry,
 } from "@/lib/iso-country-codes";
 
@@ -67,6 +70,23 @@ function createFipsEntries(count: number): LegacyFipsCountryCodeEntry[] {
     code: createCode(index, 2),
     name: `FIPS COUNTRY ${String(index).padStart(3, "0")}`,
   }));
+}
+
+function createRog3Entries(count: number): Rog3CountryCodeEntry[] {
+  return Array.from({ length: count }, (_, index) => {
+    const code = createCode(index, 2);
+    const alpha3 = createCode(index, 3);
+
+    return {
+      gencAlpha3: alpha3,
+      gencAlpha2: code,
+      numeric: String(index).padStart(3, "0"),
+      name: `ROG3 COUNTRY ${String(index).padStart(3, "0")}`,
+      shortName: `Rog3 Country ${String(index).padStart(3, "0")}`,
+      fullName: `Rog3 Country ${String(index).padStart(3, "0")}`,
+      rog3: code,
+    };
+  });
 }
 
 function createUntermEntries(
@@ -130,6 +150,67 @@ function toUntermWorkbook(entries: UntermCountryNameEntry[]) {
       "",
       "",
       "",
+    ]),
+  ];
+  const sharedStrings = values.flat();
+  let sharedIndex = 0;
+  const rows = values
+    .map((row, rowIndex) => {
+      const cells = row
+        .map((_, columnIndex) => {
+          const cell = `${columnName(columnIndex)}${rowIndex + 1}`;
+          const value = sharedIndex;
+          sharedIndex += 1;
+          return `<c r="${cell}" t="s"><v>${value}</v></c>`;
+        })
+        .join("");
+      return `<row r="${rowIndex + 1}">${cells}</row>`;
+    })
+    .join("");
+  const sharedStringsXml = `<?xml version="1.0" encoding="UTF-8"?><sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="${sharedStrings.length}" uniqueCount="${sharedStrings.length}">${sharedStrings
+    .map((value) => `<si><t>${value}</t></si>`)
+    .join("")}</sst>`;
+  const sheetXml = `<?xml version="1.0" encoding="UTF-8"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>${rows}</sheetData></worksheet>`;
+
+  const bytes = zipSync({
+    xl: {
+      "sharedStrings.xml": strToU8(sharedStringsXml),
+      worksheets: {
+        "sheet1.xml": strToU8(sheetXml),
+      },
+    },
+  });
+  return bytes.buffer.slice(
+    bytes.byteOffset,
+    bytes.byteOffset + bytes.byteLength,
+  ) as ArrayBuffer;
+}
+
+function toRog3Workbook(entries: Rog3CountryCodeEntry[]) {
+  const values = [
+    [
+      "(31 December 2025) GENC Standard Codes for Names of Geopolitical Entities, Edition 3.0, Update 24",
+    ],
+    [""],
+    [
+      "3-character Code",
+      "2-character Code",
+      "Numeric Code",
+      "Name",
+      "Short Name",
+      "Full Name",
+      "AS\n(link)",
+      "GEC",
+    ],
+    ...entries.map((entry) => [
+      entry.gencAlpha3,
+      entry.gencAlpha2,
+      entry.numeric,
+      entry.name,
+      entry.shortName,
+      entry.fullName,
+      "",
+      entry.rog3 ?? "--",
     ]),
   ];
   const sharedStrings = values.flat();
@@ -278,6 +359,7 @@ Country Alt Names 12,,,,
       primaryAlpha3: "KOS",
       gencAlpha3: "XKS",
       fips: "KV",
+      rog3: "KV",
       classification: "non-official-code",
     });
     expect(
@@ -286,6 +368,7 @@ Country Alt Names 12,,,,
       primaryAlpha3: "UMI",
       gencAlpha3: "XBK",
       fips: "FQ",
+      rog3: "FQ",
       classification: "duplicate-iso-territory",
     });
     expect(
@@ -302,9 +385,46 @@ Country Alt Names 12,,,,
     expect(
       resource.entries.find((entry) => entry.displayName === "Afghanistan"),
     ).toMatchObject({
+      rog3: "AF",
       untermEnglishShortName: "Afghanistan",
       untermEnglishFormalName: expect.stringContaining("Afghanistan"),
       untermNameSource: "unterm-m49",
+    });
+    expect(
+      resource.entries.find(
+        (entry) => entry.displayName === "Bonaire, Sint Eustatius and Saba",
+      ),
+    ).toMatchObject({
+      fips: "NT",
+      rog3: null,
+    });
+    expect(
+      resource.entries.find((entry) => entry.displayName === "Saint Martin (French)"),
+    ).toMatchObject({
+      fips: "RN",
+      rog3: null,
+    });
+    expect(
+      resource.entries.find(
+        (entry) =>
+          entry.displayName ===
+          "Etorofu, Habomai, Kunashiri, and Shikotan Islands",
+      ),
+    ).toMatchObject({
+      fips: "PJ",
+      rog3: "PJ",
+    });
+    expect(
+      resource.entries.find((entry) => entry.displayName === "Palestine"),
+    ).toMatchObject({
+      fips: null,
+      rog3: null,
+    });
+    expect(
+      resource.entries.find((entry) => entry.displayName === "West Bank"),
+    ).toMatchObject({
+      fips: "WE",
+      rog3: "WE",
     });
   });
 
@@ -323,6 +443,54 @@ Country Alt Names 12,,,,
       {
         englishShortName: "Afghanistan",
         englishFormalName: "the Islamic Republic of Afghanistan",
+      },
+    ]);
+  });
+
+  it("parses NGA GENC/GEC workbooks into ROG3 source entries", () => {
+    expect(
+      parseRog3CountryCodeEntriesWorkbook(
+        toRog3Workbook([
+          {
+            gencAlpha3: "AFG",
+            gencAlpha2: "AF",
+            numeric: "004",
+            name: "AFGHANISTAN",
+            shortName: "Afghanistan",
+            fullName: "Islamic Republic of Afghanistan",
+            rog3: "AF",
+          },
+          {
+            gencAlpha3: "BES",
+            gencAlpha2: "BQ",
+            numeric: "535",
+            name: "CARIBBEAN NETHERLANDS",
+            shortName: "Caribbean Netherlands",
+            fullName: "Caribbean Netherlands",
+            rog3: null,
+          },
+        ]),
+        2,
+        1,
+      ),
+    ).toEqual([
+      {
+        gencAlpha3: "AFG",
+        gencAlpha2: "AF",
+        numeric: "004",
+        name: "AFGHANISTAN",
+        shortName: "Afghanistan",
+        fullName: "Islamic Republic of Afghanistan",
+        rog3: "AF",
+      },
+      {
+        gencAlpha3: "BES",
+        gencAlpha2: "BQ",
+        numeric: "535",
+        name: "CARIBBEAN NETHERLANDS",
+        shortName: "Caribbean Netherlands",
+        fullName: "Caribbean Netherlands",
+        rog3: null,
       },
     ]);
   });
@@ -394,7 +562,7 @@ Country Alt Names 12,,,,
     ).toThrow("Duplicate ISO alpha-3 code");
   });
 
-  it("refreshes from ISO OBP, GENC, FIPS, and the curated overlay", async () => {
+  it("refreshes from ISO OBP, GENC, FIPS, ROG3, and the curated overlay", async () => {
     const officialEntries = createOfficialEntries(240);
     officialEntries[0] = {
       alpha2: "AF",
@@ -431,6 +599,7 @@ Country Alt Names 12,,,,
     }
     const gencEntries = createGencEntries(270);
     const fipsEntries = createFipsEntries(200);
+    const rog3Entries = createRog3Entries(280);
     const untermEntries = createUntermEntries(officialEntries);
     const m49Entries = createM49Entries(officialEntries);
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
@@ -469,6 +638,10 @@ Country Alt Names 12,,,,
         return new Response(toFipsHtml(fipsEntries));
       }
 
+      if (url === ROG3_COUNTRY_CODES_SOURCE_URL) {
+        return new Response(toRog3Workbook(rog3Entries));
+      }
+
       if (url === UNTERM_COUNTRY_NAMES_SOURCE_URL) {
         return new Response(toUntermWorkbook(untermEntries));
       }
@@ -490,6 +663,7 @@ Country Alt Names 12,,,,
       displayName: "Afghanistan",
       primaryAlpha3: "AFG",
       fips: "AF",
+      rog3: "AF",
       untermEnglishShortName: "Afghanistan",
       untermEnglishFormalName: "the Republic of Afghanistan",
       untermNameSource: "unterm-m49",
@@ -500,6 +674,10 @@ Country Alt Names 12,,,,
     );
     expect(fetchMock).toHaveBeenCalledWith(
       LEGACY_FIPS_COUNTRY_CODES_SOURCE_URL,
+      expect.any(Object),
+    );
+    expect(fetchMock).toHaveBeenCalledWith(
+      ROG3_COUNTRY_CODES_SOURCE_URL,
       expect.any(Object),
     );
     expect(fetchMock).toHaveBeenCalledWith(

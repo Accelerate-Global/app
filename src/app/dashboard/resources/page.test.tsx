@@ -51,6 +51,11 @@ describe("/dashboard/resources", () => {
     expect(screen.getByText("Resources")).toBeTruthy();
     expect(screen.getByText("Country & territory code resource")).toBeTruthy();
     expect(
+      screen.getByText(
+        "Search and download shared ISO, GENC, FIPS, and ROG3 country and territory codes.",
+      ),
+    ).toBeTruthy();
+    expect(
       screen
         .getByRole("link", { name: /Country & territory code resource/ })
         .getAttribute("href"),

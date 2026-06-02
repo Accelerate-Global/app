@@ -86,6 +86,7 @@ function getEntryKey(entry: IsoCountryCodeEntry) {
     entry.primaryAlpha3 ?? "",
     entry.gencAlpha3 ?? "",
     entry.fips ?? "",
+    entry.rog3 ?? "",
     entry.sourceUri ?? "",
   ].join(":");
 }
@@ -112,6 +113,7 @@ function filterEntries(entries: IsoCountryCodeEntry[], searchTerm: string) {
       entry.gencAlpha3,
       entry.gencNumeric,
       entry.fips,
+      entry.rog3,
       entry.classification,
       classificationLabels[entry.classification],
       entry.sourceUri,
@@ -138,6 +140,7 @@ const csvColumns = [
   ],
   ["Official name source", (entry: IsoCountryCodeEntry) => entry.untermNameSource],
   ["FIPS", (entry: IsoCountryCodeEntry) => entry.fips],
+  ["ROG3", (entry: IsoCountryCodeEntry) => entry.rog3],
   ["GENC3", (entry: IsoCountryCodeEntry) => entry.gencAlpha3],
   ["GENC2", (entry: IsoCountryCodeEntry) => entry.gencAlpha2],
   ["GENC numeric", (entry: IsoCountryCodeEntry) => entry.gencNumeric],
@@ -333,6 +336,9 @@ function CountryCodeDetailSheet({
                   </DetailValue>
                   <DetailValue label="FIPS" mono>
                     {formatCode(entry.fips)}
+                  </DetailValue>
+                  <DetailValue label="ROG3" mono>
+                    {formatCode(entry.rog3)}
                   </DetailValue>
                   <DetailValue label="GENC3" mono>
                     {formatCode(entry.gencAlpha3)}
@@ -530,7 +536,7 @@ export function IsoCountryCodesClient({
     const progressStages: RefreshProgress[] = [
       {
         progress: 35,
-        message: "Fetching ISO, UNTERM, M49, GENC, and FIPS sources",
+        message: "Fetching ISO, UNTERM, M49, GENC, FIPS, and ROG3 sources",
       },
       {
         progress: 65,
@@ -690,7 +696,7 @@ export function IsoCountryCodesClient({
               <Input
                 value={searchTerm}
                 onChange={(event) => setSearchTerm(event.target.value)}
-                placeholder="Search name, alias, ISO3, FIPS, GENC, status, or classification"
+                placeholder="Search name, alias, ISO3, FIPS, ROG3, GENC, status, or classification"
                 className="h-10 pl-9"
               />
             </label>
@@ -747,6 +753,7 @@ export function IsoCountryCodesClient({
                   <TableHead>Status</TableHead>
                   <TableHead>ISO3</TableHead>
                   <TableHead>FIPS</TableHead>
+                  <TableHead>ROG3</TableHead>
                   <TableHead>GENC3</TableHead>
                 </TableRow>
               </TableHeader>
@@ -774,6 +781,9 @@ export function IsoCountryCodesClient({
                     </TableCell>
                     <TableCell className="font-mono text-sm">
                       {formatCode(entry.fips)}
+                    </TableCell>
+                    <TableCell className="font-mono text-sm">
+                      {formatCode(entry.rog3)}
                     </TableCell>
                     <TableCell className="font-mono text-sm">
                       {formatCode(entry.gencAlpha3)}

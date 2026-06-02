@@ -18,7 +18,7 @@ const builtInResources = [
     id: "country-territory-codes",
     title: "Country & territory code resource",
     description:
-      "Search and download shared ISO, GENC, and FIPS country and territory codes.",
+      "Search and download shared ISO, GENC, FIPS, and ROG3 country and territory codes.",
     href: "/dashboard/country-codes",
   },
   {

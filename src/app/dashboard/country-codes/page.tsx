@@ -45,7 +45,8 @@ export default async function CountryCodesPage() {
               </h1>
               <p className="max-w-3xl text-base leading-7 text-muted-foreground sm:text-lg">
                 Search curated country and territory codes enriched with ISO,
-                GENC, legacy FIPS, and alternative names for shared dataset work.
+                GENC, legacy FIPS, ROG3, and alternative names for shared dataset
+                work.
               </p>
             </div>
           </div>
