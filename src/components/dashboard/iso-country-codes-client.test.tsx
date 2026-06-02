@@ -22,7 +22,7 @@ const revokeObjectUrlMock = vi.fn();
 
 const initialResource: IsoCountryCodeResource = {
   sourceName:
-    "ISO OBP, UNTERM, UNSD M49, GENC, legacy FIPS, and curated Accelerate Global overlay",
+    "ISO OBP, UNTERM, UNSD M49, GENC, legacy FIPS, ROG3/GEC crosswalk, and curated Accelerate Global overlay",
   sourceUrl: "https://www.iso.org/obp/ui/#search/code/",
   sourceCollectionUrl: "https://www.iso.org/publication/PUB500001.html",
   gencSourceUrl: "https://evs.nci.nih.gov/ftp1/GENC/NCIt-GENC_Terminology.txt",
@@ -30,6 +30,11 @@ const initialResource: IsoCountryCodeResource = {
   fipsSourceUrl: "https://nief.org/attribute-registry/codesets/FIPS10-4CountryCode/",
   fipsWithdrawalUrl:
     "https://csrc.nist.gov/news/2008/announcing-approval-of-the-withdrawal-of-ten-fip-s",
+  rog3SourceUrl:
+    "https://geonames.nga.mil/geonames/GNSSearch/GNSDocs/xlsdocs/GENC_ED3U24_GEC_XWALK.xlsx",
+  rog3HisRegistryUrl: "https://hisregistries.org/rog/",
+  rog3HisCrossReferenceUrl:
+    "https://hisregistries.org/wp-content/uploads/filebase/rog/CountryCodeCrossReference_2.pdf",
   untermSourceUrl: "https://conferences.unite.un.org/untermapi/api/term/downloadCountries",
   m49SourceUrl: "https://unstats.un.org/unsd/methodology/m49/overview/",
   overlaySourceName: "Accelerate Global - Spec Sheet - ISO3.csv",
@@ -52,6 +57,7 @@ const initialResource: IsoCountryCodeResource = {
       gencAlpha3: "AFG",
       gencNumeric: "004",
       fips: "AF",
+      rog3: "AF",
       alternativeNames: ["Afganistan", "Islamic Republic of Afghanistan"],
       classification: "iso-official",
       sourceUri: "iso:code:3166:AF",
@@ -70,6 +76,7 @@ const initialResource: IsoCountryCodeResource = {
       gencAlpha3: "XQZ",
       gencNumeric: "900",
       fips: "AX",
+      rog3: "AX",
       alternativeNames: [],
       classification: "genc-supported",
       sourceUri: null,
@@ -88,6 +95,7 @@ const initialResource: IsoCountryCodeResource = {
       gencAlpha3: "XBK",
       gencNumeric: "903",
       fips: "FQ",
+      rog3: "FQ",
       alternativeNames: ["United States Minor Outlying Islands (the)"],
       classification: "duplicate-iso-territory",
       sourceUri: "iso:code:3166:UM",
@@ -137,6 +145,7 @@ describe("IsoCountryCodesClient", () => {
     expect(screen.getByRole("columnheader", { name: "Status" })).toBeTruthy();
     expect(screen.getByRole("columnheader", { name: "ISO3" })).toBeTruthy();
     expect(screen.getByRole("columnheader", { name: "FIPS" })).toBeTruthy();
+    expect(screen.getByRole("columnheader", { name: "ROG3" })).toBeTruthy();
     expect(screen.getByRole("columnheader", { name: "GENC3" })).toBeTruthy();
     expect(screen.queryByRole("columnheader", { name: "ISO2" })).toBeNull();
     expect(screen.queryByRole("columnheader", { name: "Numeric" })).toBeNull();
@@ -171,6 +180,13 @@ describe("IsoCountryCodesClient", () => {
     expect(screen.queryByText("3 visible")).toBeNull();
 
     fireEvent.change(screen.getByPlaceholderText(/Search name/), {
+      target: { value: "FQ" },
+    });
+
+    expect(screen.getByText("Baker Island")).toBeTruthy();
+    expect(screen.queryByText("Akrotiri")).toBeNull();
+
+    fireEvent.change(screen.getByPlaceholderText(/Search name/), {
       target: { value: "Islamic Republic" },
     });
 
@@ -191,6 +207,7 @@ describe("IsoCountryCodesClient", () => {
 
     expect(screen.getByText("Primary ISO3")).toBeTruthy();
     expect(screen.getByText("ISO2")).toBeTruthy();
+    expect(screen.getAllByText("ROG3").length).toBeGreaterThan(0);
     expect(screen.getByText("Numeric")).toBeTruthy();
     expect(screen.getByText("Classification")).toBeTruthy();
     expect(screen.getByText("Official UN Names")).toBeTruthy();
@@ -363,10 +380,10 @@ describe("IsoCountryCodesClient", () => {
 
     expect(blob.type).toBe("text/csv;charset=utf-8");
     expect(csv).toContain(
-      "Country/Territory,Status,ISO3,ISO2,Numeric,Official UN short name,Official UN formal name,Official name source,FIPS,GENC3,GENC2,GENC numeric,Classification,Alternative names,Source URI",
+      "Country/Territory,Status,ISO3,ISO2,Numeric,Official UN short name,Official UN formal name,Official name source,FIPS,ROG3,GENC3,GENC2,GENC numeric,Classification,Alternative names,Source URI",
     );
     expect(csv).toContain(
-      "Afghanistan,Active,AFG,AF,004,Afghanistan,the Islamic Republic of Afghanistan,unterm-m49,AF,AFG,AF,004,ISO official,Afganistan; Islamic Republic of Afghanistan,iso:code:3166:AF",
+      "Afghanistan,Active,AFG,AF,004,Afghanistan,the Islamic Republic of Afghanistan,unterm-m49,AF,AF,AFG,AF,004,ISO official,Afganistan; Islamic Republic of Afghanistan,iso:code:3166:AF",
     );
     expect(csv).not.toContain("Akrotiri");
     expect(revokeObjectUrlMock).toHaveBeenCalledWith("blob:country-codes");
@@ -392,6 +409,7 @@ describe("IsoCountryCodesClient", () => {
           gencAlpha3: "ZWE",
           gencNumeric: "716",
           fips: "ZI",
+          rog3: "ZI",
           alternativeNames: ["Zimbawe"],
           classification: "iso-official",
           sourceUri: "iso:code:3166:ZW",

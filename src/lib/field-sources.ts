@@ -291,15 +291,22 @@ async function readFieldDescriptionSeedCsvFile() {
   return readFile(FIELD_DESCRIPTION_CSV_PATH, "utf8");
 }
 
+function normalizeCsvLineEndings(content: string) {
+  return content.replace(/\r\n?/g, "\n");
+}
+
 export function getFieldSourceTypeKey(label: string) {
   return normalizeHeaderIdentity(normalizeFieldSourceTypeLabel(label), 0);
 }
 
 export function parseFieldDescriptionCsv(content: string) {
-  const parsed = Papa.parse<FieldDescriptionCsvRow>(content, {
-    header: true,
-    skipEmptyLines: true,
-  });
+  const parsed = Papa.parse<FieldDescriptionCsvRow>(
+    normalizeCsvLineEndings(content),
+    {
+      header: true,
+      skipEmptyLines: true,
+    },
+  );
 
   if (parsed.errors.length > 0) {
     throw new Error(parsed.errors[0]?.message ?? "Field description CSV is invalid.");
@@ -325,10 +332,13 @@ export function parseFieldSourceMappingCsv(
   content: string,
   descriptionsByFieldId = new Map<string, string>(),
 ): FieldSourceSeedRow[] {
-  const parsed = Papa.parse<FieldSourceMappingCsvRow>(content, {
-    header: true,
-    skipEmptyLines: true,
-  });
+  const parsed = Papa.parse<FieldSourceMappingCsvRow>(
+    normalizeCsvLineEndings(content),
+    {
+      header: true,
+      skipEmptyLines: true,
+    },
+  );
 
   if (parsed.errors.length > 0) {
     throw new Error(parsed.errors[0]?.message ?? "Field source mapping CSV is invalid.");

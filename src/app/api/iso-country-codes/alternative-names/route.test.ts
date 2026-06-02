@@ -39,6 +39,7 @@ const entry: IsoCountryCodeEntry = {
   gencAlpha3: "AFG",
   gencNumeric: "004",
   fips: "AF",
+  rog3: "AF",
   alternativeNames: ["Afganistan"],
   classification: "iso-official",
   sourceUri: "iso:code:3166:AF",
@@ -46,7 +47,7 @@ const entry: IsoCountryCodeEntry = {
 
 const resource: IsoCountryCodeResource = {
   sourceName:
-    "ISO OBP, UNTERM, UNSD M49, GENC, legacy FIPS, and curated Accelerate Global overlay",
+    "ISO OBP, UNTERM, UNSD M49, GENC, legacy FIPS, ROG3/GEC crosswalk, and curated Accelerate Global overlay",
   sourceUrl: "https://www.iso.org/obp/ui/#search/code/",
   sourceCollectionUrl: "https://www.iso.org/publication/PUB500001.html",
   gencSourceUrl: "https://evs.nci.nih.gov/ftp1/GENC/NCIt-GENC_Terminology.txt",
@@ -54,6 +55,11 @@ const resource: IsoCountryCodeResource = {
   fipsSourceUrl: "https://nief.org/attribute-registry/codesets/FIPS10-4CountryCode/",
   fipsWithdrawalUrl:
     "https://csrc.nist.gov/news/2008/announcing-approval-of-the-withdrawal-of-ten-fip-s",
+  rog3SourceUrl:
+    "https://geonames.nga.mil/geonames/GNSSearch/GNSDocs/xlsdocs/GENC_ED3U24_GEC_XWALK.xlsx",
+  rog3HisRegistryUrl: "https://hisregistries.org/rog/",
+  rog3HisCrossReferenceUrl:
+    "https://hisregistries.org/wp-content/uploads/filebase/rog/CountryCodeCrossReference_2.pdf",
   untermSourceUrl: "https://conferences.unite.un.org/untermapi/api/term/downloadCountries",
   m49SourceUrl: "https://unstats.un.org/unsd/methodology/m49/overview/",
   overlaySourceName: "Accelerate Global - Spec Sheet - ISO3.csv",

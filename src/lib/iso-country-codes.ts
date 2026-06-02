@@ -1,5 +1,7 @@
+import { execFile } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import { promisify } from "node:util";
 
 import { unzipSync } from "fflate";
 import Papa from "papaparse";
@@ -7,6 +9,8 @@ import Papa from "papaparse";
 import { getDb } from "@/db";
 import { isoCountryCodeEntryOverrides } from "@/db/schema";
 import generatedIsoCountryCodes from "@/data/iso-country-codes.generated.json";
+
+const execFileAsync = promisify(execFile);
 
 export const ISO_COUNTRY_CODES_SOURCE_URL =
   "https://www.iso.org/obp/ui/#search/code/";
@@ -20,6 +24,11 @@ export const LEGACY_FIPS_COUNTRY_CODES_SOURCE_URL =
   "https://nief.org/attribute-registry/codesets/FIPS10-4CountryCode/";
 export const FIPS_WITHDRAWAL_SOURCE_URL =
   "https://csrc.nist.gov/news/2008/announcing-approval-of-the-withdrawal-of-ten-fip-s";
+export const ROG3_COUNTRY_CODES_SOURCE_URL =
+  "https://geonames.nga.mil/geonames/GNSSearch/GNSDocs/xlsdocs/GENC_ED3U24_GEC_XWALK.xlsx";
+export const ROG3_HIS_REGISTRY_URL = "https://hisregistries.org/rog/";
+export const ROG3_HIS_CROSS_REFERENCE_URL =
+  "https://hisregistries.org/wp-content/uploads/filebase/rog/CountryCodeCrossReference_2.pdf";
 export const UNTERM_COUNTRY_NAMES_SOURCE_URL =
   "https://conferences.unite.un.org/untermapi/api/term/downloadCountries";
 export const M49_COUNTRY_CODES_SOURCE_URL =
@@ -33,6 +42,8 @@ export const COUNTRY_CODE_OVERLAY_PATH = path.join(
 export const ISO_COUNTRY_CODES_MINIMUM_COUNT = 240;
 export const GENC_COUNTRY_CODES_MINIMUM_COUNT = 270;
 export const LEGACY_FIPS_COUNTRY_CODES_MINIMUM_COUNT = 200;
+export const ROG3_COUNTRY_CODES_MINIMUM_COUNT = 280;
+export const ROG3_LISTED_CODES_MINIMUM_COUNT = 200;
 export const UNTERM_COUNTRY_NAMES_MINIMUM_COUNT = 190;
 export const M49_COUNTRY_CODES_MINIMUM_COUNT = 240;
 export const COUNTRY_CODE_OVERLAY_EXPECTED_COUNT = 273;
@@ -62,6 +73,7 @@ export type IsoCountryCodeEntry = {
   gencAlpha3: string | null;
   gencNumeric: string | null;
   fips: string | null;
+  rog3: string | null;
   alternativeNames: string[];
   classification: CountryCodeClassification;
   sourceUri: string | null;
@@ -76,6 +88,9 @@ export type IsoCountryCodeResource = {
   gencAboutUrl: string;
   fipsSourceUrl: string;
   fipsWithdrawalUrl: string;
+  rog3SourceUrl: string;
+  rog3HisRegistryUrl: string;
+  rog3HisCrossReferenceUrl: string;
   untermSourceUrl: string;
   m49SourceUrl: string;
   overlaySourceName: string;
@@ -112,6 +127,16 @@ export type LegacyFipsCountryCodeEntry = {
   name: string;
 };
 
+export type Rog3CountryCodeEntry = {
+  gencAlpha3: string;
+  gencAlpha2: string;
+  numeric: string;
+  name: string;
+  shortName: string;
+  fullName: string;
+  rog3: string | null;
+};
+
 export type UntermCountryNameEntry = {
   englishShortName: string;
   englishFormalName: string | null;
@@ -143,6 +168,7 @@ type BuildIsoCountryCodeResourceInput = {
   officialEntries: OfficialIsoCountryCodeEntry[];
   gencEntries: GencCountryCodeEntry[];
   fipsEntries: LegacyFipsCountryCodeEntry[];
+  rog3Entries: Rog3CountryCodeEntry[];
   untermEntries: UntermCountryNameEntry[];
   m49Entries: M49CountryCodeEntry[];
   overlayRows: CountryCodeOverlayRow[];
@@ -283,7 +309,7 @@ function getXlsxTextFile(files: Record<string, Uint8Array>, filePath: string) {
   const file = files[filePath];
 
   if (!file) {
-    throw new Error(`UNTERM workbook is missing ${filePath}.`);
+    throw new Error(`XLSX workbook is missing ${filePath}.`);
   }
 
   return new TextDecoder().decode(file);
@@ -374,6 +400,94 @@ export function parseUntermCountryNamesWorkbook(
   });
 
   validateUntermCountryNameEntries(entries, minimumCount);
+  return entries;
+}
+
+function normalizeRog3Code(value: string | undefined) {
+  const code = value?.trim().toUpperCase() ?? "";
+
+  if (!code || code === "--") {
+    return null;
+  }
+
+  return code;
+}
+
+function normalizeNumericCode(value: string | undefined) {
+  const numeric = value?.trim() ?? "";
+
+  if (!/^\d+$/.test(numeric)) {
+    return numeric;
+  }
+
+  return numeric.padStart(3, "0");
+}
+
+export function parseRog3CountryCodeEntriesWorkbook(
+  input: ArrayBuffer | Uint8Array,
+  minimumCount = ROG3_COUNTRY_CODES_MINIMUM_COUNT,
+  listedMinimumCount = ROG3_LISTED_CODES_MINIMUM_COUNT,
+) {
+  const rows = parseXlsxFirstSheetRows(input);
+  const headerIndex = rows.findIndex(
+    (row) => row.includes("3-character Code") && row.includes("GEC"),
+  );
+
+  if (headerIndex < 0) {
+    throw new Error("ROG3 country-code workbook is missing required columns.");
+  }
+
+  const header = rows[headerIndex] ?? [];
+  const gencAlpha3Index = header.indexOf("3-character Code");
+  const gencAlpha2Index = header.indexOf("2-character Code");
+  const numericIndex = header.indexOf("Numeric Code");
+  const nameIndex = header.indexOf("Name");
+  const shortNameIndex = header.indexOf("Short Name");
+  const fullNameIndex = header.indexOf("Full Name");
+  const rog3Index = header.indexOf("GEC");
+
+  if (
+    gencAlpha3Index < 0 ||
+    gencAlpha2Index < 0 ||
+    numericIndex < 0 ||
+    nameIndex < 0 ||
+    shortNameIndex < 0 ||
+    fullNameIndex < 0 ||
+    rog3Index < 0
+  ) {
+    throw new Error("ROG3 country-code workbook is missing required columns.");
+  }
+
+  const entries = rows.slice(headerIndex + 1).flatMap((row) => {
+    const gencAlpha3 = nullableCode(row[gencAlpha3Index]);
+    const gencAlpha2 = nullableCode(row[gencAlpha2Index]);
+    const numeric = normalizeNumericCode(row[numericIndex]);
+    const name = row[nameIndex]?.trim() ?? "";
+    const shortName = row[shortNameIndex]?.trim() ?? "";
+    const fullName = row[fullNameIndex]?.trim() ?? "";
+
+    if (!gencAlpha3 && !name && !shortName) {
+      return [];
+    }
+
+    if (gencAlpha2 === "[NONE]") {
+      return [];
+    }
+
+    return [
+      {
+        gencAlpha3: assertString(gencAlpha3, "ROG3 source GENC alpha-3 code"),
+        gencAlpha2: assertString(gencAlpha2, "ROG3 source GENC alpha-2 code"),
+        numeric: assertString(numeric, "ROG3 source numeric code"),
+        name: assertString(name, "ROG3 source name"),
+        shortName: assertString(shortName, "ROG3 source short name"),
+        fullName: assertString(fullName, "ROG3 source full name"),
+        rog3: normalizeRog3Code(row[rog3Index]),
+      },
+    ];
+  });
+
+  validateRog3CountryCodeEntries(entries, minimumCount, listedMinimumCount);
   return entries;
 }
 
@@ -600,6 +714,63 @@ export function validateLegacyFipsCountryCodeEntries(
   }
 }
 
+export function validateRog3CountryCodeEntries(
+  entries: Rog3CountryCodeEntry[],
+  minimumCount = ROG3_COUNTRY_CODES_MINIMUM_COUNT,
+  listedMinimumCount = ROG3_LISTED_CODES_MINIMUM_COUNT,
+) {
+  if (entries.length < minimumCount) {
+    throw new Error(
+      `ROG3 country code refresh returned ${entries.length} entries; expected at least ${minimumCount}.`,
+    );
+  }
+
+  const gencAlpha3Values = new Set<string>();
+  const rog3Values = new Set<string>();
+
+  for (const entry of entries) {
+    assertString(entry.name, "ROG3 source name");
+    assertString(entry.shortName, "ROG3 source short name");
+    assertString(entry.fullName, "ROG3 source full name");
+
+    if (!/^[A-Z0-9]{3}$/.test(entry.gencAlpha3)) {
+      throw new Error(`Invalid ROG3 source GENC alpha-3 code: ${entry.gencAlpha3}.`);
+    }
+
+    if (!/^[A-Z0-9]{2}$/.test(entry.gencAlpha2)) {
+      throw new Error(`Invalid ROG3 source GENC alpha-2 code: ${entry.gencAlpha2}.`);
+    }
+
+    if (!/^\d{3}$/.test(entry.numeric)) {
+      throw new Error(`Invalid ROG3 source numeric code for ${entry.gencAlpha3}.`);
+    }
+
+    if (entry.rog3 && !/^[A-Z]{2}$/.test(entry.rog3)) {
+      throw new Error(`Invalid ROG3 code for ${entry.shortName}: ${entry.rog3}.`);
+    }
+
+    if (gencAlpha3Values.has(entry.gencAlpha3)) {
+      throw new Error(`Duplicate ROG3 source GENC alpha-3 code: ${entry.gencAlpha3}`);
+    }
+
+    if (entry.rog3) {
+      if (rog3Values.has(entry.rog3)) {
+        throw new Error(`Duplicate ROG3 code: ${entry.rog3}`);
+      }
+
+      rog3Values.add(entry.rog3);
+    }
+
+    gencAlpha3Values.add(entry.gencAlpha3);
+  }
+
+  if (rog3Values.size < listedMinimumCount) {
+    throw new Error(
+      `ROG3 country code refresh returned ${rog3Values.size} listed codes; expected at least ${listedMinimumCount}.`,
+    );
+  }
+}
+
 export function validateUntermCountryNameEntries(
   entries: UntermCountryNameEntry[],
   minimumCount = UNTERM_COUNTRY_NAMES_MINIMUM_COUNT,
@@ -759,6 +930,62 @@ function findGencEntry(
   return null;
 }
 
+function getExactLegacyFipsRog3Fallback(
+  row: CountryCodeOverlayRow,
+  fipsByName: Map<string, LegacyFipsCountryCodeEntry>,
+) {
+  if (!row.fips) {
+    return null;
+  }
+
+  const fips = fipsByName.get(normalizeName(row.displayName));
+  return fips?.code === row.fips ? row.fips : null;
+}
+
+function resolveRog3Code(
+  row: CountryCodeOverlayRow,
+  rog3ByCode: Map<string, Rog3CountryCodeEntry>,
+  rog3ByGencAlpha3: Map<string, Rog3CountryCodeEntry>,
+  rog3ByName: Map<string, Rog3CountryCodeEntry>,
+  fipsByName: Map<string, LegacyFipsCountryCodeEntry>,
+) {
+  if (row.fips) {
+    const codeMatch = rog3ByCode.get(row.fips);
+
+    if (codeMatch) {
+      return codeMatch.rog3;
+    }
+  }
+
+  const displayNameMatch = rog3ByName.get(normalizeName(row.displayName));
+
+  if (displayNameMatch) {
+    return (
+      displayNameMatch.rog3 ?? getExactLegacyFipsRog3Fallback(row, fipsByName)
+    );
+  }
+
+  if (row.fips) {
+    for (const name of row.alternativeNames) {
+      const aliasMatch = rog3ByName.get(normalizeName(name));
+
+      if (aliasMatch) {
+        return aliasMatch.rog3 ?? getExactLegacyFipsRog3Fallback(row, fipsByName);
+      }
+    }
+  }
+
+  if (row.primaryAlpha3) {
+    const gencMatch = rog3ByGencAlpha3.get(row.primaryAlpha3);
+
+    if (gencMatch) {
+      return gencMatch.rog3 ?? getExactLegacyFipsRog3Fallback(row, fipsByName);
+    }
+  }
+
+  return row.fips;
+}
+
 function buildUntermNamesByAlpha3(
   untermEntries: UntermCountryNameEntry[],
   m49Entries: M49CountryCodeEntry[],
@@ -845,6 +1072,7 @@ export function buildIsoCountryCodeResource(input: BuildIsoCountryCodeResourceIn
   validateOfficialIsoCountryCodeEntries(input.officialEntries);
   validateGencCountryCodeEntries(input.gencEntries);
   validateLegacyFipsCountryCodeEntries(input.fipsEntries);
+  validateRog3CountryCodeEntries(input.rog3Entries);
   validateUntermCountryNameEntries(input.untermEntries);
   validateM49CountryCodeEntries(input.m49Entries);
   validateCountryCodeOverlayRows(
@@ -861,11 +1089,23 @@ export function buildIsoCountryCodeResource(input: BuildIsoCountryCodeResourceIn
     entry.preferredName,
     entry.gencName,
   ]);
+  const rog3ByCode = new Map(
+    input.rog3Entries.flatMap((entry) => (entry.rog3 ? [[entry.rog3, entry]] : [])),
+  );
+  const rog3ByGencAlpha3 = new Map(
+    input.rog3Entries.map((entry) => [entry.gencAlpha3, entry]),
+  );
+  const rog3ByName = buildNameIndex(input.rog3Entries, (entry) => [
+    entry.name,
+    entry.shortName,
+    entry.fullName,
+  ]);
   const untermByAlpha3 = buildUntermNamesByAlpha3(
     input.untermEntries,
     input.m49Entries,
   );
   const fipsByCode = new Map(input.fipsEntries.map((entry) => [entry.code, entry]));
+  const fipsByName = buildNameIndex(input.fipsEntries, (entry) => [entry.name]);
   const primaryAlpha3Counts = getPrimaryAlpha3Counts(input.overlayRows);
   const activePrimaryAlpha3Counts = getActivePrimaryAlpha3Counts(input.overlayRows);
 
@@ -877,6 +1117,13 @@ export function buildIsoCountryCodeResource(input: BuildIsoCountryCodeResourceIn
       ? untermByAlpha3.get(row.primaryAlpha3)
       : undefined;
     const genc = findGencEntry(row, gencByAlpha3, gencByName);
+    const rog3 = resolveRog3Code(
+      row,
+      rog3ByCode,
+      rog3ByGencAlpha3,
+      rog3ByName,
+      fipsByName,
+    );
     const fips = row.fips ? fipsByCode.get(row.fips) : undefined;
     const duplicatePrimaryAlpha3 = row.primaryAlpha3
       ? (primaryAlpha3Counts.get(row.primaryAlpha3) ?? 0) > 1
@@ -910,6 +1157,7 @@ export function buildIsoCountryCodeResource(input: BuildIsoCountryCodeResourceIn
       gencAlpha3: genc?.alpha3 ?? null,
       gencNumeric: genc?.numeric ?? null,
       fips: row.fips,
+      rog3,
       alternativeNames: row.alternativeNames,
       classification,
       sourceUri: official?.uri ?? null,
@@ -918,13 +1166,16 @@ export function buildIsoCountryCodeResource(input: BuildIsoCountryCodeResourceIn
 
   const resource = {
     sourceName:
-      "ISO OBP, UNTERM, UNSD M49, GENC, legacy FIPS, and curated Accelerate Global overlay",
+      "ISO OBP, UNTERM, UNSD M49, GENC, legacy FIPS, ROG3/GEC crosswalk, and curated Accelerate Global overlay",
     sourceUrl: ISO_COUNTRY_CODES_SOURCE_URL,
     sourceCollectionUrl: ISO_COUNTRY_CODES_COLLECTION_URL,
     gencSourceUrl: GENC_COUNTRY_CODES_SOURCE_URL,
     gencAboutUrl: GENC_COUNTRY_CODES_ABOUT_URL,
     fipsSourceUrl: LEGACY_FIPS_COUNTRY_CODES_SOURCE_URL,
     fipsWithdrawalUrl: FIPS_WITHDRAWAL_SOURCE_URL,
+    rog3SourceUrl: ROG3_COUNTRY_CODES_SOURCE_URL,
+    rog3HisRegistryUrl: ROG3_HIS_REGISTRY_URL,
+    rog3HisCrossReferenceUrl: ROG3_HIS_CROSS_REFERENCE_URL,
     untermSourceUrl: UNTERM_COUNTRY_NAMES_SOURCE_URL,
     m49SourceUrl: M49_COUNTRY_CODES_SOURCE_URL,
     overlaySourceName: COUNTRY_CODE_OVERLAY_SOURCE_NAME,
@@ -1001,6 +1252,10 @@ export function validateIsoCountryCodeResource(resource: IsoCountryCodeResource)
 
     if (entry.fips && !/^[A-Z]{2}$/.test(entry.fips)) {
       throw new Error(`Invalid FIPS code for ${entry.displayName}.`);
+    }
+
+    if (entry.rog3 && !/^[A-Z]{2}$/.test(entry.rog3)) {
+      throw new Error(`Invalid ROG3 code for ${entry.displayName}.`);
     }
 
     if (!CLASSIFICATIONS.has(entry.classification)) {
@@ -1387,14 +1642,35 @@ async function fetchTextSource(url: string, label: string) {
 }
 
 async function fetchBinarySource(url: string, label: string) {
-  const response = await fetch(url, {
-    headers: {
-      "User-Agent":
-        "Mozilla/5.0 (compatible; AccelerateGlobalCountryCodeRefresh/1.0)",
-      Accept:
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,*/*",
-    },
-  });
+  let response: Response;
+
+  try {
+    response = await fetch(url, {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (compatible; AccelerateGlobalCountryCodeRefresh/1.0)",
+        Accept:
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,*/*",
+      },
+    });
+  } catch (error) {
+    if (url !== ROG3_COUNTRY_CODES_SOURCE_URL) {
+      throw error;
+    }
+
+    const { stdout } = await execFileAsync(
+      "curl",
+      ["--location", "--fail", "--silent", "--show-error", url],
+      {
+        encoding: "buffer",
+        maxBuffer: 10 * 1024 * 1024,
+      },
+    );
+    return stdout.buffer.slice(
+      stdout.byteOffset,
+      stdout.byteOffset + stdout.byteLength,
+    );
+  }
 
   if (!response.ok) {
     throw new Error(`${label} request failed with ${response.status}.`);
@@ -1582,6 +1858,11 @@ export async function fetchLegacyFipsCountryCodeEntriesFromSource() {
   return parseLegacyFipsCountryCodeEntries(text);
 }
 
+export async function fetchRog3CountryCodeEntriesFromSource() {
+  const workbook = await fetchBinarySource(ROG3_COUNTRY_CODES_SOURCE_URL, "ROG3");
+  return parseRog3CountryCodeEntriesWorkbook(workbook);
+}
+
 export async function fetchUntermCountryNameEntriesFromSource() {
   const workbook = await fetchBinarySource(
     UNTERM_COUNTRY_NAMES_SOURCE_URL,
@@ -1600,6 +1881,7 @@ export async function refreshIsoCountryCodeResourceFromOfficialSource() {
     officialEntries,
     gencEntries,
     fipsEntries,
+    rog3Entries,
     untermEntries,
     m49Entries,
     overlayRows,
@@ -1608,6 +1890,7 @@ export async function refreshIsoCountryCodeResourceFromOfficialSource() {
       refreshOfficialIsoCountryCodeEntriesFromOfficialSource(),
       fetchGencCountryCodeEntriesFromSource(),
       fetchLegacyFipsCountryCodeEntriesFromSource(),
+      fetchRog3CountryCodeEntriesFromSource(),
       fetchUntermCountryNameEntriesFromSource(),
       fetchM49CountryCodeEntriesFromSource(),
       readCountryCodeOverlayRows(),
@@ -1617,6 +1900,7 @@ export async function refreshIsoCountryCodeResourceFromOfficialSource() {
     officialEntries,
     gencEntries,
     fipsEntries,
+    rog3Entries,
     untermEntries,
     m49Entries,
     overlayRows,

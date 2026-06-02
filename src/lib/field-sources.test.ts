@@ -95,6 +95,15 @@ describe("field-sources", () => {
     });
   });
 
+  it("parses field descriptions with mixed line endings", () => {
+    const descriptions = parseFieldDescriptionCsv(
+      'Field ID,Field,Description,Is Required,Type\r\nF_1,Field One,First description,TRUE,String\nF_2,Field Two,"Second, comma-bearing description",FALSE,String\r\n',
+    );
+
+    expect(descriptions.get("F_1")).toBe("First description");
+    expect(descriptions.get("F_2")).toBe("Second, comma-bearing description");
+  });
+
   it("skips blank source cells instead of treating them as tracked sources", () => {
     const rows = parseFieldSourceMappingCsv(fieldSourceMappingCsv);
     const frontierRow = rows.find(

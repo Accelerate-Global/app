@@ -63,7 +63,7 @@ F_22,Family Tree: Sisters (All names of sister PGs),"The names of other people g
 F_23,Geo: Country Code: PG in 10-40Window Y/N,"People Group is located w/in the 10/40 window, yes or no.",TRUE,Boolean
 F_24,Geo: Continent Name,Continent the people group is found on.,TRUE,String
 F_25,Geo: JP’s Count of Countries,Number of countries that the people group is found in according to JP.,TRUE,Integer
-F_26,Geo: Country Code FIPS,HIS Registry of Geography (ROG) country code. Two letter country code. Example: AF = Afghanistan.,FALSE,String
+F_26,Geo: Country Code FIPS,Legacy FIPS/GEC country code; two letter country code. Example: AF = Afghanistan.,FALSE,String
 F_27,Geo: Country Code GENC,A three digit country code.,FALSE,String
 F_28,Geo: Country Name,Main country name where this people live. (English country name),TRUE,String
 F_29,Geo: Country Code ISO3 (3 string),ISO3 (alpha) = a 3-character alpha digit country code according to the ISO-3166-3 standards.,TRUE,String
@@ -73,7 +73,7 @@ F_31,Geo: Longitude,"The arc or portion of the equator intersected between the m
 F_32,Geo: JP’s Region Code,"Region code for this people group [1 - South Pacific, 2 - Southeast Asia, 3 - Northeast Asia, 4 - South Asia, 5 - Central Asia, 6 - Middle East and North Africa, 7 - East and Southern Africa, 8 - West and Central Africa, 9 - Eastern Europe and Eurasia, 10 - Western Europe, 11 - Central and South America, 12 - North America and Caribbean]",TRUE,Integer
 F_33,Geo: JP’s Region Name,"The name of the region that corresponds to the ""Region Code.""",TRUE,String
 F_34,Geo: Region / Continent Code: 3 string ROG2,"Regions or Continent Code 1) AFR-Africa, 2) ASI-Asia, 3) AUS-Australia, 4) EUR-Europe, 5) LAM-South America, 6) NAR-North America, 7) SOP-Oceania",TRUE,String
-F_35,Geo: Country Code (2 string ROG3),"HIS Registry of Geography (ROG) country code, similar to 2 letter ISO country code.",TRUE,String
+F_35,Geo: Country Code (2 string ROG3),"HIS Registry of Geography (ROG3) country code, maintained as a two letter geography cross-reference separate from FIPS.",TRUE,String
 F_36,Geo: Sub-Continent,Name of Sub-Continent.,TRUE,String
 F_37,Govt: Freedom Index IMB,"Freedom Scale:
 [Free, Partly Free, Not Free]",FALSE,String
