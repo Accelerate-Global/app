@@ -7,6 +7,7 @@ import type {
 } from "@/lib/api-types";
 
 import {
+  formatDatasetCellValueForDisplay,
   getDatasetColumnSortMode,
   getSortedVisibleDatasetColumns,
 } from "./dataset-table-columns";
@@ -31,6 +32,46 @@ function sortVisibleColumns(input: {
 }
 
 describe("dataset-table-columns", () => {
+  it("formats integer values for population-like columns", () => {
+    expect(
+      formatDatasetCellValueForDisplay({
+        value: "17598700",
+        column: {
+          key: "pg_population",
+          label: "PG_Population",
+          sourceIndex: 3,
+        },
+        effectiveLabel: "Population",
+      }),
+    ).toBe("17,598,700");
+  });
+
+  it("leaves numeric non-population values unchanged", () => {
+    expect(
+      formatDatasetCellValueForDisplay({
+        value: "303470",
+        column: {
+          key: "kinship",
+          label: "Kinship",
+          sourceIndex: 4,
+        },
+      }),
+    ).toBe("303470");
+  });
+
+  it("leaves non-integer population values unchanged", () => {
+    expect(
+      formatDatasetCellValueForDisplay({
+        value: "12.5",
+        column: {
+          key: "population_percent",
+          label: "Population Percent",
+          sourceIndex: 5,
+        },
+      }),
+    ).toBe("12.5");
+  });
+
   it("detects alphanumeric sorting when sampled rows include numeric tokens", () => {
     const rows = Array.from({ length: 12 }, (_, index) => ({
       id: `row-${index + 1}`,

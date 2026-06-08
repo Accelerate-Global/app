@@ -13,6 +13,7 @@ export type DatasetColumnSortMode = "text" | "alphanumeric";
 
 const TEXT_SORT_SAMPLE_OFFSET = 10;
 const RE_SPLIT_ALPHA_NUMERIC = /([0-9]+)/gm;
+const RE_INTEGER_TEXT = /^-?\d+$/;
 
 type DatasetSortValue = {
   normalized: string;
@@ -268,6 +269,32 @@ function compareDatasetSortValuesWithMode(
 
 export function getDatasetCellValue(row: DatasetRow, key: string) {
   return row.data[key] ?? "";
+}
+
+function isPopulationColumnIdentity(value: string | null | undefined) {
+  return normalizeDatasetColumnIdentity(value ?? "").includes("population");
+}
+
+export function formatDatasetCellValueForDisplay(input: {
+  value: string;
+  column: DatasetSummary["columns"][number];
+  effectiveLabel?: string;
+}) {
+  if (
+    !isPopulationColumnIdentity(input.column.key) &&
+    !isPopulationColumnIdentity(input.column.label) &&
+    !isPopulationColumnIdentity(input.effectiveLabel)
+  ) {
+    return input.value;
+  }
+
+  const trimmedValue = input.value.trim();
+
+  if (!RE_INTEGER_TEXT.test(trimmedValue)) {
+    return input.value;
+  }
+
+  return BigInt(trimmedValue).toLocaleString("en-US");
 }
 
 export function getDatasetColumnSortMode(

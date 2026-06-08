@@ -75,11 +75,21 @@ describe("DatasetsGrid", () => {
       />,
     );
 
-    const scroller = container.querySelector(".overflow-x-auto");
+    const scroller = container.querySelector("[class*='md:overflow-x-auto']");
     const header = container.querySelector("[style]");
+    const datasetRow = container.querySelector("[data-smoke-dataset-row='dataset-1']");
+    const tagsRegion = screen.getByLabelText("Tags for All People Groups");
 
-    expect(scroller?.className).toContain("overflow-x-auto");
+    expect(scroller?.className).toContain("md:overflow-x-auto");
+    expect(header?.className).toContain("hidden");
+    expect(header?.className).toContain("md:grid");
     expect(header?.getAttribute("style")).toContain("10.5rem");
+    expect(datasetRow?.className).toContain("grid-cols-[minmax(0,1fr)]");
+    expect(datasetRow?.className).toContain(
+      "md:grid-cols-[var(--dataset-grid-template)]",
+    );
+    expect(tagsRegion.className).toContain("justify-start");
+    expect(tagsRegion.className).toContain("md:justify-center");
     expect(screen.getByRole("heading", { name: "Datasets" })).toBeTruthy();
     expect(
       screen.getByText(
@@ -87,7 +97,9 @@ describe("DatasetsGrid", () => {
       ),
     ).toBeTruthy();
     expect(screen.getByText("Tags").className).toContain("justify-center");
-    expect(screen.getByText("People Groups").className).toContain("justify-center");
+    expect(screen.getAllByText("People Groups")[0]?.className).toContain(
+      "justify-center",
+    );
     expect(screen.getByText("Backed by All People Groups")).toBeTruthy();
     expect(
       screen

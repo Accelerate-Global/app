@@ -57,22 +57,32 @@ describe("SavedTablesGrid", () => {
       <SavedTablesGrid savedTables={[savedTable]} onOpenDetails={onOpenDetails} />,
     );
 
-    const scroller = container.querySelector(".overflow-x-auto");
+    const scroller = container.querySelector("[class*='md:overflow-x-auto']");
     const header = container.querySelector("[style]");
     const row = container.querySelector(
       '[data-smoke-saved-table-row="saved-table-1"]',
     ) as HTMLElement | null;
 
     expect(screen.queryByText("No details added yet.")).toBeNull();
-    expect(scroller?.className).toContain("overflow-x-auto");
+    expect(scroller?.className).toContain("md:overflow-x-auto");
+    expect(header?.className).toContain("hidden");
+    expect(header?.className).toContain("md:grid");
     expect(header?.getAttribute("style")).toContain("10.5rem");
+    expect(row?.className).toContain("grid-cols-[minmax(0,1fr)]");
+    expect(row?.className).toContain(
+      "md:grid-cols-[var(--saved-table-grid-template)]",
+    );
     expect(screen.getByRole("heading", { name: "Saved Datasets" })).toBeTruthy();
     expect(
       screen.getByText("Personal filtered tables you have saved."),
     ).toBeTruthy();
     expect(screen.getByText("Source dataset").className).toContain("justify-center");
-    expect(screen.getByText("People Groups").className).toContain("justify-center");
-    expect(screen.getByText("All People Groups").className).toContain("text-center");
+    expect(screen.getAllByText("People Groups")[0]?.className).toContain(
+      "justify-center",
+    );
+    expect(screen.getByText("All People Groups").parentElement?.className).toContain(
+      "md:text-center",
+    );
 
     expect(row).toBeTruthy();
 
