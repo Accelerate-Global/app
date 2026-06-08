@@ -3,7 +3,7 @@
 import { DownloadIcon, FileTextIcon, GripVerticalIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { KeyboardEvent, MouseEvent, ReactNode } from "react";
+import type { CSSProperties, KeyboardEvent, MouseEvent, ReactNode } from "react";
 
 import { DatasetTagList } from "@/components/dashboard/dataset-tag-list";
 import {
@@ -24,6 +24,9 @@ type DatasetsGridProps = {
 const DATASET_ACTIONS_COLUMN_WIDTH = "10.5rem";
 const DATASET_GRID_TEMPLATE_COLUMNS =
   `minmax(16rem,1.8fr) minmax(12rem,1.15fr) minmax(8rem,0.7fr) ${DATASET_ACTIONS_COLUMN_WIDTH}`;
+const DATASET_GRID_STYLE = {
+  "--dataset-grid-template": DATASET_GRID_TEMPLATE_COLUMNS,
+} as CSSProperties;
 
 function CenteredHeaderCell({ children }: { children: ReactNode }) {
   return (
@@ -41,7 +44,7 @@ function DatasetActions({
   canManageDatasets: boolean;
 }) {
   return (
-    <div className="flex w-full justify-end text-right">
+    <div className="flex w-full justify-start text-left md:justify-end md:text-right">
       <div className="flex shrink-0 items-center justify-end gap-2">
         <a
           data-slot="button"
@@ -113,8 +116,8 @@ function DatasetListRow({
   return (
     <div
       data-smoke-dataset-row={dataset.id}
-      className="grid cursor-pointer items-center gap-4 px-5 py-4 transition-colors hover:bg-accent/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
-      style={{ gridTemplateColumns: DATASET_GRID_TEMPLATE_COLUMNS }}
+      className="grid cursor-pointer grid-cols-[minmax(0,1fr)] items-start gap-3 px-4 py-4 transition-colors hover:bg-accent/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 sm:px-5 md:grid-cols-[var(--dataset-grid-template)] md:items-center md:gap-4"
+      style={DATASET_GRID_STYLE}
       role="link"
       tabIndex={0}
       onClick={navigateToDataset}
@@ -151,13 +154,25 @@ function DatasetListRow({
         </div>
       </div>
 
-      <div className="flex min-w-0 w-full justify-center text-center">
-        <DatasetTagList tags={dataset.tags} className="justify-center" />
+      <div
+        className="flex min-w-0 w-full justify-start text-left md:justify-center md:text-center"
+        aria-label={dataset.tags.length > 0 ? `Tags for ${dataset.fileName}` : undefined}
+      >
+        <DatasetTagList
+          tags={dataset.tags}
+          className="justify-start md:justify-center"
+        />
       </div>
 
-      <span className="block w-full text-center tabular-nums">
-        {dataset.rowCount.toLocaleString()}
-      </span>
+      <div
+        className="flex w-full items-center justify-between gap-3 text-sm md:block md:text-center md:text-base"
+        aria-label={`${dataset.rowCount.toLocaleString()} people groups`}
+      >
+        <span className="text-xs font-medium text-muted-foreground md:hidden">
+          People Groups
+        </span>
+        <span className="tabular-nums">{dataset.rowCount.toLocaleString()}</span>
+      </div>
 
       <DatasetActions
         dataset={dataset}
@@ -170,8 +185,8 @@ function DatasetListRow({
 function DatasetListHeader() {
   return (
     <div
-      className="grid items-center gap-4 border-b border-border bg-muted/80 px-5 py-3 text-sm font-medium text-foreground"
-      style={{ gridTemplateColumns: DATASET_GRID_TEMPLATE_COLUMNS }}
+      className="hidden items-center gap-4 border-b border-border bg-muted/80 px-5 py-3 text-sm font-medium text-foreground md:grid md:grid-cols-[var(--dataset-grid-template)]"
+      style={DATASET_GRID_STYLE}
     >
       <span>Name</span>
       <CenteredHeaderCell>Tags</CenteredHeaderCell>
@@ -205,8 +220,8 @@ export function DatasetsGrid({
         </p>
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-border bg-background">
-        <div className="min-w-[54rem]">
+      <div className="overflow-hidden rounded-xl border border-border bg-background md:overflow-x-auto">
+        <div className="md:min-w-[54rem]">
           <DatasetListHeader />
 
           {datasets.length === 0 ? (

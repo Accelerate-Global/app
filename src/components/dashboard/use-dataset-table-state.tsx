@@ -30,6 +30,7 @@ import { trackAppEvent } from "@/lib/analytics-client";
 import {
   datasetAlphanumericSortingFn,
   type DatasetColumnSortMode,
+  formatDatasetCellValueForDisplay,
   datasetTextSortingFn,
   getDatasetCellValue,
   getDatasetColumnSortMode,
@@ -281,7 +282,11 @@ export function useDatasetTableState(input: {
             ),
             cell: ({ row }) => (
               <span className="block max-w-[28rem] truncate">
-                {getDatasetCellValue(row.original, column.key)}
+                {formatDatasetCellValueForDisplay({
+                  value: getDatasetCellValue(row.original, column.key),
+                  column,
+                  effectiveLabel: columnLabel,
+                })}
               </span>
             ),
             meta: { headerTitle: columnLabel },

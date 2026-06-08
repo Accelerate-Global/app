@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { flexRender } from "@tanstack/react-table";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { clearDatasetRowsCache } from "@/components/dashboard/dataset-row-cache";
@@ -169,6 +170,41 @@ function SortableDatasetTableStateProbe({
       >
         sort-asc
       </button>
+    </div>
+  );
+}
+
+function DatasetTableCellProbe({
+  dataset,
+}: {
+  dataset: ReturnType<typeof createDataset>;
+}) {
+  const state = useDatasetTableState({
+    dataset,
+  });
+  const firstRow = state.table.getRowModel().rows[0] ?? null;
+  const populationCell =
+    firstRow?.getVisibleCells().find((cell) => cell.column.id === "pg_population") ??
+    null;
+  const kinshipCell =
+    firstRow?.getVisibleCells().find((cell) => cell.column.id === "kinship") ??
+    null;
+
+  return (
+    <div>
+      <div data-testid="raw-population">
+        {state.getSortedRows()[0]?.data.pg_population ?? ""}
+      </div>
+      <div data-testid="population-cell">
+        {populationCell
+          ? flexRender(populationCell.column.columnDef.cell, populationCell.getContext())
+          : null}
+      </div>
+      <div data-testid="kinship-cell">
+        {kinshipCell
+          ? flexRender(kinshipCell.column.columnDef.cell, kinshipCell.getContext())
+          : null}
+      </div>
     </div>
   );
 }
@@ -445,6 +481,58 @@ describe("useDatasetTableState", () => {
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledTimes(2);
     });
+  });
+
+  it("formats population cells for display without changing raw row values", async () => {
+    fetchMock.mockImplementation(async (input) => {
+      if (input === "/api/datasets/dataset-1/rows?all=true") {
+        return buildJsonResponse({
+          sourceDatasetId: "dataset-1",
+          rows: [
+            {
+              id: "row-1",
+              rowIndex: 0,
+              data: {
+                pg_population: "2314000",
+                kinship: "303470",
+              },
+            },
+          ],
+          page: 1,
+          pageSize: 1000,
+          totalRows: 1,
+          pageCount: 1,
+        });
+      }
+
+      throw new Error(`Unexpected fetch: ${String(input)}`);
+    });
+
+    render(
+      <DatasetTableCellProbe
+        dataset={createDataset({
+          columns: [
+            {
+              key: "pg_population",
+              label: "PG_Population",
+              sourceIndex: 0,
+            },
+            {
+              key: "kinship",
+              label: "Kinship",
+              sourceIndex: 1,
+            },
+          ],
+        })}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("population-cell").textContent).toBe("2,314,000");
+    });
+
+    expect(screen.getByTestId("raw-population").textContent).toBe("2314000");
+    expect(screen.getByTestId("kinship-cell").textContent).toBe("303470");
   });
 
   it("builds visible country options before applying the country filter", async () => {

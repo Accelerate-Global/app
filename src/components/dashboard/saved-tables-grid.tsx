@@ -2,7 +2,7 @@
 
 import { DownloadIcon, PanelRightOpenIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
-import type { KeyboardEvent, ReactNode } from "react";
+import type { CSSProperties, KeyboardEvent, ReactNode } from "react";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import type { SavedDatasetTable } from "@/lib/api-types";
@@ -15,6 +15,9 @@ type SavedTablesGridProps = {
 const SAVED_TABLE_ACTIONS_COLUMN_WIDTH = "10.5rem";
 const SAVED_TABLE_GRID_TEMPLATE_COLUMNS =
   `minmax(16rem,1.8fr) minmax(12rem,1.2fr) minmax(8rem,0.7fr) ${SAVED_TABLE_ACTIONS_COLUMN_WIDTH}`;
+const SAVED_TABLE_GRID_STYLE = {
+  "--saved-table-grid-template": SAVED_TABLE_GRID_TEMPLATE_COLUMNS,
+} as CSSProperties;
 
 function CenteredHeaderCell({ children }: { children: ReactNode }) {
   return (
@@ -32,7 +35,7 @@ function SavedTableActions({
   onOpenDetails: (savedTableId: string) => void;
 }) {
   return (
-    <div className="flex w-full justify-end text-right">
+    <div className="flex w-full justify-start text-left md:justify-end md:text-right">
       <div className="flex shrink-0 items-center justify-end gap-2">
         <a
           data-slot="button"
@@ -74,8 +77,8 @@ function SavedTableActions({
 function SavedTableListHeader() {
   return (
     <div
-      className="grid items-center gap-4 border-b border-border bg-muted/80 px-5 py-3 text-sm font-medium text-foreground"
-      style={{ gridTemplateColumns: SAVED_TABLE_GRID_TEMPLATE_COLUMNS }}
+      className="hidden items-center gap-4 border-b border-border bg-muted/80 px-5 py-3 text-sm font-medium text-foreground md:grid md:grid-cols-[var(--saved-table-grid-template)]"
+      style={SAVED_TABLE_GRID_STYLE}
     >
       <span>Name</span>
       <CenteredHeaderCell>Source dataset</CenteredHeaderCell>
@@ -110,8 +113,8 @@ function SavedTableListRow({
 
   return (
     <div
-      className="grid cursor-pointer items-center gap-4 px-5 py-4 transition-colors hover:bg-accent/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
-      style={{ gridTemplateColumns: SAVED_TABLE_GRID_TEMPLATE_COLUMNS }}
+      className="grid cursor-pointer grid-cols-[minmax(0,1fr)] items-start gap-3 px-4 py-4 transition-colors hover:bg-accent/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 sm:px-5 md:grid-cols-[var(--saved-table-grid-template)] md:items-center md:gap-4"
+      style={SAVED_TABLE_GRID_STYLE}
       data-smoke-saved-table-row={savedTable.id}
       role="link"
       tabIndex={0}
@@ -127,13 +130,26 @@ function SavedTableListRow({
         ) : null}
       </div>
 
-      <span className="block w-full truncate text-center text-sm text-muted-foreground">
-        {savedTable.datasetFileName}
-      </span>
+      <div className="flex min-w-0 w-full items-center justify-between gap-3 text-sm md:block md:text-center">
+        <span className="shrink-0 text-xs font-medium text-muted-foreground md:hidden">
+          Source
+        </span>
+        <span className="min-w-0 truncate text-muted-foreground">
+          {savedTable.datasetFileName}
+        </span>
+      </div>
 
-      <span className="block w-full text-center tabular-nums">
-        {savedTable.savedRowCount.toLocaleString()}
-      </span>
+      <div
+        className="flex w-full items-center justify-between gap-3 text-sm md:block md:text-center md:text-base"
+        aria-label={`${savedTable.savedRowCount.toLocaleString()} people groups`}
+      >
+        <span className="text-xs font-medium text-muted-foreground md:hidden">
+          People Groups
+        </span>
+        <span className="tabular-nums">
+          {savedTable.savedRowCount.toLocaleString()}
+        </span>
+      </div>
 
       <SavedTableActions savedTable={savedTable} onOpenDetails={onOpenDetails} />
     </div>
@@ -155,8 +171,8 @@ export function SavedTablesGrid({
         </p>
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-border bg-background">
-        <div className="min-w-[52rem]">
+      <div className="overflow-hidden rounded-xl border border-border bg-background md:overflow-x-auto">
+        <div className="md:min-w-[52rem]">
           <SavedTableListHeader />
 
           {savedTables.length === 0 ? (
