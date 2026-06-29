@@ -139,7 +139,7 @@ select throws_ok(
       updated_at
     )
     values (
-      'bbbbbbbb-1337-403d-beb5-b7c44a1be131',
+      '9a000000-1337-403d-8eb5-b7c44a1be130',
       'authenticated',
       'authenticated',
       'blocked@example.com',
@@ -219,7 +219,7 @@ insert into auth.users (
   updated_at
 )
 select
-  '737ef850-1337-403d-beb5-b7c44a1be131',
+  '9a000001-1337-403d-8eb5-b7c44a1be131',
   'authenticated',
   'authenticated',
   'admin@example.com',
@@ -248,7 +248,7 @@ insert into auth.users (
   updated_at
 )
 select
-  'eeeeeeee-1337-403d-beb5-b7c44a1be131',
+  '9a000002-1337-403d-8eb5-b7c44a1be131',
   'authenticated',
   'authenticated',
   'super@example.com',
@@ -277,7 +277,7 @@ insert into auth.users (
   updated_at
 )
 select
-  'aaaaaaaa-1337-403d-beb5-b7c44a1be131',
+  '9a000003-1337-403d-8eb5-b7c44a1be131',
   'authenticated',
   'authenticated',
   'pro@example.com',
@@ -306,7 +306,7 @@ insert into auth.users (
   updated_at
 )
 select
-  'cccccccc-1337-403d-beb5-b7c44a1be131',
+  '9a000004-1337-403d-8eb5-b7c44a1be131',
   'authenticated',
   'authenticated',
   'basic@example.com',
@@ -335,7 +335,7 @@ insert into auth.users (
   updated_at
 )
 select
-  'dddddddd-1337-403d-beb5-b7c44a1be131',
+  '9a000005-1337-403d-8eb5-b7c44a1be131',
   'authenticated',
   'authenticated',
   'pending-basic@example.com',
@@ -562,7 +562,7 @@ select results_eq($$ select count(*)::bigint from public.signup_email_allowlist 
 
 reset role;
 
-select set_config('request.jwt.claim.sub', 'aaaaaaaa-1337-403d-beb5-b7c44a1be131', true);
+select set_config('request.jwt.claim.sub', '9a000003-1337-403d-8eb5-b7c44a1be131', true);
 set local role authenticated;
 
 select results_eq($$ select count(*)::bigint from public.datasets where id = '10000000-0000-4000-8000-000000000001' $$, array[1::bigint], 'authenticated users can read datasets');
@@ -584,7 +584,7 @@ select lives_ok(
     insert into public.saved_dataset_tables (id, owner_id, dataset_id, name, filters)
     values (
       'c1000000-0000-4000-8000-000000000001',
-      'aaaaaaaa-1337-403d-beb5-b7c44a1be131',
+      '9a000003-1337-403d-8eb5-b7c44a1be131',
       '10000000-0000-4000-8000-000000000001',
       'Pro saved table',
       '{}'::jsonb
@@ -645,7 +645,7 @@ select throws_ok(
 
 reset role;
 
-select set_config('request.jwt.claim.sub', 'cccccccc-1337-403d-beb5-b7c44a1be131', true);
+select set_config('request.jwt.claim.sub', '9a000004-1337-403d-8eb5-b7c44a1be131', true);
 set local role authenticated;
 
 select results_eq($$ select count(*)::bigint from public.datasets where id = '10000000-0000-4000-8000-000000000001' $$, array[1::bigint], 'basic users can read public datasets');
@@ -658,7 +658,7 @@ select throws_ok(
     insert into public.saved_dataset_tables (id, owner_id, dataset_id, name, filters)
     values (
       'c1000000-0000-4000-8000-000000000002',
-      'cccccccc-1337-403d-beb5-b7c44a1be131',
+      '9a000004-1337-403d-8eb5-b7c44a1be131',
       '10000000-0000-4000-8000-000000000001',
       'Basic saved table',
       '{}'::jsonb
@@ -677,7 +677,7 @@ select lives_ok(
     set encrypted_password = 'pending-basic-password-hash',
         email_confirmed_at = now(),
         raw_user_meta_data = jsonb_build_object('full_name', 'Pending Basic')
-    where id = 'dddddddd-1337-403d-beb5-b7c44a1be131'
+    where id = '9a000005-1337-403d-8eb5-b7c44a1be131'
   $$,
   'pending invited basic users can complete initial auth setup'
 );
@@ -686,7 +686,7 @@ select throws_ok(
   $$
     update auth.users
     set raw_user_meta_data = jsonb_build_object('full_name', 'Basic User')
-    where id = 'cccccccc-1337-403d-beb5-b7c44a1be131'
+    where id = '9a000004-1337-403d-8eb5-b7c44a1be131'
   $$,
   'P0001',
   'Basic users cannot update profile details.',
@@ -698,7 +698,7 @@ select throws_ok(
     update auth.users
     set email_change = 'basic-new@example.com',
         email_change_sent_at = now()
-    where id = 'cccccccc-1337-403d-beb5-b7c44a1be131'
+    where id = '9a000004-1337-403d-8eb5-b7c44a1be131'
   $$,
   'P0001',
   'Basic users cannot update profile details.',
@@ -709,21 +709,21 @@ select lives_ok(
   $$
     update auth.users
     set raw_app_meta_data = raw_app_meta_data || jsonb_build_object('workspace_note', 'managed by admin')
-    where id = 'cccccccc-1337-403d-beb5-b7c44a1be131'
+    where id = '9a000004-1337-403d-8eb5-b7c44a1be131'
   $$,
   'admin/service app metadata changes remain possible for basic users'
 );
 
 reset role;
 
-select set_config('request.jwt.claim.sub', 'eeeeeeee-1337-403d-beb5-b7c44a1be131', true);
+select set_config('request.jwt.claim.sub', '9a000002-1337-403d-8eb5-b7c44a1be131', true);
 set local role authenticated;
 
 select is(private.is_dataset_admin(), true, 'super admin app metadata grants dataset admin access');
 
 reset role;
 
-select set_config('request.jwt.claim.sub', '737ef850-1337-403d-beb5-b7c44a1be131', true);
+select set_config('request.jwt.claim.sub', '9a000001-1337-403d-8eb5-b7c44a1be131', true);
 set local role authenticated;
 
 select results_eq($$ select count(*)::bigint from public.datasets where id = '10000000-0000-4000-8000-000000000010' $$, array[1::bigint], 'dataset admin can read hidden datasets');

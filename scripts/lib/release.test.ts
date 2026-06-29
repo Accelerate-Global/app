@@ -15,6 +15,7 @@ describe("release", () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.unstubAllGlobals();
   });
 
   it("waits for the current PR check state and logs only state transitions", async () => {
@@ -343,6 +344,100 @@ describe("release", () => {
       }),
     ).rejects.toThrow(
       "Timed out waiting for a production deployment for merge-sha. Production deployment for merge-sha: id=42 state=in_progress url=https://online.example.vercel.app",
+    );
+  });
+
+  it("passes production smoke when the heartbeat route returns unauthenticated 401", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          '<html data-dpl-id="dpl_ready"><head><title>Accelerate Global</title></head></html>',
+        ),
+      )
+      .mockResolvedValueOnce(new Response("Unauthorized", { status: 401 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const { smokeCheckDeployment } = await import("./release");
+
+    await expect(
+      smokeCheckDeployment({
+        productionUrl: "https://data.accelerateglobal.org",
+        expectedTitle: "Accelerate Global",
+      }),
+    ).resolves.toEqual({
+      deploymentId: "dpl_ready",
+      productionUrl: "https://data.accelerateglobal.org",
+    });
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      "https://data.accelerateglobal.org/api/ops/supabase-heartbeat",
+      expect.objectContaining({
+        headers: {
+          "user-agent": "accelerate-global-release-health",
+        },
+      }),
+    );
+  });
+
+  it.each([
+    {
+      status: 404,
+      message: "Supabase heartbeat route is missing",
+    },
+    {
+      status: 500,
+      message: "CRON_SECRET is missing or invalid",
+    },
+    {
+      status: 503,
+      message: "Supabase is unavailable",
+    },
+  ])(
+    "fails production smoke when the heartbeat route returns $status",
+    async ({ status, message }) => {
+      vi.stubGlobal(
+        "fetch",
+        vi
+          .fn()
+          .mockResolvedValueOnce(
+            new Response(
+              '<html data-dpl-id="dpl_ready"><head><title>Accelerate Global</title></head></html>',
+            ),
+          )
+          .mockResolvedValueOnce(new Response("Heartbeat failed", { status })),
+      );
+      const { smokeCheckDeployment } = await import("./release");
+
+      await expect(
+        smokeCheckDeployment({
+          productionUrl: "https://data.accelerateglobal.org",
+          expectedTitle: "Accelerate Global",
+        }),
+      ).rejects.toThrow(message);
+    },
+  );
+
+  it("fails production smoke when the heartbeat route returns an unexpected status", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValueOnce(
+          new Response(
+            '<html data-dpl-id="dpl_ready"><head><title>Accelerate Global</title></head></html>',
+          ),
+        )
+        .mockResolvedValueOnce(new Response("OK", { status: 200 })),
+    );
+    const { smokeCheckDeployment } = await import("./release");
+
+    await expect(
+      smokeCheckDeployment({
+        productionUrl: "https://data.accelerateglobal.org",
+        expectedTitle: "Accelerate Global",
+      }),
+    ).rejects.toThrow(
+      "Supabase heartbeat route returned unexpected status 200",
     );
   });
 });
