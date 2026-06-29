@@ -23,6 +23,7 @@ Canonical source repository: `Accelerate-Global/app`. The former
 - [User quickstart](docs/user/quickstart.md)
 - [Open questions](docs/open-questions.md)
 - [Release runbook](docs/release.md)
+- [Supabase heartbeat cron](docs/operations/supabase-heartbeat.md)
 
 ## Local Setup
 
@@ -47,6 +48,7 @@ Fill in:
 - `GOOGLE_SHEETS_OAUTH_CLIENT_ID`
 - `GOOGLE_SHEETS_OAUTH_CLIENT_SECRET`
 - `DATABASE_URL`
+- `CRON_SECRET`
 
 Raw CSV files are stored in Supabase Storage. Uploads require a server-side
 `SUPABASE_SERVICE_ROLE_KEY`, and runtime admin access is derived from
@@ -101,6 +103,10 @@ vercel env pull .env.local
 ```
 
 The app starts unauthenticated users at `/` and sends authenticated users to `/dashboard`.
+
+Set `CRON_SECRET` in Vercel before deploying the tracked cron configuration.
+Vercel uses it to authorize the daily Supabase heartbeat documented in
+`docs/operations/supabase-heartbeat.md`.
 
 For branded Supabase auth emails and password reset links, use the runbook in
 `docs/auth-email-branding.md`.

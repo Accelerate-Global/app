@@ -57,6 +57,8 @@ type SmokeCheckOptions = {
   pollMs?: number;
 };
 
+const SUPABASE_HEARTBEAT_PATH = "/api/ops/supabase-heartbeat";
+
 function logObservedState(lastState: string | null, nextState: string) {
   if (lastState !== nextState) {
     console.log(`[release] ${nextState}`);
@@ -214,6 +216,46 @@ async function fetchMarkupInfo(url: string) {
   return parseDeploymentMarkup(html);
 }
 
+function getHeartbeatUrl(productionUrl: string) {
+  return new URL(SUPABASE_HEARTBEAT_PATH, productionUrl).toString();
+}
+
+async function verifySupabaseHeartbeatRoute(productionUrl: string) {
+  const heartbeatUrl = getHeartbeatUrl(productionUrl);
+  const response = await fetch(heartbeatUrl, {
+    headers: {
+      "user-agent": "accelerate-global-release-health",
+    },
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+  });
+
+  if (response.status === 401) {
+    return;
+  }
+
+  if (response.status === 404) {
+    throw new Error(
+      `Supabase heartbeat route is missing at ${heartbeatUrl}. Deploy the tracked heartbeat route before release health can pass.`,
+    );
+  }
+
+  if (response.status === 500) {
+    throw new Error(
+      `Supabase heartbeat route is deployed but CRON_SECRET is missing or invalid in production at ${heartbeatUrl}.`,
+    );
+  }
+
+  if (response.status === 503) {
+    throw new Error(
+      `Supabase heartbeat route reports Supabase is unavailable at ${heartbeatUrl}. Unpause or repair the Supabase project before release health can pass.`,
+    );
+  }
+
+  throw new Error(
+    `Supabase heartbeat route returned unexpected status ${response.status} ${response.statusText} at ${heartbeatUrl}. Expected unauthenticated HTTP 401.`,
+  );
+}
+
 export async function waitForWorkflowRun(options: WaitForWorkflowOptions) {
   const timeoutMs = options.timeoutMs ?? 15 * 60 * 1000;
   const pollMs = options.pollMs ?? 5000;
@@ -367,6 +409,8 @@ export async function smokeCheckDeployment(options: SmokeCheckOptions) {
     const productionMarkup = await fetchMarkupInfo(options.productionUrl);
 
     if (productionMarkup.title === options.expectedTitle && productionMarkup.deploymentId) {
+      await verifySupabaseHeartbeatRoute(options.productionUrl);
+
       return {
         deploymentId: productionMarkup.deploymentId,
         productionUrl: options.productionUrl,
