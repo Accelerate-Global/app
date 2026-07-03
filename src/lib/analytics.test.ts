@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import {
   getAnalyticsEventPropertyKeys,
@@ -8,33 +8,9 @@ import {
   getSortingKeys,
   isAppAnalyticsEventName,
   isAppAnalyticsRoute,
-  isVercelAnalyticsPaused,
-  redactAnalyticsUrl,
 } from "@/lib/analytics";
 
 describe("analytics helpers", () => {
-  afterEach(() => {
-    vi.unstubAllEnvs();
-  });
-
-  it("pauses Vercel analytics only when the public pause flag is 1", () => {
-    expect(isVercelAnalyticsPaused()).toBe(false);
-
-    vi.stubEnv("NEXT_PUBLIC_VERCEL_ANALYTICS_PAUSED", "1");
-    expect(isVercelAnalyticsPaused()).toBe(true);
-
-    vi.stubEnv("NEXT_PUBLIC_VERCEL_ANALYTICS_PAUSED", "true");
-    expect(isVercelAnalyticsPaused()).toBe(false);
-  });
-
-  it("redacts query params, hashes, and UUID path segments", () => {
-    expect(
-      redactAnalyticsUrl(
-        "https://example.com/dashboard/datasets/8a3bade4-d4ac-43be-8fad-cd20412f2cf9?savedTableId=secret#token=abc",
-      ),
-    ).toBe("https://example.com/dashboard/datasets/[id]");
-  });
-
   it("serializes enabled filter sections", () => {
     expect(
       getEnabledFilterSections({

@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Geist_Mono, Lexend } from "next/font/google";
 
-import { VercelAnalytics } from "@/components/analytics/vercel-analytics";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 import "./globals.css";
@@ -101,7 +100,6 @@ export default function RootLayout({
       </head>
       <body className="flex min-h-full flex-col">
         <TooltipProvider>{children}</TooltipProvider>
-        <VercelAnalytics />
       </body>
     </html>
   );

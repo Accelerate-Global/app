@@ -9,10 +9,8 @@ configuration, not intended future architecture.
 - React Server Components render most page entry points under `src/app`.
 - Client-heavy dashboard interactions live in `src/components/dashboard`.
 - Shared primitives live in `src/components/ui`; every shared primitive needs a colocated smoke fixture when added.
-- Vercel Analytics is mounted from `src/app/layout.tsx` through `src/components/analytics/vercel-analytics.tsx`.
-- Outbound Vercel Web Analytics collection can be paused with
-  `NEXT_PUBLIC_VERCEL_ANALYTICS_PAUSED=1`; app-owned analytics events continue
-  to persist to Supabase while paused.
+- App-owned analytics events persist to Supabase through the internal
+  analytics ingestion path. The app does not mount Vercel Web Analytics.
 
 ## Auth And Permissions
 
@@ -60,9 +58,6 @@ configuration, not intended future architecture.
 - Vercel automatic builds are configured for the production branch only.
 - Release Health polls the current GitHub repository's deployment records rather
   than a hardcoded historical repository name.
-- Public Vercel environment changes such as
-  `NEXT_PUBLIC_VERCEL_ANALYTICS_PAUSED` require a redeploy before browser code
-  sees the new value.
 - Supabase is the database, auth, and storage provider for deployed environments.
 - Vercel environment variables can be pulled locally with `vercel env pull .env.local`.
 - Release and production-health behavior is documented in `docs/release.md`.

@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
 
@@ -36,6 +36,10 @@ describe("publication safety", () => {
     const matches: string[] = [];
 
     for (const filePath of getTrackedTextFiles()) {
+      if (!existsSync(filePath)) {
+        continue;
+      }
+
       const contents = readFileSync(filePath, "utf8");
 
       for (const { label, pattern } of DISALLOWED_PUBLICATION_PATTERNS) {
