@@ -3,14 +3,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { trackAppEvent } from "@/lib/analytics-client";
 import { logError } from "@/lib/error-logging";
 
-const { trackMock } = vi.hoisted(() => ({
-  trackMock: vi.fn(),
-}));
-
-vi.mock("@vercel/analytics", () => ({
-  track: trackMock,
-}));
-
 vi.mock("@/lib/error-logging", () => ({
   logError: vi.fn(),
 }));
@@ -34,28 +26,18 @@ function trackDashboardViewedEvent() {
 describe("trackAppEvent", () => {
   beforeEach(() => {
     vi.resetAllMocks();
-    vi.unstubAllEnvs();
     fetchMock.mockResolvedValue(new Response(null, { status: 202 }));
     vi.stubGlobal("navigator", { sendBeacon: sendBeaconMock });
     vi.stubGlobal("fetch", fetchMock);
   });
 
   afterEach(() => {
-    vi.unstubAllEnvs();
     vi.unstubAllGlobals();
   });
 
-  it("tracks with Vercel and persists internally when analytics is active", () => {
+  it("persists events to the internal analytics endpoint", () => {
     trackDashboardViewedEvent();
 
-    expect(trackMock).toHaveBeenCalledWith(
-      "dashboard_viewed",
-      expect.objectContaining({
-        route: "dashboard",
-        dataset_count: 2,
-        saved_table_count: 1,
-      }),
-    );
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/analytics/events",
       expect.objectContaining({
@@ -65,19 +47,16 @@ describe("trackAppEvent", () => {
     );
   });
 
-  it("skips Vercel tracking but still persists internally when analytics is paused", () => {
-    vi.stubEnv("NEXT_PUBLIC_VERCEL_ANALYTICS_PAUSED", "1");
+  it("uses sendBeacon when the browser accepts the event", () => {
+    sendBeaconMock.mockReturnValueOnce(true);
 
     trackDashboardViewedEvent();
 
-    expect(trackMock).not.toHaveBeenCalled();
-    expect(fetchMock).toHaveBeenCalledWith(
+    expect(sendBeaconMock).toHaveBeenCalledWith(
       "/api/analytics/events",
-      expect.objectContaining({
-        method: "POST",
-        keepalive: true,
-      }),
+      expect.any(Blob),
     );
+    expect(fetchMock).not.toHaveBeenCalled();
     expect(logErrorMock).not.toHaveBeenCalled();
   });
 });

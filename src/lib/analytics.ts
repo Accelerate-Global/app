@@ -287,10 +287,6 @@ export type AppAnalyticsEventMap = {
 
 export type AppAnalyticsEventName = keyof AppAnalyticsEventMap;
 
-export function isVercelAnalyticsPaused() {
-  return process.env.NEXT_PUBLIC_VERCEL_ANALYTICS_PAUSED === "1";
-}
-
 type AppAnalyticsValue = string | number | boolean | null | undefined;
 type AnalyticsPayloadRecord = Record<string, unknown>;
 
@@ -716,22 +712,4 @@ export function getSortingKeys(
   return sorting
     .map((sort) => `${sort.id}:${sort.desc ? "desc" : "asc"}`)
     .join("|");
-}
-
-const UUID_SEGMENT_PATTERN =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-export function redactAnalyticsUrl(url: string) {
-  const parsedUrl = new URL(url);
-
-  parsedUrl.search = "";
-  parsedUrl.hash = "";
-  parsedUrl.pathname = parsedUrl.pathname
-    .split("/")
-    .map((segment) =>
-      UUID_SEGMENT_PATTERN.test(segment) ? "[id]" : segment,
-    )
-    .join("/");
-
-  return parsedUrl.toString();
 }

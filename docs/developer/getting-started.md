@@ -29,8 +29,6 @@ Fill in:
 
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
-- `NEXT_PUBLIC_VERCEL_ANALYTICS_PAUSED` (optional; set to `1` to pause
-  outbound Vercel Web Analytics while keeping internal analytics active)
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `SUPABASE_STORAGE_BUCKET`
 - `GOOGLE_SHEETS_OAUTH_CLIENT_ID`
@@ -47,9 +45,6 @@ For deployed environment values, use Vercel:
 ```bash
 vercel env pull .env.local
 ```
-
-When changing `NEXT_PUBLIC_VERCEL_ANALYTICS_PAUSED` in Vercel, redeploy the
-affected environment because the browser-facing value is compiled into the app.
 
 ## Local App
 
