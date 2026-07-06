@@ -11,6 +11,7 @@ import type {
 } from "@/lib/api-types";
 
 const pushMock = vi.fn();
+const serviceAccountEmail = "sheets@app-project.iam.gserviceaccount.com";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
@@ -117,11 +118,15 @@ describe("ApiConnectionsClient", () => {
         initialConnections={[pgacConnection, pgicConnection]}
         initialRuns={[successfulRun, queuedRun]}
         initialResources={[]}
+        serviceAccountEmail={serviceAccountEmail}
       />,
     );
 
     expect(screen.getByText("Connections")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Add Google Sheet" })).toBeTruthy();
+    expect(screen.getByText("Add Google Sheet")).toBeTruthy();
+    expect(screen.getByText(serviceAccountEmail)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Copy app email" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Check access" })).toBeTruthy();
     expect(screen.getByLabelText("Google Sheet link")).toBeTruthy();
     expect(screen.getByText("Connection")).toBeTruthy();
     expect(screen.getByText("Classification")).toBeTruthy();
@@ -153,6 +158,7 @@ describe("ApiConnectionsClient", () => {
         initialConnections={[pgacConnection]}
         initialRuns={[successfulRun]}
         initialResources={[]}
+        serviceAccountEmail={serviceAccountEmail}
       />,
     );
 
@@ -184,6 +190,7 @@ describe("ApiConnectionsClient", () => {
         initialConnections={[]}
         initialRuns={[]}
         initialResources={[]}
+        serviceAccountEmail={serviceAccountEmail}
       />,
     );
 
@@ -221,22 +228,24 @@ describe("ApiConnectionsClient", () => {
     expect(
       screen.queryByRole("button", { name: "New API connection" }),
     ).toBeNull();
-    expect(screen.getByRole("button", { name: "Add Google Sheet" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Check access" })).toBeTruthy();
   });
 
-  it("loads a Google Sheets draft from OAuth callback state and confirms selected tabs", async () => {
-    window.history.pushState(
-      {},
-      "",
-      "/dashboard/api-connections?googleSheetDraft=draft-1",
-    );
+  it("checks Google Sheets access and connects selected tabs", async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
 
-      if (url.endsWith("/google-sheets/drafts/draft-1")) {
+      if (url.endsWith("/google-sheets/check-access")) {
+        expect(init).toMatchObject({
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            spreadsheetUrl: "https://docs.google.com/spreadsheets/d/sheet_123/edit",
+          }),
+        });
+
         return Response.json({
-          draft: {
-            id: "draft-1",
+          preview: {
             spreadsheetId: "sheet_123",
             spreadsheetUrl:
               "https://docs.google.com/spreadsheets/d/sheet_123/edit",
@@ -245,18 +254,18 @@ describe("ApiConnectionsClient", () => {
               { sheetId: 1, title: "Alpha", index: 0 },
               { sheetId: 2, title: "Beta", index: 1 },
             ],
-            expiresAt: "2026-05-09T08:00:00.000Z",
-            createdAt: "2026-05-09T07:45:00.000Z",
-            updatedAt: "2026-05-09T07:45:00.000Z",
           },
+          serviceAccountEmail: "sheets@app-project.iam.gserviceaccount.com",
         });
       }
 
-      if (url.endsWith("/google-sheets/drafts/draft-1/confirm")) {
+      if (url.endsWith("/google-sheets/connect")) {
         expect(init).toMatchObject({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
+            spreadsheetUrl:
+              "https://docs.google.com/spreadsheets/d/sheet_123/edit",
             selectedSheetIds: [1],
             datasetClassification: "PGIC",
           }),
@@ -286,21 +295,139 @@ describe("ApiConnectionsClient", () => {
         initialConnections={[]}
         initialRuns={[]}
         initialResources={[]}
+        serviceAccountEmail={serviceAccountEmail}
       />,
     );
 
-    expect(await screen.findByText("Select tabs from Mission Sheet")).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Google Sheet link"), {
+      target: {
+        value: "https://docs.google.com/spreadsheets/d/sheet_123/edit",
+      },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Check access" }));
+
+    expect(await screen.findByText("Access confirmed")).toBeTruthy();
+    expect(screen.getByText("Choose tabs from Mission Sheet")).toBeTruthy();
     fireEvent.click(screen.getByLabelText("Alpha"));
     fireEvent.change(screen.getByLabelText("Dataset classification"), {
       target: { value: "PGIC" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Create connections" }));
+    fireEvent.click(screen.getByRole("button", { name: "Connect selected tabs" }));
 
     await waitFor(() => {
       expect(pushMock).toHaveBeenCalledWith(
         "/dashboard/api-connections/99999999-9999-4999-8999-999999999999",
       );
     });
+  });
+
+  it("copies the app service account email from the Google Sheets card", async () => {
+    const writeTextMock = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText: writeTextMock },
+      configurable: true,
+    });
+
+    render(
+      <ApiConnectionsClient
+        initialConnections={[]}
+        initialRuns={[]}
+        initialResources={[]}
+        serviceAccountEmail={serviceAccountEmail}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Copy app email" }));
+
+    await waitFor(() => {
+      expect(writeTextMock).toHaveBeenCalledWith(serviceAccountEmail);
+    });
+  });
+
+  it("keeps the pasted URL and tells admins to share as Viewer when access is denied", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        Response.json(
+          { error: "Google Sheet is not shared with the service account." },
+          { status: 403 },
+        ),
+      ),
+    );
+
+    render(
+      <ApiConnectionsClient
+        initialConnections={[]}
+        initialRuns={[]}
+        initialResources={[]}
+        serviceAccountEmail={serviceAccountEmail}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText("Google Sheet link"), {
+      target: {
+        value: "https://docs.google.com/spreadsheets/d/private_sheet/edit",
+      },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Check access" }));
+
+    expect(await screen.findByText("Google Sheets access failed")).toBeTruthy();
+    expect(
+      screen.getByText("Google Sheet is not shared with the service account."),
+    ).toBeTruthy();
+    expect(
+      screen.getByText((content) =>
+        content.includes(`${serviceAccountEmail} as Viewer`),
+      ),
+    ).toBeTruthy();
+    expect(screen.getByLabelText("Google Sheet link")).toHaveProperty(
+      "value",
+      "https://docs.google.com/spreadsheets/d/private_sheet/edit",
+    );
+  });
+
+  it("disables Google Sheets checks when service-account email is missing", () => {
+    render(
+      <ApiConnectionsClient
+        initialConnections={[]}
+        initialRuns={[]}
+        initialResources={[]}
+        serviceAccountEmail={null}
+      />,
+    );
+
+    expect(screen.getByText("Not configured")).toBeTruthy();
+    expect(
+      screen.getByText(
+        "Google Sheets service-account access is not configured",
+      ),
+    ).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Copy app email" })).toHaveProperty(
+      "disabled",
+      true,
+    );
+    expect(screen.getByRole("button", { name: "Check access" })).toHaveProperty(
+      "disabled",
+      true,
+    );
+  });
+
+  it("renders the service-account setup without legacy redirect controls", () => {
+    render(
+      <ApiConnectionsClient
+        initialConnections={[]}
+        initialRuns={[]}
+        initialResources={[]}
+        serviceAccountEmail={serviceAccountEmail}
+      />,
+    );
+
+    expect(screen.getByText("Share with app email")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Check access" })).toBeTruthy();
+    expect(
+      screen.queryByRole("button", { name: /continue with google/i }),
+    ).toBeNull();
+    expect(pushMock).not.toHaveBeenCalled();
   });
 
   it("renders captured resources as label-only read-only rows", () => {
@@ -310,6 +437,7 @@ describe("ApiConnectionsClient", () => {
         initialConnections={[pgicConnection]}
         initialRuns={[queuedRun]}
         initialResources={[resource, resourceWithoutDisplayText]}
+        serviceAccountEmail={serviceAccountEmail}
       />,
     );
 

@@ -5,14 +5,17 @@ import {
   ChevronDownIcon,
   CircleDashedIcon,
   ClockIcon,
+  CopyIcon,
   DatabaseIcon,
   DownloadIcon,
   ExternalLinkIcon,
   FileArchiveIcon,
+  FileSpreadsheetIcon,
   Loader2Icon,
   PlayIcon,
   RefreshCcwIcon,
   Settings2Icon,
+  Trash2Icon,
   UploadCloudIcon,
   Wand2Icon,
   XCircleIcon,
@@ -25,6 +28,7 @@ import {
   type RowSelectionState,
   type SortingState,
 } from "@tanstack/react-table";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { DataGrid, DataGridContainer } from "@/components/reui/data-grid/data-grid";
@@ -48,12 +52,15 @@ import type {
   ApiConnectionRunResponse,
   ApiConnectionRunsResponse,
   ApiConnectionRunStatus,
+  GoogleSheetsConnectionAccessCheckResponse,
+  GoogleSheetsConnectionProviderConfig,
 } from "@/lib/api-types";
 import { cn } from "@/lib/utils";
 
 type ApiConnectionDetailClientProps = {
   connection: ApiConnection;
   initialRuns: ApiConnectionRun[];
+  serviceAccountEmail: string | null;
 };
 
 type DetailMessage = {
@@ -100,6 +107,15 @@ async function getErrorMessage(response: Response, fallback: string) {
   } catch {
     return fallback;
   }
+}
+
+function getGoogleSheetsProviderConfig(
+  connection: ApiConnection,
+): GoogleSheetsConnectionProviderConfig | null {
+  return connection.provider === "google_sheets" &&
+    connection.providerConfig?.provider === "google_sheets"
+    ? connection.providerConfig
+    : null;
 }
 
 function formatTimestamp(value: string | null) {
@@ -320,8 +336,11 @@ function CollapsibleRunCard({
 export function ApiConnectionDetailClient({
   connection,
   initialRuns,
+  serviceAccountEmail,
 }: ApiConnectionDetailClientProps) {
-  const isGoogleSheetsConnection = connection.provider === "google_sheets";
+  const router = useRouter();
+  const googleSheetsConfig = getGoogleSheetsProviderConfig(connection);
+  const isGoogleSheetsConnection = googleSheetsConfig !== null;
   const importActionLabel = isGoogleSheetsConnection
     ? connection.targetDatasetId
       ? "Refresh dataset"
@@ -347,6 +366,11 @@ export function ApiConnectionDetailClient({
     null,
   );
   const [message, setMessage] = useState<DetailMessage | null>(null);
+  const [sourceEmailCopied, setSourceEmailCopied] = useState(false);
+  const [confirmDisconnect, setConfirmDisconnect] = useState(false);
+  const [sourceBusyAction, setSourceBusyAction] = useState<
+    "check-access" | "disconnect" | null
+  >(null);
   const [isRunDetailOpen, setIsRunDetailOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const selectedRun = useMemo(
@@ -486,6 +510,103 @@ export function ApiConnectionDetailClient({
       });
     } finally {
       setBusyAction(null);
+    }
+  }
+
+  async function copySourceServiceAccountEmail() {
+    if (!serviceAccountEmail) {
+      return;
+    }
+
+    await navigator.clipboard?.writeText(serviceAccountEmail);
+    setSourceEmailCopied(true);
+  }
+
+  async function handleCheckGoogleSheetsAccess() {
+    if (!googleSheetsConfig) {
+      return;
+    }
+
+    setSourceBusyAction("check-access");
+    setMessage(null);
+
+    try {
+      const response = await fetch(
+        `/api/admin/api-connections/google-sheets/${connection.id}`,
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          await getErrorMessage(
+            response,
+            "Google Sheets source access could not be checked.",
+          ),
+        );
+      }
+
+      const payload =
+        (await response.json()) as GoogleSheetsConnectionAccessCheckResponse;
+      const selectedSheet = payload.preview.sheets.find(
+        (sheet) => sheet.sheetId === googleSheetsConfig.sheetId,
+      );
+
+      setMessage({
+        title: "Google Sheets access confirmed",
+        detail: `${payload.preview.spreadsheetTitle} / ${
+          selectedSheet?.title ?? googleSheetsConfig.sheetTitle
+        } is readable by the app service account.`,
+        tone: "success",
+      });
+    } catch (error) {
+      setMessage({
+        title: "Google Sheets access failed",
+        detail:
+          error instanceof Error
+            ? error.message
+            : "Google Sheets source access could not be checked.",
+        tone: "error",
+      });
+    } finally {
+      setSourceBusyAction(null);
+    }
+  }
+
+  async function handleDisconnectGoogleSheets() {
+    if (!googleSheetsConfig) {
+      return;
+    }
+
+    setSourceBusyAction("disconnect");
+    setMessage(null);
+
+    try {
+      const response = await fetch(
+        `/api/admin/api-connections/google-sheets/${connection.id}`,
+        {
+          method: "DELETE",
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          await getErrorMessage(
+            response,
+            "Google Sheets connection could not be disconnected.",
+          ),
+        );
+      }
+
+      router.push("/dashboard/api-connections");
+    } catch (error) {
+      setMessage({
+        title: "Disconnect failed",
+        detail:
+          error instanceof Error
+            ? error.message
+            : "Google Sheets connection could not be disconnected.",
+        tone: "error",
+      });
+      setSourceBusyAction(null);
     }
   }
 
@@ -717,6 +838,159 @@ export function ApiConnectionDetailClient({
           <AlertTitle>{message.title}</AlertTitle>
           <AlertDescription>{message.detail}</AlertDescription>
         </Alert>
+      ) : null}
+
+      {googleSheetsConfig ? (
+        <Card data-smoke-google-sheets-source>
+          <CardHeader className="gap-3">
+            <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+              <div className="min-w-0">
+                <CardTitle className="flex items-center gap-2 text-2xl">
+                  <FileSpreadsheetIcon className="size-5 text-muted-foreground" />
+                  Google Sheets source
+                </CardTitle>
+                <CardDescription>
+                  Private Google Sheet tab connected through the app service
+                  account.
+                </CardDescription>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <a
+                  href={googleSheetsConfig.spreadsheetUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className={buttonVariants({ variant: "outline", size: "sm" })}
+                >
+                  <ExternalLinkIcon className="size-3.5" />
+                  Open Google Sheet
+                </a>
+                {connection.targetDatasetId ? (
+                  <a
+                    href={`/dashboard/datasets/${connection.targetDatasetId}`}
+                    className={buttonVariants({ variant: "outline", size: "sm" })}
+                  >
+                    <DatabaseIcon className="size-3.5" />
+                    Open dataset
+                  </a>
+                ) : null}
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-3 md:grid-cols-2">
+              <div className="rounded-lg border border-border bg-muted/20 p-3">
+                <div className="text-xs font-semibold uppercase text-muted-foreground">
+                  Spreadsheet
+                </div>
+                <div className="mt-1 truncate font-medium text-foreground">
+                  {googleSheetsConfig.spreadsheetTitle}
+                </div>
+              </div>
+              <div className="rounded-lg border border-border bg-muted/20 p-3">
+                <div className="text-xs font-semibold uppercase text-muted-foreground">
+                  Sheet tab
+                </div>
+                <div className="mt-1 truncate font-medium text-foreground">
+                  {googleSheetsConfig.sheetTitle}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2 rounded-lg border border-border bg-muted/20 p-3 sm:flex-row sm:items-center">
+              <div className="min-w-0 flex-1">
+                <div className="text-xs font-semibold uppercase text-muted-foreground">
+                  App service account
+                </div>
+                <code className="mt-1 block overflow-hidden text-ellipsis font-mono text-xs text-foreground">
+                  {serviceAccountEmail ?? "Not configured"}
+                </code>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={!serviceAccountEmail}
+                aria-label="Copy app email"
+                onClick={() => void copySourceServiceAccountEmail()}
+              >
+                {sourceEmailCopied ? (
+                  <CheckCircle2Icon className="size-3.5" />
+                ) : (
+                  <CopyIcon className="size-3.5" />
+                )}
+                Copy app email
+              </Button>
+            </div>
+
+            {!serviceAccountEmail ? (
+              <Alert variant="destructive">
+                <XCircleIcon className="size-4" />
+                <AlertTitle>
+                  Google Sheets service-account access is not configured
+                </AlertTitle>
+                <AlertDescription>
+                  Configure the server-side Google Sheets service-account email
+                  and private key before checking or refreshing this source.
+                </AlertDescription>
+              </Alert>
+            ) : null}
+
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                disabled={!serviceAccountEmail || sourceBusyAction !== null}
+                onClick={handleCheckGoogleSheetsAccess}
+              >
+                {sourceBusyAction === "check-access" ? (
+                  <Loader2Icon className="size-3.5 animate-spin" />
+                ) : (
+                  <CheckCircle2Icon className="size-3.5" />
+                )}
+                Check access
+              </Button>
+              {!confirmDisconnect ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={sourceBusyAction !== null}
+                  onClick={() => setConfirmDisconnect(true)}
+                >
+                  <Trash2Icon className="size-3.5" />
+                  Disconnect
+                </Button>
+              ) : (
+                <>
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="sm"
+                    disabled={sourceBusyAction !== null}
+                    onClick={handleDisconnectGoogleSheets}
+                  >
+                    {sourceBusyAction === "disconnect" ? (
+                      <Loader2Icon className="size-3.5 animate-spin" />
+                    ) : (
+                      <Trash2Icon className="size-3.5" />
+                    )}
+                    Confirm disconnect
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={sourceBusyAction !== null}
+                    onClick={() => setConfirmDisconnect(false)}
+                  >
+                    Cancel
+                  </Button>
+                </>
+              )}
+            </div>
+          </CardContent>
+        </Card>
       ) : null}
 
       <Card>

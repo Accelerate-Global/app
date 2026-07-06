@@ -42,10 +42,6 @@ an explicit documented exemption list with a route-specific reason.
 - **WHEN** route security coverage is checked for the anonymous analytics event route
 - **THEN** the route is allowed to manage identity conditionally because it accepts anonymous analytics events
 
-#### Scenario: Google OAuth callback route is inspected
-- **WHEN** route security coverage is checked for the Google Sheets OAuth callback route
-- **THEN** the route is allowed to manage identity directly because browser-facing auth failures must redirect instead of returning JSON `401` responses
-
 #### Scenario: Supabase heartbeat route is inspected
 - **WHEN** route security coverage is checked for the Supabase heartbeat route
 - **THEN** the route is allowed to use Vercel cron bearer authentication because it is not a user-session route

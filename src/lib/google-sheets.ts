@@ -1,14 +1,12 @@
-import { createHash, randomBytes } from "node:crypto";
+import { JWT } from "google-auth-library";
 
 import { MAX_CSV_BYTES, normalizeHeaders } from "@/lib/csv";
-import type { CsvColumn, GoogleSheetsDraftTab } from "@/lib/api-types";
+import type { CsvColumn, GoogleSheetsConnectionTab } from "@/lib/api-types";
 
 export const GOOGLE_SHEETS_PROVIDER = "google_sheets" as const;
 export const GOOGLE_SHEETS_READONLY_SCOPE =
   "https://www.googleapis.com/auth/spreadsheets.readonly";
 
-const GOOGLE_OAUTH_AUTHORIZE_URL = "https://accounts.google.com/o/oauth2/v2/auth";
-const GOOGLE_OAUTH_TOKEN_URL = "https://oauth2.googleapis.com/token";
 const GOOGLE_SHEETS_API_BASE_URL = "https://sheets.googleapis.com/v4/spreadsheets";
 
 export class GoogleSheetsError extends Error {
@@ -27,24 +25,10 @@ export type ParsedGoogleSheetUrl = {
   spreadsheetUrl: string;
 };
 
-export type GoogleSheetsOAuthTokenResponse = {
-  accessToken: string;
-  refreshToken: string | null;
-  scope: string;
-  tokenType: string;
-  expiresIn: number | null;
-};
-
-export type GoogleSheetsOAuthSecret = {
-  refreshToken: string;
-  scope: string;
-  tokenType: string;
-};
-
 export type GoogleSheetsSpreadsheetMetadata = {
   spreadsheetId: string;
   spreadsheetTitle: string;
-  sheets: GoogleSheetsDraftTab[];
+  sheets: GoogleSheetsConnectionTab[];
 };
 
 export type GoogleSheetsParsedRows = {
@@ -52,34 +36,66 @@ export type GoogleSheetsParsedRows = {
   columns: CsvColumn[];
 };
 
-function getRequiredEnv(name: string) {
+export type GoogleSheetsServiceAccountConfig = {
+  email: string;
+  privateKey: string;
+};
+
+function getRequiredEnv(name: string, message: string) {
   const value = process.env[name]?.trim();
 
   if (!value) {
-    throw new GoogleSheetsError(`${name} is not configured.`, 500);
+    throw new GoogleSheetsError(message, 500);
   }
 
   return value;
 }
 
-function createGoogleOAuthClientConfig() {
+export function getGoogleSheetsServiceAccountEmail() {
+  return getRequiredEnv(
+    "GOOGLE_SHEETS_SERVICE_ACCOUNT_EMAIL",
+    "Google Sheets service account email is not configured.",
+  );
+}
+
+export function getGoogleSheetsServiceAccountConfig(): GoogleSheetsServiceAccountConfig {
   return {
-    clientId: getRequiredEnv("GOOGLE_SHEETS_OAUTH_CLIENT_ID"),
-    clientSecret: getRequiredEnv("GOOGLE_SHEETS_OAUTH_CLIENT_SECRET"),
+    email: getGoogleSheetsServiceAccountEmail(),
+    privateKey: getRequiredEnv(
+      "GOOGLE_SHEETS_SERVICE_ACCOUNT_PRIVATE_KEY",
+      "Google Sheets service account credentials are not configured.",
+    )
+      .replace(/\\n/g, "\n")
+      .trim(),
   };
 }
 
-export function createGoogleSheetsOAuthState() {
-  const value = randomBytes(32).toString("base64url");
+export async function getGoogleSheetsServiceAccountAccessToken() {
+  const config = getGoogleSheetsServiceAccountConfig();
 
-  return {
-    value,
-    hash: hashGoogleSheetsOAuthState(value),
-  };
-}
+  try {
+    const client = new JWT({
+      email: config.email,
+      key: config.privateKey,
+      scopes: [GOOGLE_SHEETS_READONLY_SCOPE],
+    });
+    const token = await client.getAccessToken();
 
-export function hashGoogleSheetsOAuthState(value: string) {
-  return createHash("sha256").update(value).digest("hex");
+    if (!token.token) {
+      throw new Error("Missing Google Sheets access token.");
+    }
+
+    return token.token;
+  } catch (error) {
+    if (error instanceof GoogleSheetsError) {
+      throw error;
+    }
+
+    throw new GoogleSheetsError(
+      "Google Sheets service account credentials are invalid.",
+      500,
+    );
+  }
 }
 
 export function parseGoogleSheetUrl(value: string): ParsedGoogleSheetUrl {
@@ -111,95 +127,11 @@ export function parseGoogleSheetUrl(value: string): ParsedGoogleSheetUrl {
   };
 }
 
-export function createGoogleSheetsAuthorizationUrl(input: {
-  redirectUri: string;
-  state: string;
-}) {
-  const { clientId } = createGoogleOAuthClientConfig();
-  const url = new URL(GOOGLE_OAUTH_AUTHORIZE_URL);
-
-  url.searchParams.set("client_id", clientId);
-  url.searchParams.set("redirect_uri", input.redirectUri);
-  url.searchParams.set("response_type", "code");
-  url.searchParams.set("scope", GOOGLE_SHEETS_READONLY_SCOPE);
-  url.searchParams.set("access_type", "offline");
-  url.searchParams.set("prompt", "consent");
-  url.searchParams.set("state", input.state);
-
-  return url.toString();
-}
-
-async function postGoogleTokenRequest(body: URLSearchParams) {
-  const response = await fetch(GOOGLE_OAUTH_TOKEN_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body,
-  });
-  const payload = (await response.json().catch(() => ({}))) as Record<
-    string,
-    unknown
-  >;
-
-  if (!response.ok) {
-    throw new GoogleSheetsError("Google OAuth token exchange failed.", 502);
-  }
-
-  const accessToken = typeof payload.access_token === "string" ? payload.access_token : "";
-  const refreshToken =
-    typeof payload.refresh_token === "string" ? payload.refresh_token : null;
-  const scope = typeof payload.scope === "string" ? payload.scope : "";
-  const tokenType = typeof payload.token_type === "string" ? payload.token_type : "Bearer";
-  const expiresIn =
-    typeof payload.expires_in === "number" ? payload.expires_in : null;
-
-  if (!accessToken) {
-    throw new GoogleSheetsError("Google OAuth did not return an access token.", 502);
-  }
-
-  return {
-    accessToken,
-    refreshToken,
-    scope,
-    tokenType,
-    expiresIn,
-  } satisfies GoogleSheetsOAuthTokenResponse;
-}
-
-export async function exchangeGoogleSheetsOAuthCode(input: {
-  code: string;
-  redirectUri: string;
-}) {
-  const { clientId, clientSecret } = createGoogleOAuthClientConfig();
-
-  return postGoogleTokenRequest(
-    new URLSearchParams({
-      code: input.code,
-      client_id: clientId,
-      client_secret: clientSecret,
-      redirect_uri: input.redirectUri,
-      grant_type: "authorization_code",
-    }),
-  );
-}
-
-export async function refreshGoogleSheetsAccessToken(refreshToken: string) {
-  const { clientId, clientSecret } = createGoogleOAuthClientConfig();
-  const token = await postGoogleTokenRequest(
-    new URLSearchParams({
-      client_id: clientId,
-      client_secret: clientSecret,
-      refresh_token: refreshToken,
-      grant_type: "refresh_token",
-    }),
-  );
-
-  return token.accessToken;
-}
-
 async function getGoogleJson(input: {
   url: string;
   accessToken: string;
   errorMessage: string;
+  accessErrorMessage?: string;
 }) {
   const response = await fetch(input.url, {
     headers: {
@@ -210,7 +142,14 @@ async function getGoogleJson(input: {
   const payload = (await response.json().catch(() => ({}))) as unknown;
 
   if (!response.ok) {
-    throw new GoogleSheetsError(input.errorMessage, 502);
+    const status = [401, 403, 404].includes(response.status) ? 403 : 502;
+
+    throw new GoogleSheetsError(
+      status === 403
+        ? input.accessErrorMessage ?? input.errorMessage
+        : input.errorMessage,
+      status,
+    );
   }
 
   return payload;
@@ -235,6 +174,7 @@ export async function fetchGoogleSheetsSpreadsheetMetadata(input: {
     url: url.toString(),
     accessToken: input.accessToken,
     errorMessage: "Could not load Google Sheet metadata.",
+    accessErrorMessage: "Google Sheet is not shared with the service account.",
   });
 
   if (!isRecord(payload)) {
@@ -247,7 +187,7 @@ export async function fetchGoogleSheetsSpreadsheetMetadata(input: {
       : "Google Sheet";
   const rawSheets = Array.isArray(payload.sheets) ? payload.sheets : [];
   const sheets = rawSheets
-    .map((sheet): GoogleSheetsDraftTab | null => {
+    .map((sheet): GoogleSheetsConnectionTab | null => {
       if (!isRecord(sheet) || !isRecord(sheet.properties)) {
         return null;
       }
@@ -262,11 +202,11 @@ export async function fetchGoogleSheetsSpreadsheetMetadata(input: {
           }
         : null;
     })
-    .filter((sheet): sheet is GoogleSheetsDraftTab => sheet !== null)
+    .filter((sheet): sheet is GoogleSheetsConnectionTab => sheet !== null)
     .sort((first, second) => first.index - second.index);
 
   if (sheets.length === 0) {
-    throw new GoogleSheetsError("Google Sheet does not include any readable tabs.", 502);
+    throw new GoogleSheetsError("Google Sheet does not include any readable tabs.");
   }
 
   return {
@@ -298,6 +238,8 @@ export async function fetchGoogleSheetsTabValues(input: {
     url: url.toString(),
     accessToken: input.accessToken,
     errorMessage: "Could not load Google Sheet tab values.",
+    accessErrorMessage:
+      "Google Sheet tab is not readable by the service account.",
   });
 
   if (!isRecord(payload) || !Array.isArray(payload.values)) {

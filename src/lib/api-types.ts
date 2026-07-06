@@ -235,33 +235,37 @@ export type ApiConnection = {
   updatedAt: string;
 };
 
-export type GoogleSheetsDraftTab = {
+export type GoogleSheetsConnectionTab = {
   sheetId: number;
   title: string;
   index: number;
 };
 
-export type GoogleSheetsConnectionDraft = {
-  id: string;
+export type GoogleSheetsConnectionPreview = {
   spreadsheetId: string;
   spreadsheetUrl: string;
   spreadsheetTitle: string;
-  sheets: GoogleSheetsDraftTab[];
-  expiresAt: string;
-  createdAt: string;
-  updatedAt: string;
+  sheets: GoogleSheetsConnectionTab[];
 };
 
-export type GoogleSheetsOAuthStartResponse = {
-  authorizationUrl: string;
+export type GoogleSheetsServiceAccountInfoResponse = {
+  configured: boolean;
+  serviceAccountEmail: string | null;
 };
 
-export type GoogleSheetsConnectionDraftResponse = {
-  draft: GoogleSheetsConnectionDraft;
+export type GoogleSheetsConnectionPreviewResponse = {
+  preview: GoogleSheetsConnectionPreview;
+  serviceAccountEmail: string;
 };
 
-export type GoogleSheetsConnectionConfirmResponse = {
+export type GoogleSheetsConnectionConnectResponse = {
   connections: ApiConnection[];
+};
+
+export type GoogleSheetsConnectionAccessCheckResponse = {
+  connection: ApiConnection;
+  preview: GoogleSheetsConnectionPreview;
+  serviceAccountEmail: string;
 };
 
 export type ApiConnectionRun = {

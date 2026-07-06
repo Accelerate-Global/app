@@ -11,8 +11,6 @@ const ROUTE_METHODS = ["GET", "POST", "PATCH", "PUT", "DELETE"] as const;
 const EXEMPT_ROUTES = new Set([
   // Accepts anonymous analytics events; identity resolution is conditional.
   "analytics/events/route.ts",
-  // Browser-facing OAuth callback: auth failures must redirect, not 401.
-  "admin/api-connections/google-sheets/oauth/callback/route.ts",
   // Vercel Cron endpoint: authenticated by CRON_SECRET bearer token, not user identity.
   "ops/supabase-heartbeat/route.ts",
 ]);

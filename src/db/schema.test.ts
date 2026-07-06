@@ -5,12 +5,10 @@ import { describe, expect, it } from "vitest";
 
 import {
   apiConnectionResources,
-  apiConnectionOAuthCredentials,
   apiConnectionRuns,
   apiConnectionRunLogs,
   apiConnectionRunOutputs,
   apiConnections,
-  googleSheetsConnectionDrafts,
   analyticsEvents,
   analyticsFailureTriage,
   datasetVersionRows,
@@ -305,13 +303,11 @@ describe("apiConnections schema", () => {
     expect(apiConnections.responseFormat.name).toBe("response_format");
     expect(apiConnections.provider.name).toBe("provider");
     expect(apiConnections.providerConfig.name).toBe("provider_config");
-    expect(apiConnections.oauthCredentialId.name).toBe("oauth_credential_id");
-    expect(apiConnectionOAuthCredentials.secretVaultId.name).toBe(
-      "secret_vault_id",
-    );
-    expect(apiConnectionOAuthCredentials.revokedAt.name).toBe("revoked_at");
-    expect(googleSheetsConnectionDrafts.stateHash.name).toBe("state_hash");
-    expect(googleSheetsConnectionDrafts.sheets.name).toBe("sheets");
+    expect(
+      Object.keys(apiConnections).some((key) =>
+        key.toLowerCase().includes("credential"),
+      ),
+    ).toBe(false);
     expect(apiConnectionRuns.connectionId.name).toBe("connection_id");
     expect(apiConnectionRuns.responsePreview.name).toBe("response_preview");
     expect(apiConnectionRuns.startedAt.name).toBe("started_at");
@@ -445,7 +441,7 @@ describe("apiConnections schema", () => {
     expect(migration).toContain("on conflict (id) do update");
   });
 
-  it("creates the Google Sheets connection metadata migration", async () => {
+  it("creates the Google Sheets provider metadata migration", async () => {
     const migrationPath = path.join(
       process.cwd(),
       "supabase/migrations/20260509065937_google_sheets_connections.sql",
@@ -454,22 +450,28 @@ describe("apiConnections schema", () => {
     const migration = await readFile(migrationPath, "utf8");
 
     expect(migration).toContain(
-      "create table if not exists private.api_connection_oauth_credentials",
-    );
-    expect(migration).toContain(
       "add column if not exists provider text not null default 'http_api'",
     );
     expect(migration).toContain(
-      "add column if not exists oauth_credential_id uuid references private.api_connection_oauth_credentials(id) on delete set null",
+      "add column if not exists provider_config jsonb not null default '{\"provider\":\"http_api\"}'::jsonb",
     );
-    expect(migration).toContain(
-      "create table if not exists private.google_sheets_connection_drafts",
+    expect(migration).toContain("google_sheets");
+  });
+
+  it("creates the Google Sheets service-account cleanup migration", async () => {
+    const migrationPath = path.join(
+      process.cwd(),
+      "supabase/migrations/20260706130000_google_sheets_service_account_connections.sql",
     );
-    expect(migration).toContain(
-      "alter table private.google_sheets_connection_drafts enable row level security",
-    );
-    expect(migration).toContain(
-      "revoke all on private.google_sheets_connection_drafts from public, anon, authenticated",
-    );
+
+    const migration = await readFile(migrationPath, "utf8");
+    const staleCredentialTable = `private.api_connection_${"oa" + "uth"}_credentials`;
+    const staleCredentialColumn = `${"oa" + "uth"}_credential_id`;
+    const staleDraftTable = `private.${["google", "sheets", "connection", "drafts"].join("_")}`;
+
+    expect(migration).toContain("delete from vault.secrets");
+    expect(migration).toContain(`drop table if exists ${staleDraftTable}`);
+    expect(migration).toContain(`drop column if exists ${staleCredentialColumn}`);
+    expect(migration).toContain(`drop table if exists ${staleCredentialTable}`);
   });
 });

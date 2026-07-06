@@ -31,14 +31,16 @@ Fill in:
 - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `SUPABASE_STORAGE_BUCKET`
-- `GOOGLE_SHEETS_OAUTH_CLIENT_ID`
-- `GOOGLE_SHEETS_OAUTH_CLIENT_SECRET`
+- `GOOGLE_SHEETS_SERVICE_ACCOUNT_EMAIL`
+- `GOOGLE_SHEETS_SERVICE_ACCOUNT_PRIVATE_KEY`
 - `DATABASE_URL`
 
-For Google Sheets dataset connections, configure a Google OAuth client with the
-app origin callback path
-`/api/admin/api-connections/google-sheets/oauth/callback`. The provider uses
-read-only Sheets access and server-side refresh tokens.
+For Google Sheets dataset connections, configure a Google service account with
+read-only Sheets access. Dataset admins share private Sheets with
+`GOOGLE_SHEETS_SERVICE_ACCOUNT_EMAIL` as Viewer, then paste the Sheet link in the
+admin API Connections flow. Store only the service-account email and private key
+in server-side environment variables; do not expose the private key through
+`NEXT_PUBLIC_*` values. Escaped `\n` private-key newlines are supported.
 
 For deployed environment values, use Vercel:
 

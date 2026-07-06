@@ -7,7 +7,16 @@ import { DashboardPageShell } from "@/components/layout/dashboard-page-shell";
 import { buttonVariants } from "@/components/ui/button";
 import { getCurrentIdentity } from "@/lib/auth";
 import { listApiConnections } from "@/lib/api-connections";
+import { getGoogleSheetsServiceAccountEmail } from "@/lib/google-sheets";
 import { cn } from "@/lib/utils";
+
+function getConfiguredGoogleSheetsServiceAccountEmail() {
+  try {
+    return getGoogleSheetsServiceAccountEmail();
+  } catch {
+    return null;
+  }
+}
 
 export default async function ApiConnectionsPage() {
   const identity = await getCurrentIdentity();
@@ -20,7 +29,11 @@ export default async function ApiConnectionsPage() {
     redirect("/dashboard");
   }
 
-  const { connections, runs, resources } = await listApiConnections();
+  const [{ connections, runs, resources }, googleSheetsServiceAccountEmail] =
+    await Promise.all([
+      listApiConnections(),
+      Promise.resolve(getConfiguredGoogleSheetsServiceAccountEmail()),
+    ]);
 
   return (
     <div
@@ -59,6 +72,7 @@ export default async function ApiConnectionsPage() {
           initialConnections={connections}
           initialRuns={runs}
           initialResources={resources}
+          serviceAccountEmail={googleSheetsServiceAccountEmail}
         />
       </DashboardPageShell>
     </div>

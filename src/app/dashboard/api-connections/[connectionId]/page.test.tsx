@@ -10,6 +10,7 @@ import {
   listApiConnectionRuns,
 } from "@/lib/api-connections";
 import { getCurrentIdentity } from "@/lib/auth";
+import { getGoogleSheetsServiceAccountEmail } from "@/lib/google-sheets";
 import ApiConnectionDetailPage from "./page";
 
 vi.mock("next/navigation", () => ({
@@ -30,16 +31,22 @@ vi.mock("@/lib/api-connections", () => ({
   listApiConnectionRuns: vi.fn(),
 }));
 
+vi.mock("@/lib/google-sheets", () => ({
+  getGoogleSheetsServiceAccountEmail: vi.fn(),
+}));
+
 vi.mock("@/components/dashboard/api-connection-detail-client", () => ({
   ApiConnectionDetailClient: ({
     connection,
     initialRuns,
+    serviceAccountEmail,
   }: {
     connection: { name: string };
     initialRuns: unknown[];
+    serviceAccountEmail: string | null;
   }) => (
     <div data-testid="api-connection-detail-client">
-      {connection.name}:{initialRuns.length}
+      {connection.name}:{initialRuns.length}:{serviceAccountEmail ?? "missing-email"}
     </div>
   ),
 }));
@@ -48,6 +55,9 @@ vi.mock("@/components/dashboard/api-connection-detail-client", () => ({
 const getCurrentIdentityMock = vi.mocked(getCurrentIdentity);
 const getApiConnectionMock = vi.mocked(getApiConnection);
 const listApiConnectionRunsMock = vi.mocked(listApiConnectionRuns);
+const getGoogleSheetsServiceAccountEmailMock = vi.mocked(
+  getGoogleSheetsServiceAccountEmail,
+);
 const redirectMock = vi.mocked(redirect);
 const notFoundMock = vi.mocked(notFound);
 
@@ -98,6 +108,9 @@ function renderPage(connectionId = connection.id) {
 describe("/dashboard/api-connections/[connectionId]", () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    getGoogleSheetsServiceAccountEmailMock.mockReturnValue(
+      "sheets@app-project.iam.gserviceaccount.com",
+    );
   });
 
   afterEach(() => {
@@ -162,7 +175,7 @@ describe("/dashboard/api-connections/[connectionId]", () => {
     expect(screen.getByRole("heading", { name: "IMB (People Groups)" })).toBeTruthy();
     expect(screen.getByText("Success")).toBeTruthy();
     expect(screen.getByTestId("api-connection-detail-client").textContent).toBe(
-      "IMB (People Groups):1",
+      "IMB (People Groups):1:sheets@app-project.iam.gserviceaccount.com",
     );
     expect(getApiConnectionMock).toHaveBeenCalledWith(connection.id);
     expect(listApiConnectionRunsMock).toHaveBeenCalledWith(connection.id);

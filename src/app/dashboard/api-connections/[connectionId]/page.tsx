@@ -9,6 +9,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { getApiConnection, listApiConnectionRuns } from "@/lib/api-connections";
 import type { ApiConnectionRunStatus } from "@/lib/api-types";
 import { getCurrentIdentity } from "@/lib/auth";
+import { getGoogleSheetsServiceAccountEmail } from "@/lib/google-sheets";
 import { cn } from "@/lib/utils";
 
 type ApiConnectionDetailPageProps = {
@@ -47,6 +48,14 @@ function headerStatusClass(status: HeaderStatus) {
   return "border-border bg-muted/60 text-muted-foreground";
 }
 
+function getConfiguredGoogleSheetsServiceAccountEmail() {
+  try {
+    return getGoogleSheetsServiceAccountEmail();
+  } catch {
+    return null;
+  }
+}
+
 export default async function ApiConnectionDetailPage({
   params,
 }: ApiConnectionDetailPageProps) {
@@ -67,7 +76,10 @@ export default async function ApiConnectionDetailPage({
     notFound();
   }
 
-  const runs = await listApiConnectionRuns(connection.id);
+  const [runs, googleSheetsServiceAccountEmail] = await Promise.all([
+    listApiConnectionRuns(connection.id),
+    Promise.resolve(getConfiguredGoogleSheetsServiceAccountEmail()),
+  ]);
   const headerStatus = runs[0]?.status ?? "idle";
 
   return (
@@ -110,7 +122,11 @@ export default async function ApiConnectionDetailPage({
           </div>
         </section>
 
-        <ApiConnectionDetailClient connection={connection} initialRuns={runs} />
+        <ApiConnectionDetailClient
+          connection={connection}
+          initialRuns={runs}
+          serviceAccountEmail={googleSheetsServiceAccountEmail}
+        />
       </DashboardPageShell>
     </div>
   );

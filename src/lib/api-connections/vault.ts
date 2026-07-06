@@ -7,10 +7,6 @@ export function getVaultSecretName(connectionId: string) {
   return `api_connection_${connectionId}_headers`;
 }
 
-export function getGoogleSheetsCredentialSecretName(credentialId: string) {
-  return `api_connection_google_sheets_${credentialId}`;
-}
-
 export async function createNamedVaultSecret(input: {
   secret: string;
   name: string;
@@ -107,4 +103,3 @@ export async function deleteVaultSecret(vaultId: string | null) {
 
   await getDb().execute(sql`delete from vault.secrets where id = ${vaultId}::uuid`);
 }
-

@@ -8,8 +8,15 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { ApiConnectionDetailClient } from "@/components/dashboard/api-connection-detail-client";
 import type { ApiConnection, ApiConnectionRun } from "@/lib/api-types";
 
-const { dataGridSpy } = vi.hoisted(() => ({
+const { dataGridSpy, pushMock } = vi.hoisted(() => ({
   dataGridSpy: vi.fn(),
+  pushMock: vi.fn(),
+}));
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({
+    push: pushMock,
+  }),
 }));
 
 vi.mock("@/components/reui/data-grid/data-grid", async () => {
@@ -101,6 +108,27 @@ const connection: ApiConnection = {
   updatedAt: "2026-04-24T12:00:00.000Z",
 };
 
+const serviceAccountEmail = "sheets@app-project.iam.gserviceaccount.com";
+
+const googleSheetsConnection: ApiConnection = {
+  ...connection,
+  id: "99999999-9999-4999-8999-999999999999",
+  name: "Mission Sheet - Alpha",
+  description: "Google Sheets tab import.",
+  provider: "google_sheets",
+  providerConfig: {
+    provider: "google_sheets",
+    spreadsheetId: "sheet_123",
+    spreadsheetUrl: "https://docs.google.com/spreadsheets/d/sheet_123/edit",
+    spreadsheetTitle: "Mission Sheet",
+    sheetId: 1,
+    sheetTitle: "Alpha",
+    rangeMode: "full_tab",
+  },
+  importMode: "replace",
+  targetDatasetId: "dataset-1",
+};
+
 const successfulRun: ApiConnectionRun = {
   id: "22222222-2222-4222-8222-222222222222",
   connectionId: connection.id,
@@ -182,6 +210,7 @@ describe("ApiConnectionDetailClient", () => {
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
     dataGridSpy.mockReset();
+    pushMock.mockReset();
   });
 
   it("renders pipeline skeleton stages and starts run panels collapsed in detail-first order", () => {
@@ -189,6 +218,7 @@ describe("ApiConnectionDetailClient", () => {
       <ApiConnectionDetailClient
         connection={connection}
         initialRuns={[successfulRun]}
+        serviceAccountEmail={serviceAccountEmail}
       />,
     );
 
@@ -326,6 +356,7 @@ describe("ApiConnectionDetailClient", () => {
       <ApiConnectionDetailClient
         connection={connection}
         initialRuns={[]}
+        serviceAccountEmail={serviceAccountEmail}
       />,
     );
 
@@ -356,23 +387,9 @@ describe("ApiConnectionDetailClient", () => {
   it("labels Google Sheets import actions as dataset refreshes after first import", () => {
     render(
       <ApiConnectionDetailClient
-        connection={{
-          ...connection,
-          provider: "google_sheets",
-          providerConfig: {
-            provider: "google_sheets",
-            spreadsheetId: "sheet_123",
-            spreadsheetUrl:
-              "https://docs.google.com/spreadsheets/d/sheet_123/edit",
-            spreadsheetTitle: "Mission Sheet",
-            sheetId: 1,
-            sheetTitle: "Alpha",
-            rangeMode: "full_tab",
-          },
-          importMode: "replace",
-          targetDatasetId: "dataset-1",
-        }}
+        connection={googleSheetsConnection}
         initialRuns={[]}
+        serviceAccountEmail={serviceAccountEmail}
       />,
     );
 
@@ -383,6 +400,100 @@ describe("ApiConnectionDetailClient", () => {
         "Runs read the selected Google Sheet tab and import or refresh the dataset target.",
       ),
     ).toBeTruthy();
+  });
+
+  it("shows Google Sheets source actions and labels first imports clearly", () => {
+    const firstImportConnection: ApiConnection = {
+      ...googleSheetsConnection,
+      targetDatasetId: null,
+    };
+
+    render(
+      <ApiConnectionDetailClient
+        connection={firstImportConnection}
+        initialRuns={[]}
+        serviceAccountEmail={serviceAccountEmail}
+      />,
+    );
+
+    expect(screen.getByText("Google Sheets source")).toBeTruthy();
+    expect(screen.getByText("Mission Sheet")).toBeTruthy();
+    expect(screen.getByText("Alpha")).toBeTruthy();
+    expect(screen.getByText(serviceAccountEmail)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Import sheet" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Start ingestion" })).toBeNull();
+    expect(
+      screen.getByRole("link", { name: "Open Google Sheet" }).getAttribute("href"),
+    ).toBe("https://docs.google.com/spreadsheets/d/sheet_123/edit");
+    expect(screen.queryByRole("link", { name: "Open dataset" })).toBeNull();
+  });
+
+  it("checks Google Sheets access, copies app email, opens dataset, and disconnects", async () => {
+    const writeTextMock = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText: writeTextMock },
+      configurable: true,
+    });
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+
+      if (url.endsWith(`/google-sheets/${googleSheetsConnection.id}`)) {
+        if (init?.method === "DELETE") {
+          return Response.json({ connection: googleSheetsConnection });
+        }
+
+        return Response.json({
+          connection: googleSheetsConnection,
+          serviceAccountEmail,
+          preview: {
+            spreadsheetId: "sheet_123",
+            spreadsheetUrl:
+              "https://docs.google.com/spreadsheets/d/sheet_123/edit",
+            spreadsheetTitle: "Mission Sheet",
+            sheets: [{ sheetId: 1, title: "Alpha", index: 0 }],
+          },
+        });
+      }
+
+      throw new Error(`Unexpected fetch: ${url}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(
+      <ApiConnectionDetailClient
+        connection={googleSheetsConnection}
+        initialRuns={[]}
+        serviceAccountEmail={serviceAccountEmail}
+      />,
+    );
+
+    expect(
+      screen.getByRole("link", { name: "Open dataset" }).getAttribute("href"),
+    ).toBe("/dashboard/datasets/dataset-1");
+
+    fireEvent.click(screen.getByRole("button", { name: "Copy app email" }));
+    await waitFor(() => {
+      expect(writeTextMock).toHaveBeenCalledWith(serviceAccountEmail);
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Check access" }));
+    expect(await screen.findByText("Google Sheets access confirmed")).toBeTruthy();
+    expect(
+      screen.getByText(
+        "Mission Sheet / Alpha is readable by the app service account.",
+      ),
+    ).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Disconnect" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm disconnect" }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        `/api/admin/api-connections/google-sheets/${googleSheetsConnection.id}`,
+        { method: "DELETE" },
+      );
+      expect(pushMock).toHaveBeenCalledWith("/dashboard/api-connections");
+    });
   });
 
   it("selects a run row and updates the run detail panel", () => {
@@ -415,6 +526,7 @@ describe("ApiConnectionDetailClient", () => {
       <ApiConnectionDetailClient
         connection={connection}
         initialRuns={[failedRun, passedRun]}
+        serviceAccountEmail={serviceAccountEmail}
       />,
     );
 
@@ -440,6 +552,7 @@ describe("ApiConnectionDetailClient", () => {
         initialRuns={Array.from({ length: 6 }, (_, index) =>
           createHistoryRun(index),
         )}
+        serviceAccountEmail={serviceAccountEmail}
       />,
     );
 

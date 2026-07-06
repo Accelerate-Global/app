@@ -1,23 +1,111 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+const getAccessTokenMock = vi.hoisted(() => vi.fn());
+const jwtConstructorMock = vi.hoisted(() =>
+  vi.fn(function MockJwt(this: { getAccessToken: typeof getAccessTokenMock }) {
+    this.getAccessToken = getAccessTokenMock;
+  }),
+);
+
+vi.mock("google-auth-library", () => ({
+  JWT: jwtConstructorMock,
+}));
+
 import {
   GOOGLE_SHEETS_READONLY_SCOPE,
   GoogleSheetsError,
-  createGoogleSheetsAuthorizationUrl,
-  exchangeGoogleSheetsOAuthCode,
+  assertGoogleSheetsImportSize,
   fetchGoogleSheetsSpreadsheetMetadata,
   fetchGoogleSheetsTabValues,
+  getGoogleSheetsServiceAccountAccessToken,
+  getGoogleSheetsServiceAccountConfig,
+  getGoogleSheetsServiceAccountEmail,
   parseGoogleSheetUrl,
   parseGoogleSheetsValuesToRows,
 } from "@/lib/google-sheets";
 
-const originalClientId = process.env.GOOGLE_SHEETS_OAUTH_CLIENT_ID;
-const originalClientSecret = process.env.GOOGLE_SHEETS_OAUTH_CLIENT_SECRET;
+const originalServiceAccountEmail =
+  process.env.GOOGLE_SHEETS_SERVICE_ACCOUNT_EMAIL;
+const originalServiceAccountPrivateKey =
+  process.env.GOOGLE_SHEETS_SERVICE_ACCOUNT_PRIVATE_KEY;
 
 afterEach(() => {
   vi.unstubAllGlobals();
-  process.env.GOOGLE_SHEETS_OAUTH_CLIENT_ID = originalClientId;
-  process.env.GOOGLE_SHEETS_OAUTH_CLIENT_SECRET = originalClientSecret;
+  vi.clearAllMocks();
+  process.env.GOOGLE_SHEETS_SERVICE_ACCOUNT_EMAIL =
+    originalServiceAccountEmail;
+  process.env.GOOGLE_SHEETS_SERVICE_ACCOUNT_PRIVATE_KEY =
+    originalServiceAccountPrivateKey;
+});
+
+describe("Google Sheets service account configuration", () => {
+  it("returns the configured service account email", () => {
+    process.env.GOOGLE_SHEETS_SERVICE_ACCOUNT_EMAIL =
+      "sheets@app-project.iam.gserviceaccount.com";
+
+    expect(getGoogleSheetsServiceAccountEmail()).toBe(
+      "sheets@app-project.iam.gserviceaccount.com",
+    );
+  });
+
+  it("normalizes escaped private-key newlines", () => {
+    process.env.GOOGLE_SHEETS_SERVICE_ACCOUNT_EMAIL =
+      "sheets@app-project.iam.gserviceaccount.com";
+    process.env.GOOGLE_SHEETS_SERVICE_ACCOUNT_PRIVATE_KEY =
+      "-----BEGIN PRIVATE KEY-----\\nabc\\n-----END PRIVATE KEY-----\\n";
+
+    expect(getGoogleSheetsServiceAccountConfig()).toEqual({
+      email: "sheets@app-project.iam.gserviceaccount.com",
+      privateKey: "-----BEGIN PRIVATE KEY-----\nabc\n-----END PRIVATE KEY-----",
+    });
+  });
+
+  it("throws clear configuration errors without exposing private-key contents", () => {
+    process.env.GOOGLE_SHEETS_SERVICE_ACCOUNT_EMAIL = "";
+    process.env.GOOGLE_SHEETS_SERVICE_ACCOUNT_PRIVATE_KEY = "secret-key";
+
+    expect(() => getGoogleSheetsServiceAccountConfig()).toThrow(
+      "Google Sheets service account email is not configured.",
+    );
+
+    process.env.GOOGLE_SHEETS_SERVICE_ACCOUNT_EMAIL =
+      "sheets@app-project.iam.gserviceaccount.com";
+    process.env.GOOGLE_SHEETS_SERVICE_ACCOUNT_PRIVATE_KEY = "";
+
+    expect(() => getGoogleSheetsServiceAccountConfig()).toThrow(
+      "Google Sheets service account credentials are not configured.",
+    );
+  });
+
+  it("mints readonly access tokens through the official auth library", async () => {
+    process.env.GOOGLE_SHEETS_SERVICE_ACCOUNT_EMAIL =
+      "sheets@app-project.iam.gserviceaccount.com";
+    process.env.GOOGLE_SHEETS_SERVICE_ACCOUNT_PRIVATE_KEY =
+      "-----BEGIN PRIVATE KEY-----\\nabc\\n-----END PRIVATE KEY-----\\n";
+    getAccessTokenMock.mockResolvedValue({ token: "access-token" });
+
+    await expect(getGoogleSheetsServiceAccountAccessToken()).resolves.toBe(
+      "access-token",
+    );
+    expect(jwtConstructorMock).toHaveBeenCalledWith({
+      email: "sheets@app-project.iam.gserviceaccount.com",
+      key: "-----BEGIN PRIVATE KEY-----\nabc\n-----END PRIVATE KEY-----",
+      scopes: [GOOGLE_SHEETS_READONLY_SCOPE],
+    });
+  });
+
+  it("redacts auth-library failures behind a stable configuration error", async () => {
+    process.env.GOOGLE_SHEETS_SERVICE_ACCOUNT_EMAIL =
+      "sheets@app-project.iam.gserviceaccount.com";
+    process.env.GOOGLE_SHEETS_SERVICE_ACCOUNT_PRIVATE_KEY = "secret-private-key";
+    getAccessTokenMock.mockRejectedValue(
+      new Error("secret-private-key is malformed"),
+    );
+
+    await expect(getGoogleSheetsServiceAccountAccessToken()).rejects.toThrow(
+      "Google Sheets service account credentials are invalid.",
+    );
+  });
 });
 
 describe("parseGoogleSheetUrl", () => {
@@ -37,76 +125,6 @@ describe("parseGoogleSheetUrl", () => {
     expect(() => parseGoogleSheetUrl("https://example.com/sheet")).toThrow(
       GoogleSheetsError,
     );
-  });
-});
-
-describe("createGoogleSheetsAuthorizationUrl", () => {
-  it("uses read-only Sheets scope, offline access, and caller state", () => {
-    process.env.GOOGLE_SHEETS_OAUTH_CLIENT_ID = "client-id";
-    process.env.GOOGLE_SHEETS_OAUTH_CLIENT_SECRET = "client-secret";
-
-    const url = new URL(
-      createGoogleSheetsAuthorizationUrl({
-        redirectUri:
-          "https://app.example.com/api/admin/api-connections/google-sheets/oauth/callback",
-        state: "state-token",
-      }),
-    );
-
-    expect(url.origin).toBe("https://accounts.google.com");
-    expect(url.searchParams.get("client_id")).toBe("client-id");
-    expect(url.searchParams.get("scope")).toBe(GOOGLE_SHEETS_READONLY_SCOPE);
-    expect(url.searchParams.get("access_type")).toBe("offline");
-    expect(url.searchParams.get("prompt")).toBe("consent");
-    expect(url.searchParams.get("state")).toBe("state-token");
-  });
-});
-
-describe("exchangeGoogleSheetsOAuthCode", () => {
-  it("returns token details without exposing failed OAuth payload contents", async () => {
-    process.env.GOOGLE_SHEETS_OAUTH_CLIENT_ID = "client-id";
-    process.env.GOOGLE_SHEETS_OAUTH_CLIENT_SECRET = "client-secret";
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(
-        Response.json({
-          access_token: "access-token",
-          refresh_token: "refresh-token",
-          scope: GOOGLE_SHEETS_READONLY_SCOPE,
-          token_type: "Bearer",
-          expires_in: 3600,
-        }),
-      )
-      .mockResolvedValueOnce(
-        Response.json(
-          {
-            error: "invalid_grant",
-            error_description: "secret-refresh-token",
-          },
-          { status: 400 },
-        ),
-      );
-    vi.stubGlobal("fetch", fetchMock);
-
-    await expect(
-      exchangeGoogleSheetsOAuthCode({
-        code: "code",
-        redirectUri: "https://app.example.com/callback",
-      }),
-    ).resolves.toEqual({
-      accessToken: "access-token",
-      refreshToken: "refresh-token",
-      scope: GOOGLE_SHEETS_READONLY_SCOPE,
-      tokenType: "Bearer",
-      expiresIn: 3600,
-    });
-
-    await expect(
-      exchangeGoogleSheetsOAuthCode({
-        code: "bad-code",
-        redirectUri: "https://app.example.com/callback",
-      }),
-    ).rejects.toThrow("Google OAuth token exchange failed.");
   });
 });
 
@@ -144,6 +162,41 @@ describe("fetchGoogleSheetsSpreadsheetMetadata", () => {
       }),
     );
   });
+
+  it("reports service-account access failures without provider payload details", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      Response.json(
+        {
+          error: {
+            message: "The caller secret-token does not have permission.",
+          },
+        },
+        { status: 403 },
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      fetchGoogleSheetsSpreadsheetMetadata({
+        spreadsheetId: "sheet_123",
+        accessToken: "access-token",
+      }),
+    ).rejects.toMatchObject({
+      message: "Google Sheet is not shared with the service account.",
+      status: 403,
+    });
+  });
+
+  it("reports spreadsheets with no readable tabs", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(Response.json({ sheets: [] })));
+
+    await expect(
+      fetchGoogleSheetsSpreadsheetMetadata({
+        spreadsheetId: "sheet_123",
+        accessToken: "access-token",
+      }),
+    ).rejects.toThrow("Google Sheet does not include any readable tabs.");
+  });
 });
 
 describe("fetchGoogleSheetsTabValues", () => {
@@ -168,6 +221,29 @@ describe("fetchGoogleSheetsTabValues", () => {
     expect(requestedUrl.pathname).toContain("/sheet_123/values/");
     expect(decodeURIComponent(requestedUrl.pathname)).toContain("'Alpha Tab'");
     expect(requestedUrl.searchParams.get("majorDimension")).toBe("ROWS");
+  });
+
+  it("reports unreadable selected tabs as service-account access failures", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        Response.json(
+          { error: { message: "secret-token cannot read this tab." } },
+          { status: 403 },
+        ),
+      ),
+    );
+
+    await expect(
+      fetchGoogleSheetsTabValues({
+        spreadsheetId: "sheet_123",
+        sheetTitle: "Alpha Tab",
+        accessToken: "access-token",
+      }),
+    ).rejects.toMatchObject({
+      message: "Google Sheet tab is not readable by the service account.",
+      status: 403,
+    });
   });
 });
 
@@ -204,5 +280,12 @@ describe("parseGoogleSheetsValuesToRows", () => {
     expect(() => parseGoogleSheetsValuesToRows([[""], []])).toThrow(
       "Google Sheet tab does not include a header row.",
     );
+  });
+
+  it("rejects oversized imports before dataset replacement", () => {
+    expect(() => assertGoogleSheetsImportSize("small,csv")).not.toThrow();
+    expect(() =>
+      assertGoogleSheetsImportSize("x".repeat(25 * 1024 * 1024 + 1)),
+    ).toThrow("Google Sheet import is too large.");
   });
 });

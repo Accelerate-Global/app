@@ -500,7 +500,7 @@ describe("api connection run actor identity", () => {
 });
 
 describe("Google Sheets provider runs", () => {
-  it("routes Google Sheets connections through the provider adapter and redacts OAuth secrets", async () => {
+  it("routes Google Sheets connections through the service-account provider adapter", async () => {
     const adapterSource = await readFile(
       path.join(process.cwd(), "src/lib/api-connections/providers/google-sheets.ts"),
       "utf8",
@@ -514,11 +514,44 @@ describe("Google Sheets provider runs", () => {
       "connection.provider === GOOGLE_SHEETS_PROVIDER",
     );
     expect(adapterSource).toContain("fetchGoogleSheetsConnectionOutput");
-    expect(adapterSource).toContain('input.secrets.set("google_refresh_token"');
-    expect(adapterSource).toContain('input.secrets.set("google_access_token"');
+    expect(adapterSource).toContain("getGoogleSheetsServiceAccountAccessToken");
+    expect(adapterSource).not.toContain("google_refresh_token");
+    expect(adapterSource).not.toContain("google_access_token");
     expect(orchestratorSource).toContain(
       "const redactedBody = redactSecrets(body, secrets)",
     );
     expect(orchestratorSource).toContain("await bindGoogleSheetsConnectionTarget");
+  });
+
+  it("preserves existing datasets when Google Sheets access, parse, or size checks fail", async () => {
+    const orchestratorSource = await readFile(
+      path.join(process.cwd(), "src/lib/api-connections/index.ts"),
+      "utf8",
+    );
+    const fetchIndex = orchestratorSource.indexOf(
+      "const result = await provider.fetch",
+    );
+    const parseIndex = orchestratorSource.indexOf(
+      "parsed ??= provider.parse",
+    );
+    const persistIndex = orchestratorSource.indexOf(
+      "await persistImportedRows",
+    );
+    const catchIndex = orchestratorSource.indexOf(
+      "} catch (error) {",
+      persistIndex,
+    );
+
+    expect(fetchIndex).toBeGreaterThan(-1);
+    expect(parseIndex).toBeGreaterThan(fetchIndex);
+    expect(persistIndex).toBeGreaterThan(parseIndex);
+    expect(catchIndex).toBeGreaterThan(persistIndex);
+    expect(orchestratorSource).toContain(
+      "error instanceof GoogleSheetsError",
+    );
+    expect(orchestratorSource).toContain("datasetId: null");
+    expect(orchestratorSource).toContain(
+      "errorMessage: redactSecrets(message, secrets)",
+    );
   });
 });

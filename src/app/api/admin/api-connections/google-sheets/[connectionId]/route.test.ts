@@ -1,9 +1,13 @@
 import { readFile } from "node:fs/promises";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { disconnectGoogleSheetsConnection } from "@/lib/api-connections";
+import {
+  ApiConnectionError,
+  checkGoogleSheetsConnectionAccess,
+  disconnectGoogleSheetsConnection,
+} from "@/lib/api-connections";
 import { getCurrentIdentity } from "@/lib/auth";
-import { DELETE } from "./route";
+import { DELETE, GET } from "./route";
 
 vi.mock("@/lib/auth", () => ({
   getCurrentIdentity: vi.fn(),
@@ -16,11 +20,15 @@ vi.mock("@/lib/api-connections", async () => {
 
   return {
     ApiConnectionError: actual.ApiConnectionError,
+    checkGoogleSheetsConnectionAccess: vi.fn(),
     disconnectGoogleSheetsConnection: vi.fn(),
   };
 });
 
 const getCurrentIdentityMock = vi.mocked(getCurrentIdentity);
+const checkGoogleSheetsConnectionAccessMock = vi.mocked(
+  checkGoogleSheetsConnectionAccess,
+);
 const disconnectGoogleSheetsConnectionMock = vi.mocked(
   disconnectGoogleSheetsConnection,
 );
@@ -68,6 +76,17 @@ const connection = {
   updatedAt: "2026-05-09T07:45:00.000Z",
 };
 
+const accessCheck = {
+  connection,
+  preview: {
+    spreadsheetId: "sheet_123",
+    spreadsheetUrl: "https://docs.google.com/spreadsheets/d/sheet_123/edit",
+    spreadsheetTitle: "Mission Sheet",
+    sheets: [{ sheetId: 1, title: "Alpha", index: 0 }],
+  },
+  serviceAccountEmail: "sheets@app-project.iam.gserviceaccount.com",
+};
+
 describe("/api/admin/api-connections/google-sheets/[connectionId]", () => {
   beforeEach(() => {
     vi.resetAllMocks();
@@ -81,6 +100,44 @@ describe("/api/admin/api-connections/google-sheets/[connectionId]", () => {
 
     expect(response.status).toBe(401);
     expect(disconnectGoogleSheetsConnectionMock).not.toHaveBeenCalled();
+  });
+
+  it("checks saved Google Sheets access for dataset admins", async () => {
+    checkGoogleSheetsConnectionAccessMock.mockResolvedValue(accessCheck);
+
+    const response = await GET(new Request("http://localhost"), context);
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual(accessCheck);
+    expect(checkGoogleSheetsConnectionAccessMock).toHaveBeenCalledWith({
+      connectionId: connection.id,
+      identity,
+    });
+  });
+
+  it("returns not found when checking non-Google or missing connections", async () => {
+    checkGoogleSheetsConnectionAccessMock.mockResolvedValue(null);
+
+    const response = await GET(new Request("http://localhost"), context);
+
+    expect(response.status).toBe(404);
+  });
+
+  it("reports saved connection service-account access failures", async () => {
+    checkGoogleSheetsConnectionAccessMock.mockRejectedValue(
+      new ApiConnectionError(
+        "Share this Sheet with sheets@app-project.iam.gserviceaccount.com as Viewer, then check again.",
+        403,
+      ),
+    );
+
+    const response = await GET(new Request("http://localhost"), context);
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toEqual({
+      error:
+        "Share this Sheet with sheets@app-project.iam.gserviceaccount.com as Viewer, then check again.",
+    });
   });
 
   it("disconnects Google Sheets connections for dataset admins", async () => {
@@ -114,5 +171,8 @@ describe("route guard integration", () => {
 
     expect(source).toContain('from "@/lib/route-guard"');
     expect(source).toContain("withRoute(");
+    expect(source).not.toContain("revoke");
+    expect(source).not.toContain("vault");
+    expect(source).not.toContain("credential");
   });
 });

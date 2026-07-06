@@ -2,38 +2,33 @@ import { z } from "zod";
 
 import {
   ApiConnectionError,
-  confirmGoogleSheetsConnectionDraft,
+  createGoogleSheetsConnections,
 } from "@/lib/api-connections";
 import { logError } from "@/lib/error-logging";
+import { GoogleSheetsError } from "@/lib/google-sheets";
 import { jsonError } from "@/lib/http";
 import { withRoute } from "@/lib/route-guard";
 
-const googleSheetsConfirmSchema = z.object({
+const googleSheetsConnectSchema = z.object({
+  spreadsheetUrl: z.string().trim().min(1).max(2048),
   selectedSheetIds: z.array(z.number().int().nonnegative()).min(1).max(50),
   datasetClassification: z.enum(["PGAC", "PGIC"]).default("PGAC"),
 });
 
-type GoogleSheetsConfirmContext = {
-  params: Promise<{
-    draftId: string;
-  }>;
-};
-
 export const POST = withRoute(
   { access: "admin", action: "connect Google Sheets" },
-  async (identity, request: Request, context: GoogleSheetsConfirmContext) => {
-    const parsed = googleSheetsConfirmSchema.safeParse(await request.json());
+  async (identity, request: Request) => {
+    const body = await request.json().catch(() => null);
+    const parsed = googleSheetsConnectSchema.safeParse(body);
 
     if (!parsed.success) {
-      return jsonError("Google Sheets tab selection is invalid.");
+      return jsonError("Google Sheets connection request is invalid.");
     }
 
-    const { draftId } = await context.params;
-
     try {
-      const connections = await confirmGoogleSheetsConnectionDraft({
+      const connections = await createGoogleSheetsConnections({
         identity,
-        draftId,
+        spreadsheetUrl: parsed.data.spreadsheetUrl,
         selectedSheetIds: parsed.data.selectedSheetIds,
         datasetClassification: parsed.data.datasetClassification,
       });
@@ -44,7 +39,11 @@ export const POST = withRoute(
         return jsonError(error.message, error.status);
       }
 
-      logError("Failed to confirm Google Sheets connection", error);
+      if (error instanceof GoogleSheetsError) {
+        return jsonError(error.message, error.status);
+      }
+
+      logError("Failed to create Google Sheets connections", error);
       return jsonError("Could not create Google Sheets connections.", 500);
     }
   },

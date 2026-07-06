@@ -14,7 +14,3 @@
 
 - [ ] What external API endpoints are approved for admin API connections?
   Evidence: API connection code exists and validates requests, but no policy document defines allowed providers or data governance rules.
-
-- [ ] Should Google Sheets OAuth be supported in production after the repository move?
-  Evidence: `.env.example` documents Google OAuth env vars, but the latest Vercel
-  env inventory did not show those keys in the project.
