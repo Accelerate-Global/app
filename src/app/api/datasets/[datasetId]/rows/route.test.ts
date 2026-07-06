@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getCurrentIdentity } from "@/lib/auth";
@@ -57,7 +58,9 @@ describe("/api/datasets/[datasetId]/rows", () => {
     getCurrentIdentityMock.mockResolvedValue(null);
 
     const response = await GET(
-      new Request("http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001/rows"),
+      new Request(
+        "http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001/rows",
+      ),
       context,
     );
 
@@ -131,10 +134,24 @@ describe("/api/datasets/[datasetId]/rows", () => {
     getDatasetRowsMock.mockResolvedValue(null);
 
     const response = await GET(
-      new Request("http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001/rows"),
+      new Request(
+        "http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001/rows",
+      ),
       context,
     );
 
     expect(response.status).toBe(404);
+  });
+});
+
+describe("route guard integration", () => {
+  it("uses the centralized route guard", async () => {
+    const source = await readFile(
+      "src/app/api/datasets/[datasetId]/rows/route.ts",
+      "utf8",
+    );
+
+    expect(source).toContain('from "@/lib/route-guard"');
+    expect(source).toContain("withRoute(");
   });
 });

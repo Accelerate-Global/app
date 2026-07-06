@@ -1,6 +1,11 @@
+import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 
-import type { DatasetRowsResponse, DatasetSummary, FilterRegion } from "@/lib/api-types";
+import type {
+  DatasetRowsResponse,
+  DatasetSummary,
+  FilterRegion,
+} from "@/lib/api-types";
 
 import {
   applyDatasetDefaultFilters,
@@ -129,15 +134,15 @@ describe("dataset-default-view", () => {
       },
     } satisfies DatasetSummary;
 
-    expect(getDatasetDefaultFilters(dataset)?.region.selectedRegionNames).toEqual([
-      "Asia, South",
-    ]);
+    expect(
+      getDatasetDefaultFilters(dataset)?.region.selectedRegionNames,
+    ).toEqual(["Asia, South"]);
     expect(getDatasetDefaultSorting(dataset)).toEqual([
       { id: "people_name", desc: true },
     ]);
-    expect(getDatasetDefaultOpenPreset(dataset)?.region.selectedRegionNames).toEqual([
-      "Asia, South",
-    ]);
+    expect(
+      getDatasetDefaultOpenPreset(dataset)?.region.selectedRegionNames,
+    ).toEqual(["Asia, South"]);
   });
 
   it("returns null when dataset default filters are absent", () => {
@@ -314,5 +319,14 @@ describe("dataset-default-view", () => {
         regions,
       }).map((row) => row.data.people_name),
     ).toEqual(["Country B UUPG"]);
+  });
+});
+
+describe("dataset default filtering boundary", () => {
+  it("uses the canonical filter-section pipeline for default filters", async () => {
+    const source = await readFile("src/lib/dataset-default-view.ts", "utf8");
+
+    expect(source).toContain("applyDatasetFilterSections");
+    expect(source).toContain("getDatasetFilterSectionsFromSavedView");
   });
 });

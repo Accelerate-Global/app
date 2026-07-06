@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -110,7 +111,9 @@ describe("/api/admin/api-connections/google-sheets/drafts/[draftId]/confirm", ()
     );
 
     expect(response.status).toBe(201);
-    await expect(response.json()).resolves.toEqual({ connections: [connection] });
+    await expect(response.json()).resolves.toEqual({
+      connections: [connection],
+    });
     expect(confirmGoogleSheetsConnectionDraftMock).toHaveBeenCalledWith({
       identity,
       draftId: "draft-1",
@@ -139,5 +142,17 @@ describe("/api/admin/api-connections/google-sheets/drafts/[draftId]/confirm", ()
     await expect(response.json()).resolves.toEqual({
       error: "Choose at least one valid Google Sheet tab.",
     });
+  });
+});
+
+describe("route guard integration", () => {
+  it("uses the centralized route guard", async () => {
+    const source = await readFile(
+      "src/app/api/admin/api-connections/google-sheets/drafts/[draftId]/confirm/route.ts",
+      "utf8",
+    );
+
+    expect(source).toContain('from "@/lib/route-guard"');
+    expect(source).toContain("withRoute(");
   });
 });

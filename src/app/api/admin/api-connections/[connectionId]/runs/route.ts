@@ -1,7 +1,7 @@
 import { listApiConnectionRuns } from "@/lib/api-connections";
-import { getCurrentIdentity } from "@/lib/auth";
 import { logError } from "@/lib/error-logging";
-import { jsonAdminOnlyError, jsonError } from "@/lib/http";
+import { jsonError } from "@/lib/http";
+import { withRoute } from "@/lib/route-guard";
 
 type ApiConnectionRunsContext = {
   params: Promise<{
@@ -9,23 +9,16 @@ type ApiConnectionRunsContext = {
   }>;
 };
 
-export async function GET(_request: Request, context: ApiConnectionRunsContext) {
-  const identity = await getCurrentIdentity();
+export const GET = withRoute(
+  { access: "admin", action: "view API connection runs" },
+  async (_identity, _request: Request, context: ApiConnectionRunsContext) => {
+    const { connectionId } = await context.params;
 
-  if (!identity) {
-    return jsonError("Unauthorized.", 401);
-  }
-
-  if (!identity.isDatasetAdmin) {
-    return jsonAdminOnlyError("view API connection runs");
-  }
-
-  const { connectionId } = await context.params;
-
-  try {
-    return Response.json({ runs: await listApiConnectionRuns(connectionId) });
-  } catch (error) {
-    logError("Failed to list API connection runs", error);
-    return jsonError("Could not load API connection runs.", 500);
-  }
-}
+    try {
+      return Response.json({ runs: await listApiConnectionRuns(connectionId) });
+    } catch (error) {
+      logError("Failed to list API connection runs", error);
+      return jsonError("Could not load API connection runs.", 500);
+    }
+  },
+);

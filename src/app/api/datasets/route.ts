@@ -1,48 +1,35 @@
-import { getCurrentIdentity } from "@/lib/auth";
 import { createDataset, listDatasets } from "@/lib/datasets";
 import { isDatasetStoragePath } from "@/lib/dataset-storage";
-import { jsonAdminOnlyError, jsonError } from "@/lib/http";
+import { jsonError } from "@/lib/http";
+import { withRoute } from "@/lib/route-guard";
 import { createDatasetSchema } from "@/lib/validation";
 
-export async function GET() {
-  const identity = await getCurrentIdentity();
-
-  if (!identity) {
-    return jsonError("Unauthorized.", 401);
-  }
-
+export const GET = withRoute({ access: "user" }, async (identity) => {
   const datasets = await listDatasets({
     includeDisabled: identity.isDatasetAdmin,
   });
   return Response.json({ datasets });
-}
+});
 
-export async function POST(request: Request) {
-  const identity = await getCurrentIdentity();
+export const POST = withRoute(
+  { access: "admin", action: "upload CSV files" },
+  async (identity, request: Request) => {
+    const parsed = createDatasetSchema.safeParse(await request.json());
 
-  if (!identity) {
-    return jsonError("Unauthorized.", 401);
-  }
+    if (!parsed.success) {
+      return jsonError("Dataset payload is invalid.");
+    }
 
-  if (!identity.isDatasetAdmin) {
-    return jsonAdminOnlyError("upload CSV files");
-  }
+    if (!isDatasetStoragePath(parsed.data.blobPath)) {
+      return jsonError("Dataset storage path is invalid.", 403);
+    }
 
-  const parsed = createDatasetSchema.safeParse(await request.json());
+    const dataset = await createDataset({
+      ownerId: identity.ownerId,
+      actorEmail: identity.email,
+      ...parsed.data,
+    });
 
-  if (!parsed.success) {
-    return jsonError("Dataset payload is invalid.");
-  }
-
-  if (!isDatasetStoragePath(parsed.data.blobPath)) {
-    return jsonError("Dataset storage path is invalid.", 403);
-  }
-
-  const dataset = await createDataset({
-    ownerId: identity.ownerId,
-    actorEmail: identity.email,
-    ...parsed.data,
-  });
-
-  return Response.json({ dataset }, { status: 201 });
-}
+    return Response.json({ dataset }, { status: 201 });
+  },
+);

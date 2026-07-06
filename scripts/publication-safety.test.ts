@@ -25,10 +25,15 @@ function getTrackedTextFiles() {
     encoding: "utf8",
   });
 
-  return output
-    .split("\0")
-    .filter(Boolean)
-    .filter((filePath) => !BINARY_OR_GENERATED_EXTENSIONS.test(filePath));
+  return (
+    output
+      .split("\0")
+      .filter(Boolean)
+      .filter((filePath) => !BINARY_OR_GENERATED_EXTENSIONS.test(filePath))
+      // Tracked files can be deleted in the working tree before the deletion
+      // is staged; publication safety only applies to publishable contents.
+      .filter((filePath) => existsSync(filePath))
+  );
 }
 
 describe("publication safety", () => {

@@ -6,11 +6,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { clearDatasetRowsCache } from "@/components/dashboard/dataset-row-cache";
 import { trackAppEvent } from "@/lib/analytics-client";
+import { useMemo } from "react";
+
 import type {
   DatasetCountryFilterState,
   DatasetHotspotsFilterState,
   DatasetRegionFilterState,
-} from "@/lib/dataset-region-filtering";
+} from "@/lib/dataset-filtering";
 import { DashboardClient } from "./dashboard-client";
 import { useDatasetTableState } from "./use-dataset-table-state";
 
@@ -118,11 +120,17 @@ function DatasetTableStateProbe({
     datasetSource: "dashboard";
   };
 }) {
+  const filterSections = useMemo(
+    () => ({
+      region: regionFilter,
+      country: countryFilter,
+      hotspots: hotspotsFilter,
+    }),
+    [countryFilter, hotspotsFilter, regionFilter],
+  );
   const state = useDatasetTableState({
     dataset,
-    regionFilter,
-    countryFilter,
-    hotspotsFilter,
+    filterSections,
     analytics,
   });
 

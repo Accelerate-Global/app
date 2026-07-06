@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getCurrentIdentity } from "@/lib/auth";
@@ -42,7 +43,9 @@ describe("/api/iso-country-codes/refresh", () => {
     await expect(response.json()).resolves.toEqual({
       error: "Method not allowed.",
     });
-    expect(refreshIsoCountryCodeResourceFromOfficialSourceMock).not.toHaveBeenCalled();
+    expect(
+      refreshIsoCountryCodeResourceFromOfficialSourceMock,
+    ).not.toHaveBeenCalled();
   });
 
   it("rejects anonymous refresh requests", async () => {
@@ -51,7 +54,9 @@ describe("/api/iso-country-codes/refresh", () => {
     const response = await POST();
 
     expect(response.status).toBe(401);
-    expect(refreshIsoCountryCodeResourceFromOfficialSourceMock).not.toHaveBeenCalled();
+    expect(
+      refreshIsoCountryCodeResourceFromOfficialSourceMock,
+    ).not.toHaveBeenCalled();
   });
 
   it("rejects non-admin refresh requests", async () => {
@@ -70,7 +75,9 @@ describe("/api/iso-country-codes/refresh", () => {
     await expect(response.json()).resolves.toEqual({
       error: "Only admins can refresh country and territory codes.",
     });
-    expect(refreshIsoCountryCodeResourceFromOfficialSourceMock).not.toHaveBeenCalled();
+    expect(
+      refreshIsoCountryCodeResourceFromOfficialSourceMock,
+    ).not.toHaveBeenCalled();
   });
 
   it("returns live country and territory code resource for admins", async () => {
@@ -79,9 +86,11 @@ describe("/api/iso-country-codes/refresh", () => {
         "ISO OBP, UNTERM, UNSD M49, GENC, legacy FIPS, ROG3/GEC crosswalk, and curated Accelerate Global overlay",
       sourceUrl: "https://www.iso.org/obp/ui/#search/code/",
       sourceCollectionUrl: "https://www.iso.org/publication/PUB500001.html",
-      gencSourceUrl: "https://evs.nci.nih.gov/ftp1/GENC/NCIt-GENC_Terminology.txt",
+      gencSourceUrl:
+        "https://evs.nci.nih.gov/ftp1/GENC/NCIt-GENC_Terminology.txt",
       gencAboutUrl: "https://evs.nci.nih.gov/ftp1/GENC/About.html",
-      fipsSourceUrl: "https://nief.org/attribute-registry/codesets/FIPS10-4CountryCode/",
+      fipsSourceUrl:
+        "https://nief.org/attribute-registry/codesets/FIPS10-4CountryCode/",
       fipsWithdrawalUrl:
         "https://csrc.nist.gov/news/2008/announcing-approval-of-the-withdrawal-of-ten-fip-s",
       rog3SourceUrl:
@@ -136,13 +145,17 @@ describe("/api/iso-country-codes/refresh", () => {
         },
       ],
     } satisfies IsoCountryCodeResource;
-    refreshIsoCountryCodeResourceFromOfficialSourceMock.mockResolvedValue(resource);
+    refreshIsoCountryCodeResourceFromOfficialSourceMock.mockResolvedValue(
+      resource,
+    );
     mergeIsoCountryCodeEntryOverridesMock.mockResolvedValue(mergedResource);
 
     const response = await POST();
 
     expect(response.status).toBe(200);
-    expect(mergeIsoCountryCodeEntryOverridesMock).toHaveBeenCalledWith(resource);
+    expect(mergeIsoCountryCodeEntryOverridesMock).toHaveBeenCalledWith(
+      resource,
+    );
     await expect(response.json()).resolves.toEqual(mergedResource);
   });
 
@@ -165,5 +178,17 @@ describe("/api/iso-country-codes/refresh", () => {
     await expect(response.json()).resolves.toEqual({
       error: "Could not refresh country and territory codes.",
     });
+  });
+});
+
+describe("route guard integration", () => {
+  it("uses the centralized route guard", async () => {
+    const source = await readFile(
+      "src/app/api/iso-country-codes/refresh/route.ts",
+      "utf8",
+    );
+
+    expect(source).toContain('from "@/lib/route-guard"');
+    expect(source).toContain("withRoute(");
   });
 });

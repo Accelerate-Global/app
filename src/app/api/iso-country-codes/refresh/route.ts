@@ -1,6 +1,6 @@
-import { getCurrentIdentity } from "@/lib/auth";
 import { logError } from "@/lib/error-logging";
-import { jsonAdminOnlyError, jsonError } from "@/lib/http";
+import { jsonError } from "@/lib/http";
+import { withRoute } from "@/lib/route-guard";
 import {
   mergeIsoCountryCodeEntryOverrides,
   refreshIsoCountryCodeResourceFromOfficialSource,
@@ -13,22 +13,15 @@ export function GET() {
   );
 }
 
-export async function POST() {
-  const identity = await getCurrentIdentity();
-
-  if (!identity) {
-    return jsonError("Unauthorized.", 401);
-  }
-
-  if (!identity.isDatasetAdmin) {
-    return jsonAdminOnlyError("refresh country and territory codes");
-  }
-
-  try {
-    const resource = await refreshIsoCountryCodeResourceFromOfficialSource();
-    return Response.json(await mergeIsoCountryCodeEntryOverrides(resource));
-  } catch (error) {
-    logError("Failed to refresh country and territory codes", error);
-    return jsonError("Could not refresh country and territory codes.", 502);
-  }
-}
+export const POST = withRoute(
+  { access: "admin", action: "refresh country and territory codes" },
+  async () => {
+    try {
+      const resource = await refreshIsoCountryCodeResourceFromOfficialSource();
+      return Response.json(await mergeIsoCountryCodeEntryOverrides(resource));
+    } catch (error) {
+      logError("Failed to refresh country and territory codes", error);
+      return jsonError("Could not refresh country and territory codes.", 502);
+    }
+  },
+);

@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { startGoogleSheetsConnectionOAuth } from "@/lib/api-connections";
@@ -37,12 +38,15 @@ describe("/api/admin/api-connections/google-sheets/oauth/start", () => {
     getCurrentIdentityMock.mockResolvedValue(null);
 
     const response = await POST(
-      new Request("http://localhost/api/admin/api-connections/google-sheets/oauth/start", {
-        method: "POST",
-        body: JSON.stringify({
-          spreadsheetUrl: "https://docs.google.com/spreadsheets/d/sheet/edit",
-        }),
-      }),
+      new Request(
+        "http://localhost/api/admin/api-connections/google-sheets/oauth/start",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            spreadsheetUrl: "https://docs.google.com/spreadsheets/d/sheet/edit",
+          }),
+        },
+      ),
     );
 
     expect(response.status).toBe(401);
@@ -56,12 +60,15 @@ describe("/api/admin/api-connections/google-sheets/oauth/start", () => {
     });
 
     const response = await POST(
-      new Request("http://localhost/api/admin/api-connections/google-sheets/oauth/start", {
-        method: "POST",
-        body: JSON.stringify({
-          spreadsheetUrl: "https://docs.google.com/spreadsheets/d/sheet/edit",
-        }),
-      }),
+      new Request(
+        "http://localhost/api/admin/api-connections/google-sheets/oauth/start",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            spreadsheetUrl: "https://docs.google.com/spreadsheets/d/sheet/edit",
+          }),
+        },
+      ),
     );
 
     expect(response.status).toBe(403);
@@ -102,17 +109,32 @@ describe("/api/admin/api-connections/google-sheets/oauth/start", () => {
     );
 
     const response = await POST(
-      new Request("http://localhost/api/admin/api-connections/google-sheets/oauth/start", {
-        method: "POST",
-        body: JSON.stringify({
-          spreadsheetUrl: "https://example.com/sheet",
-        }),
-      }),
+      new Request(
+        "http://localhost/api/admin/api-connections/google-sheets/oauth/start",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            spreadsheetUrl: "https://example.com/sheet",
+          }),
+        },
+      ),
     );
 
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toEqual({
       error: "Enter a valid Google Sheet URL.",
     });
+  });
+});
+
+describe("route guard integration", () => {
+  it("uses the centralized route guard", async () => {
+    const source = await readFile(
+      "src/app/api/admin/api-connections/google-sheets/oauth/start/route.ts",
+      "utf8",
+    );
+
+    expect(source).toContain('from "@/lib/route-guard"');
+    expect(source).toContain("withRoute(");
   });
 });

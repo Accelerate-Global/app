@@ -55,6 +55,16 @@ vi.mock("@/lib/datasets", () => ({
       this.name = "DerivedDatasetMutationError";
     }
   },
+  DatasetDeleteConflictError: class DatasetDeleteConflictError extends Error {
+    readonly status = 409;
+
+    constructor(
+      message = "Datasets used as a backing source cannot be deleted while derived views still reference them.",
+    ) {
+      super(message);
+      this.name = "DatasetDeleteConflictError";
+    }
+  },
   deleteDataset: vi.fn(),
   getDataset: vi.fn(),
   updateDatasetDetails: vi.fn(),

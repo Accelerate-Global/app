@@ -18,7 +18,7 @@ The goal is to let users understand and adjust the rule visually:
 - Compact Watchlist row plus popup editor: `src/components/dashboard/dataset-view-switch-grid.tsx`
 - Interactive graph component: `src/components/dashboard/watchlist-population-believers-builder.tsx`
 - Rule engine and summary helpers: `src/lib/evangelical-population-believers-rule.ts`
-- Filter application: `src/lib/dataset-region-filtering.ts`
+- Filter application: `src/lib/dataset-filtering.ts`
 - Saved filter normalization and compatibility: `src/lib/saved-dataset-filters.ts`
 
 ## Rule Model

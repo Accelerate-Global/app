@@ -1,6 +1,14 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { readFile } from "node:fs/promises";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { clearDatasetRowsCache } from "@/components/dashboard/dataset-row-cache";
@@ -134,7 +142,10 @@ describe("DashboardClient", () => {
         });
       }
 
-      if (input === "/api/saved-tables/saved-table-1" && init?.method === "PATCH") {
+      if (
+        input === "/api/saved-tables/saved-table-1" &&
+        init?.method === "PATCH"
+      ) {
         return buildJsonResponse({
           savedTable: {
             ...createSavedTable(),
@@ -145,7 +156,9 @@ describe("DashboardClient", () => {
         });
       }
 
-      throw new Error(`Unexpected fetch: ${String(input)} ${init?.method ?? "GET"}`);
+      throw new Error(
+        `Unexpected fetch: ${String(input)} ${init?.method ?? "GET"}`,
+      );
     });
   });
 
@@ -165,10 +178,16 @@ describe("DashboardClient", () => {
 
     const editLink = screen.getByRole("link", { name: "Edit" });
 
-    expect(editLink.getAttribute("href")).toBe("/dashboard/datasets/dataset-1/edit");
+    expect(editLink.getAttribute("href")).toBe(
+      "/dashboard/datasets/dataset-1/edit",
+    );
     expect(screen.queryByText("Reference Resources")).toBeNull();
-    expect(screen.queryByRole("link", { name: "Browse reference resources" })).toBeNull();
-    expect(screen.queryByRole("heading", { name: "Saved Datasets" })).toBeNull();
+    expect(
+      screen.queryByRole("link", { name: "Browse reference resources" }),
+    ).toBeNull();
+    expect(
+      screen.queryByRole("heading", { name: "Saved Datasets" }),
+    ).toBeNull();
     expect(screen.queryByText("No saved tables yet.")).toBeNull();
     expect(screen.queryByRole("dialog", { name: "Edit dataset" })).toBeNull();
     expect(trackAppEventMock).toHaveBeenCalledWith(
@@ -235,7 +254,9 @@ describe("DashboardClient", () => {
         throw abortError;
       }
 
-      throw new Error(`Unexpected fetch: ${String(input)} ${init?.method ?? "GET"}`);
+      throw new Error(
+        `Unexpected fetch: ${String(input)} ${init?.method ?? "GET"}`,
+      );
     });
 
     render(
@@ -281,7 +302,9 @@ describe("DashboardClient", () => {
       />,
     );
 
-    expect(screen.getByRole("heading", { name: "Saved Datasets" })).toBeTruthy();
+    expect(
+      screen.getByRole("heading", { name: "Saved Datasets" }),
+    ).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Details" }));
 
     const dialog = await screen.findByRole("dialog", {
@@ -294,17 +317,22 @@ describe("DashboardClient", () => {
     fireEvent.change(within(dialog).getByLabelText("Details"), {
       target: { value: "Saved from dataset detail page." },
     });
-    fireEvent.click(within(dialog).getByRole("button", { name: "Save changes" }));
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: "Save changes" }),
+    );
 
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith("/api/saved-tables/saved-table-1", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: "North Africa saved",
-          details: "Saved from dataset detail page.",
-        }),
-      });
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/saved-tables/saved-table-1",
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: "North Africa saved",
+            details: "Saved from dataset detail page.",
+          }),
+        },
+      );
     });
 
     await waitFor(() => {
@@ -326,5 +354,17 @@ describe("DashboardClient", () => {
         filter_sections_enabled: "region",
       }),
     );
+  });
+});
+
+describe("dashboard filter analytics boundary", () => {
+  it("reads enabled filter sections from the dataset filtering module", async () => {
+    const source = await readFile(
+      "src/components/dashboard/dashboard-client.tsx",
+      "utf8",
+    );
+
+    expect(source).toContain('from "@/lib/dataset-filtering"');
+    expect(source).toContain("getEnabledFilterSections");
   });
 });

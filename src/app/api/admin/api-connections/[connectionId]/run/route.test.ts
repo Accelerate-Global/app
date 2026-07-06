@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -91,10 +92,13 @@ describe("/api/admin/api-connections/[connectionId]/run", () => {
     getCurrentIdentityMock.mockResolvedValue(null);
 
     const response = await POST(
-      new Request(`http://localhost/api/admin/api-connections/${connection.id}/run`, {
-        method: "POST",
-        body: JSON.stringify({ importEnabled: true }),
-      }),
+      new Request(
+        `http://localhost/api/admin/api-connections/${connection.id}/run`,
+        {
+          method: "POST",
+          body: JSON.stringify({ importEnabled: true }),
+        },
+      ),
       context,
     );
 
@@ -109,10 +113,13 @@ describe("/api/admin/api-connections/[connectionId]/run", () => {
     });
 
     const response = await POST(
-      new Request(`http://localhost/api/admin/api-connections/${connection.id}/run`, {
-        method: "POST",
-        body: JSON.stringify({ importEnabled: true }),
-      }),
+      new Request(
+        `http://localhost/api/admin/api-connections/${connection.id}/run`,
+        {
+          method: "POST",
+          body: JSON.stringify({ importEnabled: true }),
+        },
+      ),
       context,
     );
 
@@ -124,10 +131,13 @@ describe("/api/admin/api-connections/[connectionId]/run", () => {
     startApiConnectionRunMock.mockResolvedValue({ connection, run });
 
     const response = await POST(
-      new Request(`http://localhost/api/admin/api-connections/${connection.id}/run`, {
-        method: "POST",
-        body: JSON.stringify({ importEnabled: true }),
-      }),
+      new Request(
+        `http://localhost/api/admin/api-connections/${connection.id}/run`,
+        {
+          method: "POST",
+          body: JSON.stringify({ importEnabled: true }),
+        },
+      ),
       context,
     );
 
@@ -146,14 +156,29 @@ describe("/api/admin/api-connections/[connectionId]/run", () => {
     startApiConnectionRunMock.mockResolvedValue(null);
 
     const response = await POST(
-      new Request(`http://localhost/api/admin/api-connections/${connection.id}/run`, {
-        method: "POST",
-        body: JSON.stringify({ importEnabled: false }),
-      }),
+      new Request(
+        `http://localhost/api/admin/api-connections/${connection.id}/run`,
+        {
+          method: "POST",
+          body: JSON.stringify({ importEnabled: false }),
+        },
+      ),
       context,
     );
 
     expect(response.status).toBe(404);
     expect(afterMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("route guard integration", () => {
+  it("uses the centralized route guard", async () => {
+    const source = await readFile(
+      "src/app/api/admin/api-connections/[connectionId]/run/route.ts",
+      "utf8",
+    );
+
+    expect(source).toContain('from "@/lib/route-guard"');
+    expect(source).toContain("withRoute(");
   });
 });

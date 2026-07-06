@@ -1,7 +1,7 @@
-import { getCurrentIdentity } from "@/lib/auth";
 import { buildAuthConfirmUrl } from "@/lib/auth-redirect";
 import { logError } from "@/lib/error-logging";
-import { jsonAdminOnlyError, jsonError } from "@/lib/http";
+import { jsonError } from "@/lib/http";
+import { withRoute } from "@/lib/route-guard";
 import {
   sendWorkspaceUserPasswordResetEmail,
   WorkspaceUserActionError,
@@ -15,44 +15,37 @@ type UserPasswordResetContext = {
   }>;
 };
 
-export async function POST(request: Request, context: UserPasswordResetContext) {
-  const identity = await getCurrentIdentity();
+export const POST = withRoute(
+  { access: "admin", action: "manage users" },
+  async (identity, request: Request, context: UserPasswordResetContext) => {
+    try {
+      const { userId } = await context.params;
 
-  if (!identity) {
-    return jsonError("Unauthorized.", 401);
-  }
+      await sendWorkspaceUserPasswordResetEmail({
+        currentUserRole: identity.workspaceRole,
+        userId,
+        redirectTo: buildAuthConfirmUrl(
+          new URL(request.url).origin,
+          "/reset-password",
+        ),
+      });
 
-  if (!identity.isDatasetAdmin) {
-    return jsonAdminOnlyError("manage users");
-  }
+      return Response.json({ ok: true });
+    } catch (error) {
+      if (error instanceof WorkspaceUserNotFoundError) {
+        return jsonError(error.message, 404);
+      }
 
-  try {
-    const { userId } = await context.params;
+      if (error instanceof WorkspaceUserActionError) {
+        return jsonError(error.message, error.status);
+      }
 
-    await sendWorkspaceUserPasswordResetEmail({
-      currentUserRole: identity.workspaceRole,
-      userId,
-      redirectTo: buildAuthConfirmUrl(
-        new URL(request.url).origin,
-        "/reset-password",
-      ),
-    });
+      if (error instanceof WorkspaceUserPermissionError) {
+        return jsonError(error.message, error.status);
+      }
 
-    return Response.json({ ok: true });
-  } catch (error) {
-    if (error instanceof WorkspaceUserNotFoundError) {
-      return jsonError(error.message, 404);
+      logError("Failed to send workspace user password reset email", error);
+      return jsonError("Could not send the password reset email.", 500);
     }
-
-    if (error instanceof WorkspaceUserActionError) {
-      return jsonError(error.message, error.status);
-    }
-
-    if (error instanceof WorkspaceUserPermissionError) {
-      return jsonError(error.message, error.status);
-    }
-
-    logError("Failed to send workspace user password reset email", error);
-    return jsonError("Could not send the password reset email.", 500);
-  }
-}
+  },
+);

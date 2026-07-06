@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getCurrentIdentity } from "@/lib/auth";
@@ -63,5 +64,14 @@ describe("/api/field-sources", () => {
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual(payload);
+  });
+});
+
+describe("route guard integration", () => {
+  it("uses the centralized route guard", async () => {
+    const source = await readFile("src/app/api/field-sources/route.ts", "utf8");
+
+    expect(source).toContain('from "@/lib/route-guard"');
+    expect(source).toContain("withRoute(");
   });
 });

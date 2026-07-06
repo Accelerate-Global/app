@@ -4,11 +4,11 @@ import {
   getAnalyticsEventPropertyKeys,
   getAnalyticsWorkspaceRole,
   getAnalyticsRouteFromPathname,
-  getEnabledFilterSections,
   getSortingKeys,
   isAppAnalyticsEventName,
   isAppAnalyticsRoute,
 } from "@/lib/analytics";
+import { getEnabledFilterSections } from "@/lib/dataset-filtering";
 
 describe("analytics helpers", () => {
   it("serializes enabled filter sections", () => {

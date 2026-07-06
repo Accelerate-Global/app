@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 
 import { logError } from "@/lib/error-logging";
-import { getCurrentIdentity } from "@/lib/auth";
 import { jsonError } from "@/lib/http";
+import { withRoute } from "@/lib/route-guard";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -18,15 +18,9 @@ import {
   isWorkspaceSuperAdmin,
 } from "@/lib/workspace-role";
 
-export async function POST() {
+export const POST = withRoute({ access: "user" }, async (identity) => {
   if (!hasSupabaseConfig()) {
     return jsonError("Supabase is not configured for account management.", 503);
-  }
-
-  const identity = await getCurrentIdentity();
-
-  if (!identity) {
-    return jsonError("Unauthorized.", 401);
   }
 
   if (!canDisableOwnAccount(identity.workspaceRole)) {
@@ -95,4 +89,4 @@ export async function POST() {
     logError("Failed to disable account", error);
     return jsonError("Could not disable the current account.", 500);
   }
-}
+});

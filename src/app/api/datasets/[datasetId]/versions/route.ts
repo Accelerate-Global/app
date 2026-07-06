@@ -1,6 +1,6 @@
-import { getCurrentIdentity } from "@/lib/auth";
 import { listDatasetVersions } from "@/lib/datasets";
-import { jsonAdminOnlyError, jsonError } from "@/lib/http";
+import { jsonError } from "@/lib/http";
+import { withRoute } from "@/lib/route-guard";
 
 type DatasetVersionsContext = {
   params: Promise<{
@@ -8,23 +8,16 @@ type DatasetVersionsContext = {
   }>;
 };
 
-export async function GET(_request: Request, context: DatasetVersionsContext) {
-  const identity = await getCurrentIdentity();
+export const GET = withRoute(
+  { access: "admin", action: "read dataset upload history" },
+  async (_identity, _request: Request, context: DatasetVersionsContext) => {
+    const { datasetId } = await context.params;
+    const versions = await listDatasetVersions(datasetId);
 
-  if (!identity) {
-    return jsonError("Unauthorized.", 401);
-  }
+    if (!versions) {
+      return jsonError("Dataset not found.", 404);
+    }
 
-  if (!identity.isDatasetAdmin) {
-    return jsonAdminOnlyError("read dataset upload history");
-  }
-
-  const { datasetId } = await context.params;
-  const versions = await listDatasetVersions(datasetId);
-
-  if (!versions) {
-    return jsonError("Dataset not found.", 404);
-  }
-
-  return Response.json({ versions });
-}
+    return Response.json({ versions });
+  },
+);

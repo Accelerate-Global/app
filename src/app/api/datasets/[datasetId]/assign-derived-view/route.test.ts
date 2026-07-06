@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getCurrentIdentity } from "@/lib/auth";
@@ -45,7 +46,8 @@ const dataset = {
   backingDatasetId: "f0000000-0000-4000-8000-000000000099",
   sortOrder: 0,
   fileName: "South Asia",
-  blobUrl: "https://example.supabase.co/storage/v1/object/datasets/datasets/csv/south-asia.csv",
+  blobUrl:
+    "https://example.supabase.co/storage/v1/object/datasets/datasets/csv/south-asia.csv",
   blobPath: "datasets/csv/south-asia.csv",
   isPrimary: false,
   isPublic: true,
@@ -119,10 +121,13 @@ describe("/api/datasets/[datasetId]/assign-derived-view", () => {
     getCurrentIdentityMock.mockResolvedValue(null);
 
     const response = await POST(
-      new Request("http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001/assign-derived-view", {
-        method: "POST",
-        body: JSON.stringify(payload),
-      }),
+      new Request(
+        "http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001/assign-derived-view",
+        {
+          method: "POST",
+          body: JSON.stringify(payload),
+        },
+      ),
       context,
     );
 
@@ -137,10 +142,13 @@ describe("/api/datasets/[datasetId]/assign-derived-view", () => {
     });
 
     const response = await POST(
-      new Request("http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001/assign-derived-view", {
-        method: "POST",
-        body: JSON.stringify(payload),
-      }),
+      new Request(
+        "http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001/assign-derived-view",
+        {
+          method: "POST",
+          body: JSON.stringify(payload),
+        },
+      ),
       context,
     );
 
@@ -150,10 +158,13 @@ describe("/api/datasets/[datasetId]/assign-derived-view", () => {
 
   it("rejects invalid payloads", async () => {
     const response = await POST(
-      new Request("http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001/assign-derived-view", {
-        method: "POST",
-        body: JSON.stringify({ sourceDatasetId: "bad-id" }),
-      }),
+      new Request(
+        "http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001/assign-derived-view",
+        {
+          method: "POST",
+          body: JSON.stringify({ sourceDatasetId: "bad-id" }),
+        },
+      ),
       context,
     );
 
@@ -168,10 +179,13 @@ describe("/api/datasets/[datasetId]/assign-derived-view", () => {
     assignDatasetDerivedViewMock.mockResolvedValue(dataset);
 
     const response = await POST(
-      new Request("http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001/assign-derived-view", {
-        method: "POST",
-        body: JSON.stringify(payload),
-      }),
+      new Request(
+        "http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001/assign-derived-view",
+        {
+          method: "POST",
+          body: JSON.stringify(payload),
+        },
+      ),
       context,
     );
 
@@ -188,10 +202,13 @@ describe("/api/datasets/[datasetId]/assign-derived-view", () => {
     assignDatasetDerivedViewMock.mockResolvedValue(null);
 
     const response = await POST(
-      new Request("http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001/assign-derived-view", {
-        method: "POST",
-        body: JSON.stringify(payload),
-      }),
+      new Request(
+        "http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001/assign-derived-view",
+        {
+          method: "POST",
+          body: JSON.stringify(payload),
+        },
+      ),
       context,
     );
 
@@ -202,16 +219,21 @@ describe("/api/datasets/[datasetId]/assign-derived-view", () => {
   });
 
   it("returns self-backing conflicts from the dataset helper", async () => {
-    const { DerivedDatasetSourceConflictError } = await import("@/lib/datasets");
+    const { DerivedDatasetSourceConflictError } = await import(
+      "@/lib/datasets"
+    );
     assignDatasetDerivedViewMock.mockRejectedValue(
       new DerivedDatasetSourceConflictError(),
     );
 
     const response = await POST(
-      new Request("http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001/assign-derived-view", {
-        method: "POST",
-        body: JSON.stringify(payload),
-      }),
+      new Request(
+        "http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001/assign-derived-view",
+        {
+          method: "POST",
+          body: JSON.stringify(payload),
+        },
+      ),
       context,
     );
 
@@ -220,5 +242,17 @@ describe("/api/datasets/[datasetId]/assign-derived-view", () => {
       error:
         "Derived dataset views cannot reference themselves as a backing dataset.",
     });
+  });
+});
+
+describe("route guard integration", () => {
+  it("uses the centralized route guard", async () => {
+    const source = await readFile(
+      "src/app/api/datasets/[datasetId]/assign-derived-view/route.ts",
+      "utf8",
+    );
+
+    expect(source).toContain('from "@/lib/route-guard"');
+    expect(source).toContain("withRoute(");
   });
 });

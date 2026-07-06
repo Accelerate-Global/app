@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createApiConnection, listApiConnections } from "@/lib/api-connections";
@@ -128,5 +129,17 @@ describe("/api/admin/api-connections", () => {
       error: "API connection profiles are managed from the codebase.",
     });
     expect(createApiConnectionMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("route guard integration", () => {
+  it("uses the centralized route guard", async () => {
+    const source = await readFile(
+      "src/app/api/admin/api-connections/route.ts",
+      "utf8",
+    );
+
+    expect(source).toContain('from "@/lib/route-guard"');
+    expect(source).toContain("withRoute(");
   });
 });

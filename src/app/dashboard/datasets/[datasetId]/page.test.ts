@@ -236,6 +236,9 @@ describe("/dashboard/datasets/[datasetId]", () => {
         metric: "unique_uupgs",
         countryCount: 10,
       },
+      // An open preset is a normalized SavedDatasetFilterState whose sorting
+      // is empty; saved-table sorting travels via initialSorting instead.
+      sorting: [],
     });
     expect(props.initialSorting).toEqual([
       {

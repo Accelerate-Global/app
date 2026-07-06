@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getCurrentIdentity } from "@/lib/auth";
@@ -25,7 +26,9 @@ vi.mock("@/lib/analytics-store", async () => {
 });
 
 const getCurrentIdentityMock = vi.mocked(getCurrentIdentity);
-const upsertAnalyticsFailureTriageMock = vi.mocked(upsertAnalyticsFailureTriage);
+const upsertAnalyticsFailureTriageMock = vi.mocked(
+  upsertAnalyticsFailureTriage,
+);
 const logErrorMock = vi.mocked(logError);
 
 const identity = {
@@ -101,7 +104,8 @@ describe("/api/admin/analytics/failure-triage", () => {
 
   it("upserts analytics failure triage for admins", async () => {
     const triage = {
-      fingerprint: "dataset_rows_failed|row_load_failed|dataset_detail|dataset_table",
+      fingerprint:
+        "dataset_rows_failed|row_load_failed|dataset_detail|dataset_table",
       status: "resolved" as const,
       note: "Rows endpoint fixed.",
       triagedByOwnerId: "admin-1",
@@ -149,5 +153,17 @@ describe("/api/admin/analytics/failure-triage", () => {
       "Failed to update analytics failure triage",
       error,
     );
+  });
+});
+
+describe("route guard integration", () => {
+  it("uses the centralized route guard", async () => {
+    const source = await readFile(
+      "src/app/api/admin/analytics/failure-triage/route.ts",
+      "utf8",
+    );
+
+    expect(source).toContain('from "@/lib/route-guard"');
+    expect(source).toContain("withRoute(");
   });
 });

@@ -1,6 +1,6 @@
-import { getCurrentIdentity } from "@/lib/auth";
 import { logError } from "@/lib/error-logging";
-import { jsonAdminOnlyError, jsonError } from "@/lib/http";
+import { jsonError } from "@/lib/http";
+import { withRoute } from "@/lib/route-guard";
 import { refreshRopCodeResourceFromHis } from "@/lib/rop-codes";
 
 export function GET() {
@@ -10,21 +10,14 @@ export function GET() {
   );
 }
 
-export async function POST() {
-  const identity = await getCurrentIdentity();
-
-  if (!identity) {
-    return jsonError("Unauthorized.", 401);
-  }
-
-  if (!identity.isDatasetAdmin) {
-    return jsonAdminOnlyError("refresh ROP codes");
-  }
-
-  try {
-    return Response.json(await refreshRopCodeResourceFromHis());
-  } catch (error) {
-    logError("Failed to refresh ROP codes", error);
-    return jsonError("Could not refresh ROP codes.", 502);
-  }
-}
+export const POST = withRoute(
+  { access: "admin", action: "refresh ROP codes" },
+  async () => {
+    try {
+      return Response.json(await refreshRopCodeResourceFromHis());
+    } catch (error) {
+      logError("Failed to refresh ROP codes", error);
+      return jsonError("Could not refresh ROP codes.", 502);
+    }
+  },
+);

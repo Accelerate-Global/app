@@ -1,9 +1,9 @@
-import { getCurrentIdentity } from "@/lib/auth";
 import {
   DerivedDatasetMutationError,
   insertDatasetRowBatch,
 } from "@/lib/datasets";
-import { jsonAdminOnlyError, jsonError } from "@/lib/http";
+import { jsonError } from "@/lib/http";
+import { withRoute } from "@/lib/route-guard";
 import { rowBatchSchema } from "@/lib/validation";
 
 type RowBatchContext = {
@@ -12,42 +12,35 @@ type RowBatchContext = {
   }>;
 };
 
-export async function POST(request: Request, context: RowBatchContext) {
-  const identity = await getCurrentIdentity();
+export const POST = withRoute(
+  { access: "admin", action: "upload CSV data" },
+  async (_identity, request: Request, context: RowBatchContext) => {
+    const { datasetId } = await context.params;
+    const parsed = rowBatchSchema.safeParse(await request.json());
 
-  if (!identity) {
-    return jsonError("Unauthorized.", 401);
-  }
-
-  if (!identity.isDatasetAdmin) {
-    return jsonAdminOnlyError("upload CSV data");
-  }
-
-  const { datasetId } = await context.params;
-  const parsed = rowBatchSchema.safeParse(await request.json());
-
-  if (!parsed.success) {
-    return jsonError("Row batch payload is invalid.");
-  }
-
-  let dataset;
-
-  try {
-    dataset = await insertDatasetRowBatch({
-      datasetId,
-      ...parsed.data,
-    });
-  } catch (error) {
-    if (error instanceof DerivedDatasetMutationError) {
-      return jsonError(error.message, error.status);
+    if (!parsed.success) {
+      return jsonError("Row batch payload is invalid.");
     }
 
-    throw error;
-  }
+    let dataset;
 
-  if (!dataset) {
-    return jsonError("Dataset not found.", 404);
-  }
+    try {
+      dataset = await insertDatasetRowBatch({
+        datasetId,
+        ...parsed.data,
+      });
+    } catch (error) {
+      if (error instanceof DerivedDatasetMutationError) {
+        return jsonError(error.message, error.status);
+      }
 
-  return Response.json({ dataset });
-}
+      throw error;
+    }
+
+    if (!dataset) {
+      return jsonError("Dataset not found.", 404);
+    }
+
+    return Response.json({ dataset });
+  },
+);

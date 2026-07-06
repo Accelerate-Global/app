@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getCurrentIdentity } from "@/lib/auth";
@@ -140,7 +141,9 @@ describe("/api/admin/users/[userId]", () => {
     );
 
     expect(response.status).toBe(404);
-    await expect(response.json()).resolves.toEqual({ error: "User not found." });
+    await expect(response.json()).resolves.toEqual({
+      error: "User not found.",
+    });
   });
 
   it("returns permission failures from the admin helper", async () => {
@@ -201,5 +204,17 @@ describe("/api/admin/users/[userId]", () => {
     await expect(response.json()).resolves.toEqual({
       error: "Could not update the user.",
     });
+  });
+});
+
+describe("route guard integration", () => {
+  it("uses the centralized route guard", async () => {
+    const source = await readFile(
+      "src/app/api/admin/users/[userId]/route.ts",
+      "utf8",
+    );
+
+    expect(source).toContain('from "@/lib/route-guard"');
+    expect(source).toContain("withRoute(");
   });
 });

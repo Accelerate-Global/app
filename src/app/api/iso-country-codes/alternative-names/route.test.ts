@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getCurrentIdentity } from "@/lib/auth";
@@ -52,7 +53,8 @@ const resource: IsoCountryCodeResource = {
   sourceCollectionUrl: "https://www.iso.org/publication/PUB500001.html",
   gencSourceUrl: "https://evs.nci.nih.gov/ftp1/GENC/NCIt-GENC_Terminology.txt",
   gencAboutUrl: "https://evs.nci.nih.gov/ftp1/GENC/About.html",
-  fipsSourceUrl: "https://nief.org/attribute-registry/codesets/FIPS10-4CountryCode/",
+  fipsSourceUrl:
+    "https://nief.org/attribute-registry/codesets/FIPS10-4CountryCode/",
   fipsWithdrawalUrl:
     "https://csrc.nist.gov/news/2008/announcing-approval-of-the-withdrawal-of-ten-fip-s",
   rog3SourceUrl:
@@ -60,7 +62,8 @@ const resource: IsoCountryCodeResource = {
   rog3HisRegistryUrl: "https://hisregistries.org/rog/",
   rog3HisCrossReferenceUrl:
     "https://hisregistries.org/wp-content/uploads/filebase/rog/CountryCodeCrossReference_2.pdf",
-  untermSourceUrl: "https://conferences.unite.un.org/untermapi/api/term/downloadCountries",
+  untermSourceUrl:
+    "https://conferences.unite.un.org/untermapi/api/term/downloadCountries",
   m49SourceUrl: "https://unstats.un.org/unsd/methodology/m49/overview/",
   overlaySourceName: "Accelerate Global - Spec Sheet - ISO3.csv",
   sourceRetrievedAt: "2026-05-06T00:00:00.000Z",
@@ -71,10 +74,13 @@ const resource: IsoCountryCodeResource = {
 };
 
 function buildRequest(payload: unknown) {
-  return new Request("https://example.test/api/iso-country-codes/alternative-names", {
-    method: "PATCH",
-    body: JSON.stringify(payload),
-  });
+  return new Request(
+    "https://example.test/api/iso-country-codes/alternative-names",
+    {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    },
+  );
 }
 
 describe("/api/iso-country-codes/alternative-names", () => {
@@ -158,5 +164,17 @@ describe("/api/iso-country-codes/alternative-names", () => {
 
     expect(response.status).toBe(400);
     expect(updateIsoCountryCodeAlternativeNamesMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("route guard integration", () => {
+  it("uses the centralized route guard", async () => {
+    const source = await readFile(
+      "src/app/api/iso-country-codes/alternative-names/route.ts",
+      "utf8",
+    );
+
+    expect(source).toContain('from "@/lib/route-guard"');
+    expect(source).toContain("withRoute(");
   });
 });

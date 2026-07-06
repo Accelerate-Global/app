@@ -4,9 +4,9 @@ import {
   ApiConnectionError,
   confirmGoogleSheetsConnectionDraft,
 } from "@/lib/api-connections";
-import { getCurrentIdentity } from "@/lib/auth";
 import { logError } from "@/lib/error-logging";
-import { jsonAdminOnlyError, jsonError } from "@/lib/http";
+import { jsonError } from "@/lib/http";
+import { withRoute } from "@/lib/route-guard";
 
 const googleSheetsConfirmSchema = z.object({
   selectedSheetIds: z.array(z.number().int().nonnegative()).min(1).max(50),
@@ -19,40 +19,33 @@ type GoogleSheetsConfirmContext = {
   }>;
 };
 
-export async function POST(request: Request, context: GoogleSheetsConfirmContext) {
-  const identity = await getCurrentIdentity();
+export const POST = withRoute(
+  { access: "admin", action: "connect Google Sheets" },
+  async (identity, request: Request, context: GoogleSheetsConfirmContext) => {
+    const parsed = googleSheetsConfirmSchema.safeParse(await request.json());
 
-  if (!identity) {
-    return jsonError("Unauthorized.", 401);
-  }
-
-  if (!identity.isDatasetAdmin) {
-    return jsonAdminOnlyError("connect Google Sheets");
-  }
-
-  const parsed = googleSheetsConfirmSchema.safeParse(await request.json());
-
-  if (!parsed.success) {
-    return jsonError("Google Sheets tab selection is invalid.");
-  }
-
-  const { draftId } = await context.params;
-
-  try {
-    const connections = await confirmGoogleSheetsConnectionDraft({
-      identity,
-      draftId,
-      selectedSheetIds: parsed.data.selectedSheetIds,
-      datasetClassification: parsed.data.datasetClassification,
-    });
-
-    return Response.json({ connections }, { status: 201 });
-  } catch (error) {
-    if (error instanceof ApiConnectionError) {
-      return jsonError(error.message, error.status);
+    if (!parsed.success) {
+      return jsonError("Google Sheets tab selection is invalid.");
     }
 
-    logError("Failed to confirm Google Sheets connection", error);
-    return jsonError("Could not create Google Sheets connections.", 500);
-  }
-}
+    const { draftId } = await context.params;
+
+    try {
+      const connections = await confirmGoogleSheetsConnectionDraft({
+        identity,
+        draftId,
+        selectedSheetIds: parsed.data.selectedSheetIds,
+        datasetClassification: parsed.data.datasetClassification,
+      });
+
+      return Response.json({ connections }, { status: 201 });
+    } catch (error) {
+      if (error instanceof ApiConnectionError) {
+        return jsonError(error.message, error.status);
+      }
+
+      logError("Failed to confirm Google Sheets connection", error);
+      return jsonError("Could not create Google Sheets connections.", 500);
+    }
+  },
+);

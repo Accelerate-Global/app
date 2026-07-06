@@ -1,37 +1,32 @@
-import { getCurrentIdentity } from "@/lib/auth";
 import { logError } from "@/lib/error-logging";
-import { jsonAdminOnlyError, jsonError } from "@/lib/http";
+import { jsonError } from "@/lib/http";
+import { withRoute } from "@/lib/route-guard";
 import { upsertAnalyticsFailureTriage } from "@/lib/analytics-store";
 import { analyticsFailureTriagePatchSchema } from "@/lib/validation";
 
-export async function PATCH(request: Request) {
-  const identity = await getCurrentIdentity();
+export const PATCH = withRoute(
+  { access: "admin", action: "triage analytics failures" },
+  async (identity, request: Request) => {
+    const parsed = analyticsFailureTriagePatchSchema.safeParse(
+      await request.json(),
+    );
 
-  if (!identity) {
-    return jsonError("Unauthorized.", 401);
-  }
+    if (!parsed.success) {
+      return jsonError("Analytics failure triage payload is invalid.");
+    }
 
-  if (!identity.isDatasetAdmin) {
-    return jsonAdminOnlyError("triage analytics failures");
-  }
+    try {
+      const triage = await upsertAnalyticsFailureTriage({
+        fingerprint: parsed.data.fingerprint,
+        status: parsed.data.status,
+        note: parsed.data.note,
+        triagedByOwnerId: identity.ownerId,
+      });
 
-  const parsed = analyticsFailureTriagePatchSchema.safeParse(await request.json());
-
-  if (!parsed.success) {
-    return jsonError("Analytics failure triage payload is invalid.");
-  }
-
-  try {
-    const triage = await upsertAnalyticsFailureTriage({
-      fingerprint: parsed.data.fingerprint,
-      status: parsed.data.status,
-      note: parsed.data.note,
-      triagedByOwnerId: identity.ownerId,
-    });
-
-    return Response.json({ triage });
-  } catch (error) {
-    logError("Failed to update analytics failure triage", error);
-    return jsonError("Could not update analytics failure triage.", 500);
-  }
-}
+      return Response.json({ triage });
+    } catch (error) {
+      logError("Failed to update analytics failure triage", error);
+      return jsonError("Could not update analytics failure triage.", 500);
+    }
+  },
+);

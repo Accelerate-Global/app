@@ -440,7 +440,7 @@ describe("fetchArcgisFeaturePages", () => {
 describe("api connection run artifact storage", () => {
   it("uploads archived artifacts with the dedicated bucket and bare JSON content type", async () => {
     const source = await readFile(
-      path.join(process.cwd(), "src/lib/api-connections.ts"),
+      path.join(process.cwd(), "src/lib/api-connections/index.ts"),
       "utf8",
     );
 
@@ -458,13 +458,11 @@ describe("api connection run artifact storage", () => {
 describe("api connection import snapshots", () => {
   it("uses the shared CSV cell escaping helper for import snapshot CSV", async () => {
     const source = await readFile(
-      path.join(process.cwd(), "src/lib/api-connections.ts"),
+      path.join(process.cwd(), "src/lib/api-connections/core.ts"),
       "utf8",
     );
 
-    expect(source).toContain(
-      'import { chunkRows, escapeCsvCell, normalizeHeaders, sanitizeFileName } from "@/lib/csv";',
-    );
+    expect(source).toContain('import { escapeCsvCell, normalizeHeaders } from "@/lib/csv";');
     expect(source).toContain("input.columns.map((column) => escapeCsvCell(column.label))");
     expect(source).toContain("input.columns.map((column) => escapeCsvCell(row[column.key] ?? \"\"))");
     expect(source).not.toContain("function escapeCsvCell");
@@ -492,7 +490,7 @@ describe("createApiConnectionRunRequest", () => {
 describe("api connection run actor identity", () => {
   it("hydrates replayed run identities as admin workspace actors", async () => {
     const source = await readFile(
-      path.join(process.cwd(), "src/lib/api-connections.ts"),
+      path.join(process.cwd(), "src/lib/api-connections/index.ts"),
       "utf8",
     );
 
@@ -502,17 +500,25 @@ describe("api connection run actor identity", () => {
 });
 
 describe("Google Sheets provider runs", () => {
-  it("routes Google Sheets connections through fixed provider helpers and redacts OAuth secrets", async () => {
-    const source = await readFile(
-      path.join(process.cwd(), "src/lib/api-connections.ts"),
+  it("routes Google Sheets connections through the provider adapter and redacts OAuth secrets", async () => {
+    const adapterSource = await readFile(
+      path.join(process.cwd(), "src/lib/api-connections/providers/google-sheets.ts"),
+      "utf8",
+    );
+    const orchestratorSource = await readFile(
+      path.join(process.cwd(), "src/lib/api-connections/index.ts"),
       "utf8",
     );
 
-    expect(source).toContain("if (connection.provider === GOOGLE_SHEETS_PROVIDER)");
-    expect(source).toContain("fetchGoogleSheetsConnectionOutput");
-    expect(source).toContain('input.secrets.set("google_refresh_token"');
-    expect(source).toContain('input.secrets.set("google_access_token"');
-    expect(source).toContain("const redactedBody = redactSecrets(body, secrets)");
-    expect(source).toContain("await bindGoogleSheetsConnectionTarget");
+    expect(adapterSource).toContain(
+      "connection.provider === GOOGLE_SHEETS_PROVIDER",
+    );
+    expect(adapterSource).toContain("fetchGoogleSheetsConnectionOutput");
+    expect(adapterSource).toContain('input.secrets.set("google_refresh_token"');
+    expect(adapterSource).toContain('input.secrets.set("google_access_token"');
+    expect(orchestratorSource).toContain(
+      "const redactedBody = redactSecrets(body, secrets)",
+    );
+    expect(orchestratorSource).toContain("await bindGoogleSheetsConnectionTarget");
   });
 });

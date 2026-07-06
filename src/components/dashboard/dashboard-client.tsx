@@ -12,10 +12,10 @@ import { SavedTableDetailSheet } from "@/components/dashboard/saved-table-detail
 import { SavedTablesGrid } from "@/components/dashboard/saved-tables-grid";
 import {
   buildAnalyticsContext,
-  getEnabledFilterSections,
   type AnalyticsWorkspaceRole,
   withAnalyticsContext,
 } from "@/lib/analytics";
+import { getEnabledFilterSections } from "@/lib/dataset-filtering";
 import type { DatasetSummary, SavedDatasetTable } from "@/lib/api-types";
 import { trackAppEvent } from "@/lib/analytics-client";
 

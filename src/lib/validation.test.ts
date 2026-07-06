@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 
 import * as validationModule from "@/lib/validation";
@@ -425,7 +426,11 @@ describe("datasetAssignDerivedViewSchema", () => {
     });
 
     expect(result.success).toBe(false);
-    expect(result.error?.issues.some((issue) => issue.path.includes("selectedRegionIds"))).toBe(true);
+    expect(
+      result.error?.issues.some((issue) =>
+        issue.path.includes("selectedRegionIds"),
+      ),
+    ).toBe(true);
   });
 });
 
@@ -557,7 +562,9 @@ describe("workspace user schemas", () => {
           workspaceRole,
         }).success,
       ).toBe(true);
-      expect(workspaceUserPatchSchema.safeParse({ workspaceRole }).success).toBe(true);
+      expect(
+        workspaceUserPatchSchema.safeParse({ workspaceRole }).success,
+      ).toBe(true);
     }
   });
 
@@ -577,7 +584,8 @@ describe("workspace user schemas", () => {
 describe("analyticsFailureTriagePatchSchema", () => {
   it("accepts valid triage updates and trims notes", () => {
     const result = analyticsFailureTriagePatchSchema.safeParse({
-      fingerprint: "dataset_upload_failed|authorize_failed|upload|dataset_upload",
+      fingerprint:
+        "dataset_upload_failed|authorize_failed|upload|dataset_upload",
       status: "debugging",
       note: "  Investigating import authorization.  ",
     });
@@ -605,5 +613,14 @@ describe("analyticsFailureTriagePatchSchema", () => {
         note: "x".repeat(501),
       }).success,
     ).toBe(false);
+  });
+});
+
+describe("validation filter constants boundary", () => {
+  it("imports hotspot validation constants from the dataset filtering module", async () => {
+    const source = await readFile("src/lib/validation.ts", "utf8");
+
+    expect(source).toContain('from "@/lib/dataset-filtering"');
+    expect(source).toContain("MAX_HOTSPOTS_COUNTRY_COUNT");
   });
 });

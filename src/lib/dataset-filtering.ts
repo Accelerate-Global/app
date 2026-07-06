@@ -372,19 +372,19 @@ function datasetSupportsColumnFiltering(
   );
 }
 
-export function datasetSupportsRegionFiltering(
+function datasetSupportsRegionFiltering(
   dataset: Pick<DatasetSummary, "columns">,
 ) {
   return datasetSupportsColumnFiltering(dataset, REGION_DATASET_COLUMN_KEY);
 }
 
-export function datasetSupportsCountryFiltering(
+function datasetSupportsCountryFiltering(
   dataset: Pick<DatasetSummary, "columns">,
 ) {
   return datasetSupportsColumnFiltering(dataset, REGION_DATASET_COLUMN_KEY);
 }
 
-export function datasetSupportsAlternateCountryFiltering(
+function datasetSupportsAlternateCountryFiltering(
   dataset: Pick<DatasetSummary, "columns">,
 ) {
   return datasetSupportsColumnFiltering(
@@ -393,13 +393,13 @@ export function datasetSupportsAlternateCountryFiltering(
   );
 }
 
-export function datasetSupportsUupgFiltering(
+function datasetSupportsUupgFiltering(
   dataset: Pick<DatasetSummary, "columns">,
 ) {
   return datasetSupportsColumnFiltering(dataset, UUPG_DATASET_COLUMN_KEY);
 }
 
-export function datasetSupportsUupgFrontierFiltering(
+function datasetSupportsUupgFrontierFiltering(
   dataset: Pick<DatasetSummary, "columns">,
 ) {
   return datasetSupportsColumnFiltering(
@@ -408,7 +408,7 @@ export function datasetSupportsUupgFrontierFiltering(
   );
 }
 
-export function datasetSupportsHotspotsFiltering(
+function datasetSupportsHotspotsFiltering(
   dataset: Pick<DatasetSummary, "columns">,
 ) {
   return [
@@ -421,7 +421,7 @@ export function datasetSupportsHotspotsFiltering(
   );
 }
 
-export function datasetSupportsWatchlistFiltering(
+function datasetSupportsWatchlistFiltering(
   dataset: Pick<DatasetSummary, "columns">,
 ) {
   return [
@@ -434,7 +434,7 @@ export function datasetSupportsWatchlistFiltering(
   );
 }
 
-export function datasetSupportsWatchlistJpOnlyFiltering(
+function datasetSupportsWatchlistJpOnlyFiltering(
   dataset: Pick<DatasetSummary, "columns">,
 ) {
   return [
@@ -776,7 +776,7 @@ export function getEffectiveCountrySelection(input: {
   };
 }
 
-export function getAvailableDatasetCountryNames(
+export function getDatasetCountryNames(
   rows: DatasetRow[],
   options?: {
     includeAlternateCountries?: boolean;
@@ -794,7 +794,7 @@ export function getAvailableDatasetCountryNames(
   );
 }
 
-export function filterDatasetRowsByRegion(
+function filterDatasetRowsByRegion(
   rows: DatasetRow[],
   regionFilter: DatasetRegionFilterState | null | undefined,
 ) {
@@ -824,7 +824,7 @@ export function filterDatasetRowsByRegion(
   });
 }
 
-export function filterDatasetRowsByCountry(
+function filterDatasetRowsByCountry(
   rows: DatasetRow[],
   countryFilter: DatasetCountryFilterState | null | undefined,
 ) {
@@ -864,7 +864,7 @@ export function filterDatasetRowsByCountry(
   });
 }
 
-export function filterDatasetRowsByUupg(
+function filterDatasetRowsByUupg(
   rows: DatasetRow[],
   uupgFilter: DatasetUupgFilterState | null | undefined,
 ) {
@@ -1001,7 +1001,7 @@ function isJpOnlyEvangelicalWatchlistMatch(
   );
 }
 
-export function filterDatasetRowsByHotspots(
+function filterDatasetRowsByHotspots(
   rows: DatasetRow[],
   hotspotsFilter: DatasetHotspotsFilterState | null | undefined,
   uupgFilter?: DatasetUupgFilterState | null,
@@ -1079,7 +1079,7 @@ export function filterDatasetRowsByHotspots(
   });
 }
 
-export function filterDatasetRowsByWatchlist(
+function filterDatasetRowsByWatchlist(
   rows: DatasetRow[],
   watchlistFilter: DatasetWatchlistFilterState | null | undefined,
 ) {
@@ -1211,4 +1211,114 @@ export function filterDatasetRowsByWatchlist(
 
     return true;
   });
+}
+
+export type DatasetFilterSections = {
+  region?: DatasetRegionFilterState | null;
+  country?: DatasetCountryFilterState | null;
+  watchlist?: DatasetWatchlistFilterState | null;
+  uupg?: DatasetUupgFilterState | null;
+  hotspots?: DatasetHotspotsFilterState | null;
+};
+
+export type DatasetFilterEvaluation = {
+  rows: DatasetRow[];
+  availableCountryNames: string[];
+};
+
+export type DatasetFilterSectionSupport = {
+  region: boolean;
+  country: boolean;
+  alternateCountry: boolean;
+  uupg: boolean;
+  uupgFrontier: boolean;
+  hotspots: boolean;
+  watchlist: boolean;
+  watchlistJpOnly: boolean;
+};
+
+/**
+ * Applies the dataset filter pipeline.
+ *
+ * Section order (region -> watchlist -> hotspots -> UUPG -> country) and the
+ * hotspots/UUPG coupling (hotspot ranking respects the UUPG criteria even when
+ * the UUPG master toggle is off) are implementation details of this module.
+ * Callers must never reassemble the pipeline themselves.
+ *
+ * `availableCountryNames` is computed before the country section is applied so
+ * the country picker can always offer the countries that survive the other
+ * sections.
+ */
+export function applyDatasetFilterSections(
+  rows: DatasetRow[],
+  sections: DatasetFilterSections,
+): DatasetFilterEvaluation {
+  const rowsBeforeCountrySection = filterDatasetRowsByUupg(
+    filterDatasetRowsByHotspots(
+      filterDatasetRowsByWatchlist(
+        filterDatasetRowsByRegion(rows, sections.region),
+        sections.watchlist,
+      ),
+      sections.hotspots,
+      sections.uupg,
+    ),
+    sections.uupg,
+  );
+
+  return {
+    rows: filterDatasetRowsByCountry(rowsBeforeCountrySection, sections.country),
+    availableCountryNames: getDatasetCountryNames(rowsBeforeCountrySection, {
+      includeAlternateCountries:
+        sections.country?.includeAlternateCountries ?? false,
+    }),
+  };
+}
+
+export function getDatasetFilterSectionSupport(
+  dataset: Pick<DatasetSummary, "columns">,
+): DatasetFilterSectionSupport {
+  return {
+    region: datasetSupportsRegionFiltering(dataset),
+    country: datasetSupportsCountryFiltering(dataset),
+    alternateCountry: datasetSupportsAlternateCountryFiltering(dataset),
+    uupg: datasetSupportsUupgFiltering(dataset),
+    uupgFrontier: datasetSupportsUupgFrontierFiltering(dataset),
+    hotspots: datasetSupportsHotspotsFiltering(dataset),
+    watchlist: datasetSupportsWatchlistFiltering(dataset),
+    watchlistJpOnly: datasetSupportsWatchlistJpOnlyFiltering(dataset),
+  };
+}
+
+export function getEnabledFilterSections<
+  Sections extends {
+    region: { enabled: boolean };
+    country: { enabled: boolean };
+    watchlist: { enabled: boolean };
+    uupg: { enabled: boolean };
+    hotspots?: { enabled: boolean } | null;
+  },
+>(filters: Sections) {
+  const sections: string[] = [];
+
+  if (filters.region.enabled) {
+    sections.push("region");
+  }
+
+  if (filters.country.enabled) {
+    sections.push("country");
+  }
+
+  if (filters.watchlist.enabled) {
+    sections.push("watchlist");
+  }
+
+  if (filters.uupg.enabled) {
+    sections.push("uupg");
+  }
+
+  if (filters.hotspots?.enabled) {
+    sections.push("hotspots");
+  }
+
+  return sections.length > 0 ? sections.join("|") : "none";
 }

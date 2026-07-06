@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { readFile } from "node:fs/promises";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -119,7 +120,9 @@ describe("DatasetAssignDerivedViewSheet", () => {
       />,
     );
 
-    const trigger = document.getElementById("dataset-assign-derived-view-target");
+    const trigger = document.getElementById(
+      "dataset-assign-derived-view-target",
+    );
 
     expect(trigger).toBeTruthy();
     expect(trigger?.textContent).toContain("South Asia");
@@ -168,9 +171,9 @@ describe("DatasetAssignDerivedViewSheet", () => {
       await screen.findByText('Assigned filtered view to "South Asia".'),
     ).toBeTruthy();
     expect(
-      screen.getByRole("link", { name: "Open assigned dataset" }).getAttribute(
-        "href",
-      ),
+      screen
+        .getByRole("link", { name: "Open assigned dataset" })
+        .getAttribute("href"),
     ).toBe("/dashboard/datasets/dataset-target");
     expect(trackAppEventMock).toHaveBeenCalledWith(
       "dataset_assigned",
@@ -221,5 +224,17 @@ describe("DatasetAssignDerivedViewSheet", () => {
         target_dataset_id: "dataset-target",
       }),
     );
+  });
+});
+
+describe("derived-view filter analytics boundary", () => {
+  it("reads enabled filter sections from the dataset filtering module", async () => {
+    const source = await readFile(
+      "src/components/dashboard/dataset-assign-derived-view-sheet.tsx",
+      "utf8",
+    );
+
+    expect(source).toContain('from "@/lib/dataset-filtering"');
+    expect(source).toContain("getEnabledFilterSections");
   });
 });

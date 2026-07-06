@@ -1,6 +1,10 @@
+import { readFile } from "node:fs/promises";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { deleteApiConnection, updateApiConnection } from "@/lib/api-connections";
+import {
+  deleteApiConnection,
+  updateApiConnection,
+} from "@/lib/api-connections";
 import { getCurrentIdentity } from "@/lib/auth";
 import { DELETE, PATCH } from "./route";
 
@@ -72,10 +76,13 @@ describe("/api/admin/api-connections/[connectionId]", () => {
     });
 
     const response = await PATCH(
-      new Request(`http://localhost/api/admin/api-connections/${connection.id}`, {
-        method: "PATCH",
-        body: JSON.stringify(validPayload),
-      }),
+      new Request(
+        `http://localhost/api/admin/api-connections/${connection.id}`,
+        {
+          method: "PATCH",
+          body: JSON.stringify(validPayload),
+        },
+      ),
     );
 
     expect(response.status).toBe(403);
@@ -84,10 +91,13 @@ describe("/api/admin/api-connections/[connectionId]", () => {
 
   it("rejects admin updates because profiles are code-managed", async () => {
     const response = await PATCH(
-      new Request(`http://localhost/api/admin/api-connections/${connection.id}`, {
-        method: "PATCH",
-        body: JSON.stringify(validPayload),
-      }),
+      new Request(
+        `http://localhost/api/admin/api-connections/${connection.id}`,
+        {
+          method: "PATCH",
+          body: JSON.stringify(validPayload),
+        },
+      ),
     );
 
     expect(response.status).toBe(405);
@@ -105,5 +115,17 @@ describe("/api/admin/api-connections/[connectionId]", () => {
       error: "API connection profiles are managed from the codebase.",
     });
     expect(deleteApiConnectionMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("route guard integration", () => {
+  it("uses the centralized route guard", async () => {
+    const source = await readFile(
+      "src/app/api/admin/api-connections/[connectionId]/route.ts",
+      "utf8",
+    );
+
+    expect(source).toContain('from "@/lib/route-guard"');
+    expect(source).toContain("withRoute(");
   });
 });

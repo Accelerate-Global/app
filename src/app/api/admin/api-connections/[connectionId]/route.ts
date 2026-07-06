@@ -1,31 +1,23 @@
-import { getCurrentIdentity } from "@/lib/auth";
-import { jsonAdminOnlyError, jsonError } from "@/lib/http";
+import { jsonError } from "@/lib/http";
+import { withRoute } from "@/lib/route-guard";
 
-export async function PATCH(request: Request) {
-  const identity = await getCurrentIdentity();
+export const PATCH = withRoute(
+  { access: "admin", action: "manage API connections" },
+  async (_identity, request: Request) => {
+    await request.body?.cancel();
+    return jsonError(
+      "API connection profiles are managed from the codebase.",
+      405,
+    );
+  },
+);
 
-  if (!identity) {
-    return jsonError("Unauthorized.", 401);
-  }
-
-  if (!identity.isDatasetAdmin) {
-    return jsonAdminOnlyError("manage API connections");
-  }
-
-  await request.body?.cancel();
-  return jsonError("API connection profiles are managed from the codebase.", 405);
-}
-
-export async function DELETE() {
-  const identity = await getCurrentIdentity();
-
-  if (!identity) {
-    return jsonError("Unauthorized.", 401);
-  }
-
-  if (!identity.isDatasetAdmin) {
-    return jsonAdminOnlyError("manage API connections");
-  }
-
-  return jsonError("API connection profiles are managed from the codebase.", 405);
-}
+export const DELETE = withRoute(
+  { access: "admin", action: "manage API connections" },
+  async () => {
+    return jsonError(
+      "API connection profiles are managed from the codebase.",
+      405,
+    );
+  },
+);

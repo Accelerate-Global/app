@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import type { SavedDatasetFilterState } from "@/lib/api-types";
 
+import { getInitialDatasetDetailState } from "@/components/dashboard/dataset-detail-initial-state";
 import {
   buildSavedDatasetFilterState,
-  getInitialDatasetDetailState,
   normalizeSavedDatasetFilterState,
   WATCHLIST_FIXED_THRESHOLD,
 } from "./saved-dataset-filters";

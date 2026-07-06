@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getCurrentIdentity } from "@/lib/auth";
@@ -83,7 +84,9 @@ describe("/api/saved-tables/[savedTableId]", () => {
     getCurrentIdentityMock.mockResolvedValue(null);
 
     const response = await GET(
-      new Request("http://localhost/api/saved-tables/c0000000-0000-4000-8000-000000000001"),
+      new Request(
+        "http://localhost/api/saved-tables/c0000000-0000-4000-8000-000000000001",
+      ),
       context,
     );
 
@@ -95,7 +98,9 @@ describe("/api/saved-tables/[savedTableId]", () => {
     getSavedDatasetTableMock.mockResolvedValue(savedTable);
 
     const response = await GET(
-      new Request("http://localhost/api/saved-tables/c0000000-0000-4000-8000-000000000001"),
+      new Request(
+        "http://localhost/api/saved-tables/c0000000-0000-4000-8000-000000000001",
+      ),
       context,
     );
 
@@ -116,13 +121,16 @@ describe("/api/saved-tables/[savedTableId]", () => {
     });
 
     const response = await PATCH(
-      new Request("http://localhost/api/saved-tables/c0000000-0000-4000-8000-000000000001", {
-        method: "PATCH",
-        body: JSON.stringify({
-          name: "North Africa focus",
-          details: "Saved from dataset detail page.",
-        }),
-      }),
+      new Request(
+        "http://localhost/api/saved-tables/c0000000-0000-4000-8000-000000000001",
+        {
+          method: "PATCH",
+          body: JSON.stringify({
+            name: "North Africa focus",
+            details: "Saved from dataset detail page.",
+          }),
+        },
+      ),
       context,
     );
 
@@ -140,7 +148,9 @@ describe("/api/saved-tables/[savedTableId]", () => {
     deleteSavedDatasetTableMock.mockResolvedValue(savedTable);
 
     const response = await DELETE(
-      new Request("http://localhost/api/saved-tables/c0000000-0000-4000-8000-000000000001"),
+      new Request(
+        "http://localhost/api/saved-tables/c0000000-0000-4000-8000-000000000001",
+      ),
       context,
     );
 
@@ -164,7 +174,9 @@ describe("/api/saved-tables/[savedTableId]", () => {
     });
 
     const response = await GET(
-      new Request("http://localhost/api/saved-tables/c0000000-0000-4000-8000-000000000001"),
+      new Request(
+        "http://localhost/api/saved-tables/c0000000-0000-4000-8000-000000000001",
+      ),
       context,
     );
 
@@ -180,12 +192,15 @@ describe("/api/saved-tables/[savedTableId]", () => {
     updateSavedDatasetTableMock.mockResolvedValue(null);
 
     const response = await PATCH(
-      new Request("http://localhost/api/saved-tables/c0000000-0000-4000-8000-000000000001", {
-        method: "PATCH",
-        body: JSON.stringify({
-          name: "North Africa focus",
-        }),
-      }),
+      new Request(
+        "http://localhost/api/saved-tables/c0000000-0000-4000-8000-000000000001",
+        {
+          method: "PATCH",
+          body: JSON.stringify({
+            name: "North Africa focus",
+          }),
+        },
+      ),
       context,
     );
 
@@ -196,10 +211,24 @@ describe("/api/saved-tables/[savedTableId]", () => {
     getSavedDatasetTableMock.mockResolvedValue(null);
 
     const response = await GET(
-      new Request("http://localhost/api/saved-tables/c0000000-0000-4000-8000-000000000001"),
+      new Request(
+        "http://localhost/api/saved-tables/c0000000-0000-4000-8000-000000000001",
+      ),
       context,
     );
 
     expect(response.status).toBe(404);
+  });
+});
+
+describe("route guard integration", () => {
+  it("uses the centralized route guard", async () => {
+    const source = await readFile(
+      "src/app/api/saved-tables/[savedTableId]/route.ts",
+      "utf8",
+    );
+
+    expect(source).toContain('from "@/lib/route-guard"');
+    expect(source).toContain("withRoute(");
   });
 });

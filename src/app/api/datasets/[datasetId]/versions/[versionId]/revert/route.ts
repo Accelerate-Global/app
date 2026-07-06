@@ -1,10 +1,10 @@
-import { getCurrentIdentity } from "@/lib/auth";
 import {
   DerivedDatasetMutationError,
   DatasetVersionRevertConflictError,
   revertDatasetVersion,
 } from "@/lib/datasets";
-import { jsonAdminOnlyError, jsonError } from "@/lib/http";
+import { jsonError } from "@/lib/http";
+import { withRoute } from "@/lib/route-guard";
 
 type DatasetVersionRevertContext = {
   params: Promise<{
@@ -13,44 +13,34 @@ type DatasetVersionRevertContext = {
   }>;
 };
 
-export async function POST(
-  _request: Request,
-  context: DatasetVersionRevertContext,
-) {
-  const identity = await getCurrentIdentity();
+export const POST = withRoute(
+  { access: "admin", action: "revert dataset upload history" },
+  async (identity, _request: Request, context: DatasetVersionRevertContext) => {
+    const { datasetId, versionId } = await context.params;
+    let reverted;
 
-  if (!identity) {
-    return jsonError("Unauthorized.", 401);
-  }
+    try {
+      reverted = await revertDatasetVersion({
+        datasetId,
+        versionId,
+        actorOwnerId: identity.ownerId,
+        actorEmail: identity.email,
+      });
+    } catch (error) {
+      if (
+        error instanceof DatasetVersionRevertConflictError ||
+        error instanceof DerivedDatasetMutationError
+      ) {
+        return jsonError(error.message, error.status);
+      }
 
-  if (!identity.isDatasetAdmin) {
-    return jsonAdminOnlyError("revert dataset upload history");
-  }
-
-  const { datasetId, versionId } = await context.params;
-  let reverted;
-
-  try {
-    reverted = await revertDatasetVersion({
-      datasetId,
-      versionId,
-      actorOwnerId: identity.ownerId,
-      actorEmail: identity.email,
-    });
-  } catch (error) {
-    if (
-      error instanceof DatasetVersionRevertConflictError ||
-      error instanceof DerivedDatasetMutationError
-    ) {
-      return jsonError(error.message, error.status);
+      throw error;
     }
 
-    throw error;
-  }
+    if (!reverted) {
+      return jsonError("Dataset version not found.", 404);
+    }
 
-  if (!reverted) {
-    return jsonError("Dataset version not found.", 404);
-  }
-
-  return Response.json({ dataset: reverted.dataset });
-}
+    return Response.json({ dataset: reverted.dataset });
+  },
+);

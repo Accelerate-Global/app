@@ -4,12 +4,18 @@ import { act, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type {
-  DatasetOpenPreset,
   DatasetSummary,
+  SavedDatasetFilterState,
   SavedDatasetSort,
 } from "@/lib/api-types";
 
 import { DatasetDetailClient } from "./dataset-detail-client";
+
+type DatasetTableStateInput = {
+  filterSections?: import("@/lib/dataset-filtering").DatasetFilterSections;
+  sourceRowCount?: number | null;
+  initialSorting?: { id: string; desc: boolean }[] | null;
+};
 
 const actionBarSpy = vi.fn();
 const assignDerivedViewSheetSpy = vi.fn();
@@ -85,8 +91,8 @@ const datasetBase = {
 } satisfies Omit<DatasetSummary, "columns">;
 
 function createInitialFilters(
-  overrides: Partial<DatasetOpenPreset> = {},
-): DatasetOpenPreset {
+  overrides: Partial<SavedDatasetFilterState> = {},
+): SavedDatasetFilterState {
   return {
     region: {
       enabled: false,
@@ -129,6 +135,7 @@ function createInitialFilters(
       countryCount: 10,
       ...overrides.hotspots,
     },
+    sorting: overrides.sorting ?? [],
   };
 }
 
@@ -287,9 +294,7 @@ describe("DatasetDetailClient", () => {
       />,
     );
 
-    const datasetTableStateProps = useDatasetTableStateMock.mock.calls[0]?.[0] as {
-      sourceRowCount?: number | null;
-    };
+    const datasetTableStateProps = useDatasetTableStateMock.mock.calls[0]?.[0] as DatasetTableStateInput;
 
     expect(datasetTableStateProps.sourceRowCount).toBe(12507);
   });
@@ -486,15 +491,7 @@ describe("DatasetDetailClient", () => {
         onFrontierGroupEnabledChange: (enabled: boolean) => void;
       };
     };
-    const datasetTableStateProps = useDatasetTableStateMock.mock.calls[0]?.[0] as {
-      uupgFilter: {
-        enabled: boolean;
-        isSupported: boolean;
-        globalEngagementAnywhereEnabled: boolean;
-        frontierGroupEnabled: boolean;
-        frontierGroupSupported: boolean;
-      };
-    };
+    const datasetTableStateProps = useDatasetTableStateMock.mock.calls[0]?.[0] as DatasetTableStateInput;
     const actionBarProps = actionBarSpy.mock.calls[0]?.[0] as {
       filters: {
         uupg: {
@@ -517,7 +514,7 @@ describe("DatasetDetailClient", () => {
       frontierGroupDefinition: "Frontier definition",
       frontierGroupEnabled: true,
     });
-    expect(datasetTableStateProps.uupgFilter).toEqual({
+    expect(datasetTableStateProps.filterSections?.uupg).toEqual({
       enabled: false,
       isSupported: true,
       globalEngagementAnywhereEnabled: true,
@@ -574,14 +571,9 @@ describe("DatasetDetailClient", () => {
       viewSwitchGridProps.uupgCard.onFrontierGroupEnabledChange(false);
     });
 
-    let latestDatasetTableStateProps = useDatasetTableStateMock.mock.lastCall?.[0] as {
-      uupgFilter: {
-        globalEngagementAnywhereEnabled: boolean;
-        frontierGroupEnabled: boolean;
-      };
-    };
+    let latestDatasetTableStateProps = useDatasetTableStateMock.mock.lastCall?.[0] as DatasetTableStateInput;
 
-    expect(latestDatasetTableStateProps.uupgFilter).toEqual({
+    expect(latestDatasetTableStateProps.filterSections?.uupg).toEqual({
       enabled: true,
       isSupported: true,
       globalEngagementAnywhereEnabled: true,
@@ -595,14 +587,9 @@ describe("DatasetDetailClient", () => {
       viewSwitchGridProps.uupgCard.onGlobalEngagementAnywhereEnabledChange(false);
     });
 
-    latestDatasetTableStateProps = useDatasetTableStateMock.mock.lastCall?.[0] as {
-      uupgFilter: {
-        globalEngagementAnywhereEnabled: boolean;
-        frontierGroupEnabled: boolean;
-      };
-    };
+    latestDatasetTableStateProps = useDatasetTableStateMock.mock.lastCall?.[0] as DatasetTableStateInput;
 
-    expect(latestDatasetTableStateProps.uupgFilter).toEqual({
+    expect(latestDatasetTableStateProps.filterSections?.uupg).toEqual({
       enabled: true,
       isSupported: true,
       globalEngagementAnywhereEnabled: true,
@@ -640,19 +627,11 @@ describe("DatasetDetailClient", () => {
         frontierGroupEnabled: boolean;
       };
     };
-    const datasetTableStateProps = useDatasetTableStateMock.mock.lastCall?.[0] as {
-      uupgFilter: {
-        enabled: boolean;
-        isSupported: boolean;
-        globalEngagementAnywhereEnabled: boolean;
-        frontierGroupEnabled: boolean;
-        frontierGroupSupported: boolean;
-      };
-    };
+    const datasetTableStateProps = useDatasetTableStateMock.mock.lastCall?.[0] as DatasetTableStateInput;
 
     expect(viewSwitchGridProps.uupgCard.frontierGroupSupported).toBe(false);
     expect(viewSwitchGridProps.uupgCard.frontierGroupEnabled).toBe(false);
-    expect(datasetTableStateProps.uupgFilter).toEqual({
+    expect(datasetTableStateProps.filterSections?.uupg).toEqual({
       enabled: true,
       isSupported: true,
       globalEngagementAnywhereEnabled: true,
@@ -712,14 +691,7 @@ describe("DatasetDetailClient", () => {
         onCountryCountChange: (value: number) => void;
       };
     };
-    const datasetTableStateProps = useDatasetTableStateMock.mock.calls[0]?.[0] as {
-      hotspotsFilter: {
-        enabled: boolean;
-        isSupported: boolean;
-        metric: "unique_uupgs" | "population";
-        countryCount: number;
-      };
-    };
+    const datasetTableStateProps = useDatasetTableStateMock.mock.calls[0]?.[0] as DatasetTableStateInput;
     const actionBarProps = actionBarSpy.mock.calls[0]?.[0] as {
       filters: {
         hotspots?: {
@@ -736,7 +708,7 @@ describe("DatasetDetailClient", () => {
       metric: "population",
       countryCount: 12,
     });
-    expect(datasetTableStateProps.hotspotsFilter).toEqual({
+    expect(datasetTableStateProps.filterSections?.hotspots).toEqual({
       enabled: true,
       isSupported: true,
       metric: "population",
@@ -754,14 +726,7 @@ describe("DatasetDetailClient", () => {
       viewSwitchGridProps.hotspotsCard.onEnabledChange(false);
     });
 
-    const latestDatasetTableStateProps = useDatasetTableStateMock.mock.lastCall?.[0] as {
-      hotspotsFilter: {
-        enabled: boolean;
-        isSupported: boolean;
-        metric: "unique_uupgs" | "population";
-        countryCount: number;
-      };
-    };
+    const latestDatasetTableStateProps = useDatasetTableStateMock.mock.lastCall?.[0] as DatasetTableStateInput;
     const latestActionBarProps = actionBarSpy.mock.lastCall?.[0] as {
       filters: {
         hotspots?: {
@@ -772,7 +737,7 @@ describe("DatasetDetailClient", () => {
       };
     };
 
-    expect(latestDatasetTableStateProps.hotspotsFilter).toEqual({
+    expect(latestDatasetTableStateProps.filterSections?.hotspots).toEqual({
       enabled: false,
       isSupported: true,
       metric: "unique_uupgs",
@@ -830,14 +795,7 @@ describe("DatasetDetailClient", () => {
         selectors: Array<{ id: string; label: string; checked: boolean }>;
       };
     };
-    const datasetTableStateProps = useDatasetTableStateMock.mock.calls[0]?.[0] as {
-      regionFilter: {
-        enabled: boolean;
-        isSupported: boolean;
-        hasConfiguredRegions: boolean;
-        enabledCountryNames: string[];
-      };
-    };
+    const datasetTableStateProps = useDatasetTableStateMock.mock.calls[0]?.[0] as DatasetTableStateInput;
     const actionBarProps = actionBarSpy.mock.calls[0]?.[0] as {
       filters: {
         region: {
@@ -864,7 +822,7 @@ describe("DatasetDetailClient", () => {
         },
       ],
     });
-    expect(datasetTableStateProps.regionFilter).toEqual({
+    expect(datasetTableStateProps.filterSections?.region).toEqual({
       enabled: true,
       isSupported: true,
       hasConfiguredRegions: true,
@@ -949,16 +907,7 @@ describe("DatasetDetailClient", () => {
       viewSwitchGridProps.countryCard.onToggleCountry("Peru", false);
     });
 
-    const latestDatasetTableStateProps = useDatasetTableStateMock.mock.lastCall?.[0] as {
-      regionFilter: {
-        enabled: boolean;
-        enabledCountryNames: string[];
-      };
-      countryFilter: {
-        enabled: boolean;
-        selectedCountryNames: string[];
-      };
-    };
+    const latestDatasetTableStateProps = useDatasetTableStateMock.mock.lastCall?.[0] as DatasetTableStateInput;
     const latestActionBarProps = actionBarSpy.mock.lastCall?.[0] as {
       filters: {
         region: {
@@ -974,11 +923,11 @@ describe("DatasetDetailClient", () => {
       };
     };
 
-    expect(latestDatasetTableStateProps.regionFilter).toMatchObject({
+    expect(latestDatasetTableStateProps.filterSections?.region).toMatchObject({
       enabled: false,
       enabledCountryNames: [],
     });
-    expect(latestDatasetTableStateProps.countryFilter).toMatchObject({
+    expect(latestDatasetTableStateProps.filterSections?.country).toMatchObject({
       enabled: true,
       selectedCountryNames: ["Brazil", "India", "Nepal"],
     });
@@ -1125,12 +1074,7 @@ describe("DatasetDetailClient", () => {
       ]);
     });
 
-    const latestDatasetTableStateProps = useDatasetTableStateMock.mock.lastCall?.[0] as {
-      regionFilter: {
-        enabled: boolean;
-        enabledCountryNames: string[];
-      };
-    };
+    const latestDatasetTableStateProps = useDatasetTableStateMock.mock.lastCall?.[0] as DatasetTableStateInput;
     const latestActionBarProps = actionBarSpy.mock.lastCall?.[0] as {
       filters: {
         region: {
@@ -1148,7 +1092,7 @@ describe("DatasetDetailClient", () => {
       };
     };
 
-    expect(latestDatasetTableStateProps.regionFilter).toMatchObject({
+    expect(latestDatasetTableStateProps.filterSections?.region).toMatchObject({
       enabled: true,
       enabledCountryNames: ["Brazil", "India", "Mexico", "Nepal", "Peru"],
     });
@@ -1198,12 +1142,7 @@ describe("DatasetDetailClient", () => {
       ]);
     });
 
-    const latestDatasetTableStateProps = useDatasetTableStateMock.mock.lastCall?.[0] as {
-      countryFilter: {
-        enabled: boolean;
-        selectedCountryNames: string[];
-      };
-    };
+    const latestDatasetTableStateProps = useDatasetTableStateMock.mock.lastCall?.[0] as DatasetTableStateInput;
     const latestCountryViewSwitchGridProps = viewSwitchGridSpy.mock.lastCall?.[0] as {
       countryCard: {
         selectedCountries: string[];
@@ -1211,7 +1150,7 @@ describe("DatasetDetailClient", () => {
       };
     };
 
-    expect(latestDatasetTableStateProps.countryFilter).toMatchObject({
+    expect(latestDatasetTableStateProps.filterSections?.country).toMatchObject({
       enabled: true,
       selectedCountryNames: [],
     });
@@ -1260,14 +1199,9 @@ describe("DatasetDetailClient", () => {
         hasExplicitSelection?: boolean;
       };
     };
-    const latestDatasetTableStateProps = useDatasetTableStateMock.mock.lastCall?.[0] as {
-      regionFilter: {
-        enabled: boolean;
-        enabledCountryNames: string[];
-      };
-    };
+    const latestDatasetTableStateProps = useDatasetTableStateMock.mock.lastCall?.[0] as DatasetTableStateInput;
 
-    expect(latestDatasetTableStateProps.regionFilter).toMatchObject({
+    expect(latestDatasetTableStateProps.filterSections?.region).toMatchObject({
       enabled: true,
       enabledCountryNames: ["India", "Nepal"],
     });
@@ -1534,14 +1468,7 @@ describe("DatasetDetailClient", () => {
       initialViewSwitchGridProps.countryCard.onToggleCountry("Jordan", false);
     });
 
-    const latestDatasetTableStateProps = useDatasetTableStateMock.mock.lastCall?.[0] as {
-      countryFilter: {
-        enabled: boolean;
-        isSupported: boolean;
-        selectedCountryNames: string[];
-        includeAlternateCountries: boolean;
-      };
-    };
+    const latestDatasetTableStateProps = useDatasetTableStateMock.mock.lastCall?.[0] as DatasetTableStateInput;
     const latestActionBarProps = actionBarSpy.mock.lastCall?.[0] as {
       filters: {
         country: {
@@ -1552,7 +1479,7 @@ describe("DatasetDetailClient", () => {
       };
     };
 
-    expect(latestDatasetTableStateProps.countryFilter).toEqual({
+    expect(latestDatasetTableStateProps.filterSections?.country).toEqual({
       enabled: true,
       isSupported: true,
       selectedCountryNames: ["Egypt"],
@@ -1566,18 +1493,14 @@ describe("DatasetDetailClient", () => {
   });
 
   it("defaults legacy presets to primary-country-only matching", async () => {
-    useDatasetTableStateMock.mockImplementation((props: {
-      countryFilter: {
-        includeAlternateCountries: boolean;
-      };
-    }) => ({
+    useDatasetTableStateMock.mockImplementation((props: DatasetTableStateInput) => ({
       table: {} as never,
       sorting: [],
       visibleColumns: [],
-      datasetCountryNames: props.countryFilter.includeAlternateCountries
+      datasetCountryNames: props.filterSections?.country?.includeAlternateCountries
         ? ["Egypt", "Jordan", "Turkey"]
         : ["Egypt", "Jordan"],
-      availableCountryNames: props.countryFilter.includeAlternateCountries
+      availableCountryNames: props.filterSections?.country?.includeAlternateCountries
         ? ["Egypt", "Jordan", "Turkey"]
         : ["Egypt", "Jordan"],
       getSortedRows: () => [],
@@ -1618,14 +1541,7 @@ describe("DatasetDetailClient", () => {
       await Promise.resolve();
     });
 
-    const datasetTableStateProps = useDatasetTableStateMock.mock.lastCall?.[0] as {
-      countryFilter: {
-        enabled: boolean;
-        isSupported: boolean;
-        includeAlternateCountries: boolean;
-        selectedCountryNames: string[];
-      };
-    };
+    const datasetTableStateProps = useDatasetTableStateMock.mock.lastCall?.[0] as DatasetTableStateInput;
     const actionBarProps = actionBarSpy.mock.lastCall?.[0] as {
       filters: {
         country: {
@@ -1636,7 +1552,7 @@ describe("DatasetDetailClient", () => {
       };
     };
 
-    expect(datasetTableStateProps.countryFilter).toEqual({
+    expect(datasetTableStateProps.filterSections?.country).toEqual({
       enabled: true,
       isSupported: true,
       includeAlternateCountries: false,
@@ -1652,18 +1568,14 @@ describe("DatasetDetailClient", () => {
   it(
     "prunes alternate-only country selections when alternate-country matching is turned off",
     async () => {
-      useDatasetTableStateMock.mockImplementation((props: {
-        countryFilter: {
-          includeAlternateCountries: boolean;
-        };
-      }) => ({
+      useDatasetTableStateMock.mockImplementation((props: DatasetTableStateInput) => ({
         table: {} as never,
         sorting: [],
         visibleColumns: [],
-        datasetCountryNames: props.countryFilter.includeAlternateCountries
+        datasetCountryNames: props.filterSections?.country?.includeAlternateCountries
           ? ["Egypt", "Jordan", "Turkey"]
           : ["Egypt", "Jordan"],
-        availableCountryNames: props.countryFilter.includeAlternateCountries
+        availableCountryNames: props.filterSections?.country?.includeAlternateCountries
           ? ["Egypt", "Jordan", "Turkey"]
           : ["Egypt", "Jordan"],
         getSortedRows: () => [],
@@ -1735,16 +1647,9 @@ describe("DatasetDetailClient", () => {
       });
 
       let latestDatasetTableStateProps = useDatasetTableStateMock.mock
-        .lastCall?.[0] as {
-        countryFilter: {
-          enabled: boolean;
-          isSupported: boolean;
-          includeAlternateCountries: boolean;
-          selectedCountryNames: string[];
-        };
-      };
+        .lastCall?.[0] as DatasetTableStateInput;
 
-      expect(latestDatasetTableStateProps.countryFilter).toEqual({
+      expect(latestDatasetTableStateProps.filterSections?.country).toEqual({
         enabled: true,
         isSupported: true,
         includeAlternateCountries: true,
@@ -1765,14 +1670,7 @@ describe("DatasetDetailClient", () => {
         await Promise.resolve();
       });
 
-      latestDatasetTableStateProps = useDatasetTableStateMock.mock.lastCall?.[0] as {
-        countryFilter: {
-          enabled: boolean;
-          isSupported: boolean;
-          includeAlternateCountries: boolean;
-          selectedCountryNames: string[];
-        };
-      };
+      latestDatasetTableStateProps = useDatasetTableStateMock.mock.lastCall?.[0] as DatasetTableStateInput;
       const latestActionBarProps = actionBarSpy.mock.lastCall?.[0] as {
         filters: {
           country: {
@@ -1783,7 +1681,7 @@ describe("DatasetDetailClient", () => {
         };
       };
 
-      expect(latestDatasetTableStateProps.countryFilter).toEqual({
+      expect(latestDatasetTableStateProps.filterSections?.country).toEqual({
         enabled: true,
         isSupported: true,
         includeAlternateCountries: false,
@@ -1847,14 +1745,7 @@ describe("DatasetDetailClient", () => {
       );
     });
 
-    let latestDatasetTableStateProps = useDatasetTableStateMock.mock.lastCall?.[0] as {
-      regionFilter: {
-        enabled: boolean;
-        isSupported: boolean;
-        hasConfiguredRegions: boolean;
-        enabledCountryNames: string[];
-      };
-    };
+    let latestDatasetTableStateProps = useDatasetTableStateMock.mock.lastCall?.[0] as DatasetTableStateInput;
     let latestActionBarProps = actionBarSpy.mock.lastCall?.[0] as {
       filters: {
         region: {
@@ -1866,7 +1757,7 @@ describe("DatasetDetailClient", () => {
       };
     };
 
-    expect(latestDatasetTableStateProps.regionFilter).toEqual({
+    expect(latestDatasetTableStateProps.filterSections?.region).toEqual({
       enabled: true,
       isSupported: true,
       hasConfiguredRegions: true,
@@ -1936,14 +1827,7 @@ describe("DatasetDetailClient", () => {
       );
     });
 
-    latestDatasetTableStateProps = useDatasetTableStateMock.mock.lastCall?.[0] as {
-      regionFilter: {
-        enabled: boolean;
-        isSupported: boolean;
-        hasConfiguredRegions: boolean;
-        enabledCountryNames: string[];
-      };
-    };
+    latestDatasetTableStateProps = useDatasetTableStateMock.mock.lastCall?.[0] as DatasetTableStateInput;
     latestActionBarProps = actionBarSpy.mock.lastCall?.[0] as {
       filters: {
         region: {
@@ -1955,7 +1839,7 @@ describe("DatasetDetailClient", () => {
       };
     };
 
-    expect(latestDatasetTableStateProps.regionFilter).toEqual({
+    expect(latestDatasetTableStateProps.filterSections?.region).toEqual({
       enabled: true,
       isSupported: true,
       hasConfiguredRegions: true,
@@ -2111,26 +1995,7 @@ describe("DatasetDetailClient", () => {
         engagementPhaseSummary: string;
       };
     };
-    const datasetTableStateProps = useDatasetTableStateMock.mock.calls[0]?.[0] as {
-      watchlistFilter: {
-        enabled: boolean;
-        isSupported: boolean;
-        thresholdEnabled: boolean;
-        threshold: number;
-        engagementPhaseEnabled: boolean;
-        engagementPhaseThreshold: number;
-        engagementPhaseRule: {
-          minPhase: number;
-          maxPhase: number;
-        };
-        jpOnlyEvangelicalCriteriaEnabled: boolean;
-        jpOnlyEvangelicalRule: {
-          minBelievers: number;
-          maxBelievers: number;
-          maxPercentEvangelical: number;
-        };
-      };
-    };
+    const datasetTableStateProps = useDatasetTableStateMock.mock.calls[0]?.[0] as DatasetTableStateInput;
     const actionBarProps = actionBarSpy.mock.calls[0]?.[0] as {
       filters: {
         watchlist: {
@@ -2195,7 +2060,7 @@ describe("DatasetDetailClient", () => {
     expect(viewSwitchGridProps.watchlistCard).not.toHaveProperty(
       "populationBelieversRuleLabel",
     );
-    expect(datasetTableStateProps.watchlistFilter).toEqual({
+    expect(datasetTableStateProps.filterSections?.watchlist).toEqual({
       enabled: true,
       isSupported: true,
       thresholdEnabled: true,
@@ -2231,10 +2096,10 @@ describe("DatasetDetailClient", () => {
         maxPercentEvangelical: 2,
       },
     });
-    expect(datasetTableStateProps.watchlistFilter).not.toHaveProperty(
+    expect(datasetTableStateProps.filterSections?.watchlist).not.toHaveProperty(
       "evangelicalPopulationBelieversRuleEnabled",
     );
-    expect(datasetTableStateProps.watchlistFilter).not.toHaveProperty(
+    expect(datasetTableStateProps.filterSections?.watchlist).not.toHaveProperty(
       "evangelicalPopulationBelieversRule",
     );
     expect(actionBarProps.filters.sorting).toEqual([
@@ -2331,11 +2196,7 @@ describe("DatasetDetailClient", () => {
         engagementPhaseEnabled: boolean;
       };
     };
-    const datasetTableStateProps = useDatasetTableStateMock.mock.calls[0]?.[0] as {
-      watchlistFilter: {
-        engagementPhaseEnabled: boolean;
-      };
-    };
+    const datasetTableStateProps = useDatasetTableStateMock.mock.calls[0]?.[0] as DatasetTableStateInput;
     const actionBarProps = actionBarSpy.mock.calls[0]?.[0] as {
       filters: {
         watchlist: {
@@ -2345,7 +2206,7 @@ describe("DatasetDetailClient", () => {
     };
 
     expect(viewSwitchGridProps.watchlistCard.engagementPhaseEnabled).toBe(false);
-    expect(datasetTableStateProps.watchlistFilter.engagementPhaseEnabled).toBe(
+    expect(datasetTableStateProps.filterSections?.watchlist?.engagementPhaseEnabled).toBe(
       false,
     );
     expect(actionBarProps.filters.watchlist.engagementPhaseEnabled).toBe(false);
@@ -2472,15 +2333,7 @@ describe("DatasetDetailClient", () => {
         jpOnlyEvangelicalRuleIsDefault: boolean;
       };
     };
-    const datasetTableStateProps = useDatasetTableStateMock.mock.calls[0]?.[0] as {
-      watchlistFilter: {
-        jpOnlyEvangelicalRule: {
-          minBelievers: number;
-          maxBelievers: number;
-          maxPercentEvangelical: number;
-        };
-      };
-    };
+    const datasetTableStateProps = useDatasetTableStateMock.mock.calls[0]?.[0] as DatasetTableStateInput;
     const actionBarProps = actionBarSpy.mock.calls[0]?.[0] as {
       filters: {
         watchlist: {
@@ -2504,7 +2357,7 @@ describe("DatasetDetailClient", () => {
     expect(viewSwitchGridProps.watchlistCard.jpOnlyEvangelicalRuleIsDefault).toBe(
       false,
     );
-    expect(datasetTableStateProps.watchlistFilter.jpOnlyEvangelicalRule).toEqual({
+    expect(datasetTableStateProps.filterSections?.watchlist?.jpOnlyEvangelicalRule).toEqual({
       minBelievers: 90,
       maxBelievers: 300_000,
       maxPercentEvangelical: 2.5,
@@ -2554,12 +2407,7 @@ describe("DatasetDetailClient", () => {
       />,
     );
 
-    const datasetTableStateProps = useDatasetTableStateMock.mock.calls[0]?.[0] as {
-      regionFilter: {
-        enabled: boolean;
-        enabledCountryNames: string[];
-      };
-    };
+    const datasetTableStateProps = useDatasetTableStateMock.mock.calls[0]?.[0] as DatasetTableStateInput;
     const actionBarProps = actionBarSpy.mock.calls[0]?.[0] as {
       filters: {
         region: {
@@ -2569,7 +2417,7 @@ describe("DatasetDetailClient", () => {
       };
     };
 
-    expect(datasetTableStateProps.regionFilter).toMatchObject({
+    expect(datasetTableStateProps.filterSections?.region).toMatchObject({
       enabled: true,
       enabledCountryNames: ["India", "Nepal"],
     });
@@ -2632,13 +2480,7 @@ describe("DatasetDetailClient", () => {
       />,
     );
 
-    const datasetTableStateProps = useDatasetTableStateMock.mock.calls[0]?.[0] as {
-      initialSorting: SavedDatasetSort[];
-      regionFilter: {
-        enabled: boolean;
-        enabledCountryNames: string[];
-      };
-    };
+    const datasetTableStateProps = useDatasetTableStateMock.mock.calls[0]?.[0] as DatasetTableStateInput;
     const actionBarProps = actionBarSpy.mock.calls[0]?.[0] as {
       filters: {
         region: {
@@ -2650,7 +2492,7 @@ describe("DatasetDetailClient", () => {
     };
 
     expect(datasetTableStateProps.initialSorting).toEqual(initialSorting);
-    expect(datasetTableStateProps.regionFilter).toMatchObject({
+    expect(datasetTableStateProps.filterSections?.region).toMatchObject({
       enabled: true,
       enabledCountryNames: ["India", "Nepal"],
     });
@@ -2693,16 +2535,7 @@ describe("DatasetDetailClient", () => {
       />,
     );
 
-    const datasetTableStateProps = useDatasetTableStateMock.mock.calls[0]?.[0] as {
-      regionFilter: {
-        enabled: boolean;
-        enabledCountryNames: string[];
-      };
-      countryFilter: {
-        enabled: boolean;
-        selectedCountryNames: string[];
-      };
-    };
+    const datasetTableStateProps = useDatasetTableStateMock.mock.calls[0]?.[0] as DatasetTableStateInput;
     const actionBarProps = actionBarSpy.mock.calls[0]?.[0] as {
       filters: {
         region: {
@@ -2717,11 +2550,11 @@ describe("DatasetDetailClient", () => {
       };
     };
 
-    expect(datasetTableStateProps.regionFilter).toMatchObject({
+    expect(datasetTableStateProps.filterSections?.region).toMatchObject({
       enabled: false,
       enabledCountryNames: [],
     });
-    expect(datasetTableStateProps.countryFilter).toMatchObject({
+    expect(datasetTableStateProps.filterSections?.country).toMatchObject({
       enabled: true,
       selectedCountryNames: ["India"],
     });
@@ -2781,12 +2614,7 @@ describe("DatasetDetailClient", () => {
       />,
     );
 
-    const datasetTableStateProps = useDatasetTableStateMock.mock.calls[0]?.[0] as {
-      regionFilter: {
-        enabled: boolean;
-        enabledCountryNames: string[];
-      };
-    };
+    const datasetTableStateProps = useDatasetTableStateMock.mock.calls[0]?.[0] as DatasetTableStateInput;
     const actionBarProps = actionBarSpy.mock.calls[0]?.[0] as {
       filters: {
         region: {
@@ -2797,7 +2625,7 @@ describe("DatasetDetailClient", () => {
       };
     };
 
-    expect(datasetTableStateProps.regionFilter).toMatchObject({
+    expect(datasetTableStateProps.filterSections?.region).toMatchObject({
       enabled: false,
       enabledCountryNames: [],
     });

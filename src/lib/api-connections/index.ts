@@ -1,8 +1,3 @@
-import { lookup } from "node:dns/promises";
-import { isIP } from "node:net";
-import { randomUUID } from "node:crypto";
-
-import Papa from "papaparse";
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 
 import { getDb } from "@/db";
@@ -22,7 +17,7 @@ import {
   serializeApiConnectionRowsToCsv,
 } from "@/lib/api-connection-output";
 import type { CurrentIdentity } from "@/lib/auth";
-import { chunkRows, escapeCsvCell, normalizeHeaders, sanitizeFileName } from "@/lib/csv";
+import { chunkRows, sanitizeFileName } from "@/lib/csv";
 import {
   createDataset,
   insertDatasetRowBatch,
@@ -36,36 +31,23 @@ import {
   createDatasetStoragePath,
   getDatasetStorageBucket,
 } from "@/lib/dataset-storage";
-import {
-  ETNOPEDIA_CSV_COLUMNS,
-  etnopediaRecordsToRows,
-  fetchEtnopediaPeopleGroups,
-  isEtnopediaApiUrl,
-} from "@/lib/etnopedia-api";
-import type { EtnopediaRecord } from "@/lib/etnopedia-api";
 import { logError } from "@/lib/error-logging";
 import {
   GOOGLE_SHEETS_PROVIDER,
   GOOGLE_SHEETS_READONLY_SCOPE,
   GoogleSheetsError,
-  assertGoogleSheetsImportSize,
   createGoogleSheetsAuthorizationUrl,
   createGoogleSheetsOAuthState,
   exchangeGoogleSheetsOAuthCode,
   fetchGoogleSheetsSpreadsheetMetadata,
-  fetchGoogleSheetsTabValues,
   hashGoogleSheetsOAuthState,
   parseGoogleSheetUrl,
-  parseGoogleSheetsValuesToRows,
-  refreshGoogleSheetsAccessToken,
-  type GoogleSheetsOAuthSecret,
 } from "@/lib/google-sheets";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import type {
   ApiConnection,
   ApiConnectionHeader,
   ApiConnectionImportMode,
-  ApiConnectionProviderConfig,
   ApiConnectionResource,
   ApiConnectionResponseFormat,
   ApiConnectionRun,
@@ -81,23 +63,44 @@ import type {
   GoogleSheetsConnectionProviderConfig,
 } from "@/lib/api-types";
 
-const MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
-const MAX_ARCGIS_RESPONSE_BYTES = 64 * 1024 * 1024;
-const ARCGIS_FEATURE_PAGE_SIZE = 2000;
-const MAX_PREVIEW_LENGTH = 8 * 1024;
-const REQUEST_TIMEOUT_MS = 20_000;
-const MAX_REDIRECTS = 3;
+import {
+  ApiConnectionError,
+  HTTP_API_PROVIDER_CONFIG,
+  JOSHUA_PROJECT_API_KEY_NAME,
+  createApiConnectionRunRequest,
+  normalizeApiConnectionProviderConfig,
+  previewResponse,
+  redactSecrets,
+  serializeRowsToCsv,
+} from "./core";
+import { resolveConnectionProvider } from "./provider";
+import { createGoogleSheetsOAuthCredential } from "./providers/google-sheets";
+import {
+  createVaultSecret,
+  deleteVaultSecret,
+  readVaultSecret,
+  updateVaultSecret,
+} from "./vault";
+
+export {
+  ApiConnectionError,
+  assertSafeApiUrl,
+  createApiConnectionRunRequest,
+  parseApiResponseRows,
+} from "./core";
+export type { ApiConnectionRunRequestInput, ParsedApiRows } from "./core";
+export {
+  fetchArcgisFeaturePages,
+  parseArcgisFeatureRows,
+} from "./providers/arcgis";
+export type {
+  ApiConnectionRecord as ApiConnectionRow,
+  ConnectionProvider,
+} from "./provider";
+
 const GOOGLE_SHEETS_DRAFT_TTL_MS = 15 * 60 * 1000;
-const JOSHUA_PROJECT_API_HOST = "api.joshuaproject.net";
-const JOSHUA_PROJECT_PEOPLE_GROUPS_PATH = "/v1/people_groups.json";
-const JOSHUA_PROJECT_API_KEY_NAME = "api_key";
-const HTTP_API_PROVIDER_CONFIG: ApiConnectionProviderConfig = {
-  provider: "http_api",
-};
 
 type ApiConnectionRecord = typeof apiConnections.$inferSelect;
-type ApiConnectionOAuthCredentialRecord =
-  typeof apiConnectionOAuthCredentials.$inferSelect;
 type GoogleSheetsConnectionDraftRecord =
   typeof googleSheetsConnectionDrafts.$inferSelect;
 type ApiConnectionRunRecord = typeof apiConnectionRuns.$inferSelect;
@@ -131,14 +134,6 @@ type CodeManagedApiConnectionDefinition = {
   datasetClassification: DatasetClassification;
 };
 
-export type ApiConnectionRunRequestInput = {
-  method: ApiConnection["method"];
-  url: string;
-  requestHeaders: ApiConnectionHeader[];
-  bodyTemplate: string;
-  secrets: Map<string, string>;
-};
-
 export type ApiConnectionInput = {
   name: string;
   description: string;
@@ -153,16 +148,6 @@ export type ApiConnectionInput = {
   datasetName: string;
   datasetClassification: DatasetClassification;
 };
-
-export class ApiConnectionError extends Error {
-  readonly status: number;
-
-  constructor(message: string, status = 400) {
-    super(message);
-    this.name = "ApiConnectionError";
-    this.status = status;
-  }
-}
 
 const CODE_MANAGED_CONNECTION_TIMESTAMP = "2026-04-30T00:00:00.000Z";
 
@@ -375,30 +360,6 @@ function toApiConnection(row: ApiConnectionRecord): ApiConnection {
   };
 }
 
-function normalizeApiConnectionProviderConfig(
-  value: ApiConnectionProviderConfig,
-  provider: ApiConnection["provider"] = "http_api",
-): ApiConnectionProviderConfig {
-  if (provider === GOOGLE_SHEETS_PROVIDER && value?.provider === GOOGLE_SHEETS_PROVIDER) {
-    return value;
-  }
-
-  return HTTP_API_PROVIDER_CONFIG;
-}
-
-function getGoogleSheetsProviderConfig(
-  connection: ApiConnectionRecord,
-): GoogleSheetsConnectionProviderConfig | null {
-  const providerConfig = normalizeApiConnectionProviderConfig(
-    connection.providerConfig,
-    connection.provider,
-  );
-
-  return providerConfig.provider === GOOGLE_SHEETS_PROVIDER
-    ? providerConfig
-    : null;
-}
-
 function toGoogleSheetsConnectionDraft(
   row: GoogleSheetsConnectionDraftRecord,
 ): GoogleSheetsConnectionDraft {
@@ -509,185 +470,6 @@ function normalizeConnectionInput(input: ApiConnectionInput) {
     nonSecretHeaders,
     secretHeaders,
   };
-}
-
-function getVaultSecretName(connectionId: string) {
-  return `api_connection_${connectionId}_headers`;
-}
-
-function getGoogleSheetsCredentialSecretName(credentialId: string) {
-  return `api_connection_google_sheets_${credentialId}`;
-}
-
-async function createNamedVaultSecret(input: {
-  secret: string;
-  name: string;
-  description: string;
-}) {
-  const rows = (await getDb().execute(sql`
-    select vault.create_secret(
-      ${input.secret},
-      ${input.name},
-      ${input.description}
-    ) as id
-  `)) as Array<{ id: string }>;
-
-  return rows[0]?.id ?? null;
-}
-
-async function createVaultSecret(connectionId: string, secretHeaders: Map<string, string>) {
-  if (secretHeaders.size === 0) {
-    return null;
-  }
-
-  const secret = JSON.stringify(Object.fromEntries(secretHeaders));
-  return createNamedVaultSecret({
-    secret,
-    name: getVaultSecretName(connectionId),
-    description: "API connection secret headers",
-  });
-}
-
-async function updateVaultSecret(input: {
-  connectionId: string;
-  vaultId: string | null;
-  secretHeaders: Map<string, string>;
-}) {
-  if (input.secretHeaders.size === 0) {
-    return null;
-  }
-
-  const secret = JSON.stringify(Object.fromEntries(input.secretHeaders));
-
-  if (input.vaultId) {
-    await getDb().execute(sql`
-      select vault.update_secret(
-        ${input.vaultId}::uuid,
-        ${secret},
-        ${getVaultSecretName(input.connectionId)},
-        'API connection secret headers'
-      )
-    `);
-    return input.vaultId;
-  }
-
-  return createVaultSecret(input.connectionId, input.secretHeaders);
-}
-
-async function readVaultSecret(vaultId: string | null) {
-  const rawSecret = await readVaultSecretText(vaultId);
-
-  if (!rawSecret) {
-    return new Map<string, string>();
-  }
-
-  try {
-    const parsed = JSON.parse(rawSecret) as Record<string, unknown>;
-    return new Map(
-      Object.entries(parsed)
-        .filter((entry): entry is [string, string] => typeof entry[1] === "string")
-        .map(([name, value]) => [name, value]),
-    );
-  } catch (error) {
-    logError("Failed to parse API connection Vault secret", error);
-    return new Map<string, string>();
-  }
-}
-
-async function readVaultSecretText(vaultId: string | null) {
-  if (!vaultId) {
-    return null;
-  }
-
-  const rows = (await getDb().execute(sql`
-    select decrypted_secret
-    from vault.decrypted_secrets
-    where id = ${vaultId}::uuid
-    limit 1
-  `)) as Array<{ decrypted_secret: string | null }>;
-  return rows[0]?.decrypted_secret ?? null;
-}
-
-async function deleteVaultSecret(vaultId: string | null) {
-  if (!vaultId) {
-    return;
-  }
-
-  await getDb().execute(sql`delete from vault.secrets where id = ${vaultId}::uuid`);
-}
-
-async function createGoogleSheetsOAuthCredential(input: {
-  identity: CurrentIdentity;
-  secret: GoogleSheetsOAuthSecret;
-}) {
-  const credentialId = randomUUID();
-  const secretVaultId = await createNamedVaultSecret({
-    secret: JSON.stringify(input.secret),
-    name: getGoogleSheetsCredentialSecretName(credentialId),
-    description: "Google Sheets OAuth refresh token",
-  });
-
-  if (!secretVaultId) {
-    throw new ApiConnectionError("Could not store Google Sheets credential.", 500);
-  }
-
-  const [credential] = await getDb()
-    .insert(apiConnectionOAuthCredentials)
-    .values({
-      id: credentialId,
-      provider: GOOGLE_SHEETS_PROVIDER,
-      actorOwnerId: input.identity.ownerId,
-      actorEmail: input.identity.email,
-      scopes: [GOOGLE_SHEETS_READONLY_SCOPE],
-      secretVaultId,
-    })
-    .returning();
-
-  return credential;
-}
-
-async function readGoogleSheetsOAuthSecret(
-  credential: ApiConnectionOAuthCredentialRecord,
-) {
-  const rawSecret = await readVaultSecretText(credential.secretVaultId);
-
-  if (!rawSecret) {
-    throw new ApiConnectionError("Google Sheets credential was not found.", 400);
-  }
-
-  try {
-    const parsed = JSON.parse(rawSecret) as Partial<GoogleSheetsOAuthSecret>;
-
-    if (!parsed.refreshToken) {
-      throw new Error("Missing refresh token.");
-    }
-
-    return {
-      refreshToken: parsed.refreshToken,
-      scope: parsed.scope ?? GOOGLE_SHEETS_READONLY_SCOPE,
-      tokenType: parsed.tokenType ?? "Bearer",
-    } satisfies GoogleSheetsOAuthSecret;
-  } catch {
-    throw new ApiConnectionError("Google Sheets credential is invalid.", 400);
-  }
-}
-
-async function getGoogleSheetsOAuthCredential(credentialId: string | null) {
-  if (!credentialId) {
-    throw new ApiConnectionError("Google Sheets credential is missing.", 400);
-  }
-
-  const [credential] = await getDb()
-    .select()
-    .from(apiConnectionOAuthCredentials)
-    .where(eq(apiConnectionOAuthCredentials.id, credentialId))
-    .limit(1);
-
-  if (!credential || credential.revokedAt) {
-    throw new ApiConnectionError("Google Sheets credential is unavailable.", 400);
-  }
-
-  return credential;
 }
 
 function mergeSecretHeaders(input: {
@@ -1186,737 +968,6 @@ export async function disconnectGoogleSheetsConnection(input: {
   return toApiConnection(deleted);
 }
 
-function isBlockedIpAddress(address: string) {
-  const version = isIP(address);
-
-  if (version === 4) {
-    const octets = address.split(".").map((octet) => Number.parseInt(octet, 10));
-    const [first = 0, second = 0] = octets;
-
-    return (
-      first === 10 ||
-      first === 127 ||
-      (first === 169 && second === 254) ||
-      (first === 172 && second >= 16 && second <= 31) ||
-      (first === 192 && second === 168) ||
-      first === 0
-    );
-  }
-
-  if (version === 6) {
-    const normalized = address.toLowerCase();
-    return (
-      normalized === "::1" ||
-      normalized.startsWith("fc") ||
-      normalized.startsWith("fd") ||
-      normalized.startsWith("fe80:")
-    );
-  }
-
-  return false;
-}
-
-export async function assertSafeApiUrl(value: string) {
-  const url = new URL(value);
-
-  if (url.protocol !== "https:") {
-    throw new ApiConnectionError("API connection URLs must use HTTPS.");
-  }
-
-  if (!url.hostname) {
-    throw new ApiConnectionError("API connection URL is invalid.");
-  }
-
-  if (url.username || url.password) {
-    throw new ApiConnectionError("API connection URLs cannot include credentials.");
-  }
-
-  const addresses = await lookup(url.hostname, { all: true, verbatim: true });
-
-  if (
-    addresses.length === 0 ||
-    addresses.some((address) => isBlockedIpAddress(address.address))
-  ) {
-    throw new ApiConnectionError("API connection URL resolves to a blocked network.");
-  }
-}
-
-function redactSecrets(value: string, secrets: Map<string, string>) {
-  let redacted = value;
-
-  for (const secret of secrets.values()) {
-    if (!secret) {
-      continue;
-    }
-
-    redacted = redacted.split(secret).join("[redacted]");
-  }
-
-  return redacted;
-}
-
-function previewResponse(value: string, secrets: Map<string, string>) {
-  return redactSecrets(value.slice(0, MAX_PREVIEW_LENGTH), secrets);
-}
-
-function isJoshuaProjectPeopleGroupsUrl(value: string) {
-  try {
-    const url = new URL(value);
-    return (
-      url.hostname === JOSHUA_PROJECT_API_HOST &&
-      url.pathname === JOSHUA_PROJECT_PEOPLE_GROUPS_PATH
-    );
-  } catch {
-    return false;
-  }
-}
-
-function getCaseInsensitiveSecret(secrets: Map<string, string>, name: string) {
-  const normalizedName = name.toLowerCase();
-
-  for (const [secretName, value] of secrets) {
-    if (secretName.toLowerCase() === normalizedName) {
-      return value;
-    }
-  }
-
-  return null;
-}
-
-export function createApiConnectionRunRequest(input: ApiConnectionRunRequestInput) {
-  const headers = new Headers();
-  const requestUrl = new URL(input.url);
-  const isJoshuaProjectPeopleGroups = isJoshuaProjectPeopleGroupsUrl(input.url);
-
-  for (const header of input.requestHeaders) {
-    headers.set(header.name, header.value);
-  }
-
-  for (const [name, value] of input.secrets) {
-    if (
-      isJoshuaProjectPeopleGroups &&
-      name.toLowerCase() === JOSHUA_PROJECT_API_KEY_NAME
-    ) {
-      continue;
-    }
-
-    headers.set(name, value);
-  }
-
-  if (isJoshuaProjectPeopleGroups) {
-    const apiKey = getCaseInsensitiveSecret(input.secrets, JOSHUA_PROJECT_API_KEY_NAME);
-
-    if (!apiKey) {
-      throw new ApiConnectionError("Joshua Project API key is required.", 400);
-    }
-
-    requestUrl.searchParams.set(JOSHUA_PROJECT_API_KEY_NAME, apiKey);
-  }
-
-  return {
-    url: requestUrl.toString(),
-    headers,
-    body: input.method === "GET" ? undefined : input.bodyTemplate || undefined,
-  };
-}
-
-async function readLimitedResponse(
-  response: Response,
-  maxBytes = MAX_RESPONSE_BYTES,
-) {
-  const reader = response.body?.getReader();
-
-  if (!reader) {
-    return "";
-  }
-
-  const chunks: Buffer[] = [];
-  let totalBytes = 0;
-
-  while (true) {
-    const { done, value } = await reader.read();
-
-    if (done) {
-      break;
-    }
-
-    totalBytes += value.byteLength;
-
-    if (totalBytes > maxBytes) {
-      throw new ApiConnectionError("API response is too large.", 502);
-    }
-
-    chunks.push(Buffer.from(value));
-  }
-
-  return new TextDecoder().decode(Buffer.concat(chunks));
-}
-
-async function fetchWithSafeRedirects(input: {
-  url: string;
-  init: RequestInit;
-  redirects?: number;
-}): Promise<Response> {
-  await assertSafeApiUrl(input.url);
-  const response = await fetch(input.url, {
-    ...input.init,
-    redirect: "manual",
-  });
-
-  if (
-    response.status >= 300 &&
-    response.status < 400 &&
-    response.headers.has("location")
-  ) {
-    const redirectCount = input.redirects ?? 0;
-
-    if (redirectCount >= MAX_REDIRECTS) {
-      throw new ApiConnectionError("API request redirected too many times.", 502);
-    }
-
-    const nextUrl = new URL(response.headers.get("location")!, input.url).toString();
-    return fetchWithSafeRedirects({
-      url: nextUrl,
-      init: input.init,
-      redirects: redirectCount + 1,
-    });
-  }
-
-  return response;
-}
-
-function createEtnopediaRequestJson(input: {
-  url: string;
-  headers: Headers;
-  secrets: Map<string, string>;
-}) {
-  return async (params: Record<string, string>, method: "GET" | "POST") => {
-    const headers = new Headers(input.headers);
-    let url = input.url;
-    let body: BodyInit | undefined;
-
-    if (!headers.has("User-Agent")) {
-      headers.set("User-Agent", "Etnopedia-WebExport/1.0 (+accelerate-global)");
-    }
-
-    if (method === "GET") {
-      const requestUrl = new URL(url);
-
-      for (const [key, value] of Object.entries(params)) {
-        requestUrl.searchParams.set(key, value);
-      }
-
-      url = requestUrl.toString();
-    } else {
-      if (!headers.has("Content-Type")) {
-        headers.set("Content-Type", "application/x-www-form-urlencoded;charset=utf-8");
-      }
-
-      body = new URLSearchParams(params);
-    }
-
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-    let response: Response;
-
-    try {
-      response = await fetchWithSafeRedirects({
-        url,
-        init: {
-          method,
-          headers,
-          body,
-          signal: controller.signal,
-        },
-      });
-    } finally {
-      clearTimeout(timeout);
-    }
-
-    const responseBody = await readLimitedResponse(response);
-
-    if (!response.ok) {
-      throw new ApiConnectionError(
-        `Etnopedia API request failed with HTTP ${response.status}.`,
-        502,
-      );
-    }
-
-    try {
-      return JSON.parse(responseBody) as unknown;
-    } catch {
-      const snippet = redactSecrets(
-        responseBody.slice(0, 240).replace(/[\r\n]+/g, " ").trim(),
-        input.secrets,
-      );
-
-      throw new ApiConnectionError(
-        `Etnopedia API returned a non-JSON response. Body starts with: ${snippet}`,
-        502,
-      );
-    }
-  };
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
-}
-
-function isArcgisFeatureServerQueryUrl(value: string) {
-  try {
-    const url = new URL(value);
-    return /\/FeatureServer\/\d+\/query$/i.test(url.pathname);
-  } catch {
-    return false;
-  }
-}
-
-function isArcgisFeatureConnection(input: {
-  url: string;
-  responseFormat: ApiConnectionResponseFormat;
-  responseDataPath: string;
-}) {
-  return (
-    input.responseFormat === "json" &&
-    input.responseDataPath.trim() === "features" &&
-    isArcgisFeatureServerQueryUrl(input.url)
-  );
-}
-
-function getArcgisFeaturePageUrl(input: {
-  url: string;
-  pageSize: number;
-  offset: number;
-  objectIdField: string | null;
-}) {
-  const url = new URL(input.url);
-
-  if (!url.searchParams.has("where")) {
-    url.searchParams.set("where", "1=1");
-  }
-
-  if (!url.searchParams.has("outFields")) {
-    url.searchParams.set("outFields", "*");
-  }
-
-  if (!url.searchParams.has("outSR")) {
-    url.searchParams.set("outSR", "4326");
-  }
-
-  url.searchParams.set("f", "json");
-  url.searchParams.set("resultRecordCount", String(input.pageSize));
-  url.searchParams.set("resultOffset", String(input.offset));
-
-  if (input.objectIdField) {
-    url.searchParams.set("orderByFields", input.objectIdField);
-  }
-
-  return url.toString();
-}
-
-function parseArcgisFeaturePage(body: string) {
-  let parsed: unknown;
-
-  try {
-    parsed = JSON.parse(body);
-  } catch {
-    throw new ApiConnectionError("ArcGIS API response could not be parsed.", 502);
-  }
-
-  if (!isRecord(parsed)) {
-    throw new ApiConnectionError("ArcGIS API response was not an object.", 502);
-  }
-
-  if (isRecord(parsed.error)) {
-    const message =
-      typeof parsed.error.message === "string"
-        ? parsed.error.message
-        : "ArcGIS API returned an error.";
-    throw new ApiConnectionError(`ArcGIS API error: ${message}`, 502);
-  }
-
-  if (!Array.isArray(parsed.features)) {
-    throw new ApiConnectionError("ArcGIS API response did not include features.", 502);
-  }
-
-  const features = parsed.features.filter(isRecord);
-
-  if (features.length !== parsed.features.length) {
-    throw new ApiConnectionError("ArcGIS API response included invalid features.", 502);
-  }
-
-  return {
-    features,
-    objectIdField:
-      typeof parsed.objectIdFieldName === "string"
-        ? parsed.objectIdFieldName
-        : null,
-  };
-}
-
-export async function fetchArcgisFeaturePages(input: {
-  url: string;
-  headers: Headers;
-  pageSize?: number;
-  maxBytes?: number;
-  log?: (message: string) => Promise<void>;
-  onHttpStatus?: (status: number) => void;
-}) {
-  const pageSize = input.pageSize ?? ARCGIS_FEATURE_PAGE_SIZE;
-  const maxBytes = input.maxBytes ?? MAX_ARCGIS_RESPONSE_BYTES;
-  const features: Record<string, unknown>[] = [];
-  let objectIdField: string | null = null;
-  let offset = 0;
-  let pageIndex = 0;
-  let totalBytes = 0;
-  let httpStatus: number | null = null;
-
-  if (pageSize <= 0) {
-    throw new ApiConnectionError("ArcGIS page size must be greater than zero.");
-  }
-
-  while (true) {
-    const pageUrl = getArcgisFeaturePageUrl({
-      url: input.url,
-      pageSize,
-      offset,
-      objectIdField,
-    });
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-    let response: Response;
-
-    try {
-      response = await fetchWithSafeRedirects({
-        url: pageUrl,
-        init: {
-          method: "GET",
-          headers: input.headers,
-          signal: controller.signal,
-        },
-      });
-    } finally {
-      clearTimeout(timeout);
-    }
-
-    httpStatus = response.status;
-    input.onHttpStatus?.(response.status);
-
-    const remainingBytes = Math.max(0, maxBytes - totalBytes);
-    const body = await readLimitedResponse(response, remainingBytes);
-    totalBytes += Buffer.byteLength(body);
-
-    if (totalBytes > maxBytes) {
-      throw new ApiConnectionError("API response is too large.", 502);
-    }
-
-    if (!response.ok) {
-      throw new ApiConnectionError(`API request failed with HTTP ${response.status}.`, 502);
-    }
-
-    const page = parseArcgisFeaturePage(body);
-
-    if (!objectIdField) {
-      objectIdField = page.objectIdField || "OBJECTID";
-    }
-
-    features.push(...page.features);
-
-    await input.log?.(
-      `Fetched ArcGIS page ${pageIndex}: ${page.features.length} features (${features.length} total).`,
-    );
-
-    if (page.features.length < pageSize) {
-      break;
-    }
-
-    offset += pageSize;
-    pageIndex += 1;
-  }
-
-  return {
-    body: JSON.stringify(features),
-    featureCount: features.length,
-    httpStatus,
-  };
-}
-
-function getJsonPathValue(value: unknown, path: string) {
-  const trimmedPath = path.trim();
-
-  if (!trimmedPath) {
-    return value;
-  }
-
-  return trimmedPath.split(".").reduce<unknown>((current, segment) => {
-    if (current === null || typeof current !== "object") {
-      return undefined;
-    }
-
-    return (current as Record<string, unknown>)[segment];
-  }, value);
-}
-
-function objectToRecord(value: Record<string, unknown>) {
-  return Object.fromEntries(
-    Object.entries(value).map(([key, entryValue]) => [
-      key,
-      entryValue === null || entryValue === undefined
-        ? ""
-        : typeof entryValue === "object"
-          ? JSON.stringify(entryValue)
-          : String(entryValue),
-    ]),
-  );
-}
-
-function parseJoshuaProjectResources(value: unknown) {
-  if (Array.isArray(value)) {
-    return value.filter(
-      (resource): resource is Record<string, unknown> =>
-        resource !== null &&
-        typeof resource === "object" &&
-        !Array.isArray(resource),
-    );
-  }
-
-  if (typeof value !== "string") {
-    return [];
-  }
-
-  const trimmed = value.trim();
-
-  if (!trimmed) {
-    return [];
-  }
-
-  try {
-    const parsed = JSON.parse(trimmed) as unknown;
-
-    return Array.isArray(parsed)
-      ? parsed.filter(
-          (resource): resource is Record<string, unknown> =>
-            resource !== null &&
-            typeof resource === "object" &&
-            !Array.isArray(resource),
-        )
-      : [];
-  } catch {
-    return [];
-  }
-}
-
-function apiValueToString(value: unknown) {
-  if (value === null || value === undefined) {
-    return "";
-  }
-
-  if (typeof value === "object") {
-    return JSON.stringify(value);
-  }
-
-  return String(value);
-}
-
-export function parseArcgisFeatureRows(features: unknown[]) {
-  const rawRows = features.map((feature) => {
-    if (!isRecord(feature)) {
-      throw new ApiConnectionError("ArcGIS feature rows must be objects.", 502);
-    }
-
-    const row: Record<string, string> = {};
-    const attributes = feature.attributes;
-
-    if (isRecord(attributes)) {
-      for (const [key, value] of Object.entries(attributes)) {
-        row[key] = apiValueToString(value);
-      }
-    } else {
-      for (const [key, value] of Object.entries(feature)) {
-        if (key !== "geometry") {
-          row[key] = apiValueToString(value);
-        }
-      }
-    }
-
-    if (isRecord(feature.geometry)) {
-      for (const [key, value] of Object.entries(feature.geometry)) {
-        row[`geometry_${key}`] = apiValueToString(value);
-      }
-    }
-
-    return row;
-  });
-  const columns = rowsToColumns(rawRows);
-
-  return {
-    rows: alignRowsToColumns({ rows: rawRows, columns }),
-    columns,
-  };
-}
-
-function getJoshuaProjectItems(value: unknown) {
-  if (
-    value !== null &&
-    typeof value === "object" &&
-    !Array.isArray(value) &&
-    Array.isArray((value as { data?: unknown }).data)
-  ) {
-    return (value as { data: unknown[] }).data;
-  }
-
-  return Array.isArray(value) ? value : [value];
-}
-
-function parseJoshuaProjectPeopleGroupsRows(value: unknown) {
-  const rawRows = getJoshuaProjectItems(value).map((item) => {
-    if (item === undefined) {
-      throw new ApiConnectionError("Configured JSON response path was not found.", 502);
-    }
-
-    if (item === null || typeof item !== "object" || Array.isArray(item)) {
-      return { value: JSON.stringify(item) };
-    }
-
-    const row: Record<string, string> = {};
-
-    for (const [key, entryValue] of Object.entries(item)) {
-      if (key === "Resources") {
-        const resources = parseJoshuaProjectResources(entryValue);
-
-        resources.forEach((resource, resourceIndex) => {
-          const index = String(resourceIndex + 1).padStart(2, "0");
-
-          for (const fieldName of ["ROL3", "Category", "WebText", "URL"]) {
-            row[`Resource_${index}_${fieldName}`] = apiValueToString(
-              resource[fieldName],
-            );
-          }
-        });
-
-        row.Resources_raw = apiValueToString(entryValue);
-        continue;
-      }
-
-      row[key] = apiValueToString(entryValue);
-    }
-
-    return row;
-  });
-  const columns = rowsToColumns(rawRows);
-
-  return {
-    rows: alignRowsToColumns({ rows: rawRows, columns }),
-    columns,
-  };
-}
-
-function rowsToColumns(rows: Record<string, string>[]) {
-  const labels: string[] = [];
-  const seen = new Set<string>();
-
-  for (const row of rows) {
-    for (const key of Object.keys(row)) {
-      if (seen.has(key)) {
-        continue;
-      }
-
-      seen.add(key);
-      labels.push(key);
-    }
-  }
-
-  return normalizeHeaders(labels.length > 0 ? labels : ["value"]);
-}
-
-function alignRowsToColumns(input: {
-  rows: Record<string, string>[];
-  columns: CsvColumn[];
-}) {
-  return input.rows.map((row) =>
-    Object.fromEntries(input.columns.map((column) => [column.key, row[column.label] ?? ""])),
-  );
-}
-
-export function parseApiResponseRows(input: {
-  body: string;
-  responseFormat: ApiConnectionResponseFormat;
-  responseDataPath: string;
-  connectionUrl?: string;
-}) {
-  if (input.responseFormat === "csv") {
-    const parsed = Papa.parse<Record<string, string>>(input.body, {
-      header: true,
-      skipEmptyLines: "greedy",
-    });
-
-    if (parsed.errors.length > 0) {
-      throw new ApiConnectionError("CSV API response could not be parsed.", 502);
-    }
-
-    const rawRows = parsed.data.map((row) =>
-      Object.fromEntries(
-        Object.entries(row).map(([key, value]) => [key, value == null ? "" : String(value)]),
-      ),
-    );
-    const columns = rowsToColumns(rawRows);
-
-    return {
-      rows: alignRowsToColumns({ rows: rawRows, columns }),
-      columns,
-    };
-  }
-
-  let json: unknown;
-
-  try {
-    json = JSON.parse(input.body);
-  } catch {
-    throw new ApiConnectionError("JSON API response could not be parsed.", 502);
-  }
-
-  if (input.connectionUrl && isEtnopediaApiUrl(input.connectionUrl)) {
-    if (!Array.isArray(json)) {
-      throw new ApiConnectionError("Etnopedia export output was not an array.", 502);
-    }
-
-    const columns = normalizeHeaders([...ETNOPEDIA_CSV_COLUMNS]);
-    const rawRows = etnopediaRecordsToRows(json as EtnopediaRecord[]);
-
-    return {
-      rows: alignRowsToColumns({ rows: rawRows, columns }),
-      columns,
-    };
-  }
-
-  const selected = getJsonPathValue(json, input.responseDataPath);
-
-  if (
-    input.connectionUrl &&
-    isJoshuaProjectPeopleGroupsUrl(input.connectionUrl)
-  ) {
-    return parseJoshuaProjectPeopleGroupsRows(selected);
-  }
-
-  const items = Array.isArray(selected) ? selected : [selected];
-
-  if (items.some((item) => item === undefined)) {
-    throw new ApiConnectionError("Configured JSON response path was not found.", 502);
-  }
-
-  const rawRows = items.map((item) =>
-    item !== null && typeof item === "object" && !Array.isArray(item)
-      ? objectToRecord(item as Record<string, unknown>)
-      : { value: item == null ? "" : String(item) },
-  );
-  const columns = rowsToColumns(rawRows);
-
-  return {
-    rows: alignRowsToColumns({ rows: rawRows, columns }),
-    columns,
-  };
-}
-
 function normalizeApiConnectionResourceUrl(value: string) {
   const trimmedValue = value.trim();
 
@@ -1990,20 +1041,6 @@ export function extractApiConnectionResources(input: {
   });
 
   return [...resourcesByNormalizedUrl.values()];
-}
-
-function serializeRowsToCsv(input: {
-  rows: Record<string, string>[];
-  columns: CsvColumn[];
-}) {
-  const header = input.columns.map((column) => escapeCsvCell(column.label)).join(",");
-  const body = input.rows
-    .map((row) =>
-      input.columns.map((column) => escapeCsvCell(row[column.key] ?? "")).join(","),
-    )
-    .join("\n");
-
-  return body ? `${header}\n${body}\n` : `${header}\n`;
 }
 
 async function uploadImportSnapshot(input: {
@@ -2397,45 +1434,6 @@ function identityFromRun(run: ApiConnectionRunRecord): CurrentIdentity {
   };
 }
 
-async function fetchGoogleSheetsConnectionOutput(input: {
-  connection: ApiConnectionRecord;
-  secrets: Map<string, string>;
-}) {
-  const providerConfig = getGoogleSheetsProviderConfig(input.connection);
-
-  if (!providerConfig) {
-    throw new ApiConnectionError("Google Sheets connection metadata is invalid.", 400);
-  }
-
-  const credential = await getGoogleSheetsOAuthCredential(input.connection.oauthCredentialId);
-  const secret = await readGoogleSheetsOAuthSecret(credential);
-  input.secrets.set("google_refresh_token", secret.refreshToken);
-  const accessToken = await refreshGoogleSheetsAccessToken(secret.refreshToken);
-  input.secrets.set("google_access_token", accessToken);
-  const values = await fetchGoogleSheetsTabValues({
-    spreadsheetId: providerConfig.spreadsheetId,
-    sheetTitle: providerConfig.sheetTitle,
-    accessToken,
-  });
-  const parsed = parseGoogleSheetsValuesToRows(values);
-  const csv = serializeRowsToCsv(parsed);
-
-  assertGoogleSheetsImportSize(csv);
-
-  return {
-    body: JSON.stringify({
-      provider: GOOGLE_SHEETS_PROVIDER,
-      spreadsheetId: providerConfig.spreadsheetId,
-      spreadsheetTitle: providerConfig.spreadsheetTitle,
-      sheetId: providerConfig.sheetId,
-      sheetTitle: providerConfig.sheetTitle,
-      values,
-    }),
-    parsed,
-    httpStatus: 200,
-  };
-}
-
 export async function executeApiConnectionRun(input: { runId: string }) {
   const [run] = await getDb()
     .select()
@@ -2497,104 +1495,29 @@ export async function executeApiConnectionRun(input: { runId: string }) {
       secrets,
     });
 
-    let body: string;
-    let parsed: {
-      rows: Record<string, string>[];
-      columns: CsvColumn[];
-    } | null = null;
-
-    const isArcgisRun = isArcgisFeatureConnection({
-      url: requestConfig.url,
-      responseFormat: connection.responseFormat,
-      responseDataPath: connection.responseDataPath,
+    const provider = resolveConnectionProvider({
+      connection,
+      requestUrl: requestConfig.url,
     });
-
-    if (connection.provider === GOOGLE_SHEETS_PROVIDER) {
-      await insertRunLog({
-        runId: run.id,
-        connectionId: connection.id,
-        message: "Fetching Google Sheets tab.",
-      });
-
-      const result = await fetchGoogleSheetsConnectionOutput({
-        connection,
-        secrets,
-      });
-
-      body = result.body;
-      parsed = result.parsed;
-      httpStatus = result.httpStatus;
-    } else if (isEtnopediaApiUrl(connection.url)) {
-      try {
-        const result = await fetchEtnopediaPeopleGroups({
-          requestJson: createEtnopediaRequestJson({
-            url: requestConfig.url,
-            headers: requestConfig.headers,
-            secrets,
-          }),
-          log: (message) =>
-            insertRunLog({
-              runId: run.id,
-              connectionId: connection.id,
-              message,
-            }).then(() => undefined),
+    const result = await provider.fetch({
+      connection,
+      requestConfig,
+      secrets,
+      log: async (message) => {
+        await insertRunLog({
+          runId: run.id,
+          connectionId: connection.id,
+          message,
         });
+      },
+      onHttpStatus: (status) => {
+        httpStatus = status;
+      },
+    });
+    const body = result.body;
+    let parsed = result.parsed;
 
-        body = JSON.stringify(result.records);
-        httpStatus = 200;
-      } catch (error) {
-        if (error instanceof ApiConnectionError) {
-          throw error;
-        }
-
-        throw new ApiConnectionError(
-          error instanceof Error ? error.message : "Etnopedia export failed.",
-          502,
-        );
-      }
-    } else if (isArcgisRun) {
-      const result = await fetchArcgisFeaturePages({
-        url: requestConfig.url,
-        headers: requestConfig.headers,
-        log: (message) =>
-          insertRunLog({
-            runId: run.id,
-            connectionId: connection.id,
-            message,
-          }).then(() => undefined),
-        onHttpStatus: (status) => {
-          httpStatus = status;
-        },
-      });
-
-      body = result.body;
-      httpStatus = result.httpStatus;
-    } else {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-      let response: Response;
-
-      try {
-        response = await fetchWithSafeRedirects({
-          url: requestConfig.url,
-          init: {
-            method: connection.method,
-            headers: requestConfig.headers,
-            body: requestConfig.body,
-            signal: controller.signal,
-          },
-        });
-      } finally {
-        clearTimeout(timeout);
-      }
-
-      httpStatus = response.status;
-      body = await readLimitedResponse(response);
-
-      if (!response.ok) {
-        throw new ApiConnectionError(`API request failed with HTTP ${response.status}.`, 502);
-      }
-    }
+    httpStatus = result.httpStatus ?? httpStatus;
 
     responsePreview = previewResponse(body, secrets);
     const redactedBody = redactSecrets(body, secrets);
@@ -2605,14 +1528,7 @@ export async function executeApiConnectionRun(input: { runId: string }) {
       message: `Received HTTP ${httpStatus}.`,
     });
 
-    parsed ??= isArcgisRun
-      ? parseArcgisFeatureRows(JSON.parse(body) as unknown[])
-      : parseApiResponseRows({
-          body,
-          responseFormat: connection.responseFormat,
-          responseDataPath: connection.responseDataPath,
-          connectionUrl: connection.url,
-        });
+    parsed ??= provider.parse({ body, connection });
 
     await insertRunLog({
       runId: run.id,

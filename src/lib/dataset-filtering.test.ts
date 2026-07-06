@@ -3,23 +3,56 @@ import { describe, expect, it } from "vitest";
 import type { DatasetRowsResponse, DatasetSummary } from "@/lib/api-types";
 import { REGION_COUNTRY_OPTIONS } from "@/lib/region-country-options";
 import {
-  datasetSupportsCountryFiltering,
-  datasetSupportsHotspotsFiltering,
-  datasetSupportsRegionFiltering,
-  datasetSupportsWatchlistJpOnlyFiltering,
-  datasetSupportsWatchlistFiltering,
-  datasetSupportsUupgFiltering,
-  filterDatasetRowsByCountry,
-  filterDatasetRowsByHotspots,
-  filterDatasetRowsByRegion,
-  filterDatasetRowsByWatchlist,
-  filterDatasetRowsByUupg,
-  getAvailableDatasetCountryNames,
+  applyDatasetFilterSections,
+  getDatasetCountryNames,
+  getDatasetFilterSectionSupport,
   getEffectiveCountrySelection,
   getEnabledRegionCountryNames,
   getMatchingRegionIdsForCountries,
   getSelectedRegionCountryNames,
-} from "./dataset-region-filtering";
+  type DatasetFilterSections,
+} from "./dataset-filtering";
+
+type FilterableDatasetRows = Parameters<typeof applyDatasetFilterSections>[0];
+type FilterableDataset = Parameters<typeof getDatasetFilterSectionSupport>[0];
+
+// Section-scoped views of the public pipeline interface: each helper enables
+// exactly one filter section so the original per-section expectations keep
+// holding through `applyDatasetFilterSections`.
+const filterDatasetRowsByRegion = (
+  rows: FilterableDatasetRows,
+  region: DatasetFilterSections["region"],
+) => applyDatasetFilterSections(rows, { region }).rows;
+const filterDatasetRowsByCountry = (
+  rows: FilterableDatasetRows,
+  country: DatasetFilterSections["country"],
+) => applyDatasetFilterSections(rows, { country }).rows;
+const filterDatasetRowsByUupg = (
+  rows: FilterableDatasetRows,
+  uupg: DatasetFilterSections["uupg"],
+) => applyDatasetFilterSections(rows, { uupg }).rows;
+const filterDatasetRowsByWatchlist = (
+  rows: FilterableDatasetRows,
+  watchlist: DatasetFilterSections["watchlist"],
+) => applyDatasetFilterSections(rows, { watchlist }).rows;
+const filterDatasetRowsByHotspots = (
+  rows: FilterableDatasetRows,
+  hotspots: DatasetFilterSections["hotspots"],
+  uupg?: DatasetFilterSections["uupg"],
+) => applyDatasetFilterSections(rows, { hotspots, uupg }).rows;
+
+const datasetSupportsCountryFiltering = (dataset: FilterableDataset) =>
+  getDatasetFilterSectionSupport(dataset).country;
+const datasetSupportsHotspotsFiltering = (dataset: FilterableDataset) =>
+  getDatasetFilterSectionSupport(dataset).hotspots;
+const datasetSupportsRegionFiltering = (dataset: FilterableDataset) =>
+  getDatasetFilterSectionSupport(dataset).region;
+const datasetSupportsWatchlistJpOnlyFiltering = (dataset: FilterableDataset) =>
+  getDatasetFilterSectionSupport(dataset).watchlistJpOnly;
+const datasetSupportsWatchlistFiltering = (dataset: FilterableDataset) =>
+  getDatasetFilterSectionSupport(dataset).watchlist;
+const datasetSupportsUupgFiltering = (dataset: FilterableDataset) =>
+  getDatasetFilterSectionSupport(dataset).uupg;
 
 function createJpOnlySourceFlags(
   overrides: Partial<
@@ -172,7 +205,7 @@ const dataset = {
   updatedAt: new Date().toISOString(),
 } satisfies DatasetSummary;
 
-describe("dataset-region-filtering", () => {
+describe("dataset-filtering", () => {
   it("detects support when the dataset stores normalized column keys", () => {
     expect(datasetSupportsRegionFiltering(dataset)).toBe(true);
   });
@@ -623,7 +656,7 @@ describe("dataset-region-filtering", () => {
   });
 
   it("builds country options from primary country fields by default", () => {
-    expect(getAvailableDatasetCountryNames(rows)).toEqual([
+    expect(getDatasetCountryNames(rows)).toEqual([
       "India",
       "Nepal",
     ]);
@@ -631,7 +664,7 @@ describe("dataset-region-filtering", () => {
 
   it("includes alternate-country fields in the option list when enabled", () => {
     expect(
-      getAvailableDatasetCountryNames(rows, {
+      getDatasetCountryNames(rows, {
         includeAlternateCountries: true,
       }),
     ).toEqual([
@@ -938,7 +971,7 @@ describe("dataset-region-filtering", () => {
     ];
 
     expect(
-      getAvailableDatasetCountryNames(mixedRows, {
+      getDatasetCountryNames(mixedRows, {
         includeAlternateCountries: true,
       }),
     ).toEqual(["Argentina", "Bhutan", "Brazil", "India", "Nepal"]);

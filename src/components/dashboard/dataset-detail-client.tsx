@@ -15,7 +15,6 @@ import {
 } from "@/components/ui/sheet";
 import { useDatasetTableState } from "@/components/dashboard/use-dataset-table-state";
 import type {
-  DatasetOpenPreset,
   SavedDatasetFilterState,
   DatasetSummary,
   FieldDefinitionPresentation,
@@ -28,11 +27,11 @@ import type {
 import {
   buildAnalyticsContext,
   type DatasetOpenSource,
-  getEnabledFilterSections,
   getSortingKeys,
   type AnalyticsWorkspaceRole,
   withAnalyticsContext,
 } from "@/lib/analytics";
+import { getEnabledFilterSections } from "@/lib/dataset-filtering";
 import { trackAppEvent } from "@/lib/analytics-client";
 import {
   UUPG_DATASET_COLUMN_KEY,
@@ -42,24 +41,18 @@ import {
 } from "@/lib/dataset-region-constants";
 import {
   MAX_HOTSPOTS_COUNTRY_COUNT,
-  datasetSupportsAlternateCountryFiltering,
-  datasetSupportsCountryFiltering,
-  datasetSupportsHotspotsFiltering,
-  datasetSupportsRegionFiltering,
-  datasetSupportsUupgFrontierFiltering,
-  datasetSupportsWatchlistJpOnlyFiltering,
-  datasetSupportsWatchlistFiltering,
-  datasetSupportsUupgFiltering,
+  type DatasetFilterSections,
+  getDatasetFilterSectionSupport,
   getEffectiveCountrySelection,
   getMatchingRegionIdsForCountries,
   getSelectedRegionCountryNames,
   normalizeDatasetUupgCriteriaState,
-} from "@/lib/dataset-region-filtering";
+} from "@/lib/dataset-filtering";
 import { getFieldDefinitionCanonicalKeyLookupKeys } from "@/lib/field-definition-canonical";
 import { isGlobalRegionName } from "@/lib/region-display";
+import { getInitialDatasetDetailState } from "@/components/dashboard/dataset-detail-initial-state";
 import {
   buildSavedDatasetFilterState,
-  getInitialDatasetDetailState,
   WATCHLIST_FIXED_THRESHOLD,
 } from "@/lib/saved-dataset-filters";
 import { useDatasetPerfRenderTrace } from "@/lib/render-trace";
@@ -87,7 +80,7 @@ type DatasetDetailClientProps = {
     string,
     FieldDefinitionPresentation
   >;
-  initialFilters?: DatasetOpenPreset | null;
+  initialFilters?: SavedDatasetFilterState | null;
   initialSorting?: SavedDatasetSort[] | null;
   assignableDatasets?: DatasetSummary[];
   actorOwnerId?: string;
@@ -257,17 +250,18 @@ export function DatasetDetailClient({
   });
   const uupgFrontierFieldLabel = uupgFrontierFieldPresentation.effectiveLabel;
   const uupgFrontierFieldDefinition = uupgFrontierFieldPresentation.definition;
-  const supportsAlternateCountryFiltering =
-    datasetSupportsAlternateCountryFiltering(dataset);
-  const supportsCountryFiltering = datasetSupportsCountryFiltering(dataset);
-  const supportsHotspotsFiltering = datasetSupportsHotspotsFiltering(dataset);
-  const supportsRegionFiltering = datasetSupportsRegionFiltering(dataset);
-  const supportsWatchlistFiltering = datasetSupportsWatchlistFiltering(dataset);
-  const supportsWatchlistJpOnlyFiltering =
-    datasetSupportsWatchlistJpOnlyFiltering(dataset);
-  const supportsUupgFiltering = datasetSupportsUupgFiltering(dataset);
-  const supportsUupgFrontierFiltering =
-    datasetSupportsUupgFrontierFiltering(dataset);
+  const sectionSupport = useMemo(
+    () => getDatasetFilterSectionSupport(dataset),
+    [dataset],
+  );
+  const supportsAlternateCountryFiltering = sectionSupport.alternateCountry;
+  const supportsCountryFiltering = sectionSupport.country;
+  const supportsHotspotsFiltering = sectionSupport.hotspots;
+  const supportsRegionFiltering = sectionSupport.region;
+  const supportsWatchlistFiltering = sectionSupport.watchlist;
+  const supportsWatchlistJpOnlyFiltering = sectionSupport.watchlistJpOnly;
+  const supportsUupgFiltering = sectionSupport.uupg;
+  const supportsUupgFrontierFiltering = sectionSupport.uupgFrontier;
   const visibleRegions = regions;
   const initialState = useMemo(
     () =>
@@ -490,16 +484,22 @@ export function DatasetDetailClient({
       supportsHotspotsFiltering,
     ],
   );
+  const filterSections = useMemo<DatasetFilterSections>(
+    () => ({
+      region: regionFilter,
+      country: countryFilter,
+      watchlist: watchlistFilter,
+      uupg: uupgFilter,
+      hotspots: hotspotsFilter,
+    }),
+    [countryFilter, hotspotsFilter, regionFilter, uupgFilter, watchlistFilter],
+  );
   const datasetTable = useDatasetTableState({
     dataset,
     sourceRowCount,
     initialSorting: initialState.sorting,
     fieldDefinitionPresentationByColumnKey,
-    regionFilter,
-    countryFilter,
-    watchlistFilter,
-    hotspotsFilter,
-    uupgFilter,
+    filterSections,
     analytics: datasetTableAnalytics,
   });
   const effectiveCountrySelection = useMemo(

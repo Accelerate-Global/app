@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { readFile } from "node:fs/promises";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
@@ -227,7 +228,9 @@ describe("SavedTableDetailSheet", () => {
       />,
     );
 
-    expect(screen.getByText("Top 10 countries by UUPG population")).toBeTruthy();
+    expect(
+      screen.getByText("Top 10 countries by UUPG population"),
+    ).toBeTruthy();
   });
 
   it("shows the split UUPG summary when the saved table enables individual criteria", () => {
@@ -553,8 +556,18 @@ describe("SavedTableDetailSheet", () => {
     expect(
       screen.queryByText(/Population vs Evangelical Believers/),
     ).toBeNull();
-    expect(
-      screen.queryByText(/at least 50 believers/),
-    ).toBeNull();
+    expect(screen.queryByText(/at least 50 believers/)).toBeNull();
+  });
+});
+
+describe("saved-table filter support boundary", () => {
+  it("derives UUPG frontier support through the dataset filtering module", async () => {
+    const source = await readFile(
+      "src/components/dashboard/saved-table-detail-sheet.tsx",
+      "utf8",
+    );
+
+    expect(source).toContain('from "@/lib/dataset-filtering"');
+    expect(source).toContain("getDatasetFilterSectionSupport");
   });
 });

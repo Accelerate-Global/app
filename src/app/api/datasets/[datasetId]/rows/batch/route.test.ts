@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getCurrentIdentity } from "@/lib/auth";
@@ -12,7 +13,9 @@ vi.mock("@/lib/datasets", () => ({
   DerivedDatasetMutationError: class DerivedDatasetMutationError extends Error {
     readonly status = 409;
 
-    constructor(message = "Derived dataset views cannot store their own dataset rows.") {
+    constructor(
+      message = "Derived dataset views cannot store their own dataset rows.",
+    ) {
       super(message);
       this.name = "DerivedDatasetMutationError";
     }
@@ -70,15 +73,18 @@ describe("/api/datasets/[datasetId]/rows/batch", () => {
     getCurrentIdentityMock.mockResolvedValue(null);
 
     const response = await POST(
-      new Request("http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001/rows/batch", {
-        method: "POST",
-        body: JSON.stringify({
-          startIndex: 0,
-          rows: [{ email: "ada@example.com" }],
-          isFinalBatch: true,
-          totalRows: 1,
-        }),
-      }),
+      new Request(
+        "http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001/rows/batch",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            startIndex: 0,
+            rows: [{ email: "ada@example.com" }],
+            isFinalBatch: true,
+            totalRows: 1,
+          }),
+        },
+      ),
       context,
     );
 
@@ -94,15 +100,18 @@ describe("/api/datasets/[datasetId]/rows/batch", () => {
     });
 
     const response = await POST(
-      new Request("http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001/rows/batch", {
-        method: "POST",
-        body: JSON.stringify({
-          startIndex: 0,
-          rows: [{ email: "ada@example.com" }],
-          isFinalBatch: true,
-          totalRows: 1,
-        }),
-      }),
+      new Request(
+        "http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001/rows/batch",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            startIndex: 0,
+            rows: [{ email: "ada@example.com" }],
+            isFinalBatch: true,
+            totalRows: 1,
+          }),
+        },
+      ),
       context,
     );
 
@@ -114,15 +123,18 @@ describe("/api/datasets/[datasetId]/rows/batch", () => {
     insertDatasetRowBatchMock.mockResolvedValue(dataset);
 
     const response = await POST(
-      new Request("http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001/rows/batch", {
-        method: "POST",
-        body: JSON.stringify({
-          startIndex: 1,
-          rows: [{ email: "ada@example.com" }],
-          isFinalBatch: true,
-          totalRows: 2,
-        }),
-      }),
+      new Request(
+        "http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001/rows/batch",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            startIndex: 1,
+            rows: [{ email: "ada@example.com" }],
+            isFinalBatch: true,
+            totalRows: 2,
+          }),
+        },
+      ),
       context,
     );
 
@@ -141,14 +153,17 @@ describe("/api/datasets/[datasetId]/rows/batch", () => {
     insertDatasetRowBatchMock.mockResolvedValue(null);
 
     const response = await POST(
-      new Request("http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001/rows/batch", {
-        method: "POST",
-        body: JSON.stringify({
-          startIndex: 0,
-          rows: [{ email: "ada@example.com" }],
-          isFinalBatch: true,
-        }),
-      }),
+      new Request(
+        "http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001/rows/batch",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            startIndex: 0,
+            rows: [{ email: "ada@example.com" }],
+            isFinalBatch: true,
+          }),
+        },
+      ),
       context,
     );
 
@@ -162,15 +177,18 @@ describe("/api/datasets/[datasetId]/rows/batch", () => {
     );
 
     const response = await POST(
-      new Request("http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001/rows/batch", {
-        method: "POST",
-        body: JSON.stringify({
-          startIndex: 0,
-          rows: [{ email: "ada@example.com" }],
-          isFinalBatch: true,
-          totalRows: 1,
-        }),
-      }),
+      new Request(
+        "http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001/rows/batch",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            startIndex: 0,
+            rows: [{ email: "ada@example.com" }],
+            isFinalBatch: true,
+            totalRows: 1,
+          }),
+        },
+      ),
       context,
     );
 
@@ -178,5 +196,17 @@ describe("/api/datasets/[datasetId]/rows/batch", () => {
     await expect(response.json()).resolves.toEqual({
       error: "Derived dataset views cannot store their own dataset rows.",
     });
+  });
+});
+
+describe("route guard integration", () => {
+  it("uses the centralized route guard", async () => {
+    const source = await readFile(
+      "src/app/api/datasets/[datasetId]/rows/batch/route.ts",
+      "utf8",
+    );
+
+    expect(source).toContain('from "@/lib/route-guard"');
+    expect(source).toContain("withRoute(");
   });
 });

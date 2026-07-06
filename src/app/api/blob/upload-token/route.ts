@@ -1,83 +1,76 @@
-import { getCurrentIdentity } from "@/lib/auth";
 import {
   createDatasetStoragePath,
   getDatasetStorageBucket,
 } from "@/lib/dataset-storage";
 import { MAX_CSV_BYTES, sanitizeFileName } from "@/lib/csv";
 import { logError } from "@/lib/error-logging";
-import { jsonAdminOnlyError, jsonError } from "@/lib/http";
+import { jsonError } from "@/lib/http";
+import { withRoute } from "@/lib/route-guard";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { blobUploadTokenSchema } from "@/lib/validation";
 
-export async function POST(request: Request) {
-  const identity = await getCurrentIdentity();
+export const POST = withRoute(
+  { access: "admin", action: "upload CSV files" },
+  async (_identity, request: Request) => {
+    const parsed = blobUploadTokenSchema.safeParse(await request.json());
 
-  if (!identity) {
-    return jsonError("Unauthorized.", 401);
-  }
+    if (!parsed.success) {
+      return jsonError("Upload request is invalid.");
+    }
 
-  if (!identity.isDatasetAdmin) {
-    return jsonAdminOnlyError("upload CSV files");
-  }
+    const fileName = sanitizeFileName(parsed.data.fileName);
 
-  const parsed = blobUploadTokenSchema.safeParse(await request.json());
+    if (!fileName.toLowerCase().endsWith(".csv")) {
+      return jsonError("Only CSV uploads are supported.");
+    }
 
-  if (!parsed.success) {
-    return jsonError("Upload request is invalid.");
-  }
+    const bucket = getDatasetStorageBucket();
+    const path = createDatasetStoragePath(fileName);
 
-  const fileName = sanitizeFileName(parsed.data.fileName);
+    try {
+      const supabase = createSupabaseAdminClient();
+      const bucketLookup = await supabase.storage.getBucket(bucket);
 
-  if (!fileName.toLowerCase().endsWith(".csv")) {
-    return jsonError("Only CSV uploads are supported.");
-  }
+      if (bucketLookup.error) {
+        if (bucketLookup.error.status !== 404) {
+          throw bucketLookup.error;
+        }
 
-  const bucket = getDatasetStorageBucket();
-  const path = createDatasetStoragePath(fileName);
+        const createdBucket = await supabase.storage.createBucket(bucket, {
+          public: false,
+          allowedMimeTypes: [
+            "text/csv",
+            "application/vnd.ms-excel",
+            "text/plain",
+          ],
+          fileSizeLimit: MAX_CSV_BYTES,
+        });
 
-  try {
-    const supabase = createSupabaseAdminClient();
-    const bucketLookup = await supabase.storage.getBucket(bucket);
-
-    if (bucketLookup.error) {
-      if (bucketLookup.error.status !== 404) {
-        throw bucketLookup.error;
+        if (createdBucket.error) {
+          throw createdBucket.error;
+        }
       }
 
-      const createdBucket = await supabase.storage.createBucket(bucket, {
-        public: false,
-        allowedMimeTypes: [
-          "text/csv",
-          "application/vnd.ms-excel",
-          "text/plain",
-        ],
-        fileSizeLimit: MAX_CSV_BYTES,
+      const signedUpload = await supabase.storage
+        .from(bucket)
+        .createSignedUploadUrl(path);
+
+      if (signedUpload.error) {
+        throw signedUpload.error;
+      }
+
+      return Response.json({
+        mode: "supabase-storage",
+        bucket,
+        path,
+        token: signedUpload.data.token,
       });
-
-      if (createdBucket.error) {
-        throw createdBucket.error;
-      }
+    } catch (error) {
+      logError("Failed to create Supabase Storage upload authorization", error);
+      return jsonError(
+        "The upload could not be authorized by Supabase Storage.",
+        502,
+      );
     }
-
-    const signedUpload = await supabase.storage
-      .from(bucket)
-      .createSignedUploadUrl(path);
-
-    if (signedUpload.error) {
-      throw signedUpload.error;
-    }
-
-    return Response.json({
-      mode: "supabase-storage",
-      bucket,
-      path,
-      token: signedUpload.data.token,
-    });
-  } catch (error) {
-    logError("Failed to create Supabase Storage upload authorization", error);
-    return jsonError(
-      "The upload could not be authorized by Supabase Storage.",
-      502,
-    );
-  }
-}
+  },
+);

@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { listApiConnectionRuns } from "@/lib/api-connections";
@@ -36,7 +37,7 @@ const run = {
   rowCount: 2,
   datasetId: null,
   errorMessage: null,
-  responsePreview: "[{\"name\":\"Alpha\"}]",
+  responsePreview: '[{"name":"Alpha"}]',
   startedAt: "2026-04-24T12:00:01.000Z",
   completedAt: "2026-04-24T12:00:02.000Z",
   createdAt: "2026-04-24T12:00:00.000Z",
@@ -83,5 +84,17 @@ describe("/api/admin/api-connections/[connectionId]/runs", () => {
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({ runs: [run] });
     expect(listApiConnectionRunsMock).toHaveBeenCalledWith(run.connectionId);
+  });
+});
+
+describe("route guard integration", () => {
+  it("uses the centralized route guard", async () => {
+    const source = await readFile(
+      "src/app/api/admin/api-connections/[connectionId]/runs/route.ts",
+      "utf8",
+    );
+
+    expect(source).toContain('from "@/lib/route-guard"');
+    expect(source).toContain("withRoute(");
   });
 });

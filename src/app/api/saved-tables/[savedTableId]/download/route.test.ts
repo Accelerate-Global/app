@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getCurrentIdentity } from "@/lib/auth";
@@ -181,7 +182,9 @@ describe("/api/saved-tables/[savedTableId]/download", () => {
     getCurrentIdentityMock.mockResolvedValue(null);
 
     const response = await GET(
-      new Request("http://localhost/api/saved-tables/c0000000-0000-4000-8000-000000000001/download"),
+      new Request(
+        "http://localhost/api/saved-tables/c0000000-0000-4000-8000-000000000001/download",
+      ),
       context,
     );
 
@@ -191,7 +194,9 @@ describe("/api/saved-tables/[savedTableId]/download", () => {
 
   it("downloads the saved filtered table as csv", async () => {
     const response = await GET(
-      new Request("http://localhost/api/saved-tables/c0000000-0000-4000-8000-000000000001/download"),
+      new Request(
+        "http://localhost/api/saved-tables/c0000000-0000-4000-8000-000000000001/download",
+      ),
       context,
     );
 
@@ -237,7 +242,9 @@ describe("/api/saved-tables/[savedTableId]/download", () => {
     });
 
     const response = await GET(
-      new Request("http://localhost/api/saved-tables/c0000000-0000-4000-8000-000000000001/download"),
+      new Request(
+        "http://localhost/api/saved-tables/c0000000-0000-4000-8000-000000000001/download",
+      ),
       context,
     );
 
@@ -277,7 +284,9 @@ describe("/api/saved-tables/[savedTableId]/download", () => {
     });
 
     const response = await GET(
-      new Request("http://localhost/api/saved-tables/c0000000-0000-4000-8000-000000000001/download"),
+      new Request(
+        "http://localhost/api/saved-tables/c0000000-0000-4000-8000-000000000001/download",
+      ),
       context,
     );
 
@@ -291,7 +300,9 @@ describe("/api/saved-tables/[savedTableId]/download", () => {
     getSavedDatasetTableMock.mockResolvedValue(null);
 
     const response = await GET(
-      new Request("http://localhost/api/saved-tables/c0000000-0000-4000-8000-000000000001/download"),
+      new Request(
+        "http://localhost/api/saved-tables/c0000000-0000-4000-8000-000000000001/download",
+      ),
       context,
     );
 
@@ -302,7 +313,9 @@ describe("/api/saved-tables/[savedTableId]/download", () => {
     getDatasetMock.mockResolvedValue(null);
 
     const response = await GET(
-      new Request("http://localhost/api/saved-tables/c0000000-0000-4000-8000-000000000001/download"),
+      new Request(
+        "http://localhost/api/saved-tables/c0000000-0000-4000-8000-000000000001/download",
+      ),
       context,
     );
 
@@ -417,7 +430,9 @@ describe("/api/saved-tables/[savedTableId]/download", () => {
     });
 
     const response = await GET(
-      new Request("http://localhost/api/saved-tables/c0000000-0000-4000-8000-000000000001/download"),
+      new Request(
+        "http://localhost/api/saved-tables/c0000000-0000-4000-8000-000000000001/download",
+      ),
       context,
     );
 
@@ -428,5 +443,17 @@ describe("/api/saved-tables/[savedTableId]/download", () => {
     expect(csv).toContain("2,100018.0,India");
     expect(csv).not.toContain("Nepal");
     expect(csv).not.toContain("100022.0");
+  });
+});
+
+describe("route guard integration", () => {
+  it("uses the centralized route guard", async () => {
+    const source = await readFile(
+      "src/app/api/saved-tables/[savedTableId]/download/route.ts",
+      "utf8",
+    );
+
+    expect(source).toContain('from "@/lib/route-guard"');
+    expect(source).toContain("withRoute(");
   });
 });

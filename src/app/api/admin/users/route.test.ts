@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getCurrentIdentity } from "@/lib/auth";
@@ -98,7 +99,9 @@ describe("/api/admin/users", () => {
     const response = await GET();
 
     expect(response.status).toBe(500);
-    await expect(response.json()).resolves.toEqual({ error: "Could not load users." });
+    await expect(response.json()).resolves.toEqual({
+      error: "Could not load users.",
+    });
   });
 
   it("rejects invalid invite payloads", async () => {
@@ -191,5 +194,14 @@ describe("/api/admin/users", () => {
     await expect(response.json()).resolves.toEqual({
       error: "Could not invite the user.",
     });
+  });
+});
+
+describe("route guard integration", () => {
+  it("uses the centralized route guard", async () => {
+    const source = await readFile("src/app/api/admin/users/route.ts", "utf8");
+
+    expect(source).toContain('from "@/lib/route-guard"');
+    expect(source).toContain("withRoute(");
   });
 });

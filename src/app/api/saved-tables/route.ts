@@ -1,5 +1,5 @@
-import { getCurrentIdentity } from "@/lib/auth";
 import { jsonError } from "@/lib/http";
+import { withRoute } from "@/lib/route-guard";
 import {
   createSavedDatasetTable,
   listSavedDatasetTables,
@@ -7,47 +7,40 @@ import {
 import { savedDatasetTableCreateSchema } from "@/lib/validation";
 import { canCreateSavedDatasetTables } from "@/lib/workspace-role";
 
-export async function GET() {
-  const identity = await getCurrentIdentity();
-
-  if (!identity) {
-    return jsonError("Unauthorized.", 401);
-  }
-
+export const GET = withRoute({ access: "user" }, async (identity) => {
   const savedTables = await listSavedDatasetTables(identity.ownerId, {
     includeDisabled: identity.isDatasetAdmin,
   });
   return Response.json({ savedTables });
-}
+});
 
-export async function POST(request: Request) {
-  const identity = await getCurrentIdentity();
+export const POST = withRoute(
+  { access: "user" },
+  async (identity, request: Request) => {
+    if (!canCreateSavedDatasetTables(identity.workspaceRole)) {
+      return jsonError("Basic accounts cannot save dataset tables.", 403);
+    }
 
-  if (!identity) {
-    return jsonError("Unauthorized.", 401);
-  }
+    const parsed = savedDatasetTableCreateSchema.safeParse(
+      await request.json(),
+    );
 
-  if (!canCreateSavedDatasetTables(identity.workspaceRole)) {
-    return jsonError("Basic accounts cannot save dataset tables.", 403);
-  }
+    if (!parsed.success) {
+      return jsonError("Saved table payload is invalid.");
+    }
 
-  const parsed = savedDatasetTableCreateSchema.safeParse(await request.json());
+    const savedTable = await createSavedDatasetTable({
+      ownerId: identity.ownerId,
+      datasetId: parsed.data.datasetId,
+      filters: parsed.data.filters,
+      savedRowCount: parsed.data.savedRowCount,
+      includeDisabled: identity.isDatasetAdmin,
+    });
 
-  if (!parsed.success) {
-    return jsonError("Saved table payload is invalid.");
-  }
+    if (!savedTable) {
+      return jsonError("Dataset not found.", 404);
+    }
 
-  const savedTable = await createSavedDatasetTable({
-    ownerId: identity.ownerId,
-    datasetId: parsed.data.datasetId,
-    filters: parsed.data.filters,
-    savedRowCount: parsed.data.savedRowCount,
-    includeDisabled: identity.isDatasetAdmin,
-  });
-
-  if (!savedTable) {
-    return jsonError("Dataset not found.", 404);
-  }
-
-  return Response.json({ savedTable }, { status: 201 });
-}
+    return Response.json({ savedTable }, { status: 201 });
+  },
+);

@@ -154,7 +154,6 @@ export type SavedDatasetFilterState = {
   sorting: SavedDatasetSort[];
 };
 
-export type DatasetOpenPreset = Omit<SavedDatasetFilterState, "sorting">;
 
 export type SavedDatasetTable = {
   id: string;

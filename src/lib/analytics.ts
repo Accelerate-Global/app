@@ -1,6 +1,5 @@
 import type {
   DatasetHotspotsMetric,
-  SavedDatasetFilterState,
   SavedDatasetSort,
 } from "@/lib/api-types";
 import type { WorkspaceRole } from "@/lib/workspace-role";
@@ -672,34 +671,6 @@ export function getAnalyticsEventProps(
       return !isSuspiciousAnalyticsKey(key);
     }),
   ) satisfies Record<string, Exclude<AppAnalyticsValue, undefined>>;
-}
-
-export function getEnabledFilterSections(
-  filters: SavedDatasetFilterState,
-) {
-  const sections: string[] = [];
-
-  if (filters.region.enabled) {
-    sections.push("region");
-  }
-
-  if (filters.country.enabled) {
-    sections.push("country");
-  }
-
-  if (filters.watchlist.enabled) {
-    sections.push("watchlist");
-  }
-
-  if (filters.uupg.enabled) {
-    sections.push("uupg");
-  }
-
-  if (filters.hotspots?.enabled) {
-    sections.push("hotspots");
-  }
-
-  return sections.length > 0 ? sections.join("|") : "none";
 }
 
 export function getSortingKeys(

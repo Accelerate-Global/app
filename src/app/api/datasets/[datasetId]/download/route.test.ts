@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getCurrentIdentity } from "@/lib/auth";
@@ -206,7 +207,8 @@ describe("/api/datasets/[datasetId]/download", () => {
     ]);
     createSignedUrlMock.mockResolvedValue({
       data: {
-        signedUrl: "https://example.supabase.co/storage/v1/object/sign/datasets/csv/customers.csv",
+        signedUrl:
+          "https://example.supabase.co/storage/v1/object/sign/datasets/csv/customers.csv",
       },
       error: null,
     });
@@ -216,7 +218,9 @@ describe("/api/datasets/[datasetId]/download", () => {
     getCurrentIdentityMock.mockResolvedValue(null);
 
     const response = await GET(
-      new Request("http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001/download"),
+      new Request(
+        "http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001/download",
+      ),
       context,
     );
 
@@ -228,7 +232,9 @@ describe("/api/datasets/[datasetId]/download", () => {
     getDatasetMock.mockResolvedValue(null);
 
     const response = await GET(
-      new Request("http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001/download"),
+      new Request(
+        "http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001/download",
+      ),
       context,
     );
 
@@ -238,7 +244,9 @@ describe("/api/datasets/[datasetId]/download", () => {
 
   it("creates a signed download URL for physical datasets", async () => {
     const response = await GET(
-      new Request("http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001/download"),
+      new Request(
+        "http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001/download",
+      ),
       context,
     );
 
@@ -248,9 +256,13 @@ describe("/api/datasets/[datasetId]/download", () => {
     );
     expect(createSupabaseAdminClientMock).toHaveBeenCalledWith();
     expect(fromMock).toHaveBeenCalledWith("datasets");
-    expect(createSignedUrlMock).toHaveBeenCalledWith(physicalDataset.blobPath, 60, {
-      download: physicalDataset.fileName,
-    });
+    expect(createSignedUrlMock).toHaveBeenCalledWith(
+      physicalDataset.blobPath,
+      60,
+      {
+        download: physicalDataset.fileName,
+      },
+    );
     expect(getDatasetMock).toHaveBeenCalledWith(physicalDataset.id, {
       includeDisabled: false,
     });
@@ -286,7 +298,9 @@ describe("/api/datasets/[datasetId]/download", () => {
     });
 
     const response = await GET(
-      new Request("http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001/download"),
+      new Request(
+        "http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001/download",
+      ),
       {
         params: Promise.resolve({
           datasetId: derivedDataset.id,
@@ -312,7 +326,9 @@ describe("/api/datasets/[datasetId]/download", () => {
     getCurrentIdentityMock.mockResolvedValue(adminIdentity);
 
     const response = await GET(
-      new Request("http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001/download"),
+      new Request(
+        "http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001/download",
+      ),
       context,
     );
 
@@ -327,7 +343,9 @@ describe("/api/datasets/[datasetId]/download", () => {
     });
 
     const response = await GET(
-      new Request("http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001/download"),
+      new Request(
+        "http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001/download",
+      ),
       context,
     );
 
@@ -421,7 +439,9 @@ describe("/api/datasets/[datasetId]/download", () => {
     });
 
     const response = await GET(
-      new Request("http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001/download"),
+      new Request(
+        "http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001/download",
+      ),
       {
         params: Promise.resolve({
           datasetId: derivedDataset.id,
@@ -518,7 +538,9 @@ describe("/api/datasets/[datasetId]/download", () => {
     });
 
     const response = await GET(
-      new Request("http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001/download"),
+      new Request(
+        "http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001/download",
+      ),
       {
         params: Promise.resolve({
           datasetId: derivedDataset.id,
@@ -531,5 +553,17 @@ describe("/api/datasets/[datasetId]/download", () => {
     expect(body).toContain("Row number,Country,Email");
     expect(body).toContain("2,Nepal,zoe@example.com");
     expect(body).toContain("3,India,bea@example.com");
+  });
+});
+
+describe("route guard integration", () => {
+  it("uses the centralized route guard", async () => {
+    const source = await readFile(
+      "src/app/api/datasets/[datasetId]/download/route.ts",
+      "utf8",
+    );
+
+    expect(source).toContain('from "@/lib/route-guard"');
+    expect(source).toContain("withRoute(");
   });
 });

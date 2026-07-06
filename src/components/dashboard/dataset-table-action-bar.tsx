@@ -18,10 +18,10 @@ import type {
 } from "@/lib/api-types";
 import {
   buildAnalyticsContext,
-  getEnabledFilterSections,
   type AppAnalyticsContext,
   withAnalyticsContext,
 } from "@/lib/analytics";
+import { getEnabledFilterSections } from "@/lib/dataset-filtering";
 import { trackAppEvent } from "@/lib/analytics-client";
 import {
   getFilteredDatasetDownloadFileName,

@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getCurrentIdentity } from "@/lib/auth";
@@ -25,7 +26,9 @@ vi.mock("@/lib/user-management", async () => {
 });
 
 const getCurrentIdentityMock = vi.mocked(getCurrentIdentity);
-const sendWorkspaceUserPasswordResetEmailMock = vi.mocked(sendWorkspaceUserPasswordResetEmail);
+const sendWorkspaceUserPasswordResetEmailMock = vi.mocked(
+  sendWorkspaceUserPasswordResetEmail,
+);
 
 const identity = {
   ownerId: "admin-1",
@@ -106,7 +109,9 @@ describe("/api/admin/users/[userId]/password-reset", () => {
     );
 
     expect(response.status).toBe(404);
-    await expect(response.json()).resolves.toEqual({ error: "User not found." });
+    await expect(response.json()).resolves.toEqual({
+      error: "User not found.",
+    });
   });
 
   it("returns action errors from the admin helper", async () => {
@@ -152,7 +157,9 @@ describe("/api/admin/users/[userId]/password-reset", () => {
   });
 
   it("returns a generic error when the admin helper fails unexpectedly", async () => {
-    sendWorkspaceUserPasswordResetEmailMock.mockRejectedValue(new Error("send failed"));
+    sendWorkspaceUserPasswordResetEmailMock.mockRejectedValue(
+      new Error("send failed"),
+    );
 
     const response = await POST(
       new Request("http://localhost/api/admin/users/user-1/password-reset", {
@@ -165,5 +172,17 @@ describe("/api/admin/users/[userId]/password-reset", () => {
     await expect(response.json()).resolves.toEqual({
       error: "Could not send the password reset email.",
     });
+  });
+});
+
+describe("route guard integration", () => {
+  it("uses the centralized route guard", async () => {
+    const source = await readFile(
+      "src/app/api/admin/users/[userId]/password-reset/route.ts",
+      "utf8",
+    );
+
+    expect(source).toContain('from "@/lib/route-guard"');
+    expect(source).toContain("withRoute(");
   });
 });

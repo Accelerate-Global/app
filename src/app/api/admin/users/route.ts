@@ -1,7 +1,7 @@
-import { getCurrentIdentity } from "@/lib/auth";
 import { buildAuthConfirmUrl } from "@/lib/auth-redirect";
 import { logError } from "@/lib/error-logging";
-import { jsonAdminOnlyError, jsonError } from "@/lib/http";
+import { jsonError } from "@/lib/http";
+import { withRoute } from "@/lib/route-guard";
 import {
   inviteWorkspaceUser,
   listWorkspaceUsers,
@@ -9,64 +9,50 @@ import {
 } from "@/lib/user-management";
 import { workspaceUserInviteSchema } from "@/lib/validation";
 
-export async function GET() {
-  const identity = await getCurrentIdentity();
+export const GET = withRoute(
+  { access: "admin", action: "manage users" },
+  async () => {
+    try {
+      const users = await listWorkspaceUsers();
+      return Response.json({ users });
+    } catch (error) {
+      logError("Failed to list workspace users", error);
+      return jsonError("Could not load users.", 500);
+    }
+  },
+);
 
-  if (!identity) {
-    return jsonError("Unauthorized.", 401);
-  }
+export const POST = withRoute(
+  { access: "admin", action: "manage users" },
+  async (identity, request: Request) => {
+    const parsed = workspaceUserInviteSchema.safeParse(await request.json());
 
-  if (!identity.isDatasetAdmin) {
-    return jsonAdminOnlyError("manage users");
-  }
-
-  try {
-    const users = await listWorkspaceUsers();
-    return Response.json({ users });
-  } catch (error) {
-    logError("Failed to list workspace users", error);
-    return jsonError("Could not load users.", 500);
-  }
-}
-
-export async function POST(request: Request) {
-  const identity = await getCurrentIdentity();
-
-  if (!identity) {
-    return jsonError("Unauthorized.", 401);
-  }
-
-  if (!identity.isDatasetAdmin) {
-    return jsonAdminOnlyError("manage users");
-  }
-
-  const parsed = workspaceUserInviteSchema.safeParse(await request.json());
-
-  if (!parsed.success) {
-    return jsonError("User invite payload is invalid.");
-  }
-
-  try {
-    const redirectUrl = buildAuthConfirmUrl(
-      new URL(request.url).origin,
-      "/reset-password",
-    );
-
-    const user = await inviteWorkspaceUser({
-      currentUserRole: identity.workspaceRole,
-      email: parsed.data.email,
-      fullName: parsed.data.fullName,
-      workspaceRole: parsed.data.workspaceRole,
-      redirectTo: redirectUrl,
-    });
-
-    return Response.json({ user }, { status: 201 });
-  } catch (error) {
-    if (error instanceof WorkspaceUserPermissionError) {
-      return jsonError(error.message, error.status);
+    if (!parsed.success) {
+      return jsonError("User invite payload is invalid.");
     }
 
-    logError("Failed to invite workspace user", error);
-    return jsonError("Could not invite the user.", 500);
-  }
-}
+    try {
+      const redirectUrl = buildAuthConfirmUrl(
+        new URL(request.url).origin,
+        "/reset-password",
+      );
+
+      const user = await inviteWorkspaceUser({
+        currentUserRole: identity.workspaceRole,
+        email: parsed.data.email,
+        fullName: parsed.data.fullName,
+        workspaceRole: parsed.data.workspaceRole,
+        redirectTo: redirectUrl,
+      });
+
+      return Response.json({ user }, { status: 201 });
+    } catch (error) {
+      if (error instanceof WorkspaceUserPermissionError) {
+        return jsonError(error.message, error.status);
+      }
+
+      logError("Failed to invite workspace user", error);
+      return jsonError("Could not invite the user.", 500);
+    }
+  },
+);

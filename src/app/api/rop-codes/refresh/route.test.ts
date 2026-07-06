@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getCurrentIdentity } from "@/lib/auth";
@@ -18,7 +19,9 @@ vi.mock("@/lib/rop-codes", () => ({
 }));
 
 const getCurrentIdentityMock = vi.mocked(getCurrentIdentity);
-const refreshRopCodeResourceFromHisMock = vi.mocked(refreshRopCodeResourceFromHis);
+const refreshRopCodeResourceFromHisMock = vi.mocked(
+  refreshRopCodeResourceFromHis,
+);
 
 const resource = {
   sourceName: "HIS Registry of Peoples",
@@ -114,7 +117,9 @@ describe("/api/rop-codes/refresh", () => {
       isDatasetAdmin: true,
       mode: "supabase",
     });
-    refreshRopCodeResourceFromHisMock.mockRejectedValue(new Error("HIS unavailable"));
+    refreshRopCodeResourceFromHisMock.mockRejectedValue(
+      new Error("HIS unavailable"),
+    );
 
     const response = await POST();
 
@@ -122,5 +127,17 @@ describe("/api/rop-codes/refresh", () => {
     await expect(response.json()).resolves.toEqual({
       error: "Could not refresh ROP codes.",
     });
+  });
+});
+
+describe("route guard integration", () => {
+  it("uses the centralized route guard", async () => {
+    const source = await readFile(
+      "src/app/api/rop-codes/refresh/route.ts",
+      "utf8",
+    );
+
+    expect(source).toContain('from "@/lib/route-guard"');
+    expect(source).toContain("withRoute(");
   });
 });

@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getCurrentIdentity } from "@/lib/auth";
@@ -68,15 +69,18 @@ describe("/api/datasets/[datasetId]/replace", () => {
     getCurrentIdentityMock.mockResolvedValue(null);
 
     const response = await POST(
-      new Request("http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001/replace", {
-        method: "POST",
-        body: JSON.stringify({
-          blobPath: "datasets/csv/customers-v2.csv",
-          sizeBytes: 100,
-          columns: [{ key: "email", label: "Email", sourceIndex: 0 }],
-          classification: "PGAC",
-        }),
-      }),
+      new Request(
+        "http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001/replace",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            blobPath: "datasets/csv/customers-v2.csv",
+            sizeBytes: 100,
+            columns: [{ key: "email", label: "Email", sourceIndex: 0 }],
+            classification: "PGAC",
+          }),
+        },
+      ),
       context,
     );
 
@@ -92,15 +96,18 @@ describe("/api/datasets/[datasetId]/replace", () => {
     });
 
     const response = await POST(
-      new Request("http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001/replace", {
-        method: "POST",
-        body: JSON.stringify({
-          blobPath: "datasets/csv/customers-v2.csv",
-          sizeBytes: 100,
-          columns: [{ key: "email", label: "Email", sourceIndex: 0 }],
-          classification: "PGAC",
-        }),
-      }),
+      new Request(
+        "http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001/replace",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            blobPath: "datasets/csv/customers-v2.csv",
+            sizeBytes: 100,
+            columns: [{ key: "email", label: "Email", sourceIndex: 0 }],
+            classification: "PGAC",
+          }),
+        },
+      ),
       context,
     );
 
@@ -114,15 +121,18 @@ describe("/api/datasets/[datasetId]/replace", () => {
     });
 
     const response = await POST(
-      new Request("http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001/replace", {
-        method: "POST",
-        body: JSON.stringify({
-          blobPath: "datasets/csv/customers-v2.csv",
-          sizeBytes: 100,
-          columns: [{ key: "email", label: "Email", sourceIndex: 0 }],
-          classification: "PGAC",
-        }),
-      }),
+      new Request(
+        "http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001/replace",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            blobPath: "datasets/csv/customers-v2.csv",
+            sizeBytes: 100,
+            columns: [{ key: "email", label: "Email", sourceIndex: 0 }],
+            classification: "PGAC",
+          }),
+        },
+      ),
       context,
     );
 
@@ -143,15 +153,18 @@ describe("/api/datasets/[datasetId]/replace", () => {
     replaceDatasetContentsMock.mockResolvedValue(null);
 
     const response = await POST(
-      new Request("http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001/replace", {
-        method: "POST",
-        body: JSON.stringify({
-          blobPath: "datasets/csv/customers-v2.csv",
-          sizeBytes: 100,
-          columns: [{ key: "email", label: "Email", sourceIndex: 0 }],
-          classification: "PGAC",
-        }),
-      }),
+      new Request(
+        "http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001/replace",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            blobPath: "datasets/csv/customers-v2.csv",
+            sizeBytes: 100,
+            columns: [{ key: "email", label: "Email", sourceIndex: 0 }],
+            classification: "PGAC",
+          }),
+        },
+      ),
       context,
     );
 
@@ -160,18 +173,33 @@ describe("/api/datasets/[datasetId]/replace", () => {
 
   it("rejects replacement payloads without a PGAC or PGIC classification", async () => {
     const response = await POST(
-      new Request("http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001/replace", {
-        method: "POST",
-        body: JSON.stringify({
-          blobPath: "datasets/csv/customers-v2.csv",
-          sizeBytes: 100,
-          columns: [{ key: "email", label: "Email", sourceIndex: 0 }],
-        }),
-      }),
+      new Request(
+        "http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001/replace",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            blobPath: "datasets/csv/customers-v2.csv",
+            sizeBytes: 100,
+            columns: [{ key: "email", label: "Email", sourceIndex: 0 }],
+          }),
+        },
+      ),
       context,
     );
 
     expect(response.status).toBe(400);
     expect(replaceDatasetContentsMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("route guard integration", () => {
+  it("uses the centralized route guard", async () => {
+    const source = await readFile(
+      "src/app/api/datasets/[datasetId]/replace/route.ts",
+      "utf8",
+    );
+
+    expect(source).toContain('from "@/lib/route-guard"');
+    expect(source).toContain("withRoute(");
   });
 });

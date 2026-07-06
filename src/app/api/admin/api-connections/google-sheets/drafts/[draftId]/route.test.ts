@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getGoogleSheetsConnectionDraft } from "@/lib/api-connections";
@@ -13,7 +14,9 @@ vi.mock("@/lib/api-connections", () => ({
 }));
 
 const getCurrentIdentityMock = vi.mocked(getCurrentIdentity);
-const getGoogleSheetsConnectionDraftMock = vi.mocked(getGoogleSheetsConnectionDraft);
+const getGoogleSheetsConnectionDraftMock = vi.mocked(
+  getGoogleSheetsConnectionDraft,
+);
 
 const identity = {
   ownerId: "admin-1",
@@ -73,5 +76,17 @@ describe("/api/admin/api-connections/google-sheets/drafts/[draftId]", () => {
     const response = await GET(new Request("http://localhost"), context);
 
     expect(response.status).toBe(404);
+  });
+});
+
+describe("route guard integration", () => {
+  it("uses the centralized route guard", async () => {
+    const source = await readFile(
+      "src/app/api/admin/api-connections/google-sheets/drafts/[draftId]/route.ts",
+      "utf8",
+    );
+
+    expect(source).toContain('from "@/lib/route-guard"');
+    expect(source).toContain("withRoute(");
   });
 });

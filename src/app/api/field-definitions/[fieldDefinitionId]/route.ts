@@ -1,5 +1,5 @@
-import { getCurrentIdentity } from "@/lib/auth";
-import { jsonAdminOnlyError, jsonError } from "@/lib/http";
+import { jsonError } from "@/lib/http";
+import { withRoute } from "@/lib/route-guard";
 import { updateFieldDefinition } from "@/lib/field-definitions";
 import { fieldDefinitionPatchSchema } from "@/lib/validation";
 
@@ -9,34 +9,28 @@ type FieldDefinitionContext = {
   }>;
 };
 
-export async function PATCH(request: Request, context: FieldDefinitionContext) {
-  const identity = await getCurrentIdentity();
+export const PATCH = withRoute(
+  { access: "admin", action: "manage field definitions" },
+  async (_identity, request: Request, context: FieldDefinitionContext) => {
+    const parsed = fieldDefinitionPatchSchema.safeParse(await request.json());
 
-  if (!identity) {
-    return jsonError("Unauthorized.", 401);
-  }
+    if (!parsed.success) {
+      return jsonError("Field definition payload is invalid.");
+    }
 
-  if (!identity.isDatasetAdmin) {
-    return jsonAdminOnlyError("manage field definitions");
-  }
+    const { fieldDefinitionId } = await context.params;
+    const fieldDefinition = await updateFieldDefinition({
+      fieldDefinitionId,
+      displayLabel: parsed.data.displayLabel,
+      definition: parsed.data.definition,
+      hideFromViewerFieldDefinitions:
+        parsed.data.hideFromViewerFieldDefinitions,
+    });
 
-  const parsed = fieldDefinitionPatchSchema.safeParse(await request.json());
+    if (!fieldDefinition) {
+      return jsonError("Field definition not found.", 404);
+    }
 
-  if (!parsed.success) {
-    return jsonError("Field definition payload is invalid.");
-  }
-
-  const { fieldDefinitionId } = await context.params;
-  const fieldDefinition = await updateFieldDefinition({
-    fieldDefinitionId,
-    displayLabel: parsed.data.displayLabel,
-    definition: parsed.data.definition,
-    hideFromViewerFieldDefinitions: parsed.data.hideFromViewerFieldDefinitions,
-  });
-
-  if (!fieldDefinition) {
-    return jsonError("Field definition not found.", 404);
-  }
-
-  return Response.json({ fieldDefinition });
-}
+    return Response.json({ fieldDefinition });
+  },
+);

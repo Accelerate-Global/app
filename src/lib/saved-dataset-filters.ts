@@ -1,7 +1,5 @@
 import type {
   DatasetHotspotsMetric,
-  DatasetOpenPreset,
-  PopulationBelieversRule,
   DatasetSummary,
   FilterRegion,
   SavedDatasetFilterState,
@@ -10,16 +8,9 @@ import type {
   WatchlistJpOnlyEvangelicalRule,
 } from "@/lib/api-types";
 import {
-  DEFAULT_HOTSPOTS_COUNTRY_COUNT,
-  DEFAULT_HOTSPOTS_METRIC,
-  datasetSupportsAlternateCountryFiltering,
-  datasetSupportsCountryFiltering,
-  datasetSupportsHotspotsFiltering,
-  datasetSupportsRegionFiltering,
-  datasetSupportsUupgFrontierFiltering,
-  datasetSupportsUupgFiltering,
-  datasetSupportsWatchlistFiltering,
+  getDatasetFilterSectionSupport,
   getSelectedRegionCountryNames,
+  type DatasetFilterSections,
   normalizeDatasetUupgCriteriaState,
   type DatasetCountryFilterState,
   type DatasetHotspotsFilterState,
@@ -28,22 +19,13 @@ import {
   type DatasetWatchlistFilterState,
   normalizeHotspotsCountryCount,
   normalizeHotspotsMetric,
-} from "@/lib/dataset-region-filtering";
-import { createDefaultPopulationBelieversRule } from "@/lib/evangelical-population-believers-rule";
+} from "@/lib/dataset-filtering";
 import {
   isGlobalRegionName,
   normalizeRegionDisplayName,
-  normalizeRegionMatchName,
 } from "@/lib/region-display";
-import {
-  WATCHLIST_FIXED_ENGAGEMENT_PHASE_MAX,
-  getDefaultWatchlistEngagementPhaseRule,
-  normalizeWatchlistEngagementPhaseRule,
-} from "@/lib/watchlist-engagement-phase";
-import {
-  getDefaultWatchlistJpOnlyEvangelicalRule,
-  normalizeWatchlistJpOnlyEvangelicalRule,
-} from "@/lib/watchlist-jp-only-evangelical";
+import { normalizeWatchlistEngagementPhaseRule } from "@/lib/watchlist-engagement-phase";
+import { normalizeWatchlistJpOnlyEvangelicalRule } from "@/lib/watchlist-jp-only-evangelical";
 
 export const WATCHLIST_FIXED_THRESHOLD = 2;
 export const WATCHLIST_THRESHOLD_MIN = 0;
@@ -67,41 +49,7 @@ function dedupeRegionNames(values: string[]) {
   );
 }
 
-export type InitialDatasetDetailState = {
-  regionEnabled: boolean;
-  selectedRegionIds: Record<string, boolean>;
-  countryEnabled: boolean;
-  selectedCountryNames: string[];
-  includeAlternateCountries: boolean;
-  watchlistEnabled: boolean;
-  watchlistThresholdEnabled: boolean;
-  watchlistThreshold: number;
-  watchlistEngagementPhaseEnabled: boolean;
-  watchlistEngagementPhaseThreshold: number;
-  watchlistEngagementPhaseRule: WatchlistEngagementPhaseRule;
-  watchlistJpOnlyEvangelicalCriteriaEnabled: boolean;
-  watchlistJpOnlyEvangelicalRule: WatchlistJpOnlyEvangelicalRule;
-  watchlistPopulationBelieversRuleEnabled: boolean;
-  watchlistPopulationBelieversRule: PopulationBelieversRule;
-  uupgEnabled: boolean;
-  uupgGlobalEngagementAnywhereEnabled: boolean;
-  uupgFrontierGroupEnabled: boolean;
-  hotspotsEnabled: boolean;
-  hotspotsMetric: DatasetHotspotsMetric;
-  hotspotsCountryCount: number;
-  sorting: SavedDatasetSort[];
-};
-
-function toSavedDatasetFilterStateWithEmptySorting(
-  preset: DatasetOpenPreset,
-): SavedDatasetFilterState {
-  return {
-    ...preset,
-    sorting: [],
-  };
-}
-
-function createSelectedRegionIdMap(
+export function createSelectedRegionIdMap(
   regions: FilterRegion[],
   selectedRegionIds: Set<string>,
   options?: {
@@ -123,7 +71,7 @@ function findGlobalRegion(regions: FilterRegion[]) {
   return regions.find((region) => isGlobalRegionName(region.name)) ?? null;
 }
 
-function createDefaultSelectedRegionIdSet(regions: FilterRegion[]) {
+export function createDefaultSelectedRegionIdSet(regions: FilterRegion[]) {
   const globalRegion = findGlobalRegion(regions);
 
   if (!globalRegion) {
@@ -133,7 +81,7 @@ function createDefaultSelectedRegionIdSet(regions: FilterRegion[]) {
   return new Set<string>([globalRegion.id]);
 }
 
-function normalizeSelectedRegionIdSet(
+export function normalizeSelectedRegionIdSet(
   regions: FilterRegion[],
   selectedRegionIds: Set<string>,
   options?: {
@@ -159,46 +107,6 @@ function normalizeSelectedRegionIdSet(
   }
 
   return normalizedSelectedRegionIds;
-}
-
-function getMatchingRegionIds(
-  regions: FilterRegion[],
-  filters: DatasetOpenPreset["region"],
-  options?: {
-    allowEmpty?: boolean;
-  },
-) {
-  const selectedRegionIds = new Set<string>();
-  const selectedRegionNames = new Set(
-    filters.selectedRegionNames.map((regionName) =>
-      normalizeRegionMatchName(regionName),
-    ),
-  );
-
-  for (const region of regions) {
-    if (filters.selectedRegionIds.includes(region.id)) {
-      selectedRegionIds.add(region.id);
-      continue;
-    }
-
-    if (selectedRegionNames.has(normalizeRegionMatchName(region.name))) {
-      selectedRegionIds.add(region.id);
-    }
-  }
-
-  return normalizeSelectedRegionIdSet(regions, selectedRegionIds, options);
-}
-
-function isLegacyDefaultGlobalPreset(preset: DatasetOpenPreset) {
-  return (
-    !preset.region.enabled &&
-    preset.region.selectedRegionIds.length === 0 &&
-    preset.region.selectedRegionNames.length === 0 &&
-    preset.region.enabledCountryNames.length === 0 &&
-    !preset.country.enabled &&
-    preset.country.selectedCountryNames.length === 0 &&
-    !(preset.country.includeAlternateCountries ?? false)
-  );
 }
 
 function shouldUsePersistedWatchlistThresholdRule(
@@ -326,193 +234,24 @@ export function buildSavedDatasetFilterState(input: {
   };
 }
 
+/**
+ * An "open preset" is not a distinct type: it is a normalized
+ * `SavedDatasetFilterState` whose sorting is empty, used to open a dataset
+ * with a given set of filter sections.
+ */
 export function buildDatasetOpenPreset(
   filters: SavedDatasetFilterState,
-): DatasetOpenPreset {
-  const normalizedFilters = normalizeSavedDatasetFilterState(filters);
-
+): SavedDatasetFilterState {
   return {
-    region: normalizedFilters.region,
-    country: normalizedFilters.country,
-    watchlist: normalizedFilters.watchlist,
-    uupg: normalizedFilters.uupg,
-    hotspots: normalizedFilters.hotspots,
+    ...normalizeSavedDatasetFilterState(filters),
+    sorting: [],
   };
 }
 
 export function normalizeDatasetOpenPreset(
-  preset: DatasetOpenPreset | undefined | null,
+  preset: SavedDatasetFilterState | undefined | null,
 ) {
-  if (!preset) {
-    return null;
-  }
-
-  return buildDatasetOpenPreset(
-    normalizeSavedDatasetFilterState(
-      toSavedDatasetFilterStateWithEmptySorting(preset),
-    ),
-  );
-}
-
-export function getSavedDatasetFilterStateFromOpenPreset(
-  preset: DatasetOpenPreset | undefined | null,
-): SavedDatasetFilterState | null {
-  const normalizedPreset = normalizeDatasetOpenPreset(preset);
-
-  if (!normalizedPreset) {
-    return null;
-  }
-
-  return normalizeSavedDatasetFilterState({
-    ...normalizedPreset,
-    sorting: [],
-  });
-}
-
-export function getInitialDatasetDetailState(input: {
-  dataset: Pick<DatasetSummary, "columns">;
-  regions: FilterRegion[];
-  initialFilters?: DatasetOpenPreset | null;
-  initialSorting?: SavedDatasetSort[];
-}): InitialDatasetDetailState {
-  const supportsRegionFiltering = datasetSupportsRegionFiltering(input.dataset);
-  const supportsCountryFiltering = datasetSupportsCountryFiltering(input.dataset);
-  const supportsAlternateCountryFiltering =
-    datasetSupportsAlternateCountryFiltering(input.dataset);
-  const supportsWatchlistFiltering = datasetSupportsWatchlistFiltering(input.dataset);
-  const supportsUupgFiltering = datasetSupportsUupgFiltering(input.dataset);
-  const supportsUupgFrontierFiltering =
-    datasetSupportsUupgFrontierFiltering(input.dataset);
-  const supportsHotspotsFiltering = datasetSupportsHotspotsFiltering(input.dataset);
-  const canUseRegionFilter =
-    supportsRegionFiltering && input.regions.length > 0;
-  const normalizedPreset = normalizeDatasetOpenPreset(input.initialFilters);
-  const defaultSelectedRegionIds = createSelectedRegionIdMap(
-    input.regions,
-    createDefaultSelectedRegionIdSet(input.regions),
-  );
-  const hasDefaultSelectedRegion = Object.values(defaultSelectedRegionIds).some(
-    Boolean,
-  );
-  const defaultState = {
-    regionEnabled: canUseRegionFilter && hasDefaultSelectedRegion,
-    selectedRegionIds: defaultSelectedRegionIds,
-    countryEnabled: false,
-    selectedCountryNames: [],
-    includeAlternateCountries: false,
-    watchlistEnabled: false,
-    watchlistThresholdEnabled: true,
-    watchlistThreshold: WATCHLIST_FIXED_THRESHOLD,
-    watchlistEngagementPhaseEnabled: true,
-    watchlistEngagementPhaseThreshold: WATCHLIST_FIXED_ENGAGEMENT_PHASE_MAX,
-    watchlistEngagementPhaseRule: getDefaultWatchlistEngagementPhaseRule(),
-    watchlistJpOnlyEvangelicalCriteriaEnabled: true,
-    watchlistJpOnlyEvangelicalRule: getDefaultWatchlistJpOnlyEvangelicalRule(),
-    watchlistPopulationBelieversRuleEnabled: false,
-    watchlistPopulationBelieversRule: createDefaultPopulationBelieversRule(),
-    uupgEnabled: false,
-    uupgGlobalEngagementAnywhereEnabled: true,
-    uupgFrontierGroupEnabled: true,
-    hotspotsEnabled: false,
-    hotspotsMetric: DEFAULT_HOTSPOTS_METRIC,
-    hotspotsCountryCount: DEFAULT_HOTSPOTS_COUNTRY_COUNT,
-    sorting: input.initialSorting?.map((sort) => ({
-      id: sort.id,
-      desc: sort.desc,
-    })) ?? [],
-  } satisfies InitialDatasetDetailState;
-
-  if (!normalizedPreset) {
-    return defaultState;
-  }
-
-  const hasPersistedRegionSelection =
-    normalizedPreset.region.selectedRegionIds.length > 0 ||
-    normalizedPreset.region.selectedRegionNames.length > 0;
-  const shouldUseLegacyDefaultGlobal =
-    isLegacyDefaultGlobalPreset(normalizedPreset);
-  const matchedRegionIds =
-    normalizedPreset.region.enabled && hasPersistedRegionSelection
-      ? getMatchingRegionIds(input.regions, normalizedPreset.region, {
-          allowEmpty: true,
-        })
-      : shouldUseLegacyDefaultGlobal
-        ? createDefaultSelectedRegionIdSet(input.regions)
-        : new Set<string>();
-  const regionEnabled =
-    canUseRegionFilter &&
-    (shouldUseLegacyDefaultGlobal ||
-      (normalizedPreset.region.enabled && matchedRegionIds.size > 0));
-  const normalizedUupgCriteria = normalizeDatasetUupgCriteriaState({
-    globalEngagementAnywhereEnabled:
-      normalizedPreset.uupg.globalEngagementAnywhereEnabled ?? true,
-    frontierGroupEnabled: normalizedPreset.uupg.frontierGroupEnabled ?? true,
-    frontierGroupSupported: supportsUupgFrontierFiltering,
-  });
-
-  return {
-    regionEnabled,
-    selectedRegionIds: createSelectedRegionIdMap(input.regions, matchedRegionIds, {
-      allowEmpty: !regionEnabled,
-    }),
-    countryEnabled:
-      supportsCountryFiltering && normalizedPreset.country.enabled,
-    selectedCountryNames: supportsCountryFiltering
-      ? dedupeStrings(normalizedPreset.country.selectedCountryNames)
-      : [],
-    includeAlternateCountries:
-      supportsAlternateCountryFiltering &&
-      (normalizedPreset.country.includeAlternateCountries ?? false),
-    watchlistEnabled:
-      supportsWatchlistFiltering && normalizedPreset.watchlist.enabled,
-    watchlistThresholdEnabled: supportsWatchlistFiltering
-      ? normalizedPreset.watchlist.thresholdEnabled ?? true
-      : defaultState.watchlistThresholdEnabled,
-    watchlistThreshold: supportsWatchlistFiltering
-      ? normalizedPreset.watchlist.threshold
-      : defaultState.watchlistThreshold,
-    watchlistEngagementPhaseEnabled: supportsWatchlistFiltering
-      ? normalizedPreset.watchlist.engagementPhaseEnabled ?? true
-      : defaultState.watchlistEngagementPhaseEnabled,
-    watchlistEngagementPhaseThreshold: supportsWatchlistFiltering
-      ? normalizedPreset.watchlist.engagementPhaseThreshold
-      : defaultState.watchlistEngagementPhaseThreshold,
-    watchlistEngagementPhaseRule: supportsWatchlistFiltering
-      ? normalizeWatchlistEngagementPhaseRule(
-          normalizedPreset.watchlist.engagementPhaseRule,
-        )
-      : defaultState.watchlistEngagementPhaseRule,
-    watchlistJpOnlyEvangelicalCriteriaEnabled: supportsWatchlistFiltering
-      ? normalizedPreset.watchlist.jpOnlyEvangelicalCriteriaEnabled ?? true
-      : defaultState.watchlistJpOnlyEvangelicalCriteriaEnabled,
-    watchlistJpOnlyEvangelicalRule: supportsWatchlistFiltering
-      ? normalizeWatchlistJpOnlyEvangelicalRule(
-          normalizedPreset.watchlist.jpOnlyEvangelicalRule,
-        )
-      : defaultState.watchlistJpOnlyEvangelicalRule,
-    watchlistPopulationBelieversRuleEnabled:
-      defaultState.watchlistPopulationBelieversRuleEnabled,
-    watchlistPopulationBelieversRule:
-      defaultState.watchlistPopulationBelieversRule,
-    uupgEnabled: supportsUupgFiltering && normalizedPreset.uupg.enabled,
-    uupgGlobalEngagementAnywhereEnabled:
-      supportsUupgFiltering && normalizedPreset.uupg.enabled
-        ? normalizedUupgCriteria.globalEngagementAnywhereEnabled
-        : defaultState.uupgGlobalEngagementAnywhereEnabled,
-    uupgFrontierGroupEnabled:
-      supportsUupgFiltering && normalizedPreset.uupg.enabled
-        ? normalizedUupgCriteria.frontierGroupEnabled
-        : defaultState.uupgFrontierGroupEnabled,
-    hotspotsEnabled:
-      supportsHotspotsFiltering && (normalizedPreset.hotspots?.enabled ?? false),
-    hotspotsMetric: supportsHotspotsFiltering
-      ? normalizeHotspotsMetric(normalizedPreset.hotspots?.metric)
-      : defaultState.hotspotsMetric,
-    hotspotsCountryCount: supportsHotspotsFiltering
-      ? normalizeHotspotsCountryCount(normalizedPreset.hotspots?.countryCount)
-      : defaultState.hotspotsCountryCount,
-    sorting: defaultState.sorting,
-  };
+  return preset ? buildDatasetOpenPreset(preset) : null;
 }
 
 export function normalizeSavedDatasetFilterState(filters: SavedDatasetFilterState) {
@@ -570,14 +309,14 @@ export function normalizeSavedDatasetFilterState(filters: SavedDatasetFilterStat
       metric: normalizeHotspotsMetric(filters.hotspots?.metric),
       countryCount: normalizeHotspotsCountryCount(filters.hotspots?.countryCount),
     },
-    sorting: filters.sorting.map((sort) => ({
+    sorting: (filters.sorting ?? []).map((sort) => ({
       id: sort.id,
       desc: sort.desc,
     })),
   } satisfies SavedDatasetFilterState;
 }
 
-export function getDatasetRegionFilterStateFromSavedView(
+function getDatasetRegionFilterStateFromSavedView(
   dataset: Pick<DatasetSummary, "columns">,
   filters: SavedDatasetFilterState,
 ): DatasetRegionFilterState {
@@ -585,13 +324,13 @@ export function getDatasetRegionFilterStateFromSavedView(
 
   return {
     enabled: normalizedFilters.region.enabled,
-    isSupported: datasetSupportsRegionFiltering(dataset),
+    isSupported: getDatasetFilterSectionSupport(dataset).region,
     hasConfiguredRegions: normalizedFilters.region.enabledCountryNames.length > 0,
     enabledCountryNames: dedupeStrings(normalizedFilters.region.enabledCountryNames),
   };
 }
 
-export function getDatasetCountryFilterStateFromSavedView(
+function getDatasetCountryFilterStateFromSavedView(
   dataset: Pick<DatasetSummary, "columns">,
   filters: SavedDatasetFilterState,
 ): DatasetCountryFilterState {
@@ -599,14 +338,14 @@ export function getDatasetCountryFilterStateFromSavedView(
 
   return {
     enabled: normalizedFilters.country.enabled,
-    isSupported: datasetSupportsCountryFiltering(dataset),
+    isSupported: getDatasetFilterSectionSupport(dataset).country,
     selectedCountryNames: dedupeStrings(normalizedFilters.country.selectedCountryNames),
     includeAlternateCountries:
       normalizedFilters.country.includeAlternateCountries ?? false,
   };
 }
 
-export function getDatasetWatchlistFilterStateFromSavedView(
+function getDatasetWatchlistFilterStateFromSavedView(
   dataset: Pick<DatasetSummary, "columns">,
   filters: SavedDatasetFilterState,
 ): DatasetWatchlistFilterState {
@@ -614,7 +353,7 @@ export function getDatasetWatchlistFilterStateFromSavedView(
 
   return {
     enabled: normalizedFilters.watchlist.enabled,
-    isSupported: datasetSupportsWatchlistFiltering(dataset),
+    isSupported: getDatasetFilterSectionSupport(dataset).watchlist,
     thresholdEnabled: normalizedFilters.watchlist.thresholdEnabled ?? true,
     threshold: normalizedFilters.watchlist.threshold,
     engagementPhaseEnabled:
@@ -634,7 +373,7 @@ export function getDatasetWatchlistFilterStateFromSavedView(
   };
 }
 
-export function getDatasetUupgFilterStateFromSavedView(
+function getDatasetUupgFilterStateFromSavedView(
   dataset: Pick<DatasetSummary, "columns">,
   filters: SavedDatasetFilterState,
 ): DatasetUupgFilterState {
@@ -643,12 +382,12 @@ export function getDatasetUupgFilterStateFromSavedView(
     globalEngagementAnywhereEnabled:
       normalizedFilters.uupg.globalEngagementAnywhereEnabled,
     frontierGroupEnabled: normalizedFilters.uupg.frontierGroupEnabled,
-    frontierGroupSupported: datasetSupportsUupgFrontierFiltering(dataset),
+    frontierGroupSupported: getDatasetFilterSectionSupport(dataset).uupgFrontier,
   });
 
   return {
     enabled: normalizedFilters.uupg.enabled,
-    isSupported: datasetSupportsUupgFiltering(dataset),
+    isSupported: getDatasetFilterSectionSupport(dataset).uupg,
     globalEngagementAnywhereEnabled:
       normalizedCriteria.globalEngagementAnywhereEnabled,
     frontierGroupEnabled: normalizedCriteria.frontierGroupEnabled,
@@ -656,7 +395,7 @@ export function getDatasetUupgFilterStateFromSavedView(
   };
 }
 
-export function getDatasetHotspotsFilterStateFromSavedView(
+function getDatasetHotspotsFilterStateFromSavedView(
   dataset: Pick<DatasetSummary, "columns">,
   filters: SavedDatasetFilterState,
 ): DatasetHotspotsFilterState {
@@ -664,10 +403,28 @@ export function getDatasetHotspotsFilterStateFromSavedView(
 
   return {
     enabled: normalizedFilters.hotspots?.enabled ?? false,
-    isSupported: datasetSupportsHotspotsFiltering(dataset),
+    isSupported: getDatasetFilterSectionSupport(dataset).hotspots,
     metric: normalizeHotspotsMetric(normalizedFilters.hotspots?.metric),
     countryCount: normalizeHotspotsCountryCount(
       normalizedFilters.hotspots?.countryCount,
     ),
+  };
+}
+
+/**
+ * The single saved-view -> runtime conversion: parses the persisted wire
+ * format into the canonical `DatasetFilterSections` consumed by
+ * `applyDatasetFilterSections`. Per-section conversion is implementation.
+ */
+export function getDatasetFilterSectionsFromSavedView(
+  dataset: Pick<DatasetSummary, "columns">,
+  filters: SavedDatasetFilterState,
+): DatasetFilterSections {
+  return {
+    region: getDatasetRegionFilterStateFromSavedView(dataset, filters),
+    country: getDatasetCountryFilterStateFromSavedView(dataset, filters),
+    watchlist: getDatasetWatchlistFilterStateFromSavedView(dataset, filters),
+    uupg: getDatasetUupgFilterStateFromSavedView(dataset, filters),
+    hotspots: getDatasetHotspotsFilterStateFromSavedView(dataset, filters),
   };
 }

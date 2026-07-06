@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { disconnectGoogleSheetsConnection } from "@/lib/api-connections";
@@ -101,5 +102,17 @@ describe("/api/admin/api-connections/google-sheets/[connectionId]", () => {
     const response = await DELETE(new Request("http://localhost"), context);
 
     expect(response.status).toBe(404);
+  });
+});
+
+describe("route guard integration", () => {
+  it("uses the centralized route guard", async () => {
+    const source = await readFile(
+      "src/app/api/admin/api-connections/google-sheets/[connectionId]/route.ts",
+      "utf8",
+    );
+
+    expect(source).toContain('from "@/lib/route-guard"');
+    expect(source).toContain("withRoute(");
   });
 });

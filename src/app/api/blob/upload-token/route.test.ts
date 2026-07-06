@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getCurrentIdentity } from "@/lib/auth";
@@ -8,26 +9,22 @@ vi.mock("@/lib/auth", () => ({
   getCurrentIdentity: vi.fn(),
 }));
 
-const {
-  createSignedUploadUrlMock,
-  createBucketMock,
-  getBucketMock,
-  fromMock,
-} = vi.hoisted(() => {
-  const createSignedUploadUrlMock = vi.fn();
-  const createBucketMock = vi.fn();
-  const getBucketMock = vi.fn();
-  const fromMock = vi.fn(() => ({
-    createSignedUploadUrl: createSignedUploadUrlMock,
-  }));
+const { createSignedUploadUrlMock, createBucketMock, getBucketMock, fromMock } =
+  vi.hoisted(() => {
+    const createSignedUploadUrlMock = vi.fn();
+    const createBucketMock = vi.fn();
+    const getBucketMock = vi.fn();
+    const fromMock = vi.fn(() => ({
+      createSignedUploadUrl: createSignedUploadUrlMock,
+    }));
 
-  return {
-    createSignedUploadUrlMock,
-    createBucketMock,
-    getBucketMock,
-    fromMock,
-  };
-});
+    return {
+      createSignedUploadUrlMock,
+      createBucketMock,
+      getBucketMock,
+      fromMock,
+    };
+  });
 
 vi.mock("@/lib/supabase/admin", () => ({
   createSupabaseAdminClient: vi.fn(() => ({
@@ -56,7 +53,10 @@ describe("/api/blob/upload-token", () => {
     vi.clearAllMocks();
     getCurrentIdentityMock.mockResolvedValue(identity);
     getBucketMock.mockResolvedValue({ data: { id: "datasets" }, error: null });
-    createBucketMock.mockResolvedValue({ data: { id: "datasets" }, error: null });
+    createBucketMock.mockResolvedValue({
+      data: { id: "datasets" },
+      error: null,
+    });
     createSignedUploadUrlMock.mockResolvedValue({
       data: {
         path: "datasets/csv/generated-customers.csv",
@@ -154,5 +154,17 @@ describe("/api/blob/upload-token", () => {
     await expect(response.json()).resolves.toEqual({
       error: "The upload could not be authorized by Supabase Storage.",
     });
+  });
+});
+
+describe("route guard integration", () => {
+  it("uses the centralized route guard", async () => {
+    const source = await readFile(
+      "src/app/api/blob/upload-token/route.ts",
+      "utf8",
+    );
+
+    expect(source).toContain('from "@/lib/route-guard"');
+    expect(source).toContain("withRoute(");
   });
 });

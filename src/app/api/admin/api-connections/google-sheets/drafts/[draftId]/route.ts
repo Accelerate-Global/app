@@ -1,7 +1,7 @@
 import { getGoogleSheetsConnectionDraft } from "@/lib/api-connections";
-import { getCurrentIdentity } from "@/lib/auth";
 import { logError } from "@/lib/error-logging";
-import { jsonAdminOnlyError, jsonError } from "@/lib/http";
+import { jsonError } from "@/lib/http";
+import { withRoute } from "@/lib/route-guard";
 
 type GoogleSheetsDraftContext = {
   params: Promise<{
@@ -9,29 +9,22 @@ type GoogleSheetsDraftContext = {
   }>;
 };
 
-export async function GET(_request: Request, context: GoogleSheetsDraftContext) {
-  const identity = await getCurrentIdentity();
+export const GET = withRoute(
+  { access: "admin", action: "connect Google Sheets" },
+  async (identity, _request: Request, context: GoogleSheetsDraftContext) => {
+    const { draftId } = await context.params;
 
-  if (!identity) {
-    return jsonError("Unauthorized.", 401);
-  }
+    try {
+      const draft = await getGoogleSheetsConnectionDraft({ identity, draftId });
 
-  if (!identity.isDatasetAdmin) {
-    return jsonAdminOnlyError("connect Google Sheets");
-  }
+      if (!draft) {
+        return jsonError("Google Sheets connection draft not found.", 404);
+      }
 
-  const { draftId } = await context.params;
-
-  try {
-    const draft = await getGoogleSheetsConnectionDraft({ identity, draftId });
-
-    if (!draft) {
-      return jsonError("Google Sheets connection draft not found.", 404);
+      return Response.json({ draft });
+    } catch (error) {
+      logError("Failed to load Google Sheets draft", error);
+      return jsonError("Could not load Google Sheets connection draft.", 500);
     }
-
-    return Response.json({ draft });
-  } catch (error) {
-    logError("Failed to load Google Sheets draft", error);
-    return jsonError("Could not load Google Sheets connection draft.", 500);
-  }
-}
+  },
+);

@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getCurrentIdentity } from "@/lib/auth";
@@ -46,7 +47,9 @@ const getCurrentIdentityMock = vi.mocked(getCurrentIdentity);
 const createSupabaseAdminClientMock = vi.mocked(createSupabaseAdminClient);
 const hasSupabaseConfigMock = vi.mocked(hasSupabaseConfig);
 const createSupabaseServerClientMock = vi.mocked(createSupabaseServerClient);
-const getActiveWorkspaceAdminCountMock = vi.mocked(getActiveWorkspaceAdminCount);
+const getActiveWorkspaceAdminCountMock = vi.mocked(
+  getActiveWorkspaceAdminCount,
+);
 const getActiveWorkspaceSuperAdminCountMock = vi.mocked(
   getActiveWorkspaceSuperAdminCount,
 );
@@ -149,7 +152,10 @@ describe("/api/account/disable", () => {
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({ ok: true });
-    expect(setWorkspaceUserDisabledMock).toHaveBeenCalledWith("supabase-user", true);
+    expect(setWorkspaceUserDisabledMock).toHaveBeenCalledWith(
+      "supabase-user",
+      true,
+    );
     expect(revokeSessions).toHaveBeenCalledWith("session-token", "global");
     expect(signOut).toHaveBeenCalled();
   });
@@ -179,7 +185,8 @@ describe("/api/account/disable", () => {
 
     expect(response.status).toBe(409);
     await expect(response.json()).resolves.toEqual({
-      error: "The last active admin-capable account cannot disable their own account.",
+      error:
+        "The last active admin-capable account cannot disable their own account.",
     });
     expect(setWorkspaceUserDisabledMock).not.toHaveBeenCalled();
   });
@@ -282,5 +289,17 @@ describe("/api/account/disable", () => {
     await expect(response.json()).resolves.toEqual({
       error: "Could not disable the current account.",
     });
+  });
+});
+
+describe("route guard integration", () => {
+  it("uses the centralized route guard", async () => {
+    const source = await readFile(
+      "src/app/api/account/disable/route.ts",
+      "utf8",
+    );
+
+    expect(source).toContain('from "@/lib/route-guard"');
+    expect(source).toContain("withRoute(");
   });
 });

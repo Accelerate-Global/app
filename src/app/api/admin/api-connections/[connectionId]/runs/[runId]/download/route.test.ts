@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getApiConnectionRunOutputDownload } from "@/lib/api-connections";
@@ -62,7 +63,7 @@ describe("/api/admin/api-connections/[connectionId]/runs/[runId]/download", () =
 
   it("downloads JSON output for admins", async () => {
     getApiConnectionRunOutputDownloadMock.mockResolvedValue({
-      body: "{\"rawResponse\":\"[]\"}",
+      body: '{"rawResponse":"[]"}',
       contentType: "application/json; charset=utf-8",
       fileName: "api-connection-run.json",
     });
@@ -79,7 +80,7 @@ describe("/api/admin/api-connections/[connectionId]/runs/[runId]/download", () =
     expect(response.headers.get("Content-Disposition")).toContain(
       "api-connection-run.json",
     );
-    await expect(response.text()).resolves.toBe("{\"rawResponse\":\"[]\"}");
+    await expect(response.text()).resolves.toBe('{"rawResponse":"[]"}');
     expect(getApiConnectionRunOutputDownloadMock).toHaveBeenCalledWith({
       connectionId,
       runId,
@@ -96,5 +97,17 @@ describe("/api/admin/api-connections/[connectionId]/runs/[runId]/download", () =
     );
 
     expect(response.status).toBe(404);
+  });
+});
+
+describe("route guard integration", () => {
+  it("uses the centralized route guard", async () => {
+    const source = await readFile(
+      "src/app/api/admin/api-connections/[connectionId]/runs/[runId]/download/route.ts",
+      "utf8",
+    );
+
+    expect(source).toContain('from "@/lib/route-guard"');
+    expect(source).toContain("withRoute(");
   });
 });

@@ -1,6 +1,6 @@
-import { getCurrentIdentity } from "@/lib/auth";
 import { logError } from "@/lib/error-logging";
-import { jsonAdminOnlyError, jsonError } from "@/lib/http";
+import { jsonError } from "@/lib/http";
+import { withRoute } from "@/lib/route-guard";
 import {
   updateWorkspaceUser,
   WorkspaceUserNotFoundError,
@@ -14,44 +14,37 @@ type UserContext = {
   }>;
 };
 
-export async function PATCH(request: Request, context: UserContext) {
-  const identity = await getCurrentIdentity();
+export const PATCH = withRoute(
+  { access: "admin", action: "manage users" },
+  async (identity, request: Request, context: UserContext) => {
+    const parsed = workspaceUserPatchSchema.safeParse(await request.json());
 
-  if (!identity) {
-    return jsonError("Unauthorized.", 401);
-  }
-
-  if (!identity.isDatasetAdmin) {
-    return jsonAdminOnlyError("manage users");
-  }
-
-  const parsed = workspaceUserPatchSchema.safeParse(await request.json());
-
-  if (!parsed.success) {
-    return jsonError("User update payload is invalid.");
-  }
-
-  try {
-    const { userId } = await context.params;
-    const user = await updateWorkspaceUser({
-      currentUserId: identity.ownerId,
-      currentUserRole: identity.workspaceRole,
-      userId,
-      workspaceRole: parsed.data.workspaceRole,
-      disabled: parsed.data.disabled,
-    });
-
-    return Response.json({ user });
-  } catch (error) {
-    if (error instanceof WorkspaceUserNotFoundError) {
-      return jsonError(error.message, 404);
+    if (!parsed.success) {
+      return jsonError("User update payload is invalid.");
     }
 
-    if (error instanceof WorkspaceUserPermissionError) {
-      return jsonError(error.message, error.status);
-    }
+    try {
+      const { userId } = await context.params;
+      const user = await updateWorkspaceUser({
+        currentUserId: identity.ownerId,
+        currentUserRole: identity.workspaceRole,
+        userId,
+        workspaceRole: parsed.data.workspaceRole,
+        disabled: parsed.data.disabled,
+      });
 
-    logError("Failed to update workspace user", error);
-    return jsonError("Could not update the user.", 500);
-  }
-}
+      return Response.json({ user });
+    } catch (error) {
+      if (error instanceof WorkspaceUserNotFoundError) {
+        return jsonError(error.message, 404);
+      }
+
+      if (error instanceof WorkspaceUserPermissionError) {
+        return jsonError(error.message, error.status);
+      }
+
+      logError("Failed to update workspace user", error);
+      return jsonError("Could not update the user.", 500);
+    }
+  },
+);

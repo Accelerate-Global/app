@@ -5,21 +5,11 @@ import type {
   SavedDatasetFilterState,
   SavedDatasetSort,
 } from "@/lib/api-types";
-import {
-  filterDatasetRowsByCountry,
-  filterDatasetRowsByHotspots,
-  filterDatasetRowsByRegion,
-  filterDatasetRowsByUupg,
-  filterDatasetRowsByWatchlist,
-} from "@/lib/dataset-region-filtering";
+import { applyDatasetFilterSections } from "@/lib/dataset-filtering";
 import { sortDatasetRows } from "@/lib/dataset-table-columns";
 import {
   buildDatasetOpenPreset,
-  getDatasetCountryFilterStateFromSavedView,
-  getDatasetHotspotsFilterStateFromSavedView,
-  getDatasetRegionFilterStateFromSavedView,
-  getDatasetUupgFilterStateFromSavedView,
-  getDatasetWatchlistFilterStateFromSavedView,
+  getDatasetFilterSectionsFromSavedView,
   normalizeSavedDatasetFilterState,
 } from "@/lib/saved-dataset-filters";
 
@@ -67,23 +57,10 @@ export function applyDatasetDefaultFilters(input: {
   }
 
   return sortDatasetRows(
-    filterDatasetRowsByCountry(
-        filterDatasetRowsByUupg(
-          filterDatasetRowsByHotspots(
-            filterDatasetRowsByWatchlist(
-              filterDatasetRowsByRegion(
-                input.rows,
-                getDatasetRegionFilterStateFromSavedView(input.dataset, filters),
-              ),
-              getDatasetWatchlistFilterStateFromSavedView(input.dataset, filters),
-            ),
-            getDatasetHotspotsFilterStateFromSavedView(input.dataset, filters),
-            getDatasetUupgFilterStateFromSavedView(input.dataset, filters),
-          ),
-          getDatasetUupgFilterStateFromSavedView(input.dataset, filters),
-        ),
-      getDatasetCountryFilterStateFromSavedView(input.dataset, filters),
-    ),
+    applyDatasetFilterSections(
+      input.rows,
+      getDatasetFilterSectionsFromSavedView(input.dataset, filters),
+    ).rows,
     filters.sorting,
   );
 }

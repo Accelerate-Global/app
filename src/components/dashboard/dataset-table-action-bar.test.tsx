@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { readFile } from "node:fs/promises";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -89,9 +90,7 @@ describe("DatasetTableActionBar", () => {
     expect(screen.getByText("Current filtered table")).toBeTruthy();
     expect(screen.getByText("12,507")).toBeTruthy();
     expect(screen.getByText("People Groups")).toBeTruthy();
-    expect(
-      screen.queryByText("people groups in the current list"),
-    ).toBeNull();
+    expect(screen.queryByText("people groups in the current list")).toBeNull();
   });
 
   it("renders a mobile filters trigger when an opener is supplied", () => {
@@ -168,7 +167,9 @@ describe("DatasetTableActionBar", () => {
     );
 
     expect(screen.getByRole("button", { name: "Download" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Save to dashboard" })).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: "Save to dashboard" }),
+    ).toBeNull();
   });
 
   it("tracks saved table creation outcomes", async () => {
@@ -226,5 +227,17 @@ describe("DatasetTableActionBar", () => {
         saved_row_count: 12507,
       }),
     );
+  });
+});
+
+describe("action-bar filter analytics boundary", () => {
+  it("reads enabled filter sections from the dataset filtering module", async () => {
+    const source = await readFile(
+      "src/components/dashboard/dataset-table-action-bar.tsx",
+      "utf8",
+    );
+
+    expect(source).toContain('from "@/lib/dataset-filtering"');
+    expect(source).toContain("getEnabledFilterSections");
   });
 });

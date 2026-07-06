@@ -14,7 +14,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import type { DatasetSummary, SavedDatasetTable } from "@/lib/api-types";
-import { datasetSupportsUupgFrontierFiltering } from "@/lib/dataset-region-filtering";
+import { getDatasetFilterSectionSupport } from "@/lib/dataset-filtering";
 import { normalizeRegionDisplayName } from "@/lib/region-display";
 import { normalizeSavedDatasetFilterState } from "@/lib/saved-dataset-filters";
 import { formatWatchlistJpOnlyEvangelicalSummary } from "@/lib/watchlist-jp-only-evangelical";
@@ -139,7 +139,7 @@ function getUupgSummary(
 
   if (
     (normalizedFilters.uupg.frontierGroupEnabled ?? true) &&
-    (dataset ? datasetSupportsUupgFrontierFiltering(dataset) : true)
+    (dataset ? getDatasetFilterSectionSupport(dataset).uupgFrontier : true)
   ) {
     summary.push("Frontier Group");
   }

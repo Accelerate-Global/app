@@ -38,18 +38,10 @@ import {
   getSortedVisibleDatasetColumns,
 } from "@/lib/dataset-table-columns";
 import {
-  filterDatasetRowsByCountry,
-  filterDatasetRowsByHotspots,
-  filterDatasetRowsByRegion,
-  filterDatasetRowsByUupg,
-  filterDatasetRowsByWatchlist,
-  getAvailableDatasetCountryNames,
-  type DatasetCountryFilterState,
-  type DatasetHotspotsFilterState,
-  type DatasetRegionFilterState,
-  type DatasetUupgFilterState,
-  type DatasetWatchlistFilterState,
-} from "@/lib/dataset-region-filtering";
+  applyDatasetFilterSections,
+  getDatasetCountryNames,
+  type DatasetFilterSections,
+} from "@/lib/dataset-filtering";
 
 type DatasetRow = DatasetRowsResponse["rows"][number];
 type DatasetColumnPresentation = {
@@ -62,11 +54,7 @@ export function useDatasetTableState(input: {
   dataset: DatasetSummary;
   sourceRowCount?: number | null;
   initialSorting?: SavedDatasetSort[] | null;
-  regionFilter?: DatasetRegionFilterState;
-  countryFilter?: DatasetCountryFilterState;
-  watchlistFilter?: DatasetWatchlistFilterState;
-  uupgFilter?: DatasetUupgFilterState;
-  hotspotsFilter?: DatasetHotspotsFilterState;
+  filterSections?: DatasetFilterSections;
   fieldDefinitionPresentationByColumnKey?: Record<
     string,
     FieldDefinitionPresentation
@@ -100,46 +88,20 @@ export function useDatasetTableState(input: {
     [input.fieldDefinitionPresentationByColumnKey],
   );
 
-  const rowsBeforeCountryFilter = useMemo(
-    () =>
-      filterDatasetRowsByUupg(
-        filterDatasetRowsByHotspots(
-          filterDatasetRowsByWatchlist(
-            filterDatasetRowsByRegion(rows, input.regionFilter),
-            input.watchlistFilter,
-          ),
-          input.hotspotsFilter,
-          input.uupgFilter,
-        ),
-        input.uupgFilter,
-      ),
-    [
-      input.hotspotsFilter,
-      rows,
-      input.regionFilter,
-      input.uupgFilter,
-      input.watchlistFilter,
-    ],
+  const filterSections = input.filterSections;
+  const filterEvaluation = useMemo(
+    () => applyDatasetFilterSections(rows, filterSections ?? {}),
+    [filterSections, rows],
   );
-  const filteredRows = useMemo(
-    () => filterDatasetRowsByCountry(rowsBeforeCountryFilter, input.countryFilter),
-    [rowsBeforeCountryFilter, input.countryFilter],
-  );
+  const filteredRows = filterEvaluation.rows;
+  const availableCountryNames = filterEvaluation.availableCountryNames;
   const datasetCountryNames = useMemo(
     () =>
-      getAvailableDatasetCountryNames(rows, {
+      getDatasetCountryNames(rows, {
         includeAlternateCountries:
-          input.countryFilter?.includeAlternateCountries ?? false,
+          filterSections?.country?.includeAlternateCountries ?? false,
       }),
-    [input.countryFilter?.includeAlternateCountries, rows],
-  );
-  const availableCountryNames = useMemo(
-    () =>
-      getAvailableDatasetCountryNames(rowsBeforeCountryFilter, {
-        includeAlternateCountries:
-          input.countryFilter?.includeAlternateCountries ?? false,
-      }),
-    [input.countryFilter?.includeAlternateCountries, rowsBeforeCountryFilter],
+    [filterSections?.country?.includeAlternateCountries, rows],
   );
   const visibleColumns = useMemo(
     () =>

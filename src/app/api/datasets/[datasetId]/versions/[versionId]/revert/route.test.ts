@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getCurrentIdentity } from "@/lib/auth";
@@ -15,7 +16,9 @@ vi.mock("@/lib/datasets", () => ({
   DerivedDatasetMutationError: class DerivedDatasetMutationError extends Error {
     readonly status = 409;
 
-    constructor(message = "Derived dataset views do not have upload history to revert.") {
+    constructor(
+      message = "Derived dataset views do not have upload history to revert.",
+    ) {
       super(message);
       this.name = "DerivedDatasetMutationError";
     }
@@ -82,9 +85,12 @@ describe("/api/datasets/[datasetId]/versions/[versionId]/revert", () => {
     getCurrentIdentityMock.mockResolvedValue(null);
 
     const response = await POST(
-      new Request("http://localhost/api/datasets/dataset-1/versions/version-1/revert", {
-        method: "POST",
-      }),
+      new Request(
+        "http://localhost/api/datasets/dataset-1/versions/version-1/revert",
+        {
+          method: "POST",
+        },
+      ),
       context,
     );
 
@@ -99,9 +105,12 @@ describe("/api/datasets/[datasetId]/versions/[versionId]/revert", () => {
     });
 
     const response = await POST(
-      new Request("http://localhost/api/datasets/dataset-1/versions/version-1/revert", {
-        method: "POST",
-      }),
+      new Request(
+        "http://localhost/api/datasets/dataset-1/versions/version-1/revert",
+        {
+          method: "POST",
+        },
+      ),
       context,
     );
 
@@ -113,9 +122,12 @@ describe("/api/datasets/[datasetId]/versions/[versionId]/revert", () => {
     revertDatasetVersionMock.mockResolvedValue({ dataset });
 
     const response = await POST(
-      new Request("http://localhost/api/datasets/dataset-1/versions/version-1/revert", {
-        method: "POST",
-      }),
+      new Request(
+        "http://localhost/api/datasets/dataset-1/versions/version-1/revert",
+        {
+          method: "POST",
+        },
+      ),
       context,
     );
 
@@ -133,9 +145,12 @@ describe("/api/datasets/[datasetId]/versions/[versionId]/revert", () => {
     revertDatasetVersionMock.mockResolvedValue(null);
 
     const response = await POST(
-      new Request("http://localhost/api/datasets/dataset-1/versions/version-1/revert", {
-        method: "POST",
-      }),
+      new Request(
+        "http://localhost/api/datasets/dataset-1/versions/version-1/revert",
+        {
+          method: "POST",
+        },
+      ),
       context,
     );
 
@@ -148,9 +163,12 @@ describe("/api/datasets/[datasetId]/versions/[versionId]/revert", () => {
     );
 
     const response = await POST(
-      new Request("http://localhost/api/datasets/dataset-1/versions/version-1/revert", {
-        method: "POST",
-      }),
+      new Request(
+        "http://localhost/api/datasets/dataset-1/versions/version-1/revert",
+        {
+          method: "POST",
+        },
+      ),
       context,
     );
 
@@ -162,12 +180,17 @@ describe("/api/datasets/[datasetId]/versions/[versionId]/revert", () => {
 
   it("rejects reverts for derived dataset views", async () => {
     const { DerivedDatasetMutationError } = await import("@/lib/datasets");
-    revertDatasetVersionMock.mockRejectedValue(new DerivedDatasetMutationError());
+    revertDatasetVersionMock.mockRejectedValue(
+      new DerivedDatasetMutationError(),
+    );
 
     const response = await POST(
-      new Request("http://localhost/api/datasets/dataset-1/versions/version-1/revert", {
-        method: "POST",
-      }),
+      new Request(
+        "http://localhost/api/datasets/dataset-1/versions/version-1/revert",
+        {
+          method: "POST",
+        },
+      ),
       context,
     );
 
@@ -175,5 +198,17 @@ describe("/api/datasets/[datasetId]/versions/[versionId]/revert", () => {
     await expect(response.json()).resolves.toEqual({
       error: "Derived dataset views do not have upload history to revert.",
     });
+  });
+});
+
+describe("route guard integration", () => {
+  it("uses the centralized route guard", async () => {
+    const source = await readFile(
+      "src/app/api/datasets/[datasetId]/versions/[versionId]/revert/route.ts",
+      "utf8",
+    );
+
+    expect(source).toContain('from "@/lib/route-guard"');
+    expect(source).toContain("withRoute(");
   });
 });

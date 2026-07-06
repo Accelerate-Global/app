@@ -1,5 +1,5 @@
-import { getCurrentIdentity } from "@/lib/auth";
 import { jsonError } from "@/lib/http";
+import { withRoute } from "@/lib/route-guard";
 import {
   deleteSavedDatasetTable,
   getSavedDatasetTable,
@@ -13,73 +13,66 @@ type SavedTableContext = {
   }>;
 };
 
-export async function GET(_request: Request, context: SavedTableContext) {
-  const identity = await getCurrentIdentity();
+export const GET = withRoute(
+  { access: "user" },
+  async (identity, _request: Request, context: SavedTableContext) => {
+    const { savedTableId } = await context.params;
+    const savedTable = await getSavedDatasetTable({
+      ownerId: identity.ownerId,
+      savedTableId,
+      includeDisabled: identity.isDatasetAdmin,
+    });
 
-  if (!identity) {
-    return jsonError("Unauthorized.", 401);
-  }
+    if (!savedTable) {
+      return jsonError("Saved table not found.", 404);
+    }
 
-  const { savedTableId } = await context.params;
-  const savedTable = await getSavedDatasetTable({
-    ownerId: identity.ownerId,
-    savedTableId,
-    includeDisabled: identity.isDatasetAdmin,
-  });
+    return Response.json({ savedTable });
+  },
+);
 
-  if (!savedTable) {
-    return jsonError("Saved table not found.", 404);
-  }
+export const PATCH = withRoute(
+  { access: "user" },
+  async (identity, request: Request, context: SavedTableContext) => {
+    const parsed = savedDatasetTableUpdateSchema.safeParse(
+      await request.json(),
+    );
 
-  return Response.json({ savedTable });
-}
+    if (!parsed.success) {
+      return jsonError("Saved table payload is invalid.");
+    }
 
-export async function PATCH(request: Request, context: SavedTableContext) {
-  const identity = await getCurrentIdentity();
+    const { savedTableId } = await context.params;
+    const savedTable = await updateSavedDatasetTable({
+      ownerId: identity.ownerId,
+      savedTableId,
+      name: parsed.data.name,
+      details: parsed.data.details,
+      includeDisabled: identity.isDatasetAdmin,
+    });
 
-  if (!identity) {
-    return jsonError("Unauthorized.", 401);
-  }
+    if (!savedTable) {
+      return jsonError("Saved table not found.", 404);
+    }
 
-  const parsed = savedDatasetTableUpdateSchema.safeParse(await request.json());
+    return Response.json({ savedTable });
+  },
+);
 
-  if (!parsed.success) {
-    return jsonError("Saved table payload is invalid.");
-  }
+export const DELETE = withRoute(
+  { access: "user" },
+  async (identity, _request: Request, context: SavedTableContext) => {
+    const { savedTableId } = await context.params;
+    const savedTable = await deleteSavedDatasetTable({
+      ownerId: identity.ownerId,
+      savedTableId,
+      includeDisabled: identity.isDatasetAdmin,
+    });
 
-  const { savedTableId } = await context.params;
-  const savedTable = await updateSavedDatasetTable({
-    ownerId: identity.ownerId,
-    savedTableId,
-    name: parsed.data.name,
-    details: parsed.data.details,
-    includeDisabled: identity.isDatasetAdmin,
-  });
+    if (!savedTable) {
+      return jsonError("Saved table not found.", 404);
+    }
 
-  if (!savedTable) {
-    return jsonError("Saved table not found.", 404);
-  }
-
-  return Response.json({ savedTable });
-}
-
-export async function DELETE(_request: Request, context: SavedTableContext) {
-  const identity = await getCurrentIdentity();
-
-  if (!identity) {
-    return jsonError("Unauthorized.", 401);
-  }
-
-  const { savedTableId } = await context.params;
-  const savedTable = await deleteSavedDatasetTable({
-    ownerId: identity.ownerId,
-    savedTableId,
-    includeDisabled: identity.isDatasetAdmin,
-  });
-
-  if (!savedTable) {
-    return jsonError("Saved table not found.", 404);
-  }
-
-  return Response.json({ savedTable });
-}
+    return Response.json({ savedTable });
+  },
+);

@@ -5,7 +5,7 @@ import {
   DEFAULT_HOTSPOTS_COUNTRY_COUNT,
   DEFAULT_HOTSPOTS_METRIC,
   MAX_HOTSPOTS_COUNTRY_COUNT,
-} from "@/lib/dataset-region-filtering";
+} from "@/lib/dataset-filtering";
 import {
   POPULATION_BELIEVERS_RULE_MAX_TIERS,
   POPULATION_BELIEVERS_RULE_MIN_TIERS,
