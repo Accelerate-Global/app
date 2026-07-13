@@ -4,6 +4,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 export const dynamic = "force-dynamic";
 
 const HEARTBEAT_TABLE = "field_definitions";
+const HEARTBEAT_QUERY_COUNT = 3;
 const NO_STORE_HEADERS = {
   "Cache-Control": "no-store",
 };
@@ -37,14 +38,20 @@ export async function GET(request: Request) {
   }
 
   const supabase = createSupabaseAdminClient();
-  const { error } = await supabase.from(HEARTBEAT_TABLE).select("id").limit(1);
 
-  if (error) {
-    logError("Supabase heartbeat failed", error);
-    return jsonResponse(
-      { ok: false, error: "Supabase heartbeat failed." },
-      { status: 503 },
-    );
+  for (let queryIndex = 0; queryIndex < HEARTBEAT_QUERY_COUNT; queryIndex += 1) {
+    const { error } = await supabase
+      .from(HEARTBEAT_TABLE)
+      .select("id")
+      .limit(1);
+
+    if (error) {
+      logError("Supabase heartbeat failed", error);
+      return jsonResponse(
+        { ok: false, error: "Supabase heartbeat failed." },
+        { status: 503 },
+      );
+    }
   }
 
   return jsonResponse({ ok: true });

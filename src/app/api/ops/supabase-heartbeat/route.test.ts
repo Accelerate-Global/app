@@ -21,8 +21,11 @@ function createRequest(authorization?: string) {
   });
 }
 
-function mockSupabaseRead(result: { error: Error | null }) {
-  const limit = vi.fn().mockResolvedValue(result);
+function mockSupabaseReads(results: Array<{ error: Error | null }>) {
+  const limit = vi.fn();
+  for (const result of results) {
+    limit.mockResolvedValueOnce(result);
+  }
   const select = vi.fn().mockReturnValue({ limit });
   const from = vi.fn().mockReturnValue({ select });
 
@@ -73,23 +76,40 @@ describe("/api/ops/supabase-heartbeat", () => {
     expect(createSupabaseAdminClientMock).not.toHaveBeenCalled();
   });
 
-  it("performs one read-only Supabase heartbeat query for authorized requests", async () => {
-    const query = mockSupabaseRead({ error: null });
+  it("performs three read-only Supabase heartbeat queries for authorized requests", async () => {
+    const query = mockSupabaseReads([
+      { error: null },
+      { error: null },
+      { error: null },
+    ]);
 
     const response = await GET(createRequest("Bearer test-cron-secret"));
 
     expect(response.status).toBe(200);
     expect(response.headers.get("Cache-Control")).toBe("no-store");
     await expect(response.json()).resolves.toEqual({ ok: true });
-    expect(query.from).toHaveBeenCalledWith("field_definitions");
-    expect(query.select).toHaveBeenCalledWith("id");
-    expect(query.limit).toHaveBeenCalledWith(1);
+    expect(query.from).toHaveBeenCalledTimes(3);
+    expect(query.from).toHaveBeenNthCalledWith(1, "field_definitions");
+    expect(query.from).toHaveBeenNthCalledWith(2, "field_definitions");
+    expect(query.from).toHaveBeenNthCalledWith(3, "field_definitions");
+    expect(query.select).toHaveBeenCalledTimes(3);
+    expect(query.select).toHaveBeenNthCalledWith(1, "id");
+    expect(query.select).toHaveBeenNthCalledWith(2, "id");
+    expect(query.select).toHaveBeenNthCalledWith(3, "id");
+    expect(query.limit).toHaveBeenCalledTimes(3);
+    expect(query.limit).toHaveBeenNthCalledWith(1, 1);
+    expect(query.limit).toHaveBeenNthCalledWith(2, 1);
+    expect(query.limit).toHaveBeenNthCalledWith(3, 1);
     expect(logErrorMock).not.toHaveBeenCalled();
   });
 
-  it("returns a service error and logs normalized details when Supabase fails", async () => {
+  it("returns a service error, logs normalized details, and stops later reads when Supabase fails", async () => {
     const error = new Error("relation not found");
-    mockSupabaseRead({ error });
+    const query = mockSupabaseReads([
+      { error: null },
+      { error },
+      { error: null },
+    ]);
 
     const response = await GET(createRequest("Bearer test-cron-secret"));
 
@@ -99,5 +119,8 @@ describe("/api/ops/supabase-heartbeat", () => {
       error: "Supabase heartbeat failed.",
     });
     expect(logErrorMock).toHaveBeenCalledWith("Supabase heartbeat failed", error);
+    expect(query.from).toHaveBeenCalledTimes(2);
+    expect(query.select).toHaveBeenCalledTimes(2);
+    expect(query.limit).toHaveBeenCalledTimes(2);
   });
 });
