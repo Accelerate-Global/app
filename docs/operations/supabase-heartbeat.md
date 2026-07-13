@@ -1,19 +1,21 @@
 # Supabase Heartbeat Cron
 
-This app uses a daily Vercel Cron job to create a tiny, read-only Supabase
-activity signal for the deployed Free-plan project.
+This app uses a daily Vercel Cron job to make three tiny, read-only Supabase
+database requests for the deployed Free-plan project.
 
-Supabase may pause Free-plan applications that show low activity during a
-seven-day period. Pro is the only plan-level guarantee against inactivity
-pausing, but this cron gives the Free-plan project one real app-owned Supabase
-read per day without writing data or adding another scheduler.
+Supabase considers Free-plan projects inactive when they have too little user
+database activity over seven days. Its [Project Pausing guidance](https://supabase.com/docs/guides/platform/free-project-pausing)
+states that a few user database requests each day are typically enough. Pro is
+the only plan-level guarantee against inactivity pausing, but this cron makes
+three real app-owned database API reads per day without writing data or adding
+another scheduler.
 
 ## Runtime Behavior
 
 - Vercel invokes `GET /api/ops/supabase-heartbeat` from the production
   deployment.
 - The route requires `Authorization: Bearer <CRON_SECRET>`.
-- The route performs one read-only query:
+- The route performs three sequential read-only queries:
 
   ```text
   field_definitions.select("id").limit(1)
@@ -22,7 +24,7 @@ read per day without writing data or adding another scheduler.
 - The route never inserts, updates, deletes, invites, uploads, publishes,
   revokes, or otherwise mutates production data.
 - Supabase failures return HTTP 503 and are logged through the repo's normalized
-  error logger.
+  error logger; later heartbeat reads are not attempted after a failure.
 - Successful responses include `Cache-Control: no-store`.
 
 ## Vercel Setup
