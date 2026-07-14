@@ -12,6 +12,7 @@ import {
 } from "./lib/ui-smoke-env";
 import { runCommand } from "./lib/command";
 import { formatUnknownError } from "./lib/format-error";
+import { getPostgresConnectionConfig } from "../src/lib/postgres-connection";
 
 async function resolveSmokeEnv() {
   try {
@@ -31,12 +32,16 @@ async function resolveSmokeEnv() {
 
 async function main() {
   const env = await resolveSmokeEnv();
-  const sql = postgres(env.databaseUrl, {
+  const connection = getPostgresConnectionConfig(env.databaseUrl);
+  const sql = postgres(connection.databaseUrl, {
+    ...connection.options,
     max: 1,
     prepare: false,
   });
   const probeId = randomUUID();
   const probeEmail = `smoke-preflight-${probeId}@accelerate-global.test`;
+  const selfSignupProbeEmail =
+    `smoke-self-signup-${probeId}@accelerate-global.test`;
   const allowlistNote = "UI smoke preflight probe";
 
   try {
@@ -62,11 +67,16 @@ async function main() {
 
     await sql`
       insert into public.signup_email_allowlist (email, note)
-      values (${probeEmail}, ${allowlistNote})
+      values
+        (${probeEmail}, ${allowlistNote}),
+        (${selfSignupProbeEmail}, ${allowlistNote})
       on conflict (email) do update
       set note = excluded.note, updated_at = now()
     `;
-    await sql`delete from auth.users where email = ${probeEmail}`;
+    await sql`
+      delete from auth.users
+      where email in (${probeEmail}, ${selfSignupProbeEmail})
+    `;
 
     const authClient = createClient(
       env.supabaseUrl,
@@ -78,19 +88,27 @@ async function main() {
         },
       },
     );
-    const signUp = await authClient.auth.signUp({
+    const selfSignup = await authClient.auth.signUp({
+      email: selfSignupProbeEmail,
+      password: UI_SMOKE_PASSWORD,
+    });
+
+    if (!selfSignup.error || selfSignup.data.user) {
+      throw new Error("public email self-signup is unexpectedly enabled");
+    }
+
+    const createdUser = await storageAdmin.auth.admin.createUser({
       email: probeEmail,
       password: UI_SMOKE_PASSWORD,
-      options: {
-        data: {
-          full_name: "UI Smoke Preflight Probe",
-        },
+      email_confirm: true,
+      user_metadata: {
+        full_name: "UI Smoke Preflight Probe",
       },
     });
 
-    if (signUp.error || !signUp.data.user) {
+    if (createdUser.error || !createdUser.data.user) {
       throw new Error(
-        `auth signup probe failed: ${signUp.error?.message ?? "missing user"}`,
+        `admin user-creation probe failed: ${createdUser.error?.message ?? "missing user"}`,
       );
     }
 
@@ -106,11 +124,17 @@ async function main() {
     }
 
     console.log(
-      "UI smoke preflight OK: database, storage admin access, and auth signup/sign-in are ready.",
+      "UI smoke preflight OK: public self-signup is disabled while admin-provisioned email sign-in remains ready.",
     );
   } finally {
-    await sql`delete from auth.users where email = ${probeEmail}`;
-    await sql`delete from public.signup_email_allowlist where email = ${probeEmail}`;
+    await sql`
+      delete from auth.users
+      where email in (${probeEmail}, ${selfSignupProbeEmail})
+    `;
+    await sql`
+      delete from public.signup_email_allowlist
+      where email in (${probeEmail}, ${selfSignupProbeEmail})
+    `;
     await sql.end({ timeout: 5 });
   }
 }

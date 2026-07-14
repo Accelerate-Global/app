@@ -412,6 +412,7 @@ describe("fetchArcgisFeaturePages", () => {
       headers: new Headers(),
       pageSize: 2,
       log,
+      fetchSafe: async ({ url, init }) => fetchMock(url, init),
     });
 
     expect(result.featureCount).toBe(3);

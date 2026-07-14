@@ -67,11 +67,6 @@ export const UI_SMOKE_USERS = {
     password: UI_SMOKE_PASSWORD,
     fullName: "Smoke Disable",
   },
-  allowlistedSignup: {
-    email: "smoke-sign-up@accelerate-global.test",
-    password: UI_SMOKE_PASSWORD,
-    fullName: "Smoke Sign Up",
-  },
 } as const;
 
 export type UiSmokeBootstrap = {
@@ -128,11 +123,6 @@ export type UiSmokeBootstrap = {
     };
   };
   authFlows: {
-    allowlistedSignup: {
-      email: string;
-      password: string;
-      fullName: string;
-    };
     passwordReset: {
       nextPassword: string;
     };

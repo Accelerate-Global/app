@@ -25,7 +25,7 @@ const currentDataset = {
   blobUrl: "https://example.com/source.csv",
   blobPath: "datasets/source.csv",
   isPrimary: true,
-  isPublic: true,
+  isWorkspaceVisible: true,
   status: "ready",
   rowCount: 2,
   sizeBytes: 512,

@@ -23,7 +23,7 @@ const baseDataset = {
   blobUrl: "https://example.com/dataset.csv",
   blobPath: "datasets/south-asia.csv",
   isPrimary: false,
-  isPublic: true,
+  isWorkspaceVisible: true,
   status: "ready",
   rowCount: 0,
   sizeBytes: 100,

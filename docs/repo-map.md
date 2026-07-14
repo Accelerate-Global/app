@@ -19,7 +19,7 @@ storage, exploration, and admin management.
 
 ## Runtime Entry Points
 
-- Public auth entry pages: `src/app/page.tsx`, `src/app/sign-up/page.tsx`, `src/app/forgot-password/page.tsx`, and `src/app/reset-password/page.tsx`.
+- Public auth entry pages: `src/app/page.tsx`, `src/app/forgot-password/page.tsx`, and `src/app/reset-password/page.tsx`. New accounts are created only through administrator invitations.
 - Auth callbacks and mutations: `src/app/auth/**/route.ts`.
 - Dashboard pages: `src/app/dashboard/**/page.tsx`.
 - JSON API routes: `src/app/api/**/route.ts`.

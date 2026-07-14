@@ -56,7 +56,7 @@ function createTargetDataset() {
     blobUrl: "https://example.com/global.csv",
     blobPath: "datasets/global.csv",
     isPrimary: true,
-    isPublic: true,
+    isWorkspaceVisible: true,
     status: "ready" as const,
     rowCount: 128,
     sizeBytes: 4096,

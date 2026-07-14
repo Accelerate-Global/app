@@ -9,17 +9,6 @@ export const smokeRouteSpecs: SmokeRouteSpec[] = [
     pageId: "home-sign-in",
   },
   {
-    id: "sign-up-anonymous",
-    role: "anonymous",
-    pageFile: "src/app/sign-up/page.tsx",
-    path: "/sign-up",
-    pageId: "sign-up",
-    journeys: [
-      "allowlisted user can sign up",
-      "blocked user cannot sign up",
-    ],
-  },
-  {
     id: "forgot-password-anonymous",
     role: "anonymous",
     pageFile: "src/app/forgot-password/page.tsx",

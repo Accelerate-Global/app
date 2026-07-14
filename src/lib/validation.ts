@@ -405,7 +405,7 @@ export const datasetMetadataPatchSchema = z
       .optional(),
     tags: z.array(datasetTagSchema).max(24).optional(),
     isPrimary: z.boolean().optional(),
-    isPublic: z.boolean().optional(),
+    isWorkspaceVisible: z.boolean().optional(),
     hiddenColumnKeys: z.array(datasetHiddenColumnKeySchema).max(500).optional(),
   })
   .superRefine((value, ctx) => {
@@ -414,13 +414,13 @@ export const datasetMetadataPatchSchema = z
       value.sourceOrganizationName === undefined &&
       value.tags === undefined &&
       value.isPrimary === undefined &&
-      value.isPublic === undefined &&
+      value.isWorkspaceVisible === undefined &&
       value.hiddenColumnKeys === undefined
     ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message:
-          "A dataset update must include a name, organization label, tags, primary flag, public visibility, or visible fields.",
+          "A dataset update must include a name, organization label, tags, primary flag, workspace visibility, or visible fields.",
       });
     }
 

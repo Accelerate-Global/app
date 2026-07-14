@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildUiSmokeCommandEnv,
+  getUiSmokeStorageAdminKey,
   hasUsableSupabaseStatusOutput,
   parseSupabaseEnvOutput,
 } from "./ui-smoke-env";
@@ -57,5 +58,18 @@ API_URL="http://127.0.0.1:54321"
 PUBLISHABLE_KEY="sb_publishable_test"
       `),
     ).toBe(false);
+  });
+
+  it("prefers the legacy service-role JWT for local admin compatibility", () => {
+    expect(
+      getUiSmokeStorageAdminKey({
+        supabaseUrl: "http://127.0.0.1:54321",
+        supabasePublishableKey: "publishable-key",
+        supabaseSecretKey: "new-secret-key",
+        supabaseServiceRoleKey: "service-role-jwt",
+        databaseUrl: "postgresql://postgres:postgres@127.0.0.1:54322/postgres",
+        storageBucket: "datasets",
+      }),
+    ).toBe("service-role-jwt");
   });
 });

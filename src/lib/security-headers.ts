@@ -5,7 +5,6 @@ export type SecurityHeader = {
 
 type SecurityHeaderOptions = {
   nodeEnv: string | undefined;
-  supabaseUrl?: string | undefined;
 };
 
 function getOptionalOrigin(url: string | undefined) {
@@ -20,20 +19,31 @@ function getOptionalOrigin(url: string | undefined) {
   }
 }
 
-function buildContentSecurityPolicy(input: {
-  isDevelopment: boolean;
-  isProduction: boolean;
-  supabaseOrigin: string | null;
-}) {
-  const scriptSrc = ["'self'", "'unsafe-inline'"];
-  const connectSrc = ["'self'", "https://performance.typekit.net"];
+export function createCspNonce() {
+  return crypto.randomUUID().replaceAll("-", "");
+}
 
-  if (input.isDevelopment) {
-    scriptSrc.push("https://va.vercel-scripts.com");
+export function buildContentSecurityPolicy(input: {
+  nodeEnv: string | undefined;
+  nonce: string;
+  supabaseUrl?: string | undefined;
+}) {
+  if (!/^[A-Za-z0-9+/_-]+={0,2}$/.test(input.nonce)) {
+    throw new Error("CSP nonce must be a base64-compatible value.");
   }
 
-  if (input.supabaseOrigin) {
-    connectSrc.push(input.supabaseOrigin);
+  const isDevelopment = input.nodeEnv === "development";
+  const isProduction = input.nodeEnv === "production";
+  const supabaseOrigin = getOptionalOrigin(input.supabaseUrl);
+  const scriptSrc = ["'self'", `'nonce-${input.nonce}'`, "'strict-dynamic'"];
+  const connectSrc = ["'self'", "https://performance.typekit.net"];
+
+  if (isDevelopment) {
+    scriptSrc.push("'unsafe-eval'");
+  }
+
+  if (supabaseOrigin) {
+    connectSrc.push(supabaseOrigin);
   }
 
   const directives = [
@@ -51,7 +61,7 @@ function buildContentSecurityPolicy(input: {
     ["manifest-src", "'self'"],
   ];
 
-  if (input.isProduction) {
+  if (isProduction) {
     directives.push(["upgrade-insecure-requests", ""]);
   }
 
@@ -62,17 +72,7 @@ function buildContentSecurityPolicy(input: {
 
 export function buildSecurityHeaders(options: SecurityHeaderOptions): SecurityHeader[] {
   const isProduction = options.nodeEnv === "production";
-  const isDevelopment = options.nodeEnv === "development";
-  const supabaseOrigin = getOptionalOrigin(options.supabaseUrl);
   const headers: SecurityHeader[] = [
-    {
-      key: "Content-Security-Policy",
-      value: buildContentSecurityPolicy({
-        isDevelopment,
-        isProduction,
-        supabaseOrigin,
-      }),
-    },
     {
       key: "Referrer-Policy",
       value: "strict-origin-when-cross-origin",

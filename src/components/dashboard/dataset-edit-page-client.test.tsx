@@ -31,7 +31,7 @@ function createDataset(overrides: Record<string, unknown> = {}) {
     blobUrl: "https://example.com/global.csv",
     blobPath: "datasets/global.csv",
     isPrimary: true,
-    isPublic: true,
+    isWorkspaceVisible: true,
     status: "ready" as const,
     rowCount: 128,
     sizeBytes: 4096,
@@ -249,7 +249,7 @@ describe("DatasetEditPageClient", () => {
         dataset: createDataset({
           fileName: "Global Updated.csv",
           isPrimary: false,
-          isPublic: false,
+          isWorkspaceVisible: false,
           updatedAt: new Date("2026-04-17T11:00:00.000Z").toISOString(),
         }),
       }),
@@ -269,7 +269,7 @@ describe("DatasetEditPageClient", () => {
     expect(
       screen.getByText(/show the dataset to non-admin users/i),
     ).toBeTruthy();
-    fireEvent.click(screen.getByRole("switch", { name: "Public dataset" }));
+    fireEvent.click(screen.getByRole("switch", { name: "Workspace-visible dataset" }));
     expect(
       screen.getByText("This dataset is currently hidden from non-admin users."),
     ).toBeTruthy();
@@ -289,7 +289,7 @@ describe("DatasetEditPageClient", () => {
             },
           ],
           isPrimary: false,
-          isPublic: false,
+          isWorkspaceVisible: false,
           hiddenColumnKeys: [],
         }),
       });
@@ -303,7 +303,7 @@ describe("DatasetEditPageClient", () => {
         renamed: true,
         primary_changed: true,
         visibility_changed: true,
-        is_public: false,
+        is_workspace_visible: false,
         hidden_column_count: 0,
         tag_count: 1,
       }),

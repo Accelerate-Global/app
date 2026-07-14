@@ -33,6 +33,16 @@ beforeEach(() => {
 });
 
 describe("withRoute", () => {
+  function expectPrivateHeaders(response: Response) {
+    expect(response.headers.get("Cache-Control")).toBe(
+      "private, no-store, max-age=0",
+    );
+    expect(response.headers.get("Pragma")).toBe("no-cache");
+    expect(response.headers.get("Expires")).toBe("0");
+    expect(response.headers.get("Vary")).toContain("Cookie");
+    expect(response.headers.get("Vary")).toContain("Authorization");
+  }
+
   it("returns 401 when no identity is resolved", async () => {
     getCurrentIdentityMock.mockResolvedValue(null);
     const handler = vi.fn();
@@ -42,6 +52,7 @@ describe("withRoute", () => {
 
     expect(response.status).toBe(401);
     expect(await response.json()).toEqual({ error: "Unauthorized." });
+    expectPrivateHeaders(response);
     expect(handler).not.toHaveBeenCalled();
   });
 
@@ -54,6 +65,7 @@ describe("withRoute", () => {
 
     expect(response.status).toBe(500);
     expect(await response.json()).toEqual({ error: "Request failed." });
+    expectPrivateHeaders(response);
     expect(handler).not.toHaveBeenCalled();
     expect(logErrorMock).toHaveBeenCalledWith(
       "Unhandled API route error",
@@ -75,6 +87,7 @@ describe("withRoute", () => {
     expect(await response.json()).toEqual({
       error: "Only admins can manage users.",
     });
+    expectPrivateHeaders(response);
     expect(handler).not.toHaveBeenCalled();
   });
 
@@ -95,6 +108,7 @@ describe("withRoute", () => {
     const response = await route(request);
 
     expect(response.status).toBe(200);
+    expectPrivateHeaders(response);
     expect(handler).toHaveBeenCalledWith(identity, request);
   });
 
@@ -108,6 +122,7 @@ describe("withRoute", () => {
 
     expect(response.status).toBe(500);
     expect(await response.json()).toEqual({ error: "Request failed." });
+    expectPrivateHeaders(response);
     expect(logErrorMock).toHaveBeenCalledWith(
       "Unhandled API route error",
       expect.any(Error),

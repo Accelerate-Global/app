@@ -1,11 +1,15 @@
 autoInstallPeers: false
 
 overrides:
+  '@esbuild-kit/core-utils>esbuild': 0.28.1
+  'esbuild@>=0.27.3 <0.28.1': 0.28.1
   express-rate-limit: 8.5.1
   fast-uri: 3.1.2
   hono: 4.12.25
   ip-address: 10.1.1
+  'js-yaml@>=4.0.0 <=4.1.1': 4.3.0
   postcss: 8.5.14
+  'qs@>=6.11.1 <=6.15.1': 6.15.3
   vite: 8.0.16
   ws: 8.21.0
   '@vercel/blob>undici': 6.27.0

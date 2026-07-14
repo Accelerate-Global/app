@@ -24,9 +24,9 @@ describe("datasetMetadataPatchSchema", () => {
     expect("fieldSourceTypeCreateSchema" in validationModule).toBe(false);
   });
 
-  it("accepts a public visibility-only update", () => {
+  it("accepts a workspace visibility-only update", () => {
     const result = datasetMetadataPatchSchema.safeParse({
-      isPublic: false,
+      isWorkspaceVisible: false,
     });
 
     expect(result.success).toBe(true);
@@ -34,7 +34,7 @@ describe("datasetMetadataPatchSchema", () => {
       return;
     }
 
-    expect(result.data.isPublic).toBe(false);
+    expect(result.data.isWorkspaceVisible).toBe(false);
   });
 
   it("accepts normalized dataset tags without preset metadata", () => {

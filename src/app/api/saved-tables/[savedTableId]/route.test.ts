@@ -162,7 +162,7 @@ describe("/api/saved-tables/[savedTableId]", () => {
     });
   });
 
-  it("keeps admin saved-table access owner-scoped while allowing private datasets", async () => {
+  it("keeps admin saved-table access owner-scoped while allowing restricted datasets", async () => {
     getCurrentIdentityMock.mockResolvedValue({
       ...identity,
       workspaceRole: "admin",

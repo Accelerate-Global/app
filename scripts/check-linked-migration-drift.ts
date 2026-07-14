@@ -3,6 +3,7 @@ import { readdir } from "node:fs/promises";
 import postgres from "postgres";
 
 import { getSupabaseMigrationDrift } from "@/lib/release-process";
+import { getPostgresConnectionConfig } from "@/lib/postgres-connection";
 
 import { loadEnvironmentFile } from "./lib/command";
 
@@ -34,7 +35,9 @@ async function getLocalMigrationVersions() {
 }
 
 async function getRemoteMigrationVersions(databaseUrl: string) {
-  const sql = postgres(databaseUrl, {
+  const connection = getPostgresConnectionConfig(databaseUrl);
+  const sql = postgres(connection.databaseUrl, {
+    ...connection.options,
     max: 1,
     prepare: false,
   });

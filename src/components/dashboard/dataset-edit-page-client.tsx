@@ -79,7 +79,7 @@ type DatasetEditFormProps = {
     fileName: string;
     tags: DatasetTag[];
     isPrimary: boolean;
-    isPublic: boolean;
+    isWorkspaceVisible: boolean;
     hiddenColumnKeys: string[];
   }) => Promise<void>;
   onDeleteDataset: (datasetId: string) => Promise<void>;
@@ -101,7 +101,7 @@ async function updateDatasetRecord(input: {
   fileName: string;
   tags: DatasetTag[];
   isPrimary: boolean;
-  isPublic: boolean;
+  isWorkspaceVisible: boolean;
   hiddenColumnKeys: string[];
 }) {
   const response = await fetch(`/api/datasets/${input.datasetId}`, {
@@ -111,7 +111,7 @@ async function updateDatasetRecord(input: {
       fileName: input.fileName,
       tags: input.tags,
       isPrimary: input.isPrimary,
-      isPublic: input.isPublic,
+      isWorkspaceVisible: input.isWorkspaceVisible,
       hiddenColumnKeys: input.hiddenColumnKeys,
     }),
   });
@@ -450,7 +450,9 @@ function DatasetEditForm({
   );
   const [fileName, setFileName] = useState(dataset.fileName);
   const [isPrimary, setIsPrimary] = useState(dataset.isPrimary);
-  const [isPublic, setIsPublic] = useState(dataset.isPublic);
+  const [isWorkspaceVisible, setIsWorkspaceVisible] = useState(
+    dataset.isWorkspaceVisible,
+  );
   const [classification, setClassification] = useState<DatasetClassification | null>(
     initialClassification,
   );
@@ -497,7 +499,7 @@ function DatasetEditForm({
     JSON.stringify(normalizedHiddenColumnKeys) !==
     JSON.stringify(initialHiddenColumnKeys);
   const hasPrimaryChange = isPrimary !== dataset.isPrimary;
-  const hasPublicChange = isPublic !== dataset.isPublic;
+  const hasWorkspaceVisibilityChange = isWorkspaceVisible !== dataset.isWorkspaceVisible;
   const isWorking = isSaving || isDeleting || revertingVersionId !== null;
   const canSave = Boolean(
     trimmedFileName &&
@@ -507,7 +509,7 @@ function DatasetEditForm({
         hasTagChanges ||
         hasHiddenColumnChanges ||
         hasPrimaryChange ||
-        hasPublicChange),
+        hasWorkspaceVisibilityChange),
   );
   const uploadedAt = useMemo(
     () => formatUploadedAt(dataset.createdAt),
@@ -632,7 +634,7 @@ function DatasetEditForm({
       !hasTagChanges &&
       !hasHiddenColumnChanges &&
       !hasPrimaryChange &&
-      !hasPublicChange
+      !hasWorkspaceVisibilityChange
     ) {
       setErrorMessage(null);
       return;
@@ -659,7 +661,7 @@ function DatasetEditForm({
         fileName: trimmedFileName,
         tags: nextTags,
         isPrimary,
-        isPublic,
+        isWorkspaceVisible,
         hiddenColumnKeys: normalizedHiddenColumnKeys,
       });
     } catch (error) {
@@ -804,15 +806,15 @@ function DatasetEditForm({
             <div className="space-y-1">
               <label
                 className="text-sm font-medium text-foreground"
-                htmlFor="dataset-is-public"
+                htmlFor="dataset-is-workspace-visible"
               >
-                Public dataset
+                Workspace-visible dataset
               </label>
               <p className="text-sm text-muted-foreground">
                 Keep this enabled to show the dataset to non-admin users across
                 the dashboard, detail pages, downloads, and saved views.
               </p>
-              {!isPublic ? (
+              {!isWorkspaceVisible ? (
                 <p className="text-sm text-muted-foreground">
                   This dataset is currently hidden from non-admin users.
                 </p>
@@ -820,13 +822,13 @@ function DatasetEditForm({
             </div>
 
             <Switch
-              id="dataset-is-public"
-              checked={isPublic}
+              id="dataset-is-workspace-visible"
+              checked={isWorkspaceVisible}
               disabled={isWorking}
               aria-label="Set dataset visibility for non-admin users"
-              data-smoke-dataset-public-toggle
+              data-smoke-dataset-workspace-visible-toggle
               onCheckedChange={(checked) => {
-                setIsPublic(checked);
+                setIsWorkspaceVisible(checked);
                 if (!checked) {
                   setIsPrimary(false);
                 }
@@ -841,11 +843,11 @@ function DatasetEditForm({
             <p className="text-sm text-muted-foreground">
               {isDerivedView
                 ? "Derived dataset views cannot be shown as the default source dataset."
-                : !isPublic
+                : !isWorkspaceVisible
                   ? "Hidden datasets cannot be shown as the default source dataset."
                 : "Show this dataset by default when someone opens Data."}
             </p>
-            {!isDerivedView && isPublic ? (
+            {!isDerivedView && isWorkspaceVisible ? (
               <p className="text-sm leading-5 text-muted-foreground">
                 Only one dataset can be primary at a time. Selecting this clears
                 the primary flag from any other dataset.
@@ -856,7 +858,7 @@ function DatasetEditForm({
           <Checkbox
             id="dataset-is-primary"
             checked={isPrimary}
-            disabled={isWorking || isDerivedView || !isPublic}
+            disabled={isWorking || isDerivedView || !isWorkspaceVisible}
             onCheckedChange={(checked) => setIsPrimary(!!checked)}
             aria-label="Set dataset as primary"
           />
@@ -1174,7 +1176,7 @@ export function DatasetEditPageClient({
     fileName: string;
     tags: DatasetTag[];
     isPrimary: boolean;
-    isPublic: boolean;
+    isWorkspaceVisible: boolean;
     hiddenColumnKeys: string[];
   }) {
     if (isSaving || isDeleting || revertingVersionId !== null) {
@@ -1194,8 +1196,8 @@ export function DatasetEditPageClient({
           dataset_id: input.datasetId,
           renamed: input.fileName !== dataset.fileName,
           primary_changed: input.isPrimary !== dataset.isPrimary,
-          visibility_changed: input.isPublic !== dataset.isPublic,
-          is_public: input.isPublic,
+          visibility_changed: input.isWorkspaceVisible !== dataset.isWorkspaceVisible,
+          is_workspace_visible: input.isWorkspaceVisible,
           hidden_column_count: input.hiddenColumnKeys.length,
           tag_count: input.tags.length,
           duration_ms: Date.now() - saveStartTime,
@@ -1212,8 +1214,8 @@ export function DatasetEditPageClient({
           dataset_id: input.datasetId,
           renamed: input.fileName !== dataset.fileName,
           primary_changed: input.isPrimary !== dataset.isPrimary,
-          visibility_changed: input.isPublic !== dataset.isPublic,
-          is_public: input.isPublic,
+          visibility_changed: input.isWorkspaceVisible !== dataset.isWorkspaceVisible,
+          is_workspace_visible: input.isWorkspaceVisible,
           hidden_column_count: input.hiddenColumnKeys.length,
           tag_count: input.tags.length,
           duration_ms: Date.now() - saveStartTime,

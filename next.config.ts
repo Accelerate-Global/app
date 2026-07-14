@@ -9,7 +9,6 @@ const nextConfig: NextConfig = {
         source: "/:path*",
         headers: buildSecurityHeaders({
           nodeEnv: process.env.NODE_ENV,
-          supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
         }),
       },
     ];

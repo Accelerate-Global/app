@@ -13,6 +13,5 @@ export function getSiteNavLinks(identity: CurrentIdentity | null): SiteNavLink[]
   return [
     { href: "/", label: "Home" },
     { href: "/", label: "Data" },
-    { href: "/sign-up", label: "Access" },
   ];
 }

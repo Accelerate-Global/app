@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
@@ -22,6 +21,7 @@ import {
   CANONICAL_FILTER_REGION_DEFINITIONS,
   type CanonicalFilterRegionKey,
 } from "../src/lib/canonical-filter-regions";
+import { getPostgresConnectionConfig } from "../src/lib/postgres-connection";
 
 const PRIMARY_DATASET_ID = "11111111-1111-4111-8111-111111111111";
 const SECONDARY_DATASET_ID = "22222222-2222-4222-8222-222222222222";
@@ -132,9 +132,23 @@ async function recreateUser(input: {
   sql: postgres.Sql;
   supabaseUrl: string;
   supabasePublishableKey: string;
+  adminClient: SupabaseClient;
   user: SmokeUserDefinition;
 }) {
   await input.sql`delete from auth.users where email = ${input.user.email}`;
+
+  const createResult = await input.adminClient.auth.admin.createUser({
+    email: input.user.email,
+    password: input.user.password,
+    email_confirm: true,
+    user_metadata: {
+      full_name: input.user.fullName,
+    },
+  });
+
+  if (createResult.error || !createResult.data.user) {
+    throw createResult.error ?? new Error(`Could not create ${input.user.email}`);
+  }
 
   const authClient = createClient(
     input.supabaseUrl,
@@ -146,20 +160,6 @@ async function recreateUser(input: {
       },
     },
   );
-  const signUp = await authClient.auth.signUp({
-    email: input.user.email,
-    password: input.user.password,
-    options: {
-      data: {
-        full_name: input.user.fullName,
-      },
-    },
-  });
-
-  if (signUp.error || !signUp.data.user) {
-    throw signUp.error ?? new Error(`Could not create ${input.user.email}`);
-  }
-
   const signIn = await authClient.auth.signInWithPassword({
     email: input.user.email,
     password: input.user.password,
@@ -755,72 +755,72 @@ async function main() {
       },
     },
   );
-  const sql = postgres(smokeEnv.databaseUrl, {
+  const connection = getPostgresConnectionConfig(smokeEnv.databaseUrl);
+  const sql = postgres(connection.databaseUrl, {
+    ...connection.options,
     max: 1,
     prepare: false,
   });
-  const allowlistedSignupEmail =
-    `smoke-sign-up-${randomUUID()}@accelerate-global.test`;
-
   try {
     await mkdir(UI_SMOKE_TMP_DIR, { recursive: true });
     await ensureBucket(storageAdmin, smokeEnv.storageBucket);
     await resetSmokeData(sql);
-    await insertAllowlist(sql, {
-      additionalEntries: [
-        {
-          email: allowlistedSignupEmail,
-          note: "UI smoke allowlisted signup",
-        },
-      ],
-    });
+    await insertAllowlist(sql);
 
     const adminUser = await recreateUser({
       sql,
       supabaseUrl: smokeEnv.supabaseUrl,
       supabasePublishableKey: smokeEnv.supabasePublishableKey,
+      adminClient: storageAdmin,
       user: UI_SMOKE_USERS.admin,
     });
     const proUser = await recreateUser({
       sql,
       supabaseUrl: smokeEnv.supabaseUrl,
       supabasePublishableKey: smokeEnv.supabasePublishableKey,
+      adminClient: storageAdmin,
       user: UI_SMOKE_USERS.pro,
     });
     const basicUser = await recreateUser({
       sql,
       supabaseUrl: smokeEnv.supabaseUrl,
       supabasePublishableKey: smokeEnv.supabasePublishableKey,
+      adminClient: storageAdmin,
       user: UI_SMOKE_USERS.basic,
     });
     const recoveryUser = await recreateUser({
       sql,
       supabaseUrl: smokeEnv.supabaseUrl,
       supabasePublishableKey: smokeEnv.supabasePublishableKey,
+      adminClient: storageAdmin,
       user: UI_SMOKE_USERS.recovery,
     });
     const forgotPasswordUser = await recreateUser({
       sql,
       supabaseUrl: smokeEnv.supabaseUrl,
       supabasePublishableKey: smokeEnv.supabasePublishableKey,
+      adminClient: storageAdmin,
       user: UI_SMOKE_USERS.forgotPassword,
     });
     const resetUser = await recreateUser({
       sql,
       supabaseUrl: smokeEnv.supabaseUrl,
       supabasePublishableKey: smokeEnv.supabasePublishableKey,
+      adminClient: storageAdmin,
       user: UI_SMOKE_USERS.reset,
     });
     const signOutUser = await recreateUser({
       sql,
       supabaseUrl: smokeEnv.supabaseUrl,
       supabasePublishableKey: smokeEnv.supabasePublishableKey,
+      adminClient: storageAdmin,
       user: UI_SMOKE_USERS.signOut,
     });
     const disableUser = await recreateUser({
       sql,
       supabaseUrl: smokeEnv.supabaseUrl,
       supabasePublishableKey: smokeEnv.supabasePublishableKey,
+      adminClient: storageAdmin,
       user: UI_SMOKE_USERS.disable,
     });
     await setWorkspaceRole({
@@ -903,11 +903,6 @@ async function main() {
         disable: disableUser,
       },
       authFlows: {
-        allowlistedSignup: {
-          email: allowlistedSignupEmail,
-          password: UI_SMOKE_USERS.allowlistedSignup.password,
-          fullName: UI_SMOKE_USERS.allowlistedSignup.fullName,
-        },
         passwordReset: {
           nextPassword: UI_SMOKE_PASSWORD_RESET,
         },

@@ -31,6 +31,14 @@ const logErrorMock = vi.mocked(logError);
 describe("/api/analytics/events", () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    getCurrentIdentityMock.mockResolvedValue({
+      ownerId: "admin-1",
+      email: "admin@example.com",
+      fullName: "Admin User",
+      workspaceRole: "admin",
+      isDatasetAdmin: true,
+      mode: "supabase",
+    });
   });
 
   it("rejects unknown event names", async () => {
@@ -169,7 +177,7 @@ describe("/api/analytics/events", () => {
   });
 
 
-  it("accepts anonymous auth events with the anonymous context", async () => {
+  it("rejects anonymous analytics events before parsing or persistence", async () => {
     getCurrentIdentityMock.mockResolvedValue(null);
 
     const response = await POST(
@@ -189,17 +197,14 @@ describe("/api/analytics/events", () => {
       }),
     );
 
-    expect(response.status).toBe(202);
-    expect(persistAnalyticsEventMock).toHaveBeenCalledWith(
-      "auth_sign_in_failed",
-      expect.objectContaining({
-        actor_owner_id: "anonymous",
-        workspace_role: "anonymous",
-      }),
+    expect(response.status).toBe(401);
+    expect(persistAnalyticsEventMock).not.toHaveBeenCalled();
+    expect(response.headers.get("Cache-Control")).toBe(
+      "private, no-store, max-age=0",
     );
   });
 
-  it("rejects unauthenticated non-anonymous payloads", async () => {
+  it("rejects every unauthenticated payload", async () => {
     getCurrentIdentityMock.mockResolvedValue(null);
 
     const response = await POST(
@@ -219,6 +224,49 @@ describe("/api/analytics/events", () => {
     );
 
     expect(response.status).toBe(401);
+    expect(persistAnalyticsEventMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects oversized context fields", async () => {
+    const response = await POST(
+      new Request("http://localhost/api/analytics/events", {
+        method: "POST",
+        body: JSON.stringify({
+          name: "dashboard_viewed",
+          payload: {
+            route: "dashboard",
+            actor_owner_id: "spoofed-user",
+            workspace_role: "admin",
+            source_surface: "x".repeat(161),
+            success: true,
+          },
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    expect(persistAnalyticsEventMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects oversized request bodies", async () => {
+    const response = await POST(
+      new Request("http://localhost/api/analytics/events", {
+        method: "POST",
+        body: JSON.stringify({
+          name: "dashboard_viewed",
+          payload: {
+            route: "dashboard",
+            actor_owner_id: "spoofed-user",
+            workspace_role: "admin",
+            source_surface: "dashboard_page",
+            success: true,
+            padding: "x".repeat(33 * 1024),
+          },
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(400);
     expect(persistAnalyticsEventMock).not.toHaveBeenCalled();
   });
 

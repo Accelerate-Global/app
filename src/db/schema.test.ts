@@ -29,7 +29,7 @@ describe("datasets schema", () => {
     expect(datasets.currentVersionCreatedAt.name).toBe("current_version_created_at");
     expect(datasets.backingDatasetId.name).toBe("backing_dataset_id");
     expect(datasets.sourceOrganizationName.name).toBe("source_organization_name");
-    expect(datasets.isPublic.name).toBe("is_public");
+    expect(datasets.isWorkspaceVisible.name).toBe("is_workspace_visible");
     expect(datasets.defaultFilters.name).toBe("default_filters");
   });
 
@@ -69,7 +69,7 @@ describe("datasets schema", () => {
     );
   });
 
-  it("creates the dataset public visibility migration", async () => {
+  it("creates the original dataset visibility migration", async () => {
     const migrationPath = path.join(
       process.cwd(),
       "supabase/migrations/20260421201702_add_dataset_public_visibility.sql",
@@ -85,6 +85,23 @@ describe("datasets schema", () => {
     );
     expect(migration).toContain(
       'create policy "authenticated users can read shared dataset rows"',
+    );
+  });
+
+  it("creates the canonical workspace visibility compatibility migration", async () => {
+    const migrationPath = path.join(
+      process.cwd(),
+      "supabase/migrations/20260714172000_rename_dataset_visibility_to_workspace_visible.sql",
+    );
+
+    const migration = await readFile(migrationPath, "utf8");
+
+    expect(migration).toContain(
+      "add column if not exists is_workspace_visible boolean",
+    );
+    expect(migration).toContain("datasets_sync_workspace_visibility");
+    expect(migration).toContain(
+      "using (is_workspace_visible or private.is_dataset_admin())",
     );
   });
 

@@ -162,39 +162,6 @@ async function waitForDashboardPath(page: Page) {
   await page.waitForURL((url) => url.pathname === "/dashboard");
 }
 
-test("allowlisted user can sign up", async ({ page }, testInfo) => {
-  test.skip(skipUnlessDesktopAnonymous(testInfo.project.name));
-
-  await runSmokeJourney("allowlisted user can sign up", async () => {
-    const bootstrap = await readUiSmokeBootstrap();
-
-    await page.goto("/sign-up");
-    await page.getByLabel("Email").fill(bootstrap.authFlows.allowlistedSignup.email);
-    await page.getByLabel("Password").fill(bootstrap.authFlows.allowlistedSignup.password);
-    await page.getByRole("button", { name: "Create account" }).click();
-    await waitForDashboardPath(page);
-    await expect(page.locator('[data-smoke-page="dashboard"]')).toBeVisible();
-  });
-});
-
-test("blocked user cannot sign up", async ({ page }, testInfo) => {
-  test.skip(skipUnlessDesktopAnonymous(testInfo.project.name));
-
-  await runSmokeJourney("blocked user cannot sign up", async () => {
-    await page.goto("/sign-up");
-    await page.getByLabel("Email").fill("blocked@example.com");
-    await page.getByLabel("Password").fill("SmokePass123!");
-    await page.getByRole("button", { name: "Create account" }).click();
-
-    await expect(
-      page.getByText(
-        "This email address has not been granted access yet. Ask an administrator to add it to the signup allowlist first.",
-      ),
-    ).toBeVisible();
-    await expect(page).toHaveURL(/\/sign-up$/);
-  });
-});
-
 test("forgot-password request succeeds", async ({ page }, testInfo) => {
   test.skip(skipUnlessDesktopAnonymous(testInfo.project.name));
 

@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(112);
+select plan(116);
 
 select results_eq(
   $$
@@ -388,7 +388,7 @@ insert into public.datasets (
   current_version_actor_owner_id,
   current_version_actor_email,
   current_version_created_at,
-  is_public,
+  is_workspace_visible,
   size_bytes,
   columns
 )
@@ -405,6 +405,54 @@ values (
   false,
   1,
   '[]'::jsonb
+);
+
+select is(
+  (
+    select is_public
+    from public.datasets
+    where id = '10000000-0000-4000-8000-000000000010'
+  ),
+  false,
+  'canonical workspace visibility insert keeps the legacy compatibility value synchronized'
+);
+
+update public.datasets
+set is_public = true
+where id = '10000000-0000-4000-8000-000000000010';
+
+select is(
+  (
+    select is_workspace_visible
+    from public.datasets
+    where id = '10000000-0000-4000-8000-000000000010'
+  ),
+  true,
+  'legacy visibility updates keep canonical workspace visibility synchronized'
+);
+
+update public.datasets
+set is_workspace_visible = false
+where id = '10000000-0000-4000-8000-000000000010';
+
+select is(
+  (
+    select is_public
+    from public.datasets
+    where id = '10000000-0000-4000-8000-000000000010'
+  ),
+  false,
+  'canonical workspace visibility updates keep the legacy value synchronized'
+);
+
+select lives_ok(
+  $$
+    update public.datasets
+    set is_public = false,
+        is_workspace_visible = false
+    where id = '10000000-0000-4000-8000-000000000010'
+  $$,
+  'matching dual-column visibility updates preserve a restricted dataset'
 );
 
 insert into public.dataset_rows (
@@ -549,16 +597,16 @@ values ('security-test@example.com', 'pgTAP visibility check');
 
 set local role anon;
 
-select results_eq($$ select count(*)::bigint from public.datasets where id = '10000000-0000-4000-8000-000000000001' $$, array[0::bigint], 'anon cannot read datasets');
-select results_eq($$ select count(*)::bigint from public.dataset_rows where dataset_id = '10000000-0000-4000-8000-000000000001' $$, array[0::bigint], 'anon cannot read dataset_rows');
-select results_eq($$ select count(*)::bigint from public.dataset_versions where dataset_id = '10000000-0000-4000-8000-000000000001' $$, array[0::bigint], 'anon cannot read dataset_versions');
-select results_eq($$ select count(*)::bigint from public.dataset_version_rows where version_id = '21000000-0000-4000-8000-000000000001' $$, array[0::bigint], 'anon cannot read dataset_version_rows');
-select results_eq($$ select count(*)::bigint from public.filter_regions where id = '30000000-0000-4000-8000-000000000001' $$, array[0::bigint], 'anon cannot read filter_regions');
-select results_eq($$ select count(*)::bigint from public.filter_region_countries where region_id = '30000000-0000-4000-8000-000000000001' $$, array[0::bigint], 'anon cannot read filter_region_countries');
-select results_eq($$ select count(*)::bigint from public.field_definitions where id = '40000000-0000-4000-8000-000000000001' $$, array[0::bigint], 'anon cannot read field_definitions');
-select results_eq($$ select count(*)::bigint from public.field_source_types where id = '41000000-0000-4000-8000-000000000001' $$, array[0::bigint], 'anon cannot read field_source_types');
-select results_eq($$ select count(*)::bigint from public.field_definition_sources where id = '42000000-0000-4000-8000-000000000001' $$, array[0::bigint], 'anon cannot read field_definition_sources');
-select results_eq($$ select count(*)::bigint from public.signup_email_allowlist where email = 'security-test@example.com' $$, array[0::bigint], 'anon cannot read signup_email_allowlist');
+select throws_ok($$ select count(*)::bigint from public.datasets $$, '42501', null, 'anon has no datasets table privilege');
+select throws_ok($$ select count(*)::bigint from public.dataset_rows $$, '42501', null, 'anon has no dataset_rows table privilege');
+select throws_ok($$ select count(*)::bigint from public.dataset_versions $$, '42501', null, 'anon has no dataset_versions table privilege');
+select throws_ok($$ select count(*)::bigint from public.dataset_version_rows $$, '42501', null, 'anon has no dataset_version_rows table privilege');
+select throws_ok($$ select count(*)::bigint from public.filter_regions $$, '42501', null, 'anon has no filter_regions table privilege');
+select throws_ok($$ select count(*)::bigint from public.filter_region_countries $$, '42501', null, 'anon has no filter_region_countries table privilege');
+select throws_ok($$ select count(*)::bigint from public.field_definitions $$, '42501', null, 'anon has no field_definitions table privilege');
+select throws_ok($$ select count(*)::bigint from public.field_source_types $$, '42501', null, 'anon has no field_source_types table privilege');
+select throws_ok($$ select count(*)::bigint from public.field_definition_sources $$, '42501', null, 'anon has no field_definition_sources table privilege');
+select throws_ok($$ select count(*)::bigint from public.signup_email_allowlist $$, '42501', null, 'anon has no signup_email_allowlist table privilege');
 
 reset role;
 
@@ -576,7 +624,7 @@ select results_eq($$ select count(*)::bigint from public.filter_region_countries
 select results_eq($$ select count(*)::bigint from public.field_definitions where id = '40000000-0000-4000-8000-000000000001' $$, array[1::bigint], 'authenticated users can read field_definitions');
 select results_eq($$ select count(*)::bigint from public.field_source_types where id = '41000000-0000-4000-8000-000000000001' $$, array[1::bigint], 'authenticated users can read field_source_types');
 select results_eq($$ select count(*)::bigint from public.field_definition_sources where id = '42000000-0000-4000-8000-000000000001' $$, array[1::bigint], 'authenticated users can read field_definition_sources');
-select results_eq($$ select count(*)::bigint from public.signup_email_allowlist where email = 'security-test@example.com' $$, array[0::bigint], 'authenticated users cannot read signup_email_allowlist');
+select throws_ok($$ select count(*)::bigint from public.signup_email_allowlist $$, '42501', null, 'authenticated users have no signup_email_allowlist table privilege');
 select is(private.is_dataset_admin(), false, 'raw_user_meta_data workspace_role does not grant dataset admin access');
 
 select lives_ok(
@@ -648,10 +696,10 @@ reset role;
 select set_config('request.jwt.claim.sub', '9a000004-1337-403d-8eb5-b7c44a1be131', true);
 set local role authenticated;
 
-select results_eq($$ select count(*)::bigint from public.datasets where id = '10000000-0000-4000-8000-000000000001' $$, array[1::bigint], 'basic users can read public datasets');
-select results_eq($$ select count(*)::bigint from public.dataset_rows where dataset_id = '10000000-0000-4000-8000-000000000001' $$, array[1::bigint], 'basic users can read public dataset_rows');
-select results_eq($$ select count(*)::bigint from public.datasets where id = '10000000-0000-4000-8000-000000000010' $$, array[0::bigint], 'basic users cannot read hidden datasets');
-select results_eq($$ select count(*)::bigint from public.dataset_rows where dataset_id = '10000000-0000-4000-8000-000000000010' $$, array[0::bigint], 'basic users cannot read hidden dataset_rows');
+select results_eq($$ select count(*)::bigint from public.datasets where id = '10000000-0000-4000-8000-000000000001' $$, array[1::bigint], 'basic users can read workspace-visible datasets');
+select results_eq($$ select count(*)::bigint from public.dataset_rows where dataset_id = '10000000-0000-4000-8000-000000000001' $$, array[1::bigint], 'basic users can read workspace-visible dataset_rows');
+select results_eq($$ select count(*)::bigint from public.datasets where id = '10000000-0000-4000-8000-000000000010' $$, array[0::bigint], 'basic users cannot read restricted datasets');
+select results_eq($$ select count(*)::bigint from public.dataset_rows where dataset_id = '10000000-0000-4000-8000-000000000010' $$, array[0::bigint], 'basic users cannot read restricted dataset_rows');
 
 select throws_ok(
   $$
