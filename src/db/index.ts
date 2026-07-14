@@ -2,6 +2,7 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 
 import * as schema from "@/db/schema";
+import { getPostgresConnectionConfig } from "@/lib/postgres-connection";
 
 function createDbState() {
   const databaseUrl = process.env.DATABASE_URL;
@@ -10,7 +11,9 @@ function createDbState() {
     throw new Error("DATABASE_URL is not configured.");
   }
 
-  const sql = postgres(databaseUrl, {
+  const connection = getPostgresConnectionConfig(databaseUrl);
+  const sql = postgres(connection.databaseUrl, {
+    ...connection.options,
     max: 1,
     prepare: false,
   });

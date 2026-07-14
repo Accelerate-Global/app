@@ -52,7 +52,7 @@ function getSavedDatasetTableQuery(input: {
   const predicates = [eq(savedDatasetTables.ownerId, input.ownerId)];
 
   if (!input.includeDisabled) {
-    predicates.push(eq(datasets.isPublic, true));
+    predicates.push(eq(datasets.isWorkspaceVisible, true));
   }
 
   if (input.savedTableId) {
@@ -111,7 +111,7 @@ export async function createSavedDatasetTable(input: {
     const datasetPredicates = [eq(datasets.id, input.datasetId)];
 
     if (!input.includeDisabled) {
-      datasetPredicates.push(eq(datasets.isPublic, true));
+      datasetPredicates.push(eq(datasets.isWorkspaceVisible, true));
     }
 
     const [dataset] = await tx

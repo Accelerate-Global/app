@@ -41,6 +41,13 @@ export function trackAppEvent<Name extends AppAnalyticsEventName>(
 ) {
   const sanitizedPayload = sanitizeAnalyticsPayload(payload);
 
+  if (
+    sanitizedPayload.workspace_role === "anonymous" ||
+    sanitizedPayload.actor_owner_id === "anonymous"
+  ) {
+    return;
+  }
+
   try {
     persistAppEvent(name, sanitizedPayload);
   } catch (error) {

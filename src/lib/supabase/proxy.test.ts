@@ -47,6 +47,26 @@ describe("updateSession", () => {
     expect(response.headers.get("x-middleware-request-x-ag-internal-auth-owner-id")).toBeNull();
   });
 
+  it("forwards caller-provided nonce and CSP headers to the request and response", async () => {
+    hasSupabaseConfigMock.mockReturnValue(false);
+    const requestHeaders = new Headers({ "x-nonce": "request-nonce" });
+    const responseHeaders = new Headers({
+      "Content-Security-Policy": "script-src 'nonce-request-nonce'",
+    });
+
+    const response = await updateSession(
+      new NextRequest("http://localhost/dashboard"),
+      { requestHeaders, responseHeaders },
+    );
+
+    expect(response.headers.get("Content-Security-Policy")).toBe(
+      "script-src 'nonce-request-nonce'",
+    );
+    expect(response.headers.get("x-middleware-request-x-nonce")).toBe(
+      "request-nonce",
+    );
+  });
+
   it("propagates refreshed cookies and headers", async () => {
     let cookieAdapter:
       | {

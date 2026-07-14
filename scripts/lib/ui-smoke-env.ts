@@ -131,7 +131,7 @@ export function getUiSmokeEnv(environment: NodeJS.ProcessEnv = process.env): UiS
 
 export function getUiSmokeStorageAdminKey(environment: UiSmokeEnv) {
   const managementKey =
-    environment.supabaseSecretKey ?? environment.supabaseServiceRoleKey;
+    environment.supabaseServiceRoleKey ?? environment.supabaseSecretKey;
 
   if (!managementKey) {
     throw new Error(

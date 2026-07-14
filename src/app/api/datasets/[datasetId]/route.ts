@@ -62,7 +62,7 @@ export const PATCH = withRoute(
               sourceOrganizationName: parsed.data.sourceOrganizationName,
               tags: parsed.data.tags,
               isPrimary: parsed.data.isPrimary,
-              isPublic: parsed.data.isPublic,
+              isWorkspaceVisible: parsed.data.isWorkspaceVisible,
               hiddenColumnKeys: parsed.data.hiddenColumnKeys,
             });
     } catch (error) {

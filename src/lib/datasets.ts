@@ -60,7 +60,7 @@ function toDatasetSummary(row: DatasetRecord): DatasetSummary {
     blobUrl: row.blobUrl,
     blobPath: row.blobPath,
     isPrimary: row.isPrimary,
-    isPublic: row.isPublic,
+    isWorkspaceVisible: row.isWorkspaceVisible,
     status: row.status,
     rowCount: row.rowCount,
     sizeBytes: row.sizeBytes,
@@ -215,7 +215,7 @@ async function getAccessibleDatasetRecord(input: {
   const predicates: SQL[] = [eq(datasets.id, input.datasetId)];
 
   if (!input.includeDisabled) {
-    predicates.push(eq(datasets.isPublic, true));
+    predicates.push(eq(datasets.isWorkspaceVisible, true));
   }
 
   const [dataset] = await executor
@@ -498,7 +498,7 @@ export async function refreshAllDerivedDatasets() {
 export async function listDatasets(options: DatasetAccessOptions = {}) {
   const query = getDb().select().from(datasets);
   const rows = await (
-    options.includeDisabled ? query : query.where(eq(datasets.isPublic, true))
+    options.includeDisabled ? query : query.where(eq(datasets.isWorkspaceVisible, true))
   ).orderBy(asc(datasets.sortOrder), desc(datasets.createdAt));
 
   return rows.map(toDatasetSummary);
@@ -542,7 +542,7 @@ export async function listDatasetVersions(datasetId: string) {
 export async function getDefaultDataset(options: DatasetAccessOptions = {}) {
   const query = getDb().select().from(datasets);
   const [dataset] = await (
-    options.includeDisabled ? query : query.where(eq(datasets.isPublic, true))
+    options.includeDisabled ? query : query.where(eq(datasets.isWorkspaceVisible, true))
   )
     .orderBy(desc(datasets.isPrimary), asc(datasets.sortOrder), desc(datasets.createdAt))
     .limit(1);
@@ -635,7 +635,7 @@ export async function updateDatasetDetails(input: {
   sourceOrganizationName?: string | null;
   tags?: DatasetTag[];
   isPrimary?: boolean;
-  isPublic?: boolean;
+  isWorkspaceVisible?: boolean;
   hiddenColumnKeys?: string[];
 }) {
   return getDb().transaction(async (tx) => {
@@ -683,8 +683,8 @@ export async function updateDatasetDetails(input: {
       );
     }
 
-    if (input.isPublic !== undefined) {
-      updates.isPublic = input.isPublic;
+    if (input.isWorkspaceVisible !== undefined) {
+      updates.isWorkspaceVisible = input.isWorkspaceVisible;
     }
 
     if (input.isPrimary !== undefined) {
@@ -697,9 +697,9 @@ export async function updateDatasetDetails(input: {
       updates.isPrimary = input.isPrimary;
     }
 
-    const nextIsPublic = updates.isPublic ?? existingDataset.isPublic;
+    const nextIsWorkspaceVisible = updates.isWorkspaceVisible ?? existingDataset.isWorkspaceVisible;
 
-    if (!nextIsPublic) {
+    if (!nextIsWorkspaceVisible) {
       updates.isPrimary = false;
     }
 

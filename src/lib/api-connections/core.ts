@@ -1,6 +1,10 @@
 import { lookup } from "node:dns/promises";
-import { isIP } from "node:net";
+import type { LookupAddress } from "node:dns";
+import { request as httpsRequest } from "node:https";
+import type { LookupFunction } from "node:net";
+import { Readable } from "node:stream";
 
+import ipaddr from "ipaddr.js";
 import Papa from "papaparse";
 
 import type {
@@ -64,38 +68,32 @@ export function normalizeApiConnectionProviderConfig(
   return HTTP_API_PROVIDER_CONFIG;
 }
 
-function isBlockedIpAddress(address: string) {
-  const version = isIP(address);
+type ResolvedAddress = LookupAddress;
+type ApiHostnameResolver = (
+  hostname: string,
+  options: { all: true; verbatim: true },
+) => Promise<ResolvedAddress[]>;
 
-  if (version === 4) {
-    const octets = address.split(".").map((octet) => Number.parseInt(octet, 10));
-    const [first = 0, second = 0] = octets;
-
-    return (
-      first === 10 ||
-      first === 127 ||
-      (first === 169 && second === 254) ||
-      (first === 172 && second >= 16 && second <= 31) ||
-      (first === 192 && second === 168) ||
-      first === 0
-    );
+export function isBlockedApiIpAddress(address: string) {
+  if (!ipaddr.isValid(address)) {
+    return true;
   }
 
-  if (version === 6) {
-    const normalized = address.toLowerCase();
-    return (
-      normalized === "::1" ||
-      normalized.startsWith("fc") ||
-      normalized.startsWith("fd") ||
-      normalized.startsWith("fe80:")
-    );
-  }
-
-  return false;
+  const parsed = ipaddr.process(address);
+  return parsed.range() !== "unicast";
 }
 
-export async function assertSafeApiUrl(value: string) {
-  const url = new URL(value);
+export async function resolveSafeApiUrl(
+  value: string,
+  resolver: ApiHostnameResolver = lookup,
+) {
+  let url: URL;
+
+  try {
+    url = new URL(value);
+  } catch {
+    throw new ApiConnectionError("API connection URL is invalid.");
+  }
 
   if (url.protocol !== "https:") {
     throw new ApiConnectionError("API connection URLs must use HTTPS.");
@@ -109,14 +107,42 @@ export async function assertSafeApiUrl(value: string) {
     throw new ApiConnectionError("API connection URLs cannot include credentials.");
   }
 
-  const addresses = await lookup(url.hostname, { all: true, verbatim: true });
+  let addresses: ResolvedAddress[];
+
+  try {
+    addresses = await resolver(url.hostname, { all: true, verbatim: true });
+  } catch {
+    throw new ApiConnectionError("API connection hostname could not be resolved.");
+  }
 
   if (
     addresses.length === 0 ||
-    addresses.some((address) => isBlockedIpAddress(address.address))
+    addresses.some((address) => isBlockedApiIpAddress(address.address))
   ) {
     throw new ApiConnectionError("API connection URL resolves to a blocked network.");
   }
+
+  return {
+    url,
+    address: addresses[0]!,
+  };
+}
+
+export async function assertSafeApiUrl(value: string) {
+  await resolveSafeApiUrl(value);
+}
+
+export function createPinnedApiLookup(address: ResolvedAddress): LookupFunction {
+  return (_hostname, options, callback) => {
+    const family = address.family === 6 ? 6 : 4;
+
+    if (options.all) {
+      callback(null, [{ address: address.address, family }]);
+      return;
+    }
+
+    callback(null, address.address, family);
+  };
 }
 
 export function redactSecrets(value: string, secrets: Map<string, string>) {
@@ -230,37 +256,140 @@ export async function readLimitedResponse(
   return new TextDecoder().decode(Buffer.concat(chunks));
 }
 
+type PinnedRequest = (input: {
+  url: URL;
+  address: ResolvedAddress;
+  init: RequestInit;
+}) => Promise<Response>;
+
+async function serializeRequestBody(body: RequestInit["body"]) {
+  if (body === undefined || body === null) {
+    return null;
+  }
+
+  if (typeof body === "string" || Buffer.isBuffer(body)) {
+    return body;
+  }
+
+  if (body instanceof URLSearchParams) {
+    return body.toString();
+  }
+
+  if (body instanceof ArrayBuffer) {
+    return Buffer.from(body);
+  }
+
+  if (ArrayBuffer.isView(body)) {
+    return Buffer.from(body.buffer, body.byteOffset, body.byteLength);
+  }
+
+  if (body instanceof Blob) {
+    return Buffer.from(await body.arrayBuffer());
+  }
+
+  throw new ApiConnectionError("API request body type is unsupported.");
+}
+
+export const requestPinnedHttps: PinnedRequest = async ({
+  url,
+  address,
+  init,
+}) => {
+  const body = await serializeRequestBody(init.body);
+
+  return new Promise<Response>((resolve, reject) => {
+    const request = httpsRequest(
+      url,
+      {
+        method: init.method,
+        headers: Object.fromEntries(new Headers(init.headers).entries()),
+        signal: init.signal ?? undefined,
+        lookup: createPinnedApiLookup(address),
+      },
+      (incoming) => {
+        const status = incoming.statusCode ?? 502;
+        const hasNoBody =
+          init.method === "HEAD" ||
+          status === 204 ||
+          status === 205 ||
+          status === 304;
+
+        resolve(
+          new Response(
+            hasNoBody
+              ? null
+              : (Readable.toWeb(incoming) as unknown as ReadableStream),
+            {
+              status,
+              statusText: incoming.statusMessage,
+              headers: incoming.headers as HeadersInit,
+            },
+          ),
+        );
+      },
+    );
+
+    request.on("error", reject);
+    request.end(body);
+  });
+};
+
+type SafeFetchDependencies = {
+  resolve?: typeof resolveSafeApiUrl;
+  request?: PinnedRequest;
+};
+
 export async function fetchWithSafeRedirects(input: {
   url: string;
   init: RequestInit;
   redirects?: number;
-}): Promise<Response> {
-  await assertSafeApiUrl(input.url);
-  const response = await fetch(input.url, {
-    ...input.init,
-    redirect: "manual",
-  });
+}, dependencies: SafeFetchDependencies = {}): Promise<Response> {
+  const resolve = dependencies.resolve ?? resolveSafeApiUrl;
+  const request = dependencies.request ?? requestPinnedHttps;
+  let originalOrigin: string | null = null;
 
-  if (
-    response.status >= 300 &&
-    response.status < 400 &&
-    response.headers.has("location")
-  ) {
-    const redirectCount = input.redirects ?? 0;
+  async function run(urlValue: string, redirectCount: number): Promise<Response> {
+    const resolved = await resolve(urlValue);
+    originalOrigin ??= resolved.url.origin;
+    const response = await request({
+      url: resolved.url,
+      address: resolved.address,
+      init: input.init,
+    });
+
+    if (
+      response.status < 300 ||
+      response.status >= 400 ||
+      !response.headers.has("location")
+    ) {
+      return response;
+    }
 
     if (redirectCount >= MAX_REDIRECTS) {
       throw new ApiConnectionError("API request redirected too many times.", 502);
     }
 
-    const nextUrl = new URL(response.headers.get("location")!, input.url).toString();
-    return fetchWithSafeRedirects({
-      url: nextUrl,
-      init: input.init,
-      redirects: redirectCount + 1,
-    });
+    let nextUrl: URL;
+
+    try {
+      nextUrl = new URL(response.headers.get("location")!, resolved.url);
+    } catch {
+      throw new ApiConnectionError("API response included an invalid redirect.", 502);
+    }
+
+    if (nextUrl.origin !== originalOrigin) {
+      await response.body?.cancel();
+      throw new ApiConnectionError(
+        "API redirects must remain on the original origin.",
+        502,
+      );
+    }
+
+    await response.body?.cancel();
+    return run(nextUrl.toString(), redirectCount + 1);
   }
 
-  return response;
+  return run(input.url, input.redirects ?? 0);
 }
 
 export function isRecord(value: unknown): value is Record<string, unknown> {
@@ -519,4 +648,3 @@ export function serializeRowsToCsv(input: {
 
   return body ? `${header}\n${body}\n` : `${header}\n`;
 }
-

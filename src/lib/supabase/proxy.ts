@@ -9,9 +9,15 @@ import { logError } from "@/lib/error-logging";
 import { getSupabaseConfig, hasSupabaseConfig } from "@/lib/supabase/config";
 import { getWorkspaceRole } from "@/lib/workspace-role";
 
-export async function updateSession(request: NextRequest) {
-  const requestHeaders = new Headers(request.headers);
-  const responseHeaders = new Headers();
+export async function updateSession(
+  request: NextRequest,
+  options: {
+    requestHeaders?: Headers;
+    responseHeaders?: Headers;
+  } = {},
+) {
+  const requestHeaders = options.requestHeaders ?? new Headers(request.headers);
+  const responseHeaders = options.responseHeaders ?? new Headers();
   let refreshedCookies: Array<{
     name: string;
     value: string;

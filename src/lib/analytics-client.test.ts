@@ -59,4 +59,18 @@ describe("trackAppEvent", () => {
     expect(fetchMock).not.toHaveBeenCalled();
     expect(logErrorMock).not.toHaveBeenCalled();
   });
+
+  it("does not transmit events before a user is authenticated", () => {
+    trackAppEvent("auth_sign_in_failed", {
+      route: "sign_in",
+      actor_owner_id: "anonymous",
+      workspace_role: "anonymous",
+      source_surface: "auth_form",
+      success: false,
+      error_code: "invalid_credentials",
+    });
+
+    expect(sendBeaconMock).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
 });

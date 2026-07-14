@@ -36,7 +36,7 @@ describe("seed-field-sources", () => {
     const startedAt = Date.now();
     const { stderr, stdout } = await execFileAsync(
       "node",
-      ["--import", "tsx", fixturePath],
+      ["--disable-warning=DEP0205", "--import", "tsx", fixturePath],
       {
         cwd: process.cwd(),
         env: {

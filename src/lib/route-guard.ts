@@ -1,6 +1,10 @@
 import { getCurrentIdentity, type CurrentIdentity } from "@/lib/auth";
 import { logError } from "@/lib/error-logging";
-import { jsonAdminOnlyError, jsonError } from "@/lib/http";
+import {
+  applyPrivateNoStoreHeaders,
+  jsonAdminOnlyError,
+  jsonError,
+} from "@/lib/http";
 
 export type RouteGuardOptions =
   | { access: "user" }
@@ -24,17 +28,17 @@ export function withRoute<Args extends unknown[]>(
       const identity = await getCurrentIdentity();
 
       if (!identity) {
-        return jsonError("Unauthorized.", 401);
+        return applyPrivateNoStoreHeaders(jsonError("Unauthorized.", 401));
       }
 
       if (options.access === "admin" && !identity.isDatasetAdmin) {
-        return jsonAdminOnlyError(options.action);
+        return applyPrivateNoStoreHeaders(jsonAdminOnlyError(options.action));
       }
 
-      return await handler(identity, ...args);
+      return applyPrivateNoStoreHeaders(await handler(identity, ...args));
     } catch (error) {
       logError("Unhandled API route error", error);
-      return jsonError("Request failed.", 500);
+      return applyPrivateNoStoreHeaders(jsonError("Request failed.", 500));
     }
   };
 }

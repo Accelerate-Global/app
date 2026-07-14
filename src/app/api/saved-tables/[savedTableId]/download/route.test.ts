@@ -55,7 +55,7 @@ const dataset = {
   blobUrl: "https://example.com/every-people-group.csv",
   blobPath: "datasets/every-people-group.csv",
   isPrimary: true,
-  isPublic: true,
+  isWorkspaceVisible: true,
   status: "ready" as const,
   rowCount: 3,
   sizeBytes: 100,
@@ -224,7 +224,7 @@ describe("/api/saved-tables/[savedTableId]/download", () => {
     });
   });
 
-  it("allows admin-owned saved-table downloads for private datasets", async () => {
+  it("allows admin-owned saved-table downloads for restricted datasets", async () => {
     getCurrentIdentityMock.mockResolvedValue({
       ...identity,
       isDatasetAdmin: true,
@@ -238,7 +238,7 @@ describe("/api/saved-tables/[savedTableId]/download", () => {
       ...dataset,
       id: "private-dataset",
       fileName: "Private.csv",
-      isPublic: false,
+      isWorkspaceVisible: false,
     });
 
     const response = await GET(

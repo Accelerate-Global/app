@@ -50,7 +50,7 @@ const dataset = {
     "https://example.supabase.co/storage/v1/object/datasets/datasets/csv/south-asia.csv",
   blobPath: "datasets/csv/south-asia.csv",
   isPrimary: false,
-  isPublic: true,
+  isWorkspaceVisible: true,
   status: "ready" as const,
   rowCount: 2,
   sizeBytes: 100,

@@ -54,6 +54,14 @@ describe("db lifecycle", () => {
     expect(getDb()).toBe(firstDb);
     expect(getDb()).toBe(firstDb);
     expect(postgresMock).toHaveBeenCalledTimes(1);
+    expect(postgresMock).toHaveBeenCalledWith(
+      "postgresql://example.com/postgres",
+      expect.objectContaining({
+        max: 1,
+        prepare: false,
+        ssl: "require",
+      }),
+    );
     expect(drizzleMock).toHaveBeenCalledTimes(1);
 
     await closeDb();

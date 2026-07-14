@@ -114,6 +114,7 @@ export async function fetchArcgisFeaturePages(input: {
   maxBytes?: number;
   log?: (message: string) => Promise<void>;
   onHttpStatus?: (status: number) => void;
+  fetchSafe?: typeof fetchWithSafeRedirects;
 }) {
   const pageSize = input.pageSize ?? ARCGIS_FEATURE_PAGE_SIZE;
   const maxBytes = input.maxBytes ?? MAX_ARCGIS_RESPONSE_BYTES;
@@ -140,7 +141,7 @@ export async function fetchArcgisFeaturePages(input: {
     let response: Response;
 
     try {
-      response = await fetchWithSafeRedirects({
+      response = await (input.fetchSafe ?? fetchWithSafeRedirects)({
         url: pageUrl,
         init: {
           method: "GET",

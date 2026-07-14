@@ -54,7 +54,7 @@ function createDataset(overrides: Record<string, unknown> = {}) {
     blobUrl: "https://example.com/global.csv",
     blobPath: "datasets/global.csv",
     isPrimary: true,
-    isPublic: true,
+    isWorkspaceVisible: true,
     status: "ready" as const,
     rowCount: 10,
     sizeBytes: 100,

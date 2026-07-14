@@ -104,7 +104,7 @@ const dataset = {
     "https://example.supabase.co/storage/v1/object/datasets/datasets/csv/customers.csv",
   blobPath: "datasets/csv/customers.csv",
   isPrimary: false,
-  isPublic: true,
+  isWorkspaceVisible: true,
   status: "ready" as const,
   rowCount: 10,
   sizeBytes: 100,
@@ -226,7 +226,7 @@ describe("/api/datasets/[datasetId]", () => {
           color: "#8f9f6f",
         },
       ],
-      isPublic: undefined,
+      isWorkspaceVisible: undefined,
       hiddenColumnKeys: ["email"],
     });
     expect(updateDatasetStatusMock).not.toHaveBeenCalled();
@@ -253,7 +253,7 @@ describe("/api/datasets/[datasetId]", () => {
       sourceOrganizationName: "Joshua Project",
       tags: undefined,
       isPrimary: undefined,
-      isPublic: undefined,
+      isWorkspaceVisible: undefined,
       hiddenColumnKeys: undefined,
     });
   });
@@ -279,22 +279,22 @@ describe("/api/datasets/[datasetId]", () => {
       sourceOrganizationName: undefined,
       tags: undefined,
       isPrimary: true,
-      isPublic: undefined,
+      isWorkspaceVisible: undefined,
       hiddenColumnKeys: undefined,
     });
   });
 
-  it("updates public dataset visibility for the configured admin", async () => {
+  it("updates workspace-visible dataset visibility for the configured admin", async () => {
     updateDatasetDetailsMock.mockResolvedValue({
       ...dataset,
       isPrimary: false,
-      isPublic: false,
+      isWorkspaceVisible: false,
     });
 
     const response = await PATCH(
       new Request("http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001", {
         method: "PATCH",
-        body: JSON.stringify({ isPublic: false }),
+        body: JSON.stringify({ isWorkspaceVisible: false }),
       }),
       context,
     );
@@ -306,7 +306,7 @@ describe("/api/datasets/[datasetId]", () => {
       sourceOrganizationName: undefined,
       tags: undefined,
       isPrimary: undefined,
-      isPublic: false,
+      isWorkspaceVisible: false,
       hiddenColumnKeys: undefined,
     });
   });
@@ -332,7 +332,7 @@ describe("/api/datasets/[datasetId]", () => {
       sourceOrganizationName: undefined,
       tags: undefined,
       isPrimary: undefined,
-      isPublic: undefined,
+      isWorkspaceVisible: undefined,
       hiddenColumnKeys: ["email"],
     });
   });

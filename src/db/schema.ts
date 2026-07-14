@@ -61,7 +61,7 @@ export const datasets = pgTable(
       .defaultNow()
       .notNull(),
     isPrimary: boolean("is_primary").notNull().default(false),
-    isPublic: boolean("is_public").notNull().default(true),
+    isWorkspaceVisible: boolean("is_workspace_visible").notNull().default(true),
     status: text("status").$type<DatasetStatus>().notNull().default("processing"),
     rowCount: integer("row_count").notNull().default(0),
     sizeBytes: integer("size_bytes").notNull(),

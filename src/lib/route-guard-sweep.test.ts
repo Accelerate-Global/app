@@ -9,8 +9,6 @@ const ROUTE_METHODS = ["GET", "POST", "PATCH", "PUT", "DELETE"] as const;
 // Routes that intentionally manage their own identity handling.
 // Each entry must document why it is exempt from the route guard.
 const EXEMPT_ROUTES = new Set([
-  // Accepts anonymous analytics events; identity resolution is conditional.
-  "analytics/events/route.ts",
   // Vercel Cron endpoint: authenticated by CRON_SECRET bearer token, not user identity.
   "ops/supabase-heartbeat/route.ts",
 ]);

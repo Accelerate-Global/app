@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist_Mono, Lexend } from "next/font/google";
+import { headers } from "next/headers";
 
 import { TooltipProvider } from "@/components/ui/tooltip";
 
@@ -81,11 +82,13 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
+
   return (
     <html
       lang="en"
@@ -96,7 +99,7 @@ export default function RootLayout({
         {shouldLoadAdobeFontStylesheet ? (
           <link rel="stylesheet" href="https://use.typekit.net/nyp5ner.css" />
         ) : null}
-        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body className="flex min-h-full flex-col">
         <TooltipProvider>{children}</TooltipProvider>

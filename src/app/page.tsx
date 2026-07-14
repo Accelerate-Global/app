@@ -27,7 +27,7 @@ export default async function Home({ searchParams }: HomePageProps) {
     >
       <SiteHeader showNav={false} showAuthAction={false} />
       <div className="mx-auto flex min-h-[calc(100svh-140px)] w-full max-w-6xl items-center justify-center px-4 py-12 sm:px-6 lg:px-8">
-        <AuthForm mode="sign-in" message={message} />
+        <AuthForm message={message} />
       </div>
     </main>
   );
