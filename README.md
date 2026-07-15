@@ -21,6 +21,7 @@ Canonical source repository: `Accelerate-Global/app`. The former
 - [Developer getting started](docs/developer/getting-started.md)
 - [Contributing](docs/developer/contributing.md)
 - [User quickstart](docs/user/quickstart.md)
+- [Google Sheets and partner exports](docs/user/partner-exports.md)
 - [Open questions](docs/open-questions.md)
 - [Release runbook](docs/release.md)
 - [Supabase heartbeat cron](docs/operations/supabase-heartbeat.md)

@@ -16,6 +16,9 @@ import {
   datasets,
   fieldDefinitions,
   isoCountryCodeEntryOverrides,
+  partnerExportProfileColumns,
+  partnerExportProfiles,
+  partnerExportRuns,
   savedDatasetTables,
 } from "./schema";
 
@@ -256,6 +259,52 @@ describe("savedDatasetTables schema", () => {
     expect(migration).toContain("'\"super_admin\"'::jsonb");
     expect(migration).toContain(
       "coalesce(raw_app_meta_data ->> 'workspace_role', 'pro') in ('admin', 'super_admin')",
+    );
+  });
+});
+
+describe("partner export schema", () => {
+  it("declares private profile, ordered mapping, and run provenance columns", () => {
+    expect(partnerExportProfiles.datasetId.name).toBe("dataset_id");
+    expect(partnerExportProfiles.partnerKey.name).toBe("partner_key");
+    expect(partnerExportProfiles.revision.name).toBe("revision");
+    expect(partnerExportProfileColumns.profileId.name).toBe("profile_id");
+    expect(partnerExportProfileColumns.sourceColumnKeys.name).toBe(
+      "source_column_keys",
+    );
+    expect(partnerExportRuns.profileRevision.name).toBe("profile_revision");
+    expect(partnerExportRuns.sourceSnapshot.name).toBe("source_snapshot");
+    expect(partnerExportRuns.csvStoragePath.name).toBe("csv_storage_path");
+  });
+
+  it("declares non-destructive API connection archival metadata", () => {
+    expect(apiConnections.archivedAt.name).toBe("archived_at");
+    expect(apiConnections.archivedByOwnerId.name).toBe("archived_by_owner_id");
+    expect(apiConnections.archiveReason.name).toBe("archive_reason");
+  });
+
+  it("creates the partner export and Google Sheets lifecycle migration", async () => {
+    const migrationPath = path.join(
+      process.cwd(),
+      "supabase/migrations/20260715063000_partner_export_profiles.sql",
+    );
+    const migration = await readFile(migrationPath, "utf8");
+
+    expect(migration).toContain(
+      "create table if not exists private.partner_export_profiles",
+    );
+    expect(migration).toContain(
+      "create table if not exists private.partner_export_profile_columns",
+    );
+    expect(migration).toContain(
+      "create table if not exists private.partner_export_runs",
+    );
+    expect(migration).toContain(
+      "api_connections_google_sheet_active_source_idx",
+    );
+    expect(migration).toContain("'partner-export-artifacts'");
+    expect(migration).toContain(
+      "revoke all on private.partner_export_runs from public, anon, authenticated",
     );
   });
 });

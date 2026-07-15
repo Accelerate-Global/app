@@ -267,6 +267,9 @@ describe("ApiConnectionsClient", () => {
             spreadsheetUrl:
               "https://docs.google.com/spreadsheets/d/sheet_123/edit",
             selectedSheetIds: [1],
+            headerSelections: [
+              { sheetId: 1, mode: "auto", startRow: 3, endRow: 3 },
+            ],
             datasetClassification: "PGIC",
           }),
         });
@@ -284,6 +287,43 @@ describe("ApiConnectionsClient", () => {
           },
           { status: 201 },
         );
+      }
+
+      if (url.endsWith("/google-sheets/header-preview")) {
+        expect(init).toMatchObject({
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            spreadsheetUrl:
+              "https://docs.google.com/spreadsheets/d/sheet_123/edit",
+            sheetId: 1,
+          }),
+        });
+        return Response.json({
+          preview: {
+            sheetId: 1,
+            sheetTitle: "Alpha",
+            inspectedRowCount: 5,
+            candidates: [
+              {
+                rowNumber: 3,
+                score: 8.7,
+                confidence: "high",
+                values: ["People Group", "Country"],
+              },
+            ],
+            recommendedRow: 3,
+            selected: {
+              mode: "auto",
+              startRow: 3,
+              endRow: 3,
+              headers: ["People Group", "Country"],
+              fingerprint: "fingerprint",
+              confidence: "high",
+            },
+            sampleRows: [["Khmu", "Laos"]],
+          },
+        });
       }
 
       throw new Error(`Unexpected fetch: ${url}`);
@@ -309,6 +349,10 @@ describe("ApiConnectionsClient", () => {
     expect(await screen.findByText("Access confirmed")).toBeTruthy();
     expect(screen.getByText("Choose tabs from Mission Sheet")).toBeTruthy();
     fireEvent.click(screen.getByLabelText("Alpha"));
+    expect(
+      await screen.findByLabelText("Header row for Alpha"),
+    ).toBeTruthy();
+    expect(screen.getByText("People Group")).toBeTruthy();
     fireEvent.change(screen.getByLabelText("Dataset classification"), {
       target: { value: "PGIC" },
     });

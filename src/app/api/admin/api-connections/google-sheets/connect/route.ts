@@ -12,6 +12,24 @@ import { withRoute } from "@/lib/route-guard";
 const googleSheetsConnectSchema = z.object({
   spreadsheetUrl: z.string().trim().min(1).max(2048),
   selectedSheetIds: z.array(z.number().int().nonnegative()).min(1).max(50),
+  headerSelections: z
+    .array(
+      z
+        .object({
+          sheetId: z.number().int().nonnegative(),
+          mode: z.enum(["auto", "manual"]),
+          startRow: z.number().int().min(1).max(25),
+          endRow: z.number().int().min(1).max(25),
+        })
+        .refine(
+          (selection) =>
+            selection.endRow >= selection.startRow &&
+            selection.endRow - selection.startRow < 3,
+          "Choose one to three consecutive header rows.",
+        ),
+    )
+    .min(1)
+    .max(50),
   datasetClassification: z.enum(["PGAC", "PGIC"]).default("PGAC"),
 });
 
@@ -30,6 +48,7 @@ export const POST = withRoute(
         identity,
         spreadsheetUrl: parsed.data.spreadsheetUrl,
         selectedSheetIds: parsed.data.selectedSheetIds,
+        headerSelections: parsed.data.headerSelections,
         datasetClassification: parsed.data.datasetClassification,
       });
 

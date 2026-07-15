@@ -8,14 +8,16 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { ApiConnectionDetailClient } from "@/components/dashboard/api-connection-detail-client";
 import type { ApiConnection, ApiConnectionRun } from "@/lib/api-types";
 
-const { dataGridSpy, pushMock } = vi.hoisted(() => ({
+const { dataGridSpy, pushMock, refreshMock } = vi.hoisted(() => ({
   dataGridSpy: vi.fn(),
   pushMock: vi.fn(),
+  refreshMock: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
     push: pushMock,
+    refresh: refreshMock,
   }),
 }));
 
@@ -211,6 +213,7 @@ describe("ApiConnectionDetailClient", () => {
     vi.unstubAllGlobals();
     dataGridSpy.mockReset();
     pushMock.mockReset();
+    refreshMock.mockReset();
   });
 
   it("renders pipeline skeleton stages and starts run panels collapsed in detail-first order", () => {
@@ -494,6 +497,227 @@ describe("ApiConnectionDetailClient", () => {
       );
       expect(pushMock).toHaveBeenCalledWith("/dashboard/api-connections");
     });
+  });
+
+  it("previews and saves a manual multi-row Google Sheets header", async () => {
+    const preview = {
+      sheetId: 1,
+      sheetTitle: "Alpha",
+      inspectedRowCount: 5,
+      candidates: [
+        {
+          rowNumber: 2,
+          score: 7.2,
+          confidence: "medium",
+          values: ["Identity", "Engagement"],
+        },
+        {
+          rowNumber: 3,
+          score: 8.7,
+          confidence: "high",
+          values: ["People Group", "Country"],
+        },
+      ],
+      recommendedRow: 3,
+      selected: {
+        mode: "auto",
+        startRow: 3,
+        endRow: 3,
+        headers: ["People Group", "Country"],
+        fingerprint: "fingerprint",
+        confidence: "high",
+      },
+      sampleRows: [["Khmu", "Laos"]],
+    } as const;
+    const combinedPreview = {
+      ...preview,
+      selected: {
+        ...preview.selected,
+        mode: "manual" as const,
+        startRow: 2,
+        endRow: 3,
+        headers: ["Identity / People Group", "Engagement / Country"],
+      },
+    };
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      if (init?.method === "PATCH") {
+        expect(init.body).toBe(
+          JSON.stringify({
+            selection: { sheetId: 1, mode: "manual", startRow: 2, endRow: 3 },
+          }),
+        );
+        return Response.json({
+          connection: googleSheetsConnection,
+          preview: combinedPreview,
+        });
+      }
+      const request = JSON.parse(String(init?.body ?? "{}")) as {
+        selection?: { startRow: number; endRow: number };
+      };
+      return Response.json({
+        preview: request.selection ? combinedPreview : preview,
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(
+      <ApiConnectionDetailClient
+        connection={googleSheetsConnection}
+        initialRuns={[]}
+        serviceAccountEmail={serviceAccountEmail}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Review headers" }));
+    expect(await screen.findByLabelText("Header row for Alpha")).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Header row for Alpha"), {
+      target: { value: "2" },
+    });
+    await waitFor(() => {
+      expect(screen.getByText("Identity / People Group")).toBeTruthy();
+    });
+    fireEvent.change(screen.getByLabelText("Header rows to combine for Alpha"), {
+      target: { value: "2" },
+    });
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenLastCalledWith(
+        `/api/admin/api-connections/google-sheets/${googleSheetsConnection.id}`,
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({
+            selection: { sheetId: 1, mode: "manual", startRow: 2, endRow: 3 },
+          }),
+        }),
+      );
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save header selection" }));
+    expect(await screen.findByText("Header selection saved")).toBeTruthy();
+    expect(refreshMock).toHaveBeenCalledOnce();
+  });
+
+  it("refreshes the server page once when a first Google Sheets import finishes", async () => {
+    const queuedRun: ApiConnectionRun = {
+      ...successfulRun,
+      id: "66666666-6666-4666-8666-666666666666",
+      connectionId: googleSheetsConnection.id,
+      mode: "import",
+      status: "queued",
+      datasetId: null,
+    };
+    const completedRun: ApiConnectionRun = {
+      ...queuedRun,
+      status: "success",
+      datasetId: "dataset-created-by-import",
+    };
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith(`/runs/${queuedRun.id}`)) {
+        return Response.json({ run: completedRun });
+      }
+      if (url.endsWith("/runs")) {
+        return Response.json({ runs: [completedRun] });
+      }
+      throw new Error(`Unexpected fetch: ${url}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(
+      <ApiConnectionDetailClient
+        connection={{ ...googleSheetsConnection, targetDatasetId: null }}
+        initialRuns={[queuedRun]}
+        serviceAccountEmail={serviceAccountEmail}
+      />,
+    );
+
+    await waitFor(() => expect(refreshMock).toHaveBeenCalledOnce());
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(refreshMock).toHaveBeenCalledOnce();
+  });
+
+  it("preserves dataset navigation when a Google Sheets refresh finishes", async () => {
+    const runningRun: ApiConnectionRun = {
+      ...successfulRun,
+      id: "88888888-8888-4888-8888-888888888888",
+      connectionId: googleSheetsConnection.id,
+      mode: "import",
+      status: "running",
+      datasetId: googleSheetsConnection.targetDatasetId,
+    };
+    const completedRun: ApiConnectionRun = {
+      ...runningRun,
+      status: "success",
+    };
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith(`/runs/${runningRun.id}`)) {
+        return Response.json({ run: completedRun });
+      }
+      if (url.endsWith("/runs")) {
+        return Response.json({ runs: [completedRun] });
+      }
+      throw new Error(`Unexpected fetch: ${url}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(
+      <ApiConnectionDetailClient
+        connection={googleSheetsConnection}
+        initialRuns={[runningRun]}
+        serviceAccountEmail={serviceAccountEmail}
+      />,
+    );
+
+    expect(
+      screen.getByRole("link", { name: "Open dataset" }).getAttribute("href"),
+    ).toBe("/dashboard/datasets/dataset-1");
+    await waitFor(() => expect(refreshMock).toHaveBeenCalledOnce());
+    expect(
+      screen.getByRole("link", { name: "Open dataset" }).getAttribute("href"),
+    ).toBe("/dashboard/datasets/dataset-1");
+  });
+
+  it("shows a terminal import failure without refreshing or exposing a new dataset", async () => {
+    const queuedRun: ApiConnectionRun = {
+      ...successfulRun,
+      id: "77777777-7777-4777-8777-777777777777",
+      connectionId: googleSheetsConnection.id,
+      mode: "import",
+      status: "running",
+      datasetId: null,
+      errorMessage: null,
+    };
+    const failedRun: ApiConnectionRun = {
+      ...queuedRun,
+      status: "failed",
+      errorMessage: "Review and save the Google Sheet header row before importing.",
+    };
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith(`/runs/${queuedRun.id}`)) {
+        return Response.json({ run: failedRun });
+      }
+      if (url.endsWith("/runs")) {
+        return Response.json({ runs: [failedRun] });
+      }
+      throw new Error(`Unexpected fetch: ${url}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(
+      <ApiConnectionDetailClient
+        connection={{ ...googleSheetsConnection, targetDatasetId: null }}
+        initialRuns={[queuedRun]}
+        serviceAccountEmail={serviceAccountEmail}
+      />,
+    );
+
+    expect(
+      await screen.findByText(
+        "Review and save the Google Sheet header row before importing.",
+      ),
+    ).toBeTruthy();
+    expect(refreshMock).not.toHaveBeenCalled();
+    expect(screen.queryByRole("link", { name: "Open dataset" })).toBeNull();
   });
 
   it("selects a run row and updates the run detail panel", () => {

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { DatasetDetailClient } from "@/components/dashboard/dataset-detail-client";
+import { DatasetPartnerExports } from "@/components/dashboard/dataset-partner-exports";
 import { DashboardPageShell } from "@/components/layout/dashboard-page-shell";
 import { buttonVariants } from "@/components/ui/button";
 import {
@@ -132,6 +133,12 @@ export default async function DatasetPage({
             </p>
           ) : null}
         </section>
+        {identity.isDatasetAdmin ? (
+          <DatasetPartnerExports
+            datasetId={(sourceDataset ?? dataset).id}
+            sourceColumns={(sourceDataset ?? dataset).columns}
+          />
+        ) : null}
         <DatasetDetailClient
           key={detailKey}
           dataset={dataset}

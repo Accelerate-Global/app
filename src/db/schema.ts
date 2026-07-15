@@ -32,6 +32,16 @@ import {
 
 import type { AnalyticsWorkspaceRole, AppAnalyticsRoute } from "@/lib/analytics";
 import type { AnalyticsFailureTriageStatus } from "@/lib/analytics-failure-triage";
+import type {
+  PartnerExportPartnerKey,
+  PartnerExportProfileRevision,
+  PartnerExportProfileStatus,
+  PartnerExportRunStatus,
+  PartnerExportSourceSnapshot,
+  PartnerExportTransform,
+  PartnerExportValidationSeverity,
+  PartnerExportValidationSummary,
+} from "@/lib/partner-exports/types";
 
 export const datasets = pgTable(
   "datasets",
@@ -386,6 +396,9 @@ export const apiConnections = privateSchema.table(
       .default(sql`'{"provider":"http_api"}'::jsonb`),
     createdByOwnerId: text("created_by_owner_id").notNull(),
     updatedByOwnerId: text("updated_by_owner_id").notNull(),
+    archivedByOwnerId: text("archived_by_owner_id"),
+    archiveReason: text("archive_reason"),
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -397,6 +410,17 @@ export const apiConnections = privateSchema.table(
     index("api_connections_created_at_idx").on(table.createdAt),
     index("api_connections_updated_at_idx").on(table.updatedAt),
     index("api_connections_provider_idx").on(table.provider, table.updatedAt),
+    index("api_connections_provider_archived_idx").on(
+      table.provider,
+      table.archivedAt,
+      table.updatedAt,
+    ),
+    uniqueIndex("api_connections_google_sheet_active_source_idx")
+      .on(
+        sql`(${table.providerConfig} ->> 'spreadsheetId')`,
+        sql`(${table.providerConfig} ->> 'sheetId')`,
+      )
+      .where(sql`${table.provider} = 'google_sheets' and ${table.archivedAt} is null`),
   ],
 );
 
@@ -519,6 +543,138 @@ export const apiConnectionResources = privateSchema.table(
     index("api_connection_resources_created_idx").on(table.createdAt),
     index("api_connection_resources_connection_created_idx").on(
       table.connectionId,
+      table.createdAt,
+    ),
+  ],
+);
+
+export const partnerExportProfiles = privateSchema.table(
+  "partner_export_profiles",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    datasetId: uuid("dataset_id")
+      .notNull()
+      .references(() => datasets.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    partnerKey: text("partner_key").$type<PartnerExportPartnerKey>().notNull(),
+    status: text("status")
+      .$type<PartnerExportProfileStatus>()
+      .notNull()
+      .default("active"),
+    fileNameStem: text("file_name_stem").notNull(),
+    revision: integer("revision").notNull().default(1),
+    createdByOwnerId: text("created_by_owner_id").notNull(),
+    updatedByOwnerId: text("updated_by_owner_id").notNull(),
+    archivedByOwnerId: text("archived_by_owner_id"),
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("partner_export_profiles_dataset_status_idx").on(
+      table.datasetId,
+      table.status,
+      table.updatedAt,
+    ),
+    uniqueIndex("partner_export_profiles_dataset_name_active_idx")
+      .on(table.datasetId, sql`lower(btrim(${table.name}))`)
+      .where(sql`${table.archivedAt} is null`),
+  ],
+);
+
+export const partnerExportProfileColumns = privateSchema.table(
+  "partner_export_profile_columns",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    profileId: uuid("profile_id")
+      .notNull()
+      .references(() => partnerExportProfiles.id, { onDelete: "cascade" }),
+    ordinal: integer("ordinal").notNull(),
+    outputHeader: text("output_header").notNull(),
+    sourceColumnKeys: jsonb("source_column_keys")
+      .$type<string[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    sourceLabelSnapshot: jsonb("source_label_snapshot")
+      .$type<string[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    transform: text("transform").$type<PartnerExportTransform>().notNull(),
+    literalValue: text("literal_value"),
+    required: boolean("required").notNull().default(false),
+    requiredSeverity: text("required_severity")
+      .$type<PartnerExportValidationSeverity>()
+      .notNull()
+      .default("error"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("partner_export_profile_columns_profile_ordinal_idx").on(
+      table.profileId,
+      table.ordinal,
+    ),
+    uniqueIndex("partner_export_profile_columns_profile_header_idx").on(
+      table.profileId,
+      sql`lower(btrim(${table.outputHeader}))`,
+    ),
+  ],
+);
+
+export const partnerExportRuns = privateSchema.table(
+  "partner_export_runs",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    profileId: uuid("profile_id")
+      .notNull()
+      .references(() => partnerExportProfiles.id, { onDelete: "restrict" }),
+    datasetId: uuid("dataset_id")
+      .notNull()
+      .references(() => datasets.id, { onDelete: "restrict" }),
+    actorOwnerId: text("actor_owner_id").notNull(),
+    actorEmail: text("actor_email"),
+    status: text("status").$type<PartnerExportRunStatus>().notNull(),
+    warningsAcknowledged: boolean("warnings_acknowledged").notNull().default(false),
+    profileRevision: jsonb("profile_revision")
+      .$type<PartnerExportProfileRevision>()
+      .notNull(),
+    sourceSnapshot: jsonb("source_snapshot")
+      .$type<PartnerExportSourceSnapshot>()
+      .notNull(),
+    validation: jsonb("validation")
+      .$type<PartnerExportValidationSummary>()
+      .notNull()
+      .default(
+        sql`'{"errorCount":0,"warningCount":0,"findings":[],"truncated":false}'::jsonb`,
+      ),
+    rowCount: integer("row_count"),
+    outputChecksum: text("output_checksum"),
+    outputSizeBytes: integer("output_size_bytes"),
+    csvStoragePath: text("csv_storage_path"),
+    crosswalkStoragePath: text("crosswalk_storage_path"),
+    validationStoragePath: text("validation_storage_path"),
+    errorMessage: text("error_message"),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("partner_export_runs_profile_created_idx").on(
+      table.profileId,
+      table.createdAt,
+    ),
+    index("partner_export_runs_dataset_created_idx").on(
+      table.datasetId,
       table.createdAt,
     ),
   ],

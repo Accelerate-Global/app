@@ -107,6 +107,7 @@ export const smokeRouteSpecs: SmokeRouteSpec[] = [
     pageFile: "src/app/dashboard/datasets/[datasetId]/page.tsx",
     path: "/dashboard/datasets/{{primaryDatasetId}}",
     pageId: "dataset-detail",
+    journeys: ["admin can review partner export mapping"],
   },
   {
     id: "dataset-edit-pro-redirect",

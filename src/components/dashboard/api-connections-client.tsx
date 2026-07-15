@@ -30,6 +30,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { GoogleSheetsHeaderSelection } from "@/components/dashboard/google-sheets-header-selection";
 import type {
   ApiConnection,
   ApiConnectionResource,
@@ -39,6 +40,9 @@ import type {
   GoogleSheetsConnectionProviderConfig,
   GoogleSheetsConnectionPreview,
   GoogleSheetsConnectionPreviewResponse,
+  GoogleSheetsHeaderPreview,
+  GoogleSheetsHeaderPreviewResponse,
+  GoogleSheetsHeaderSelectionInput,
 } from "@/lib/api-types";
 
 type ApiConnectionsClientProps = {
@@ -156,6 +160,13 @@ export function ApiConnectionsClient({
   const [spreadsheetUrl, setSpreadsheetUrl] = useState("");
   const [preview, setPreview] = useState<GoogleSheetsConnectionPreview | null>(null);
   const [selectedSheetIds, setSelectedSheetIds] = useState<number[]>([]);
+  const [headerPreviews, setHeaderPreviews] = useState<
+    Record<number, GoogleSheetsHeaderPreview>
+  >({});
+  const [headerSelections, setHeaderSelections] = useState<
+    Record<number, GoogleSheetsHeaderSelectionInput>
+  >({});
+  const [headerBusySheetIds, setHeaderBusySheetIds] = useState<number[]>([]);
   const [datasetClassification, setDatasetClassification] = useState<DatasetClassification>(
     "PGAC",
   );
@@ -228,6 +239,8 @@ export function ApiConnectionsClient({
       const payload = (await response.json()) as GoogleSheetsConnectionPreviewResponse;
       setPreview(payload.preview);
       setSelectedSheetIds([]);
+      setHeaderPreviews({});
+      setHeaderSelections({});
       setBusyAction(null);
     } catch (error) {
       setGoogleSheetsError(
@@ -245,12 +258,80 @@ export function ApiConnectionsClient({
     }
   }
 
+  async function loadHeaderPreview(
+    sheetId: number,
+    selection?: GoogleSheetsHeaderSelectionInput,
+  ) {
+    if (!preview) {
+      return;
+    }
+    setHeaderBusySheetIds((current) => [...new Set([...current, sheetId])]);
+    setGoogleSheetsError(null);
+    try {
+      const response = await fetch(
+        "/api/admin/api-connections/google-sheets/header-preview",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            spreadsheetUrl: preview.spreadsheetUrl,
+            sheetId,
+            selection,
+          }),
+        },
+      );
+      if (!response.ok) {
+        throw await getResponseError(
+          response,
+          "Google Sheets headers could not be detected.",
+        );
+      }
+      const payload = (await response.json()) as GoogleSheetsHeaderPreviewResponse;
+      const nextSelection: GoogleSheetsHeaderSelectionInput = selection ?? {
+        sheetId,
+        mode: "auto",
+        startRow: payload.preview.selected.startRow,
+        endRow: payload.preview.selected.endRow,
+      };
+      setHeaderPreviews((current) => ({
+        ...current,
+        [sheetId]: payload.preview,
+      }));
+      setHeaderSelections((current) => ({
+        ...current,
+        [sheetId]: nextSelection,
+      }));
+    } catch (error) {
+      setGoogleSheetsError(
+        isResponseError(error)
+          ? error
+          : {
+              message:
+                error instanceof Error
+                  ? error.message
+                  : "Google Sheets headers could not be detected.",
+              status: 0,
+            },
+      );
+      setSelectedSheetIds((current) =>
+        current.filter((currentSheetId) => currentSheetId !== sheetId),
+      );
+    } finally {
+      setHeaderBusySheetIds((current) =>
+        current.filter((currentSheetId) => currentSheetId !== sheetId),
+      );
+    }
+  }
+
   function toggleSelectedSheet(sheetId: number) {
-    setSelectedSheetIds((current) =>
-      current.includes(sheetId)
-        ? current.filter((currentSheetId) => currentSheetId !== sheetId)
-        : [...current, sheetId],
-    );
+    if (selectedSheetIds.includes(sheetId)) {
+      setSelectedSheetIds((current) =>
+        current.filter((currentSheetId) => currentSheetId !== sheetId),
+      );
+      return;
+    }
+    setSelectedSheetIds((current) => [...current, sheetId]);
+    void loadHeaderPreview(sheetId);
   }
 
   async function handleConnectGoogleSheets() {
@@ -270,6 +351,9 @@ export function ApiConnectionsClient({
           body: JSON.stringify({
             spreadsheetUrl: preview.spreadsheetUrl,
             selectedSheetIds,
+            headerSelections: selectedSheetIds.map(
+              (sheetId) => headerSelections[sheetId],
+            ),
             datasetClassification,
           }),
         },
@@ -375,6 +459,8 @@ export function ApiConnectionsClient({
                     setSpreadsheetUrl(event.target.value);
                     setPreview(null);
                     setSelectedSheetIds([]);
+                    setHeaderPreviews({});
+                    setHeaderSelections({});
                     setGoogleSheetsError(null);
                   }}
                   placeholder="Paste Google Sheet link"
@@ -458,11 +544,32 @@ export function ApiConnectionsClient({
                       type="checkbox"
                       checked={selectedSheetIds.includes(sheet.sheetId)}
                       onChange={() => toggleSelectedSheet(sheet.sheetId)}
+                      data-smoke-trigger="google-sheets-header-selection"
                     />
                     <span className="truncate">{sheet.title}</span>
                   </label>
                 ))}
               </div>
+              {selectedSheetIds.length > 0 ? (
+                <div className="space-y-3">
+                  {selectedSheetIds.map((sheetId) => (
+                    <GoogleSheetsHeaderSelection
+                      key={sheetId}
+                      preview={headerPreviews[sheetId] ?? null}
+                      selection={headerSelections[sheetId] ?? null}
+                      isLoading={headerBusySheetIds.includes(sheetId)}
+                      disabled={busyAction !== null}
+                      onChange={(selection) => {
+                        setHeaderSelections((current) => ({
+                          ...current,
+                          [sheetId]: selection,
+                        }));
+                        void loadHeaderPreview(sheetId, selection);
+                      }}
+                    />
+                  ))}
+                </div>
+              ) : null}
               <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
                 <label className="flex flex-col gap-1 text-sm">
                   <span className="font-medium text-foreground">
@@ -486,7 +593,12 @@ export function ApiConnectionsClient({
                   disabled={
                     !isServiceAccountConfigured ||
                     busyAction !== null ||
-                    selectedSheetIds.length === 0
+                    selectedSheetIds.length === 0 ||
+                    headerBusySheetIds.length > 0 ||
+                    selectedSheetIds.some(
+                      (sheetId) =>
+                        !headerSelections[sheetId] || !headerPreviews[sheetId],
+                    )
                   }
                   onClick={handleConnectGoogleSheets}
                 >

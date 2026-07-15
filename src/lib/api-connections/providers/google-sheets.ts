@@ -2,6 +2,7 @@ import type { GoogleSheetsConnectionProviderConfig } from "@/lib/api-types";
 import {
   GOOGLE_SHEETS_PROVIDER,
   assertGoogleSheetsImportSize,
+  fetchGoogleSheetsSpreadsheetMetadata,
   fetchGoogleSheetsTabValues,
   getGoogleSheetsServiceAccountAccessToken,
   parseGoogleSheetsValuesToRows,
@@ -37,12 +38,28 @@ async function fetchGoogleSheetsConnectionOutput(input: {
   }
 
   const accessToken = await getGoogleSheetsServiceAccountAccessToken();
-  const values = await fetchGoogleSheetsTabValues({
+  const metadata = await fetchGoogleSheetsSpreadsheetMetadata({
     spreadsheetId: providerConfig.spreadsheetId,
-    sheetTitle: providerConfig.sheetTitle,
     accessToken,
   });
-  const parsed = parseGoogleSheetsValuesToRows(values);
+  const selectedSheet = metadata.sheets.find(
+    (sheet) => sheet.sheetId === providerConfig.sheetId,
+  );
+  if (!selectedSheet) {
+    throw new ApiConnectionError(
+      "Google Sheet tab is not readable by the service account.",
+      404,
+    );
+  }
+  const values = await fetchGoogleSheetsTabValues({
+    spreadsheetId: providerConfig.spreadsheetId,
+    sheetTitle: selectedSheet.title,
+    accessToken,
+  });
+  const parsed = parseGoogleSheetsValuesToRows(values, {
+    headerSelection: providerConfig.headerSelection,
+    merges: selectedSheet.merges ?? [],
+  });
   const csv = serializeRowsToCsv(parsed);
 
   assertGoogleSheetsImportSize(csv);
@@ -51,9 +68,9 @@ async function fetchGoogleSheetsConnectionOutput(input: {
     body: JSON.stringify({
       provider: GOOGLE_SHEETS_PROVIDER,
       spreadsheetId: providerConfig.spreadsheetId,
-      spreadsheetTitle: providerConfig.spreadsheetTitle,
+      spreadsheetTitle: metadata.spreadsheetTitle,
       sheetId: providerConfig.sheetId,
-      sheetTitle: providerConfig.sheetTitle,
+      sheetTitle: selectedSheet.title,
       values,
     }),
     parsed,

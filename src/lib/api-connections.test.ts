@@ -15,7 +15,9 @@ import {
   listCodeManagedApiConnections,
   parseArcgisFeatureRows,
   parseApiResponseRows,
+  resolveGoogleSheetsConnectionTab,
 } from "@/lib/api-connections";
+import type { GoogleSheetsConnectionProviderConfig } from "@/lib/api-types";
 import type { EtnopediaRecord } from "@/lib/etnopedia-api";
 
 afterEach(() => {
@@ -40,6 +42,47 @@ describe("listCodeManagedApiConnections", () => {
       { name: "api_key", value: "", isSecret: true },
     ]);
     expect(connections[2]?.url).not.toContain("api_key=");
+  });
+});
+
+describe("resolveGoogleSheetsConnectionTab", () => {
+  const providerConfig: GoogleSheetsConnectionProviderConfig = {
+    provider: "google_sheets",
+    spreadsheetId: "sheet_123",
+    spreadsheetUrl: "https://docs.google.com/spreadsheets/d/sheet_123/edit",
+    spreadsheetTitle: "Old workbook",
+    sheetId: 17,
+    sheetTitle: "Old tab title",
+    rangeMode: "full_tab",
+  };
+
+  it("resolves a renamed tab by stable sheet ID and returns fresh titles", () => {
+    expect(
+      resolveGoogleSheetsConnectionTab({
+        providerConfig,
+        metadata: {
+          spreadsheetId: "sheet_123",
+          spreadsheetTitle: "Renamed workbook",
+          sheets: [{ sheetId: 17, title: "Renamed tab", index: 2 }],
+        },
+      }),
+    ).toEqual({
+      selectedSheet: { sheetId: 17, title: "Renamed tab", index: 2 },
+      spreadsheetTitle: "Renamed workbook",
+    });
+  });
+
+  it("rejects a deleted stable sheet ID instead of reading another tab", () => {
+    expect(() =>
+      resolveGoogleSheetsConnectionTab({
+        providerConfig,
+        metadata: {
+          spreadsheetId: "sheet_123",
+          spreadsheetTitle: "Workbook",
+          sheets: [{ sheetId: 99, title: "Replacement tab", index: 0 }],
+        },
+      }),
+    ).toThrow("Google Sheet tab is not readable by the service account.");
   });
 });
 
@@ -554,5 +597,35 @@ describe("Google Sheets provider runs", () => {
     expect(orchestratorSource).toContain(
       "errorMessage: redactSecrets(message, secrets)",
     );
+  });
+
+  it("archives connections, resolves stable tab IDs, and blocks disconnected queued runs", async () => {
+    const source = await readFile(
+      path.join(process.cwd(), "src/lib/api-connections/index.ts"),
+      "utf8",
+    );
+
+    expect(source).toContain("synchronizeGoogleSheetsConnectionTab");
+    expect(source).toContain("isNull(apiConnections.archivedAt)");
+    expect(source).toContain('archiveReason: "Disconnected by administrator."');
+    expect(source).not.toContain(
+      ".delete(apiConnections)\n    .where(eq(apiConnections.id, connection.id))",
+    );
+    expect(source).toContain(
+      'errorMessage: "API connection was disconnected before execution."',
+    );
+  });
+
+  it("preflights active duplicates and handles concurrent unique conflicts", async () => {
+    const source = await readFile(
+      path.join(process.cwd(), "src/lib/api-connections/index.ts"),
+      "utf8",
+    );
+
+    expect(source).toContain("const conflicts = selectedSheets.filter");
+    expect(source).toContain("Already connected:");
+    expect(source).toContain('error.code === "23505"');
+    expect(source).toContain("const archived =");
+    expect(source).toContain("archivedAt: null");
   });
 });

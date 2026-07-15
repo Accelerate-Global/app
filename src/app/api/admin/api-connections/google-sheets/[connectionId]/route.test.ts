@@ -5,9 +5,11 @@ import {
   ApiConnectionError,
   checkGoogleSheetsConnectionAccess,
   disconnectGoogleSheetsConnection,
+  previewExistingGoogleSheetsConnectionHeader,
+  updateGoogleSheetsConnectionHeaderSelection,
 } from "@/lib/api-connections";
 import { getCurrentIdentity } from "@/lib/auth";
-import { DELETE, GET } from "./route";
+import { DELETE, GET, PATCH, POST } from "./route";
 
 vi.mock("@/lib/auth", () => ({
   getCurrentIdentity: vi.fn(),
@@ -22,6 +24,8 @@ vi.mock("@/lib/api-connections", async () => {
     ApiConnectionError: actual.ApiConnectionError,
     checkGoogleSheetsConnectionAccess: vi.fn(),
     disconnectGoogleSheetsConnection: vi.fn(),
+    previewExistingGoogleSheetsConnectionHeader: vi.fn(),
+    updateGoogleSheetsConnectionHeaderSelection: vi.fn(),
   };
 });
 
@@ -31,6 +35,12 @@ const checkGoogleSheetsConnectionAccessMock = vi.mocked(
 );
 const disconnectGoogleSheetsConnectionMock = vi.mocked(
   disconnectGoogleSheetsConnection,
+);
+const previewExistingGoogleSheetsConnectionHeaderMock = vi.mocked(
+  previewExistingGoogleSheetsConnectionHeader,
+);
+const updateGoogleSheetsConnectionHeaderSelectionMock = vi.mocked(
+  updateGoogleSheetsConnectionHeaderSelection,
 );
 
 const identity = {
@@ -87,6 +97,25 @@ const accessCheck = {
   serviceAccountEmail: "sheets@app-project.iam.gserviceaccount.com",
 };
 
+const headerPreview = {
+  sheetId: 1,
+  sheetTitle: "Alpha",
+  inspectedRowCount: 5,
+  candidates: [
+    { rowNumber: 3, score: 8.7, confidence: "high" as const, values: ["Name"] },
+  ],
+  recommendedRow: 3,
+  selected: {
+    mode: "auto" as const,
+    startRow: 3,
+    endRow: 3,
+    headers: ["Name"],
+    fingerprint: "fingerprint",
+    confidence: "high" as const,
+  },
+  sampleRows: [["Alpha"]],
+};
+
 describe("/api/admin/api-connections/google-sheets/[connectionId]", () => {
   beforeEach(() => {
     vi.resetAllMocks();
@@ -140,13 +169,115 @@ describe("/api/admin/api-connections/google-sheets/[connectionId]", () => {
     });
   });
 
-  it("disconnects Google Sheets connections for dataset admins", async () => {
-    disconnectGoogleSheetsConnectionMock.mockResolvedValue(connection);
+  it("previews and saves a manual header selection", async () => {
+    const selection = {
+      sheetId: 1,
+      mode: "manual" as const,
+      startRow: 2,
+      endRow: 3,
+    };
+    previewExistingGoogleSheetsConnectionHeaderMock.mockResolvedValue({
+      ...headerPreview,
+      selected: { ...headerPreview.selected, ...selection },
+    });
+    updateGoogleSheetsConnectionHeaderSelectionMock.mockResolvedValue({
+      connection,
+      preview: { ...headerPreview, selected: { ...headerPreview.selected, ...selection } },
+    });
+
+    const previewResponse = await POST(
+      new Request("http://localhost", {
+        method: "POST",
+        body: JSON.stringify({ selection }),
+      }),
+      context,
+    );
+    expect(previewResponse.status).toBe(200);
+    expect(previewExistingGoogleSheetsConnectionHeaderMock).toHaveBeenCalledWith({
+      connectionId: connection.id,
+      identity,
+      selection,
+    });
+
+    const saveResponse = await PATCH(
+      new Request("http://localhost", {
+        method: "PATCH",
+        body: JSON.stringify({ selection }),
+      }),
+      context,
+    );
+    expect(saveResponse.status).toBe(200);
+    expect(updateGoogleSheetsConnectionHeaderSelectionMock).toHaveBeenCalledWith({
+      connectionId: connection.id,
+      identity,
+      selection,
+    });
+  });
+
+  it("rejects non-admin header previews and changes", async () => {
+    getCurrentIdentityMock.mockResolvedValue({
+      ...identity,
+      workspaceRole: "pro",
+      isDatasetAdmin: false,
+    });
+    const selection = {
+      sheetId: 1,
+      mode: "manual" as const,
+      startRow: 2,
+      endRow: 2,
+    };
+
+    const previewResponse = await POST(
+      new Request("http://localhost", {
+        method: "POST",
+        body: JSON.stringify({ selection }),
+      }),
+      context,
+    );
+    const updateResponse = await PATCH(
+      new Request("http://localhost", {
+        method: "PATCH",
+        body: JSON.stringify({ selection }),
+      }),
+      context,
+    );
+
+    expect(previewResponse.status).toBe(403);
+    expect(updateResponse.status).toBe(403);
+    expect(previewExistingGoogleSheetsConnectionHeaderMock).not.toHaveBeenCalled();
+    expect(updateGoogleSheetsConnectionHeaderSelectionMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects non-consecutive or oversized header ranges", async () => {
+    const response = await PATCH(
+      new Request("http://localhost", {
+        method: "PATCH",
+        body: JSON.stringify({
+          selection: { sheetId: 1, mode: "manual", startRow: 2, endRow: 5 },
+        }),
+      }),
+      context,
+    );
+
+    expect(response.status).toBe(400);
+    expect(updateGoogleSheetsConnectionHeaderSelectionMock).not.toHaveBeenCalled();
+  });
+
+  it("archives Google Sheets connections for dataset admins", async () => {
+    const archivedConnection = {
+      ...connection,
+      archivedAt: "2026-07-15T06:30:00.000Z",
+      archivedByOwnerId: identity.ownerId,
+      archiveReason: "Disconnected by administrator.",
+    };
+    disconnectGoogleSheetsConnectionMock.mockResolvedValue(archivedConnection);
 
     const response = await DELETE(new Request("http://localhost"), context);
 
     expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toEqual({ connection });
+    await expect(response.json()).resolves.toEqual({
+      connection: archivedConnection,
+    });
     expect(disconnectGoogleSheetsConnectionMock).toHaveBeenCalledWith({
       connectionId: connection.id,
       identity,

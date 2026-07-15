@@ -313,6 +313,37 @@ test("admin can edit dataset details", async ({ page }, testInfo) => {
   });
 });
 
+test("admin can review partner export mapping", async ({ page }, testInfo) => {
+  test.skip(skipUnlessDesktopAdmin(testInfo.project.name));
+
+  await runSmokeJourney("admin can review partner export mapping", async () => {
+    const bootstrap = await readUiSmokeBootstrap();
+
+    await page.goto(`/dashboard/datasets/${bootstrap.datasets.primary.id}`);
+    await expect(page.locator('[data-smoke-page="dataset-detail"]')).toBeVisible();
+    const mappingTrigger = page.locator(
+      '[data-smoke-trigger="partner-export-profile-sheet"]',
+    );
+    await expect(mappingTrigger).toBeVisible();
+    await mappingTrigger.click();
+    await expect(
+      page.locator(
+        '[data-smoke-surface="partner-export-profile-sheet"][data-smoke-ready="partner-export-profile-sheet"]',
+      ),
+    ).toBeVisible();
+    await expect(page.locator('input[value="PG_PeopleID3"]')).toBeVisible();
+    await expect(
+      page.locator('input[value="PG_AX_unique_PG_ID_PGIC"]'),
+    ).toBeVisible();
+    await expect(page.getByLabel("Source for PG_ROP3")).toBeVisible();
+
+    await page.keyboard.press("Escape");
+    await expect(
+      page.locator('[data-smoke-surface="partner-export-profile-sheet"]'),
+    ).toBeHidden();
+  });
+});
+
 test("authenticated user can save a filtered table", async ({ page }, testInfo) => {
   test.skip(skipUnlessDesktopPro(testInfo.project.name));
 
