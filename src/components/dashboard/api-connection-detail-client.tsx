@@ -29,8 +29,16 @@ import {
   type SortingState,
 } from "@tanstack/react-table";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 
+import { GoogleSheetsHeaderSelection } from "@/components/dashboard/google-sheets-header-selection";
 import { DataGrid, DataGridContainer } from "@/components/reui/data-grid/data-grid";
 import { DataGridColumnHeader } from "@/components/reui/data-grid/data-grid-column-header";
 import { DataGridScrollArea } from "@/components/reui/data-grid/data-grid-scroll-area";
@@ -54,6 +62,10 @@ import type {
   ApiConnectionRunStatus,
   GoogleSheetsConnectionAccessCheckResponse,
   GoogleSheetsConnectionProviderConfig,
+  GoogleSheetsHeaderPreview,
+  GoogleSheetsHeaderPreviewResponse,
+  GoogleSheetsHeaderSelectionInput,
+  GoogleSheetsHeaderSelectionUpdateResponse,
 } from "@/lib/api-types";
 import { cn } from "@/lib/utils";
 
@@ -369,8 +381,14 @@ export function ApiConnectionDetailClient({
   const [sourceEmailCopied, setSourceEmailCopied] = useState(false);
   const [confirmDisconnect, setConfirmDisconnect] = useState(false);
   const [sourceBusyAction, setSourceBusyAction] = useState<
-    "check-access" | "disconnect" | null
+    "check-access" | "disconnect" | "header-preview" | "header-save" | null
   >(null);
+  const [isHeaderEditorOpen, setIsHeaderEditorOpen] = useState(false);
+  const [headerPreview, setHeaderPreview] =
+    useState<GoogleSheetsHeaderPreview | null>(null);
+  const [headerSelection, setHeaderSelection] =
+    useState<GoogleSheetsHeaderSelectionInput | null>(null);
+  const refreshedImportRunIds = useRef(new Set<string>());
   const [isRunDetailOpen, setIsRunDetailOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const selectedRun = useMemo(
@@ -435,6 +453,23 @@ export function ApiConnectionDetailClient({
 
       if (!isRunActive(payload.run)) {
         void loadRuns().catch(() => undefined);
+        setMessage({
+          title: getRunLabel(payload.run),
+          detail:
+            payload.run.status === "success"
+              ? formatDuration(payload.run)
+              : (payload.run.errorMessage ?? "The run failed."),
+          tone: payload.run.status === "failed" ? "error" : "success",
+        });
+        if (
+          payload.run.mode === "import" &&
+          payload.run.status === "success" &&
+          payload.run.datasetId &&
+          !refreshedImportRunIds.current.has(payload.run.id)
+        ) {
+          refreshedImportRunIds.current.add(payload.run.id);
+          router.refresh();
+        }
       }
     }
 
@@ -447,7 +482,7 @@ export function ApiConnectionDetailClient({
       cancelled = true;
       window.clearInterval(interval);
     };
-  }, [connection.id, loadRuns, selectedRun]);
+  }, [connection.id, loadRuns, router, selectedRun]);
 
   async function handleRun(importEnabled: boolean) {
     setBusyAction(importEnabled ? "import" : "test");
@@ -606,6 +641,100 @@ export function ApiConnectionDetailClient({
             : "Google Sheets connection could not be disconnected.",
         tone: "error",
       });
+      setSourceBusyAction(null);
+    }
+  }
+
+  async function loadGoogleSheetsHeaderPreview(
+    selection?: GoogleSheetsHeaderSelectionInput,
+  ) {
+    if (!googleSheetsConfig) {
+      return;
+    }
+    setSourceBusyAction("header-preview");
+    setMessage(null);
+    try {
+      const response = await fetch(
+        `/api/admin/api-connections/google-sheets/${connection.id}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ selection }),
+        },
+      );
+      if (!response.ok) {
+        throw new Error(
+          await getErrorMessage(response, "Google Sheets headers could not be loaded."),
+        );
+      }
+      const payload = (await response.json()) as GoogleSheetsHeaderPreviewResponse;
+      const nextSelection = selection ?? {
+        sheetId: googleSheetsConfig.sheetId,
+        mode: googleSheetsConfig.headerSelection?.mode ?? "auto",
+        startRow:
+          googleSheetsConfig.headerSelection?.startRow ??
+          payload.preview.selected.startRow,
+        endRow:
+          googleSheetsConfig.headerSelection?.endRow ??
+          payload.preview.selected.endRow,
+      };
+      setHeaderPreview(payload.preview);
+      setHeaderSelection(nextSelection);
+      setIsHeaderEditorOpen(true);
+    } catch (error) {
+      setMessage({
+        title: "Header preview failed",
+        detail:
+          error instanceof Error
+            ? error.message
+            : "Google Sheets headers could not be loaded.",
+        tone: "error",
+      });
+    } finally {
+      setSourceBusyAction(null);
+    }
+  }
+
+  async function saveGoogleSheetsHeaderSelection() {
+    if (!headerSelection) {
+      return;
+    }
+    setSourceBusyAction("header-save");
+    setMessage(null);
+    try {
+      const response = await fetch(
+        `/api/admin/api-connections/google-sheets/${connection.id}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ selection: headerSelection }),
+        },
+      );
+      if (!response.ok) {
+        throw new Error(
+          await getErrorMessage(response, "Google Sheets headers could not be saved."),
+        );
+      }
+      const payload =
+        (await response.json()) as GoogleSheetsHeaderSelectionUpdateResponse;
+      setHeaderPreview(payload.preview);
+      setIsHeaderEditorOpen(false);
+      setMessage({
+        title: "Header selection saved",
+        detail: `Data will begin after row ${payload.preview.selected.endRow}.`,
+        tone: "success",
+      });
+      router.refresh();
+    } catch (error) {
+      setMessage({
+        title: "Header update failed",
+        detail:
+          error instanceof Error
+            ? error.message
+            : "Google Sheets headers could not be saved.",
+        tone: "error",
+      });
+    } finally {
       setSourceBusyAction(null);
     }
   }
@@ -935,7 +1064,59 @@ export function ApiConnectionDetailClient({
               </Alert>
             ) : null}
 
+            {isHeaderEditorOpen ? (
+              <div className="space-y-3">
+                <GoogleSheetsHeaderSelection
+                  preview={headerPreview}
+                  selection={headerSelection}
+                  isLoading={sourceBusyAction === "header-preview"}
+                  disabled={sourceBusyAction !== null}
+                  onChange={(selection) => {
+                    setHeaderSelection(selection);
+                    void loadGoogleSheetsHeaderPreview(selection);
+                  }}
+                />
+                <div className="flex flex-wrap justify-end gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={sourceBusyAction !== null}
+                    onClick={() => setIsHeaderEditorOpen(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={!headerSelection || sourceBusyAction !== null}
+                    onClick={() => void saveGoogleSheetsHeaderSelection()}
+                  >
+                    {sourceBusyAction === "header-save" ? (
+                      <Loader2Icon className="size-3.5 animate-spin" />
+                    ) : null}
+                    Save header selection
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+
             <div className="flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={!serviceAccountEmail || sourceBusyAction !== null}
+                onClick={() => void loadGoogleSheetsHeaderPreview()}
+                data-smoke-trigger="google-sheets-header-selection"
+              >
+                {sourceBusyAction === "header-preview" ? (
+                  <Loader2Icon className="size-3.5 animate-spin" />
+                ) : (
+                  <Settings2Icon className="size-3.5" />
+                )}
+                Review headers
+              </Button>
               <Button
                 type="button"
                 variant="secondary"

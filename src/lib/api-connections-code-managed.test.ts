@@ -91,7 +91,9 @@ describe("code-managed API connection listing", () => {
     const db = {
       select: vi.fn().mockReturnValue({
         from: vi.fn().mockReturnValue({
-          orderBy: vi.fn().mockResolvedValue([]),
+          where: vi.fn().mockReturnValue({
+            orderBy: vi.fn().mockResolvedValue([]),
+          }),
         }),
       }),
     };
@@ -114,7 +116,9 @@ describe("code-managed API connection listing", () => {
       .fn()
       .mockReturnValueOnce({
         from: vi.fn().mockReturnValue({
-          orderBy: vi.fn().mockResolvedValue([materializedImb]),
+          where: vi.fn().mockReturnValue({
+            orderBy: vi.fn().mockResolvedValue([materializedImb]),
+          }),
         }),
       })
       .mockReturnValueOnce({
@@ -157,7 +161,9 @@ describe("code-managed API connection listing", () => {
       .fn()
       .mockReturnValueOnce({
         from: vi.fn().mockReturnValue({
-          orderBy: vi.fn().mockResolvedValue([materializedImb]),
+          where: vi.fn().mockReturnValue({
+            orderBy: vi.fn().mockResolvedValue([materializedImb]),
+          }),
         }),
       })
       .mockReturnValueOnce({

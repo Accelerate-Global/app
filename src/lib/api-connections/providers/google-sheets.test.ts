@@ -4,6 +4,7 @@ import type { ApiConnectionRecord } from "@/lib/api-connections/provider";
 import { GoogleSheetsError } from "@/lib/google-sheets";
 
 const getAccessTokenMock = vi.hoisted(() => vi.fn());
+const fetchMetadataMock = vi.hoisted(() => vi.fn());
 const fetchTabValuesMock = vi.hoisted(() => vi.fn());
 const parseValuesMock = vi.hoisted(() => vi.fn());
 const assertImportSizeMock = vi.hoisted(() => vi.fn());
@@ -16,6 +17,7 @@ vi.mock("@/lib/google-sheets", async () => {
   return {
     ...actual,
     getGoogleSheetsServiceAccountAccessToken: getAccessTokenMock,
+    fetchGoogleSheetsSpreadsheetMetadata: fetchMetadataMock,
     fetchGoogleSheetsTabValues: fetchTabValuesMock,
     parseGoogleSheetsValuesToRows: parseValuesMock,
     assertGoogleSheetsImportSize: assertImportSizeMock,
@@ -44,6 +46,19 @@ describe("googleSheetsProvider", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     getAccessTokenMock.mockResolvedValue("service-account-token");
+    fetchMetadataMock.mockResolvedValue({
+      spreadsheetId: "sheet_123",
+      spreadsheetTitle: "Mission Sheet",
+      sheets: [
+        {
+          sheetId: 1,
+          title: "Alpha",
+          index: 0,
+          frozenRowCount: 0,
+          merges: [],
+        },
+      ],
+    });
     fetchTabValuesMock.mockResolvedValue([["Name"], ["Alpha"]]);
     parseValuesMock.mockReturnValue({
       columns: [{ key: "name", label: "Name", sourceIndex: 0 }],
@@ -67,12 +82,19 @@ describe("googleSheetsProvider", () => {
 
     expect(log).toHaveBeenCalledWith("Fetching Google Sheets tab.");
     expect(getAccessTokenMock).toHaveBeenCalledOnce();
+    expect(fetchMetadataMock).toHaveBeenCalledWith({
+      spreadsheetId: "sheet_123",
+      accessToken: "service-account-token",
+    });
     expect(fetchTabValuesMock).toHaveBeenCalledWith({
       spreadsheetId: "sheet_123",
       sheetTitle: "Alpha",
       accessToken: "service-account-token",
     });
-    expect(parseValuesMock).toHaveBeenCalledWith([["Name"], ["Alpha"]]);
+    expect(parseValuesMock).toHaveBeenCalledWith([["Name"], ["Alpha"]], {
+      headerSelection: undefined,
+      merges: [],
+    });
     const serializedCsv = assertImportSizeMock.mock.calls[0]?.[0] as string;
     expect(serializedCsv).toContain("Name");
     expect(serializedCsv).toContain("Alpha");
@@ -112,6 +134,7 @@ describe("googleSheetsProvider", () => {
     });
 
     expect(fetchTabValuesMock).not.toHaveBeenCalled();
+    expect(fetchMetadataMock).not.toHaveBeenCalled();
     expect(parseValuesMock).not.toHaveBeenCalled();
     expect(assertImportSizeMock).not.toHaveBeenCalled();
   });

@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(116);
+select plan(122);
 
 select results_eq(
   $$
@@ -121,6 +121,40 @@ select is(
   ),
   0::bigint,
   'private API connection tables have no grants for public-facing roles'
+);
+select ok((select relrowsecurity from pg_class join pg_namespace on pg_namespace.oid = pg_class.relnamespace where pg_namespace.nspname = 'private' and pg_class.relname = 'partner_export_profiles' and pg_class.relkind = 'r'), 'private.partner_export_profiles has row level security enabled');
+select ok((select relrowsecurity from pg_class join pg_namespace on pg_namespace.oid = pg_class.relnamespace where pg_namespace.nspname = 'private' and pg_class.relname = 'partner_export_profile_columns' and pg_class.relkind = 'r'), 'private.partner_export_profile_columns has row level security enabled');
+select ok((select relrowsecurity from pg_class join pg_namespace on pg_namespace.oid = pg_class.relnamespace where pg_namespace.nspname = 'private' and pg_class.relname = 'partner_export_runs' and pg_class.relkind = 'r'), 'private.partner_export_runs has row level security enabled');
+select is(
+  (
+    select count(*)::bigint
+    from information_schema.table_privileges
+    where table_schema = 'private'
+      and table_name in ('partner_export_profiles', 'partner_export_profile_columns', 'partner_export_runs')
+      and grantee in ('PUBLIC', 'anon', 'authenticated')
+  ),
+  0::bigint,
+  'private partner export tables have no grants for public-facing roles'
+);
+select ok(
+  exists(
+    select 1
+    from storage.buckets
+    where id = 'partner-export-artifacts'
+      and public = false
+      and allowed_mime_types @> array['text/csv', 'application/json']::text[]
+  ),
+  'partner export artifact bucket is private and permits only expected artifact types'
+);
+select ok(
+  exists(
+    select 1
+    from pg_indexes
+    where schemaname = 'private'
+      and tablename = 'api_connections'
+      and indexname = 'api_connections_google_sheet_active_source_idx'
+  ),
+  'active Google Sheets sources have a database uniqueness constraint'
 );
 select ok(exists(select 1 from pg_extension where extname = 'supabase_vault'), 'Supabase Vault is available for API connection secrets');
 

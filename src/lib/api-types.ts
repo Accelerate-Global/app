@@ -190,6 +190,32 @@ export type ApiConnectionRunMode = "test" | "import";
 export type ApiConnectionRunStatus = "queued" | "running" | "success" | "failed";
 export type ApiConnectionRunLogLevel = "info" | "error";
 export type GoogleSheetsRangeMode = "full_tab";
+export type GoogleSheetsHeaderSelectionMode = "auto" | "manual";
+export type GoogleSheetsHeaderConfidence = "high" | "medium" | "low";
+
+export type GoogleSheetsGridRange = {
+  startRowIndex: number;
+  endRowIndex: number;
+  startColumnIndex: number;
+  endColumnIndex: number;
+};
+
+export type GoogleSheetsHeaderSelectionInput = {
+  sheetId: number;
+  mode: GoogleSheetsHeaderSelectionMode;
+  startRow: number;
+  endRow: number;
+};
+
+export type GoogleSheetsHeaderConfiguration = {
+  mode: GoogleSheetsHeaderSelectionMode;
+  startRow: number;
+  endRow: number;
+  headers: string[];
+  fingerprint: string;
+  confidence: GoogleSheetsHeaderConfidence;
+  confirmedAt: string;
+};
 
 export type HttpApiConnectionProviderConfig = {
   provider: "http_api";
@@ -203,6 +229,7 @@ export type GoogleSheetsConnectionProviderConfig = {
   sheetId: number;
   sheetTitle: string;
   rangeMode: GoogleSheetsRangeMode;
+  headerSelection?: GoogleSheetsHeaderConfiguration;
 };
 
 export type ApiConnectionProviderConfig =
@@ -231,6 +258,9 @@ export type ApiConnection = {
   datasetClassification: DatasetClassification;
   provider?: ApiConnectionProvider;
   providerConfig?: ApiConnectionProviderConfig;
+  archivedAt?: string | null;
+  archivedByOwnerId?: string | null;
+  archiveReason?: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -239,6 +269,34 @@ export type GoogleSheetsConnectionTab = {
   sheetId: number;
   title: string;
   index: number;
+  frozenRowCount?: number;
+  merges?: GoogleSheetsGridRange[];
+};
+
+export type GoogleSheetsHeaderCandidate = {
+  rowNumber: number;
+  score: number;
+  confidence: GoogleSheetsHeaderConfidence;
+  values: string[];
+};
+
+export type GoogleSheetsHeaderResolvedSelection = {
+  mode: GoogleSheetsHeaderSelectionMode;
+  startRow: number;
+  endRow: number;
+  headers: string[];
+  fingerprint: string;
+  confidence: GoogleSheetsHeaderConfidence;
+};
+
+export type GoogleSheetsHeaderPreview = {
+  sheetId: number;
+  sheetTitle: string;
+  inspectedRowCount: number;
+  candidates: GoogleSheetsHeaderCandidate[];
+  recommendedRow: number;
+  selected: GoogleSheetsHeaderResolvedSelection;
+  sampleRows: string[][];
 };
 
 export type GoogleSheetsConnectionPreview = {
@@ -262,10 +320,19 @@ export type GoogleSheetsConnectionConnectResponse = {
   connections: ApiConnection[];
 };
 
+export type GoogleSheetsHeaderPreviewResponse = {
+  preview: GoogleSheetsHeaderPreview;
+};
+
 export type GoogleSheetsConnectionAccessCheckResponse = {
   connection: ApiConnection;
   preview: GoogleSheetsConnectionPreview;
   serviceAccountEmail: string;
+};
+
+export type GoogleSheetsHeaderSelectionUpdateResponse = {
+  connection: ApiConnection;
+  preview: GoogleSheetsHeaderPreview;
 };
 
 export type ApiConnectionRun = {

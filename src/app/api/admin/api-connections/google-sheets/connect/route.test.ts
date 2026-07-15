@@ -64,6 +64,13 @@ const connection = {
   updatedAt: "2026-05-09T07:45:00.000Z",
 };
 
+const alphaHeaderSelection = {
+  sheetId: 1,
+  mode: "auto" as const,
+  startRow: 4,
+  endRow: 4,
+};
+
 describe("/api/admin/api-connections/google-sheets/connect", () => {
   beforeEach(() => {
     vi.resetAllMocks();
@@ -84,6 +91,7 @@ describe("/api/admin/api-connections/google-sheets/connect", () => {
           body: JSON.stringify({
             spreadsheetUrl: "https://docs.google.com/spreadsheets/d/sheet/edit",
             selectedSheetIds: [1],
+            headerSelections: [alphaHeaderSelection],
             datasetClassification: "PGAC",
           }),
         },
@@ -119,6 +127,10 @@ describe("/api/admin/api-connections/google-sheets/connect", () => {
           body: JSON.stringify({
             spreadsheetUrl: "https://docs.google.com/spreadsheets/d/sheet/edit",
             selectedSheetIds: [1, 2],
+            headerSelections: [
+              alphaHeaderSelection,
+              { sheetId: 2, mode: "manual", startRow: 2, endRow: 3 },
+            ],
             datasetClassification: "PGAC",
           }),
         },
@@ -133,6 +145,10 @@ describe("/api/admin/api-connections/google-sheets/connect", () => {
       identity,
       spreadsheetUrl: "https://docs.google.com/spreadsheets/d/sheet/edit",
       selectedSheetIds: [1, 2],
+      headerSelections: [
+        alphaHeaderSelection,
+        { sheetId: 2, mode: "manual", startRow: 2, endRow: 3 },
+      ],
       datasetClassification: "PGAC",
     });
   });
@@ -150,6 +166,9 @@ describe("/api/admin/api-connections/google-sheets/connect", () => {
           body: JSON.stringify({
             spreadsheetUrl: "https://docs.google.com/spreadsheets/d/sheet/edit",
             selectedSheetIds: [99],
+            headerSelections: [
+              { sheetId: 99, mode: "manual", startRow: 1, endRow: 1 },
+            ],
             datasetClassification: "PGAC",
           }),
         },
@@ -178,6 +197,7 @@ describe("/api/admin/api-connections/google-sheets/connect", () => {
           body: JSON.stringify({
             spreadsheetUrl: "https://docs.google.com/spreadsheets/d/sheet/edit",
             selectedSheetIds: [1],
+            headerSelections: [alphaHeaderSelection],
             datasetClassification: "PGAC",
           }),
         },

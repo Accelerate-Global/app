@@ -14,6 +14,7 @@ import { getSavedDatasetTable } from "@/lib/saved-dataset-tables";
 import DatasetPage from "./page";
 
 const datasetDetailClientSpy = vi.fn();
+const datasetPartnerExportsSpy = vi.fn();
 
 vi.mock("next/navigation", () => ({
   notFound: vi.fn(() => {
@@ -53,6 +54,13 @@ vi.mock("@/lib/saved-dataset-tables", () => ({
 vi.mock("@/components/dashboard/dataset-detail-client", () => ({
   DatasetDetailClient: (props: unknown) => {
     datasetDetailClientSpy(props);
+    return null;
+  },
+}));
+
+vi.mock("@/components/dashboard/dataset-partner-exports", () => ({
+  DatasetPartnerExports: (props: unknown) => {
+    datasetPartnerExportsSpy(props);
     return null;
   },
 }));
@@ -108,6 +116,7 @@ describe("/dashboard/datasets/[datasetId]", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     datasetDetailClientSpy.mockReset();
+    datasetPartnerExportsSpy.mockReset();
     getCurrentIdentityMock.mockResolvedValue({
       ownerId: "owner-1",
       email: "admin@example.com",
@@ -253,6 +262,12 @@ describe("/dashboard/datasets/[datasetId]", () => {
     expect(props.sourceRowCount).toBe(10);
     expect(props.initialSavedTableId).toBe("saved-table-1");
     expect(props.initialSavedTableRowCount).toBe(10);
+    expect(datasetPartnerExportsSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        datasetId: "dataset-1",
+        sourceColumns: createDataset().columns,
+      }),
+    );
   });
 
   it("does not hydrate default filters for pro users when none are configured", async () => {
@@ -277,6 +292,8 @@ describe("/dashboard/datasets/[datasetId]", () => {
       assignableDatasets?: Array<{ id: string }>;
       workspaceRole: string;
     };
+
+    expect(datasetPartnerExportsSpy).not.toHaveBeenCalled();
 
     expect(props.initialFilters).toBeNull();
     expect(props.assignableDatasets).toEqual([]);

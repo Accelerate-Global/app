@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 
 import { getDb } from "@/db";
 import {
@@ -32,8 +32,12 @@ import {
 import { logError } from "@/lib/error-logging";
 import {
   GOOGLE_SHEETS_PROVIDER,
+  GOOGLE_SHEETS_HEADER_PREVIEW_ROW_LIMIT,
   GoogleSheetsError,
+  confirmGoogleSheetsHeaderSelection,
+  createGoogleSheetsHeaderPreview,
   fetchGoogleSheetsSpreadsheetMetadata,
+  fetchGoogleSheetsTabValues,
   getGoogleSheetsServiceAccountAccessToken,
   getGoogleSheetsServiceAccountEmail,
   parseGoogleSheetUrl,
@@ -56,6 +60,9 @@ import type {
   DatasetSummary,
   GoogleSheetsConnectionProviderConfig,
   GoogleSheetsConnectionPreview,
+  GoogleSheetsGridRange,
+  GoogleSheetsHeaderPreview,
+  GoogleSheetsHeaderSelectionInput,
 } from "@/lib/api-types";
 
 import {
@@ -343,6 +350,9 @@ function toApiConnection(row: ApiConnectionRecord): ApiConnection {
       row.providerConfig,
       row.provider,
     ),
+    archivedAt: row.archivedAt?.toISOString() ?? null,
+    archivedByOwnerId: row.archivedByOwnerId,
+    archiveReason: row.archiveReason,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
@@ -498,6 +508,7 @@ async function loadGoogleSheetsServiceAccountPreview(spreadsheetUrl: string) {
 
     return {
       parsedUrl,
+      accessToken,
       serviceAccountEmail,
       metadata,
       preview: toGoogleSheetsConnectionPreview({
@@ -517,6 +528,74 @@ async function loadGoogleSheetsServiceAccountPreview(spreadsheetUrl: string) {
   }
 }
 
+export function resolveGoogleSheetsConnectionTab(input: {
+  providerConfig: GoogleSheetsConnectionProviderConfig;
+  metadata: Awaited<ReturnType<typeof fetchGoogleSheetsSpreadsheetMetadata>>;
+}) {
+  const selectedSheet = input.metadata.sheets.find(
+    (sheet) => sheet.sheetId === input.providerConfig.sheetId,
+  );
+
+  if (!selectedSheet) {
+    throw new ApiConnectionError(
+      "Google Sheet tab is not readable by the service account.",
+      404,
+    );
+  }
+
+  return {
+    selectedSheet,
+    spreadsheetTitle:
+      input.metadata.spreadsheetTitle || input.providerConfig.spreadsheetTitle,
+  };
+}
+
+async function synchronizeGoogleSheetsConnectionTab(
+  connection: ApiConnectionRecord,
+) {
+  const providerConfig = normalizeApiConnectionProviderConfig(
+    connection.providerConfig,
+    connection.provider,
+  );
+
+  if (providerConfig.provider !== GOOGLE_SHEETS_PROVIDER) {
+    throw new ApiConnectionError("Google Sheets connection metadata is invalid.", 400);
+  }
+
+  const accessToken = await getGoogleSheetsServiceAccountAccessToken();
+  const metadata = await fetchGoogleSheetsSpreadsheetMetadata({
+    spreadsheetId: providerConfig.spreadsheetId,
+    accessToken,
+  });
+  const { selectedSheet, spreadsheetTitle } = resolveGoogleSheetsConnectionTab({
+    providerConfig,
+    metadata,
+  });
+  if (
+    selectedSheet.title === providerConfig.sheetTitle &&
+    spreadsheetTitle === providerConfig.spreadsheetTitle
+  ) {
+    return { connection, metadata, selectedSheet };
+  }
+
+  const nextProviderConfig = {
+    ...providerConfig,
+    spreadsheetTitle,
+    sheetTitle: selectedSheet.title,
+  } satisfies GoogleSheetsConnectionProviderConfig;
+  const [updated] = await getDb()
+    .update(apiConnections)
+    .set({
+      name: `${spreadsheetTitle} - ${selectedSheet.title}`,
+      providerConfig: nextProviderConfig,
+      updatedAt: new Date(),
+    })
+    .where(eq(apiConnections.id, connection.id))
+    .returning();
+
+  return { connection: updated, metadata, selectedSheet };
+}
+
 export async function previewGoogleSheetsConnection(input: {
   identity: CurrentIdentity;
   spreadsheetUrl: string;
@@ -532,13 +611,85 @@ export async function previewGoogleSheetsConnection(input: {
   };
 }
 
+async function getGoogleSheetsHeaderPreview(input: {
+  spreadsheetUrl: string;
+  sheetId: number;
+  selection?: GoogleSheetsHeaderSelectionInput;
+}) {
+  const { metadata, accessToken } = await loadGoogleSheetsServiceAccountPreview(
+    input.spreadsheetUrl,
+  );
+  const selectedSheet = metadata.sheets.find(
+    (sheet) => sheet.sheetId === input.sheetId,
+  );
+  if (!selectedSheet) {
+    throw new ApiConnectionError(
+      "Google Sheet tab is not readable by the service account.",
+      404,
+    );
+  }
+  const values = await fetchGoogleSheetsTabValues({
+    spreadsheetId: metadata.spreadsheetId,
+    sheetTitle: selectedSheet.title,
+    accessToken,
+    rowLimit: GOOGLE_SHEETS_HEADER_PREVIEW_ROW_LIMIT,
+  });
+  const selection = input.selection
+    ? {
+        mode: input.selection.mode,
+        startRow: input.selection.startRow,
+        endRow: input.selection.endRow,
+      }
+    : undefined;
+
+  return {
+    metadata,
+    selectedSheet,
+    values,
+    preview: createGoogleSheetsHeaderPreview({
+      values,
+      sheetId: selectedSheet.sheetId,
+      sheetTitle: selectedSheet.title,
+      merges: selectedSheet.merges ?? [],
+      selection,
+    }),
+  };
+}
+
+export async function previewGoogleSheetsConnectionHeader(input: {
+  identity: CurrentIdentity;
+  spreadsheetUrl: string;
+  sheetId: number;
+  selection?: GoogleSheetsHeaderSelectionInput;
+}): Promise<GoogleSheetsHeaderPreview> {
+  void input.identity;
+  return (await getGoogleSheetsHeaderPreview(input)).preview;
+}
+
+function confirmGoogleSheetsHeaderFromPreview(input: {
+  values: unknown[][];
+  sheetId: number;
+  sheetTitle: string;
+  merges: GoogleSheetsGridRange[];
+  selection: GoogleSheetsHeaderSelectionInput;
+}) {
+  return confirmGoogleSheetsHeaderSelection({
+    values: input.values,
+    sheetId: input.sheetId,
+    sheetTitle: input.sheetTitle,
+    merges: input.merges,
+    selection: input.selection,
+  });
+}
+
 export async function createGoogleSheetsConnections(input: {
   identity: CurrentIdentity;
   spreadsheetUrl: string;
   selectedSheetIds: number[];
+  headerSelections: GoogleSheetsHeaderSelectionInput[];
   datasetClassification: DatasetClassification;
 }) {
-  const { parsedUrl, metadata } = await loadGoogleSheetsServiceAccountPreview(
+  const { parsedUrl, metadata, accessToken } = await loadGoogleSheetsServiceAccountPreview(
     input.spreadsheetUrl,
   );
   const selectedIds = new Set(input.selectedSheetIds);
@@ -549,14 +700,86 @@ export async function createGoogleSheetsConnections(input: {
   if (selectedSheets.length === 0 || selectedSheets.length !== selectedIds.size) {
     throw new ApiConnectionError("Choose at least one valid Google Sheet tab.", 400);
   }
+  const selectionBySheetId = new Map(
+    input.headerSelections.map((selection) => [selection.sheetId, selection]),
+  );
+  if (
+    selectionBySheetId.size !== selectedSheets.length ||
+    selectedSheets.some((sheet) => !selectionBySheetId.has(sheet.sheetId))
+  ) {
+    throw new ApiConnectionError(
+      "Review the header row for every selected Google Sheet tab.",
+      400,
+    );
+  }
+  const confirmedHeaderBySheetId = new Map(
+    await Promise.all(
+      selectedSheets.map(async (sheet) => {
+        const values = await fetchGoogleSheetsTabValues({
+          spreadsheetId: metadata.spreadsheetId,
+          sheetTitle: sheet.title,
+          accessToken,
+          rowLimit: GOOGLE_SHEETS_HEADER_PREVIEW_ROW_LIMIT,
+        });
+        const confirmed = confirmGoogleSheetsHeaderFromPreview({
+          values,
+          sheetId: sheet.sheetId,
+          sheetTitle: sheet.title,
+          merges: sheet.merges ?? [],
+          selection: selectionBySheetId.get(sheet.sheetId)!,
+        });
+        return [sheet.sheetId, confirmed.configuration] as const;
+      }),
+    ),
+  );
 
   const spreadsheetTitle = metadata.spreadsheetTitle || "Google Sheet";
-  const created = await getDb().transaction(async (tx) => {
-    const rows = await tx
-      .insert(apiConnections)
-      .values(
-        selectedSheets.map((sheet) => {
-          const providerConfig = {
+  try {
+    const created = await getDb().transaction(async (tx) => {
+      const existingRows = await tx
+        .select()
+        .from(apiConnections)
+        .where(
+          and(
+            eq(apiConnections.provider, GOOGLE_SHEETS_PROVIDER),
+            sql`${apiConnections.providerConfig} ->> 'spreadsheetId' = ${metadata.spreadsheetId}`,
+          ),
+        )
+        .orderBy(desc(apiConnections.updatedAt));
+      const existingBySheetId = new Map<number, ApiConnectionRecord[]>();
+
+      for (const existing of existingRows) {
+        const config = normalizeApiConnectionProviderConfig(
+          existing.providerConfig,
+          existing.provider,
+        );
+        if (
+          config.provider === GOOGLE_SHEETS_PROVIDER &&
+          selectedIds.has(config.sheetId)
+        ) {
+          existingBySheetId.set(config.sheetId, [
+            ...(existingBySheetId.get(config.sheetId) ?? []),
+            existing,
+          ]);
+        }
+      }
+
+      const conflicts = selectedSheets.filter((sheet) =>
+        (existingBySheetId.get(sheet.sheetId) ?? []).some(
+          (connection) => connection.archivedAt === null,
+        ),
+      );
+
+      if (conflicts.length > 0) {
+        throw new ApiConnectionError(
+          `Already connected: ${conflicts.map((sheet) => sheet.title).join(", ")}.`,
+          409,
+        );
+      }
+
+      const rows: ApiConnectionRecord[] = [];
+      for (const sheet of selectedSheets) {
+        const providerConfig = {
             provider: GOOGLE_SHEETS_PROVIDER,
             spreadsheetId: metadata.spreadsheetId,
             spreadsheetUrl: parsedUrl.spreadsheetUrl,
@@ -564,9 +787,12 @@ export async function createGoogleSheetsConnections(input: {
             sheetId: sheet.sheetId,
             sheetTitle: sheet.title,
             rangeMode: "full_tab",
+            headerSelection: confirmedHeaderBySheetId.get(sheet.sheetId)!,
           } satisfies GoogleSheetsConnectionProviderConfig;
-
-          return {
+        const archived = (existingBySheetId.get(sheet.sheetId) ?? []).find(
+          (connection) => connection.archivedAt !== null,
+        );
+        const values = {
             name: `${spreadsheetTitle} - ${sheet.title}`,
             description: "Private Google Sheets tab.",
             method: "GET" as const,
@@ -586,17 +812,50 @@ export async function createGoogleSheetsConnections(input: {
             datasetClassification: input.datasetClassification,
             provider: GOOGLE_SHEETS_PROVIDER,
             providerConfig,
-            createdByOwnerId: input.identity.ownerId,
             updatedByOwnerId: input.identity.ownerId,
+            archivedAt: null,
+            archivedByOwnerId: null,
+            archiveReason: null,
           };
-        }),
-      )
-      .returning();
 
-    return rows;
-  });
+        if (archived) {
+          const [reactivated] = await tx
+            .update(apiConnections)
+            .set(values)
+            .where(eq(apiConnections.id, archived.id))
+            .returning();
+          rows.push(reactivated);
+        } else {
+          const [inserted] = await tx
+            .insert(apiConnections)
+            .values({
+              ...values,
+              createdByOwnerId: input.identity.ownerId,
+            })
+            .returning();
+          rows.push(inserted);
+        }
+      }
 
-  return created.map(toApiConnection);
+      return rows;
+    });
+
+    return created.map(toApiConnection);
+  } catch (error) {
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      error.code === "23505"
+    ) {
+      throw new ApiConnectionError(
+        "One or more selected Google Sheet tabs are already connected.",
+        409,
+      );
+    }
+
+    throw error;
+  }
 }
 
 export async function checkGoogleSheetsConnectionAccess(input: {
@@ -611,7 +870,11 @@ export async function checkGoogleSheetsConnectionAccess(input: {
     .where(eq(apiConnections.id, input.connectionId))
     .limit(1);
 
-  if (!connection || connection.provider !== GOOGLE_SHEETS_PROVIDER) {
+  if (
+    !connection ||
+    connection.provider !== GOOGLE_SHEETS_PROVIDER ||
+    connection.archivedAt
+  ) {
     return null;
   }
 
@@ -627,29 +890,15 @@ export async function checkGoogleSheetsConnectionAccess(input: {
   const serviceAccountEmail = getGoogleSheetsServiceAccountEmail();
 
   try {
-    const accessToken = await getGoogleSheetsServiceAccountAccessToken();
-    const metadata = await fetchGoogleSheetsSpreadsheetMetadata({
-      spreadsheetId: providerConfig.spreadsheetId,
-      accessToken,
-    });
-    const selectedSheet = metadata.sheets.find(
-      (sheet) => sheet.sheetId === providerConfig.sheetId,
-    );
-
-    if (!selectedSheet) {
-      throw new ApiConnectionError(
-        "Google Sheet tab is not readable by the service account.",
-        404,
-      );
-    }
+    const synchronized = await synchronizeGoogleSheetsConnectionTab(connection);
 
     return {
-      connection: toApiConnection(connection),
+      connection: toApiConnection(synchronized.connection),
       preview: toGoogleSheetsConnectionPreview({
         spreadsheetUrl: providerConfig.spreadsheetUrl,
         metadata: {
-          ...metadata,
-          sheets: [selectedSheet],
+          ...synchronized.metadata,
+          sheets: [synchronized.selectedSheet],
         },
       }),
       serviceAccountEmail,
@@ -664,6 +913,108 @@ export async function checkGoogleSheetsConnectionAccess(input: {
 
     throw error;
   }
+}
+
+async function getActiveGoogleSheetsConnection(connectionId: string) {
+  const [connection] = await getDb()
+    .select()
+    .from(apiConnections)
+    .where(eq(apiConnections.id, connectionId))
+    .limit(1);
+  if (
+    !connection ||
+    connection.provider !== GOOGLE_SHEETS_PROVIDER ||
+    connection.archivedAt
+  ) {
+    return null;
+  }
+  const providerConfig = normalizeApiConnectionProviderConfig(
+    connection.providerConfig,
+    connection.provider,
+  );
+  if (providerConfig.provider !== GOOGLE_SHEETS_PROVIDER) {
+    throw new ApiConnectionError("Google Sheets connection metadata is invalid.", 400);
+  }
+  return { connection, providerConfig };
+}
+
+export async function previewExistingGoogleSheetsConnectionHeader(input: {
+  identity: CurrentIdentity;
+  connectionId: string;
+  selection?: GoogleSheetsHeaderSelectionInput;
+}) {
+  void input.identity;
+  const active = await getActiveGoogleSheetsConnection(input.connectionId);
+  if (!active) {
+    return null;
+  }
+  const synchronized = await synchronizeGoogleSheetsConnectionTab(
+    active.connection,
+  );
+  const providerConfig = normalizeApiConnectionProviderConfig(
+    synchronized.connection.providerConfig,
+    synchronized.connection.provider,
+  );
+  if (providerConfig.provider !== GOOGLE_SHEETS_PROVIDER) {
+    throw new ApiConnectionError("Google Sheets connection metadata is invalid.", 400);
+  }
+  const headerPreview = await getGoogleSheetsHeaderPreview({
+    spreadsheetUrl: providerConfig.spreadsheetUrl,
+    sheetId: providerConfig.sheetId,
+    selection: input.selection,
+  });
+  return headerPreview.preview;
+}
+
+export async function updateGoogleSheetsConnectionHeaderSelection(input: {
+  identity: CurrentIdentity;
+  connectionId: string;
+  selection: GoogleSheetsHeaderSelectionInput;
+}) {
+  const active = await getActiveGoogleSheetsConnection(input.connectionId);
+  if (!active) {
+    return null;
+  }
+  const synchronized = await synchronizeGoogleSheetsConnectionTab(
+    active.connection,
+  );
+  const providerConfig = normalizeApiConnectionProviderConfig(
+    synchronized.connection.providerConfig,
+    synchronized.connection.provider,
+  );
+  if (providerConfig.provider !== GOOGLE_SHEETS_PROVIDER) {
+    throw new ApiConnectionError("Google Sheets connection metadata is invalid.", 400);
+  }
+  const headerPreview = await getGoogleSheetsHeaderPreview({
+    spreadsheetUrl: providerConfig.spreadsheetUrl,
+    sheetId: providerConfig.sheetId,
+    selection: input.selection,
+  });
+  const confirmed = confirmGoogleSheetsHeaderFromPreview({
+    values: headerPreview.values,
+    sheetId: headerPreview.selectedSheet.sheetId,
+    sheetTitle: headerPreview.selectedSheet.title,
+    merges: headerPreview.selectedSheet.merges ?? [],
+    selection: input.selection,
+  });
+  const nextProviderConfig = {
+    ...providerConfig,
+    headerSelection: confirmed.configuration,
+  } satisfies GoogleSheetsConnectionProviderConfig;
+  const [updated] = await getDb()
+    .update(apiConnections)
+    .set({
+      providerConfig: nextProviderConfig,
+      updatedByOwnerId: input.identity.ownerId,
+      updatedAt: new Date(),
+    })
+    .where(eq(apiConnections.id, synchronized.connection.id))
+    .returning();
+
+  return {
+    connection: toApiConnection(updated),
+    preview: confirmed.preview,
+  };
 }
 
 async function hydrateRunDetails(runRows: ApiConnectionRunRecord[]) {
@@ -705,6 +1056,7 @@ export async function listApiConnections() {
   const connectionRows = await getDb()
     .select()
     .from(apiConnections)
+    .where(isNull(apiConnections.archivedAt))
     .orderBy(desc(apiConnections.updatedAt));
   const ids = connectionRows.map((connection) => connection.id);
   const [runRows, resourceRows]: [
@@ -894,16 +1246,27 @@ export async function disconnectGoogleSheetsConnection(input: {
     return null;
   }
 
-  const [deleted] = await getDb()
-    .delete(apiConnections)
+  if (connection.archivedAt) {
+    return toApiConnection(connection);
+  }
+
+  const [archived] = await getDb()
+    .update(apiConnections)
+    .set({
+      archivedAt: new Date(),
+      archivedByOwnerId: input.identity.ownerId,
+      archiveReason: "Disconnected by administrator.",
+      updatedByOwnerId: input.identity.ownerId,
+      updatedAt: new Date(),
+    })
     .where(eq(apiConnections.id, connection.id))
     .returning();
 
-  if (!deleted) {
+  if (!archived) {
     return null;
   }
 
-  return toApiConnection(deleted);
+  return toApiConnection(archived);
 }
 
 function normalizeApiConnectionResourceUrl(value: string) {
@@ -1315,7 +1678,12 @@ export async function startApiConnectionRun(input: {
   let [connection] = await getDb()
     .select()
     .from(apiConnections)
-    .where(eq(apiConnections.id, input.connectionId))
+    .where(
+      and(
+        eq(apiConnections.id, input.connectionId),
+        isNull(apiConnections.archivedAt),
+      ),
+    )
     .limit(1);
 
   if (!connection) {
@@ -1400,7 +1768,31 @@ export async function executeApiConnectionRun(input: { runId: string }) {
     return null;
   }
 
-  const secrets = await readVaultSecret(connection.secretVaultId);
+  if (connection.archivedAt) {
+    await updateRun({
+      runId: run.id,
+      status: "failed",
+      durationMs: 0,
+      errorMessage: "API connection was disconnected before execution.",
+      completedAt: new Date(),
+    });
+    await insertRunLog({
+      runId: run.id,
+      connectionId: connection.id,
+      level: "error",
+      message: "API connection was disconnected before execution.",
+    });
+    return {
+      connection: toApiConnection(connection),
+      run: await getApiConnectionRunDetail({
+        connectionId: connection.id,
+        runId: run.id,
+      }),
+    };
+  }
+
+  let executableConnection = connection;
+  let secrets = new Map<string, string>();
   const startedAtDate = new Date();
   const startedAt = Date.now();
   let httpStatus: number | null = null;
@@ -1419,32 +1811,39 @@ export async function executeApiConnectionRun(input: { runId: string }) {
   });
 
   try {
+    if (connection.provider === GOOGLE_SHEETS_PROVIDER) {
+      executableConnection = (
+        await synchronizeGoogleSheetsConnectionTab(connection)
+      ).connection;
+    }
+    secrets = await readVaultSecret(executableConnection.secretVaultId);
+
     await insertRunLog({
       runId: run.id,
-      connectionId: connection.id,
+      connectionId: executableConnection.id,
       message: "Fetching upstream API.",
     });
 
     const requestConfig = createApiConnectionRunRequest({
-      method: connection.method,
-      url: connection.url,
-      requestHeaders: connection.requestHeaders,
-      bodyTemplate: connection.bodyTemplate,
+      method: executableConnection.method,
+      url: executableConnection.url,
+      requestHeaders: executableConnection.requestHeaders,
+      bodyTemplate: executableConnection.bodyTemplate,
       secrets,
     });
 
     const provider = resolveConnectionProvider({
-      connection,
+      connection: executableConnection,
       requestUrl: requestConfig.url,
     });
     const result = await provider.fetch({
-      connection,
+      connection: executableConnection,
       requestConfig,
       secrets,
       log: async (message) => {
         await insertRunLog({
           runId: run.id,
-          connectionId: connection.id,
+          connectionId: executableConnection.id,
           message,
         });
       },
@@ -1466,7 +1865,7 @@ export async function executeApiConnectionRun(input: { runId: string }) {
       message: `Received HTTP ${httpStatus}.`,
     });
 
-    parsed ??= provider.parse({ body, connection });
+    parsed ??= provider.parse({ body, connection: executableConnection });
 
     await insertRunLog({
       runId: run.id,
@@ -1479,7 +1878,7 @@ export async function executeApiConnectionRun(input: { runId: string }) {
     if (run.mode === "import") {
       const dataset = await persistImportedRows({
         identity: identityFromRun(run),
-        connection,
+        connection: executableConnection,
         rows: parsed.rows,
         columns: parsed.columns,
       });
@@ -1494,7 +1893,7 @@ export async function executeApiConnectionRun(input: { runId: string }) {
 
     await persistRunOutput({
       run,
-      connection,
+      connection: executableConnection,
       parsed,
       redactedBody,
       httpStatus,
@@ -1502,7 +1901,7 @@ export async function executeApiConnectionRun(input: { runId: string }) {
 
     await insertRunLog({
       runId: run.id,
-      connectionId: connection.id,
+      connectionId: executableConnection.id,
       message: "Archived output artifacts.",
     });
 
@@ -1536,7 +1935,7 @@ export async function executeApiConnectionRun(input: { runId: string }) {
     await getDb()
       .update(apiConnections)
       .set({ updatedAt: new Date(), updatedByOwnerId: run.actorOwnerId })
-      .where(eq(apiConnections.id, connection.id));
+      .where(eq(apiConnections.id, executableConnection.id));
 
     await insertRunLog({
       runId: run.id,
@@ -1547,7 +1946,7 @@ export async function executeApiConnectionRun(input: { runId: string }) {
     const [updatedConnection] = await getDb()
       .select()
       .from(apiConnections)
-      .where(eq(apiConnections.id, connection.id))
+      .where(eq(apiConnections.id, executableConnection.id))
       .limit(1);
 
     return {

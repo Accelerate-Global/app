@@ -2,12 +2,16 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import {
   API_CONNECTION_RUN_ARTIFACT_CONTENT_TYPE,
+  createPartnerExportRunOutputStoragePath,
   getApiConnectionRunArtifactReadBuckets,
   getApiConnectionRunArtifactStorageBucket,
+  getPartnerExportArtifactStorageBucket,
 } from "@/lib/dataset-storage";
 
 const originalArtifactBucket = process.env.SUPABASE_API_CONNECTION_ARTIFACT_BUCKET;
 const originalDatasetBucket = process.env.SUPABASE_STORAGE_BUCKET;
+const originalPartnerExportBucket =
+  process.env.SUPABASE_PARTNER_EXPORT_ARTIFACT_BUCKET;
 
 afterEach(() => {
   if (originalArtifactBucket === undefined) {
@@ -21,6 +25,32 @@ afterEach(() => {
   } else {
     process.env.SUPABASE_STORAGE_BUCKET = originalDatasetBucket;
   }
+
+  if (originalPartnerExportBucket === undefined) {
+    delete process.env.SUPABASE_PARTNER_EXPORT_ARTIFACT_BUCKET;
+  } else {
+    process.env.SUPABASE_PARTNER_EXPORT_ARTIFACT_BUCKET =
+      originalPartnerExportBucket;
+  }
+});
+
+describe("partner export artifact storage", () => {
+  it("uses a dedicated private artifact bucket by default", () => {
+    delete process.env.SUPABASE_PARTNER_EXPORT_ARTIFACT_BUCKET;
+
+    expect(getPartnerExportArtifactStorageBucket()).toBe(
+      "partner-export-artifacts",
+    );
+  });
+
+  it("supports an environment override and run-scoped paths", () => {
+    process.env.SUPABASE_PARTNER_EXPORT_ARTIFACT_BUCKET = "custom-exports";
+
+    expect(getPartnerExportArtifactStorageBucket()).toBe("custom-exports");
+    expect(createPartnerExportRunOutputStoragePath("run-1", "Partner.csv")).toMatch(
+      /^partner-export-runs\/run-1\/[0-9a-f-]+-Partner\.csv$/u,
+    );
+  });
 });
 
 describe("API connection run artifact storage", () => {

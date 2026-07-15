@@ -15,6 +15,9 @@ import {
   GOOGLE_SHEETS_READONLY_SCOPE,
   GoogleSheetsError,
   assertGoogleSheetsImportSize,
+  composeGoogleSheetsHeader,
+  confirmGoogleSheetsHeaderSelection,
+  createGoogleSheetsHeaderPreview,
   fetchGoogleSheetsSpreadsheetMetadata,
   fetchGoogleSheetsTabValues,
   getGoogleSheetsServiceAccountAccessToken,
@@ -248,14 +251,40 @@ describe("fetchGoogleSheetsTabValues", () => {
 });
 
 describe("parseGoogleSheetsValuesToRows", () => {
-  it("uses the first non-empty row as headers and skips empty data rows", () => {
-    const parsed = parseGoogleSheetsValuesToRows([
+  it("auto-detects a clean first-row header with high confidence", () => {
+    const values = [
+      ["People Group Name", "Country", "Engagement Status", "Engagement Date"],
+      ["Khmu", "Laos", "Active", "2026-07-01"],
+      ["Phuan", "Laos", "Active", "2026-07-02"],
+    ];
+    const preview = createGoogleSheetsHeaderPreview({
+      values,
+      sheetId: 1,
+      sheetTitle: "Clean",
+    });
+
+    expect(preview.recommendedRow).toBe(1);
+    expect(preview.selected.confidence).toBe("high");
+    expect(parseGoogleSheetsValuesToRows(values).rows).toHaveLength(2);
+  });
+
+  it("normalizes duplicate confirmed headers and skips empty data rows", () => {
+    const values = [
       ["", ""],
       ["People Group", "People Group", ""],
       ["Alpha", "A", "ignored"],
       ["", "", ""],
       ["Beta", "", "extra"],
-    ]);
+    ];
+    const { configuration } = confirmGoogleSheetsHeaderSelection({
+      values,
+      sheetId: 1,
+      sheetTitle: "Alpha",
+      selection: { sheetId: 1, mode: "manual", startRow: 2, endRow: 2 },
+    });
+    const parsed = parseGoogleSheetsValuesToRows(values, {
+      headerSelection: configuration,
+    });
 
     expect(parsed.columns).toEqual([
       { key: "people_group", label: "People Group", sourceIndex: 0 },
@@ -274,6 +303,160 @@ describe("parseGoogleSheetsValuesToRows", () => {
         column_3: "extra",
       },
     ]);
+  });
+
+  it("detects a wide engagement-report header below title, guidance, and numeric rows", () => {
+    const realHeaders = Array.from({ length: 65 }, (_, index) =>
+      [
+        "Mission Reporting Organization",
+        "Mission Implementing Organization",
+        "People Group Name",
+        "Country",
+        "Engagement Status",
+        "Engagement Date",
+      ][index] ?? `Tracking Field ${index + 1}`,
+    );
+    const values = [
+      ["Final Sudan Engagement Report"],
+      ["Naphtali (orange columns to be completed by the partner)"],
+      Array.from({ length: 65 }, (_, index) => String(index + 1)),
+      realHeaders,
+      ["Final Sudan", "Final Sudan", "BINDILI", "Sudan", "Active"],
+      ["Final Sudan", "Final Sudan", "ABU JUNUK", "Sudan", "Active"],
+    ];
+
+    const preview = createGoogleSheetsHeaderPreview({
+      values,
+      sheetId: 1,
+      sheetTitle: "Sudan Engagement Data",
+    });
+
+    expect(preview.recommendedRow).toBe(4);
+    expect(preview.selected.confidence).toBe("high");
+    expect(preview.selected.headers).toHaveLength(65);
+    expect(parseGoogleSheetsValuesToRows(values).rows).toHaveLength(2);
+  });
+
+  it("combines consecutive header rows and expands merged parent labels", () => {
+    const values = [
+      ["Identity", "", "Engagement", ""],
+      ["People Group", "Country", "Status", "Date"],
+      ["BINDILI", "Sudan", "Active", "2026-07-01"],
+    ];
+    const merges = [
+      { startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: 2 },
+      { startRowIndex: 0, endRowIndex: 1, startColumnIndex: 2, endColumnIndex: 4 },
+    ];
+
+    expect(
+      composeGoogleSheetsHeader({ values, startRow: 1, endRow: 2, merges }),
+    ).toEqual([
+      "Identity / People Group",
+      "Identity / Country",
+      "Engagement / Status",
+      "Engagement / Date",
+    ]);
+
+    const { configuration } = confirmGoogleSheetsHeaderSelection({
+      values,
+      sheetId: 2,
+      sheetTitle: "Combined",
+      merges,
+      selection: { sheetId: 2, mode: "manual", startRow: 1, endRow: 2 },
+      confirmedAt: new Date("2026-07-15T12:00:00.000Z"),
+    });
+    const parsed = parseGoogleSheetsValuesToRows(values, {
+      headerSelection: configuration,
+      merges,
+    });
+
+    expect(parsed.columns.map((column) => column.label)).toEqual([
+      "Identity / People Group",
+      "Identity / Country",
+      "Engagement / Status",
+      "Engagement / Date",
+    ]);
+    expect(parsed.rows).toHaveLength(1);
+  });
+
+  it("honors a manual header row when a user-reference row appears above it", () => {
+    const values = [
+      ["Partner reference: do not import"],
+      ["People Group", "Country", "Status"],
+      ["Khmu", "Laos", "Active"],
+    ];
+    const { configuration } = confirmGoogleSheetsHeaderSelection({
+      values,
+      sheetId: 58,
+      sheetTitle: "Lao Engagement Data",
+      selection: { sheetId: 58, mode: "manual", startRow: 2, endRow: 2 },
+    });
+
+    const parsed = parseGoogleSheetsValuesToRows(values, {
+      headerSelection: configuration,
+    });
+
+    expect(parsed.columns.map((column) => column.label)).toEqual([
+      "People Group",
+      "Country",
+      "Status",
+    ]);
+    expect(parsed.rows).toEqual([
+      { people_group: "Khmu", country: "Laos", status: "Active" },
+    ]);
+  });
+
+  it("relocates a confirmed header after rows are inserted above it", () => {
+    const originalValues = [
+      ["Report title"],
+      ["People Group", "Country", "Status"],
+      ["Khmu", "Laos", "Active"],
+    ];
+    const { configuration } = confirmGoogleSheetsHeaderSelection({
+      values: originalValues,
+      sheetId: 58,
+      sheetTitle: "Lao Engagement Data",
+      selection: { sheetId: 58, mode: "manual", startRow: 2, endRow: 2 },
+    });
+
+    const parsed = parseGoogleSheetsValuesToRows(
+      [["New note"], ...originalValues],
+      { headerSelection: configuration },
+    );
+
+    expect(parsed.rows).toEqual([
+      { people_group: "Khmu", country: "Laos", status: "Active" },
+    ]);
+  });
+
+  it("blocks imports when a confirmed header changes materially", () => {
+    const values = [
+      ["People Group", "Country", "Status"],
+      ["Khmu", "Laos", "Active"],
+    ];
+    const { configuration } = confirmGoogleSheetsHeaderSelection({
+      values,
+      sheetId: 58,
+      sheetTitle: "Lao Engagement Data",
+      selection: { sheetId: 58, mode: "manual", startRow: 1, endRow: 1 },
+    });
+
+    expect(() =>
+      parseGoogleSheetsValuesToRows(
+        [["People Group", "Nation", "Status"], ["Khmu", "Laos", "Active"]],
+        { headerSelection: configuration },
+      ),
+    ).toThrow("The Google Sheet header changed");
+  });
+
+  it("requires review when legacy auto-detection is ambiguous", () => {
+    expect(() =>
+      parseGoogleSheetsValuesToRows([
+        ["People Group", "Country"],
+        ["Mission Group", "Region"],
+        ["Khmu", "Laos"],
+      ]),
+    ).toThrow("Review and save the Google Sheet header row before importing.");
   });
 
   it("rejects tabs without a header row", () => {
