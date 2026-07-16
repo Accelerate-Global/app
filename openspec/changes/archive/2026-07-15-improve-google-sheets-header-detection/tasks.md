@@ -31,9 +31,9 @@
 - [x] 5.2 Run direct tests for every changed module and component, then `pnpm run verify:fast` and `pnpm run smoke:check`; classify and fix every failure.
 - [x] 5.3 Run every required command reported by `pnpm run verify:change`, including targeted browser smoke and local Supabase/security checks when required.
 - [x] 5.4 Run `pnpm run spec:validate`, rerun `pnpm run verify:change`, and pass `pnpm run verify:change:run` on the final tracked tree.
-- [ ] 5.5 Verify the implementation against this OpenSpec change, archive it, and pass `pnpm run verify:ship:local` before publication.
+- [x] 5.5 Verify the implementation against this OpenSpec change, archive it, and pass `pnpm run verify:ship:local` before publication.
 
 ## 6. Publication and production remediation
 
-- [ ] 6.1 Create a focused branch, commit the complete partner-export and Google Sheets header work, push it, open a pull request, and complete the repository ship workflow.
-- [ ] 6.2 Verify the production connection/header flow end-to-end, save row 4 for the existing Sudan source, refresh its dataset, and confirm **Open dataset**, corrected labels, and 126 non-empty data rows.
+- [x] 6.1 Create a focused branch, commit the complete partner-export and Google Sheets header work, push it, open a pull request, and complete the repository ship workflow.
+- [x] 6.2 Verify the production connection/header flow end-to-end, save row 4 for the existing Sudan source, refresh its dataset, and confirm **Open dataset**, corrected labels, and 126 non-empty data rows.
