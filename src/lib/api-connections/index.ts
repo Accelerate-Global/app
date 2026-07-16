@@ -47,6 +47,7 @@ import type {
   ApiConnection,
   ApiConnectionHeader,
   ApiConnectionImportMode,
+  ApiConnectionProviderConfig,
   ApiConnectionResource,
   ApiConnectionResponseFormat,
   ApiConnectionRun,
@@ -98,6 +99,14 @@ export type {
   ApiConnectionRecord as ApiConnectionRow,
   ConnectionProvider,
 } from "./provider";
+
+export function getInitialDatasetWorkspaceVisibility(
+  providerConfig: ApiConnectionProviderConfig,
+) {
+  return providerConfig.provider === GOOGLE_SHEETS_PROVIDER
+    ? (providerConfig.isWorkspaceVisible ?? true)
+    : true;
+}
 
 type ApiConnectionRecord = typeof apiConnections.$inferSelect;
 type ApiConnectionRunRecord = typeof apiConnectionRuns.$inferSelect;
@@ -479,6 +488,36 @@ function sanitizeGoogleSheetDatasetName(input: {
   return sanitizeFileName(`${input.spreadsheetTitle}-${input.sheetTitle}.csv`);
 }
 
+export function normalizeGoogleSheetsDatasetSettings(input: {
+  selectedSheetIds: number[];
+  datasetSettings?: Array<{ sheetId: number; datasetName: string }>;
+}) {
+  if (!input.datasetSettings) return null;
+
+  const settings = new Map(
+    input.datasetSettings.map((setting) => [
+      setting.sheetId,
+      sanitizeFileName(setting.datasetName),
+    ]),
+  );
+  const selectedIds = new Set(input.selectedSheetIds);
+  const normalizedNames = [...settings.values()].map((name) =>
+    name.toLocaleLowerCase(),
+  );
+  if (
+    settings.size !== selectedIds.size ||
+    [...selectedIds].some((sheetId) => !settings.has(sheetId)) ||
+    [...settings.keys()].some((sheetId) => !selectedIds.has(sheetId)) ||
+    new Set(normalizedNames).size !== normalizedNames.length
+  ) {
+    throw new ApiConnectionError(
+      "Choose one unique dataset name for every selected Google Sheet tab.",
+      400,
+    );
+  }
+  return settings;
+}
+
 function shareWithServiceAccountMessage(serviceAccountEmail: string) {
   return `Share this Sheet with ${serviceAccountEmail} as Viewer, then check again.`;
 }
@@ -586,7 +625,9 @@ async function synchronizeGoogleSheetsConnectionTab(
   const [updated] = await getDb()
     .update(apiConnections)
     .set({
-      name: `${spreadsheetTitle} - ${selectedSheet.title}`,
+      name: providerConfig.usesCustomDatasetName
+        ? connection.name
+        : `${spreadsheetTitle} - ${selectedSheet.title}`,
       providerConfig: nextProviderConfig,
       updatedAt: new Date(),
     })
@@ -687,7 +728,12 @@ export async function createGoogleSheetsConnections(input: {
   spreadsheetUrl: string;
   selectedSheetIds: number[];
   headerSelections: GoogleSheetsHeaderSelectionInput[];
+  datasetSettings?: Array<{
+    sheetId: number;
+    datasetName: string;
+  }>;
   datasetClassification: DatasetClassification;
+  isWorkspaceVisible: boolean;
 }) {
   const { parsedUrl, metadata, accessToken } = await loadGoogleSheetsServiceAccountPreview(
     input.spreadsheetUrl,
@@ -712,6 +758,10 @@ export async function createGoogleSheetsConnections(input: {
       400,
     );
   }
+  const datasetSettingBySheetId = normalizeGoogleSheetsDatasetSettings({
+    selectedSheetIds: input.selectedSheetIds,
+    datasetSettings: input.datasetSettings,
+  });
   const confirmedHeaderBySheetId = new Map(
     await Promise.all(
       selectedSheets.map(async (sheet) => {
@@ -779,6 +829,7 @@ export async function createGoogleSheetsConnections(input: {
 
       const rows: ApiConnectionRecord[] = [];
       for (const sheet of selectedSheets) {
+        const reviewedDatasetName = datasetSettingBySheetId?.get(sheet.sheetId);
         const providerConfig = {
             provider: GOOGLE_SHEETS_PROVIDER,
             spreadsheetId: metadata.spreadsheetId,
@@ -787,13 +838,15 @@ export async function createGoogleSheetsConnections(input: {
             sheetId: sheet.sheetId,
             sheetTitle: sheet.title,
             rangeMode: "full_tab",
+            isWorkspaceVisible: input.isWorkspaceVisible,
+            usesCustomDatasetName: Boolean(reviewedDatasetName),
             headerSelection: confirmedHeaderBySheetId.get(sheet.sheetId)!,
           } satisfies GoogleSheetsConnectionProviderConfig;
         const archived = (existingBySheetId.get(sheet.sheetId) ?? []).find(
           (connection) => connection.archivedAt !== null,
         );
         const values = {
-            name: `${spreadsheetTitle} - ${sheet.title}`,
+            name: reviewedDatasetName ?? `${spreadsheetTitle} - ${sheet.title}`,
             description: "Private Google Sheets tab.",
             method: "GET" as const,
             url: parsedUrl.spreadsheetUrl,
@@ -805,10 +858,12 @@ export async function createGoogleSheetsConnections(input: {
             responseDataPath: "",
             importMode: "create" as const,
             targetDatasetId: null,
-            datasetName: sanitizeGoogleSheetDatasetName({
-              spreadsheetTitle,
-              sheetTitle: sheet.title,
-            }),
+            datasetName:
+              reviewedDatasetName ??
+              sanitizeGoogleSheetDatasetName({
+                spreadsheetTitle,
+                sheetTitle: sheet.title,
+              }),
             datasetClassification: input.datasetClassification,
             provider: GOOGLE_SHEETS_PROVIDER,
             providerConfig,
@@ -1370,6 +1425,10 @@ async function persistImportedRows(input: {
   rows: Record<string, string>[];
   columns: CsvColumn[];
 }) {
+  const providerConfig = normalizeApiConnectionProviderConfig(
+    input.connection.providerConfig,
+    input.connection.provider,
+  );
   const csv = serializeRowsToCsv({
     rows: input.rows,
     columns: input.columns,
@@ -1400,6 +1459,7 @@ async function persistImportedRows(input: {
           sizeBytes,
           columns: input.columns,
           classification: input.connection.datasetClassification,
+          isWorkspaceVisible: getInitialDatasetWorkspaceVisibility(providerConfig),
         });
 
   if (!dataset) {

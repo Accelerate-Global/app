@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  composeDatasetTagsWithWorkspaceVisibility,
   composeDatasetTagsWithClassification,
+  DATASET_PRIVATE_TAG,
+  getEditableDatasetTags,
   getDatasetClassification,
   getDatasetTagIdentity,
   getDatasetTagsWithoutClassification,
@@ -42,7 +45,7 @@ describe("dataset-tags", () => {
     );
   });
 
-  it("dedupes reusable tags by normalized label and color while excluding reserved classification tags", () => {
+  it("dedupes reusable tags while excluding reserved classification and private tags", () => {
     expect(
       getReusableDatasetTags([
         {
@@ -60,11 +63,109 @@ describe("dataset-tags", () => {
           label: " watchlist ",
           color: "262531",
         },
+        {
+          id: "private",
+          label: " PRIVATE ",
+          color: "#078bc9",
+        },
       ]),
     ).toEqual([
       {
         id: "tag-1",
         label: "Watchlist",
+        color: "#262531",
+      },
+    ]);
+  });
+
+  it("composes one canonical red Private tag when workspace visibility is disabled", () => {
+    expect(
+      composeDatasetTagsWithWorkspaceVisibility(
+        [
+          {
+            id: "tag-pgac",
+            label: "PGAC",
+            color: "#fcab2a",
+          },
+          {
+            id: "tag-priority",
+            label: "Priority",
+            color: "#262531",
+          },
+          {
+            id: "legacy-private",
+            label: " private ",
+            color: "#078bc9",
+          },
+          {
+            id: "duplicate-private",
+            label: "PRIVATE",
+            color: "#fcab2a",
+          },
+        ],
+        false,
+      ),
+    ).toEqual([
+      {
+        id: "tag-pgac",
+        label: "PGAC",
+        color: "#fcab2a",
+      },
+      {
+        id: "tag-priority",
+        label: "Priority",
+        color: "#262531",
+      },
+      DATASET_PRIVATE_TAG,
+    ]);
+  });
+
+  it("removes every Private variant when workspace visibility is enabled", () => {
+    expect(
+      composeDatasetTagsWithWorkspaceVisibility(
+        [
+          DATASET_PRIVATE_TAG,
+          {
+            id: "tag-priority",
+            label: "Priority",
+            color: "#262531",
+          },
+          {
+            id: "legacy-private",
+            label: "PRIVATE",
+            color: "#078bc9",
+          },
+        ],
+        true,
+      ),
+    ).toEqual([
+      {
+        id: "tag-priority",
+        label: "Priority",
+        color: "#262531",
+      },
+    ]);
+  });
+
+  it("excludes classification and Private tags from editable tag lists", () => {
+    expect(
+      getEditableDatasetTags([
+        {
+          id: "classification",
+          label: "PGIC",
+          color: "#078bc9",
+        },
+        DATASET_PRIVATE_TAG,
+        {
+          id: "tag-priority",
+          label: "Priority",
+          color: "#262531",
+        },
+      ]),
+    ).toEqual([
+      {
+        id: "tag-priority",
+        label: "Priority",
         color: "#262531",
       },
     ]);

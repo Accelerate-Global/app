@@ -26,6 +26,11 @@ export const DATASET_TAG_COLOR_OPTIONS = [
 ] as const;
 
 export const DEFAULT_DATASET_TAG_COLOR = "#262531";
+export const DATASET_PRIVATE_TAG = {
+  id: "dataset-visibility-private",
+  label: "Private",
+  color: "#dc2626",
+} as const satisfies DatasetTag;
 export const DEFAULT_DATASET_CLASSIFICATION: DatasetClassification = "PGAC";
 export const DATASET_CLASSIFICATION_OPTIONS = [
   {
@@ -100,6 +105,13 @@ export function isDatasetClassificationTag(
   );
 }
 
+export function isDatasetPrivateTag(
+  value: Pick<DatasetTag, "label"> | string,
+) {
+  const label = typeof value === "string" ? value : value.label;
+  return label.trim().toLowerCase() === DATASET_PRIVATE_TAG.label.toLowerCase();
+}
+
 export function getDatasetClassificationTags(tags: DatasetTag[]) {
   return normalizeDatasetTags(tags).filter((tag) => isDatasetClassificationTag(tag));
 }
@@ -126,6 +138,27 @@ export function getDatasetTagsWithoutClassification(tags: DatasetTag[]) {
   return normalizeDatasetTags(tags).filter(
     (tag) => !isDatasetClassificationTag(tag),
   );
+}
+
+export function getDatasetTagsWithoutPrivate(tags: DatasetTag[]) {
+  return normalizeDatasetTags(tags).filter((tag) => !isDatasetPrivateTag(tag));
+}
+
+export function getEditableDatasetTags(tags: DatasetTag[]) {
+  return getDatasetTagsWithoutClassification(tags).filter(
+    (tag) => !isDatasetPrivateTag(tag),
+  );
+}
+
+export function composeDatasetTagsWithWorkspaceVisibility(
+  tags: DatasetTag[],
+  isWorkspaceVisible: boolean,
+) {
+  const nonPrivateTags = getDatasetTagsWithoutPrivate(tags);
+
+  return isWorkspaceVisible
+    ? nonPrivateTags
+    : [...nonPrivateTags, { ...DATASET_PRIVATE_TAG }];
 }
 
 export function composeDatasetTagsWithClassification(
@@ -165,7 +198,7 @@ export function getDatasetTagIdentity(tag: Pick<DatasetTag, "label" | "color">) 
 export function getReusableDatasetTags(tags: DatasetTag[]) {
   const seen = new Set<string>();
 
-  return getDatasetTagsWithoutClassification(tags)
+  return getEditableDatasetTags(tags)
     .filter((tag) => {
       const identity = getDatasetTagIdentity(tag);
 

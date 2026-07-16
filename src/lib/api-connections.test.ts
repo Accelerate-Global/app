@@ -12,7 +12,9 @@ import {
   createApiConnectionRunRequest,
   extractApiConnectionResources,
   fetchArcgisFeaturePages,
+  getInitialDatasetWorkspaceVisibility,
   listCodeManagedApiConnections,
+  normalizeGoogleSheetsDatasetSettings,
   parseArcgisFeatureRows,
   parseApiResponseRows,
   resolveGoogleSheetsConnectionTab,
@@ -22,6 +24,43 @@ import type { EtnopediaRecord } from "@/lib/etnopedia-api";
 
 afterEach(() => {
   vi.unstubAllGlobals();
+});
+
+describe("normalizeGoogleSheetsDatasetSettings", () => {
+  it("sanitizes one reviewed name per selected tab", () => {
+    expect(
+      Object.fromEntries(
+        normalizeGoogleSheetsDatasetSettings({
+          selectedSheetIds: [1, 2],
+          datasetSettings: [
+            { sheetId: 1, datasetName: "Reviewed Alpha" },
+            { sheetId: 2, datasetName: "Reviewed / Beta" },
+          ],
+        }) ?? [],
+      ),
+    ).toEqual({ 1: "Reviewed-Alpha", 2: "Reviewed-Beta" });
+  });
+
+  it("preserves legacy omission and rejects incomplete or duplicate settings", () => {
+    expect(
+      normalizeGoogleSheetsDatasetSettings({ selectedSheetIds: [1] }),
+    ).toBeNull();
+    expect(() =>
+      normalizeGoogleSheetsDatasetSettings({
+        selectedSheetIds: [1, 2],
+        datasetSettings: [{ sheetId: 1, datasetName: "People" }],
+      }),
+    ).toThrow("Choose one unique dataset name");
+    expect(() =>
+      normalizeGoogleSheetsDatasetSettings({
+        selectedSheetIds: [1, 2],
+        datasetSettings: [
+          { sheetId: 1, datasetName: "People" },
+          { sheetId: 2, datasetName: "people" },
+        ],
+      }),
+    ).toThrow("Choose one unique dataset name");
+  });
 });
 
 describe("listCodeManagedApiConnections", () => {
@@ -544,6 +583,53 @@ describe("api connection run actor identity", () => {
 });
 
 describe("Google Sheets provider runs", () => {
+  it("uses explicit Google Sheets visibility and defaults legacy connections to visible", () => {
+    expect(
+      getInitialDatasetWorkspaceVisibility({
+        provider: "google_sheets",
+        spreadsheetId: "sheet_123",
+        spreadsheetUrl: "https://docs.google.com/spreadsheets/d/sheet_123/edit",
+        spreadsheetTitle: "Mission Sheet",
+        sheetId: 1,
+        sheetTitle: "Alpha",
+        rangeMode: "full_tab",
+        isWorkspaceVisible: false,
+      }),
+    ).toBe(false);
+    expect(
+      getInitialDatasetWorkspaceVisibility({
+        provider: "google_sheets",
+        spreadsheetId: "legacy_sheet",
+        spreadsheetUrl: "https://docs.google.com/spreadsheets/d/legacy_sheet/edit",
+        spreadsheetTitle: "Legacy Sheet",
+        sheetId: 2,
+        sheetTitle: "Legacy Tab",
+        rangeMode: "full_tab",
+      }),
+    ).toBe(true);
+    expect(
+      getInitialDatasetWorkspaceVisibility({ provider: "http_api" }),
+    ).toBe(true);
+  });
+
+  it("applies configured visibility only when a run creates its dataset", async () => {
+    const source = await readFile(
+      path.join(process.cwd(), "src/lib/api-connections/index.ts"),
+      "utf8",
+    );
+    const replaceStart = source.indexOf("await replaceDatasetContents({");
+    const createStart = source.indexOf(": await createDataset({", replaceStart);
+    const persistEnd = source.indexOf("if (!dataset)", createStart);
+    const replaceCall = source.slice(replaceStart, createStart);
+    const createCall = source.slice(createStart, persistEnd);
+
+    expect(source).toContain("isWorkspaceVisible: input.isWorkspaceVisible");
+    expect(replaceCall).not.toContain("getInitialDatasetWorkspaceVisibility");
+    expect(createCall).toContain(
+      "isWorkspaceVisible: getInitialDatasetWorkspaceVisibility(providerConfig)",
+    );
+  });
+
   it("routes Google Sheets connections through the service-account provider adapter", async () => {
     const adapterSource = await readFile(
       path.join(process.cwd(), "src/lib/api-connections/providers/google-sheets.ts"),

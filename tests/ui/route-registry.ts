@@ -131,6 +131,31 @@ export const smokeRouteSpecs: SmokeRouteSpec[] = [
     pageId: "dataset-edit",
   },
   {
+    id: "dataset-onboarding-pro-redirect",
+    role: "pro",
+    pageFile: "src/app/dashboard/datasets/new/page.tsx",
+    path: "/dashboard/datasets/new",
+    redirectTo: "/dashboard",
+  },
+  {
+    id: "dataset-onboarding-basic-redirect",
+    role: "basic",
+    pageFile: "src/app/dashboard/datasets/new/page.tsx",
+    path: "/dashboard/datasets/new",
+    redirectTo: "/dashboard",
+  },
+  {
+    id: "dataset-onboarding-admin",
+    role: "admin",
+    pageFile: "src/app/dashboard/datasets/new/page.tsx",
+    path: "/dashboard/datasets/new",
+    pageId: "dataset-onboarding",
+    journeys: [
+      "admin can onboard a private Google Sheets dataset",
+      "admin can review a private CSV dataset before upload",
+    ],
+  },
+  {
     id: "field-definitions-pro",
     role: "pro",
     pageFile: "src/app/dashboard/field-definitions/page.tsx",
@@ -366,7 +391,7 @@ export const smokeRouteSpecs: SmokeRouteSpec[] = [
     role: "admin",
     pageFile: "src/app/dashboard/upload/page.tsx",
     path: "/dashboard/upload",
-    pageId: "upload",
+    redirectTo: "/dashboard/datasets/new?source=csv",
     journeys: ["admin can replace a dataset through the real upload flow"],
   },
 ];

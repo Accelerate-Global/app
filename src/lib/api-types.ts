@@ -229,6 +229,8 @@ export type GoogleSheetsConnectionProviderConfig = {
   sheetId: number;
   sheetTitle: string;
   rangeMode: GoogleSheetsRangeMode;
+  isWorkspaceVisible?: boolean;
+  usesCustomDatasetName?: boolean;
   headerSelection?: GoogleSheetsHeaderConfiguration;
 };
 

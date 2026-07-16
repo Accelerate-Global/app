@@ -302,10 +302,12 @@ export const createDatasetSchema = z.object({
   sizeBytes: z.number().int().positive().max(MAX_CSV_BYTES),
   columns: z.array(csvColumnSchema).min(1).max(500),
   classification: datasetClassificationSchema,
+  isWorkspaceVisible: z.boolean().default(true),
 });
 
 export const replaceDatasetSchema = createDatasetSchema.omit({
   fileName: true,
+  isWorkspaceVisible: true,
 });
 
 export const rowBatchSchema = z.object({

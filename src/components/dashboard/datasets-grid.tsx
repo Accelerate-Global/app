@@ -1,6 +1,11 @@
 "use client";
 
-import { DownloadIcon, FileTextIcon, GripVerticalIcon } from "lucide-react";
+import {
+  DownloadIcon,
+  FileTextIcon,
+  GripVerticalIcon,
+  PlusIcon,
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { CSSProperties, KeyboardEvent, MouseEvent, ReactNode } from "react";
@@ -211,13 +216,24 @@ export function DatasetsGrid({
 
   return (
     <section id="datasets" className="space-y-3">
-      <div className="space-y-1">
-        <h2 className="text-2xl font-semibold tracking-[-0.03em] text-foreground">
-          Datasets
-        </h2>
-        <p className="text-sm text-muted-foreground">
-          Source datasets and derived views available to browse, download, and manage.
-        </p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div className="space-y-1">
+          <h2 className="text-2xl font-semibold tracking-[-0.03em] text-foreground">
+            Datasets
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Source datasets and derived views available to browse, download, and manage.
+          </p>
+        </div>
+        {canManageDatasets ? (
+          <Link
+            href="/dashboard/datasets/new"
+            className={buttonVariants({ size: "sm" })}
+          >
+            <PlusIcon />
+            Add dataset
+          </Link>
+        ) : null}
       </div>
 
       <div className="overflow-hidden rounded-xl border border-border bg-background md:overflow-x-auto">

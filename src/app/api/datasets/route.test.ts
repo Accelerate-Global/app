@@ -108,7 +108,35 @@ describe("/api/datasets", () => {
       sizeBytes: 100,
       columns: [{ key: "email", label: "Email", sourceIndex: 0 }],
       classification: "PGAC",
+      isWorkspaceVisible: true,
     });
+  });
+
+  it("creates a reviewed private dataset", async () => {
+    getCurrentIdentityMock.mockResolvedValue(identity);
+    createDatasetMock.mockResolvedValue({ ...dataset, isWorkspaceVisible: false });
+
+    const response = await POST(
+      new Request("http://localhost/api/datasets", {
+        method: "POST",
+        body: JSON.stringify({
+          fileName: "Private people",
+          blobPath: "datasets/csv/customers.csv",
+          sizeBytes: 100,
+          columns: [{ key: "email", label: "Email", sourceIndex: 0 }],
+          classification: "PGAC",
+          isWorkspaceVisible: false,
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(201);
+    expect(createDatasetMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fileName: "Private people",
+        isWorkspaceVisible: false,
+      }),
+    );
   });
 
   it("rejects dataset creation for non-admin users", async () => {

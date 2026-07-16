@@ -238,3 +238,58 @@ serialization.
 #### Scenario: Saved table has no active filters
 - **WHEN** an authenticated saved-table owner downloads a saved table without active filter sections
 - **THEN** the CSV preserves the accessible dataset rows subject only to saved sorting and visible-column serialization
+
+### Requirement: Restricted dataset metadata carries a synchronized Private tag
+
+The system MUST store exactly one canonical red `Private` tag on dataset metadata when the dataset is hidden from non-admin users and MUST store no `Private` tag when the dataset is workspace-visible. Workspace visibility MUST remain the authorization source of truth.
+
+#### Scenario: Admin hides a workspace-visible dataset
+
+- **WHEN** an authenticated admin disables workspace visibility for a dataset
+- **THEN** the dataset becomes inaccessible to non-admin users under the existing access rules
+- **AND** its metadata contains exactly one canonical red `Private` tag
+
+#### Scenario: Admin makes a restricted dataset workspace-visible
+
+- **WHEN** an authenticated admin enables workspace visibility for a restricted dataset
+- **THEN** the dataset becomes accessible to authenticated non-admin workspace users under the existing access rules
+- **AND** its metadata contains no `Private` tag
+
+#### Scenario: A writer submits inconsistent visibility and tag metadata
+
+- **WHEN** an application or database writer stores dataset metadata whose `Private` tags disagree with workspace visibility
+- **THEN** the persisted tags are canonicalized to match workspace visibility
+- **AND** duplicate, differently colored, or case-variant `Private` tags do not remain
+
+#### Scenario: Existing restricted datasets are migrated
+
+- **WHEN** the visibility-linked tag behavior is deployed
+- **THEN** every existing dataset hidden from non-admin users receives the canonical red `Private` tag
+- **AND** existing classification and user-managed tags are preserved
+
+#### Scenario: Non-admin requests a restricted dataset
+
+- **WHEN** an authenticated non-admin user requests a restricted dataset after the tag is added
+- **THEN** the existing not-found access response is preserved
+- **AND** the `Private` tag does not disclose the dataset to that user
+
+### Requirement: New-dataset onboarding explicitly reviews initial access
+The system SHALL show administrators the initial workspace access of every new Google Sheets or CSV dataset before creation while preserving workspace visibility as the authorization source of truth and the current workspace-visible compatibility default.
+
+#### Scenario: Administrator keeps workspace-visible access
+- **WHEN** an administrator confirms onboarding with Everyone in the workspace selected
+- **THEN** each created dataset is workspace-visible under existing application and RLS access rules
+- **AND** its metadata does not contain the system-managed `Private` tag
+
+#### Scenario: Administrator chooses administrators-only access
+- **WHEN** an administrator confirms onboarding with Only administrators selected
+- **THEN** each created dataset is hidden from non-admin users under existing application and RLS access rules
+- **AND** its metadata contains exactly one canonical red `Private` tag
+
+#### Scenario: Legacy creation caller omits access
+- **WHEN** an existing authorized creation caller omits initial workspace visibility
+- **THEN** the system preserves the existing workspace-visible default
+
+#### Scenario: Non-admin attempts onboarding mutation
+- **WHEN** an unauthenticated, `pro`, or `basic` caller attempts to create a dataset or connection through onboarding APIs
+- **THEN** the existing `401 Unauthorized` or `403 Forbidden` mutation behavior is preserved

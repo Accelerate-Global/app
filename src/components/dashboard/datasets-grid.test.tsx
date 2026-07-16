@@ -91,6 +91,9 @@ describe("DatasetsGrid", () => {
     expect(tagsRegion.className).toContain("justify-start");
     expect(tagsRegion.className).toContain("md:justify-center");
     expect(screen.getByRole("heading", { name: "Datasets" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Add dataset" }).getAttribute("href")).toBe(
+      "/dashboard/datasets/new",
+    );
     expect(
       screen.getByText(
         "Source datasets and derived views available to browse, download, and manage.",
@@ -111,5 +114,47 @@ describe("DatasetsGrid", () => {
     expect(editLink.getAttribute("href")).toBe(`/dashboard/datasets/${dataset.id}/edit`);
 
     expect(pushMock).not.toHaveBeenCalled();
+  });
+
+  it("hides Add dataset from non-admin viewers", () => {
+    render(<DatasetsGrid datasets={[dataset]} canManageDatasets={false} />);
+    expect(screen.queryByRole("link", { name: "Add dataset" })).toBeNull();
+  });
+
+  it("renders the red Private tag only on restricted dataset rows", () => {
+    const restrictedDataset = {
+      ...dataset,
+      id: "dataset-private",
+      fileName: "Restricted Dataset",
+      isPrimary: false,
+      isWorkspaceVisible: false,
+      tags: [
+        ...dataset.tags,
+        {
+          id: "dataset-visibility-private",
+          label: "Private",
+          color: "#dc2626",
+        },
+      ],
+    };
+
+    const { container } = render(
+      <DatasetsGrid
+        datasets={[dataset, restrictedDataset]}
+        canManageDatasets
+      />,
+    );
+
+    const visibleRow = container.querySelector(
+      '[data-smoke-dataset-row="dataset-1"]',
+    );
+    const restrictedRow = container.querySelector(
+      '[data-smoke-dataset-row="dataset-private"]',
+    );
+    const privateTag = screen.getByText("Private");
+
+    expect(visibleRow?.textContent).not.toContain("Private");
+    expect(restrictedRow?.textContent).toContain("Private");
+    expect(privateTag.getAttribute("style")).toContain("rgba(220, 38, 38");
   });
 });

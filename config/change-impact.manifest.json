@@ -314,6 +314,25 @@
       "bootstrapScope": "datasets"
     },
     {
+      "id": "dataset-onboarding",
+      "label": "Dataset onboarding flow",
+      "patterns": [
+        "src/app/dashboard/datasets/new/**",
+        "src/components/dashboard/dataset-onboarding/**"
+      ],
+      "routeIds": [
+        "dataset-onboarding-pro-redirect",
+        "dataset-onboarding-basic-redirect",
+        "dataset-onboarding-admin"
+      ],
+      "journeyTitles": [
+        "admin can onboard a private Google Sheets dataset",
+        "admin can review a private CSV dataset before upload"
+      ],
+      "projectNames": ["desktop-pro", "desktop-basic", "desktop-admin"],
+      "bootstrapScope": "admin-config"
+    },
+    {
       "id": "upload",
       "label": "Upload route and dataset replacement flow",
       "patterns": [
@@ -374,6 +393,7 @@
         "api-connections-basic-redirect",
         "api-connections-admin"
       ],
+      "journeyTitles": ["admin can onboard a private Google Sheets dataset"],
       "projectNames": ["desktop-pro", "desktop-basic", "desktop-admin"],
       "bootstrapScope": "admin-config"
     },

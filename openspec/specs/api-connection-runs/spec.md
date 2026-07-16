@@ -160,15 +160,15 @@ The system SHALL normalize Etnopedia people-group data into the script-compatibl
 - **THEN** the system uses the existing generic parsing behavior and does not apply Etnopedia MediaWiki fetching or wikitext parsing
 
 ### Requirement: API Connections web dashboard omits saved profile configuration
-The system SHALL present the admin API Connections page as an operational dashboard for saved API connection records without exposing generic saved request configuration or generic web profile creation controls.
+The system SHALL present the admin API Connections page as a Data sources operational dashboard for saved API connection records without exposing generic saved request configuration, generic web profile creation controls, or the Google Sheets onboarding form.
 
 #### Scenario: Admin views saved connection without configuration fields
-- **WHEN** a dataset admin opens the API Connections page and saved connections exist
-- **THEN** the page shows selectable saved connections, service-account Google Sheets creation entry points, and operational run controls without showing generic URL, method, headers, body, response parsing, import configuration, preset, save, delete, or profile editing controls
+- **WHEN** a dataset admin opens the Data sources page and saved connections exist
+- **THEN** the page shows selectable saved connections and an Add dataset link without showing generic URL, method, headers, body, response parsing, import configuration, preset, save, delete, profile editing, or inline Google Sheets creation controls
 
 #### Scenario: Admin views empty saved connection list
-- **WHEN** a dataset admin opens the API Connections page and no saved connections exist
-- **THEN** the page explains that no API connections are available and offers only the service-account Google Sheets connection flow, not generic API profile creation
+- **WHEN** a dataset admin opens the Data sources page and no saved connections exist
+- **THEN** the page explains that no data sources are connected and offers the Add dataset workflow, not generic API profile creation
 
 ### Requirement: API connection profile writes are unavailable through web HTTP endpoints
 The system SHALL keep generic API connection profile creation, update, and deletion unavailable through the admin web HTTP API while preserving authorized read, run, history, detail, download, and provider-specific Google Sheets service-account connection behavior.
@@ -212,24 +212,24 @@ The system SHALL materialize a repo-owned API connection into the existing priva
 - **THEN** the system exposes only the required secret header name and does not include a secret value in tracked source, saved connection URLs, logs, previews, or output artifacts
 
 ### Requirement: API Connections index lists available connections
-The system SHALL present `/dashboard/api-connections` as an admin-only Datasets surface with a simple table of available API connection records.
+The system SHALL present `/dashboard/api-connections` as an admin-only Data sources surface with a simple table of available API connection records.
 
 #### Scenario: Admin browses available connections
 - **WHEN** a dataset admin opens `/dashboard/api-connections`
-- **THEN** the page shows a `Datasets` heading and a `Connections` table with connection, classification, and last ingestion columns
-- **AND** the page does not show search, classification filter, status filter, or index status column controls
+- **THEN** the page shows a `Data sources` heading, an Add dataset action, and a table with source, classification, and last ingestion columns
+- **AND** the page does not show search, classification filter, status filter, index status column controls, or inline source onboarding
 
 #### Scenario: Admin selects a connection
 - **WHEN** a dataset admin clicks or keyboard-selects an API connection row
 - **THEN** the system navigates to that connection's dedicated dashboard page
 
 ### Requirement: API connection detail dashboard supports run operations
-The system SHALL provide an admin-only detail page for each API connection that supports existing test and import run operations.
+The system SHALL provide an admin-only detail page for each API connection that leads with source identity, target dataset, current status, and supported run actions while keeping run detail and ingestion history available as secondary diagnostics.
 
 #### Scenario: Admin views a connection detail page
 - **WHEN** a dataset admin opens `/dashboard/api-connections/{connectionId}` for a known materialized or repo-owned connection
-- **THEN** the page shows the connection name, description, current status, pipeline skeleton, run actions, collapsed Run Detail section, and collapsed Ingestion History section
-- **AND** Run Detail appears before Ingestion History
+- **THEN** the page shows the connection name, source information, current status, target dataset when present, test/import actions, and collapsed diagnostic detail/history
+- **AND** the page does not show disabled future pipeline-stage controls
 
 #### Scenario: Unknown connection detail page
 - **WHEN** a dataset admin opens `/dashboard/api-connections/{connectionId}` for an unknown connection
@@ -238,17 +238,6 @@ The system SHALL provide an admin-only detail page for each API connection that 
 #### Scenario: Non-admin cannot view detail page
 - **WHEN** an unauthenticated user or non-admin user opens a connection detail page
 - **THEN** the system applies the existing API Connections admin redirect behavior
-
-### Requirement: Pipeline stages are visual skeleton only
-The system SHALL show pipeline stages for a selected API connection while keeping independent stage execution disabled in v1.
-
-#### Scenario: Admin views pipeline skeleton
-- **WHEN** a dataset admin views an API connection detail page
-- **THEN** the page shows Configure, Fetch, Normalize, Archive Output, and Import Dataset stages as disabled coming-soon controls
-
-#### Scenario: Admin starts supported v1 work
-- **WHEN** a dataset admin starts a run from the detail page
-- **THEN** `Run test` uses the existing test run behavior and `Start ingestion` uses the existing import run behavior
 
 ### Requirement: Ingestion history uses DataGrid
 The system SHALL list each initiated run for a connection as an ingestion row using the existing DataGrid table interface.
@@ -331,16 +320,16 @@ metadata while preserving URL, display text, and source provenance metadata.
 - **AND** captured resource rows do not show category metadata or an uncategorized placeholder
 
 ### Requirement: Dataset admins create Google Sheets connections with service-account sharing
-The system SHALL allow dataset admins to create private Google Sheets API connections by sharing a Google Sheet with the configured app service account and checking service-account access from the admin API Connections surface.
+The system SHALL allow dataset admins to create private Google Sheets API connections through the Add dataset workflow by sharing a Google Sheet with the configured app service account and checking service-account access.
 
-#### Scenario: Admin views the service-account connection surface
-- **WHEN** a dataset admin opens the Google Sheets connection surface
+#### Scenario: Admin views the service-account connection stage
+- **WHEN** a dataset admin chooses Google Sheet in the Add dataset workflow
 - **THEN** the system shows the app service account email as a copyable value
-- **AND** the system shows a Google Sheet URL input, a Check access action, tab selection, classification selection, and a Connect action
+- **AND** the system shows a Google Sheet URL input and Check access action before tab, header, classification, access, and import review
 - **AND** the system does not show an account authorization or public-Sheet publishing path
 
 #### Scenario: Service account environment is not configured
-- **WHEN** a dataset admin opens the Google Sheets connection surface or checks access while service-account credentials are missing or invalid
+- **WHEN** a dataset admin opens the Google Sheets connection stage or checks access while service-account credentials are missing or invalid
 - **THEN** the system shows that Google Sheets service-account access is not configured
 - **AND** the system does not create an API connection or dataset
 
@@ -369,6 +358,22 @@ The system SHALL allow dataset admins to create private Google Sheets API connec
 - **THEN** the system rejects the request using the existing API Connections admin authorization behavior
 - **AND** the system does not expose service-account configuration beyond the public app email
 - **AND** the system does not create, modify, or delete API connections
+
+### Requirement: Google Sheets connections accept reviewed dataset names
+The system SHALL accept one reviewed dataset name per selected Sheet tab while preserving backward compatibility for callers that omit reviewed names.
+
+#### Scenario: Onboarding submits reviewed names
+- **WHEN** an authorized connect request supplies one valid unique dataset name for every selected stable `sheetId`
+- **THEN** each created connection and its first imported dataset use the reviewed name
+- **AND** provider metadata retains the source spreadsheet and tab titles independently
+
+#### Scenario: Legacy caller omits reviewed names
+- **WHEN** an authorized valid connect request omits reviewed dataset settings
+- **THEN** the system derives names from the spreadsheet and tab titles using the existing behavior
+
+#### Scenario: Reviewed names are incomplete or duplicated
+- **WHEN** reviewed settings omit a selected tab, include an unselected tab, or contain case-insensitive duplicate names
+- **THEN** the system rejects the request without creating any connections
 
 ### Requirement: Connected Google Sheets actions support service-account management
 The system SHALL expose active Google Sheets connection actions that let dataset
@@ -521,3 +526,53 @@ The system SHALL update the connection detail experience when a queued or runnin
 #### Scenario: Import fails
 - **WHEN** polling observes that an import changed from queued or running to failed
 - **THEN** the UI replaces the queued message with the redacted failure result and does not expose navigation to a dataset that was not created
+
+### Requirement: Google Sheets setup collects initial dataset visibility
+The system SHALL ask an administrator whether datasets created from the selected Google Sheet tabs are workspace-visible, SHALL apply one choice to all tabs selected in the connection action, and SHALL default the choice to workspace-visible.
+
+#### Scenario: Visibility choice is shown during setup
+- **WHEN** an administrator checks access to a Google Sheet and selects one or more tabs for connection
+- **THEN** the setup flow shows a workspace-visible dataset control
+- **AND** the control explains that the choice applies to datasets created from all selected tabs
+- **AND** the control is enabled by default
+
+#### Scenario: Administrator previews a private import
+- **WHEN** the administrator disables workspace visibility in the Google Sheets setup flow
+- **THEN** the flow shows the red system-managed `Private` tag
+- **AND** the flow states that the selected tabs will create datasets hidden from non-admin users
+
+#### Scenario: Administrator connects multiple private tabs
+- **WHEN** the administrator selects multiple tabs, disables workspace visibility, and confirms the connection
+- **THEN** the system creates one connection per selected tab with private initial dataset visibility
+- **AND** each connection's first successful import creates a dataset hidden from non-admin users
+- **AND** each created dataset has the red system-managed `Private` tag
+
+#### Scenario: Administrator keeps imported datasets workspace-visible
+- **WHEN** the administrator leaves workspace visibility enabled and confirms the connection
+- **THEN** each selected tab's connection records workspace-visible initial dataset visibility
+- **AND** each connection's first successful import creates a dataset visible to non-admin users
+- **AND** the system does not apply the system-managed `Private` tag
+
+### Requirement: Google Sheets dataset visibility remains backward-compatible
+The system MUST preserve the previous workspace-visible behavior for callers and connection records that do not contain an initial dataset visibility choice, and MUST NOT reapply an initial connection choice after a dataset exists.
+
+#### Scenario: Connect request omits visibility
+- **WHEN** an authorized legacy caller submits a valid Google Sheets connection request without a dataset visibility field
+- **THEN** the system creates the connections with workspace-visible initial dataset visibility
+
+#### Scenario: Legacy connection performs its first import
+- **WHEN** a Google Sheets connection without a stored visibility choice completes its first successful import
+- **THEN** the system creates a workspace-visible dataset
+
+#### Scenario: Existing dataset is refreshed
+- **WHEN** a Google Sheets connection refreshes a dataset that already exists
+- **THEN** the system preserves the dataset's current workspace visibility
+- **AND** the system preserves the corresponding system-managed `Private` tag invariant
+
+### Requirement: Imported dataset privacy is distinct from source Sheet sharing
+The Google Sheets setup flow MUST distinguish imported dataset visibility from the source Sheet sharing required for service-account access.
+
+#### Scenario: Administrator reviews privacy guidance
+- **WHEN** the setup flow displays both service-account sharing instructions and the dataset visibility choice
+- **THEN** the sharing instructions describe access to the source Google Sheet
+- **AND** the visibility choice describes access by non-admin users to the imported datasets

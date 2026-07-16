@@ -30,7 +30,18 @@ const googleSheetsConnectSchema = z.object({
     )
     .min(1)
     .max(50),
+  datasetSettings: z
+    .array(
+      z.object({
+        sheetId: z.number().int().nonnegative(),
+        datasetName: z.string().trim().min(1).max(255),
+      }),
+    )
+    .min(1)
+    .max(50)
+    .optional(),
   datasetClassification: z.enum(["PGAC", "PGIC"]).default("PGAC"),
+  isWorkspaceVisible: z.boolean().default(true),
 });
 
 export const POST = withRoute(
@@ -49,7 +60,9 @@ export const POST = withRoute(
         spreadsheetUrl: parsed.data.spreadsheetUrl,
         selectedSheetIds: parsed.data.selectedSheetIds,
         headerSelections: parsed.data.headerSelections,
+        datasetSettings: parsed.data.datasetSettings,
         datasetClassification: parsed.data.datasetClassification,
+        isWorkspaceVisible: parsed.data.isWorkspaceVisible,
       });
 
       return Response.json({ connections }, { status: 201 });

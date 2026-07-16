@@ -16,6 +16,7 @@ export const APP_ANALYTICS_ROUTES = [
   "dashboard",
   "dataset_detail",
   "dataset_edit",
+  "dataset_onboarding",
   "upload",
   "user_management",
   "profile",
@@ -41,6 +42,20 @@ export type DatasetUploadFailureStage =
   | "dataset_replace"
   | "row_persist"
   | "mark_failed";
+
+export type DatasetOnboardingSourceType =
+  | "unselected"
+  | "google_sheets"
+  | "csv";
+
+export type DatasetOnboardingStage =
+  | "source"
+  | "connect"
+  | "structure"
+  | "details"
+  | "review"
+  | "import"
+  | "complete";
 
 export type AppAnalyticsContext = {
   route: AppAnalyticsRoute;
@@ -196,6 +211,27 @@ export type AppAnalyticsEventMap = {
     column_count: number;
     row_count: number;
   };
+  dataset_onboarding_stage_viewed: AppAnalyticsEventBase & {
+    source_type: DatasetOnboardingSourceType;
+    onboarding_stage: DatasetOnboardingStage;
+    selected_dataset_count: number;
+    header_confidence_category:
+      | "not_applicable"
+      | "pending"
+      | "high"
+      | "needs_review";
+  };
+  dataset_onboarding_completed: AppAnalyticsEventBase & {
+    source_type: Exclude<DatasetOnboardingSourceType, "unselected">;
+    selected_dataset_count: number;
+    is_workspace_visible: boolean;
+  };
+  dataset_onboarding_failed: AppAnalyticsEventBase & {
+    source_type: Exclude<DatasetOnboardingSourceType, "unselected">;
+    onboarding_stage: "connect" | "import";
+    selected_dataset_count: number;
+    is_workspace_visible: boolean;
+  };
   dataset_metadata_saved: AppAnalyticsEventBase & {
     dataset_id: string;
     renamed: boolean;
@@ -320,6 +356,9 @@ export const APP_ANALYTICS_EVENT_NAMES = [
   "dataset_upload_completed",
   "dataset_upload_failed",
   "dataset_replaced",
+  "dataset_onboarding_stage_viewed",
+  "dataset_onboarding_completed",
+  "dataset_onboarding_failed",
   "dataset_metadata_saved",
   "dataset_assigned",
   "dataset_version_reverted",
@@ -431,6 +470,23 @@ const APP_ANALYTICS_EVENT_PROPERTY_KEYS = {
     "file_size_bytes",
     "column_count",
     "row_count",
+  ],
+  dataset_onboarding_stage_viewed: [
+    "source_type",
+    "onboarding_stage",
+    "selected_dataset_count",
+    "header_confidence_category",
+  ],
+  dataset_onboarding_completed: [
+    "source_type",
+    "selected_dataset_count",
+    "is_workspace_visible",
+  ],
+  dataset_onboarding_failed: [
+    "source_type",
+    "onboarding_stage",
+    "selected_dataset_count",
+    "is_workspace_visible",
   ],
   dataset_metadata_saved: [
     "renamed",
@@ -575,6 +631,10 @@ export function getAnalyticsRouteFromPathname(
 
   if (pathname === "/dashboard/upload") {
     return "upload";
+  }
+
+  if (pathname === "/dashboard/datasets/new") {
+    return "dataset_onboarding";
   }
 
   if (pathname === "/dashboard/user-management") {

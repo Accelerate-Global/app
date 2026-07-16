@@ -83,3 +83,53 @@ thousands separators while preserving raw dataset values for data operations.
 - **WHEN** a dataset table renders an integer value in a column that is not
   identified as a population column
 - **THEN** the visible cell value remains unchanged
+
+### Requirement: Admin dataset surfaces identify restricted datasets with a Private tag
+
+The system SHALL show a canonical red `Private` tag on admin dataset surfaces whenever a dataset is hidden from non-admin users and SHALL treat the tag as system-managed.
+
+#### Scenario: Admin browses restricted datasets
+
+- **WHEN** an authenticated admin views the dashboard dataset list
+- **THEN** each restricted dataset row displays a red `Private` tag in its Tags column
+- **AND** workspace-visible dataset rows do not display the `Private` tag
+
+#### Scenario: Admin disables workspace visibility while editing
+
+- **WHEN** an authenticated admin turns off the Workspace-visible dataset control
+- **THEN** the Tags section immediately displays the red `Private` tag
+- **AND** the existing hidden-from-non-admin explanatory message remains visible
+
+#### Scenario: Admin enables workspace visibility while editing
+
+- **WHEN** an authenticated admin turns on the Workspace-visible dataset control
+- **THEN** the `Private` tag immediately disappears from the Tags section
+
+#### Scenario: Admin manages ordinary dataset tags
+
+- **WHEN** an authenticated admin creates, reuses, edits, or removes dataset tags
+- **THEN** `Private` is unavailable as a freeform or reusable tag
+- **AND** the admin cannot recolor, rename, duplicate, or remove the visibility-managed `Private` tag independently of the workspace visibility control
+
+### Requirement: Dashboard provides one administrator dataset-onboarding entry
+The system SHALL show administrators one Add dataset action on the dashboard and SHALL route supported new-source creation through the guided onboarding page.
+
+#### Scenario: Administrator adds a dataset from the dashboard
+- **WHEN** an administrator selects Add dataset beside the dashboard dataset list
+- **THEN** the system navigates to `/dashboard/datasets/new`
+- **AND** the administrator chooses Google Sheet or CSV inside that workflow
+
+#### Scenario: Non-admin views the dashboard
+- **WHEN** a `pro` or `basic` user views the dashboard dataset list
+- **THEN** the Add dataset action is not shown
+
+### Requirement: New upload URLs preserve compatible navigation
+The system SHALL route new CSV creation into onboarding while preserving the existing dataset replacement route and version-history behavior.
+
+#### Scenario: Administrator opens legacy new upload URL
+- **WHEN** an administrator opens `/dashboard/upload` without a replacement identifier
+- **THEN** the system redirects to `/dashboard/datasets/new?source=csv`
+
+#### Scenario: Administrator opens replacement URL
+- **WHEN** an administrator opens `/dashboard/upload?replace={datasetId}` for an existing dataset
+- **THEN** the existing replacement interface renders and preserves version-history behavior

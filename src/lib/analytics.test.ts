@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   getAnalyticsEventPropertyKeys,
+  getAnalyticsEventProps,
   getAnalyticsWorkspaceRole,
   getAnalyticsRouteFromPathname,
   getSortingKeys,
@@ -114,6 +115,9 @@ describe("analytics helpers", () => {
     expect(
       getAnalyticsRouteFromPathname("/dashboard/datasets/123/edit"),
     ).toBe("dataset_edit");
+    expect(
+      getAnalyticsRouteFromPathname("/dashboard/datasets/new"),
+    ).toBe("dataset_onboarding");
     expect(
       getAnalyticsRouteFromPathname("/dashboard/field-sources"),
     ).toBe("field_sources");
@@ -233,5 +237,30 @@ describe("analytics helpers", () => {
       "from_theme",
       "to_theme",
     ]);
+  });
+
+  it("keeps dataset onboarding analytics limited to privacy-safe funnel fields", () => {
+    expect(
+      getAnalyticsEventPropertyKeys("dataset_onboarding_stage_viewed"),
+    ).toEqual([
+      "source_type",
+      "onboarding_stage",
+      "selected_dataset_count",
+      "header_confidence_category",
+    ]);
+    expect(
+      getAnalyticsEventProps("dataset_onboarding_completed", {
+        source_type: "google_sheets",
+        selected_dataset_count: 2,
+        is_workspace_visible: false,
+        spreadsheet_url: "https://docs.google.com/private",
+        dataset_name: "Sensitive partner name",
+        headers: "People Group|Country",
+      }),
+    ).toEqual({
+      source_type: "google_sheets",
+      selected_dataset_count: 2,
+      is_workspace_visible: false,
+    });
   });
 });
