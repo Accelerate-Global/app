@@ -9,6 +9,9 @@ export type UiSmokeEnv = {
   storageBucket: string;
 };
 
+const UI_SMOKE_GOOGLE_SHEETS_SERVICE_ACCOUNT_EMAIL =
+  "ui-smoke@app-project.iam.gserviceaccount.com";
+
 function requireValue(
   environment: NodeJS.ProcessEnv,
   key: string,
@@ -74,6 +77,9 @@ export function buildUiSmokeCommandEnv(statusEnv: Record<string, string>) {
     ...process.env,
     UI_SMOKE_ENABLED: "1",
     UI_SMOKE_BASE_URL,
+    GOOGLE_SHEETS_SERVICE_ACCOUNT_EMAIL:
+      process.env.GOOGLE_SHEETS_SERVICE_ACCOUNT_EMAIL?.trim() ||
+      UI_SMOKE_GOOGLE_SHEETS_SERVICE_ACCOUNT_EMAIL,
     NEXT_PUBLIC_SUPABASE_URL: supabaseUrl,
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: publishableKey,
     NEXT_PUBLIC_SUPABASE_ANON_KEY: publishableKey,
