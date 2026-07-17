@@ -36,7 +36,8 @@ preserving selectable table body content.
 
 ### Requirement: Dashboard navigation provides immediate transition feedback
 The system SHALL keep the authenticated dashboard frame stable and provide
-immediate visual feedback while dashboard route content loads.
+immediate visual feedback while dashboard route content loads, and SHALL label
+the administrator dataset-creation menu entry `Add Dataset`.
 
 #### Scenario: User navigates from the account menu
 - **WHEN** a signed-in user selects a dashboard page from the account menu
@@ -48,6 +49,11 @@ immediate visual feedback while dashboard route content loads.
 - **WHEN** the destination dashboard page finishes loading its required content
 - **THEN** the rendered page exposes its route-specific page-ready smoke marker
 - **AND** existing page permissions, redirects, and not-found behavior remain unchanged
+
+#### Scenario: Administrator views the dataset-creation menu entry
+- **WHEN** an administrator opens the account menu
+- **THEN** the existing `/dashboard/upload` navigation item is labeled `Add Dataset`
+- **AND** the item remains hidden from non-admin users
 
 ### Requirement: Dashboard dataset rows expose key metadata on mobile
 The system SHALL render dashboard dataset and saved dataset rows so key row
