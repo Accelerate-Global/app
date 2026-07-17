@@ -311,7 +311,7 @@ export function AccountControl({ identity }: AccountControlProps) {
                 icon={DatabaseIcon}
                 onPrefetch={prefetchRoute}
               >
-                Manage Field Sources
+                Field Sources
               </MenuNavigationItem>
               <MenuNavigationItem
                 href="/dashboard/api-connections"

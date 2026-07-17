@@ -14,6 +14,7 @@ import type { CurrentIdentity } from "@/lib/auth";
 import { sanitizeFileName } from "@/lib/csv";
 import { logError } from "@/lib/error-logging";
 
+import { getPartnerExportDownloadFileName } from "./download-file-name";
 import {
   buildPartnerExportPreview,
   getPartnerExportCrosswalk,
@@ -706,6 +707,11 @@ export async function getPartnerExportArtifactDownload(input: {
     return null;
   }
 
+  const source = await getSourceDatasetRecord(input.datasetId);
+  if (!source) {
+    return null;
+  }
+
   const path =
     input.kind === "csv"
       ? run.csvStoragePath
@@ -724,10 +730,12 @@ export async function getPartnerExportArtifactDownload(input: {
   return {
     body,
     contentType: input.kind === "csv" ? "text/csv" : "application/json",
-    fileName:
-      input.kind === "csv"
-        ? `${run.profileRevision.fileNameStem}.csv`
-        : `${run.profileRevision.fileNameStem}-${input.kind}.json`,
+    fileName: getPartnerExportDownloadFileName({
+      datasetName: source.fileName,
+      profileFileNameStem: run.profileRevision.fileNameStem,
+      kind: input.kind,
+      downloadedAt: new Date(),
+    }),
   };
 }
 

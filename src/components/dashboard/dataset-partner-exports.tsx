@@ -542,7 +542,7 @@ export function DatasetPartnerExports({
 
       <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
         <SheetContent
-          className="w-full sm:max-w-5xl"
+          className="data-[side=right]:w-full! data-[side=right]:sm:w-2/3! data-[side=right]:sm:max-w-none!"
           data-smoke-surface="partner-export-profile-sheet"
           data-smoke-ready="partner-export-profile-sheet"
         >
@@ -569,8 +569,21 @@ export function DatasetPartnerExports({
                 </select>
               </label>
               <label className="space-y-1.5 text-sm font-medium">
-                Download filename
-                <input className={inputClassName} value={draft.fileNameStem} onChange={(event) => setDraft((current) => ({ ...current, fileNameStem: event.target.value }))} />
+                <span>Download filename label</span>
+                <input
+                  aria-label="Download filename label"
+                  className={inputClassName}
+                  value={draft.fileNameStem}
+                  onChange={(event) =>
+                    setDraft((current) => ({
+                      ...current,
+                      fileNameStem: event.target.value,
+                    }))
+                  }
+                />
+                <span className="block text-xs font-normal leading-5 text-muted-foreground">
+                  Dataset name and UTC download timestamp are added automatically.
+                </span>
               </label>
             </div>
 
