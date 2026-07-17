@@ -20,7 +20,7 @@ export default async function ApiConnectionsPage() {
     redirect("/dashboard");
   }
 
-  const { connections, runs, resources } = await listApiConnections();
+  const { connections, runs } = await listApiConnections();
 
   return (
     <div
@@ -45,10 +45,10 @@ export default async function ApiConnectionsPage() {
             </span>
             <div className="space-y-2">
               <h1 className="text-4xl font-semibold tracking-[-0.04em] sm:text-[3.1rem]">
-                Data sources
+                Connections
               </h1>
               <p className="max-w-3xl text-base leading-7 text-muted-foreground sm:text-lg">
-                Refresh connected sources, open imported datasets, and review
+                Add and refresh connections, open imported datasets, and review
                 diagnostics.
               </p>
             </div>
@@ -58,7 +58,6 @@ export default async function ApiConnectionsPage() {
         <ApiConnectionsClient
           initialConnections={connections}
           initialRuns={runs}
-          initialResources={resources}
         />
       </DashboardPageShell>
     </div>

@@ -210,6 +210,9 @@ describe("DatasetOnboardingClient", () => {
     expect(screen.getByRole("heading", { name: "Choose a source" })).toBeTruthy();
     expect(screen.getByRole("button", { name: /Google Sheet/ })).toBeTruthy();
     expect(screen.getByRole("button", { name: /CSV file/ })).toBeTruthy();
+    expect(
+      screen.getByRole("link", { name: "Open Connections" }).getAttribute("href"),
+    ).toBe("/dashboard/api-connections");
     expect(document.querySelector('[aria-current="step"]')?.textContent).toContain(
       "Source",
     );

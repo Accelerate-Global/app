@@ -29,6 +29,7 @@ export default async function DatasetOnboardingPage({
   const sourceParam = (await searchParams).source;
   const initialSource: OnboardingSource | null =
     sourceParam === "google-sheets" || sourceParam === "csv" ? sourceParam : null;
+  const isConnectionFlow = initialSource === "google-sheets";
 
   return (
     <div
@@ -38,11 +39,12 @@ export default async function DatasetOnboardingPage({
       <DashboardPageShell>
         <section className="space-y-2">
           <h1 className="text-4xl font-semibold tracking-[-0.04em] sm:text-[3.1rem]">
-            Add dataset
+            {isConnectionFlow ? "Add connection" : "Add dataset"}
           </h1>
           <p className="max-w-3xl text-base leading-7 text-muted-foreground sm:text-lg">
-            Connect a Google Sheet or upload a CSV, review how it will appear, and
-            import it into Accelerate.
+            {isConnectionFlow
+              ? "Connect a Google Sheet, review how its datasets will appear, and import them into Accelerate."
+              : "Connect a Google Sheet or upload a CSV, review how it will appear, and import it into Accelerate."}
           </p>
         </section>
         <DatasetOnboardingClient

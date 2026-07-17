@@ -26,17 +26,12 @@ vi.mock("@/lib/api-connections", () => ({
 vi.mock("@/components/dashboard/api-connections-client", () => ({
   ApiConnectionsClient: ({
     initialConnections,
-    initialResources,
   }: {
     initialConnections: Array<{ name: string }>;
-    initialResources: Array<{ resourceUrl: string }>;
   }) => (
     <div data-testid="api-connections-client">
       {initialConnections.map((connection) => (
         <span key={connection.name}>{connection.name}</span>
-      ))}
-      {initialResources.map((resource) => (
-        <span key={resource.resourceUrl}>{resource.resourceUrl}</span>
       ))}
     </div>
   ),
@@ -148,10 +143,10 @@ describe("/dashboard/api-connections", () => {
     render(await ApiConnectionsPage());
 
     expect(document.querySelector(".max-w-7xl")).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "Data sources" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Connections" })).toBeTruthy();
     expect(screen.getByText("IMB (People Groups)")).toBeTruthy();
     expect(screen.getByText("Etnopedia")).toBeTruthy();
-    expect(screen.getByText("https://example.com/resource")).toBeTruthy();
+    expect(screen.queryByText("https://example.com/resource")).toBeNull();
     expect(screen.getByTestId("api-connections-client")).toBeTruthy();
     expect(screen.queryByLabelText("URL")).toBeNull();
     expect(screen.queryByRole("button", { name: "Save" })).toBeNull();

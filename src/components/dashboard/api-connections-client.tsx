@@ -1,6 +1,6 @@
 "use client";
 
-import { CableIcon, FileTextIcon, PlusIcon } from "lucide-react";
+import { CableIcon, PlusIcon } from "lucide-react";
 import Link from "next/link";
 import { useMemo, type KeyboardEvent } from "react";
 import { useRouter } from "next/navigation";
@@ -24,7 +24,6 @@ import {
 } from "@/components/ui/table";
 import type {
   ApiConnection,
-  ApiConnectionResource,
   ApiConnectionRun,
   GoogleSheetsConnectionProviderConfig,
 } from "@/lib/api-types";
@@ -32,21 +31,7 @@ import type {
 type ApiConnectionsClientProps = {
   initialConnections: ApiConnection[];
   initialRuns: ApiConnectionRun[];
-  initialResources: ApiConnectionResource[];
 };
-
-const builtInResources = [
-  {
-    id: "iso3-country-codes",
-    webText: "Country & territory code resource",
-    resourceUrl: "/dashboard/country-codes",
-  },
-  {
-    id: "rop-codes",
-    webText: "ROP Codes resource",
-    resourceUrl: "/dashboard/rop-codes",
-  },
-] as const;
 
 function formatTimestamp(value: string | null) {
   if (!value) return "No ingestions yet";
@@ -92,7 +77,6 @@ function getConnectionSecondaryText(connection: ApiConnection) {
 export function ApiConnectionsClient({
   initialConnections,
   initialRuns,
-  initialResources,
 }: ApiConnectionsClientProps) {
   const router = useRouter();
   const latestRunsByConnection = useMemo(
@@ -125,18 +109,17 @@ export function ApiConnectionsClient({
             </CardDescription>
           </div>
           <Link
-            href="/dashboard/datasets/new"
+            href="/dashboard/datasets/new?source=google-sheets"
             className={buttonVariants({ size: "sm" })}
           >
             <PlusIcon className="size-4" />
-            Add dataset
+            Add connection
           </Link>
         </CardHeader>
         <CardContent>
           {initialConnections.length === 0 ? (
             <div className="rounded-xl border border-dashed border-border px-4 py-8 text-sm text-muted-foreground">
-              No data sources are connected yet. Add a dataset to connect a Google
-              Sheet or upload a CSV.
+              No connections exist yet. Add a connection to connect a Google Sheet.
             </div>
           ) : (
             <Table>
@@ -190,58 +173,6 @@ export function ApiConnectionsClient({
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader className="gap-1">
-          <CardTitle className="flex items-center gap-2 text-xl">
-            <FileTextIcon className="size-5 text-muted-foreground" />
-            Reference resources
-          </CardTitle>
-          <CardDescription>
-            Built-in references and documents captured from successful source runs.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Table>
-            <TableBody>
-              {[...builtInResources, ...initialResources].map((resource) => {
-                const isBuiltIn = "id" in resource &&
-                  builtInResources.some((item) => item.id === resource.id);
-                const label = resource.webText || "Captured resource";
-                const url = resource.resourceUrl;
-                return (
-                  <TableRow
-                    key={resource.id}
-                    tabIndex={0}
-                    aria-label={`Open ${label}`}
-                    className="cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-2"
-                    onClick={() =>
-                      isBuiltIn
-                        ? router.push(url)
-                        : window.open(url, "_blank", "noreferrer")
-                    }
-                    onKeyDown={(event) =>
-                      handleRowKeyDown(event, () =>
-                        isBuiltIn
-                          ? router.push(url)
-                          : window.open(url, "_blank", "noreferrer"),
-                      )
-                    }
-                  >
-                    <TableCell className="whitespace-normal font-medium">
-                      {label}
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-          {initialResources.length === 0 ? (
-            <p className="rounded-xl border border-dashed border-border px-4 py-6 text-sm text-muted-foreground">
-              No captured source resources yet.
-            </p>
-          ) : null}
-        </CardContent>
-      </Card>
     </div>
   );
 }

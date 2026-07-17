@@ -67,4 +67,23 @@ describe("/dashboard/datasets/new", () => {
     expect(screen.getByTestId("onboarding-client").textContent).toBe("csv");
     expect(document.querySelector('[data-smoke-page="dataset-onboarding"]')).toBeTruthy();
   });
+
+  it("labels the Google Sheets deep link as Add connection", async () => {
+    getCurrentIdentityMock.mockResolvedValue({
+      ownerId: "admin-1",
+      email: "admin@example.com",
+      fullName: "Admin",
+      workspaceRole: "admin",
+      isDatasetAdmin: true,
+      mode: "supabase",
+    });
+    render(
+      await DatasetOnboardingPage({
+        searchParams: Promise.resolve({ source: "google-sheets" }),
+      }),
+    );
+    expect(screen.getByRole("heading", { name: "Add connection" })).toBeTruthy();
+    expect(screen.getByText(/Connect a Google Sheet/)).toBeTruthy();
+    expect(screen.getByTestId("onboarding-client").textContent).toBe("google-sheets");
+  });
 });

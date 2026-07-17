@@ -65,13 +65,12 @@ describe("ApiConnectionsClient", () => {
       <ApiConnectionsClient
         initialConnections={[connection]}
         initialRuns={[run]}
-        initialResources={[]}
       />,
     );
 
     expect(screen.getByText("Connected sources")).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Add dataset" }).getAttribute("href")).toBe(
-      "/dashboard/datasets/new",
+    expect(screen.getByRole("link", { name: "Add connection" }).getAttribute("href")).toBe(
+      "/dashboard/datasets/new?source=google-sheets",
     );
     expect(screen.getByText("Source")).toBeTruthy();
     expect(screen.getByText("Reviewed people dataset")).toBeTruthy();
@@ -87,7 +86,6 @@ describe("ApiConnectionsClient", () => {
       <ApiConnectionsClient
         initialConnections={[connection]}
         initialRuns={[]}
-        initialResources={[]}
       />,
     );
     const row = screen.getByText(connection.name).closest("tr")!;
@@ -102,17 +100,14 @@ describe("ApiConnectionsClient", () => {
     );
   });
 
-  it("shows a guided empty state and secondary resources", () => {
+  it("shows a guided empty state without secondary resources", () => {
     render(
       <ApiConnectionsClient
         initialConnections={[]}
         initialRuns={[]}
-        initialResources={[]}
       />,
     );
-    expect(screen.getByText(/No data sources are connected yet/)).toBeTruthy();
-    expect(screen.getByText("Reference resources")).toBeTruthy();
-    expect(screen.getByText("Country & territory code resource")).toBeTruthy();
-    expect(screen.getByText("No captured source resources yet.")).toBeTruthy();
+    expect(screen.getByText(/No connections exist yet/)).toBeTruthy();
+    expect(screen.queryByText("Reference resources")).toBeNull();
   });
 });

@@ -318,7 +318,7 @@ export function AccountControl({ identity }: AccountControlProps) {
                 icon={CableIcon}
                 onPrefetch={prefetchRoute}
               >
-                Datasets
+                Connections
               </MenuNavigationItem>
               <MenuNavigationItem
                 href="/dashboard/analytics"

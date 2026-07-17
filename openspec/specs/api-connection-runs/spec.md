@@ -160,15 +160,15 @@ The system SHALL normalize Etnopedia people-group data into the script-compatibl
 - **THEN** the system uses the existing generic parsing behavior and does not apply Etnopedia MediaWiki fetching or wikitext parsing
 
 ### Requirement: API Connections web dashboard omits saved profile configuration
-The system SHALL present the admin API Connections page as a Data sources operational dashboard for saved API connection records without exposing generic saved request configuration, generic web profile creation controls, or the Google Sheets onboarding form.
+The system SHALL present the admin API Connections page as a Connections operational dashboard for saved API connection records without exposing generic saved request configuration, generic web profile creation controls, the Google Sheets onboarding form, or reference resources.
 
 #### Scenario: Admin views saved connection without configuration fields
-- **WHEN** a dataset admin opens the Data sources page and saved connections exist
-- **THEN** the page shows selectable saved connections and an Add dataset link without showing generic URL, method, headers, body, response parsing, import configuration, preset, save, delete, profile editing, or inline Google Sheets creation controls
+- **WHEN** a dataset admin opens the Connections page and saved connections exist
+- **THEN** the page shows selectable saved connections and an Add connection link without showing generic URL, method, headers, body, response parsing, import configuration, preset, save, delete, profile editing, inline Google Sheets creation controls, or reference resources
 
 #### Scenario: Admin views empty saved connection list
-- **WHEN** a dataset admin opens the Data sources page and no saved connections exist
-- **THEN** the page explains that no data sources are connected and offers the Add dataset workflow, not generic API profile creation
+- **WHEN** a dataset admin opens the Connections page and no saved connections exist
+- **THEN** the page explains that no connections exist and offers the Add connection workflow, not generic API profile creation or reference resources
 
 ### Requirement: API connection profile writes are unavailable through web HTTP endpoints
 The system SHALL keep generic API connection profile creation, update, and deletion unavailable through the admin web HTTP API while preserving authorized read, run, history, detail, download, and provider-specific Google Sheets service-account connection behavior.
@@ -212,12 +212,13 @@ The system SHALL materialize a repo-owned API connection into the existing priva
 - **THEN** the system exposes only the required secret header name and does not include a secret value in tracked source, saved connection URLs, logs, previews, or output artifacts
 
 ### Requirement: API Connections index lists available connections
-The system SHALL present `/dashboard/api-connections` as an admin-only Data sources surface with a simple table of available API connection records.
+The system SHALL present `/dashboard/api-connections` as an admin-only Connections surface with a simple table of available API connection records.
 
 #### Scenario: Admin browses available connections
 - **WHEN** a dataset admin opens `/dashboard/api-connections`
-- **THEN** the page shows a `Data sources` heading, an Add dataset action, and a table with source, classification, and last ingestion columns
-- **AND** the page does not show search, classification filter, status filter, index status column controls, or inline source onboarding
+- **THEN** the page shows a `Connections` heading, an `Add connection` action, and a table with source, classification, and last ingestion columns
+- **AND** the Add connection action opens the existing Google Sheets connection workflow
+- **AND** the page does not show search, classification filter, status filter, index status column controls, inline source onboarding, or a resources card
 
 #### Scenario: Admin selects a connection
 - **WHEN** a dataset admin clicks or keyboard-selects an API connection row
@@ -268,26 +269,6 @@ The system SHALL persist referenced document resources extracted from successful
 - **WHEN** one run output contains multiple resources with the same parsed URL after removing the hash
 - **THEN** the system stores one resource row for that connection, run, and normalized URL
 
-### Requirement: API Connections index shows captured resources
-The system SHALL show a second read-only Resources list on the admin API Connections index.
-
-#### Scenario: Admin views captured resources
-- **WHEN** a dataset admin opens `/dashboard/api-connections`
-- **THEN** the page shows the newest 500 persisted resources below the API
-  Connections grid
-- **AND** the Resources list renders built-in and captured resources as label-only rows
-- **AND** the Resources list does not show visible Category, Display text, URL, or Open columns
-
-#### Scenario: Admin opens a resource row
-- **WHEN** a dataset admin clicks or keyboard-selects a Resources row
-- **THEN** built-in app resources open through in-app navigation
-- **AND** captured external resources open in a new browser tab
-
-#### Scenario: No resources exist
-- **WHEN** no resources have been captured
-- **THEN** the Resources list shows an empty state without offering create,
-  update, delete, or row-level Open controls
-
 ### Requirement: API connection run artifacts use isolated JSON storage
 The system SHALL archive successful API connection run JSON artifacts in a private Storage bucket dedicated to API connection artifacts, while preserving admin download compatibility for artifacts previously stored in the legacy dataset bucket.
 
@@ -304,8 +285,7 @@ The system SHALL archive successful API connection run JSON artifacts in a priva
 - **THEN** the system continues to use the dataset Storage bucket and CSV upload restrictions without allowing direct CSV upload access to the API connection artifact bucket
 
 ### Requirement: API connection resources omit category metadata
-The system SHALL persist API connection run resources without category
-metadata while preserving URL, display text, and source provenance metadata.
+The system SHALL persist API connection run resources without category metadata while preserving URL, display text, and source provenance metadata.
 
 #### Scenario: Successful run publishes resources
 - **WHEN** a saved API connection run output contains indexed resource URL fields
@@ -314,17 +294,13 @@ metadata while preserving URL, display text, and source provenance metadata.
 - **AND** the persisted resource includes source row and source resource indexes
 - **AND** the persisted resource does not include category metadata
 
-#### Scenario: Admin views captured resources
-- **WHEN** a dataset admin opens `/dashboard/api-connections` after resources have been captured
-- **THEN** captured resource rows show display text and URL
-- **AND** captured resource rows do not show category metadata or an uncategorized placeholder
-
 ### Requirement: Dataset admins create Google Sheets connections with service-account sharing
-The system SHALL allow dataset admins to create private Google Sheets API connections through the Add dataset workflow by sharing a Google Sheet with the configured app service account and checking service-account access.
+The system SHALL allow dataset admins to create private Google Sheets API connections through the Add connection workflow by sharing a Google Sheet with the configured app service account and checking service-account access.
 
 #### Scenario: Admin views the service-account connection stage
-- **WHEN** a dataset admin chooses Google Sheet in the Add dataset workflow
-- **THEN** the system shows the app service account email as a copyable value
+- **WHEN** a dataset admin chooses Add connection from the Connections page
+- **THEN** the system presents the Google Sheets connection flow with an `Add connection` heading
+- **AND** the system shows the app service account email as a copyable value
 - **AND** the system shows a Google Sheet URL input and Check access action before tab, header, classification, access, and import review
 - **AND** the system does not show an account authorization or public-Sheet publishing path
 

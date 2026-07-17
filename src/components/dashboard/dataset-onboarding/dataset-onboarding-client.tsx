@@ -939,7 +939,7 @@ export function DatasetOnboardingClient({
               <div className="flex gap-2">
                 {result.status === "ready" && result.datasetId ? <Link href={`/dashboard/datasets/${result.datasetId}`} className={buttonVariants({ variant: "outline", size: "sm" })}>Open dataset</Link> : null}
                 {result.status === "failed" && result.connectionId ? <Button type="button" variant="outline" size="sm" onClick={() => void startImport(result)}><RefreshCcwIcon /> Retry import</Button> : null}
-                {result.connectionId ? <Link href={`/dashboard/api-connections/${result.connectionId}`} className={buttonVariants({ variant: "ghost", size: "sm" })}>Open data source</Link> : null}
+                {result.connectionId ? <Link href={`/dashboard/api-connections/${result.connectionId}`} className={buttonVariants({ variant: "ghost", size: "sm" })}>Open connection</Link> : null}
               </div>
             </div>
             <Progress value={state.source === "csv" && result.status === "importing" ? csvProgress : importProgress(result.status)} />
@@ -1001,7 +1001,7 @@ export function DatasetOnboardingClient({
       </Card>
 
       <p className="text-center text-xs text-muted-foreground">
-        Need to manage an existing integration? <Link href="/dashboard/api-connections" className="underline underline-offset-4">Open Data sources</Link>.
+        Need to manage an existing integration? <Link href="/dashboard/api-connections" className="underline underline-offset-4">Open Connections</Link>.
       </p>
     </div>
   );
