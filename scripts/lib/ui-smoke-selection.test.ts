@@ -73,6 +73,49 @@ describe("ui-smoke-selection", () => {
     expect(selection.bootstrapScope).toBe("admin-config");
   });
 
+  it("targets the Google Sheets onboarding journey for API connection changes", () => {
+    const selection = resolveUiSmokeSelection([
+      "src/components/dashboard/api-connections-client.tsx",
+    ]);
+
+    expect(selection.routeIds).toEqual([
+      "api-connections-pro-redirect",
+      "api-connections-basic-redirect",
+      "api-connections-admin",
+    ]);
+    expect(selection.journeyTitles).toEqual([
+      "admin can onboard a private Google Sheets dataset",
+    ]);
+    expect(selection.projectNames).toEqual([
+      "desktop-pro",
+      "desktop-basic",
+      "desktop-admin",
+    ]);
+    expect(selection.bootstrapScope).toBe("admin-config");
+  });
+
+  it("targets both guided onboarding journeys for onboarding changes", () => {
+    const selection = resolveUiSmokeSelection([
+      "src/components/dashboard/dataset-onboarding/dataset-onboarding-client.tsx",
+    ]);
+
+    expect(selection.routeIds).toEqual([
+      "dataset-onboarding-pro-redirect",
+      "dataset-onboarding-basic-redirect",
+      "dataset-onboarding-admin",
+    ]);
+    expect(selection.journeyTitles).toEqual([
+      "admin can onboard a private Google Sheets dataset",
+      "admin can review a private CSV dataset before upload",
+    ]);
+    expect(selection.projectNames).toEqual([
+      "desktop-pro",
+      "desktop-basic",
+      "desktop-admin",
+    ]);
+    expect(selection.bootstrapScope).toBe("admin-config");
+  });
+
   it("targets only the dataset detail routes for detail page changes", () => {
     const selection = resolveUiSmokeSelection([
       "src/components/dashboard/dataset-detail-client.tsx",

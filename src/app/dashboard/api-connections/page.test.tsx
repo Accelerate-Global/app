@@ -7,7 +7,6 @@ import { redirect } from "next/navigation";
 
 import { listApiConnections } from "@/lib/api-connections";
 import { getCurrentIdentity } from "@/lib/auth";
-import { getGoogleSheetsServiceAccountEmail } from "@/lib/google-sheets";
 import ApiConnectionsPage from "./page";
 
 vi.mock("next/navigation", () => ({
@@ -24,27 +23,15 @@ vi.mock("@/lib/api-connections", () => ({
   listApiConnections: vi.fn(),
 }));
 
-vi.mock("@/lib/google-sheets", () => ({
-  getGoogleSheetsServiceAccountEmail: vi.fn(),
-}));
-
 vi.mock("@/components/dashboard/api-connections-client", () => ({
   ApiConnectionsClient: ({
     initialConnections,
-    initialResources,
-    serviceAccountEmail,
   }: {
     initialConnections: Array<{ name: string }>;
-    initialResources: Array<{ resourceUrl: string }>;
-    serviceAccountEmail: string | null;
   }) => (
     <div data-testid="api-connections-client">
-      <span>{serviceAccountEmail ?? "missing-email"}</span>
       {initialConnections.map((connection) => (
         <span key={connection.name}>{connection.name}</span>
-      ))}
-      {initialResources.map((resource) => (
-        <span key={resource.resourceUrl}>{resource.resourceUrl}</span>
       ))}
     </div>
   ),
@@ -53,17 +40,11 @@ vi.mock("@/components/dashboard/api-connections-client", () => ({
 
 const getCurrentIdentityMock = vi.mocked(getCurrentIdentity);
 const listApiConnectionsMock = vi.mocked(listApiConnections);
-const getGoogleSheetsServiceAccountEmailMock = vi.mocked(
-  getGoogleSheetsServiceAccountEmail,
-);
 const redirectMock = vi.mocked(redirect);
 
 describe("/dashboard/api-connections", () => {
   beforeEach(() => {
     vi.resetAllMocks();
-    getGoogleSheetsServiceAccountEmailMock.mockReturnValue(
-      "sheets@app-project.iam.gserviceaccount.com",
-    );
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue({
@@ -162,13 +143,10 @@ describe("/dashboard/api-connections", () => {
     render(await ApiConnectionsPage());
 
     expect(document.querySelector(".max-w-7xl")).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "Datasets" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Connections" })).toBeTruthy();
     expect(screen.getByText("IMB (People Groups)")).toBeTruthy();
     expect(screen.getByText("Etnopedia")).toBeTruthy();
-    expect(
-      screen.getByText("sheets@app-project.iam.gserviceaccount.com"),
-    ).toBeTruthy();
-    expect(screen.getByText("https://example.com/resource")).toBeTruthy();
+    expect(screen.queryByText("https://example.com/resource")).toBeNull();
     expect(screen.getByTestId("api-connections-client")).toBeTruthy();
     expect(screen.queryByLabelText("URL")).toBeNull();
     expect(screen.queryByRole("button", { name: "Save" })).toBeNull();

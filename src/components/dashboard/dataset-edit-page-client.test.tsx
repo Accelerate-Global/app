@@ -273,6 +273,13 @@ describe("DatasetEditPageClient", () => {
     expect(
       screen.getByText("This dataset is currently hidden from non-admin users."),
     ).toBeTruthy();
+    expect(screen.getByText("Private")).toBeTruthy();
+    expect(
+      screen.getByText(
+        "Applied automatically while this dataset is hidden from non-admin users.",
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Remove Private" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
 
     await waitFor(() => {
@@ -286,6 +293,11 @@ describe("DatasetEditPageClient", () => {
               id: "dataset-classification-pgac",
               label: "PGAC",
               color: "#fcab2a",
+            },
+            {
+              id: "dataset-visibility-private",
+              label: "Private",
+              color: "#dc2626",
             },
           ],
           isPrimary: false,
@@ -305,10 +317,82 @@ describe("DatasetEditPageClient", () => {
         visibility_changed: true,
         is_workspace_visible: false,
         hidden_column_count: 0,
-        tag_count: 1,
+        tag_count: 2,
       }),
     );
     expect(pushMock).toHaveBeenCalledWith("/dashboard");
+  });
+
+  it("removes the system-managed Private tag when workspace visibility is enabled", async () => {
+    fetchMock.mockResolvedValue(
+      buildJsonResponse({
+        dataset: createDataset({
+          isPrimary: false,
+          isWorkspaceVisible: true,
+        }),
+      }),
+    );
+
+    render(
+      <DatasetEditPageClient
+        initialDataset={createDataset({
+          isPrimary: false,
+          isWorkspaceVisible: false,
+          tags: [
+            {
+              id: "tag-1",
+              label: "PGAC",
+              color: "#fcab2a",
+            },
+            {
+              id: "dataset-visibility-private",
+              label: "Private",
+              color: "#dc2626",
+            },
+          ],
+        })}
+        availableTags={[
+          {
+            id: "private-from-another-dataset",
+            label: "PRIVATE",
+            color: "#078bc9",
+          },
+        ]}
+        initialVersions={[]}
+      />,
+    );
+
+    expect(screen.getByText("Private")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "PRIVATE" })).toBeNull();
+
+    fireEvent.click(screen.getByRole("switch", { name: "Workspace-visible dataset" }));
+
+    expect(screen.queryByText("Private")).toBeNull();
+    expect(
+      screen.queryByText("This dataset is currently hidden from non-admin users."),
+    ).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith("/api/datasets/dataset-1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fileName: "Global.csv",
+          tags: [
+            {
+              id: "dataset-classification-pgac",
+              label: "PGAC",
+              color: "#fcab2a",
+            },
+          ],
+          isPrimary: false,
+          isWorkspaceVisible: true,
+          hiddenColumnKeys: [],
+        }),
+      });
+    });
   });
 
   it("requires a PGAC or PGIC classification before saving a source dataset", async () => {
@@ -390,6 +474,26 @@ describe("DatasetEditPageClient", () => {
     ).toBeTruthy();
     expect(screen.queryByRole("button", { name: "PGIC" })).toBeNull();
     expect(screen.getByRole("button", { name: "Regional focus" })).toBeTruthy();
+  });
+
+  it("does not allow Private to be added as a freeform tag", async () => {
+    render(
+      <DatasetEditPageClient
+        initialDataset={createDataset()}
+        availableTags={[]}
+        initialVersions={[]}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText("New tag"), {
+      target: { value: " private " },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Add tag" }));
+
+    expect(
+      await screen.findByText("Private is managed by workspace visibility."),
+    ).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Remove private" })).toBeNull();
   });
 
   it("opens the tag color dropdown and updates the selected color", async () => {

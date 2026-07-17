@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(122);
+select plan(127);
 
 select results_eq(
   $$
@@ -443,6 +443,16 @@ values (
 
 select is(
   (
+    select tags
+    from public.datasets
+    where id = '10000000-0000-4000-8000-000000000010'
+  ),
+  '[{"id":"dataset-visibility-private","label":"Private","color":"#dc2626"}]'::jsonb,
+  'restricted dataset inserts receive the canonical red Private tag'
+);
+
+select is(
+  (
     select is_public
     from public.datasets
     where id = '10000000-0000-4000-8000-000000000010'
@@ -465,8 +475,23 @@ select is(
   'legacy visibility updates keep canonical workspace visibility synchronized'
 );
 
+select is(
+  (
+    select tags
+    from public.datasets
+    where id = '10000000-0000-4000-8000-000000000010'
+  ),
+  '[]'::jsonb,
+  'legacy updates that make a dataset workspace-visible remove the Private tag'
+);
+
 update public.datasets
-set is_workspace_visible = false
+set is_workspace_visible = false,
+    tags = '[
+      {"id":"priority","label":"Priority","color":"#262531"},
+      {"id":"private-wrong-color","label":" private ","color":"#078bc9"},
+      {"id":"private-duplicate","label":"PRIVATE","color":"#fcab2a"}
+    ]'::jsonb
 where id = '10000000-0000-4000-8000-000000000010';
 
 select is(
@@ -479,6 +504,39 @@ select is(
   'canonical workspace visibility updates keep the legacy value synchronized'
 );
 
+select is(
+  (
+    select tags
+    from public.datasets
+    where id = '10000000-0000-4000-8000-000000000010'
+  ),
+  '[
+    {"id":"priority","label":"Priority","color":"#262531"},
+    {"id":"dataset-visibility-private","label":"Private","color":"#dc2626"}
+  ]'::jsonb,
+  'restricted writes preserve ordinary tags and canonicalize duplicate Private variants'
+);
+
+update public.datasets
+set tags = '[
+  {"id":"private-wrong-id","label":"Private","color":"#078bc9"},
+  {"id":"priority","label":"Priority","color":"#262531"}
+]'::jsonb
+where id = '10000000-0000-4000-8000-000000000010';
+
+select is(
+  (
+    select tags
+    from public.datasets
+    where id = '10000000-0000-4000-8000-000000000010'
+  ),
+  '[
+    {"id":"priority","label":"Priority","color":"#262531"},
+    {"id":"dataset-visibility-private","label":"Private","color":"#dc2626"}
+  ]'::jsonb,
+  'tag-only writes cannot recolor or detach Private from restricted visibility'
+);
+
 select lives_ok(
   $$
     update public.datasets
@@ -487,6 +545,22 @@ select lives_ok(
     where id = '10000000-0000-4000-8000-000000000010'
   $$,
   'matching dual-column visibility updates preserve a restricted dataset'
+);
+
+select is(
+  (
+    select count(*)
+    from jsonb_array_elements(
+      (
+        select tags
+        from public.datasets
+        where id = '10000000-0000-4000-8000-000000000010'
+      )
+    ) as tag
+    where lower(btrim(tag ->> 'label')) = 'private'
+  ),
+  1::bigint,
+  'matching restricted visibility updates retain exactly one Private tag'
 );
 
 insert into public.dataset_rows (

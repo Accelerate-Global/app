@@ -25,9 +25,10 @@ export default async function UploadPage({ searchParams }: UploadPageProps) {
   }
 
   const { replace } = await searchParams;
-  const targetDataset = replace
-    ? await getDataset(replace, { includeDisabled: true })
-    : null;
+  if (!replace) {
+    redirect("/dashboard/datasets/new?source=csv");
+  }
+  const targetDataset = await getDataset(replace, { includeDisabled: true });
   const backingDataset =
     targetDataset?.backingDatasetId
       ? await getDataset(targetDataset.backingDatasetId, {
@@ -35,7 +36,7 @@ export default async function UploadPage({ searchParams }: UploadPageProps) {
         })
       : null;
 
-  if (replace && !targetDataset) {
+  if (!targetDataset) {
     redirect("/dashboard");
   }
 
@@ -47,19 +48,17 @@ export default async function UploadPage({ searchParams }: UploadPageProps) {
       <DashboardPageShell>
         <section className="space-y-2">
           <h1 className="text-4xl font-semibold tracking-[-0.04em] sm:text-[3.1rem]">
-            {targetDataset ? "Replace dataset" : "Upload dataset"}
+            Replace dataset
           </h1>
-          {targetDataset ? (
-            <p className="text-sm text-muted-foreground">
-              Replacing{" "}
-              <span className="font-medium text-foreground">
-                {targetDataset.fileName}
-              </span>
-              {targetDataset.backingDatasetId
-                ? " will create an independent source dataset for this view and will not update its current backing dataset."
-                : ""}
-            </p>
-          ) : null}
+          <p className="text-sm text-muted-foreground">
+            Replacing{" "}
+            <span className="font-medium text-foreground">
+              {targetDataset.fileName}
+            </span>
+            {targetDataset.backingDatasetId
+              ? " will create an independent source dataset for this view and will not update its current backing dataset."
+              : ""}
+          </p>
         </section>
         <DatasetUploadClient
           targetDataset={targetDataset}

@@ -3,13 +3,10 @@
 import {
   CheckCircle2Icon,
   ChevronDownIcon,
-  CircleDashedIcon,
-  ClockIcon,
   CopyIcon,
   DatabaseIcon,
   DownloadIcon,
   ExternalLinkIcon,
-  FileArchiveIcon,
   FileSpreadsheetIcon,
   Loader2Icon,
   PlayIcon,
@@ -17,7 +14,6 @@ import {
   Settings2Icon,
   Trash2Icon,
   UploadCloudIcon,
-  Wand2Icon,
   XCircleIcon,
 } from "lucide-react";
 import {
@@ -80,34 +76,6 @@ type DetailMessage = {
   detail: string;
   tone: "success" | "error";
 };
-
-const pipelineStages = [
-  {
-    title: "Configure",
-    description: "Review endpoint, dataset target, and credentials.",
-    icon: Settings2Icon,
-  },
-  {
-    title: "Fetch",
-    description: "Request the upstream API response.",
-    icon: PlayIcon,
-  },
-  {
-    title: "Normalize",
-    description: "Parse rows into the shared dataset shape.",
-    icon: Wand2Icon,
-  },
-  {
-    title: "Archive Output",
-    description: "Store redacted JSON and CSV artifacts.",
-    icon: FileArchiveIcon,
-  },
-  {
-    title: "Import Dataset",
-    description: "Create or replace the destination dataset.",
-    icon: DatabaseIcon,
-  },
-];
 
 const INGESTION_HISTORY_VISIBLE_ROW_LIMIT = 5;
 const INGESTION_HISTORY_SCROLL_AREA_HEIGHT = "h-[268px]";
@@ -358,9 +326,6 @@ export function ApiConnectionDetailClient({
       ? "Refresh dataset"
       : "Import sheet"
     : "Start ingestion";
-  const pipelineDescription = isGoogleSheetsConnection
-    ? "Runs read the selected Google Sheet tab and import or refresh the dataset target."
-    : "Stage controls are visible as the target pipeline shape. In v1, run operations use the existing test and import actions.";
   const [runs, setRuns] = useState(() => sortRuns(initialRuns));
   const [selectedRunId, setSelectedRunId] = useState<string | null>(
     initialRuns[0]?.id ?? null,
@@ -1179,10 +1144,12 @@ export function ApiConnectionDetailClient({
           <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
             <div>
               <CardTitle className="flex items-center gap-2 text-2xl">
-                <CircleDashedIcon className="size-5 text-muted-foreground" />
-                Pipeline
+                <DatabaseIcon className="size-5 text-muted-foreground" />
+                Source status
               </CardTitle>
-              <CardDescription>{pipelineDescription}</CardDescription>
+              <CardDescription>
+                Test the source, import the latest rows, or review the last result.
+              </CardDescription>
             </div>
             <div className="flex flex-wrap gap-2">
               <Button
@@ -1230,38 +1197,31 @@ export function ApiConnectionDetailClient({
           </div>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-3 md:grid-cols-5">
-            {pipelineStages.map((stage) => {
-              const StageIcon = stage.icon;
-
-              return (
-                <div
-                  key={stage.title}
-                  className="flex min-h-44 flex-col justify-between gap-4 rounded-lg border border-border bg-muted/20 p-3"
-                >
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="flex size-9 items-center justify-center rounded-lg bg-background ring-1 ring-border">
-                        <StageIcon className="size-4 text-muted-foreground" />
-                      </span>
-                      <Badge variant="outline" className="bg-background text-muted-foreground">
-                        Skeleton
-                      </Badge>
-                    </div>
-                    <div>
-                      <h3 className="font-medium text-foreground">{stage.title}</h3>
-                      <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                        {stage.description}
-                      </p>
-                    </div>
-                  </div>
-                  <Button type="button" variant="outline" size="sm" disabled>
-                    <ClockIcon className="size-3.5" />
-                    Coming soon
-                  </Button>
-                </div>
-              );
-            })}
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="rounded-lg border bg-muted/20 p-3">
+              <div className="text-xs font-semibold uppercase text-muted-foreground">
+                Provider
+              </div>
+              <div className="mt-1 font-medium">
+                {isGoogleSheetsConnection ? "Google Sheets" : "Code-managed API"}
+              </div>
+            </div>
+            <div className="rounded-lg border bg-muted/20 p-3">
+              <div className="text-xs font-semibold uppercase text-muted-foreground">
+                Dataset target
+              </div>
+              <div className="mt-1 font-medium">
+                {connection.targetDatasetId ? "Connected" : "Not imported yet"}
+              </div>
+            </div>
+            <div className="rounded-lg border bg-muted/20 p-3">
+              <div className="text-xs font-semibold uppercase text-muted-foreground">
+                Latest result
+              </div>
+              <div className="mt-1 font-medium capitalize">
+                {latestRun ? getRunLabel(latestRun) : "No runs yet"}
+              </div>
+            </div>
           </div>
           {latestRun ? (
             <div className="mt-4 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">

@@ -5,21 +5,40 @@ review an explicit column crosswalk, and generate a private CSV for Joshua
 Project or another organization. The source dataset is never modified by
 profile edits, previews, or export runs.
 
-## Connect one Sheet tab
+## Add a dataset
 
 Accelerate currently uses an app-owned Google service account rather than a
 user OAuth connection.
 
-1. Share the private Google Sheet with the configured
-   `GOOGLE_SHEETS_SERVICE_ACCOUNT_EMAIL` as **Viewer**.
-2. In the administrator API Connections area, paste the Google Sheet URL.
-3. Confirm access and select one or more tabs. Accelerate inspects only the
-   first 25 rows of each selected tab, recommends the most likely header row,
-   and shows the exact resulting columns with sample data.
-4. Review the recommendation for every selected tab, choose a different
-   **Header row** when needed, and create the connections.
-5. Open the resulting dataset and wait for its first successful refresh before
-   creating an export profile.
+Administrators start from **Add dataset** on the dashboard and choose one of
+two guided sources:
+
+- **Google Sheet** keeps the source in Google and creates one refreshable data
+  source and dataset for every selected tab.
+- **CSV file** reviews the local file's first row before upload. The file is not
+  sent to Accelerate until the administrator confirms the final review.
+
+For Google Sheets:
+
+1. Share the private Sheet with the app email shown in **Add dataset** as a
+   **Viewer**. Sharing controls whether Accelerate can read the source; it does
+   not control who can see the imported dataset.
+2. Paste the Sheet URL, confirm access, and select one or more tabs. Accelerate
+   inspects only the first 25 rows of each selected tab and recommends the most
+   likely header row.
+3. A high-confidence recommendation stays compact but can still be reviewed.
+   Ambiguous structures open the header review automatically. Choose a
+   different row or combine up to three consecutive header rows when needed.
+4. Review the dataset name for each tab, choose PGAC or PGIC, and explicitly
+   choose **Everyone in the workspace** or **Only administrators**.
+5. Confirm once. Accelerate connects each selected tab, runs its first import,
+   and shows progress and an **Open dataset** link for every successful result.
+   A failed tab can retry its import without reconnecting the Sheet.
+
+Choosing **Only administrators** adds the synchronized **Private** system tag
+to the imported dataset and hides it from non-admin users. It does not alter
+the Google Sheet's sharing settings. The same access choice is available for
+CSV imports.
 
 Report titles, partner instructions, and numeric guide rows are scored as
 unlikely headers. A clean, high-confidence Sheet can use the recommendation as
@@ -50,9 +69,11 @@ headers move because rows were inserted above them, the import safely relocates
 the exact match. If the labels change or become ambiguous, refresh stops before
 replacing the current dataset and asks for another header review.
 
-After a successful first import, the connection page refreshes automatically
-and displays **Open dataset**. Failed access, parsing, size, or header-drift
-checks preserve the current dataset and its downloadable versions.
+After a successful first import, **Open dataset** leads to the dataset detail
+page, where an administrator can create the partner export profile. Existing
+integrations, refresh actions, run status, and diagnostics remain under
+**Data sources**. Failed access, parsing, size, or header-drift checks preserve
+the current dataset and its downloadable versions.
 
 An active tab cannot be connected twice. A submission containing both an
 already-connected tab and a new tab is rejected as a whole. Disconnecting

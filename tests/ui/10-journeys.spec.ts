@@ -310,8 +310,212 @@ test("admin can edit dataset details", async ({ page }, testInfo) => {
     await expect(
       getDatasetNameLocator(page, bootstrap.datasets.primary.id),
     ).toHaveText(originalDatasetName);
+
+    const secondaryRow = page.locator(
+      `[data-smoke-dataset-row="${bootstrap.datasets.secondary.id}"]`,
+    );
+    await secondaryRow.getByRole("link", { name: "Edit" }).click();
+    await expect(page.locator('[data-smoke-page="dataset-edit"]')).toBeVisible();
+    await page.locator("[data-smoke-dataset-workspace-visible-toggle]").click();
+    await expect(page.locator("[data-smoke-dataset-private-tag]")).toContainText(
+      "Private",
+    );
+    await page.locator("[data-smoke-dataset-save]").click();
+    await expect(page.locator('[data-smoke-page="dashboard"]')).toBeVisible();
+    await expect(
+      page
+        .locator(`[data-smoke-dataset-row="${bootstrap.datasets.secondary.id}"]`)
+        .getByText("Private", { exact: true }),
+    ).toBeVisible();
+
+    await page
+      .locator(`[data-smoke-dataset-row="${bootstrap.datasets.secondary.id}"]`)
+      .getByRole("link", { name: "Edit" })
+      .click();
+    await expect(page.locator('[data-smoke-page="dataset-edit"]')).toBeVisible();
+    await page.locator("[data-smoke-dataset-workspace-visible-toggle]").click();
+    await expect(page.locator("[data-smoke-dataset-private-tag]")).toHaveCount(0);
+    await page.locator("[data-smoke-dataset-save]").click();
+    await expect(page.locator('[data-smoke-page="dashboard"]')).toBeVisible();
+    await expect(
+      page
+        .locator(`[data-smoke-dataset-row="${bootstrap.datasets.secondary.id}"]`)
+        .getByText("Private", { exact: true }),
+    ).toHaveCount(0);
   });
 });
+
+test(
+  "admin can onboard a private Google Sheets dataset",
+  async ({ page }, testInfo) => {
+    test.skip(skipUnlessDesktopAdmin(testInfo.project.name));
+
+    await runSmokeJourney(
+      "admin can onboard a private Google Sheets dataset",
+      async () => {
+        await page.route(
+          "**/api/admin/api-connections/google-sheets/check-access",
+          async (route) => {
+            await route.fulfill({
+              contentType: "application/json",
+              body: JSON.stringify({
+                preview: {
+                  spreadsheetId: "smoke_sheet",
+                  spreadsheetUrl:
+                    "https://docs.google.com/spreadsheets/d/smoke_sheet/edit",
+                  spreadsheetTitle: "Smoke Sheet",
+                  sheets: [{ sheetId: 1, title: "People", index: 0 }],
+                },
+                serviceAccountEmail:
+                  "smoke@app-project.iam.gserviceaccount.com",
+              }),
+            });
+          },
+        );
+        await page.route(
+          "**/api/admin/api-connections/google-sheets/header-preview",
+          async (route) => {
+            await route.fulfill({
+              contentType: "application/json",
+              body: JSON.stringify({
+                preview: {
+                  sheetId: 1,
+                  sheetTitle: "People",
+                  inspectedRowCount: 2,
+                  candidates: [
+                    {
+                      rowNumber: 1,
+                      score: 8,
+                      confidence: "high",
+                      values: ["People Group", "Country"],
+                    },
+                  ],
+                  recommendedRow: 1,
+                  selected: {
+                    mode: "auto",
+                    startRow: 1,
+                    endRow: 1,
+                    headers: ["People Group", "Country"],
+                    fingerprint: "smoke-fingerprint",
+                    confidence: "high",
+                  },
+                  sampleRows: [["Khmu", "Laos"]],
+                },
+              }),
+            });
+          },
+        );
+        await page.route(
+          "**/api/admin/api-connections/google-sheets/connect",
+          async (route) => {
+            expect(route.request().postDataJSON()).toMatchObject({
+              selectedSheetIds: [1],
+              datasetClassification: "PGAC",
+              isWorkspaceVisible: false,
+            });
+            await route.fulfill({
+              status: 201,
+              contentType: "application/json",
+              body: JSON.stringify({
+                connections: [
+                  {
+                    id: "11111111-1111-4111-8111-111111111111",
+                    name: "Smoke Sheet - People",
+                    datasetName: "Smoke Sheet - People",
+                    targetDatasetId: null,
+                  },
+                ],
+              }),
+            });
+          },
+        );
+        await page.route(
+          "**/api/admin/api-connections/11111111-1111-4111-8111-111111111111/run",
+          async (route) => {
+            await route.fulfill({
+              status: 202,
+              contentType: "application/json",
+              body: JSON.stringify({
+                run: {
+                  id: "22222222-2222-4222-8222-222222222222",
+                  status: "success",
+                  datasetId: "33333333-3333-4333-8333-333333333333",
+                },
+              }),
+            });
+          },
+        );
+
+        await page.goto("/dashboard/datasets/new");
+        await expect(
+          page.locator('[data-smoke-page="dataset-onboarding"]'),
+        ).toBeVisible();
+        await page.getByRole("button", { name: /Google Sheet/ }).click();
+        await page
+          .getByLabel("Google Sheet link")
+          .fill("https://docs.google.com/spreadsheets/d/smoke_sheet/edit");
+        await page.getByRole("button", { name: "Check access" }).click();
+        await expect(page.getByText("Access confirmed")).toBeVisible();
+        await page.getByLabel("People").check();
+        await expect(page.getByText("high confidence")).toBeVisible();
+        await page
+          .getByRole("button", { name: "Review dataset details" })
+          .click();
+        await expect(
+          page.locator("[data-smoke-dataset-private-tag]"),
+        ).toHaveCount(0);
+        await page.getByRole("radio", { name: /Only administrators/ }).click();
+        await expect(
+          page.locator("[data-smoke-dataset-private-tag]"),
+        ).toContainText("Private");
+        await page.getByRole("button", { name: "Review import" }).click();
+        await expect(page.getByText("Only administrators", { exact: true })).toBeVisible();
+        await page
+          .getByRole("button", { name: "Connect and import datasets" })
+          .click();
+        await expect(
+          page.getByRole("heading", { name: "Import complete" }),
+        ).toBeVisible();
+        await expect(page.getByRole("link", { name: "Open dataset" })).toHaveAttribute(
+          "href",
+          "/dashboard/datasets/33333333-3333-4333-8333-333333333333",
+        );
+      },
+    );
+  },
+);
+
+test(
+  "admin can review a private CSV dataset before upload",
+  async ({ page }, testInfo) => {
+    test.skip(skipUnlessDesktopAdmin(testInfo.project.name));
+
+    await runSmokeJourney(
+      "admin can review a private CSV dataset before upload",
+      async () => {
+        await page.goto("/dashboard/datasets/new?source=csv");
+        await expect(
+          page.locator('[data-smoke-page="dataset-onboarding"]'),
+        ).toBeVisible();
+        await page
+          .locator('[data-smoke-upload-input="dataset-onboarding-csv"]')
+          .setInputFiles(getDatasetReplacementFixturePath());
+        await expect(page.getByText(/Nothing has been uploaded/)).toBeVisible();
+        await page
+          .getByRole("button", { name: "Review dataset details" })
+          .click();
+        await page.getByRole("radio", { name: /Only administrators/ }).click();
+        await expect(
+          page.locator("[data-smoke-dataset-private-tag]"),
+        ).toContainText("Private");
+        await page.getByRole("button", { name: "Review import" }).click();
+        await expect(page.getByText("Only administrators", { exact: true })).toBeVisible();
+        await expect(page.getByText(/has not been uploaded yet/)).toBeVisible();
+        await expect(page.getByRole("button", { name: "Upload dataset" })).toBeEnabled();
+      },
+    );
+  },
+);
 
 test("admin can review partner export mapping", async ({ page }, testInfo) => {
   test.skip(skipUnlessDesktopAdmin(testInfo.project.name));

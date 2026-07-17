@@ -34,6 +34,7 @@ import { normalizeDatasetHiddenColumnKeys } from "@/lib/dataset-column-visibilit
 import { getDatasetStorageObjectUrl } from "@/lib/dataset-storage";
 import {
   composeDatasetTagsWithClassification,
+  composeDatasetTagsWithWorkspaceVisibility,
   getDatasetClassification,
   getDatasetClassificationTags,
   getDatasetTagsWithoutClassification,
@@ -69,7 +70,10 @@ function toDatasetSummary(row: DatasetRecord): DatasetSummary {
     defaultFilters: row.defaultFilters
       ? normalizeSavedDatasetFilterState(row.defaultFilters)
       : null,
-    tags: normalizeDatasetTags(row.tags),
+    tags: composeDatasetTagsWithWorkspaceVisibility(
+      row.tags,
+      row.isWorkspaceVisible,
+    ),
     error: row.error,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
@@ -558,6 +562,7 @@ export async function createDataset(input: {
   sizeBytes: number;
   columns: CsvColumn[];
   classification: DatasetClassification;
+  isWorkspaceVisible?: boolean;
 }) {
   const dataset = await getDb().transaction(async (tx) => {
     const [position] = await tx
@@ -584,6 +589,7 @@ export async function createDataset(input: {
         columns: input.columns,
         hiddenColumnKeys: [],
         defaultFilters: null,
+        isWorkspaceVisible: input.isWorkspaceVisible ?? true,
         tags: composeDatasetTagsWithClassification([], input.classification),
         status: "processing",
         rowCount: 0,
@@ -653,7 +659,7 @@ export async function updateDatasetDetails(input: {
       updatedAt: new Date(),
     };
     const currentTags = normalizeDatasetTags(existingDataset.tags);
-    const nextTags = getValidatedDatasetTags({
+    const validatedTags = getValidatedDatasetTags({
       backingDatasetId: existingDataset.backingDatasetId,
       tags: input.tags ?? currentTags,
     });
@@ -670,10 +676,6 @@ export async function updateDatasetDetails(input: {
       }
 
       updates.sourceOrganizationName = input.sourceOrganizationName?.trim() || null;
-    }
-
-    if (input.tags !== undefined) {
-      updates.tags = nextTags;
     }
 
     if (input.hiddenColumnKeys !== undefined) {
@@ -697,16 +699,18 @@ export async function updateDatasetDetails(input: {
       updates.isPrimary = input.isPrimary;
     }
 
-    const nextIsWorkspaceVisible = updates.isWorkspaceVisible ?? existingDataset.isWorkspaceVisible;
+    const nextIsWorkspaceVisible =
+      updates.isWorkspaceVisible ?? existingDataset.isWorkspaceVisible;
+    const nextTags = composeDatasetTagsWithWorkspaceVisibility(
+      validatedTags,
+      nextIsWorkspaceVisible,
+    );
 
     if (!nextIsWorkspaceVisible) {
       updates.isPrimary = false;
     }
 
-    if (
-      input.tags === undefined &&
-      JSON.stringify(nextTags) !== JSON.stringify(currentTags)
-    ) {
+    if (JSON.stringify(nextTags) !== JSON.stringify(currentTags)) {
       updates.tags = nextTags;
     }
 

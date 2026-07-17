@@ -33,15 +33,18 @@ import { trackAppEvent } from "@/lib/analytics-client";
 import { normalizeDatasetHiddenColumnKeys } from "@/lib/dataset-column-visibility";
 import {
   composeDatasetTagsWithClassification,
+  composeDatasetTagsWithWorkspaceVisibility,
   DATASET_CLASSIFICATION_OPTIONS,
+  DATASET_PRIVATE_TAG,
   DATASET_TAG_COLOR_OPTIONS,
   DEFAULT_DATASET_TAG_COLOR,
+  getEditableDatasetTags,
   getDatasetClassification,
   getDatasetTagIdentity,
-  getDatasetTagsWithoutClassification,
   getDatasetTagStyle,
   hasExactDatasetClassificationTag,
   isDatasetClassificationLabel,
+  isDatasetPrivateTag,
   normalizeDatasetTagColor,
   normalizeDatasetTags,
 } from "@/lib/dataset-tags";
@@ -457,7 +460,7 @@ function DatasetEditForm({
     initialClassification,
   );
   const [tags, setTags] = useState(() =>
-    getDatasetTagsWithoutClassification(dataset.tags),
+    getEditableDatasetTags(dataset.tags),
   );
   const [hiddenColumnKeys, setHiddenColumnKeys] = useState(() =>
     normalizeDatasetHiddenColumnKeys(dataset.hiddenColumnKeys, dataset.columns),
@@ -474,7 +477,7 @@ function DatasetEditForm({
     : "Replace dataset";
   const normalizedTags = useMemo(() => normalizeDatasetTags(tags), [tags]);
   const normalizedAvailableTags = useMemo(
-    () => getDatasetTagsWithoutClassification(availableTags),
+    () => getEditableDatasetTags(availableTags),
     [availableTags],
   );
   const normalizedHiddenColumnKeys = useMemo(
@@ -482,7 +485,7 @@ function DatasetEditForm({
     [dataset.columns, hiddenColumnKeys],
   );
   const initialTags = useMemo(
-    () => getDatasetTagsWithoutClassification(dataset.tags),
+    () => getEditableDatasetTags(dataset.tags),
     [dataset.tags],
   );
   const initialHiddenColumnKeys = useMemo(
@@ -550,6 +553,11 @@ function DatasetEditForm({
       return;
     }
 
+    if (isDatasetPrivateTag(label)) {
+      setErrorMessage("Private is managed by workspace visibility.");
+      return;
+    }
+
     setTags((current) => [
       ...current,
       {
@@ -586,6 +594,11 @@ function DatasetEditForm({
   function handleAddExistingTag(tag: DatasetTag) {
     if (isDatasetClassificationLabel(tag.label)) {
       setErrorMessage("PGAC and PGIC are managed by dataset classification.");
+      return;
+    }
+
+    if (isDatasetPrivateTag(tag)) {
+      setErrorMessage("Private is managed by workspace visibility.");
       return;
     }
 
@@ -653,9 +666,13 @@ function DatasetEditForm({
     setErrorMessage(null);
 
     try {
-      const nextTags = isDerivedView
+      const classifiedTags = isDerivedView
         ? normalizedTags
         : composeDatasetTagsWithClassification(normalizedTags, classification!);
+      const nextTags = composeDatasetTagsWithWorkspaceVisibility(
+        classifiedTags,
+        isWorkspaceVisible,
+      );
       await onSaveDataset({
         datasetId: dataset.id,
         fileName: trimmedFileName,
@@ -829,6 +846,7 @@ function DatasetEditForm({
               data-smoke-dataset-workspace-visible-toggle
               onCheckedChange={(checked) => {
                 setIsWorkspaceVisible(checked);
+                setErrorMessage(null);
                 if (!checked) {
                   setIsPrimary(false);
                 }
@@ -918,6 +936,24 @@ function DatasetEditForm({
             </p>
           </div>
 
+          {!isWorkspaceVisible ? (
+            <div
+              className="flex flex-wrap items-center gap-3 rounded-2xl border border-border bg-card px-4 py-4"
+              data-smoke-dataset-private-tag
+            >
+              <span
+                className="inline-flex items-center rounded-full border px-2.5 py-1 text-[0.72rem] font-medium leading-none text-[var(--dataset-tag-text-light)] dark:text-[var(--dataset-tag-text-dark)]"
+                style={getDatasetTagStyle(DATASET_PRIVATE_TAG.color)}
+              >
+                {DATASET_PRIVATE_TAG.label}
+              </span>
+              <p className="text-sm text-muted-foreground">
+                Applied automatically while this dataset is hidden from non-admin
+                users.
+              </p>
+            </div>
+          ) : null}
+
           <NewTagComposer
             label={newTagLabel}
             color={newTagColor}
@@ -966,7 +1002,9 @@ function DatasetEditForm({
             </div>
           ) : (
             <div className="rounded-2xl border border-dashed border-border px-4 py-4 text-sm text-muted-foreground">
-              No tags added yet.
+              {isWorkspaceVisible
+                ? "No tags added yet."
+                : "No additional tags added."}
             </div>
           )}
         </section>

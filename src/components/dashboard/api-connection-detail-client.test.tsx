@@ -225,17 +225,11 @@ describe("ApiConnectionDetailClient", () => {
       />,
     );
 
-    expect(screen.getByText("Pipeline")).toBeTruthy();
-    expect(screen.getByText("Configure")).toBeTruthy();
-    expect(screen.getByText("Fetch")).toBeTruthy();
-    expect(screen.getByText("Normalize")).toBeTruthy();
-    expect(screen.getByText("Archive Output")).toBeTruthy();
-    expect(screen.getByText("Import Dataset")).toBeTruthy();
-    expect(
-      screen.getAllByRole("button", { name: /Coming soon/ }).every((button) =>
-        button.hasAttribute("disabled"),
-      ),
-    ).toBe(true);
+    expect(screen.getByText("Source status")).toBeTruthy();
+    expect(screen.getByText("Code-managed API")).toBeTruthy();
+    expect(screen.getByText("Not imported yet")).toBeTruthy();
+    expect(screen.queryByText("Pipeline")).toBeNull();
+    expect(screen.queryByRole("button", { name: /Coming soon/ })).toBeNull();
 
     const runDetailTitle = screen.getByText("Run Detail");
     const historyTitle = screen.getByText("Ingestion History");
@@ -400,7 +394,7 @@ describe("ApiConnectionDetailClient", () => {
     expect(screen.queryByText("Start ingestion")).toBeNull();
     expect(
       screen.getByText(
-        "Runs read the selected Google Sheet tab and import or refresh the dataset target.",
+        "Test the source, import the latest rows, or review the last result.",
       ),
     ).toBeTruthy();
   });

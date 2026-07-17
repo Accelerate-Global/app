@@ -131,7 +131,12 @@ describe("/api/admin/api-connections/google-sheets/connect", () => {
               alphaHeaderSelection,
               { sheetId: 2, mode: "manual", startRow: 2, endRow: 3 },
             ],
+            datasetSettings: [
+              { sheetId: 1, datasetName: "Reviewed Alpha" },
+              { sheetId: 2, datasetName: "Reviewed Beta" },
+            ],
             datasetClassification: "PGAC",
+            isWorkspaceVisible: false,
           }),
         },
       ),
@@ -149,8 +154,64 @@ describe("/api/admin/api-connections/google-sheets/connect", () => {
         alphaHeaderSelection,
         { sheetId: 2, mode: "manual", startRow: 2, endRow: 3 },
       ],
+      datasetSettings: [
+        { sheetId: 1, datasetName: "Reviewed Alpha" },
+        { sheetId: 2, datasetName: "Reviewed Beta" },
+      ],
       datasetClassification: "PGAC",
+      isWorkspaceVisible: false,
     });
+  });
+
+  it("defaults omitted dataset visibility to workspace-visible", async () => {
+    createGoogleSheetsConnectionsMock.mockResolvedValue([connection]);
+
+    const response = await POST(
+      new Request(
+        "http://localhost/api/admin/api-connections/google-sheets/connect",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            spreadsheetUrl: "https://docs.google.com/spreadsheets/d/sheet/edit",
+            selectedSheetIds: [1],
+            headerSelections: [alphaHeaderSelection],
+            datasetClassification: "PGAC",
+          }),
+        },
+      ),
+    );
+
+    expect(response.status).toBe(201);
+    expect(createGoogleSheetsConnectionsMock).toHaveBeenCalledWith({
+      identity,
+      spreadsheetUrl: "https://docs.google.com/spreadsheets/d/sheet/edit",
+      selectedSheetIds: [1],
+      headerSelections: [alphaHeaderSelection],
+      datasetSettings: undefined,
+      datasetClassification: "PGAC",
+      isWorkspaceVisible: true,
+    });
+  });
+
+  it("rejects invalid reviewed dataset names at the route boundary", async () => {
+    const response = await POST(
+      new Request(
+        "http://localhost/api/admin/api-connections/google-sheets/connect",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            spreadsheetUrl: "https://docs.google.com/spreadsheets/d/sheet/edit",
+            selectedSheetIds: [1],
+            headerSelections: [alphaHeaderSelection],
+            datasetSettings: [{ sheetId: 1, datasetName: "" }],
+            datasetClassification: "PGAC",
+          }),
+        },
+      ),
+    );
+
+    expect(response.status).toBe(400);
+    expect(createGoogleSheetsConnectionsMock).not.toHaveBeenCalled();
   });
 
   it("returns domain errors without creating connections", async () => {

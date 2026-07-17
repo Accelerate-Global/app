@@ -174,7 +174,7 @@ describe("AccountControl", () => {
       "Resources",
       "separator",
       "Manage Field Sources",
-      "Datasets",
+      "Connections",
       "Analytics",
       "User Management",
       "Upload",

@@ -7,16 +7,7 @@ import { DashboardPageShell } from "@/components/layout/dashboard-page-shell";
 import { buttonVariants } from "@/components/ui/button";
 import { getCurrentIdentity } from "@/lib/auth";
 import { listApiConnections } from "@/lib/api-connections";
-import { getGoogleSheetsServiceAccountEmail } from "@/lib/google-sheets";
 import { cn } from "@/lib/utils";
-
-function getConfiguredGoogleSheetsServiceAccountEmail() {
-  try {
-    return getGoogleSheetsServiceAccountEmail();
-  } catch {
-    return null;
-  }
-}
 
 export default async function ApiConnectionsPage() {
   const identity = await getCurrentIdentity();
@@ -29,11 +20,7 @@ export default async function ApiConnectionsPage() {
     redirect("/dashboard");
   }
 
-  const [{ connections, runs, resources }, googleSheetsServiceAccountEmail] =
-    await Promise.all([
-      listApiConnections(),
-      Promise.resolve(getConfiguredGoogleSheetsServiceAccountEmail()),
-    ]);
+  const { connections, runs } = await listApiConnections();
 
   return (
     <div
@@ -58,11 +45,11 @@ export default async function ApiConnectionsPage() {
             </span>
             <div className="space-y-2">
               <h1 className="text-4xl font-semibold tracking-[-0.04em] sm:text-[3.1rem]">
-                Datasets
+                Connections
               </h1>
               <p className="max-w-3xl text-base leading-7 text-muted-foreground sm:text-lg">
-                Run code-managed API connections and import responses into shared
-                datasets.
+                Add and refresh connections, open imported datasets, and review
+                diagnostics.
               </p>
             </div>
           </div>
@@ -71,8 +58,6 @@ export default async function ApiConnectionsPage() {
         <ApiConnectionsClient
           initialConnections={connections}
           initialRuns={runs}
-          initialResources={resources}
-          serviceAccountEmail={googleSheetsServiceAccountEmail}
         />
       </DashboardPageShell>
     </div>

@@ -456,6 +456,24 @@ describe("dataset create and replace schemas", () => {
     ).toBe(true);
   });
 
+  it("defaults new datasets to workspace visible and accepts an explicit private choice", () => {
+    const basePayload = {
+      fileName: "customers.csv",
+      blobPath: "datasets/csv/customers.csv",
+      sizeBytes: 100,
+      columns: [{ key: "email", label: "Email", sourceIndex: 0 }],
+      classification: "PGAC" as const,
+    };
+
+    expect(createDatasetSchema.parse(basePayload).isWorkspaceVisible).toBe(true);
+    expect(
+      createDatasetSchema.parse({
+        ...basePayload,
+        isWorkspaceVisible: false,
+      }).isWorkspaceVisible,
+    ).toBe(false);
+  });
+
   it("requires a PGAC or PGIC classification on dataset replace", () => {
     expect(
       replaceDatasetSchema.safeParse({
