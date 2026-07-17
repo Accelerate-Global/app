@@ -339,7 +339,7 @@ export function AccountControl({ identity }: AccountControlProps) {
                 icon={UploadIcon}
                 onPrefetch={prefetchRoute}
               >
-                Upload
+                Add Dataset
               </MenuNavigationItem>
             </>
           ) : null}
