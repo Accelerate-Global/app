@@ -36,8 +36,9 @@ preserving selectable table body content.
 
 ### Requirement: Dashboard navigation provides immediate transition feedback
 The system SHALL keep the authenticated dashboard frame stable and provide
-immediate visual feedback while dashboard route content loads, and SHALL label
-the administrator dataset-creation menu entry `Add Dataset`.
+immediate visual feedback while dashboard route content loads, SHALL label the
+administrator dataset-creation menu entry `Add Dataset`, and SHALL label the
+administrator field-source menu entry `Field Sources`.
 
 #### Scenario: User navigates from the account menu
 - **WHEN** a signed-in user selects a dashboard page from the account menu
@@ -53,6 +54,11 @@ the administrator dataset-creation menu entry `Add Dataset`.
 #### Scenario: Administrator views the dataset-creation menu entry
 - **WHEN** an administrator opens the account menu
 - **THEN** the existing `/dashboard/upload` navigation item is labeled `Add Dataset`
+- **AND** the item remains hidden from non-admin users
+
+#### Scenario: Administrator views the field-source menu entry
+- **WHEN** an administrator opens the account menu
+- **THEN** the existing `/dashboard/field-sources` navigation item is labeled `Field Sources`
 - **AND** the item remains hidden from non-admin users
 
 ### Requirement: Dashboard dataset rows expose key metadata on mobile

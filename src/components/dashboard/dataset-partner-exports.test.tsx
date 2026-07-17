@@ -101,6 +101,17 @@ describe("DatasetPartnerExports", () => {
         '[data-smoke-surface="partner-export-profile-sheet"][data-smoke-ready="partner-export-profile-sheet"]',
       ),
     ).toBeTruthy();
+    const sheet = document.querySelector(
+      '[data-smoke-surface="partner-export-profile-sheet"]',
+    );
+    expect(sheet?.className).toContain("data-[side=right]:w-full!");
+    expect(sheet?.className).toContain("data-[side=right]:sm:w-2/3!");
+    expect(sheet?.className).toContain("data-[side=right]:sm:max-w-none!");
+    expect(
+      screen.getByText(
+        "Dataset name and UTC download timestamp are added automatically.",
+      ),
+    ).toBeTruthy();
     expect(document.querySelector('input[value="PG_PeopleID3"]')).toBeTruthy();
     expect(
       document.querySelector('input[value="PG_AX_unique_PG_ID_PGIC"]'),

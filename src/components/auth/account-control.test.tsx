@@ -173,7 +173,7 @@ describe("AccountControl", () => {
       "Definitions",
       "Resources",
       "separator",
-      "Manage Field Sources",
+      "Field Sources",
       "Connections",
       "Analytics",
       "User Management",
@@ -209,9 +209,8 @@ describe("AccountControl", () => {
     );
     const menu = openMenu();
     expect(screen.getByText("pro@example.com")).toBeTruthy();
-    expect(screen.queryByText("Manage Field Sources")).toBeNull();
-    expect(screen.queryByText("Add Dataset")).toBeNull();
     expect(screen.queryByText("Field Sources")).toBeNull();
+    expect(screen.queryByText("Add Dataset")).toBeNull();
     expect(getMenuStructure(menu)).toEqual([
       "separator",
       "Profile",
