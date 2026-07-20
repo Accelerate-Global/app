@@ -356,6 +356,9 @@
         "src/components/dashboard/field-source-tag-list.tsx",
         "src/lib/field-definition-*.ts",
         "src/lib/field-definitions.ts",
+        "src/lib/field-sources.ts",
+        "src/data/field-sources/**",
+        "src/app/api/field-source-types/**",
         "src/app/api/field-definitions/**"
       ],
       "routeIds": ["field-definitions-pro", "field-definitions-basic", "field-definitions-admin"],
@@ -365,17 +368,15 @@
     },
     {
       "id": "field-sources",
-      "label": "Field Sources routes and source mapping flow",
+      "label": "Retired Field Sources route and source mapping flow",
       "patterns": [
         "src/app/dashboard/field-sources/**",
-        "src/components/dashboard/field-sources-client.tsx",
         "src/components/dashboard/field-source-tag-list.tsx",
         "src/lib/field-sources.ts",
-        "src/app/api/field-sources/**",
         "src/app/api/field-source-types/**"
       ],
-      "routeIds": ["field-sources-pro-redirect", "field-sources-basic-redirect", "field-sources-admin"],
-      "journeyTitles": ["admin can review field source mappings"],
+      "routeIds": ["field-sources-pro-redirect", "field-sources-basic-redirect", "field-sources-admin", "field-definitions-pro", "field-definitions-basic", "field-definitions-admin"],
+      "journeyTitles": ["admin can edit a field definition"],
       "projectNames": ["desktop-pro", "desktop-basic", "desktop-admin"],
       "bootstrapScope": "admin-config"
     },

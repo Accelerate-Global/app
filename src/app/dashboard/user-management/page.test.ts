@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 
 import { redirect } from "next/navigation";
 
@@ -81,10 +81,14 @@ describe("/dashboard/user-management", () => {
     expect(listWorkspaceUsersMock).toHaveBeenCalledWith();
     render(view);
     expect(document.querySelector(".max-w-7xl")).toBeTruthy();
+    expect(
+      screen.getByText(
+        "Review account access and sign-in recency, invite new users, promote admins, and disable accounts from one place.",
+      ),
+    ).toBeTruthy();
     expect(userManagementClientSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         currentUserId: "owner-1",
-        actorOwnerId: "owner-1",
         workspaceRole: "admin",
       }),
     );

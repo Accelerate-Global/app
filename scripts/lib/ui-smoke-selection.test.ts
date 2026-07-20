@@ -77,16 +77,15 @@ describe("ui-smoke-selection", () => {
     expect(selection.summary[0]).toContain("Full suite required");
   });
 
-  it("targets field sources routes and journey for field source changes", () => {
+  it("targets Definitions and retired redirects for field source changes", () => {
     const selection = resolveUiSmokeSelection([
-      "src/components/dashboard/field-sources-client.tsx",
+      "src/lib/field-sources.ts",
     ]);
 
     expect(selection.mode).toBe("targeted");
     expect(selection.routeIds).toContain("field-sources-admin");
-    expect(selection.journeyTitles).toContain(
-      "admin can review field source mappings",
-    );
+    expect(selection.routeIds).toContain("field-definitions-admin");
+    expect(selection.journeyTitles).toContain("admin can edit a field definition");
     expect(selection.projectNames).toEqual([
       "desktop-pro",
       "desktop-basic",
@@ -235,7 +234,7 @@ describe("ui-smoke-selection", () => {
 
   it("builds a grep pattern that matches Playwright full titles", () => {
     const selection = resolveUiSmokeSelection([
-      "src/components/dashboard/field-sources-client.tsx",
+      "src/lib/field-sources.ts",
     ]);
     const grepPattern = buildUiSmokeGrepPattern(selection);
 
@@ -246,15 +245,13 @@ describe("ui-smoke-selection", () => {
       matcher.test("tests/ui/00-route-sweep.spec.ts field-sources-admin"),
     ).toBe(true);
     expect(
-      matcher.test(
-        "tests/ui/10-journeys.spec.ts admin can review field source mappings",
-      ),
+      matcher.test("tests/ui/10-journeys.spec.ts admin can edit a field definition"),
     ).toBe(true);
   });
 
   it("formats a blocking zero-match validation error for targeted smoke", () => {
     const selection = resolveUiSmokeSelection([
-      "src/components/dashboard/field-sources-client.tsx",
+      "src/lib/field-sources.ts",
     ]);
     const grepPattern = buildUiSmokeGrepPattern(selection);
     const message = formatUiSmokeZeroMatchMessage({
@@ -264,7 +261,7 @@ describe("ui-smoke-selection", () => {
 
     expect(message).toContain("matched zero Playwright tests");
     expect(message).toContain("field-sources-admin");
-    expect(message).toContain("admin can review field source mappings");
+    expect(message).toContain("admin can edit a field definition");
   });
 
   it("includes direct test files in zero-match validation errors", () => {

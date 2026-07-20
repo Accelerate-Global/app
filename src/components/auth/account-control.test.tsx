@@ -12,9 +12,8 @@ const fetchMock = vi.fn();
 const assignMock = vi.fn();
 const localStorageStore = new Map<string, string>();
 let setSystemDark: (matches: boolean) => void = () => undefined;
-const { pathnameMock, trackAppEventMock } = vi.hoisted(() => ({
+const { pathnameMock } = vi.hoisted(() => ({
   pathnameMock: vi.fn(),
-  trackAppEventMock: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -24,10 +23,6 @@ vi.mock("next/navigation", () => ({
     prefetch: prefetchMock,
   }),
   usePathname: () => pathnameMock(),
-}));
-
-vi.mock("@/lib/analytics-client", () => ({
-  trackAppEvent: trackAppEventMock,
 }));
 
 function openMenu() {
@@ -173,9 +168,7 @@ describe("AccountControl", () => {
       "Definitions",
       "Resources",
       "separator",
-      "Field Sources",
       "Connections",
-      "Analytics",
       "User Management",
       "Add Dataset",
       "separator",
@@ -242,16 +235,6 @@ describe("AccountControl", () => {
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith("/auth/sign-out", { method: "POST" });
     });
-    expect(trackAppEventMock).toHaveBeenCalledWith(
-      "sign_out",
-      expect.objectContaining({
-        route: "dashboard",
-        actor_owner_id: "owner-1",
-        workspace_role: "pro",
-        source_surface: "account_menu",
-        success: true,
-      }),
-    );
     expect(assignMock).toHaveBeenCalledWith("/");
     expect(pushMock).not.toHaveBeenCalled();
     expect(refreshMock).not.toHaveBeenCalled();
@@ -341,21 +324,6 @@ describe("AccountControl", () => {
 
     fireEvent.click(screen.getByRole("button"));
     fireEvent.click(screen.getByRole("button", { name: "Dark" }));
-
-    expect(trackAppEventMock).toHaveBeenCalledWith(
-      "theme_toggled",
-      expect.objectContaining({
-        route: "profile",
-        actor_owner_id: "owner-1",
-        workspace_role: "pro",
-        source_surface: "account_menu",
-        success: true,
-        from_preference: "system",
-        to_preference: "dark",
-        from_theme: "light",
-        to_theme: "dark",
-      }),
-    );
     expect(document.documentElement.classList.contains("dark")).toBe(true);
     expect(localStorageStore.get("ag-theme-preference")).toBe("dark");
   });

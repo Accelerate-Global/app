@@ -6,6 +6,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getCurrentIdentity } from "@/lib/auth";
 import DatasetOnboardingPage from "./page";
 
+const onboardingClientSpy = vi.fn();
+
 vi.mock("next/navigation", () => ({
   redirect: vi.fn((target: string) => {
     throw new Error(`NEXT_REDIRECT:${target}`);
@@ -19,9 +21,10 @@ vi.mock("@/lib/google-sheets", () => ({
 vi.mock(
   "@/components/dashboard/dataset-onboarding/dataset-onboarding-client",
   () => ({
-    DatasetOnboardingClient: ({ initialSource }: { initialSource: string | null }) => (
-      <div data-testid="onboarding-client">{initialSource ?? "choose"}</div>
-    ),
+    DatasetOnboardingClient: (props: { initialSource: string | null }) => {
+      onboardingClientSpy(props);
+      return <div data-testid="onboarding-client">{props.initialSource ?? "choose"}</div>;
+    },
   }),
 );
 
@@ -65,6 +68,9 @@ describe("/dashboard/datasets/new", () => {
     );
     expect(screen.getByRole("heading", { name: "Add dataset" })).toBeTruthy();
     expect(screen.getByTestId("onboarding-client").textContent).toBe("csv");
+    expect(onboardingClientSpy).toHaveBeenCalledWith(
+      expect.not.objectContaining({ actorOwnerId: expect.anything() }),
+    );
     expect(document.querySelector('[data-smoke-page="dataset-onboarding"]')).toBeTruthy();
   });
 

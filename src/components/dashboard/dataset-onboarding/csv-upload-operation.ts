@@ -8,12 +8,6 @@ import type {
   DatasetUploadAuthorizationResponse,
 } from "@/lib/api-types";
 import {
-  withAnalyticsContext,
-  type AppAnalyticsContext,
-  type DatasetUploadFailureStage,
-} from "@/lib/analytics";
-import { trackAppEvent } from "@/lib/analytics-client";
-import {
   isCsvFile,
   MAX_CSV_BYTES,
   normalizeHeaders,
@@ -203,27 +197,12 @@ export async function uploadNewDatasetCsv(input: {
   columns: CsvColumn[];
   classification: DatasetClassification;
   isWorkspaceVisible: boolean;
-  analyticsContext?: AppAnalyticsContext;
   onProgress: (progress: number, rowsParsed: number, message: string) => void;
 }) {
   let datasetId: string | null = null;
-  let rowsParsed = 0;
-  let failureStage: DatasetUploadFailureStage = "authorize";
-  const startedAt = Date.now();
-  if (input.analyticsContext) {
-    trackAppEvent(
-      "dataset_upload_started",
-      withAnalyticsContext(input.analyticsContext, {
-        source_surface: "dataset_onboarding",
-        success: true,
-        file_size_bytes: input.file.size,
-      }),
-    );
-  }
   try {
     input.onProgress(10, 0, "Authorizing upload");
     const authorization = await authorizeUpload(input.file);
-    failureStage = "blob_upload";
     input.onProgress(30, 0, "Uploading CSV");
     const uploadResult = await createSupabaseBrowserClient()
       .storage.from(authorization.bucket)
@@ -233,20 +212,17 @@ export async function uploadNewDatasetCsv(input: {
       });
     if (uploadResult.error) throw uploadResult.error;
 
-    failureStage = "dataset_create";
     input.onProgress(45, 0, "Creating dataset");
     const dataset = await createDataset({
       ...input,
       blobPath: authorization.path,
     });
     datasetId = dataset.id;
-    failureStage = "row_persist";
     const completedDataset = await persistRows({
       file: input.file,
       columns: input.columns,
       datasetId,
       onProgress: (nextRowsParsed) => {
-        rowsParsed = nextRowsParsed;
         input.onProgress(
           Math.min(95, 50 + Math.floor(nextRowsParsed / 250)),
           nextRowsParsed,
@@ -254,42 +230,11 @@ export async function uploadNewDatasetCsv(input: {
         );
       },
     });
-    if (input.analyticsContext) {
-      trackAppEvent(
-        "dataset_upload_completed",
-        withAnalyticsContext(input.analyticsContext, {
-          source_surface: "dataset_onboarding",
-          success: true,
-          dataset_id: completedDataset.id,
-          file_size_bytes: input.file.size,
-          column_count: input.columns.length,
-          row_count: completedDataset.rowCount,
-          duration_ms: Date.now() - startedAt,
-        }),
-      );
-    }
     return completedDataset;
   } catch (error) {
     const message = error instanceof Error ? error.message : "The upload failed.";
     if (datasetId) {
-      failureStage = "mark_failed";
       await markFailed(datasetId, message);
-    }
-    if (input.analyticsContext) {
-      trackAppEvent(
-        "dataset_upload_failed",
-        withAnalyticsContext(input.analyticsContext, {
-          source_surface: "dataset_onboarding",
-          success: false,
-          error_code: `${failureStage}_failed`,
-          duration_ms: Date.now() - startedAt,
-          dataset_id: datasetId ?? undefined,
-          file_size_bytes: input.file.size,
-          column_count: input.columns.length,
-          row_count: rowsParsed || undefined,
-          failure_stage: failureStage,
-        }),
-      );
     }
     throw error;
   }

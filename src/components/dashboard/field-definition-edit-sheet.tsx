@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
 
 import { FieldSourceTagList } from "@/components/dashboard/field-source-tag-list";
@@ -206,14 +205,7 @@ function FieldDefinitionEditSheetForm({
           <div className="space-y-1">
             <p className="text-sm font-medium text-foreground">Sources</p>
             <p className="text-sm text-muted-foreground">
-              These database links are also listed on{" "}
-              <Link
-                href="/dashboard/field-sources"
-                className="font-medium text-foreground underline underline-offset-4"
-              >
-                Field Sources
-              </Link>
-              .
+              These source databases use this shared definition.
             </p>
           </div>
           {fieldDefinition.linkedSources.length > 0 ? (

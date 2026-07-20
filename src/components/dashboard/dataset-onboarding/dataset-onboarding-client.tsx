@@ -48,13 +48,6 @@ import type {
   GoogleSheetsHeaderPreviewResponse,
   GoogleSheetsHeaderSelectionInput,
 } from "@/lib/api-types";
-import {
-  buildAnalyticsContext,
-  withAnalyticsContext,
-  type AnalyticsWorkspaceRole,
-  type DatasetOnboardingSourceType,
-} from "@/lib/analytics";
-import { trackAppEvent } from "@/lib/analytics-client";
 import { cn } from "@/lib/utils";
 import {
   createInitialDatasetOnboardingState,
@@ -67,8 +60,6 @@ import { parseDatasetCsvHeader, uploadNewDatasetCsv } from "./csv-upload-operati
 type DatasetOnboardingClientProps = {
   serviceAccountEmail: string | null;
   initialSource?: OnboardingSource | null;
-  actorOwnerId?: string;
-  workspaceRole?: AnalyticsWorkspaceRole;
 };
 
 type ImportResult = {
@@ -118,17 +109,9 @@ function sourceLabel(source: OnboardingSource | null) {
   return source === "google-sheets" ? "Google Sheet" : "CSV file";
 }
 
-function analyticsSource(source: OnboardingSource | null): DatasetOnboardingSourceType {
-  if (source === "google-sheets") return "google_sheets";
-  if (source === "csv") return "csv";
-  return "unselected";
-}
-
 export function DatasetOnboardingClient({
   serviceAccountEmail,
   initialSource = null,
-  actorOwnerId = "anonymous",
-  workspaceRole = "anonymous",
 }: DatasetOnboardingClientProps) {
   const [state, dispatch] = useReducer(
     datasetOnboardingReducer,
@@ -144,16 +127,6 @@ export function DatasetOnboardingClient({
   const headingRef = useRef<HTMLHeadingElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const accessRequestKey = useRef(0);
-  const lastTrackedStage = useRef<string | null>(null);
-  const analyticsContext = useMemo(
-    () =>
-      buildAnalyticsContext({
-        route: "dataset_onboarding",
-        actorOwnerId,
-        workspaceRole,
-      }),
-    [actorOwnerId, workspaceRole],
-  );
 
   useEffect(() => {
     headingRef.current?.focus();
@@ -175,50 +148,6 @@ export function DatasetOnboardingClient({
     datasetNames.some((name) => !name) ||
     new Set(datasetNames.map((name) => name.toLocaleLowerCase())).size !==
       datasetNames.length;
-
-  useEffect(() => {
-    const selectedDatasetCount =
-      state.source === "google-sheets"
-        ? state.selectedSheetIds.length
-        : state.csvFile
-          ? 1
-          : 0;
-    const trackingKey = `${state.stage}:${analyticsSource(state.source)}:${selectedDatasetCount}`;
-    const selectedHeaderPreviews = state.selectedSheetIds
-      .map((sheetId) => state.headerPreviews[sheetId])
-      .filter(Boolean);
-    const headerConfidenceCategory =
-      state.source !== "google-sheets"
-        ? "not_applicable"
-        : selectedHeaderPreviews.length !== state.selectedSheetIds.length ||
-            selectedHeaderPreviews.length === 0
-          ? "pending"
-          : selectedHeaderPreviews.every(
-                (preview) => preview?.selected.confidence === "high",
-              )
-            ? "high"
-            : "needs_review";
-    if (lastTrackedStage.current === trackingKey) return;
-    lastTrackedStage.current = trackingKey;
-    trackAppEvent(
-      "dataset_onboarding_stage_viewed",
-      withAnalyticsContext(analyticsContext, {
-        source_surface: "dataset_onboarding",
-        success: true,
-        source_type: analyticsSource(state.source),
-        onboarding_stage: state.stage,
-        selected_dataset_count: selectedDatasetCount,
-        header_confidence_category: headerConfidenceCategory,
-      }),
-    );
-  }, [
-    analyticsContext,
-    state.csvFile,
-    state.headerPreviews,
-    state.selectedSheetIds,
-    state.source,
-    state.stage,
-  ]);
 
   function goBack() {
     setError(null);
@@ -395,7 +324,6 @@ export function DatasetOnboardingClient({
   }
 
   async function importGoogleSheets() {
-    const startedAt = Date.now();
     setIsBusy(true);
     setError(null);
     try {
@@ -435,53 +363,10 @@ export function DatasetOnboardingClient({
       }));
       setImportResults(nextResults);
       dispatch({ type: "lock-import" });
-      const outcomes = await Promise.all(
-        nextResults.map((result) => startImport(result)),
-      );
+      await Promise.all(nextResults.map((result) => startImport(result)));
       dispatch({ type: "complete" });
-      const succeeded = outcomes.every(Boolean);
-      if (succeeded) {
-        trackAppEvent(
-          "dataset_onboarding_completed",
-          withAnalyticsContext(analyticsContext, {
-            source_surface: "dataset_onboarding",
-            success: true,
-            duration_ms: Date.now() - startedAt,
-            source_type: "google_sheets",
-            selected_dataset_count: nextResults.length,
-            is_workspace_visible: state.isWorkspaceVisible,
-          }),
-        );
-      } else {
-        trackAppEvent(
-          "dataset_onboarding_failed",
-          withAnalyticsContext(analyticsContext, {
-            source_surface: "dataset_onboarding",
-            success: false,
-            error_code: "sheet_import_failed",
-            duration_ms: Date.now() - startedAt,
-            source_type: "google_sheets",
-            onboarding_stage: "import",
-            selected_dataset_count: nextResults.length,
-            is_workspace_visible: state.isWorkspaceVisible,
-          }),
-        );
-      }
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Connection failed.");
-      trackAppEvent(
-        "dataset_onboarding_failed",
-        withAnalyticsContext(analyticsContext, {
-          source_surface: "dataset_onboarding",
-          success: false,
-          error_code: "sheet_connect_failed",
-          duration_ms: Date.now() - startedAt,
-          source_type: "google_sheets",
-          onboarding_stage: "connect",
-          selected_dataset_count: state.selectedSheetIds.length,
-          is_workspace_visible: state.isWorkspaceVisible,
-        }),
-      );
     } finally {
       setIsBusy(false);
     }
@@ -492,7 +377,6 @@ export function DatasetOnboardingClient({
     setIsBusy(true);
     setError(null);
     dispatch({ type: "lock-import" });
-    const startedAt = Date.now();
     const key = "csv-upload";
     setImportResults([
       {
@@ -512,39 +396,14 @@ export function DatasetOnboardingClient({
         columns: state.csvColumns,
         classification: state.classification,
         isWorkspaceVisible: state.isWorkspaceVisible,
-        analyticsContext,
         onProgress: (progress) => setCsvProgress(progress),
       });
       updateResult(key, { status: "ready", datasetId: dataset.id });
-      trackAppEvent(
-        "dataset_onboarding_completed",
-        withAnalyticsContext(analyticsContext, {
-          source_surface: "dataset_onboarding",
-          success: true,
-          duration_ms: Date.now() - startedAt,
-          source_type: "csv",
-          selected_dataset_count: 1,
-          is_workspace_visible: state.isWorkspaceVisible,
-        }),
-      );
     } catch (caught) {
       updateResult(key, {
         status: "failed",
         error: caught instanceof Error ? caught.message : "The upload failed.",
       });
-      trackAppEvent(
-        "dataset_onboarding_failed",
-        withAnalyticsContext(analyticsContext, {
-          source_surface: "dataset_onboarding",
-          success: false,
-          error_code: "csv_import_failed",
-          duration_ms: Date.now() - startedAt,
-          source_type: "csv",
-          onboarding_stage: "import",
-          selected_dataset_count: 1,
-          is_workspace_visible: state.isWorkspaceVisible,
-        }),
-      );
     } finally {
       dispatch({ type: "complete" });
       setIsBusy(false);

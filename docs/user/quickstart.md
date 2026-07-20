@@ -34,9 +34,11 @@ disabled, the user cannot sign back in until an administrator restores access.
 ## Admin Capabilities
 
 Admins can manage datasets, upload or replace CSV data, edit field definitions,
-review field source mappings, manage API connections, view analytics, and manage
-users. Admin access is assigned outside the user-facing UI through the
-environment/provider admin process.
+review linked source databases from Definitions, manage API connections and
+reference resources, and manage users. User Management shows the most recent
+successful sign-in reported by Supabase Auth; it does not represent broader
+application activity. Admin access is assigned outside the user-facing UI
+through the environment/provider admin process.
 
 ## Support Notes
 

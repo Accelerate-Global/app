@@ -7,14 +7,7 @@ import {
   UserPlusIcon,
   UsersIcon,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
-
-import {
-  buildAnalyticsContext,
-  type AnalyticsWorkspaceRole,
-  withAnalyticsContext,
-} from "@/lib/analytics";
-import { trackAppEvent } from "@/lib/analytics-client";
+import { useMemo, useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -61,8 +54,7 @@ import type { WorkspaceRole } from "@/lib/workspace-role";
 type UserManagementClientProps = {
   currentUserId: string;
   initialUsers: WorkspaceUser[];
-  actorOwnerId?: string;
-  workspaceRole?: AnalyticsWorkspaceRole;
+  workspaceRole?: WorkspaceRole;
 };
 
 const ROLE_LABELS: Record<WorkspaceRole, string> = {
@@ -133,6 +125,10 @@ function formatDate(value: string | null) {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(date);
+}
+
+function formatLastSignIn(value: string | null) {
+  return value ? formatDate(value) : "Never";
 }
 
 function getUserDisplayName(user: WorkspaceUser) {
@@ -228,8 +224,7 @@ function replaceUser(users: WorkspaceUser[], nextUser: WorkspaceUser) {
 export function UserManagementClient({
   currentUserId,
   initialUsers,
-  actorOwnerId = "anonymous",
-  workspaceRole = "anonymous",
+  workspaceRole = "pro",
 }: UserManagementClientProps) {
   const [users, setUsers] = useState(() => sortUsers(initialUsers));
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
@@ -246,16 +241,6 @@ export function UserManagementClient({
   const [isInviting, setIsInviting] = useState(false);
   const [isUpdatingUserId, setIsUpdatingUserId] = useState<string | null>(null);
   const isActorSuperAdmin = workspaceRole === "super_admin";
-  const analyticsContext = useMemo(
-    () =>
-      buildAnalyticsContext({
-        route: "user_management",
-        actorOwnerId,
-        workspaceRole,
-      }),
-    [actorOwnerId, workspaceRole],
-  );
-
   const filteredUsers = useMemo(() => {
     const normalizedSearch = searchQuery.trim().toLowerCase();
 
@@ -297,22 +282,6 @@ export function UserManagementClient({
     [users],
   );
 
-  useEffect(() => {
-    if (selectedUser) {
-      setSelectedRole(selectedUser.workspaceRole);
-      trackAppEvent(
-        "user_record_opened",
-        withAnalyticsContext(analyticsContext, {
-          source_surface: "user_management_table",
-          success: true,
-          target_user_id: selectedUser.id,
-          target_status: selectedUser.accountStatus,
-          target_role: selectedUser.workspaceRole,
-        }),
-      );
-    }
-  }, [analyticsContext, selectedUser]);
-
   async function copyValue(value: string, label: string) {
     try {
       await navigator.clipboard.writeText(value);
@@ -344,25 +313,7 @@ export function UserManagementClient({
       setInviteEmail("");
       setInviteRole("pro");
       setSuccessMessage(`Invitation sent to ${user.email ?? "the new user"}.`);
-      trackAppEvent(
-        "user_invite_sent",
-        withAnalyticsContext(analyticsContext, {
-          source_surface: "user_invite_form",
-          success: true,
-          target_user_id: user.id,
-          to_role: user.workspaceRole,
-        }),
-      );
     } catch (error) {
-      trackAppEvent(
-        "user_invite_failed",
-        withAnalyticsContext(analyticsContext, {
-          source_surface: "user_invite_form",
-          success: false,
-          error_code: "user_invite_failed",
-          to_role: inviteRole,
-        }),
-      );
       setErrorMessage(
         error instanceof Error ? error.message : "The user could not be invited.",
       );
@@ -379,7 +330,6 @@ export function UserManagementClient({
     setErrorMessage(null);
     setSuccessMessage(null);
     setIsUpdatingUserId(selectedUser.id);
-    const selectedUserBeforeUpdate = selectedUser;
 
     try {
       const user = await updateUserRecord({
@@ -389,32 +339,7 @@ export function UserManagementClient({
 
       setUsers((current) => replaceUser(current, user));
       setSuccessMessage(`${getUserDisplayName(user)} is now ${ROLE_LABELS[user.workspaceRole].toLowerCase()}.`);
-      trackAppEvent(
-        "user_role_changed",
-        withAnalyticsContext(analyticsContext, {
-          source_surface: "user_detail_sheet",
-          success: true,
-          target_user_id: user.id,
-          from_role: selectedUserBeforeUpdate.workspaceRole,
-          to_role: user.workspaceRole,
-          from_status: selectedUserBeforeUpdate.accountStatus,
-          to_status: user.accountStatus,
-        }),
-      );
     } catch (error) {
-      trackAppEvent(
-        "user_role_changed",
-        withAnalyticsContext(analyticsContext, {
-          source_surface: "user_detail_sheet",
-          success: false,
-          error_code: "user_role_change_failed",
-          target_user_id: selectedUserBeforeUpdate.id,
-          from_role: selectedUserBeforeUpdate.workspaceRole,
-          to_role: selectedRole,
-          from_status: selectedUserBeforeUpdate.accountStatus,
-          to_status: selectedUserBeforeUpdate.accountStatus,
-        }),
-      );
       setErrorMessage(
         error instanceof Error ? error.message : "The user role could not be updated.",
       );
@@ -431,7 +356,6 @@ export function UserManagementClient({
     setErrorMessage(null);
     setSuccessMessage(null);
     setIsUpdatingUserId(selectedUser.id);
-    const selectedUserBeforeUpdate = selectedUser;
 
     try {
       const user = await updateUserRecord({
@@ -445,34 +369,7 @@ export function UserManagementClient({
           ? `${getUserDisplayName(user)} was disabled.`
           : `${getUserDisplayName(user)} was re-enabled.`,
       );
-      trackAppEvent(
-        disabled ? "user_disabled" : "user_enabled",
-        withAnalyticsContext(analyticsContext, {
-          source_surface: "user_detail_sheet",
-          success: true,
-          target_user_id: user.id,
-          from_role: selectedUserBeforeUpdate.workspaceRole,
-          to_role: user.workspaceRole,
-          from_status: selectedUserBeforeUpdate.accountStatus,
-          to_status: user.accountStatus,
-        }),
-      );
     } catch (error) {
-      trackAppEvent(
-        disabled ? "user_disabled" : "user_enabled",
-        withAnalyticsContext(analyticsContext, {
-          source_surface: "user_detail_sheet",
-          success: false,
-          error_code: disabled
-            ? "user_disable_failed"
-            : "user_enable_failed",
-          target_user_id: selectedUserBeforeUpdate.id,
-          from_role: selectedUserBeforeUpdate.workspaceRole,
-          to_role: selectedUserBeforeUpdate.workspaceRole,
-          from_status: selectedUserBeforeUpdate.accountStatus,
-          to_status: selectedUserBeforeUpdate.accountStatus,
-        }),
-      );
       setErrorMessage(
         error instanceof Error ? error.message : "The user status could not be updated.",
       );
@@ -493,26 +390,7 @@ export function UserManagementClient({
     try {
       await sendUserPasswordResetEmail(selectedUser.id);
       setSuccessMessage(`Password reset email sent to ${selectedUser.email}.`);
-      trackAppEvent(
-        "admin_password_reset_sent",
-        withAnalyticsContext(analyticsContext, {
-          source_surface: "user_detail_sheet",
-          success: true,
-          target_user_id: selectedUser.id,
-          to_status: selectedUser.accountStatus,
-        }),
-      );
     } catch (error) {
-      trackAppEvent(
-        "admin_password_reset_sent",
-        withAnalyticsContext(analyticsContext, {
-          source_surface: "user_detail_sheet",
-          success: false,
-          error_code: "admin_password_reset_failed",
-          target_user_id: selectedUser.id,
-          to_status: selectedUser.accountStatus,
-        }),
-      );
       setErrorMessage(
         error instanceof Error
           ? error.message
@@ -536,26 +414,7 @@ export function UserManagementClient({
       const user = await resendUserInviteEmail(selectedUser.id);
       setUsers((current) => replaceUser(current, user));
       setSuccessMessage(`Invite email resent to ${user.email ?? selectedUser.email}.`);
-      trackAppEvent(
-        "admin_invite_resent",
-        withAnalyticsContext(analyticsContext, {
-          source_surface: "user_detail_sheet",
-          success: true,
-          target_user_id: user.id,
-          to_status: user.accountStatus,
-        }),
-      );
     } catch (error) {
-      trackAppEvent(
-        "admin_invite_resent",
-        withAnalyticsContext(analyticsContext, {
-          source_surface: "user_detail_sheet",
-          success: false,
-          error_code: "admin_invite_resend_failed",
-          target_user_id: selectedUser.id,
-          to_status: selectedUser.accountStatus,
-        }),
-      );
       setErrorMessage(
         error instanceof Error
           ? error.message
@@ -785,6 +644,7 @@ export function UserManagementClient({
                   <TableHead>User</TableHead>
                   <TableHead>Role</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Last sign-in</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -823,6 +683,12 @@ export function UserManagementClient({
                         <Badge variant={STATUS_BADGE_VARIANTS[user.accountStatus]}>
                           {STATUS_LABELS[user.accountStatus]}
                         </Badge>
+                      </TableCell>
+                      <TableCell
+                        className="whitespace-nowrap font-mono text-xs text-muted-foreground"
+                        data-smoke-user-last-sign-in={user.id}
+                      >
+                        {formatLastSignIn(user.lastLoginAt)}
                       </TableCell>
                     </TableRow>
                   );
@@ -917,9 +783,9 @@ export function UserManagementClient({
                     </div>
                     <div>
                       <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                        Last login
+                        Last sign-in
                       </p>
-                      <p>{formatDate(selectedUser.lastLoginAt)}</p>
+                      <p>{formatLastSignIn(selectedUser.lastLoginAt)}</p>
                     </div>
                     <div>
                       <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">

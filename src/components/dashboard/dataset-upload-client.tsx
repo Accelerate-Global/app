@@ -17,13 +17,6 @@ import type {
   DatasetUploadAuthorizationResponse,
 } from "@/lib/api-types";
 import {
-  buildAnalyticsContext,
-  type AnalyticsWorkspaceRole,
-  type DatasetUploadFailureStage,
-  withAnalyticsContext,
-} from "@/lib/analytics";
-import { trackAppEvent } from "@/lib/analytics-client";
-import {
   isCsvFile,
   MAX_CSV_BYTES,
   normalizeHeaders,
@@ -61,8 +54,6 @@ import { cn } from "@/lib/utils";
 type DatasetUploadClientProps = {
   targetDataset?: DatasetSummary | null;
   preferredClassification?: DatasetClassification | null;
-  actorOwnerId?: string;
-  workspaceRole?: AnalyticsWorkspaceRole;
 };
 
 type UploadState = {
@@ -346,8 +337,6 @@ function DatasetClassificationSelect({
 export function DatasetUploadClient({
   targetDataset = null,
   preferredClassification = null,
-  actorOwnerId = "anonymous",
-  workspaceRole = "anonymous",
 }: DatasetUploadClientProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [upload, setUpload] = useState<UploadState | null>(null);
@@ -369,11 +358,6 @@ export function DatasetUploadClient({
     upload?.phase === "uploading" || upload?.phase === "parsing";
   const isClassificationLocked = sourceDatasetClassification !== null;
   const isReadyForFileSelection = isClassificationLocked || classification !== null;
-  const analyticsContext = buildAnalyticsContext({
-    route: "upload",
-    actorOwnerId,
-    workspaceRole,
-  });
   const classificationHelpText = isReplacing
     ? targetDataset.backingDatasetId
       ? preferredClassification
@@ -386,21 +370,7 @@ export function DatasetUploadClient({
 
   async function handleFile(file: File) {
     let datasetId: string | null = null;
-    let columnCount: number | undefined;
-    let rowsParsed = 0;
-    let failureStage: DatasetUploadFailureStage = "validation";
     const uploadFileName = isReplacing ? targetDataset.fileName : file.name;
-    const startTime = Date.now();
-
-    trackAppEvent(
-      "dataset_upload_started",
-      withAnalyticsContext(analyticsContext, {
-        source_surface: "dataset_upload",
-        success: true,
-        file_size_bytes: file.size,
-        replace_target_dataset_id: targetDataset?.id,
-      }),
-    );
 
     try {
       if (!classification) {
@@ -434,10 +404,7 @@ export function DatasetUploadClient({
           : "Checking columns",
       });
 
-      failureStage = "header_parse";
       const columns = await parseHeader(file);
-      columnCount = columns.length;
-      failureStage = "authorize";
       const uploadAuthorization = await authorizeUpload(file);
 
       setUpload((current) =>
@@ -469,7 +436,6 @@ export function DatasetUploadClient({
         throw uploadResult.error;
       }
 
-      failureStage = isReplacing ? "dataset_replace" : "dataset_create";
       const nextDataset = isReplacing
         ? await replaceDatasetRecord({
             datasetId: targetDataset.id,
@@ -486,7 +452,6 @@ export function DatasetUploadClient({
           });
 
       datasetId = nextDataset.id;
-      failureStage = "row_persist";
 
       setUpload({
         fileName: nextDataset.fileName,
@@ -503,7 +468,6 @@ export function DatasetUploadClient({
         columns,
         datasetId: nextDataset.id,
         onProgress: (nextRowsParsed) => {
-          rowsParsed = nextRowsParsed;
           setUpload((current) =>
             current
               ? {
@@ -527,34 +491,6 @@ export function DatasetUploadClient({
         rowsParsed: finalDataset.rowCount,
         message: isReplacing ? "Dataset replaced" : "Dataset ready",
       });
-      if (isReplacing) {
-        trackAppEvent(
-          "dataset_replaced",
-          withAnalyticsContext(analyticsContext, {
-            source_surface: "dataset_upload",
-            success: true,
-            dataset_id: finalDataset.id,
-            replace_target_dataset_id: targetDataset.id,
-            file_size_bytes: file.size,
-            column_count: columnCount ?? finalDataset.columns.length,
-            row_count: finalDataset.rowCount,
-            duration_ms: Date.now() - startTime,
-          }),
-        );
-      } else {
-        trackAppEvent(
-          "dataset_upload_completed",
-          withAnalyticsContext(analyticsContext, {
-            source_surface: "dataset_upload",
-            success: true,
-            dataset_id: finalDataset.id,
-            file_size_bytes: file.size,
-            column_count: columnCount ?? finalDataset.columns.length,
-            row_count: finalDataset.rowCount,
-            duration_ms: Date.now() - startTime,
-          }),
-        );
-      }
     } catch (error) {
       const message =
         error instanceof Error
@@ -564,30 +500,8 @@ export function DatasetUploadClient({
             : "The upload failed.";
 
       if (datasetId) {
-        failureStage = "mark_failed";
         await markDatasetFailed(datasetId, message);
       }
-
-      trackAppEvent(
-        "dataset_upload_failed",
-        withAnalyticsContext(analyticsContext, {
-          source_surface: "dataset_upload",
-          success: false,
-          error_code:
-            !isCsvFile(file)
-              ? "invalid_file_type"
-              : file.size > MAX_CSV_BYTES
-                ? "file_too_large"
-                : `${failureStage}_failed`,
-          duration_ms: Date.now() - startTime,
-          dataset_id: datasetId ?? targetDataset?.id,
-          file_size_bytes: file.size,
-          column_count: columnCount,
-          row_count: rowsParsed || undefined,
-          replace_target_dataset_id: targetDataset?.id,
-          failure_stage: failureStage,
-        }),
-      );
 
       setCompletedDataset(null);
       setUpload({

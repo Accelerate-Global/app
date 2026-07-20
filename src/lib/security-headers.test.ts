@@ -36,7 +36,7 @@ describe("security-headers", () => {
     expect(headers["Referrer-Policy"]).toBe("strict-origin-when-cross-origin");
   });
 
-  it("builds a production nonce CSP without unsafe-inline scripts or analytics", () => {
+  it("builds a production nonce CSP without unsafe-inline scripts or trackers", () => {
     const policy = buildContentSecurityPolicy({
       nodeEnv: "production",
       nonce: "nonce123",

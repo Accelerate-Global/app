@@ -24,13 +24,7 @@ import type {
   DatasetSummary,
   SavedDatasetFilterState,
 } from "@/lib/api-types";
-import {
-  buildAnalyticsContext,
-  type AppAnalyticsContext,
-  withAnalyticsContext,
-} from "@/lib/analytics";
 import { getEnabledFilterSections } from "@/lib/dataset-filtering";
-import { trackAppEvent } from "@/lib/analytics-client";
 import { cn } from "@/lib/utils";
 
 type DatasetAssignDerivedViewSheetProps = {
@@ -41,7 +35,6 @@ type DatasetAssignDerivedViewSheetProps = {
   filters: SavedDatasetFilterState;
   recordCount: number;
   assignableDatasets: DatasetSummary[];
-  analyticsContext?: AppAnalyticsContext;
 };
 
 type DatasetResponse = {
@@ -86,11 +79,6 @@ export function DatasetAssignDerivedViewSheet({
   filters,
   recordCount,
   assignableDatasets,
-  analyticsContext = buildAnalyticsContext({
-    route: "dataset_detail",
-    actorOwnerId: "anonymous",
-    workspaceRole: "anonymous",
-  }),
 }: DatasetAssignDerivedViewSheetProps) {
   const [selectedDatasetId, setSelectedDatasetId] = useState<string | null>(
     assignableDatasets[0]?.id ?? null,
@@ -175,19 +163,6 @@ export function DatasetAssignDerivedViewSheet({
       const payload = (await response.json()) as DatasetResponse;
       setAssignedDataset(payload.dataset);
       setMessage(`Assigned filtered view to "${payload.dataset.fileName}".`);
-      trackAppEvent(
-        "dataset_assigned",
-        withAnalyticsContext(analyticsContext, {
-          source_surface: "dataset_assign_sheet",
-          success: true,
-          dataset_id: payload.dataset.id,
-          source_dataset_id: sourceDatasetId,
-          target_dataset_id: payload.dataset.id,
-          assigned_row_count: payload.dataset.rowCount,
-          filter_sections_enabled: getEnabledFilterSections(filters),
-          sorting_count: filters.sorting.length,
-        }),
-      );
     } catch (error) {
       setAssignedDataset(null);
       setMessage(
@@ -196,19 +171,6 @@ export function DatasetAssignDerivedViewSheet({
           : "The filtered dataset could not be assigned.",
       );
       setMessageTone("destructive");
-      trackAppEvent(
-        "dataset_assigned",
-        withAnalyticsContext(analyticsContext, {
-          source_surface: "dataset_assign_sheet",
-          success: false,
-          error_code: "dataset_assign_failed",
-          dataset_id: selectedDataset.id,
-          source_dataset_id: sourceDatasetId,
-          target_dataset_id: selectedDataset.id,
-          filter_sections_enabled: getEnabledFilterSections(filters),
-          sorting_count: filters.sorting.length,
-        }),
-      );
     } finally {
       setIsAssigning(false);
     }

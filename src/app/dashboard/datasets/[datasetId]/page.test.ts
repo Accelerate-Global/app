@@ -210,8 +210,6 @@ describe("/dashboard/datasets/[datasetId]", () => {
       workspaceRole: string;
       datasetSource: string;
       sourceRowCount: number;
-      initialSavedTableId: string | null;
-      initialSavedTableRowCount: number | null;
     };
 
     expect(getSavedDatasetTableMock).toHaveBeenCalledWith({
@@ -256,12 +254,8 @@ describe("/dashboard/datasets/[datasetId]", () => {
       },
     ]);
     expect(props.assignableDatasets).toEqual([]);
-    expect(props.actorOwnerId).toBe("owner-1");
     expect(props.workspaceRole).toBe("admin");
-    expect(props.datasetSource).toBe("dashboard");
     expect(props.sourceRowCount).toBe(10);
-    expect(props.initialSavedTableId).toBe("saved-table-1");
-    expect(props.initialSavedTableRowCount).toBe(10);
     expect(datasetPartnerExportsSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         datasetId: "dataset-1",
@@ -301,21 +295,6 @@ describe("/dashboard/datasets/[datasetId]", () => {
     expect(getDatasetMock).toHaveBeenCalledWith("dataset-1", {
       includeDisabled: false,
     });
-  });
-
-  it("passes through explicit dataset source analytics props", async () => {
-    render(
-      await DatasetPage({
-        params: Promise.resolve({ datasetId: "dataset-1" }),
-        searchParams: Promise.resolve({ source: "default_redirect" }),
-      }),
-    );
-
-    const props = datasetDetailClientSpy.mock.lastCall?.[0] as {
-      datasetSource: string;
-    };
-
-    expect(props.datasetSource).toBe("default_redirect");
   });
 
   it("renders the source dataset classification in the page heading", async () => {

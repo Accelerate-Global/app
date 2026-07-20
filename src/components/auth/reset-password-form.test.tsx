@@ -9,10 +9,6 @@ import { ResetPasswordForm } from "./reset-password-form";
 
 const pushMock = vi.fn();
 const refreshMock = vi.fn();
-const { trackAppEventMock } = vi.hoisted(() => ({
-  trackAppEventMock: vi.fn(),
-}));
-
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
     push: pushMock,
@@ -22,10 +18,6 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("@/lib/supabase/client", () => ({
   createSupabaseBrowserClient: vi.fn(),
-}));
-
-vi.mock("@/lib/analytics-client", () => ({
-  trackAppEvent: trackAppEventMock,
 }));
 
 const createSupabaseBrowserClientMock = vi.mocked(createSupabaseBrowserClient);
@@ -64,14 +56,6 @@ describe("ResetPasswordForm", () => {
       });
     });
     expect(signOut).not.toHaveBeenCalled();
-    expect(trackAppEventMock).toHaveBeenCalledWith(
-      "password_reset_completed",
-      expect.objectContaining({
-        route: "reset_password",
-        source_surface: "reset_password_form",
-        success: true,
-      }),
-    );
     expect(pushMock).toHaveBeenCalledWith("/dashboard");
     expect(refreshMock).toHaveBeenCalled();
   });
@@ -92,15 +76,6 @@ describe("ResetPasswordForm", () => {
     render(<ResetPasswordForm initialCanReset={false} />);
 
     await waitFor(() => {
-      expect(trackAppEventMock).toHaveBeenCalledWith(
-        "password_reset_invalid_link",
-        expect.objectContaining({
-          route: "reset_password",
-          source_surface: "reset_password_form",
-          success: false,
-          error_code: "invalid_recovery_link",
-        }),
-      );
     });
   });
 

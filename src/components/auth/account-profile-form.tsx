@@ -10,12 +10,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { CurrentIdentity } from "@/lib/auth";
-import {
-  buildAnalyticsContext,
-  getAnalyticsWorkspaceRole,
-  withAnalyticsContext,
-} from "@/lib/analytics";
-import { trackAppEvent } from "@/lib/analytics-client";
 import { buildAuthConfirmUrl } from "@/lib/auth-redirect";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import {
@@ -53,12 +47,6 @@ export function AccountProfileForm({ identity }: AccountProfileFormProps) {
     !isSavingEmail &&
     Boolean(normalizedEmail) &&
     normalizedEmail !== (identity.email ?? "").trim().toLowerCase();
-  const analyticsContext = buildAnalyticsContext({
-    route: "profile",
-    actorOwnerId: identity.ownerId,
-    workspaceRole: getAnalyticsWorkspaceRole(identity.workspaceRole),
-  });
-
   async function handleSaveName() {
     if (!canUpdateProfile) {
       return;
@@ -67,8 +55,6 @@ export function AccountProfileForm({ identity }: AccountProfileFormProps) {
     setNameError(null);
     setNameSuccess(null);
     setIsSavingName(true);
-    const startedAt = Date.now();
-
     try {
       const supabase = createSupabaseBrowserClient();
       const { data: userData, error: userError } = await supabase.auth.getUser();
@@ -93,26 +79,9 @@ export function AccountProfileForm({ identity }: AccountProfileFormProps) {
         throw error;
       }
 
-      trackAppEvent(
-        "profile_name_updated",
-        withAnalyticsContext(analyticsContext, {
-          source_surface: "profile_name_form",
-          success: true,
-          duration_ms: Date.now() - startedAt,
-        }),
-      );
       setNameSuccess("Your profile name has been updated.");
       router.refresh();
     } catch (error) {
-      trackAppEvent(
-        "profile_name_updated",
-        withAnalyticsContext(analyticsContext, {
-          source_surface: "profile_name_form",
-          success: false,
-          error_code: "profile_name_update_failed",
-          duration_ms: Date.now() - startedAt,
-        }),
-      );
       setNameError(
         error instanceof Error ? error.message : "Could not update your full name.",
       );
@@ -129,8 +98,6 @@ export function AccountProfileForm({ identity }: AccountProfileFormProps) {
     setEmailError(null);
     setEmailSuccess(null);
     setIsSavingEmail(true);
-    const startedAt = Date.now();
-
     try {
       const supabase = createSupabaseBrowserClient();
       const { error } = await supabase.auth.updateUser(
@@ -147,27 +114,10 @@ export function AccountProfileForm({ identity }: AccountProfileFormProps) {
         throw error;
       }
 
-      trackAppEvent(
-        "email_change_started",
-        withAnalyticsContext(analyticsContext, {
-          source_surface: "profile_email_form",
-          success: true,
-          duration_ms: Date.now() - startedAt,
-        }),
-      );
       setEmailSuccess(
         "Check your inbox to confirm the email change. If secure email change is enabled, you may also need to confirm from your current address.",
       );
     } catch (error) {
-      trackAppEvent(
-        "email_change_started",
-        withAnalyticsContext(analyticsContext, {
-          source_surface: "profile_email_form",
-          success: false,
-          error_code: "email_change_start_failed",
-          duration_ms: Date.now() - startedAt,
-        }),
-      );
       setEmailError(
         error instanceof Error
           ? error.message
@@ -185,8 +135,6 @@ export function AccountProfileForm({ identity }: AccountProfileFormProps) {
 
     setDisableError(null);
     setIsDisablingAccount(true);
-    const startedAt = Date.now();
-
     try {
       const response = await fetch("/api/account/disable", {
         method: "POST",
@@ -200,26 +148,9 @@ export function AccountProfileForm({ identity }: AccountProfileFormProps) {
         throw new Error(payload?.error ?? "Could not disable your account.");
       }
 
-      trackAppEvent(
-        "account_disabled_self",
-        withAnalyticsContext(analyticsContext, {
-          source_surface: "profile_disable_form",
-          success: true,
-          duration_ms: Date.now() - startedAt,
-        }),
-      );
       router.push("/");
       router.refresh();
     } catch (error) {
-      trackAppEvent(
-        "account_disabled_self",
-        withAnalyticsContext(analyticsContext, {
-          source_surface: "profile_disable_form",
-          success: false,
-          error_code: "account_disable_failed",
-          duration_ms: Date.now() - startedAt,
-        }),
-      );
       setDisableError(
         error instanceof Error ? error.message : "Could not disable your account.",
       );

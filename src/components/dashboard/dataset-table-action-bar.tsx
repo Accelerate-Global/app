@@ -17,13 +17,6 @@ import type {
   SavedDatasetTableResponse,
 } from "@/lib/api-types";
 import {
-  buildAnalyticsContext,
-  type AppAnalyticsContext,
-  withAnalyticsContext,
-} from "@/lib/analytics";
-import { getEnabledFilterSections } from "@/lib/dataset-filtering";
-import { trackAppEvent } from "@/lib/analytics-client";
-import {
   getFilteredDatasetDownloadFileName,
   serializeDatasetRowsToCsv,
 } from "@/lib/dataset-download";
@@ -42,7 +35,6 @@ type DatasetTableActionBarProps = {
     string,
     FieldDefinitionPresentation
   >;
-  analyticsContext?: AppAnalyticsContext;
   canSaveFilteredTable?: boolean;
   onOpenFilters?: () => void;
   onOpenAssignDerivedView?: () => void;
@@ -75,11 +67,6 @@ export function DatasetTableActionBar({
   isLoading,
   hasError,
   fieldDefinitionPresentationByColumnKey,
-  analyticsContext = buildAnalyticsContext({
-    route: "dataset_detail",
-    actorOwnerId: "anonymous",
-    workspaceRole: "anonymous",
-  }),
   canSaveFilteredTable = true,
   onOpenFilters,
   onOpenAssignDerivedView,
@@ -102,16 +89,6 @@ export function DatasetTableActionBar({
       fileName: getFilteredDatasetDownloadFileName(dataset.fileName),
       csv,
     });
-    trackAppEvent(
-      "dataset_downloaded",
-      withAnalyticsContext(analyticsContext, {
-        source_surface: "dataset_action_bar",
-        success: true,
-        dataset_id: dataset.id,
-        filtered_row_count: recordCount,
-        visible_column_count: visibleColumns.length,
-      }),
-    );
     setMessage(null);
     setMessageTone("default");
   }
@@ -149,29 +126,7 @@ export function DatasetTableActionBar({
 
       setMessage(`Saved to dashboard as "${payload.savedTable.name}".`);
       setMessageTone("default");
-      trackAppEvent(
-        "saved_table_created",
-        withAnalyticsContext(analyticsContext, {
-          source_surface: "dataset_action_bar",
-          success: true,
-          dataset_id: dataset.id,
-          saved_table_id: payload.savedTable.id,
-          saved_row_count: recordCount,
-          filter_sections_enabled: getEnabledFilterSections(filters),
-        }),
-      );
     } catch (error) {
-      trackAppEvent(
-        "saved_table_created",
-        withAnalyticsContext(analyticsContext, {
-          source_surface: "dataset_action_bar",
-          success: false,
-          error_code: "saved_table_create_failed",
-          dataset_id: dataset.id,
-          saved_row_count: recordCount,
-          filter_sections_enabled: getEnabledFilterSections(filters),
-        }),
-      );
       setMessage(
         error instanceof Error
           ? error.message

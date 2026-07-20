@@ -100,7 +100,7 @@ function SavedTableListRow({
 
   function navigateToSavedTable() {
     router.push(
-      `/dashboard/datasets/${savedTable.datasetId}?savedTableId=${savedTable.id}&source=saved_table`,
+      `/dashboard/datasets/${savedTable.datasetId}?savedTableId=${savedTable.id}`,
     );
   }
 

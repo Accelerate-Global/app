@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(127);
+select plan(125);
 
 select results_eq(
   $$
@@ -95,19 +95,6 @@ select ok(exists(select 1 from pg_policies where schemaname = 'storage' and tabl
 select ok(exists(select 1 from pg_policies where schemaname = 'storage' and tablename = 'objects' and policyname = 'dataset admin can insert dataset storage objects' and cmd = 'INSERT'), 'storage.objects has dataset bucket insert policy');
 select ok(exists(select 1 from pg_policies where schemaname = 'storage' and tablename = 'objects' and policyname = 'dataset admin can update dataset storage objects' and cmd = 'UPDATE'), 'storage.objects has dataset bucket update policy');
 select ok(exists(select 1 from pg_policies where schemaname = 'storage' and tablename = 'objects' and policyname = 'dataset admin can delete dataset storage objects' and cmd = 'DELETE'), 'storage.objects has dataset bucket delete policy');
-select ok((select relrowsecurity from pg_class join pg_namespace on pg_namespace.oid = pg_class.relnamespace where pg_namespace.nspname = 'private' and pg_class.relname = 'analytics_events' and pg_class.relkind = 'r'), 'private.analytics_events has row level security enabled');
-select is(
-  (
-    select count(*)::bigint
-    from information_schema.table_privileges
-    where table_schema = 'private'
-      and table_name = 'analytics_events'
-      and grantee in ('PUBLIC', 'anon', 'authenticated')
-  ),
-  0::bigint,
-  'private.analytics_events has no grants for public-facing roles'
-);
-
 select ok((select relrowsecurity from pg_class join pg_namespace on pg_namespace.oid = pg_class.relnamespace where pg_namespace.nspname = 'private' and pg_class.relname = 'api_connections' and pg_class.relkind = 'r'), 'private.api_connections has row level security enabled');
 select ok((select relrowsecurity from pg_class join pg_namespace on pg_namespace.oid = pg_class.relnamespace where pg_namespace.nspname = 'private' and pg_class.relname = 'api_connection_runs' and pg_class.relkind = 'r'), 'private.api_connection_runs has row level security enabled');
 select ok((select relrowsecurity from pg_class join pg_namespace on pg_namespace.oid = pg_class.relnamespace where pg_namespace.nspname = 'private' and pg_class.relname = 'api_connection_resources' and pg_class.relkind = 'r'), 'private.api_connection_resources has row level security enabled');

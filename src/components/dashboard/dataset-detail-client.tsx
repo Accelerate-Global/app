@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { DatasetAssignDerivedViewSheet } from "@/components/dashboard/dataset-assign-derived-view-sheet";
 import { DatasetTableActionBar } from "@/components/dashboard/dataset-table-action-bar";
@@ -25,15 +25,6 @@ import type {
   WatchlistJpOnlyEvangelicalRule,
 } from "@/lib/api-types";
 import {
-  buildAnalyticsContext,
-  type DatasetOpenSource,
-  getSortingKeys,
-  type AnalyticsWorkspaceRole,
-  withAnalyticsContext,
-} from "@/lib/analytics";
-import { getEnabledFilterSections } from "@/lib/dataset-filtering";
-import { trackAppEvent } from "@/lib/analytics-client";
-import {
   UUPG_DATASET_COLUMN_KEY,
   WATCHLIST_DATASET_COLUMN_KEY,
   WATCHLIST_ENGAGEMENT_PHASES_DATASET_COLUMN_KEY,
@@ -56,6 +47,7 @@ import {
   WATCHLIST_FIXED_THRESHOLD,
 } from "@/lib/saved-dataset-filters";
 import { useDatasetPerfRenderTrace } from "@/lib/render-trace";
+import type { WorkspaceRole } from "@/lib/workspace-role";
 import {
   appendWatchlistEngagementPhaseDefinition,
   formatWatchlistEngagementPhaseSummary,
@@ -83,12 +75,7 @@ type DatasetDetailClientProps = {
   initialFilters?: SavedDatasetFilterState | null;
   initialSorting?: SavedDatasetSort[] | null;
   assignableDatasets?: DatasetSummary[];
-  actorOwnerId?: string;
-  workspaceRole?: AnalyticsWorkspaceRole;
-  datasetSource?: DatasetOpenSource;
-  initialSavedTableId?: string | null;
-  initialSavedTableRowCount?: number | null;
-  initialSavedTableFilterSections?: SavedDatasetFilterState | null;
+  workspaceRole?: WorkspaceRole;
 };
 
 const UUPG_FRONTIER_LOOKUP_KEYS = getFieldDefinitionCanonicalKeyLookupKeys(
@@ -215,12 +202,7 @@ export function DatasetDetailClient({
   initialFilters = null,
   initialSorting = null,
   assignableDatasets = [],
-  actorOwnerId = "anonymous",
-  workspaceRole = "anonymous",
-  datasetSource = "dashboard",
-  initialSavedTableId = null,
-  initialSavedTableRowCount = null,
-  initialSavedTableFilterSections = null,
+  workspaceRole = "pro",
 }: DatasetDetailClientProps) {
   useDatasetPerfRenderTrace("DatasetDetailClient");
   const watchlistThresholdDefinition =
@@ -334,23 +316,6 @@ export function DatasetDetailClient({
   const [isFiltersSheetOpen, setIsFiltersSheetOpen] = useState(false);
   const [isAssignDerivedViewSheetOpen, setIsAssignDerivedViewSheetOpen] =
     useState(false);
-  const analyticsContext = useMemo(
-    () =>
-      buildAnalyticsContext({
-        route: "dataset_detail",
-        actorOwnerId,
-        workspaceRole,
-      }),
-    [actorOwnerId, workspaceRole],
-  );
-  const hasTrackedInitialFiltersRef = useRef(false);
-  const datasetTableAnalytics = useMemo(
-    () => ({
-      context: analyticsContext,
-      datasetSource,
-    }),
-    [analyticsContext, datasetSource],
-  );
   const canSaveFilteredTable = workspaceRole !== "basic";
   const sourceDatasetId = dataset.backingDatasetId ?? dataset.id;
 
@@ -500,7 +465,6 @@ export function DatasetDetailClient({
     initialSorting: initialState.sorting,
     fieldDefinitionPresentationByColumnKey,
     filterSections,
-    analytics: datasetTableAnalytics,
   });
   const effectiveCountrySelection = useMemo(
     () =>
@@ -756,187 +720,6 @@ export function DatasetDetailClient({
     setIsAssignDerivedViewSheetOpen(true);
   }, []);
 
-  useEffect(() => {
-    trackAppEvent(
-      "dataset_opened",
-      withAnalyticsContext(analyticsContext, {
-        source_surface: "dataset_detail_page",
-        success: true,
-        dataset_id: dataset.id,
-        dataset_source: datasetSource,
-      }),
-    );
-  }, [analyticsContext, dataset.id, datasetSource]);
-
-  useEffect(() => {
-    if (initialSavedTableId && initialSavedTableRowCount !== null) {
-      trackAppEvent(
-        "saved_table_opened",
-        withAnalyticsContext(analyticsContext, {
-          source_surface: "dataset_detail_page",
-          success: true,
-          dataset_id: dataset.id,
-          saved_table_id: initialSavedTableId,
-          saved_row_count: initialSavedTableRowCount,
-          filter_sections_enabled: initialSavedTableFilterSections
-            ? getEnabledFilterSections(initialSavedTableFilterSections)
-            : "none",
-        }),
-      );
-    }
-  }, [
-    analyticsContext,
-    dataset.id,
-    initialSavedTableFilterSections,
-    initialSavedTableId,
-    initialSavedTableRowCount,
-  ]);
-
-  const filterSnapshotKey = useMemo(
-    () =>
-      JSON.stringify({
-        regionEnabled,
-        selectedRegionIds,
-        countryEnabled,
-        selectedCountryNames,
-        includeAlternateCountries,
-        watchlistEnabled,
-        watchlistThresholdEnabled,
-        watchlistThreshold,
-        watchlistEngagementPhaseEnabled,
-        watchlistEngagementPhaseRule,
-        watchlistEngagementPhaseThreshold,
-        watchlistJpOnlyEvangelicalCriteriaEnabled,
-        uupgEnabled,
-        uupgGlobalEngagementAnywhereEnabled,
-        uupgFrontierGroupEnabled,
-        hotspotsEnabled,
-        hotspotsMetric,
-        hotspotsCountryCount,
-        sorting: datasetTable.sorting,
-      }),
-    [
-      countryEnabled,
-      includeAlternateCountries,
-      datasetTable.sorting,
-      regionEnabled,
-      selectedCountryNames,
-      selectedRegionIds,
-      hotspotsCountryCount,
-      hotspotsEnabled,
-      hotspotsMetric,
-      uupgFrontierGroupEnabled,
-      uupgGlobalEngagementAnywhereEnabled,
-      uupgEnabled,
-      watchlistEnabled,
-      watchlistEngagementPhaseEnabled,
-      watchlistEngagementPhaseRule,
-      watchlistEngagementPhaseThreshold,
-      watchlistJpOnlyEvangelicalCriteriaEnabled,
-      watchlistThreshold,
-      watchlistThresholdEnabled,
-    ],
-  );
-
-  useEffect(() => {
-    if (datasetTable.isLoading || datasetTable.error) {
-      return;
-    }
-
-    if (!hasTrackedInitialFiltersRef.current) {
-      hasTrackedInitialFiltersRef.current = true;
-      return;
-    }
-
-    const timeoutId = window.setTimeout(() => {
-      trackAppEvent(
-        "dataset_filters_applied",
-        withAnalyticsContext(analyticsContext, {
-          source_surface: "dataset_filters",
-          success: true,
-          dataset_id: dataset.id,
-          result_count: datasetTable.recordCount,
-          region_enabled: regionEnabled,
-          region_count: Object.values(selectedRegionIds).filter(Boolean).length,
-          country_enabled: countryEnabled,
-          country_count: effectiveCountrySelection.hasExplicitSelection
-            ? effectiveCountrySelection.selectedCountryNames.length
-            : 0,
-          watchlist_enabled: watchlistEnabled,
-          watchlist_threshold_enabled: watchlistThresholdEnabled,
-          watchlist_threshold: watchlistThresholdEnabled
-            ? watchlistThreshold
-            : null,
-          watchlist_jp_only_evangelical_enabled:
-            watchlistJpOnlyEvangelicalCriteriaEnabled,
-          watchlist_jp_only_min_believers:
-            watchlistEnabled && watchlistJpOnlyEvangelicalCriteriaEnabled
-              ? watchlistJpOnlyEvangelicalRule.minBelievers
-              : null,
-          watchlist_jp_only_max_believers:
-            watchlistEnabled && watchlistJpOnlyEvangelicalCriteriaEnabled
-              ? watchlistJpOnlyEvangelicalRule.maxBelievers
-              : null,
-          watchlist_jp_only_max_percent_evangelical:
-            watchlistEnabled && watchlistJpOnlyEvangelicalCriteriaEnabled
-              ? watchlistJpOnlyEvangelicalRule.maxPercentEvangelical
-              : null,
-          watchlist_engagement_phase_enabled:
-            watchlistEnabled && watchlistEngagementPhaseEnabled,
-          watchlist_engagement_phase_min:
-            watchlistEnabled && watchlistEngagementPhaseEnabled
-              ? watchlistEngagementPhaseRule.minPhase
-              : null,
-          watchlist_engagement_phase_threshold:
-            watchlistEnabled && watchlistEngagementPhaseEnabled
-              ? watchlistEngagementPhaseThreshold
-              : null,
-          uupg_enabled: uupgEnabled,
-          uupg_global_engagement_anywhere_enabled:
-            uupgEnabled &&
-            normalizedUupgCriteria.globalEngagementAnywhereEnabled,
-          uupg_frontier_group_enabled:
-            uupgEnabled && normalizedUupgCriteria.frontierGroupEnabled,
-          hotspots_enabled: hotspotsEnabled,
-          hotspots_metric: hotspotsEnabled ? hotspotsMetric : null,
-          hotspots_country_count: hotspotsEnabled ? hotspotsCountryCount : null,
-          sorting_count: savedFilters.sorting.length,
-          sorting_keys: getSortingKeys(savedFilters.sorting),
-        }),
-      );
-    }, 500);
-
-    return () => window.clearTimeout(timeoutId);
-  }, [
-    analyticsContext,
-    countryEnabled,
-    dataset.id,
-    datasetTable.error,
-    datasetTable.isLoading,
-    datasetTable.recordCount,
-    filterSnapshotKey,
-    regionEnabled,
-    savedFilters.sorting,
-    effectiveCountrySelection.hasExplicitSelection,
-    effectiveCountrySelection.selectedCountryNames.length,
-    selectedCountryNames.length,
-    selectedRegionIds,
-    hotspotsCountryCount,
-    hotspotsEnabled,
-    hotspotsMetric,
-    normalizedUupgCriteria.frontierGroupEnabled,
-    normalizedUupgCriteria.globalEngagementAnywhereEnabled,
-    uupgEnabled,
-    watchlistEnabled,
-    watchlistEngagementPhaseEnabled,
-    watchlistEngagementPhaseRule,
-    watchlistEngagementPhaseThreshold,
-    watchlistJpOnlyEvangelicalCriteriaEnabled,
-    watchlistJpOnlyEvangelicalRule,
-    watchlistThreshold,
-    watchlistThresholdEnabled,
-  ]);
-
   const filterPanelProps = useMemo<Parameters<typeof DatasetViewSwitchGrid>[0]>(
     () => ({
       regionCard: {
@@ -1103,7 +886,6 @@ export function DatasetDetailClient({
             isLoading={datasetTable.isLoading}
             hasError={Boolean(dataset.error || datasetTable.error)}
             fieldDefinitionPresentationByColumnKey={fieldDefinitionPresentationByColumnKey}
-            analyticsContext={analyticsContext}
             canSaveFilteredTable={canSaveFilteredTable}
             onOpenFilters={handleOpenFilters}
             onOpenAssignDerivedView={
@@ -1130,7 +912,6 @@ export function DatasetDetailClient({
           filters={savedFilters}
           recordCount={datasetTable.recordCount}
           assignableDatasets={assignableDatasets}
-          analyticsContext={analyticsContext}
         />
       ) : null}
       <Sheet open={isFiltersSheetOpen} onOpenChange={setIsFiltersSheetOpen}>

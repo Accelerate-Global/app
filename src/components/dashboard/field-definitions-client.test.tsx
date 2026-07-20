@@ -13,14 +13,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { FieldDefinitionsClient } from "./field-definitions-client";
 
 const fetchMock = vi.fn();
-const { trackAppEventMock } = vi.hoisted(() => ({
-  trackAppEventMock: vi.fn(),
-}));
-
-vi.mock("@/lib/analytics-client", () => ({
-  trackAppEvent: trackAppEventMock,
-}));
-
 describe("FieldDefinitionsClient", () => {
   beforeEach(() => {
     vi.resetAllMocks();
@@ -132,20 +124,6 @@ describe("FieldDefinitionsClient", () => {
       screen.getAllByRole("button", { name: "Edit Geo_country_name" })[0],
     );
 
-    expect(trackAppEventMock).toHaveBeenCalledWith(
-      "field_definition_info_opened",
-      expect.objectContaining({
-        route: "field_definitions",
-        actor_owner_id: "anonymous",
-        workspace_role: "admin",
-        source_surface: "field_definition_row",
-        success: true,
-        definition_id: "field-1",
-        linked_source_count: 1,
-        hidden_from_viewers: false,
-      }),
-    );
-
     const dialog = await screen.findByRole("dialog", { name: "Edit field" });
 
     fireEvent.change(within(dialog).getByLabelText("Display label"), {
@@ -160,15 +138,6 @@ describe("FieldDefinitionsClient", () => {
       }),
     );
     expect(within(dialog).getByText("Sources")).toBeTruthy();
-    expect(
-      within(dialog).getByText((_, element) =>
-        element?.textContent ===
-        "These database links are also listed on Field Sources.",
-      ),
-    ).toBeTruthy();
-    expect(
-      within(dialog).getByRole("link", { name: "Field Sources" }),
-    ).toHaveProperty("pathname", "/dashboard/field-sources");
     expect(within(dialog).getAllByText("Joshua Project").length).toBeGreaterThan(
       0,
     );
@@ -189,17 +158,6 @@ describe("FieldDefinitionsClient", () => {
     await waitFor(() => {
       expect(screen.queryByRole("dialog", { name: "Edit field" })).toBeNull();
     });
-    expect(trackAppEventMock).toHaveBeenCalledWith(
-      "field_definition_updated",
-      expect.objectContaining({
-        route: "field_definitions",
-        source_surface: "field_definition_edit_sheet",
-        success: true,
-        definition_id: "field-1",
-        linked_source_count: 1,
-        hidden_from_viewers_changed: true,
-      }),
-    );
     expect(screen.getAllByText("Country Name").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Hidden from non-admins").length).toBeGreaterThan(0);
     expect(
@@ -259,16 +217,6 @@ describe("FieldDefinitionsClient", () => {
     expect(screen.getAllByText("Primary Religion").length).toBeGreaterThan(0);
     expect(screen.queryByText("Country Name")).toBeNull();
     await waitFor(() => {
-      expect(trackAppEventMock).toHaveBeenCalledWith(
-        "field_definition_search_used",
-        expect.objectContaining({
-          route: "field_definitions",
-          source_surface: "field_definitions_search",
-          success: true,
-          query_length: 8,
-          result_count: 1,
-        }),
-      );
     });
 
     fireEvent.change(screen.getByRole("searchbox", { name: "Search definitions" }), {

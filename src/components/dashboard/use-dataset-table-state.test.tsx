@@ -5,7 +5,6 @@ import { flexRender } from "@tanstack/react-table";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { clearDatasetRowsCache } from "@/components/dashboard/dataset-row-cache";
-import { trackAppEvent } from "@/lib/analytics-client";
 import { useMemo } from "react";
 
 import type {
@@ -23,12 +22,6 @@ vi.mock("next/navigation", () => ({
     push: vi.fn(),
   }),
 }));
-
-vi.mock("@/lib/analytics-client", () => ({
-  trackAppEvent: vi.fn(),
-}));
-
-const trackAppEventMock = vi.mocked(trackAppEvent);
 
 function createDataset(overrides: Record<string, unknown> = {}) {
   return {
@@ -105,20 +98,11 @@ function DatasetTableStateProbe({
   regionFilter,
   countryFilter,
   hotspotsFilter,
-  analytics,
 }: {
   dataset: ReturnType<typeof createDataset>;
   regionFilter?: DatasetRegionFilterState;
   countryFilter?: DatasetCountryFilterState;
   hotspotsFilter?: DatasetHotspotsFilterState;
-  analytics?: {
-    context: {
-      route: "dataset_detail";
-      actor_owner_id: string;
-      workspace_role: "pro";
-    };
-    datasetSource: "dashboard";
-  };
 }) {
   const filterSections = useMemo(
     () => ({
@@ -131,7 +115,6 @@ function DatasetTableStateProbe({
   const state = useDatasetTableState({
     dataset,
     filterSections,
-    analytics,
   });
 
   return (
@@ -320,19 +303,8 @@ describe("useDatasetTableState", () => {
       throw new Error(`Unexpected fetch: ${String(input)}`);
     });
 
-    const analytics = {
-      context: {
-        route: "dataset_detail" as const,
-        actor_owner_id: "pro-1",
-        workspace_role: "pro" as const,
-      },
-      datasetSource: "dashboard" as const,
-    };
     const firstRender = render(
-      <DatasetTableStateProbe
-        dataset={createDataset()}
-        analytics={analytics}
-      />,
+      <DatasetTableStateProbe dataset={createDataset()} />,
     );
 
     await waitFor(() => {
@@ -344,10 +316,7 @@ describe("useDatasetTableState", () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     render(
-      <DatasetTableStateProbe
-        dataset={createDataset()}
-        analytics={analytics}
-      />,
+      <DatasetTableStateProbe dataset={createDataset()} />,
     );
 
     await waitFor(() => {
@@ -355,10 +324,6 @@ describe("useDatasetTableState", () => {
     });
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(trackAppEventMock).not.toHaveBeenCalledWith(
-      "dataset_rows_failed",
-      expect.anything(),
-    );
   });
 
   it("reuses warmed rows when switching between derived datasets with the same backing source", async () => {

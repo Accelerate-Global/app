@@ -1,6 +1,5 @@
 // @vitest-environment jsdom
 
-import { readFile } from "node:fs/promises";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -9,14 +8,6 @@ import type { DatasetSummary, SavedDatasetFilterState } from "@/lib/api-types";
 import { DatasetTableActionBar } from "./dataset-table-action-bar";
 
 const fetchMock = vi.fn();
-const { trackAppEventMock } = vi.hoisted(() => ({
-  trackAppEventMock: vi.fn(),
-}));
-
-vi.mock("@/lib/analytics-client", () => ({
-  trackAppEvent: trackAppEventMock,
-}));
-
 const dataset = {
   id: "dataset-1",
   backingDatasetId: null,
@@ -216,28 +207,5 @@ describe("DatasetTableActionBar", () => {
         }),
       });
     });
-
-    expect(trackAppEventMock).toHaveBeenCalledWith(
-      "saved_table_created",
-      expect.objectContaining({
-        source_surface: "dataset_action_bar",
-        success: true,
-        dataset_id: "dataset-1",
-        saved_table_id: "saved-table-1",
-        saved_row_count: 12507,
-      }),
-    );
-  });
-});
-
-describe("action-bar filter analytics boundary", () => {
-  it("reads enabled filter sections from the dataset filtering module", async () => {
-    const source = await readFile(
-      "src/components/dashboard/dataset-table-action-bar.tsx",
-      "utf8",
-    );
-
-    expect(source).toContain('from "@/lib/dataset-filtering"');
-    expect(source).toContain("getEnabledFilterSections");
   });
 });

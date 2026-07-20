@@ -31,8 +31,6 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 
-import type { AnalyticsWorkspaceRole, AppAnalyticsRoute } from "@/lib/analytics";
-import type { AnalyticsFailureTriageStatus } from "@/lib/analytics-failure-triage";
 import type {
   PartnerExportPartnerKey,
   PartnerExportProfileRevision,
@@ -1090,77 +1088,5 @@ export const isoCountryCodeEntryOverrides = privateSchema.table(
   },
   (table) => [
     index("iso_country_code_entry_overrides_updated_idx").on(table.updatedAt),
-  ],
-);
-
-export const analyticsEvents = privateSchema.table(
-  "analytics_events",
-  {
-    id: uuid("id").defaultRandom().primaryKey(),
-    eventName: text("event_name").notNull(),
-    route: text("route").$type<AppAnalyticsRoute>().notNull(),
-    sourceSurface: text("source_surface").notNull(),
-    actorOwnerId: text("actor_owner_id").notNull(),
-    workspaceRole: text("workspace_role")
-      .$type<AnalyticsWorkspaceRole>()
-      .notNull(),
-    success: boolean("success").notNull(),
-    errorCode: text("error_code"),
-    durationMs: integer("duration_ms"),
-    datasetId: uuid("dataset_id"),
-    savedTableId: uuid("saved_table_id"),
-    targetUserId: text("target_user_id"),
-    eventProps: jsonb("event_props")
-      .$type<Record<string, string | number | boolean | null>>()
-      .notNull()
-      .default(sql`'{}'::jsonb`),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .defaultNow()
-      .notNull(),
-  },
-  (table) => [
-    index("analytics_events_created_at_idx").on(table.createdAt),
-    index("analytics_events_event_name_created_at_idx").on(
-      table.eventName,
-      table.createdAt,
-    ),
-    index("analytics_events_route_created_at_idx").on(table.route, table.createdAt),
-    index("analytics_events_success_created_at_idx").on(
-      table.success,
-      table.createdAt,
-    ),
-    index("analytics_events_actor_owner_created_at_idx").on(
-      table.actorOwnerId,
-      table.createdAt,
-    ),
-  ],
-);
-
-export const analyticsFailureTriage = privateSchema.table(
-  "analytics_failure_triage",
-  {
-    fingerprint: text("fingerprint").primaryKey(),
-    status: text("status")
-      .$type<AnalyticsFailureTriageStatus>()
-      .notNull()
-      .default("needs_review"),
-    note: text("note").notNull().default(""),
-    triagedByOwnerId: text("triaged_by_owner_id").notNull(),
-    triagedAt: timestamp("triaged_at", { withTimezone: true })
-      .defaultNow()
-      .notNull(),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .defaultNow()
-      .notNull(),
-    updatedAt: timestamp("updated_at", { withTimezone: true })
-      .defaultNow()
-      .notNull(),
-  },
-  (table) => [
-    index("analytics_failure_triage_status_triaged_at_idx").on(
-      table.status,
-      table.triagedAt,
-    ),
-    index("analytics_failure_triage_updated_at_idx").on(table.updatedAt),
   ],
 );

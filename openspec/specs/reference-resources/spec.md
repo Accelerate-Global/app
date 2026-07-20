@@ -54,10 +54,11 @@ audit details, or API connection run resources.
 - **AND** a non-admin does not receive those inactive lifecycle details
 
 ### Requirement: Admin Datasets Resources card includes built-in reference resources
-The system SHALL show dataset admins the active built-in reference resources
-from the persistent catalog in the Datasets Resources card.
+The system SHALL show dataset admins catalog-backed built-in resources and
+captured ingestion resources in a metadata table within the Connections
+Resources card.
 
-#### Scenario: Admin views built-in resources on Datasets page
+#### Scenario: Admin views built-in resources on Connections page
 - **WHEN** a dataset admin opens `/dashboard/api-connections`
 - **THEN** the Resources card includes the active Country & territory code
   resource
@@ -67,8 +68,10 @@ from the persistent catalog in the Datasets Resources card.
 
 #### Scenario: Admin views Resources rows
 - **WHEN** a dataset admin views the Resources card on `/dashboard/api-connections`
-- **THEN** the Resources card renders catalog-backed built-in and captured
-  resources as label-only rows
+- **THEN** the Resources card uses the same table and row-divider treatment as Dataset sources
+- **AND** the table has `Source`, `Entries`, and `Last updated` columns
+- **AND** built-in rows show their active-version entry count and source retrieval time
+- **AND** captured rows show their capture time and do not invent an entry count
 - **AND** the Resources card does not show visible Category, Display text, URL,
   or Open columns
 

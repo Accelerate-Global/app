@@ -24,9 +24,6 @@ import type {
   FieldDefinitionPresentation,
   SavedDatasetSort,
 } from "@/lib/api-types";
-import type { AppAnalyticsContext, DatasetOpenSource } from "@/lib/analytics";
-import { withAnalyticsContext } from "@/lib/analytics";
-import { trackAppEvent } from "@/lib/analytics-client";
 import {
   datasetAlphanumericSortingFn,
   type DatasetColumnSortMode,
@@ -59,10 +56,6 @@ export function useDatasetTableState(input: {
     string,
     FieldDefinitionPresentation
   >;
-  analytics?: {
-    context: AppAnalyticsContext;
-    datasetSource: DatasetOpenSource;
-  };
 }) {
   const sourceDatasetId = input.dataset.backingDatasetId ?? input.dataset.id;
   const [rows, setRows] = useState<DatasetRow[]>(
@@ -80,9 +73,6 @@ export function useDatasetTableState(input: {
   const [sorting, setSorting] = useState<SortingState>(
     () => input.initialSorting ?? [],
   );
-  const cacheLoadStartTimeRef = useRef<number>(Date.now());
-  const hasTrackedRowsLoadedRef = useRef(false);
-  const hasTrackedRowsFailedRef = useRef(false);
   const fieldDefinitionPresentationByColumnKey = useMemo(
     () => input.fieldDefinitionPresentationByColumnKey ?? {},
     [input.fieldDefinitionPresentationByColumnKey],
@@ -287,10 +277,6 @@ export function useDatasetTableState(input: {
   });
 
   useEffect(() => {
-    hasTrackedRowsLoadedRef.current = false;
-    hasTrackedRowsFailedRef.current = false;
-    cacheLoadStartTimeRef.current = Date.now();
-
     const initialSnapshot = getDatasetRowsCacheSnapshot(sourceDatasetId);
     setRows(initialSnapshot.rows);
     setIsLoading(
@@ -298,66 +284,10 @@ export function useDatasetTableState(input: {
     );
     setError(initialSnapshot.error);
 
-    if (input.analytics) {
-      const { datasetSource, context } = input.analytics;
-      const isCacheHit =
-        initialSnapshot.status === "ready" || initialSnapshot.status === "loading";
-
-      trackAppEvent(
-        isCacheHit ? "dataset_row_cache_hit" : "dataset_row_cache_miss",
-        withAnalyticsContext(context, {
-          source_surface: "dataset_table",
-          success: true,
-          dataset_id: input.dataset.id,
-          dataset_source: datasetSource,
-          source_dataset_id: sourceDatasetId,
-          cached_row_count: initialSnapshot.rows.length,
-        }),
-      );
-    }
-
     const unsubscribe = subscribeToDatasetRowsCache(sourceDatasetId, (snapshot) => {
       setRows(snapshot.rows);
       setIsLoading(snapshot.status === "idle" || snapshot.status === "loading");
       setError(snapshot.error);
-
-      if (!input.analytics) {
-        return;
-      }
-
-      const { datasetSource, context } = input.analytics;
-      const durationMs = Date.now() - cacheLoadStartTimeRef.current;
-
-      if (snapshot.isReady && !hasTrackedRowsLoadedRef.current) {
-        hasTrackedRowsLoadedRef.current = true;
-        trackAppEvent(
-          "dataset_rows_loaded",
-          withAnalyticsContext(context, {
-            source_surface: "dataset_table",
-            success: true,
-            dataset_id: input.dataset.id,
-            dataset_source: datasetSource,
-            row_count: snapshot.rows.length,
-            load_duration_ms: durationMs,
-            duration_ms: durationMs,
-          }),
-        );
-      }
-
-      if (snapshot.status === "error" && !hasTrackedRowsFailedRef.current) {
-        hasTrackedRowsFailedRef.current = true;
-        trackAppEvent(
-          "dataset_rows_failed",
-          withAnalyticsContext(context, {
-            source_surface: "dataset_table",
-            success: false,
-            error_code: "dataset_rows_failed",
-            dataset_id: input.dataset.id,
-            dataset_source: datasetSource,
-            duration_ms: durationMs,
-          }),
-        );
-      }
     });
 
     const cacheRequest = ensureDatasetRowsCache({
@@ -371,7 +301,6 @@ export function useDatasetTableState(input: {
 
     return unsubscribe;
   }, [
-    input.analytics,
     input.dataset.backingDatasetId,
     input.dataset.id,
     input.dataset.rowCount,
