@@ -107,7 +107,7 @@ export function ApiConnectionsClient({
           <div className="space-y-1.5">
             <CardTitle className="flex items-center gap-2 text-2xl">
               <CableIcon className="size-5 text-muted-foreground" />
-              Connected sources
+              Dataset sources
             </CardTitle>
             <CardDescription>
               Open Google Sheets and code-managed integrations to refresh data or

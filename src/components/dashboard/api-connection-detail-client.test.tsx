@@ -216,7 +216,7 @@ describe("ApiConnectionDetailClient", () => {
     refreshMock.mockReset();
   });
 
-  it("renders pipeline skeleton stages and starts run panels collapsed in detail-first order", () => {
+  it("shows one run history table and opens selected run details in a sheet", () => {
     render(
       <ApiConnectionDetailClient
         connection={connection}
@@ -231,38 +231,37 @@ describe("ApiConnectionDetailClient", () => {
     expect(screen.queryByText("Pipeline")).toBeNull();
     expect(screen.queryByRole("button", { name: /Coming soon/ })).toBeNull();
 
-    const runDetailTitle = screen.getByText("Run Detail");
-    const historyTitle = screen.getByText("Ingestion History");
-    expect(
-      runDetailTitle.compareDocumentPosition(historyTitle) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
-    expect(
-      screen.getByRole("button", { name: "Expand Run Detail" }).getAttribute(
-        "aria-expanded",
-      ),
-    ).toBe("false");
-    expect(
-      screen
-        .getByRole("button", { name: "Expand Ingestion History" })
-        .getAttribute("aria-expanded"),
-    ).toBe("false");
-    expect(screen.queryByText("Initiated At")).toBeNull();
-    expect(screen.queryByText("Archived output artifacts.")).toBeNull();
-
-    fireEvent.click(screen.getByRole("button", { name: "Expand Run Detail" }));
-    expect(screen.getByText("Archived output artifacts.")).toBeTruthy();
-    expect(screen.getByText("[{\"name\":\"Alpha\"}]")).toBeTruthy();
-
-    fireEvent.click(
-      screen.getByRole("button", { name: "Expand Ingestion History" }),
-    );
+    expect(screen.getByText("Run history")).toBeTruthy();
+    expect(screen.queryByText("Run Detail")).toBeNull();
+    expect(screen.queryByText("Ingestion History")).toBeNull();
     expect(screen.getByText("Initiated At")).toBeTruthy();
     expect(screen.getByText("Mode")).toBeTruthy();
     expect(screen.getByText("Actor")).toBeTruthy();
     expect(screen.getByText("Artifacts")).toBeTruthy();
     expect(screen.getAllByText("Test").length).toBeGreaterThan(0);
     expect(screen.getByText("admin@example.com")).toBeTruthy();
+    expect(screen.queryByText("Archived output artifacts.")).toBeNull();
+    expect(
+      document.querySelector(
+        '[data-smoke-trigger="api-connection-run-detail-sheet"]',
+      ),
+    ).toBeTruthy();
+
+    const rowJsonLink = screen.getAllByRole("link", { name: "JSON" })[0]!;
+    rowJsonLink.addEventListener("click", (event) => event.preventDefault());
+    fireEvent.click(rowJsonLink);
+    expect(screen.queryByText("Run detail")).toBeNull();
+
+    fireEvent.click(screen.getByText("admin@example.com").closest("tr")!);
+
+    expect(screen.getByText("Run detail")).toBeTruthy();
+    expect(
+      document.querySelector(
+        '[data-smoke-surface="api-connection-run-detail-sheet"][data-smoke-ready="api-connection-run-detail-sheet"]',
+      ),
+    ).toBeTruthy();
+    expect(screen.getByText("Archived output artifacts.")).toBeTruthy();
+    expect(screen.getByText("[{\"name\":\"Alpha\"}]")).toBeTruthy();
     expect(
       screen.getAllByRole("link", { name: "JSON" })[0]?.getAttribute("href"),
     ).toBe(
@@ -277,6 +276,11 @@ describe("ApiConnectionDetailClient", () => {
       screen.getAllByRole("link", { name: /dataset/i })[0]?.getAttribute("href"),
     ).toBe("/dashboard/datasets/dataset-1");
     expect(dataGridSpy.mock.lastCall?.[0].recordCount).toBe(1);
+
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(screen.queryByText("Run detail")).toBeNull();
+    expect(screen.getByText("Run history")).toBeTruthy();
+    expect(screen.getByText("admin@example.com")).toBeTruthy();
   });
 
   it("starts ingestion through the existing run endpoint and polls active runs", async () => {
@@ -368,7 +372,6 @@ describe("ApiConnectionDetailClient", () => {
         }),
       );
     });
-    fireEvent.click(screen.getByRole("button", { name: "Expand Run Detail" }));
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
         "/api/admin/api-connections/11111111-1111-4111-8111-111111111111/runs/66666666-6666-4666-8666-666666666666",
@@ -377,6 +380,7 @@ describe("ApiConnectionDetailClient", () => {
     await waitFor(() => {
       expect(screen.getAllByText("Import passed").length).toBeGreaterThan(0);
     });
+    fireEvent.click(screen.getByText("admin@example.com").closest("tr")!);
     expect(screen.getByText("Run completed.")).toBeTruthy();
     expect(screen.getByText("[{\"name\":\"Beta\"}]")).toBeTruthy();
   });
@@ -748,22 +752,16 @@ describe("ApiConnectionDetailClient", () => {
       />,
     );
 
-    const detailToggle = screen.getByRole("button", { name: "Expand Run Detail" });
-    fireEvent.click(
-      screen.getByRole("button", { name: "Expand Ingestion History" }),
-    );
     expect(screen.getAllByText("Test failed").length).toBeGreaterThan(0);
     fireEvent.click(screen.getByText("success@example.com").closest("tr")!);
 
-    expect(detailToggle.getAttribute("aria-expanded")).toBe("false");
-    expect(screen.queryByText("Archived output artifacts.")).toBeNull();
-    fireEvent.click(detailToggle);
+    expect(screen.getByText("Run detail")).toBeTruthy();
     expect(screen.getAllByText("Test passed").length).toBeGreaterThan(0);
     expect(screen.getByText("Archived output artifacts.")).toBeTruthy();
     expect(screen.getByText("[{\"name\":\"Alpha\"}]")).toBeTruthy();
   });
 
-  it("caps ingestion history to a five-row viewport when more runs are available", () => {
+  it("caps run history to a five-row viewport when more runs are available", () => {
     render(
       <ApiConnectionDetailClient
         connection={connection}
@@ -772,10 +770,6 @@ describe("ApiConnectionDetailClient", () => {
         )}
         serviceAccountEmail={serviceAccountEmail}
       />,
-    );
-
-    fireEvent.click(
-      screen.getByRole("button", { name: "Expand Ingestion History" }),
     );
 
     expect(screen.getByTestId("data-grid-scroll-area").className).toContain(

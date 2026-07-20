@@ -70,7 +70,7 @@ describe("ApiConnectionsClient", () => {
       />,
     );
 
-    expect(screen.getByText("Connected sources")).toBeTruthy();
+    expect(screen.getByText("Dataset sources")).toBeTruthy();
     expect(screen.getByRole("link", { name: "Add connection" }).getAttribute("href")).toBe(
       "/dashboard/datasets/new?source=google-sheets",
     );

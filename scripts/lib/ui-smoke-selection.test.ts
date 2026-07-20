@@ -116,6 +116,27 @@ describe("ui-smoke-selection", () => {
     expect(selection.bootstrapScope).toBe("admin-config");
   });
 
+  it("targets run-detail routes and journey for API connection detail changes", () => {
+    const selection = resolveUiSmokeSelection([
+      "src/components/dashboard/api-connection-detail-client.tsx",
+    ]);
+
+    expect(selection.routeIds).toEqual([
+      "api-connection-detail-pro-redirect",
+      "api-connection-detail-basic-redirect",
+      "api-connection-detail-admin",
+    ]);
+    expect(selection.journeyTitles).toEqual([
+      "admin can inspect connection run detail",
+    ]);
+    expect(selection.projectNames).toEqual([
+      "desktop-pro",
+      "desktop-basic",
+      "desktop-admin",
+    ]);
+    expect(selection.bootstrapScope).toBe("admin-config");
+  });
+
   it("targets both guided onboarding journeys for onboarding changes", () => {
     const selection = resolveUiSmokeSelection([
       "src/components/dashboard/dataset-onboarding/dataset-onboarding-client.tsx",
