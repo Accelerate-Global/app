@@ -6,9 +6,11 @@ import { getSupabaseConfig } from "@/lib/supabase/config";
 const DATASET_STORAGE_PATH_PREFIX = "datasets/csv/";
 const API_CONNECTION_RUN_OUTPUT_PATH_PREFIX = "api-connection-runs/";
 const PARTNER_EXPORT_RUN_OUTPUT_PATH_PREFIX = "partner-export-runs/";
+const REFERENCE_RESOURCE_PATH_PREFIX = "reference-resources/";
 const DEFAULT_DATASET_STORAGE_BUCKET = "datasets";
 const DEFAULT_API_CONNECTION_RUN_ARTIFACT_BUCKET = "api-connection-artifacts";
 const DEFAULT_PARTNER_EXPORT_ARTIFACT_BUCKET = "partner-export-artifacts";
+const DEFAULT_REFERENCE_RESOURCE_ARTIFACT_BUCKET = "reference-resource-artifacts";
 
 export const API_CONNECTION_RUN_ARTIFACT_CONTENT_TYPE = "application/json";
 
@@ -27,6 +29,13 @@ export function getPartnerExportArtifactStorageBucket() {
   return (
     process.env.SUPABASE_PARTNER_EXPORT_ARTIFACT_BUCKET?.trim() ||
     DEFAULT_PARTNER_EXPORT_ARTIFACT_BUCKET
+  );
+}
+
+export function getReferenceResourceArtifactStorageBucket() {
+  return (
+    process.env.SUPABASE_REFERENCE_RESOURCE_ARTIFACT_BUCKET?.trim() ||
+    DEFAULT_REFERENCE_RESOURCE_ARTIFACT_BUCKET
   );
 }
 
@@ -52,6 +61,26 @@ export function createPartnerExportRunOutputStoragePath(
   fileName: string,
 ) {
   return `${PARTNER_EXPORT_RUN_OUTPUT_PATH_PREFIX}${runId}/${randomUUID()}-${sanitizeFileName(fileName)}`;
+}
+
+export type ReferenceResourceArtifactKind =
+  | "raw-manifest"
+  | "normalized"
+  | "csv"
+  | "validation"
+  | "diff";
+
+export function createReferenceResourceArtifactStoragePath(input: {
+  resourceKey: string;
+  versionId: string;
+  kind: ReferenceResourceArtifactKind;
+}) {
+  const extension = input.kind === "csv" ? "csv" : "json";
+  return `${REFERENCE_RESOURCE_PATH_PREFIX}${sanitizeFileName(input.resourceKey)}/${input.versionId}/${input.kind}.${extension}`;
+}
+
+export function isReferenceResourceArtifactStoragePath(path: string) {
+  return path.startsWith(REFERENCE_RESOURCE_PATH_PREFIX);
 }
 
 export function isDatasetStoragePath(path: string) {

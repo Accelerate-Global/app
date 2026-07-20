@@ -24,13 +24,17 @@ import {
 } from "@/components/ui/table";
 import type {
   ApiConnection,
+  ApiConnectionResource,
   ApiConnectionRun,
   GoogleSheetsConnectionProviderConfig,
 } from "@/lib/api-types";
+import type { ReferenceResourceCatalogItem } from "@/lib/reference-resources/types";
 
 type ApiConnectionsClientProps = {
   initialConnections: ApiConnection[];
   initialRuns: ApiConnectionRun[];
+  capturedResources: ApiConnectionResource[];
+  referenceResources: ReferenceResourceCatalogItem[];
 };
 
 function formatTimestamp(value: string | null) {
@@ -77,6 +81,8 @@ function getConnectionSecondaryText(connection: ApiConnection) {
 export function ApiConnectionsClient({
   initialConnections,
   initialRuns,
+  capturedResources,
+  referenceResources,
 }: ApiConnectionsClientProps) {
   const router = useRouter();
   const latestRunsByConnection = useMemo(
@@ -172,6 +178,35 @@ export function ApiConnectionsClient({
           )}
         </CardContent>
       </Card>
+
+      {(referenceResources.length > 0 || capturedResources.length > 0) ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-2xl">Resources</CardTitle>
+            <CardDescription>
+              Active built-in references and resources captured during source ingestion.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="divide-y rounded-lg border">
+              {referenceResources.map((resource) => (
+                <Link
+                  key={resource.id}
+                  href={resource.routePath}
+                  className="block px-4 py-3 text-sm font-medium no-underline hover:bg-muted/40"
+                >
+                  {resource.label}
+                </Link>
+              ))}
+              {capturedResources.map((resource) => (
+                <div key={resource.id} className="px-4 py-3 text-sm font-medium">
+                  {resource.webText.trim() || "Captured source resource"}
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
 
     </div>
   );

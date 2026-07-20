@@ -219,6 +219,7 @@ export const smokeRouteSpecs: SmokeRouteSpec[] = [
     pageFile: "src/app/dashboard/country-codes/page.tsx",
     path: "/dashboard/country-codes",
     pageId: "iso-country-codes",
+    journeys: ["admin can inspect country reference history"],
   },
   {
     id: "rop-codes-pro",
@@ -240,6 +241,7 @@ export const smokeRouteSpecs: SmokeRouteSpec[] = [
     pageFile: "src/app/dashboard/rop-codes/page.tsx",
     path: "/dashboard/rop-codes",
     pageId: "rop-codes",
+    journeys: ["admin can inspect ROP reference history"],
   },
   {
     id: "resources-pro",

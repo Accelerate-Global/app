@@ -1,7 +1,7 @@
 import { logError } from "@/lib/error-logging";
 import { jsonError } from "@/lib/http";
 import { withRoute } from "@/lib/route-guard";
-import { updateIsoCountryCodeAlternativeNames } from "@/lib/iso-country-codes";
+import { deriveAndActivateCountryAliases } from "@/lib/reference-resources";
 import { isoCountryCodeAlternativeNamesPatchSchema } from "@/lib/validation";
 
 export const PATCH = withRoute(
@@ -15,10 +15,10 @@ export const PATCH = withRoute(
     }
 
     try {
-      const result = await updateIsoCountryCodeAlternativeNames({
+      const result = await deriveAndActivateCountryAliases({
         displayName: parsed.data.displayName,
         alternativeNames: parsed.data.alternativeNames,
-        updatedByOwnerId: identity.ownerId,
+        actorOwnerId: identity.ownerId,
       });
 
       if (!result) {

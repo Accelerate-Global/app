@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { redirect } from "next/navigation";
 
 import { getCurrentIdentity } from "@/lib/auth";
+import { listReferenceResourceCatalog } from "@/lib/reference-resources";
 import ResourcesPage from "./page";
 
 vi.mock("next/navigation", () => ({
@@ -18,13 +19,57 @@ vi.mock("@/lib/auth", () => ({
   getCurrentIdentity: vi.fn(),
 }));
 
+vi.mock("@/lib/reference-resources", () => ({
+  listReferenceResourceCatalog: vi.fn(),
+}));
+
 
 const getCurrentIdentityMock = vi.mocked(getCurrentIdentity);
+const listReferenceResourceCatalogMock = vi.mocked(listReferenceResourceCatalog);
 const redirectMock = vi.mocked(redirect);
 
 describe("/dashboard/resources", () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    const version = {
+      id: "10000000-0000-4000-8000-000000000001",
+      resourceKey: "country-territory-codes" as const,
+      versionNumber: 1,
+      lifecycleState: "valid" as const,
+      schemaVersion: 1,
+      contentChecksum: "a".repeat(64),
+      sourceRetrievedAt: "2026-07-17T00:00:00.000Z",
+      entryCount: 273,
+      validationSummary: {},
+      diffSummary: {},
+      createdByOwnerId: "admin-1",
+      createdAt: "2026-07-17T00:00:00.000Z",
+      finalizedAt: "2026-07-17T00:00:00.000Z",
+      rejectionReason: null,
+      isActive: true,
+    };
+    listReferenceResourceCatalogMock.mockResolvedValue([
+      {
+        id: "20000000-0000-4000-8000-000000000001",
+        resourceKey: "country-territory-codes",
+        resourceKind: "country-geography",
+        label: "Country & territory code resource",
+        description: "Search and download shared ISO, GENC, FIPS, and ROG3 country and territory codes.",
+        routePath: "/dashboard/country-codes",
+        sortOrder: 10,
+        activeVersion: version,
+      },
+      {
+        id: "20000000-0000-4000-8000-000000000002",
+        resourceKey: "rop-codes",
+        resourceKind: "rop-taxonomy",
+        label: "ROP Codes resource",
+        description: "Search and download matched HIS ROP1, ROP2, ROP25, and ROP3 codes.",
+        routePath: "/dashboard/rop-codes",
+        sortOrder: 20,
+        activeVersion: { ...version, id: "10000000-0000-4000-8000-000000000002", resourceKey: "rop-codes" },
+      },
+    ]);
   });
 
   it("redirects anonymous users home", async () => {

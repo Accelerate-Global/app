@@ -1,0 +1,113 @@
+import type { IsoCountryCodeResource } from "@/lib/iso-country-codes";
+import type { RopCodeResource } from "@/lib/rop-codes";
+
+export const COUNTRY_RESOURCE_KEY = "country-territory-codes" as const;
+export const ROP_RESOURCE_KEY = "rop-codes" as const;
+
+export type ReferenceResourceKey =
+  | typeof COUNTRY_RESOURCE_KEY
+  | typeof ROP_RESOURCE_KEY;
+
+export function isReferenceResourceKey(value: string): value is ReferenceResourceKey {
+  return value === COUNTRY_RESOURCE_KEY || value === ROP_RESOURCE_KEY;
+}
+
+export type ReferenceResourceKind = "country-geography" | "rop-taxonomy";
+export type ReferenceResourceLifecycleState =
+  | "building"
+  | "valid"
+  | "invalid"
+  | "rejected";
+export type ReferenceResourceActivationAction =
+  | "activate"
+  | "rollback"
+  | "alias-edit";
+export type ReferenceResourceValidationSeverity = "info" | "warning" | "error";
+
+export type ReferenceResourcePayloadByKey = {
+  [COUNTRY_RESOURCE_KEY]: IsoCountryCodeResource;
+  [ROP_RESOURCE_KEY]: RopCodeResource;
+};
+
+export type ReferenceResourcePayload =
+  ReferenceResourcePayloadByKey[ReferenceResourceKey];
+
+export type ReferenceResourceValidationFinding = {
+  severity: ReferenceResourceValidationSeverity;
+  ruleCode: string;
+  message: string;
+  stableEntryKey?: string | null;
+  fieldName?: string | null;
+  details?: Record<string, unknown>;
+};
+
+export type ReferenceResourceDiffSummary = {
+  added: number;
+  changed: number;
+  removed: number;
+  unchanged: number;
+  highRisk: number;
+};
+
+export type ReferenceResourceVersionSummary = {
+  id: string;
+  resourceKey: ReferenceResourceKey;
+  versionNumber: number;
+  lifecycleState: ReferenceResourceLifecycleState;
+  schemaVersion: number;
+  contentChecksum: string | null;
+  sourceRetrievedAt: string;
+  entryCount: number;
+  validationSummary: Record<string, unknown>;
+  diffSummary: Record<string, unknown>;
+  createdByOwnerId: string;
+  createdAt: string;
+  finalizedAt: string | null;
+  rejectionReason: string | null;
+  isActive: boolean;
+};
+
+export type ReferenceResourceCatalogItem = {
+  id: string;
+  resourceKey: ReferenceResourceKey;
+  resourceKind: ReferenceResourceKind;
+  label: string;
+  description: string;
+  routePath: string;
+  sortOrder: number;
+  activeVersion: ReferenceResourceVersionSummary | null;
+  attentionState?: "valid-candidate" | "invalid-build" | "interrupted-build" | null;
+};
+
+export type ReferenceResourceCandidateResult = {
+  unchanged: boolean;
+  version: ReferenceResourceVersionSummary;
+};
+
+export type ReferenceResourceQueryResult<T> = {
+  entries: T[];
+  nextCursor: string | null;
+  version: ReferenceResourceVersionSummary;
+};
+
+export type ReferenceResourcePageByKey = {
+  [COUNTRY_RESOURCE_KEY]: ReferenceResourceQueryResult<
+    IsoCountryCodeResource["entries"][number]
+  > & { resource: IsoCountryCodeResource };
+  [ROP_RESOURCE_KEY]: ReferenceResourceQueryResult<
+    RopCodeResource["entries"][number]
+  > & { resource: RopCodeResource };
+};
+
+export type ReferenceResourceHealthItem = {
+  resourceKey: ReferenceResourceKey;
+  healthy: boolean;
+  activeVersionId: string | null;
+  problems: string[];
+};
+
+export type ReferenceResourceHealth = {
+  healthy: boolean;
+  resources: ReferenceResourceHealthItem[];
+  currentSetId: string | null;
+};

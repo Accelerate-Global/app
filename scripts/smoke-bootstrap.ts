@@ -22,6 +22,7 @@ import {
   type CanonicalFilterRegionKey,
 } from "../src/lib/canonical-filter-regions";
 import { getPostgresConnectionConfig } from "../src/lib/postgres-connection";
+import { runBootstrapReferenceResources } from "./bootstrap-reference-resources";
 
 const PRIMARY_DATASET_ID = "11111111-1111-4111-8111-111111111111";
 const SECONDARY_DATASET_ID = "22222222-2222-4222-8222-222222222222";
@@ -766,6 +767,12 @@ async function main() {
     await ensureBucket(storageAdmin, smokeEnv.storageBucket);
     await resetSmokeData(sql);
     await insertAllowlist(sql);
+    if (shouldSeedWorkspaceMetadata(scope)) {
+      const referenceResult = await runBootstrapReferenceResources();
+      if (!referenceResult.health.healthy) {
+        throw new Error("Reference-resource smoke bootstrap health check failed.");
+      }
+    }
 
     const adminUser = await recreateUser({
       sql,

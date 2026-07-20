@@ -167,6 +167,7 @@ Notes:
 
 - `data-smoke-close` is optional when `Escape` is a safe close path.
 - `data-smoke-write="safe"` can be added to indicate the trigger is safe for generic opening during route sweeps.
+- `data-smoke-write="unsafe"` marks a trigger that mutates persistent or external state so generic route sweeps skip it; cover any required interaction with an explicitly seeded journey.
 - Use literal strings, not computed expressions, so `pnpm run smoke:check` can statically validate the contract.
 - Prefer literal `data-smoke-*` selectors over `getByText()` and broad `getByLabel()` queries in repeated UI. If a journey needs a stable selector, add one.
 

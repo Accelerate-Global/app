@@ -157,6 +157,24 @@ function buildResource(): RopCodeResource {
   };
 }
 
+const activeVersion = {
+  id: "20000000-0000-4000-8000-000000000001",
+  resourceKey: "rop-codes" as const,
+  versionNumber: 1,
+  lifecycleState: "valid" as const,
+  schemaVersion: 1,
+  contentChecksum: "b".repeat(64),
+  sourceRetrievedAt: "2026-05-07T00:00:00.000Z",
+  entryCount: 2,
+  validationSummary: {},
+  diffSummary: {},
+  createdByOwnerId: "admin-1",
+  createdAt: "2026-05-07T00:00:00.000Z",
+  finalizedAt: "2026-05-07T00:00:00.000Z",
+  rejectionReason: null,
+  isActive: true,
+};
+
 describe("RopCodesClient", () => {
   beforeEach(() => {
     vi.resetAllMocks();
@@ -170,15 +188,26 @@ describe("RopCodesClient", () => {
     });
   });
 
-  it("filters the single ROP table by code and opens details", () => {
-    render(<RopCodesClient initialResource={buildResource()} canRefresh={false} />);
+  it("searches the paged server contract and opens details", async () => {
+    const pageResource = { ...buildResource(), entries: [buildResource().entries[0]] };
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ resource: pageResource, entries: pageResource.entries, nextCursor: null, version: activeVersion }),
+    }));
+    render(
+      <RopCodesClient
+        initialResource={buildResource()}
+        activeVersion={activeVersion}
+        initialNextCursor={null}
+        canRefresh={false}
+      />,
+    );
 
     fireEvent.change(screen.getByLabelText("Search ROP codes"), {
       target: { value: "100425" },
     });
 
-    expect(screen.getByText("100425 - Arab")).toBeTruthy();
-    expect(screen.queryByText("300031 - Acharaj")).toBeNull();
+    await waitFor(() => expect(screen.queryByText("300031 - Acharaj")).toBeNull());
 
     fireEvent.click(screen.getByRole("row", { name: /100425 - Arab/ }));
 
@@ -187,54 +216,50 @@ describe("RopCodesClient", () => {
     expect(screen.getByText("SAU")).toBeTruthy();
   });
 
-  it("downloads the visible filtered rows", () => {
-    render(<RopCodesClient initialResource={buildResource()} canRefresh={false} />);
-    const appendSpy = vi.spyOn(document.body, "append");
-    const link = document.createElement("a");
-    const clickMock = vi.spyOn(link, "click").mockImplementation(() => undefined);
-    const removeMock = vi.spyOn(link, "remove").mockImplementation(() => undefined);
-    const createElementSpy = vi
-      .spyOn(document, "createElement")
-      .mockImplementation((tagName, options) =>
-        tagName === "a"
-          ? link
-          : Document.prototype.createElement.call(document, tagName, options),
-      );
+  it("links downloads to the complete matching server export", () => {
+    render(
+      <RopCodesClient
+        initialResource={buildResource()}
+        activeVersion={activeVersion}
+        initialNextCursor={null}
+        canRefresh={false}
+      />,
+    );
     fireEvent.change(screen.getByLabelText("Search ROP codes"), {
       target: { value: "Acharaj" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Download" }));
-
-    expect(createObjectUrlMock).toHaveBeenCalledWith(expect.any(Blob));
-    expect(link.href).toBe("blob:rop-codes");
-    expect(link.download).toBe("rop-codes.csv");
-    expect(appendSpy).toHaveBeenCalled();
-    expect(clickMock).toHaveBeenCalled();
-    expect(removeMock).toHaveBeenCalled();
-    expect(revokeObjectUrlMock).toHaveBeenCalledWith("blob:rop-codes");
-    createElementSpy.mockRestore();
-    appendSpy.mockRestore();
+    expect(screen.getByRole("link", { name: "Download" }).getAttribute("href")).toBe(
+      "/api/reference-resources/rop-codes/download?search=Acharaj",
+    );
   });
 
   it("refreshes from HIS for admins", async () => {
-    const refreshedResource = {
-      ...buildResource(),
-      entryCount: 1,
-      entries: [buildResource().entries[0]],
-    };
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue({
         ok: true,
-        json: async () => refreshedResource,
+        json: async () => ({
+          unchanged: false,
+          version: { ...activeVersion, id: "20000000-0000-4000-8000-000000000002", versionNumber: 2, isActive: false },
+        }),
       }),
     );
 
-    render(<RopCodesClient initialResource={buildResource()} canRefresh />);
+    render(
+      <RopCodesClient
+        initialResource={buildResource()}
+        activeVersion={activeVersion}
+        initialNextCursor={null}
+        canRefresh
+      />,
+    );
+    expect(screen.getByRole("button", { name: "Refresh" }).getAttribute("data-smoke-write")).toBe(
+      "unsafe",
+    );
     fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
 
     await waitFor(() => {
-      expect(screen.getByText("1 visible")).toBeTruthy();
+      expect(screen.getByText("Version 2 is ready for review")).toBeTruthy();
     });
     expect(fetch).toHaveBeenCalledWith("/api/rop-codes/refresh", {
       method: "POST",
@@ -242,8 +267,38 @@ describe("RopCodesClient", () => {
   });
 
   it("hides refresh for non-admin users", () => {
-    render(<RopCodesClient initialResource={buildResource()} canRefresh={false} />);
+    render(
+      <RopCodesClient
+        initialResource={buildResource()}
+        activeVersion={activeVersion}
+        initialNextCursor={null}
+        canRefresh={false}
+      />,
+    );
 
     expect(screen.queryByRole("button", { name: "Refresh" })).toBeNull();
+  });
+
+  it("appends the next ROP cursor page with its detail context", async () => {
+    const full = buildResource();
+    const firstPage = { ...full, entries: [full.entries[0]] };
+    const nextPage = { ...full, entries: [full.entries[1]] };
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ resource: nextPage, entries: nextPage.entries, nextCursor: null, version: activeVersion }),
+    }));
+    render(
+      <RopCodesClient
+        initialResource={firstPage}
+        activeVersion={activeVersion}
+        initialNextCursor="cursor-1"
+        canRefresh={false}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Load more" }));
+    expect(await screen.findByText("300031 - Acharaj")).toBeTruthy();
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/reference-resources/rop-codes/entries?cursor=cursor-1&limit=250",
+    );
   });
 });

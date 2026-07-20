@@ -18,6 +18,7 @@ import type {
 import type { SavedDatasetFilterState } from "@/lib/api-types";
 import {
   type AnyPgColumn,
+  bigint,
   boolean,
   index,
   integer,
@@ -350,6 +351,400 @@ export const signupEmailAllowlist = pgTable("signup_email_allowlist", {
 });
 
 const privateSchema = pgSchema("private");
+
+export const referenceResources = privateSchema.table(
+  "reference_resources",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    resourceKey: text("resource_key").notNull(),
+    resourceKind: text("resource_kind")
+      .$type<"country-geography" | "rop-taxonomy">()
+      .notNull(),
+    label: text("label").notNull(),
+    description: text("description").notNull(),
+    routePath: text("route_path").notNull(),
+    sortOrder: integer("sort_order").notNull().default(0),
+    activeVersionId: uuid("active_version_id"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("reference_resources_key_idx").on(table.resourceKey),
+    index("reference_resources_sort_idx").on(
+      table.sortOrder,
+      table.label,
+      table.id,
+    ),
+    index("reference_resources_active_version_idx")
+      .on(table.activeVersionId)
+      .where(sql`${table.activeVersionId} is not null`),
+  ],
+);
+
+export const referenceResourceVersions = privateSchema.table(
+  "reference_resource_versions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    resourceId: uuid("resource_id")
+      .notNull()
+      .references(() => referenceResources.id, { onDelete: "restrict" }),
+    versionNumber: bigint("version_number", { mode: "number" }).notNull(),
+    lifecycleState: text("lifecycle_state")
+      .$type<"building" | "valid" | "invalid" | "rejected">()
+      .notNull()
+      .default("building"),
+    schemaVersion: integer("schema_version").notNull(),
+    contentChecksum: text("content_checksum"),
+    sourceRetrievedAt: timestamp("source_retrieved_at", { withTimezone: true })
+      .notNull(),
+    sourceMetadata: jsonb("source_metadata")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
+    normalizedResource: jsonb("normalized_resource").$type<Record<string, unknown>>(),
+    artifactManifest: jsonb("artifact_manifest")
+      .$type<Record<string, string>>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
+    validationSummary: jsonb("validation_summary")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
+    diffSummary: jsonb("diff_summary")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
+    entryCount: integer("entry_count").notNull().default(0),
+    createdByOwnerId: text("created_by_owner_id").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    finalizedAt: timestamp("finalized_at", { withTimezone: true }),
+    rejectedByOwnerId: text("rejected_by_owner_id"),
+    rejectedAt: timestamp("rejected_at", { withTimezone: true }),
+    rejectionReason: text("rejection_reason"),
+    buildError: text("build_error"),
+  },
+  (table) => [
+    uniqueIndex("reference_resource_versions_number_idx").on(
+      table.resourceId,
+      table.versionNumber,
+    ),
+    uniqueIndex("reference_resource_versions_content_idx")
+      .on(table.resourceId, table.schemaVersion, table.contentChecksum)
+      .where(
+        sql`${table.contentChecksum} is not null and ${table.lifecycleState} in ('valid', 'rejected')`,
+      ),
+    index("reference_resource_versions_history_idx").on(
+      table.resourceId,
+      table.createdAt,
+      table.id,
+    ),
+    index("reference_resource_versions_candidate_idx")
+      .on(table.resourceId, table.lifecycleState, table.createdAt)
+      .where(sql`${table.lifecycleState} in ('building', 'valid', 'invalid')`),
+  ],
+);
+
+export const referenceResourceValidationFindings = privateSchema.table(
+  "reference_resource_validation_findings",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    versionId: uuid("version_id")
+      .notNull()
+      .references(() => referenceResourceVersions.id, { onDelete: "cascade" }),
+    severity: text("severity").$type<"info" | "warning" | "error">().notNull(),
+    ruleCode: text("rule_code").notNull(),
+    stableEntryKey: text("stable_entry_key"),
+    fieldName: text("field_name"),
+    message: text("message").notNull(),
+    details: jsonb("details")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("reference_resource_findings_version_idx").on(
+      table.versionId,
+      table.severity,
+      table.createdAt,
+      table.id,
+    ),
+  ],
+);
+
+export const referenceResourceActivationEvents = privateSchema.table(
+  "reference_resource_activation_events",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    resourceId: uuid("resource_id")
+      .notNull()
+      .references(() => referenceResources.id, { onDelete: "restrict" }),
+    previousVersionId: uuid("previous_version_id").references(
+      () => referenceResourceVersions.id,
+      { onDelete: "restrict" },
+    ),
+    selectedVersionId: uuid("selected_version_id")
+      .notNull()
+      .references(() => referenceResourceVersions.id, { onDelete: "restrict" }),
+    action: text("action")
+      .$type<"activate" | "rollback" | "alias-edit">()
+      .notNull(),
+    actorOwnerId: text("actor_owner_id").notNull(),
+    reason: text("reason").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("reference_resource_events_resource_idx").on(
+      table.resourceId,
+      table.createdAt,
+      table.id,
+    ),
+    index("reference_resource_events_previous_version_idx")
+      .on(table.previousVersionId)
+      .where(sql`${table.previousVersionId} is not null`),
+    index("reference_resource_events_selected_version_idx").on(
+      table.selectedVersionId,
+    ),
+  ],
+);
+
+export const referenceResourceSets = privateSchema.table(
+  "reference_resource_sets",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    sequenceNumber: bigint("sequence_number", { mode: "number" })
+      .generatedAlwaysAsIdentity()
+      .notNull(),
+    contentChecksum: text("content_checksum").notNull(),
+    createdByOwnerId: text("created_by_owner_id").notNull(),
+    reason: text("reason").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("reference_resource_sets_sequence_idx").on(table.sequenceNumber),
+    index("reference_resource_sets_created_idx").on(table.createdAt, table.id),
+  ],
+);
+
+export const referenceResourceSetMembers = privateSchema.table(
+  "reference_resource_set_members",
+  {
+    setId: uuid("set_id")
+      .notNull()
+      .references(() => referenceResourceSets.id, { onDelete: "restrict" }),
+    resourceId: uuid("resource_id")
+      .notNull()
+      .references(() => referenceResources.id, { onDelete: "restrict" }),
+    versionId: uuid("version_id")
+      .notNull()
+      .references(() => referenceResourceVersions.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("reference_resource_set_members_set_resource_idx").on(
+      table.setId,
+      table.resourceId,
+    ),
+    index("reference_resource_set_members_resource_idx").on(
+      table.resourceId,
+      table.setId,
+    ),
+    index("reference_resource_set_members_version_idx").on(
+      table.versionId,
+      table.setId,
+    ),
+  ],
+);
+
+export const countryReferenceEntries = privateSchema.table(
+  "country_reference_entries",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    versionId: uuid("version_id")
+      .notNull()
+      .references(() => referenceResourceVersions.id, { onDelete: "cascade" }),
+    stableKey: text("stable_key").notNull(),
+    displayName: text("display_name").notNull(),
+    active: boolean("active").notNull(),
+    primaryAlpha3: text("primary_alpha3"),
+    officialIsoAlpha2: text("official_iso_alpha2"),
+    officialIsoAlpha3: text("official_iso_alpha3"),
+    officialIsoNumeric: text("official_iso_numeric"),
+    untermEnglishShortName: text("unterm_english_short_name"),
+    untermEnglishFormalName: text("unterm_english_formal_name"),
+    untermNameSource: text("unterm_name_source").$type<"unterm-m49" | null>(),
+    gencAlpha2: text("genc_alpha2"),
+    gencAlpha3: text("genc_alpha3"),
+    gencNumeric: text("genc_numeric"),
+    fips: text("fips"),
+    rog3: text("rog3"),
+    alternativeNames: jsonb("alternative_names")
+      .$type<string[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    classification: text("classification")
+      .$type<
+        | "iso-official"
+        | "genc-supported"
+        | "duplicate-iso-territory"
+        | "legacy-fips-only"
+        | "csv-only"
+        | "non-official-code"
+      >()
+      .notNull(),
+    sourceUri: text("source_uri"),
+    searchText: text("search_text").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("country_reference_entries_version_key_idx").on(
+      table.versionId,
+      table.stableKey,
+    ),
+    index("country_reference_entries_version_display_idx").on(
+      table.versionId,
+      table.displayName,
+      table.id,
+    ),
+    index("country_reference_entries_version_primary_iso3_idx")
+      .on(table.versionId, table.primaryAlpha3)
+      .where(sql`${table.primaryAlpha3} is not null`),
+    index("country_reference_entries_version_rog3_idx")
+      .on(table.versionId, table.rog3)
+      .where(sql`${table.rog3} is not null`),
+  ],
+);
+
+export const ropReferenceTerms = privateSchema.table(
+  "rop_reference_terms",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    versionId: uuid("version_id")
+      .notNull()
+      .references(() => referenceResourceVersions.id, { onDelete: "cascade" }),
+    level: text("level").$type<"rop1" | "rop2" | "rop25" | "rop3">().notNull(),
+    code: text("code").notNull(),
+    parentCode: text("parent_code"),
+    name: text("name"),
+    description: text("description"),
+    status: text("status").$type<"Active" | "Inactive" | null>(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("rop_reference_terms_version_level_code_idx").on(
+      table.versionId,
+      table.level,
+      table.code,
+    ),
+    index("rop_reference_terms_version_parent_idx")
+      .on(table.versionId, table.parentCode)
+      .where(sql`${table.parentCode} is not null`),
+  ],
+);
+
+export const ropReferencePeople = privateSchema.table(
+  "rop_reference_people",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    versionId: uuid("version_id")
+      .notNull()
+      .references(() => referenceResourceVersions.id, { onDelete: "cascade" }),
+    stableKey: text("stable_key").notNull(),
+    rowType: text("row_type").$type<"rop3-person" | "rop25-parent">().notNull(),
+    rop1Code: text("rop1_code"),
+    rop2Code: text("rop2_code"),
+    rop25Code: text("rop25_code"),
+    rop3Code: text("rop3_code"),
+    status: text("status").$type<"Active" | "Inactive">().notNull(),
+    place: text("place"),
+    language: text("language"),
+    source: text("source"),
+    ethnicId: text("ethnic_id"),
+    directRop2: text("direct_rop2"),
+    joinIssue: text("join_issue")
+      .$type<"missing-rop25" | "rop2-conflict" | "parent-only-rop25" | null>(),
+    joinIssueLabel: text("join_issue_label"),
+    searchText: text("search_text").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("rop_reference_people_version_key_idx").on(
+      table.versionId,
+      table.stableKey,
+    ),
+    index("rop_reference_people_version_rop1_idx").on(table.versionId, table.rop1Code),
+    index("rop_reference_people_version_rop2_idx").on(table.versionId, table.rop2Code),
+    index("rop_reference_people_version_rop25_idx").on(table.versionId, table.rop25Code),
+    index("rop_reference_people_version_rop3_idx").on(table.versionId, table.rop3Code),
+    index("rop_reference_people_version_sort_idx").on(
+      table.versionId,
+      table.stableKey,
+      table.id,
+    ),
+  ],
+);
+
+export const ropReferenceGeographies = privateSchema.table(
+  "rop_reference_geographies",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    versionId: uuid("version_id")
+      .notNull()
+      .references(() => referenceResourceVersions.id, { onDelete: "cascade" }),
+    geoId: integer("geo_id").notNull(),
+    rop3Code: text("rop3_code").notNull(),
+    rog: text("rog"),
+    geoName: text("geo_name"),
+    peopleName: text("people_name"),
+    peopleId3: text("people_id3"),
+    isoAlpha3: text("iso_alpha3"),
+    status: text("status").$type<"Active" | "Inactive">().notNull(),
+    searchText: text("search_text").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("rop_reference_geographies_version_geo_idx").on(
+      table.versionId,
+      table.geoId,
+    ),
+    index("rop_reference_geographies_version_rop3_idx").on(
+      table.versionId,
+      table.rop3Code,
+      table.geoId,
+    ),
+    index("rop_reference_geographies_version_rog_idx").on(table.versionId, table.rog),
+    index("rop_reference_geographies_version_people_id3_idx").on(
+      table.versionId,
+      table.peopleId3,
+    ),
+    index("rop_reference_geographies_version_iso3_idx").on(
+      table.versionId,
+      table.isoAlpha3,
+    ),
+  ],
+);
 
 export const apiConnections = privateSchema.table(
   "api_connections",

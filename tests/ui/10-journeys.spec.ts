@@ -814,3 +814,23 @@ test("admin can assign a filtered dataset view to an admin dataset", async ({ pa
     },
   );
 });
+
+test("admin can inspect country reference history", async ({ page }, testInfo) => {
+  test.skip(skipUnlessDesktopAdmin(testInfo.project.name));
+  await runSmokeJourney("admin can inspect country reference history", async () => {
+    await page.goto("/dashboard/country-codes");
+    await page.locator('[data-smoke-trigger="reference-resource-history"]').click();
+    await expect(page.locator('[data-smoke-ready="reference-resource-history"]')).toBeVisible();
+    await expect(page.getByText("Reference resource history")).toBeVisible();
+  });
+});
+
+test("admin can inspect ROP reference history", async ({ page }, testInfo) => {
+  test.skip(skipUnlessDesktopAdmin(testInfo.project.name));
+  await runSmokeJourney("admin can inspect ROP reference history", async () => {
+    await page.goto("/dashboard/rop-codes");
+    await page.locator('[data-smoke-trigger="reference-resource-history"]').click();
+    await expect(page.locator('[data-smoke-ready="reference-resource-history"]')).toBeVisible();
+    await expect(page.getByText("Reference resource history")).toBeVisible();
+  });
+});

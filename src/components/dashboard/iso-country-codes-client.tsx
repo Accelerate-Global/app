@@ -19,7 +19,8 @@ import {
 } from "react";
 
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { ReferenceResourceLifecycle } from "@/components/dashboard/reference-resource-lifecycle";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
@@ -43,9 +44,16 @@ import type {
   IsoCountryCodeEntry,
   IsoCountryCodeResource,
 } from "@/lib/iso-country-codes";
+import type {
+  ReferenceResourceCandidateResult,
+  ReferenceResourcePageByKey,
+  ReferenceResourceVersionSummary,
+} from "@/lib/reference-resources/types";
 
 type IsoCountryCodesClientProps = {
   initialResource: IsoCountryCodeResource;
+  activeVersion: ReferenceResourceVersionSummary;
+  initialNextCursor: string | null;
   canRefresh: boolean;
   canEditAlternativeNames: boolean;
 };
@@ -57,7 +65,7 @@ type RefreshProgress = {
 
 type AlternativeNameSaveResult = {
   entry: IsoCountryCodeEntry;
-  resource: IsoCountryCodeResource;
+  version: ReferenceResourceVersionSummary;
 };
 
 const classificationLabels: Record<CountryCodeClassification, string> = {
@@ -89,106 +97,6 @@ function getEntryKey(entry: IsoCountryCodeEntry) {
     entry.rog3 ?? "",
     entry.sourceUri ?? "",
   ].join(":");
-}
-
-function filterEntries(entries: IsoCountryCodeEntry[], searchTerm: string) {
-  const normalizedSearchTerm = searchTerm.trim().toLocaleLowerCase();
-
-  if (!normalizedSearchTerm) {
-    return entries;
-  }
-
-  return entries.filter((entry) =>
-    [
-      entry.displayName,
-      entry.active ? "active" : "inactive",
-      entry.primaryAlpha3,
-      entry.officialIsoAlpha2,
-      entry.officialIsoAlpha3,
-      entry.officialIsoNumeric,
-      entry.untermEnglishShortName,
-      entry.untermEnglishFormalName,
-      entry.untermNameSource,
-      entry.gencAlpha2,
-      entry.gencAlpha3,
-      entry.gencNumeric,
-      entry.fips,
-      entry.rog3,
-      entry.classification,
-      classificationLabels[entry.classification],
-      entry.sourceUri,
-      ...entry.alternativeNames,
-    ].some((value) =>
-      (value ?? "").toLocaleLowerCase().includes(normalizedSearchTerm),
-    ),
-  );
-}
-
-const csvColumns = [
-  ["Country/Territory", (entry: IsoCountryCodeEntry) => entry.displayName],
-  ["Status", (entry: IsoCountryCodeEntry) => (entry.active ? "Active" : "Inactive")],
-  ["ISO3", (entry: IsoCountryCodeEntry) => entry.primaryAlpha3],
-  ["ISO2", (entry: IsoCountryCodeEntry) => entry.officialIsoAlpha2],
-  ["Numeric", (entry: IsoCountryCodeEntry) => entry.officialIsoNumeric],
-  [
-    "Official UN short name",
-    (entry: IsoCountryCodeEntry) => entry.untermEnglishShortName,
-  ],
-  [
-    "Official UN formal name",
-    (entry: IsoCountryCodeEntry) => entry.untermEnglishFormalName,
-  ],
-  ["Official name source", (entry: IsoCountryCodeEntry) => entry.untermNameSource],
-  ["FIPS", (entry: IsoCountryCodeEntry) => entry.fips],
-  ["ROG3", (entry: IsoCountryCodeEntry) => entry.rog3],
-  ["GENC3", (entry: IsoCountryCodeEntry) => entry.gencAlpha3],
-  ["GENC2", (entry: IsoCountryCodeEntry) => entry.gencAlpha2],
-  ["GENC numeric", (entry: IsoCountryCodeEntry) => entry.gencNumeric],
-  [
-    "Classification",
-    (entry: IsoCountryCodeEntry) => classificationLabels[entry.classification],
-  ],
-  [
-    "Alternative names",
-    (entry: IsoCountryCodeEntry) => entry.alternativeNames.join("; "),
-  ],
-  ["Source URI", (entry: IsoCountryCodeEntry) => entry.sourceUri],
-] as const;
-
-function escapeCsvValue(value: string | null) {
-  const text = value ?? "";
-
-  if (/[",\n\r]/.test(text)) {
-    return `"${text.replaceAll('"', '""')}"`;
-  }
-
-  return text;
-}
-
-function buildCsv(entries: IsoCountryCodeEntry[]) {
-  const header = csvColumns.map(([label]) => escapeCsvValue(label)).join(",");
-  const rows = entries.map((entry) =>
-    csvColumns
-      .map(([, getValue]) => escapeCsvValue(getValue(entry)))
-      .join(","),
-  );
-
-  return `${[header, ...rows].join("\n")}\n`;
-}
-
-function downloadResource(entries: IsoCountryCodeEntry[]) {
-  const blob = new Blob([buildCsv(entries)], {
-    type: "text/csv;charset=utf-8",
-  });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-
-  link.href = url;
-  link.download = "country-territory-codes.csv";
-  document.body.append(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
 }
 
 function DetailValue({
@@ -468,10 +376,16 @@ function CountryCodeDetailSheet({
 
 export function IsoCountryCodesClient({
   initialResource,
+  activeVersion,
+  initialNextCursor,
   canRefresh,
   canEditAlternativeNames,
 }: IsoCountryCodesClientProps) {
   const [resource, setResource] = useState(initialResource);
+  const [currentActiveVersion, setCurrentActiveVersion] = useState(activeVersion);
+  const [nextCursor, setNextCursor] = useState(initialNextCursor);
+  const [isLoadingEntries, setIsLoadingEntries] = useState(false);
+  const [entryError, setEntryError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [refreshSucceeded, setRefreshSucceeded] = useState(false);
@@ -479,16 +393,15 @@ export function IsoCountryCodesClient({
     null,
   );
   const [refreshError, setRefreshError] = useState<string | null>(null);
+  const [candidate, setCandidate] = useState<ReferenceResourceCandidateResult | null>(null);
   const [selectedEntryKey, setSelectedEntryKey] = useState<string | null>(null);
   const [isSavingAlternativeNames, setIsSavingAlternativeNames] = useState(false);
   const [alternativeNameError, setAlternativeNameError] = useState<string | null>(
     null,
   );
   const refreshSuccessTimer = useRef<number | null>(null);
-  const visibleEntries = useMemo(
-    () => filterEntries(resource.entries, searchTerm),
-    [resource.entries, searchTerm],
-  );
+  const initialSearchRender = useRef(true);
+  const visibleEntries = resource.entries;
   const selectedEntry = useMemo(
     () =>
       selectedEntryKey
@@ -506,6 +419,65 @@ export function IsoCountryCodesClient({
     },
     [],
   );
+
+  useEffect(() => {
+    if (initialSearchRender.current) {
+      initialSearchRender.current = false;
+      return;
+    }
+    const controller = new AbortController();
+    const timer = window.setTimeout(async () => {
+      setIsLoadingEntries(true);
+      setEntryError(null);
+      try {
+        const params = new URLSearchParams({ limit: "100" });
+        if (searchTerm.trim()) params.set("search", searchTerm.trim());
+        const response = await fetch(
+          `/api/reference-resources/country-territory-codes/entries?${params.toString()}`,
+          { signal: controller.signal },
+        );
+        if (!response.ok) throw new Error("Search failed.");
+        const page = (await response.json()) as ReferenceResourcePageByKey["country-territory-codes"];
+        setResource(page.resource);
+        setNextCursor(page.nextCursor);
+        setSelectedEntryKey(null);
+      } catch (error) {
+        if ((error as Error).name !== "AbortError") {
+          setEntryError("Could not load matching country and territory codes.");
+        }
+      } finally {
+        if (!controller.signal.aborted) setIsLoadingEntries(false);
+      }
+    }, 250);
+    return () => {
+      controller.abort();
+      window.clearTimeout(timer);
+    };
+  }, [searchTerm]);
+
+  async function loadMoreEntries() {
+    if (!nextCursor || isLoadingEntries) return;
+    setIsLoadingEntries(true);
+    setEntryError(null);
+    try {
+      const params = new URLSearchParams({ cursor: nextCursor, limit: "100" });
+      if (searchTerm.trim()) params.set("search", searchTerm.trim());
+      const response = await fetch(
+        `/api/reference-resources/country-territory-codes/entries?${params.toString()}`,
+      );
+      if (!response.ok) throw new Error("Page failed.");
+      const page = (await response.json()) as ReferenceResourcePageByKey["country-territory-codes"];
+      setResource((current) => ({
+        ...page.resource,
+        entries: [...current.entries, ...page.resource.entries],
+      }));
+      setNextCursor(page.nextCursor);
+    } catch {
+      setEntryError("Could not load more country and territory codes.");
+    } finally {
+      setIsLoadingEntries(false);
+    }
+  }
 
   function showRefreshSuccess() {
     setRefreshSucceeded(true);
@@ -570,18 +542,17 @@ export function IsoCountryCodesClient({
         throw new Error("Refresh failed.");
       }
 
-      const nextResource = (await response.json()) as IsoCountryCodeResource;
+      const nextCandidate = (await response.json()) as ReferenceResourceCandidateResult;
       setRefreshProgress({
         progress: 95,
-        message: "Updating visible list",
+        message: "Candidate ready for review",
       });
-      setResource(nextResource);
-      setSelectedEntryKey(null);
+      setCandidate(nextCandidate);
       setRefreshProgress(null);
       showRefreshSuccess();
     } catch {
       setRefreshError(
-        "Could not refresh country and territory codes. The generated resource is still shown.",
+        "Could not refresh country and territory codes. The active persisted version is still shown.",
       );
       setRefreshProgress(null);
     } finally {
@@ -648,7 +619,13 @@ export function IsoCountryCodesClient({
       }
 
       const payload = (await response.json()) as AlternativeNameSaveResult;
-      setResource(payload.resource);
+      setResource((current) => ({
+        ...current,
+        entries: current.entries.map((item) =>
+          item.displayName === payload.entry.displayName ? payload.entry : item,
+        ),
+      }));
+      setCurrentActiveVersion(payload.version);
       setSelectedEntryKey(getEntryKey(payload.entry));
       return true;
     } catch {
@@ -705,6 +682,8 @@ export function IsoCountryCodesClient({
                 <Button
                   type="button"
                   variant="outline"
+                  data-smoke-trigger="reference-resource-candidate"
+                  data-smoke-write="unsafe"
                   onClick={refreshFromIso}
                   disabled={isRefreshing}
                 >
@@ -716,19 +695,19 @@ export function IsoCountryCodesClient({
                   Refresh
                 </Button>
               ) : null}
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => downloadResource(visibleEntries)}
+              <a
+                className={buttonVariants({ variant: "outline" })}
+                href={`/api/reference-resources/country-territory-codes/download?search=${encodeURIComponent(searchTerm)}`}
               >
                 <DownloadIcon />
                 Download
-              </Button>
+              </a>
             </div>
           </div>
           {refreshError ? (
             <p className="text-sm text-destructive">{refreshError}</p>
           ) : null}
+          {entryError ? <p className="text-sm text-destructive">{entryError}</p> : null}
           {refreshProgress ? (
             <div className="space-y-3 rounded-lg border bg-background p-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -792,9 +771,32 @@ export function IsoCountryCodesClient({
                 ))}
               </TableBody>
             </Table>
+            {nextCursor ? (
+              <div className="flex justify-center pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={loadMoreEntries}
+                  disabled={isLoadingEntries}
+                >
+                  {isLoadingEntries ? "Loading…" : "Load more"}
+                </Button>
+              </div>
+            ) : null}
           </div>
         </CardContent>
       </Card>
+      {canRefresh ? (
+        <ReferenceResourceLifecycle
+          resourceKey="country-territory-codes"
+          activeVersion={currentActiveVersion}
+          candidate={candidate}
+        />
+      ) : (
+        <div className="text-sm text-muted-foreground">
+          Active version {currentActiveVersion.versionNumber} · {currentActiveVersion.contentChecksum?.slice(0, 12)}
+        </div>
+      )}
       <CountryCodeDetailSheet
         entry={selectedEntry}
         resource={resource}

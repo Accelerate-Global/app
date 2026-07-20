@@ -16,6 +16,15 @@ import {
   datasets,
   fieldDefinitions,
   isoCountryCodeEntryOverrides,
+  referenceResources,
+  referenceResourceVersions,
+  referenceResourceActivationEvents,
+  referenceResourceSets,
+  referenceResourceSetMembers,
+  countryReferenceEntries,
+  ropReferenceTerms,
+  ropReferencePeople,
+  ropReferenceGeographies,
   partnerExportProfileColumns,
   partnerExportProfiles,
   partnerExportRuns,
@@ -150,6 +159,33 @@ describe("datasets schema", () => {
     expect(migration).toContain(
       'drop policy if exists "dataset admin can delete filter region countries"',
     );
+  });
+});
+
+describe("versioned reference-resource schema", () => {
+  it("declares catalog, immutable package, audit, set, and typed projection columns", () => {
+    expect(referenceResources.activeVersionId.name).toBe("active_version_id");
+    expect(referenceResourceVersions.contentChecksum.name).toBe("content_checksum");
+    expect(referenceResourceVersions.artifactManifest.name).toBe("artifact_manifest");
+    expect(referenceResourceActivationEvents.previousVersionId.name).toBe("previous_version_id");
+    expect(referenceResourceActivationEvents.selectedVersionId.name).toBe("selected_version_id");
+    expect(referenceResourceSets.contentChecksum.name).toBe("content_checksum");
+    expect(referenceResourceSetMembers.versionId.name).toBe("version_id");
+    expect(countryReferenceEntries.stableKey.name).toBe("stable_key");
+    expect(ropReferenceTerms.parentCode.name).toBe("parent_code");
+    expect(ropReferencePeople.rop3Code.name).toBe("rop3_code");
+    expect(ropReferenceGeographies.peopleId3.name).toBe("people_id3");
+  });
+
+  it("commits private security, immutability, activation, bucket, and catalog SQL", async () => {
+    const migration = await readFile(
+      path.join(process.cwd(), "supabase/migrations/20260717232137_reference_resource_foundation.sql"),
+      "utf8",
+    );
+    expect(migration).toContain("create or replace function private.activate_reference_resource");
+    expect(migration).toContain("Finalized reference-resource package content is immutable.");
+    expect(migration).toContain("'reference-resource-artifacts'");
+    expect(migration).toContain("revoke all on private.reference_resources from public, anon, authenticated");
   });
 });
 

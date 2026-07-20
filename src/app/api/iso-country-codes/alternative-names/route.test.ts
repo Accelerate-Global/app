@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getCurrentIdentity } from "@/lib/auth";
-import { updateIsoCountryCodeAlternativeNames } from "@/lib/iso-country-codes";
+import { deriveAndActivateCountryAliases } from "@/lib/reference-resources";
 import type {
   IsoCountryCodeEntry,
   IsoCountryCodeResource,
@@ -17,13 +17,13 @@ vi.mock("@/lib/error-logging", () => ({
   logError: vi.fn(),
 }));
 
-vi.mock("@/lib/iso-country-codes", () => ({
-  updateIsoCountryCodeAlternativeNames: vi.fn(),
+vi.mock("@/lib/reference-resources", () => ({
+  deriveAndActivateCountryAliases: vi.fn(),
 }));
 
 const getCurrentIdentityMock = vi.mocked(getCurrentIdentity);
-const updateIsoCountryCodeAlternativeNamesMock = vi.mocked(
-  updateIsoCountryCodeAlternativeNames,
+const deriveAndActivateCountryAliasesMock = vi.mocked(
+  deriveAndActivateCountryAliases,
 );
 
 const entry: IsoCountryCodeEntry = {
@@ -96,7 +96,7 @@ describe("/api/iso-country-codes/alternative-names", () => {
     );
 
     expect(response.status).toBe(401);
-    expect(updateIsoCountryCodeAlternativeNamesMock).not.toHaveBeenCalled();
+    expect(deriveAndActivateCountryAliasesMock).not.toHaveBeenCalled();
   });
 
   it("rejects non-admin alternate-name updates", async () => {
@@ -117,7 +117,7 @@ describe("/api/iso-country-codes/alternative-names", () => {
     await expect(response.json()).resolves.toEqual({
       error: "Only admins can manage country and territory alternate names.",
     });
-    expect(updateIsoCountryCodeAlternativeNamesMock).not.toHaveBeenCalled();
+    expect(deriveAndActivateCountryAliasesMock).not.toHaveBeenCalled();
   });
 
   it("updates alternate names for admins", async () => {
@@ -129,10 +129,10 @@ describe("/api/iso-country-codes/alternative-names", () => {
       isDatasetAdmin: true,
       mode: "supabase",
     });
-    updateIsoCountryCodeAlternativeNamesMock.mockResolvedValue({
+    deriveAndActivateCountryAliasesMock.mockResolvedValue({
       entry,
       resource,
-    });
+    } as never);
 
     const response = await PATCH(
       buildRequest({
@@ -142,10 +142,10 @@ describe("/api/iso-country-codes/alternative-names", () => {
     );
 
     expect(response.status).toBe(200);
-    expect(updateIsoCountryCodeAlternativeNamesMock).toHaveBeenCalledWith({
+    expect(deriveAndActivateCountryAliasesMock).toHaveBeenCalledWith({
       displayName: "Afghanistan",
       alternativeNames: ["Afganistan"],
-      updatedByOwnerId: "admin-1",
+      actorOwnerId: "admin-1",
     });
     await expect(response.json()).resolves.toEqual({ entry, resource });
   });
@@ -163,7 +163,7 @@ describe("/api/iso-country-codes/alternative-names", () => {
     const response = await PATCH(buildRequest({ displayName: "" }));
 
     expect(response.status).toBe(400);
-    expect(updateIsoCountryCodeAlternativeNamesMock).not.toHaveBeenCalled();
+    expect(deriveAndActivateCountryAliasesMock).not.toHaveBeenCalled();
   });
 });
 

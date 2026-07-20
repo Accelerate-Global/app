@@ -7,6 +7,28 @@ import {
 } from "./ui-smoke-selection";
 
 describe("ui-smoke-selection", () => {
+  it("targets reference-resource routes and admin history journeys", () => {
+    const selection = resolveUiSmokeSelection([
+      "src/components/dashboard/reference-resource-lifecycle.tsx",
+    ]);
+
+    expect(selection.routeIds).toEqual(expect.arrayContaining([
+      "resources-pro",
+      "iso-country-codes-admin",
+      "rop-codes-admin",
+    ]));
+    expect(selection.journeyTitles).toEqual(expect.arrayContaining([
+      "admin can inspect country reference history",
+      "admin can inspect ROP reference history",
+    ]));
+    expect(selection.projectNames).toEqual([
+      "desktop-pro",
+      "desktop-basic",
+      "desktop-admin",
+    ]);
+    expect(selection.bootstrapScope).toBe("full");
+  });
+
   it("targets dataset edit routes without unrelated dataset journeys", () => {
     const selection = resolveUiSmokeSelection([
       "src/components/dashboard/dataset-edit-page-client.tsx",
