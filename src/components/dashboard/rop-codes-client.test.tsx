@@ -203,6 +203,8 @@ describe("RopCodesClient", () => {
       />,
     );
 
+    expect(screen.getByText("Retrieved May 7, 2026, 12:00 AM UTC")).toBeTruthy();
+
     fireEvent.change(screen.getByLabelText("Search ROP codes"), {
       target: { value: "100425" },
     });

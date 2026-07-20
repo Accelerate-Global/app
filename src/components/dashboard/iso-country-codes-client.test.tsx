@@ -188,7 +188,6 @@ describe("IsoCountryCodesClient", () => {
     expect(screen.getByText("Afghanistan")).toBeTruthy();
     expect(screen.getByText("Akrotiri")).toBeTruthy();
     expect(screen.getByText("Baker Island")).toBeTruthy();
-
     fireEvent.change(screen.getByPlaceholderText(/Search name/), {
       target: { value: "Afganistan" },
     });
@@ -212,6 +211,7 @@ describe("IsoCountryCodesClient", () => {
 
     fireEvent.click(screen.getByText("Afghanistan"));
 
+    expect(screen.getByText("May 6, 2026, 12:00 AM UTC")).toBeTruthy();
     expect(screen.getByText("Primary ISO3")).toBeTruthy();
     expect(screen.getByText("ISO2")).toBeTruthy();
     expect(screen.getAllByText("ROG3").length).toBeGreaterThan(0);
