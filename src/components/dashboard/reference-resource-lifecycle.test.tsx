@@ -38,6 +38,7 @@ describe("ReferenceResourceLifecycle", () => {
       />,
     );
     expect(screen.getByText("Active v1")).toBeTruthy();
+    expect(screen.getByText("Retrieved Jul 17, 2026, 12:00 AM UTC")).toBeTruthy();
     expect(screen.getByText("Version 2 is ready for review")).toBeTruthy();
     expect(screen.getByText(/"changed": 2/u)).toBeTruthy();
   });
@@ -58,6 +59,7 @@ describe("ReferenceResourceLifecycle", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: /version history/iu }));
     await waitFor(() => expect(screen.getByText(/Version 1 · Active/u)).toBeTruthy());
+    expect(screen.getByText(/Jul 17, 2026, 12:00 AM UTC · valid/u)).toBeTruthy();
     expect(globalThis.fetch).toHaveBeenCalledWith(
       "/api/reference-resources/country-territory-codes/versions",
     );
