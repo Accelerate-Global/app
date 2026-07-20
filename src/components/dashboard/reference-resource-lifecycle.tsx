@@ -37,6 +37,18 @@ type HistoryPayload = {
   }>;
 };
 
+function formatLifecycleTimestamp(value: string) {
+  return new Intl.DateTimeFormat("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: "UTC",
+    timeZoneName: "short",
+  }).format(new Date(value));
+}
+
 export function ReferenceResourceLifecycle({
   resourceKey,
   activeVersion,
@@ -137,7 +149,7 @@ export function ReferenceResourceLifecycle({
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
         <Badge variant="outline">Active v{activeVersion.versionNumber}</Badge>
-        <span>Retrieved {new Date(activeVersion.sourceRetrievedAt).toLocaleString()}</span>
+        <span>Retrieved {formatLifecycleTimestamp(activeVersion.sourceRetrievedAt)}</span>
         <span className="font-mono text-xs">{activeVersion.contentChecksum?.slice(0, 12)}</span>
       </div>
 
@@ -240,7 +252,7 @@ export function ReferenceResourceLifecycle({
                     Version {version.versionNumber} {version.isActive ? "· Active" : ""}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {new Date(version.createdAt).toLocaleString()} · {version.lifecycleState} · {version.contentChecksum?.slice(0, 12)}
+                    {formatLifecycleTimestamp(version.createdAt)} · {version.lifecycleState} · {version.contentChecksum?.slice(0, 12)}
                   </p>
                 </div>
                 {!version.isActive && version.lifecycleState === "valid" ? (
