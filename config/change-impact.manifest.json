@@ -431,6 +431,22 @@
       "bootstrapScope": "admin-config"
     },
     {
+      "id": "api-connection-detail",
+      "label": "API Connection detail and run diagnostics",
+      "patterns": [
+        "src/components/dashboard/api-connection-detail-client.tsx",
+        "src/components/dashboard/api-connection-detail-client.test.tsx"
+      ],
+      "routeIds": [
+        "api-connection-detail-pro-redirect",
+        "api-connection-detail-basic-redirect",
+        "api-connection-detail-admin"
+      ],
+      "journeyTitles": ["admin can inspect connection run detail"],
+      "projectNames": ["desktop-pro", "desktop-basic", "desktop-admin"],
+      "bootstrapScope": "admin-config"
+    },
+    {
       "id": "profile",
       "label": "Profile and account settings",
       "patterns": [

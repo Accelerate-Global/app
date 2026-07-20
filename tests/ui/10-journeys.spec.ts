@@ -517,6 +517,85 @@ test(
   },
 );
 
+test(
+  "admin can inspect connection run detail",
+  async ({ page }, testInfo) => {
+    test.skip(skipUnlessDesktopAdmin(testInfo.project.name));
+
+    await runSmokeJourney("admin can inspect connection run detail", async () => {
+      const connectionId = "6f9f6ef2-1188-4f71-9c24-ef01debf7a01";
+      const runId = "77777777-7777-4777-8777-777777777777";
+
+      await page.route(
+        `**/api/admin/api-connections/${connectionId}/run`,
+        async (route) => {
+          expect(route.request().postDataJSON()).toEqual({
+            importEnabled: false,
+          });
+          await route.fulfill({
+            status: 202,
+            contentType: "application/json",
+            body: JSON.stringify({
+              run: {
+                id: runId,
+                connectionId,
+                actorOwnerId: "smoke-admin",
+                actorEmail: "smoke-runner@example.com",
+                mode: "test",
+                status: "success",
+                httpStatus: 200,
+                durationMs: 125,
+                rowCount: 1,
+                datasetId: null,
+                errorMessage: null,
+                responsePreview: '[{"name":"Smoke"}]',
+                startedAt: "2026-07-20T16:00:00.000Z",
+                completedAt: "2026-07-20T16:00:00.125Z",
+                createdAt: "2026-07-20T16:00:00.000Z",
+                logs: [
+                  {
+                    id: "88888888-8888-4888-8888-888888888888",
+                    runId,
+                    connectionId,
+                    level: "info",
+                    message: "Smoke run completed.",
+                    createdAt: "2026-07-20T16:00:00.125Z",
+                  },
+                ],
+                output: null,
+              },
+            }),
+          });
+        },
+      );
+
+      await page.goto(`/dashboard/api-connections/${connectionId}`);
+      await expect(
+        page.locator('[data-smoke-page="api-connection-detail"]'),
+      ).toBeVisible();
+      await expect(page.getByText("Run history", { exact: true })).toBeVisible();
+      await page.locator("[data-smoke-api-connection-test]").click();
+
+      const runTrigger = page.locator(
+        '[data-smoke-trigger="api-connection-run-detail-sheet"]',
+        { hasText: "smoke-runner@example.com" },
+      );
+      await expect(runTrigger).toBeVisible();
+      await runTrigger.click();
+
+      const detailSheet = page.locator(
+        '[data-smoke-surface="api-connection-run-detail-sheet"][data-smoke-ready="api-connection-run-detail-sheet"]',
+      );
+      await expect(detailSheet).toBeVisible();
+      await expect(
+        detailSheet.getByRole("heading", { name: "Run detail" }),
+      ).toBeVisible();
+      await expect(detailSheet.getByText("Smoke run completed.")).toBeVisible();
+      await expect(detailSheet.getByText('[{"name":"Smoke"}]')).toBeVisible();
+    });
+  },
+);
+
 test("admin can review partner export mapping", async ({ page }, testInfo) => {
   test.skip(skipUnlessDesktopAdmin(testInfo.project.name));
 

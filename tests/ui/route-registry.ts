@@ -373,6 +373,7 @@ export const smokeRouteSpecs: SmokeRouteSpec[] = [
     pageFile: "src/app/dashboard/api-connections/[connectionId]/page.tsx",
     path: "/dashboard/api-connections/6f9f6ef2-1188-4f71-9c24-ef01debf7a01",
     pageId: "api-connection-detail",
+    journeys: ["admin can inspect connection run detail"],
   },
   {
     id: "upload-pro-redirect",

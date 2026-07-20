@@ -2,7 +2,6 @@
 
 import {
   CheckCircle2Icon,
-  ChevronDownIcon,
   CopyIcon,
   DatabaseIcon,
   DownloadIcon,
@@ -31,7 +30,6 @@ import {
   useMemo,
   useRef,
   useState,
-  type ReactNode,
 } from "react";
 
 import { GoogleSheetsHeaderSelection } from "@/components/dashboard/google-sheets-header-selection";
@@ -49,6 +47,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import type {
   ApiConnection,
   ApiConnectionRun,
@@ -77,8 +82,8 @@ type DetailMessage = {
   tone: "success" | "error";
 };
 
-const INGESTION_HISTORY_VISIBLE_ROW_LIMIT = 5;
-const INGESTION_HISTORY_SCROLL_AREA_HEIGHT = "h-[268px]";
+const RUN_HISTORY_VISIBLE_ROW_LIMIT = 5;
+const RUN_HISTORY_SCROLL_AREA_HEIGHT = "h-[268px]";
 
 async function getErrorMessage(response: Response, fallback: string) {
   try {
@@ -253,63 +258,114 @@ function ArtifactCell({ run }: { run: ApiConnectionRun }) {
   );
 }
 
-function DetailEmptyState() {
-  return (
-    <div className="rounded-xl border border-dashed border-border px-4 py-8 text-sm text-muted-foreground">
-      No ingestion selected.
-    </div>
-  );
-}
-
-function CollapsibleRunCard({
-  title,
-  description,
-  contentId,
+function RunDetailSheet({
+  run,
   open,
   onOpenChange,
-  children,
 }: {
-  title: string;
-  description: string;
-  contentId: string;
+  run: ApiConnectionRun | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  children: ReactNode;
 }) {
-  const titleId = `${contentId}-title`;
-
   return (
-    <Card>
-      <CardHeader className="gap-3">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div className="min-w-0 space-y-1">
-            <CardTitle id={titleId} className="text-2xl">
-              {title}
-            </CardTitle>
-            <CardDescription>{description}</CardDescription>
+    <Sheet open={open && run !== null} onOpenChange={onOpenChange}>
+      <SheetContent
+        side="right"
+        className="w-full gap-0 sm:max-w-2xl"
+        data-smoke-surface="api-connection-run-detail-sheet"
+        data-smoke-ready="api-connection-run-detail-sheet"
+      >
+        {run ? (
+          <div className="flex h-full flex-col">
+            <SheetHeader className="border-b border-border px-6 py-5">
+              <SheetTitle>Run detail</SheetTitle>
+              <SheetDescription>
+                {getRunLabel(run)} initiated {formatTimestamp(run.createdAt)}.
+              </SheetDescription>
+            </SheetHeader>
+
+            <div className="flex-1 space-y-5 overflow-y-auto overscroll-contain px-6 py-5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge
+                    variant="outline"
+                    className={cn("capitalize", statusBadgeClass(run.status))}
+                  >
+                    {getRunLabel(run)}
+                  </Badge>
+                  <span className="font-mono text-xs text-muted-foreground">
+                    {run.httpStatus ? `HTTP ${run.httpStatus}` : "No HTTP status"}
+                  </span>
+                  <span className="font-mono text-xs text-muted-foreground">
+                    {formatDuration(run)}
+                  </span>
+                  {run.rowCount !== null ? (
+                    <span className="font-mono text-xs text-muted-foreground">
+                      {run.rowCount} rows
+                    </span>
+                  ) : null}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <RunDownloadLinks run={run} />
+                  {run.datasetId ? (
+                    <a
+                      href={`/dashboard/datasets/${run.datasetId}`}
+                      className={buttonVariants({ variant: "outline", size: "sm" })}
+                    >
+                      <ExternalLinkIcon className="size-3.5" />
+                      Imported dataset
+                    </a>
+                  ) : null}
+                </div>
+              </div>
+
+              {run.errorMessage ? (
+                <Alert variant="destructive">
+                  <XCircleIcon className="size-4" />
+                  <AlertTitle>Run error</AlertTitle>
+                  <AlertDescription>{run.errorMessage}</AlertDescription>
+                </Alert>
+              ) : null}
+
+              <div className="space-y-2 rounded-lg border border-border bg-muted/20 p-3">
+                <h3 className="text-xs font-semibold uppercase text-muted-foreground">
+                  Logs
+                </h3>
+                {run.logs && run.logs.length > 0 ? (
+                  <div className="max-h-48 space-y-1 overflow-auto">
+                    {run.logs.map((log) => (
+                      <div
+                        key={log.id}
+                        className={cn(
+                          "grid gap-2 font-mono text-xs md:grid-cols-[9rem_minmax(0,1fr)]",
+                          log.level === "error"
+                            ? "text-destructive"
+                            : "text-muted-foreground",
+                        )}
+                      >
+                        <span>{formatTimestamp(log.createdAt)}</span>
+                        <span>{log.message}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No logs recorded.</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <h3 className="text-xs font-semibold uppercase text-muted-foreground">
+                  Preview
+                </h3>
+                <pre className="max-h-96 overflow-auto rounded-lg border border-border bg-muted/40 p-3 text-xs leading-5">
+                  {run.responsePreview || "No preview available."}
+                </pre>
+              </div>
+            </div>
           </div>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            aria-expanded={open}
-            aria-controls={contentId}
-            onClick={() => onOpenChange(!open)}
-          >
-            <ChevronDownIcon
-              aria-hidden="true"
-              className={cn("size-3.5 transition-transform", open ? "rotate-180" : "")}
-            />
-            {open ? "Collapse" : "Expand"} {title}
-          </Button>
-        </div>
-      </CardHeader>
-      {open ? (
-        <CardContent id={contentId} aria-labelledby={titleId}>
-          {children}
-        </CardContent>
-      ) : null}
-    </Card>
+        ) : null}
+      </SheetContent>
+    </Sheet>
   );
 }
 
@@ -354,8 +410,7 @@ export function ApiConnectionDetailClient({
   const [headerSelection, setHeaderSelection] =
     useState<GoogleSheetsHeaderSelectionInput | null>(null);
   const refreshedImportRunIds = useRef(new Set<string>());
-  const [isRunDetailOpen, setIsRunDetailOpen] = useState(false);
-  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [isRunDetailSheetOpen, setIsRunDetailSheetOpen] = useState(false);
   const selectedRun = useMemo(
     () => runs.find((run) => run.id === selectedRunId) ?? null,
     [runs, selectedRunId],
@@ -367,6 +422,14 @@ export function ApiConnectionDetailClient({
     setSelectedRunId(run.id);
     setRowSelection({ [run.id]: true });
   }, []);
+
+  const openRunDetail = useCallback(
+    (run: ApiConnectionRun) => {
+      selectRun(run);
+      setIsRunDetailSheetOpen(true);
+    },
+    [selectRun],
+  );
 
   const upsertRun = useCallback(
     (run: ApiConnectionRun) => {
@@ -869,7 +932,10 @@ export function ApiConnectionDetailClient({
           />
         ),
         cell: ({ row }) => (
-          <span className="font-mono text-xs">
+          <span
+            className="font-mono text-xs"
+            data-smoke-trigger="api-connection-run-detail-sheet"
+          >
             {row.original.actorEmail ?? row.original.actorOwnerId}
           </span>
         ),
@@ -915,9 +981,9 @@ export function ApiConnectionDetailClient({
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
   });
-  const historyScrollAreaClassName =
-    runs.length > INGESTION_HISTORY_VISIBLE_ROW_LIMIT
-      ? INGESTION_HISTORY_SCROLL_AREA_HEIGHT
+  const runHistoryScrollAreaClassName =
+    runs.length > RUN_HISTORY_VISIBLE_ROW_LIMIT
+      ? RUN_HISTORY_SCROLL_AREA_HEIGHT
       : undefined;
 
   return (
@@ -1239,129 +1305,45 @@ export function ApiConnectionDetailClient({
         </CardContent>
       </Card>
 
-      <CollapsibleRunCard
-        title="Run Detail"
-        description="Select an ingestion row to inspect logs, output, preview, and errors."
-        contentId="api-connection-run-detail-panel"
-        open={isRunDetailOpen}
-        onOpenChange={setIsRunDetailOpen}
-      >
-          {!selectedRun ? (
-            <DetailEmptyState />
-          ) : (
-            <div className="space-y-5">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex flex-wrap items-center gap-2">
-                  <Badge
-                    variant="outline"
-                    className={cn("capitalize", statusBadgeClass(selectedRun.status))}
-                  >
-                    {getRunLabel(selectedRun)}
-                  </Badge>
-                  <span className="font-mono text-xs text-muted-foreground">
-                    {selectedRun.httpStatus
-                      ? `HTTP ${selectedRun.httpStatus}`
-                      : "No HTTP status"}
-                  </span>
-                  <span className="font-mono text-xs text-muted-foreground">
-                    {formatDuration(selectedRun)}
-                  </span>
-                  {selectedRun.rowCount !== null ? (
-                    <span className="font-mono text-xs text-muted-foreground">
-                      {selectedRun.rowCount} rows
-                    </span>
-                  ) : null}
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <RunDownloadLinks run={selectedRun} />
-                  {selectedRun.datasetId ? (
-                    <a
-                      href={`/dashboard/datasets/${selectedRun.datasetId}`}
-                      className={buttonVariants({ variant: "outline", size: "sm" })}
-                    >
-                      <ExternalLinkIcon className="size-3.5" />
-                      Imported dataset
-                    </a>
-                  ) : null}
-                </div>
-              </div>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-2xl">Run history</CardTitle>
+          <CardDescription>
+            Initiated test and import runs for {connection.name}. Select a row to
+            inspect its details.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <DataGrid
+            table={table}
+            recordCount={runs.length}
+            emptyMessage="No runs have been initiated yet."
+            onRowClick={openRunDetail}
+            tableLayout={{
+              columnsPinnable: true,
+              columnsResizable: true,
+              headerSticky: true,
+              rowBorder: true,
+            }}
+            tableClassNames={{
+              headerSticky: "sticky top-0 z-10 bg-muted/90 backdrop-blur-xs",
+              bodyRow: "h-11 [&>td]:align-top [&>td]:py-2.5",
+            }}
+          >
+            <DataGridContainer>
+              <DataGridScrollArea className={runHistoryScrollAreaClassName}>
+                <DataGridTable />
+              </DataGridScrollArea>
+            </DataGridContainer>
+          </DataGrid>
+        </CardContent>
+      </Card>
 
-              {selectedRun.errorMessage ? (
-                <Alert variant="destructive">
-                  <XCircleIcon className="size-4" />
-                  <AlertTitle>Run error</AlertTitle>
-                  <AlertDescription>{selectedRun.errorMessage}</AlertDescription>
-                </Alert>
-              ) : null}
-
-              <div className="space-y-2 rounded-lg border border-border bg-muted/20 p-3">
-                <h3 className="text-xs font-semibold uppercase text-muted-foreground">
-                  Logs
-                </h3>
-                {selectedRun.logs && selectedRun.logs.length > 0 ? (
-                  <div className="max-h-48 space-y-1 overflow-auto">
-                    {selectedRun.logs.map((log) => (
-                      <div
-                        key={log.id}
-                        className={cn(
-                          "grid gap-2 font-mono text-xs md:grid-cols-[9rem_minmax(0,1fr)]",
-                          log.level === "error"
-                            ? "text-destructive"
-                            : "text-muted-foreground",
-                        )}
-                      >
-                        <span>{formatTimestamp(log.createdAt)}</span>
-                        <span>{log.message}</span>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">No logs recorded.</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <h3 className="text-xs font-semibold uppercase text-muted-foreground">
-                  Preview
-                </h3>
-                <pre className="max-h-96 overflow-auto rounded-lg border border-border bg-muted/40 p-3 text-xs leading-5">
-                  {selectedRun.responsePreview || "No preview available."}
-                </pre>
-              </div>
-            </div>
-          )}
-      </CollapsibleRunCard>
-
-      <CollapsibleRunCard
-        title="Ingestion History"
-        description={`Initiated test and import runs for ${connection.name}.`}
-        contentId="api-connection-ingestion-history-panel"
-        open={isHistoryOpen}
-        onOpenChange={setIsHistoryOpen}
-      >
-        <DataGrid
-          table={table}
-          recordCount={runs.length}
-          emptyMessage="No ingestions have been initiated yet."
-          onRowClick={selectRun}
-          tableLayout={{
-            columnsPinnable: true,
-            columnsResizable: true,
-            headerSticky: true,
-            rowBorder: true,
-          }}
-          tableClassNames={{
-            headerSticky: "sticky top-0 z-10 bg-muted/90 backdrop-blur-xs",
-            bodyRow: "h-11 [&>td]:align-top [&>td]:py-2.5",
-          }}
-        >
-          <DataGridContainer>
-            <DataGridScrollArea className={historyScrollAreaClassName}>
-              <DataGridTable />
-            </DataGridScrollArea>
-          </DataGridContainer>
-        </DataGrid>
-      </CollapsibleRunCard>
+      <RunDetailSheet
+        run={selectedRun}
+        open={isRunDetailSheetOpen}
+        onOpenChange={setIsRunDetailSheetOpen}
+      />
     </div>
   );
 }
