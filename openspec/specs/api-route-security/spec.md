@@ -36,11 +36,7 @@ The system SHALL apply authenticated user access, admin-only authorization, unex
 - **AND** the system returns `500 Internal Server Error` with a private non-cacheable JSON error response
 
 ### Requirement: API route guard exemptions are explicit
-The system MUST keep API routes that do not use the centralized route guard in an explicit documented exemption list with a route-specific reason. Product analytics ingestion MUST NOT be exempt from authentication.
-
-#### Scenario: Analytics route is inspected
-- **WHEN** route security coverage checks the analytics event route
-- **THEN** the route is required to use the centralized authenticated-user guard
+The system MUST keep API routes that do not use the centralized route guard in an explicit documented exemption list with a route-specific reason.
 
 #### Scenario: Supabase heartbeat route is inspected
 - **WHEN** route security coverage is checked for the Supabase heartbeat route

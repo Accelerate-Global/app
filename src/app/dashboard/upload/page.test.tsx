@@ -7,6 +7,8 @@ import { getCurrentIdentity } from "@/lib/auth";
 import { getDataset } from "@/lib/datasets";
 import UploadPage from "./page";
 
+const datasetUploadClientSpy = vi.fn();
+
 vi.mock("next/navigation", () => ({
   redirect: vi.fn((target: string) => {
     throw new Error(`NEXT_REDIRECT:${target}`);
@@ -15,7 +17,10 @@ vi.mock("next/navigation", () => ({
 vi.mock("@/lib/auth", () => ({ getCurrentIdentity: vi.fn() }));
 vi.mock("@/lib/datasets", () => ({ getDataset: vi.fn() }));
 vi.mock("@/components/dashboard/dataset-upload-client", () => ({
-  DatasetUploadClient: () => <div data-testid="replacement-upload" />,
+  DatasetUploadClient: (props: unknown) => {
+    datasetUploadClientSpy(props);
+    return <div data-testid="replacement-upload" />;
+  },
 }));
 
 const getCurrentIdentityMock = vi.mocked(getCurrentIdentity);
@@ -68,5 +73,8 @@ describe("/dashboard/upload", () => {
     );
     expect(screen.getByRole("heading", { name: "Replace dataset" })).toBeTruthy();
     expect(screen.getByTestId("replacement-upload")).toBeTruthy();
+    expect(datasetUploadClientSpy).toHaveBeenCalledWith(
+      expect.not.objectContaining({ actorOwnerId: expect.anything() }),
+    );
   });
 });

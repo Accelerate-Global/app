@@ -76,8 +76,6 @@ describe("/dashboard/field-definitions", () => {
     expect(fieldDefinitionsClientMock).toHaveBeenCalledWith(
       expect.objectContaining({
         canEdit: false,
-        actorOwnerId: "pro-1",
-        workspaceRole: "pro",
       }),
       undefined,
     );
@@ -102,8 +100,6 @@ describe("/dashboard/field-definitions", () => {
     expect(fieldDefinitionsClientMock).toHaveBeenCalledWith(
       expect.objectContaining({
         canEdit: true,
-        actorOwnerId: "owner-1",
-        workspaceRole: "admin",
       }),
       undefined,
     );

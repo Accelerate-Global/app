@@ -194,8 +194,6 @@ describe("/dashboard/datasets/[datasetId]/edit", () => {
       "Primary",
       "Regional focus",
     ]);
-    expect(props.actorOwnerId).toBe("owner-1");
-    expect(props.workspaceRole).toBe("admin");
   });
 
   it("skips upload history loading for derived dataset views", async () => {

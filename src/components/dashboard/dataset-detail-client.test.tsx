@@ -22,10 +22,6 @@ const assignDerivedViewSheetSpy = vi.fn();
 const datasetTableSpy = vi.fn();
 const useDatasetTableStateMock = vi.fn();
 const viewSwitchGridSpy = vi.fn();
-const { trackAppEventMock } = vi.hoisted(() => ({
-  trackAppEventMock: vi.fn(),
-}));
-
 vi.mock("@/components/dashboard/dataset-table-action-bar", () => ({
   DatasetTableActionBar: (props: unknown) => {
     actionBarSpy(props);
@@ -64,10 +60,6 @@ vi.mock("@/components/dashboard/dataset-view-switch-grid", async () => {
 
 vi.mock("@/components/dashboard/use-dataset-table-state", () => ({
   useDatasetTableState: (props: unknown) => useDatasetTableStateMock(props),
-}));
-
-vi.mock("@/lib/analytics-client", () => ({
-  trackAppEvent: trackAppEventMock,
 }));
 
 const datasetBase = {
@@ -208,7 +200,6 @@ describe("DatasetDetailClient", () => {
     datasetTableSpy.mockReset();
     useDatasetTableStateMock.mockReset();
     viewSwitchGridSpy.mockReset();
-    trackAppEventMock.mockReset();
     useDatasetTableStateMock.mockReturnValue({
       table: {} as never,
       sorting: [],
@@ -249,9 +240,6 @@ describe("DatasetDetailClient", () => {
     const actionBarProps = actionBarSpy.mock.calls[0]?.[0] as {
       onOpenFilters?: () => void;
       onOpenAssignDerivedView?: () => void;
-      analyticsContext: {
-        route: string;
-      };
     };
 
     expect(layout).toBeTruthy();
@@ -263,16 +251,6 @@ describe("DatasetDetailClient", () => {
     expect(actionBarProps.onOpenFilters).toEqual(expect.any(Function));
     expect(actionBarProps.onOpenAssignDerivedView).toBeUndefined();
     expect(assignDerivedViewSheetSpy).not.toHaveBeenCalled();
-    expect(actionBarProps.analyticsContext.route).toBe("dataset_detail");
-    expect(trackAppEventMock).toHaveBeenCalledWith(
-      "dataset_opened",
-      expect.objectContaining({
-        source_surface: "dataset_detail_page",
-        success: true,
-        dataset_id: "dataset-1",
-        dataset_source: "dashboard",
-      }),
-    );
   });
 
   it("passes the source row count into shared table state", () => {

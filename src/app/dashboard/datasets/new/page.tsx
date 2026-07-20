@@ -3,7 +3,6 @@ import { redirect } from "next/navigation";
 import { DatasetOnboardingClient } from "@/components/dashboard/dataset-onboarding/dataset-onboarding-client";
 import type { OnboardingSource } from "@/components/dashboard/dataset-onboarding/dataset-onboarding-reducer";
 import { DashboardPageShell } from "@/components/layout/dashboard-page-shell";
-import { getAnalyticsWorkspaceRole } from "@/lib/analytics";
 import { getCurrentIdentity } from "@/lib/auth";
 import { getGoogleSheetsServiceAccountEmail } from "@/lib/google-sheets";
 
@@ -50,8 +49,6 @@ export default async function DatasetOnboardingPage({
         <DatasetOnboardingClient
           serviceAccountEmail={configuredServiceAccountEmail()}
           initialSource={initialSource}
-          actorOwnerId={identity.ownerId}
-          workspaceRole={getAnalyticsWorkspaceRole(identity.workspaceRole)}
         />
       </DashboardPageShell>
     </div>

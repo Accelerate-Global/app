@@ -8,14 +8,6 @@ import type { WorkspaceUser } from "@/lib/api-types";
 import { UserManagementClient } from "./user-management-client";
 
 const fetchMock = vi.fn();
-const { trackAppEventMock } = vi.hoisted(() => ({
-  trackAppEventMock: vi.fn(),
-}));
-
-vi.mock("@/lib/analytics-client", () => ({
-  trackAppEvent: trackAppEventMock,
-}));
-
 function createUser(overrides: Partial<WorkspaceUser> = {}): WorkspaceUser {
   return {
     id: "user-1",
@@ -224,16 +216,6 @@ describe("UserManagementClient", () => {
     expect(screen.getAllByText("email")).toHaveLength(1);
     expect(container.querySelector(".rounded-2xl.border.border-border.p-4")).toBeNull();
     expect(container.querySelector(".rounded-xl.border.border-border.p-3.text-sm")).toBeNull();
-    expect(trackAppEventMock).toHaveBeenCalledWith(
-      "user_record_opened",
-      expect.objectContaining({
-        source_surface: "user_management_table",
-        success: true,
-        target_user_id: "user-2",
-        target_status: "active",
-        target_role: "admin",
-      }),
-    );
   });
 
   it("resends invite emails for pending users", async () => {
@@ -274,15 +256,6 @@ describe("UserManagementClient", () => {
     });
 
     expect(await screen.findByText("Invite email resent to pro@example.com.")).toBeTruthy();
-    expect(trackAppEventMock).toHaveBeenCalledWith(
-      "admin_invite_resent",
-      expect.objectContaining({
-        source_surface: "user_detail_sheet",
-        success: true,
-        target_user_id: "user-1",
-        to_status: "pending_invite",
-      }),
-    );
   });
 
   it("sends password reset emails for the selected user", async () => {
@@ -310,15 +283,6 @@ describe("UserManagementClient", () => {
     expect(
       await screen.findByText("Password reset email sent to pro@example.com."),
     ).toBeTruthy();
-    expect(trackAppEventMock).toHaveBeenCalledWith(
-      "admin_password_reset_sent",
-      expect.objectContaining({
-        source_surface: "user_detail_sheet",
-        success: true,
-        target_user_id: "user-1",
-        to_status: "active",
-      }),
-    );
   });
 
   it("disables password reset for accounts without an email address", () => {

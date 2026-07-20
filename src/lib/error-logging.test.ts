@@ -42,18 +42,18 @@ describe("error-logging", () => {
 
   it("logs the normalized error payload instead of the raw object", () => {
     const logger = vi.fn();
-    const error = Object.assign(new Error("Failed to track analytics event"), {
+    const error = Object.assign(new Error("Failed to import source data"), {
       status: 500,
-      code: "track_failed",
+      code: "import_failed",
     });
 
-    logError("Failed to persist analytics event", error, logger);
+    logError("Failed to persist import", error, logger);
 
-    expect(logger).toHaveBeenCalledWith("Failed to persist analytics event", {
+    expect(logger).toHaveBeenCalledWith("Failed to persist import", {
       name: "Error",
-      message: "Failed to track analytics event",
+      message: "Failed to import source data",
       status: 500,
-      code: "track_failed",
+      code: "import_failed",
     });
   });
 });

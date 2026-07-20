@@ -9,8 +9,6 @@ import {
   apiConnectionRunLogs,
   apiConnectionRunOutputs,
   apiConnections,
-  analyticsEvents,
-  analyticsFailureTriage,
   datasetVersionRows,
   datasetVersions,
   datasets,
@@ -345,55 +343,20 @@ describe("partner export schema", () => {
   });
 });
 
-describe("analyticsEvents schema", () => {
-  it("declares the private analytics event columns", () => {
-    expect(analyticsEvents.eventName.name).toBe("event_name");
-    expect(analyticsEvents.route.name).toBe("route");
-    expect(analyticsEvents.eventProps.name).toBe("event_props");
-  });
-
-  it("creates the private analytics events migration", async () => {
+describe("internal product analytics removal", () => {
+  it("drops the retired private analytics tables in dependency order", async () => {
     const migrationPath = path.join(
       process.cwd(),
-      "supabase/migrations/20260418145413_add_private_analytics_events.sql",
+      "supabase/migrations/20260720192949_remove_internal_product_analytics.sql",
     );
-
-    const migration = await readFile(migrationPath, "utf8");
-
-    expect(migration).toContain("create table if not exists private.analytics_events");
-    expect(migration).toContain("enable row level security");
-    expect(migration).toContain("create index if not exists analytics_events_created_at_idx");
-  });
-});
-
-describe("analyticsFailureTriage schema", () => {
-  it("declares the private analytics failure triage columns", () => {
-    expect(analyticsFailureTriage.fingerprint.name).toBe("fingerprint");
-    expect(analyticsFailureTriage.status.name).toBe("status");
-    expect(analyticsFailureTriage.note.name).toBe("note");
-    expect(analyticsFailureTriage.triagedByOwnerId.name).toBe(
-      "triaged_by_owner_id",
-    );
-    expect(analyticsFailureTriage.triagedAt.name).toBe("triaged_at");
-  });
-
-  it("creates the private analytics failure triage migration", async () => {
-    const migrationPath = path.join(
-      process.cwd(),
-      "supabase/migrations/20260429161223_analytics_failure_triage.sql",
-    );
-
     const migration = await readFile(migrationPath, "utf8");
 
     expect(migration).toContain(
-      "create table if not exists private.analytics_failure_triage",
+      "drop table if exists private.analytics_failure_triage",
     );
-    expect(migration).toContain("status in ('needs_review', 'debugging', 'expected', 'resolved')");
-    expect(migration).toContain("from private.analytics_failure_resolutions");
-    expect(migration).toContain("drop table if exists private.analytics_failure_resolutions");
-    expect(migration).toContain("enable row level security");
-    expect(migration).toContain(
-      "create index if not exists analytics_failure_triage_status_triaged_at_idx",
+    expect(migration).toContain("drop table if exists private.analytics_events");
+    expect(migration.indexOf("analytics_failure_triage")).toBeLessThan(
+      migration.indexOf("analytics_events"),
     );
   });
 });

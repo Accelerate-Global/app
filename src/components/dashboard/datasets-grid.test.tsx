@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { DatasetsGrid } from "./datasets-grid";
@@ -113,7 +113,8 @@ describe("DatasetsGrid", () => {
     const editLink = screen.getAllByRole("link", { name: "Edit" })[0];
     expect(editLink.getAttribute("href")).toBe(`/dashboard/datasets/${dataset.id}/edit`);
 
-    expect(pushMock).not.toHaveBeenCalled();
+    fireEvent.click(datasetRow!);
+    expect(pushMock).toHaveBeenCalledWith(`/dashboard/datasets/${dataset.id}`);
   });
 
   it("hides Add dataset from non-admin viewers", () => {

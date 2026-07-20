@@ -37,13 +37,20 @@ type ApiConnectionsClientProps = {
   referenceResources: ReferenceResourceCatalogItem[];
 };
 
-function formatTimestamp(value: string | null) {
-  if (!value) return "No ingestions yet";
+function formatTimestamp(value: string | null, emptyLabel = "No ingestions yet") {
+  if (!value) return emptyLabel;
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return emptyLabel;
 
   return new Intl.DateTimeFormat("en-US", {
     dateStyle: "medium",
     timeStyle: "short",
-  }).format(new Date(value));
+  }).format(date);
+}
+
+function formatEntryCount(value: number | null) {
+  return value === null ? "—" : new Intl.NumberFormat("en-US").format(value);
 }
 
 function getLatestRunsByConnection(runs: ApiConnectionRun[]) {
@@ -88,6 +95,10 @@ export function ApiConnectionsClient({
   const latestRunsByConnection = useMemo(
     () => getLatestRunsByConnection(initialRuns),
     [initialRuns],
+  );
+  const connectionNamesById = useMemo(
+    () => new Map(initialConnections.map((connection) => [connection.id, connection.name])),
+    [initialConnections],
   );
 
   function handleRowKeyDown(
@@ -188,22 +199,70 @@ export function ApiConnectionsClient({
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="divide-y rounded-lg border">
-              {referenceResources.map((resource) => (
-                <Link
-                  key={resource.id}
-                  href={resource.routePath}
-                  className="block px-4 py-3 text-sm font-medium no-underline hover:bg-muted/40"
-                >
-                  {resource.label}
-                </Link>
-              ))}
-              {capturedResources.map((resource) => (
-                <div key={resource.id} className="px-4 py-3 text-sm font-medium">
-                  {resource.webText.trim() || "Captured source resource"}
-                </div>
-              ))}
-            </div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Source</TableHead>
+                  <TableHead>Entries</TableHead>
+                  <TableHead>Last updated</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {referenceResources.map((resource) => (
+                  <TableRow
+                    key={resource.id}
+                    tabIndex={0}
+                    className="cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-2"
+                    onClick={() => router.push(resource.routePath)}
+                    onKeyDown={(event) =>
+                      handleRowKeyDown(event, () => router.push(resource.routePath))
+                    }
+                  >
+                    <TableCell className="min-w-72 py-3 whitespace-normal">
+                      <div className="flex flex-col">
+                        <span className="font-medium text-foreground">
+                          {resource.label}
+                        </span>
+                        <span className="text-muted-foreground">
+                          {resource.description}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="font-mono text-xs text-muted-foreground">
+                      {formatEntryCount(resource.activeVersion?.entryCount ?? null)}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap font-mono text-xs text-muted-foreground">
+                      {formatTimestamp(
+                        resource.activeVersion?.sourceRetrievedAt ?? null,
+                        "Not available",
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {capturedResources.map((resource) => (
+                  <TableRow key={resource.id}>
+                    <TableCell className="min-w-72 py-3 whitespace-normal">
+                      <div className="flex flex-col">
+                        <span className="font-medium text-foreground">
+                          {resource.webText.trim() || "Captured source resource"}
+                        </span>
+                        <span className="text-muted-foreground">
+                          {connectionNamesById.has(resource.connectionId)
+                            ? `Captured during ${connectionNamesById.get(resource.connectionId)} ingestion`
+                            : "Captured during source ingestion"}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="font-mono text-xs text-muted-foreground">
+                      {formatEntryCount(null)}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap font-mono text-xs text-muted-foreground">
+                      {formatTimestamp(resource.createdAt, "Not available")}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </CardContent>
         </Card>
       ) : null}

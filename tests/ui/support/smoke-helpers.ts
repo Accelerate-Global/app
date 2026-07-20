@@ -285,7 +285,3 @@ export function getFieldDefinitionNameLocator(page: Page, fieldDefinitionId: str
     `[data-smoke-field-definition-name="${fieldDefinitionId}"]:visible`,
   );
 }
-
-export function getFieldSourceColumnLocator(page: Page, label: string) {
-  return page.locator(`[data-smoke-field-source-column="${label}"]`);
-}

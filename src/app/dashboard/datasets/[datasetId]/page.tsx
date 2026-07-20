@@ -6,10 +6,6 @@ import { DatasetDetailClient } from "@/components/dashboard/dataset-detail-clien
 import { DatasetPartnerExports } from "@/components/dashboard/dataset-partner-exports";
 import { DashboardPageShell } from "@/components/layout/dashboard-page-shell";
 import { buttonVariants } from "@/components/ui/button";
-import {
-  getAnalyticsWorkspaceRole,
-  type DatasetOpenSource,
-} from "@/lib/analytics";
 import { getCurrentIdentity } from "@/lib/auth";
 import {
   getDatasetDefaultOpenPreset,
@@ -30,7 +26,6 @@ type DatasetPageProps = {
   }>;
   searchParams: Promise<{
     savedTableId?: string;
-    source?: string;
   }>;
 };
 
@@ -40,7 +35,7 @@ export default async function DatasetPage({
 }: DatasetPageProps) {
   const identity = await getCurrentIdentity();
   const { datasetId } = await params;
-  const { savedTableId, source } = await searchParams;
+  const { savedTableId } = await searchParams;
 
   if (!identity) {
     redirect("/");
@@ -80,18 +75,11 @@ export default async function DatasetPage({
     matchingSavedTable?.filters.sorting ??
     getDatasetDefaultSorting(dataset) ??
     undefined;
-  const datasetSource =
-    source === "saved_table" ||
-    source === "default_redirect" ||
-    source === "dashboard"
-      ? (source satisfies DatasetOpenSource)
-      : "dashboard";
   const detailKey = [
     dataset.id,
     matchingSavedTable?.id ?? null,
     JSON.stringify(dataset.defaultFilters ?? null),
     JSON.stringify(dataset.tags),
-    datasetSource,
   ].join(":");
 
   const [regions, headerDescription, fieldDefinitionPresentationByColumnKey, allDatasets] =
@@ -148,16 +136,7 @@ export default async function DatasetPage({
           initialFilters={initialFilters}
           initialSorting={initialSorting}
           assignableDatasets={assignableDatasets}
-          actorOwnerId={identity.ownerId}
-          workspaceRole={getAnalyticsWorkspaceRole(identity.workspaceRole)}
-          datasetSource={datasetSource}
-          initialSavedTableId={matchingSavedTable?.id ?? null}
-          initialSavedTableRowCount={matchingSavedTable?.savedRowCount ?? null}
-          initialSavedTableFilterSections={
-            matchingSavedTable
-              ? matchingSavedTable.filters
-              : null
-          }
+          workspaceRole={identity.workspaceRole}
         />
       </DashboardPageShell>
     </div>

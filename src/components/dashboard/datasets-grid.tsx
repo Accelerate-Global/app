@@ -104,7 +104,7 @@ function DatasetListRow({
   const isDerivedView = dataset.backingDatasetId !== null;
 
   function navigateToDataset() {
-    router.push(`/dashboard/datasets/${dataset.id}?source=dashboard`);
+    router.push(`/dashboard/datasets/${dataset.id}`);
   }
 
   function handleRowKeyDown(event: KeyboardEvent<HTMLDivElement>) {

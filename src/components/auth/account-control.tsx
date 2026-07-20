@@ -4,10 +4,8 @@ import {
   BookTextIcon,
   CableIcon,
   ChevronDownIcon,
-  DatabaseIcon,
   FileTextIcon,
   LayoutDashboardIcon,
-  ActivityIcon,
   LogOutIcon,
   MonitorIcon,
   UploadIcon,
@@ -16,7 +14,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
 import {
@@ -39,13 +37,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import type { CurrentIdentity } from "@/lib/auth";
 import { getIdentityDisplayName, getIdentityInitials } from "@/lib/account-display";
-import {
-  buildAnalyticsContext,
-  getAnalyticsRouteFromPathname,
-  getAnalyticsWorkspaceRole,
-  withAnalyticsContext,
-} from "@/lib/analytics";
-import { trackAppEvent } from "@/lib/analytics-client";
 
 type AccountControlProps = {
   identity: CurrentIdentity;
@@ -112,7 +103,6 @@ function MenuNavigationItem({
 }
 
 export function AccountControl({ identity }: AccountControlProps) {
-  const pathname = usePathname();
   const router = useRouter();
   const [isSigningOut, setIsSigningOut] = useState(false);
   const prefetchedRoutes = useRef(new Set<string>());
@@ -131,16 +121,6 @@ export function AccountControl({ identity }: AccountControlProps) {
     () => getIdentityInitials(identity),
     [identity],
   );
-  const analyticsContext = useMemo(
-    () =>
-      buildAnalyticsContext({
-        route: getAnalyticsRouteFromPathname(pathname),
-        actorOwnerId: identity.ownerId,
-        workspaceRole: getAnalyticsWorkspaceRole(identity.workspaceRole),
-      }),
-    [identity.ownerId, identity.workspaceRole, pathname],
-  );
-
   useEffect(() => {
     applyDocumentThemePreference(getDocumentThemeState().preference);
     return subscribeToSystemThemeChanges(setThemeState);
@@ -148,23 +128,9 @@ export function AccountControl({ identity }: AccountControlProps) {
 
   async function signOut() {
     setIsSigningOut(true);
-    let success = false;
-
     try {
-      const response = await fetch("/auth/sign-out", { method: "POST" });
-      success = response.ok;
-    } catch {
-      success = false;
-    }
-
-    trackAppEvent(
-      "sign_out",
-      withAnalyticsContext(analyticsContext, {
-        source_surface: "account_menu",
-        success,
-        error_code: success ? undefined : "sign_out_failed",
-      }),
-    );
+      await fetch("/auth/sign-out", { method: "POST" });
+    } catch {}
 
     if (typeof window !== "undefined") {
       window.location.assign("/");
@@ -176,20 +142,7 @@ export function AccountControl({ identity }: AccountControlProps) {
   }
 
   function selectThemePreference(preference: ThemePreference) {
-    const previousThemeState = themeState;
     const nextThemeState = applyDocumentThemePreference(preference);
-
-    trackAppEvent(
-      "theme_toggled",
-      withAnalyticsContext(analyticsContext, {
-        source_surface: "account_menu",
-        success: true,
-        from_preference: previousThemeState.preference,
-        to_preference: nextThemeState.preference,
-        from_theme: previousThemeState.resolvedTheme,
-        to_theme: nextThemeState.resolvedTheme,
-      }),
-    );
     setThemeState(nextThemeState);
   }
 
@@ -307,25 +260,11 @@ export function AccountControl({ identity }: AccountControlProps) {
           {identity.isDatasetAdmin ? (
             <>
               <MenuNavigationItem
-                href="/dashboard/field-sources"
-                icon={DatabaseIcon}
-                onPrefetch={prefetchRoute}
-              >
-                Field Sources
-              </MenuNavigationItem>
-              <MenuNavigationItem
                 href="/dashboard/api-connections"
                 icon={CableIcon}
                 onPrefetch={prefetchRoute}
               >
                 Connections
-              </MenuNavigationItem>
-              <MenuNavigationItem
-                href="/dashboard/analytics"
-                icon={ActivityIcon}
-                onPrefetch={prefetchRoute}
-              >
-                Analytics
               </MenuNavigationItem>
               <MenuNavigationItem
                 href="/dashboard/user-management"

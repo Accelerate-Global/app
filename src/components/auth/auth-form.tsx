@@ -15,11 +15,6 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  buildAnalyticsContext,
-  withAnalyticsContext,
-} from "@/lib/analytics";
-import { trackAppEvent } from "@/lib/analytics-client";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 type AuthFormProps = {
@@ -30,18 +25,10 @@ export function AuthForm({ message }: AuthFormProps) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const analyticsContext = buildAnalyticsContext({
-    route: "sign_in",
-    actorOwnerId: "anonymous",
-    workspaceRole: "anonymous",
-  });
-
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
     setIsSubmitting(true);
-    const startedAt = Date.now();
-
     const formData = new FormData(event.currentTarget);
     const email = String(formData.get("email") ?? "");
     const password = String(formData.get("password") ?? "");
@@ -51,41 +38,13 @@ export function AuthForm({ message }: AuthFormProps) {
       const result = await supabase.auth.signInWithPassword({ email, password });
 
       if (result.error) {
-        trackAppEvent(
-          "auth_sign_in_failed",
-          withAnalyticsContext(analyticsContext, {
-            source_surface: "auth_form",
-            success: false,
-            error_code: "invalid_credentials",
-            duration_ms: Date.now() - startedAt,
-          }),
-        );
-
         setError(result.error.message);
         return;
       }
 
-      trackAppEvent(
-        "auth_sign_in_succeeded",
-        withAnalyticsContext(analyticsContext, {
-          source_surface: "auth_form",
-          success: true,
-          duration_ms: Date.now() - startedAt,
-        }),
-      );
       router.push("/dashboard");
       router.refresh();
     } catch (submitError) {
-      trackAppEvent(
-        "auth_sign_in_failed",
-        withAnalyticsContext(analyticsContext, {
-          source_surface: "auth_form",
-          success: false,
-          error_code: "auth_request_failed",
-          duration_ms: Date.now() - startedAt,
-        }),
-      );
-
       setError(
         submitError instanceof Error
           ? submitError.message

@@ -18,5 +18,5 @@ export default async function DatasetsIndexPage() {
     redirect("/dashboard");
   }
 
-  redirect(`/dashboard/datasets/${dataset.id}?source=default_redirect`);
+  redirect(`/dashboard/datasets/${dataset.id}`);
 }

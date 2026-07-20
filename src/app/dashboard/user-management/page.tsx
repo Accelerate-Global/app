@@ -5,7 +5,6 @@ import { redirect } from "next/navigation";
 import { UserManagementClient } from "@/components/dashboard/user-management-client";
 import { DashboardPageShell } from "@/components/layout/dashboard-page-shell";
 import { buttonVariants } from "@/components/ui/button";
-import { getAnalyticsWorkspaceRole } from "@/lib/analytics";
 import { getCurrentIdentity } from "@/lib/auth";
 import { listWorkspaceUsers } from "@/lib/user-management";
 import { cn } from "@/lib/utils";
@@ -49,8 +48,8 @@ export default async function UserManagementPage() {
                 User Management
               </h1>
               <p className="max-w-3xl text-base leading-7 text-muted-foreground sm:text-lg">
-                Review account access, invite new users, promote admins, and
-                disable accounts from one place.
+                Review account access and sign-in recency, invite new users,
+                promote admins, and disable accounts from one place.
               </p>
             </div>
           </div>
@@ -58,8 +57,7 @@ export default async function UserManagementPage() {
         <UserManagementClient
           currentUserId={identity.ownerId}
           initialUsers={users}
-          actorOwnerId={identity.ownerId}
-          workspaceRole={getAnalyticsWorkspaceRole(identity.workspaceRole)}
+          workspaceRole={identity.workspaceRole}
         />
       </DashboardPageShell>
     </div>

@@ -10,10 +10,6 @@ const { parseMock, uploadToSignedUrlMock } = vi.hoisted(() => ({
   parseMock: vi.fn(),
   uploadToSignedUrlMock: vi.fn(),
 }));
-const { trackAppEventMock } = vi.hoisted(() => ({
-  trackAppEventMock: vi.fn(),
-}));
-
 vi.mock("papaparse", () => ({
   default: {
     parse: parseMock,
@@ -28,10 +24,6 @@ vi.mock("@/lib/supabase/client", () => ({
       }),
     },
   }),
-}));
-
-vi.mock("@/lib/analytics-client", () => ({
-  trackAppEvent: trackAppEventMock,
 }));
 
 type ParseOptions = {
@@ -249,23 +241,5 @@ describe("DatasetUploadClient", () => {
       expect(body.columns).toEqual([{ key: "email", label: "Email", sourceIndex: 0 }]);
       expect(body.classification).toBe("PGAC");
     });
-    expect(trackAppEventMock).toHaveBeenCalledWith(
-      "dataset_upload_started",
-      expect.objectContaining({
-        source_surface: "dataset_upload",
-        success: true,
-        replace_target_dataset_id: "dataset-1",
-      }),
-    );
-    expect(trackAppEventMock).toHaveBeenCalledWith(
-      "dataset_replaced",
-      expect.objectContaining({
-        source_surface: "dataset_upload",
-        success: true,
-        dataset_id: "dataset-1",
-        replace_target_dataset_id: "dataset-1",
-        row_count: 2,
-      }),
-    );
   });
 });

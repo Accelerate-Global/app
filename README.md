@@ -79,8 +79,8 @@ pnpm db:push
 ```
 
 That command now also seeds the local field-source registry from the checked-in
-Aggregate 1 mapping CSV, so `/dashboard/field-sources` and field source tags are
-ready without any first-request bootstrap writes.
+Aggregate 1 mapping CSV, so source-database links on Definitions are ready
+without any first-request bootstrap writes.
 
 Start the app:
 

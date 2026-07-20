@@ -4,7 +4,7 @@ import type { EmailOtpType } from "@supabase/supabase-js";
 import { Loader2Icon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -16,11 +16,6 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  buildAnalyticsContext,
-  withAnalyticsContext,
-} from "@/lib/analytics";
-import { trackAppEvent } from "@/lib/analytics-client";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 type ResetPasswordFormProps = {
@@ -100,7 +95,6 @@ export function ResetPasswordForm({
   initialCanReset,
 }: ResetPasswordFormProps) {
   const router = useRouter();
-  const invalidLinkTrackedRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [password, setPassword] = useState("");
@@ -109,12 +103,6 @@ export function ResetPasswordForm({
   const [isResolvingRecovery, setIsResolvingRecovery] = useState(
     () => !initialCanReset && hasAuthCallbackParams(),
   );
-  const analyticsContext = buildAnalyticsContext({
-    route: "reset_password",
-    actorOwnerId: "anonymous",
-    workspaceRole: "anonymous",
-  });
-
   const passwordsMatch = password.length > 0 && password === confirmPassword;
 
   useEffect(() => {
@@ -207,22 +195,6 @@ export function ResetPasswordForm({
     };
   }, [initialCanReset]);
 
-  useEffect(() => {
-    if (canReset || isResolvingRecovery || invalidLinkTrackedRef.current) {
-      return;
-    }
-
-    invalidLinkTrackedRef.current = true;
-    trackAppEvent(
-      "password_reset_invalid_link",
-      withAnalyticsContext(analyticsContext, {
-        source_surface: "reset_password_form",
-        success: false,
-        error_code: "invalid_recovery_link",
-      }),
-    );
-  }, [analyticsContext, canReset, isResolvingRecovery]);
-
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -233,8 +205,6 @@ export function ResetPasswordForm({
 
     setError(null);
     setIsSubmitting(true);
-    const startedAt = Date.now();
-
     try {
       const supabase = createSupabaseBrowserClient();
       const { error } = await supabase.auth.updateUser({ password });
@@ -243,26 +213,9 @@ export function ResetPasswordForm({
         throw error;
       }
 
-      trackAppEvent(
-        "password_reset_completed",
-        withAnalyticsContext(analyticsContext, {
-          source_surface: "reset_password_form",
-          success: true,
-          duration_ms: Date.now() - startedAt,
-        }),
-      );
       router.push("/dashboard");
       router.refresh();
     } catch (submitError) {
-      trackAppEvent(
-        "password_reset_completed",
-        withAnalyticsContext(analyticsContext, {
-          source_surface: "reset_password_form",
-          success: false,
-          error_code: "password_reset_update_failed",
-          duration_ms: Date.now() - startedAt,
-        }),
-      );
       setError(
         submitError instanceof Error
           ? submitError.message

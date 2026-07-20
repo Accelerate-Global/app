@@ -9,14 +9,6 @@ import type { DatasetSummary, SavedDatasetFilterState } from "@/lib/api-types";
 import { DatasetAssignDerivedViewSheet } from "./dataset-assign-derived-view-sheet";
 
 const fetchMock = vi.fn();
-const { trackAppEventMock } = vi.hoisted(() => ({
-  trackAppEventMock: vi.fn(),
-}));
-
-vi.mock("@/lib/analytics-client", () => ({
-  trackAppEvent: trackAppEventMock,
-}));
-
 const currentDataset = {
   id: "dataset-source",
   backingDatasetId: null,
@@ -175,19 +167,6 @@ describe("DatasetAssignDerivedViewSheet", () => {
         .getByRole("link", { name: "Open assigned dataset" })
         .getAttribute("href"),
     ).toBe("/dashboard/datasets/dataset-target");
-    expect(trackAppEventMock).toHaveBeenCalledWith(
-      "dataset_assigned",
-      expect.objectContaining({
-        source_surface: "dataset_assign_sheet",
-        success: true,
-        dataset_id: "dataset-target",
-        source_dataset_id: "dataset-source",
-        target_dataset_id: "dataset-target",
-        assigned_row_count: 2,
-        filter_sections_enabled: "region",
-        sorting_count: 1,
-      }),
-    );
   });
 
   it("shows API errors and tracks failed assignment attempts", async () => {
@@ -213,21 +192,10 @@ describe("DatasetAssignDerivedViewSheet", () => {
     fireEvent.click(screen.getByRole("button", { name: "Assign to dataset" }));
 
     expect(await screen.findByText("Assignment failed.")).toBeTruthy();
-    expect(trackAppEventMock).toHaveBeenCalledWith(
-      "dataset_assigned",
-      expect.objectContaining({
-        source_surface: "dataset_assign_sheet",
-        success: false,
-        error_code: "dataset_assign_failed",
-        dataset_id: "dataset-target",
-        source_dataset_id: "dataset-source",
-        target_dataset_id: "dataset-target",
-      }),
-    );
   });
 });
 
-describe("derived-view filter analytics boundary", () => {
+describe("derived-view filter helper boundary", () => {
   it("reads enabled filter sections from the dataset filtering module", async () => {
     const source = await readFile(
       "src/components/dashboard/dataset-assign-derived-view-sheet.tsx",

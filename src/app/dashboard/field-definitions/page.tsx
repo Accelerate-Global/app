@@ -6,7 +6,6 @@ import { FieldDefinitionsClient } from "@/components/dashboard/field-definitions
 import { DashboardPageShell } from "@/components/layout/dashboard-page-shell";
 import { buttonVariants } from "@/components/ui/button";
 import { getCurrentIdentity } from "@/lib/auth";
-import { getAnalyticsWorkspaceRole } from "@/lib/analytics";
 import { listFieldDefinitions } from "@/lib/field-definitions";
 import { cn } from "@/lib/utils";
 
@@ -49,8 +48,6 @@ export default async function FieldDefinitionsPage() {
         <FieldDefinitionsClient
           initialFieldDefinitions={fieldDefinitions}
           canEdit={identity.isDatasetAdmin}
-          actorOwnerId={identity.ownerId}
-          workspaceRole={getAnalyticsWorkspaceRole(identity.workspaceRole)}
         />
       </DashboardPageShell>
     </div>

@@ -90,7 +90,9 @@ The system SHALL validate a selected CSV's type, size, and first-row columns loc
 - **THEN** the system preserves the existing replacement and version-history workflow rather than entering new-dataset onboarding
 
 ### Requirement: Onboarding is accessible, responsive, and privacy-safe
-The system SHALL expose the current stage accessibly, move focus to stage content after navigation, announce asynchronous progress, remain completable at phone widths, and exclude source or dataset content from onboarding analytics.
+The system SHALL expose the current stage accessibly, move focus to stage content
+after navigation, announce asynchronous progress, and remain completable at phone
+widths without emitting custom product analytics.
 
 #### Scenario: Keyboard user advances through stages
 - **WHEN** a keyboard user advances or returns within onboarding
@@ -101,6 +103,7 @@ The system SHALL expose the current stage accessibly, move focus to stage conten
 - **WHEN** a connection or upload changes status
 - **THEN** the system announces the status through a polite live region and preserves visible status text
 
-#### Scenario: Analytics records onboarding
-- **WHEN** onboarding stage and outcome events are emitted
-- **THEN** events exclude Sheet URLs, spreadsheet/tab/dataset names, filenames, headers, row values, and file contents
+#### Scenario: Administrator completes onboarding
+- **WHEN** an administrator advances through or completes dataset onboarding
+- **THEN** no custom product analytics event is emitted
+- **AND** the reviewed connection or dataset workflow otherwise remains unchanged

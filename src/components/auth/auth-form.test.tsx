@@ -9,10 +9,6 @@ import { AuthForm } from "./auth-form";
 
 const pushMock = vi.fn();
 const refreshMock = vi.fn();
-const { trackAppEventMock } = vi.hoisted(() => ({
-  trackAppEventMock: vi.fn(),
-}));
-
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
     push: pushMock,
@@ -22,10 +18,6 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("@/lib/supabase/client", () => ({
   createSupabaseBrowserClient: vi.fn(),
-}));
-
-vi.mock("@/lib/analytics-client", () => ({
-  trackAppEvent: trackAppEventMock,
 }));
 
 const createSupabaseBrowserClientMock = vi.mocked(createSupabaseBrowserClient);
@@ -65,16 +57,6 @@ describe("AuthForm", () => {
         password: "SmokePass123!",
       });
     });
-    expect(trackAppEventMock).toHaveBeenCalledWith(
-      "auth_sign_in_succeeded",
-      expect.objectContaining({
-        route: "sign_in",
-        actor_owner_id: "anonymous",
-        workspace_role: "anonymous",
-        source_surface: "auth_form",
-        success: true,
-      }),
-    );
     expect(pushMock).toHaveBeenCalledWith("/dashboard");
     expect(refreshMock).toHaveBeenCalled();
   });

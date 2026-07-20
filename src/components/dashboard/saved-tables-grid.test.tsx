@@ -89,7 +89,7 @@ describe("SavedTablesGrid", () => {
     fireEvent.click(row!);
 
     expect(pushMock).toHaveBeenCalledWith(
-      "/dashboard/datasets/dataset-1?savedTableId=saved-table-1&source=saved_table",
+      "/dashboard/datasets/dataset-1?savedTableId=saved-table-1",
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Details" }));

@@ -7,7 +7,7 @@ storage, exploration, and admin management.
 
 - `src/app`: Next.js App Router pages, auth routes, dashboard routes, and API route handlers.
 - `src/components`: auth, dashboard, layout, theme, shared UI, and reusable data-grid components.
-- `src/lib`: auth/session helpers, Supabase clients, dataset logic, security controls, analytics, CSV utilities, validation, and display helpers.
+- `src/lib`: auth/session helpers, Supabase clients, dataset logic, security controls, CSV utilities, validation, and display helpers.
 - `src/db`: Drizzle database entrypoint and schema.
 - `supabase`: Supabase local config, SQL migrations, seed file, auth email templates, and pgTAP database security tests.
 - `tests/ui`: Playwright smoke route registry, route sweep, journey tests, and global setup.
@@ -24,7 +24,7 @@ storage, exploration, and admin management.
 - Dashboard pages: `src/app/dashboard/**/page.tsx`.
 - JSON API routes: `src/app/api/**/route.ts`.
 - Request proxy/session boundary: `src/proxy.ts`.
-- Root layout, metadata, fonts, theme bootstrap, and analytics provider: `src/app/layout.tsx`.
+- Root layout, metadata, fonts, and theme bootstrap: `src/app/layout.tsx`.
 
 ## Data And Services
 

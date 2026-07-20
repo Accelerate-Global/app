@@ -2,7 +2,6 @@ import { redirect } from "next/navigation";
 
 import { DashboardClient } from "@/components/dashboard/dashboard-client";
 import { DashboardPageShell } from "@/components/layout/dashboard-page-shell";
-import { getAnalyticsWorkspaceRole } from "@/lib/analytics";
 import { getCurrentIdentity } from "@/lib/auth";
 import { listDatasets } from "@/lib/datasets";
 import { listSavedDatasetTables } from "@/lib/saved-dataset-tables";
@@ -39,8 +38,6 @@ export default async function DashboardPage() {
           initialDatasets={datasets}
           initialSavedTables={savedTables}
           canManageDatasets={identity.isDatasetAdmin}
-          actorOwnerId={identity.ownerId}
-          workspaceRole={getAnalyticsWorkspaceRole(identity.workspaceRole)}
         />
       </DashboardPageShell>
     </div>

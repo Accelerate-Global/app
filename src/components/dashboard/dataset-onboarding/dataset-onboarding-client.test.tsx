@@ -5,9 +5,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { DatasetOnboardingClient } from "./dataset-onboarding-client";
 
-const { parseMock, trackAppEventMock, uploadToSignedUrlMock } = vi.hoisted(() => ({
+const { parseMock, uploadToSignedUrlMock } = vi.hoisted(() => ({
   parseMock: vi.fn(),
-  trackAppEventMock: vi.fn(),
   uploadToSignedUrlMock: vi.fn(),
 }));
 
@@ -18,9 +17,6 @@ vi.mock("@/lib/supabase/client", () => ({
       from: () => ({ uploadToSignedUrl: uploadToSignedUrlMock }),
     },
   }),
-}));
-vi.mock("@/lib/analytics-client", () => ({
-  trackAppEvent: trackAppEventMock,
 }));
 
 const serviceAccountEmail = "sheets@app-project.iam.gserviceaccount.com";
@@ -366,8 +362,6 @@ describe("DatasetOnboardingClient", () => {
       <DatasetOnboardingClient
         serviceAccountEmail={serviceAccountEmail}
         initialSource="csv"
-        actorOwnerId="admin-1"
-        workspaceRole="admin"
       />,
     );
     const file = new File(["People Group,Country\nKhmu,Laos"], "people.csv", {
@@ -388,20 +382,5 @@ describe("DatasetOnboardingClient", () => {
     fireEvent.click(screen.getByRole("button", { name: "Upload dataset" }));
     await waitFor(() => expect(uploadToSignedUrlMock).toHaveBeenCalled());
     expect(await screen.findByRole("link", { name: "Open dataset" })).toBeTruthy();
-    expect(
-      trackAppEventMock.mock.calls.filter(
-        ([eventName]) => eventName === "dataset_upload_started",
-      ),
-    ).toHaveLength(1);
-    expect(
-      trackAppEventMock.mock.calls.filter(
-        ([eventName]) => eventName === "dataset_upload_completed",
-      ),
-    ).toHaveLength(1);
-    for (const [, payload] of trackAppEventMock.mock.calls) {
-      expect(payload).not.toHaveProperty("file_name");
-      expect(payload).not.toHaveProperty("dataset_name");
-      expect(payload).not.toHaveProperty("headers");
-    }
   });
 });

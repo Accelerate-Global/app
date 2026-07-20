@@ -117,10 +117,10 @@ describe("ApiConnectionsClient", () => {
     expect(screen.queryByText("Reference resources")).toBeNull();
   });
 
-  it("renders catalog-backed and captured resources as label-only rows", () => {
+  it("renders catalog-backed and captured resources with useful metadata", () => {
     render(
       <ApiConnectionsClient
-        initialConnections={[]}
+        initialConnections={[connection]}
         initialRuns={[]}
         referenceResources={[{
           id: "resource-1",
@@ -130,7 +130,23 @@ describe("ApiConnectionsClient", () => {
           description: "Shared geography codes",
           routePath: "/dashboard/country-codes",
           sortOrder: 10,
-          activeVersion: null,
+          activeVersion: {
+            id: "version-1",
+            resourceKey: "country-territory-codes",
+            versionNumber: 3,
+            lifecycleState: "valid",
+            schemaVersion: 1,
+            contentChecksum: "checksum",
+            sourceRetrievedAt: "2026-04-23T12:00:00.000Z",
+            entryCount: 249,
+            validationSummary: {},
+            diffSummary: {},
+            createdByOwnerId: "admin-1",
+            createdAt: "2026-04-23T12:00:00.000Z",
+            finalizedAt: "2026-04-23T12:01:00.000Z",
+            rejectionReason: null,
+            isActive: true,
+          },
         }]}
         capturedResources={[{
           id: "captured-1",
@@ -146,9 +162,19 @@ describe("ApiConnectionsClient", () => {
       />,
     );
 
-    expect(screen.getByRole("link", { name: "Country & territory code resource" }).getAttribute("href")).toBe("/dashboard/country-codes");
+    expect(screen.getAllByText("Source").length).toBeGreaterThan(0);
+    expect(screen.getByText("Entries")).toBeTruthy();
+    expect(screen.getByText("Last updated")).toBeTruthy();
+    expect(screen.getByText("249")).toBeTruthy();
+    expect(screen.getByText("Shared geography codes")).toBeTruthy();
     expect(screen.getByText("Source documentation")).toBeTruthy();
+    expect(
+      screen.getByText("Captured during Reviewed people dataset ingestion"),
+    ).toBeTruthy();
     expect(screen.queryByText("https://example.com/secret-path")).toBeNull();
     expect(screen.queryByText("Category")).toBeNull();
+
+    fireEvent.click(screen.getByText("Country & territory code resource").closest("tr")!);
+    expect(pushMock).toHaveBeenCalledWith("/dashboard/country-codes");
   });
 });

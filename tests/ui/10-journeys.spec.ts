@@ -7,7 +7,6 @@ import {
   getDatasetNameLocator,
   getDatasetReplacementFixturePath,
   getFieldDefinitionNameLocator,
-  getFieldSourceColumnLocator,
   runSmokeJourney,
 } from "./support/smoke-helpers";
 
@@ -772,32 +771,6 @@ test("admin can edit a field definition", async ({ page }, testInfo) => {
       getFieldDefinitionNameLocator(page, bootstrap.fieldDefinitions.editable.id),
     ).toContainText(originalDisplayLabel);
   });
-});
-
-test("admin can review field source mappings", async ({ page }, testInfo) => {
-  test.skip(skipUnlessDesktopAdmin(testInfo.project.name));
-
-  await runSmokeJourney(
-    "admin can review field source mappings",
-    async () => {
-      const bootstrap = await readUiSmokeBootstrap();
-
-      await page.goto("/dashboard/field-sources");
-      await expect(
-        page.getByText(
-          "Review which source fields currently map to each shared workspace field. These mappings are available here as read-only reference data.",
-        ),
-      ).toBeVisible();
-      await expect(
-        getFieldSourceColumnLocator(page, bootstrap.fieldSourceTypes.editable.label),
-      ).toBeVisible();
-
-      const fieldSourceValue = page.locator(
-        `[data-smoke-field-source-value="${bootstrap.fieldDefinitions.editable.id}:${bootstrap.fieldSourceTypes.editable.id}"]`,
-      );
-      await expect(fieldSourceValue).toContainText("people_id");
-    },
-  );
 });
 
 test("admin can replace a dataset through the real upload flow", async ({ page }, testInfo) => {

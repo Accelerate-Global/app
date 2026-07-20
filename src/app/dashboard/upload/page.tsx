@@ -2,7 +2,6 @@ import { redirect } from "next/navigation";
 
 import { DatasetUploadClient } from "@/components/dashboard/dataset-upload-client";
 import { DashboardPageShell } from "@/components/layout/dashboard-page-shell";
-import { getAnalyticsWorkspaceRole } from "@/lib/analytics";
 import { getCurrentIdentity } from "@/lib/auth";
 import { getDataset } from "@/lib/datasets";
 import { getDatasetClassification } from "@/lib/dataset-tags";
@@ -65,8 +64,6 @@ export default async function UploadPage({ searchParams }: UploadPageProps) {
           preferredClassification={
             backingDataset ? getDatasetClassification(backingDataset.tags) : null
           }
-          actorOwnerId={identity.ownerId}
-          workspaceRole={getAnalyticsWorkspaceRole(identity.workspaceRole)}
         />
       </DashboardPageShell>
     </div>
