@@ -11,24 +11,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { getCurrentIdentity } from "@/lib/auth";
+import { listReferenceResourceCatalog } from "@/lib/reference-resources";
 import { cn } from "@/lib/utils";
-
-const builtInResources = [
-  {
-    id: "country-territory-codes",
-    title: "Country & territory code resource",
-    description:
-      "Search and download shared ISO, GENC, FIPS, and ROG3 country and territory codes.",
-    href: "/dashboard/country-codes",
-  },
-  {
-    id: "rop-codes",
-    title: "ROP Codes resource",
-    description:
-      "Search and download matched HIS ROP1, ROP2, ROP25, and ROP3 codes.",
-    href: "/dashboard/rop-codes",
-  },
-] as const;
 
 export default async function ResourcesPage() {
   const identity = await getCurrentIdentity();
@@ -36,6 +20,10 @@ export default async function ResourcesPage() {
   if (!identity) {
     redirect("/");
   }
+
+  const builtInResources = await listReferenceResourceCatalog({
+    includeAdminState: identity.isDatasetAdmin,
+  });
 
   return (
     <div
@@ -73,13 +61,28 @@ export default async function ResourcesPage() {
           {builtInResources.map((resource) => (
             <Link
               key={resource.id}
-              href={resource.href}
+              href={resource.routePath}
               className="block rounded-lg no-underline outline-none transition-opacity hover:opacity-85 focus-visible:ring-[3px] focus-visible:ring-ring/50"
             >
               <Card className="h-full cursor-pointer transition-colors hover:bg-muted/30">
                 <CardHeader className="gap-2">
-                  <CardTitle className="text-xl">{resource.title}</CardTitle>
+                  <CardTitle className="text-xl">{resource.label}</CardTitle>
                   <CardDescription>{resource.description}</CardDescription>
+                  {resource.activeVersion ? (
+                    <CardDescription>
+                      Active v{resource.activeVersion.versionNumber} · Retrieved{" "}
+                      {new Date(resource.activeVersion.sourceRetrievedAt).toLocaleDateString()}
+                    </CardDescription>
+                  ) : (
+                    <CardDescription className="text-destructive">
+                      No active version
+                    </CardDescription>
+                  )}
+                  {resource.attentionState ? (
+                    <CardDescription className="font-medium text-amber-700">
+                      {resource.attentionState.replaceAll("-", " ")}
+                    </CardDescription>
+                  ) : null}
                 </CardHeader>
               </Card>
             </Link>

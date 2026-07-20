@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { redirect } from "next/navigation";
 
 import { getCurrentIdentity } from "@/lib/auth";
-import { getGeneratedRopCodeResource } from "@/lib/rop-codes";
+import { getReferenceResourcePage } from "@/lib/reference-resources";
 import type { RopCodeResource } from "@/lib/rop-codes";
 import RopCodesPage from "./page";
 
@@ -24,8 +24,9 @@ vi.mock("@/lib/auth", () => ({
   getCurrentIdentity: vi.fn(),
 }));
 
-vi.mock("@/lib/rop-codes", () => ({
-  getGeneratedRopCodeResource: vi.fn(),
+vi.mock("@/lib/reference-resources", () => ({
+  ROP_RESOURCE_KEY: "rop-codes",
+  getReferenceResourcePage: vi.fn(),
 }));
 
 
@@ -34,7 +35,7 @@ vi.mock("@/components/dashboard/rop-codes-client", () => ({
 }));
 
 const getCurrentIdentityMock = vi.mocked(getCurrentIdentity);
-const getGeneratedRopCodeResourceMock = vi.mocked(getGeneratedRopCodeResource);
+const getReferenceResourcePageMock = vi.mocked(getReferenceResourcePage);
 const redirectMock = vi.mocked(redirect);
 
 const resource = {
@@ -64,7 +65,28 @@ const resource = {
 describe("/dashboard/rop-codes", () => {
   beforeEach(() => {
     vi.resetAllMocks();
-    getGeneratedRopCodeResourceMock.mockReturnValue(resource);
+    getReferenceResourcePageMock.mockResolvedValue({
+      resource,
+      entries: [],
+      nextCursor: null,
+      version: {
+        id: "20000000-0000-4000-8000-000000000001",
+        resourceKey: "rop-codes",
+        versionNumber: 1,
+        lifecycleState: "valid",
+        schemaVersion: 1,
+        contentChecksum: "b".repeat(64),
+        sourceRetrievedAt: resource.sourceRetrievedAt,
+        entryCount: resource.entryCount,
+        validationSummary: {},
+        diffSummary: {},
+        createdByOwnerId: "admin-1",
+        createdAt: resource.sourceRetrievedAt,
+        finalizedAt: resource.sourceRetrievedAt,
+        rejectionReason: null,
+        isActive: true,
+      },
+    });
   });
 
   it("redirects anonymous users home", async () => {

@@ -103,6 +103,24 @@ const initialResource: IsoCountryCodeResource = {
   ],
 };
 
+const activeVersion = {
+  id: "10000000-0000-4000-8000-000000000001",
+  resourceKey: "country-territory-codes" as const,
+  versionNumber: 1,
+  lifecycleState: "valid" as const,
+  schemaVersion: 1,
+  contentChecksum: "a".repeat(64),
+  sourceRetrievedAt: initialResource.sourceRetrievedAt,
+  entryCount: initialResource.entryCount,
+  validationSummary: {},
+  diffSummary: {},
+  createdByOwnerId: "admin-1",
+  createdAt: initialResource.sourceRetrievedAt,
+  finalizedAt: initialResource.sourceRetrievedAt,
+  rejectionReason: null,
+  isActive: true,
+};
+
 function buildJsonResponse(payload: unknown, status = 200) {
   return new Response(JSON.stringify(payload), {
     status,
@@ -132,10 +150,21 @@ describe("IsoCountryCodesClient", () => {
     vi.unstubAllGlobals();
   });
 
-  it("renders compact columns and filters by hidden detail fields", () => {
+  it("renders compact columns and searches through the paged server contract", async () => {
+    const searchedResource = { ...initialResource, entries: [initialResource.entries[0]] };
+    fetchMock.mockResolvedValue(
+      buildJsonResponse({
+        resource: searchedResource,
+        entries: searchedResource.entries,
+        nextCursor: null,
+        version: activeVersion,
+      }),
+    );
     render(
       <IsoCountryCodesClient
         initialResource={initialResource}
+        activeVersion={activeVersion}
+        initialNextCursor={null}
         canRefresh
         canEditAlternativeNames
       />,
@@ -153,6 +182,9 @@ describe("IsoCountryCodesClient", () => {
     expect(screen.queryByRole("columnheader", { name: "Classification" })).toBeNull();
     expect(screen.queryByRole("columnheader", { name: "Copy" })).toBeNull();
     expect(screen.queryByText(/curated rows/)).toBeNull();
+    expect(screen.getByRole("button", { name: "Refresh" }).getAttribute("data-smoke-write")).toBe(
+      "unsafe",
+    );
     expect(screen.getByText("Afghanistan")).toBeTruthy();
     expect(screen.getByText("Akrotiri")).toBeTruthy();
     expect(screen.getByText("Baker Island")).toBeTruthy();
@@ -160,44 +192,19 @@ describe("IsoCountryCodesClient", () => {
     fireEvent.change(screen.getByPlaceholderText(/Search name/), {
       target: { value: "Afganistan" },
     });
-
-    expect(screen.getByText("Afghanistan")).toBeTruthy();
-    expect(screen.queryByText("Akrotiri")).toBeNull();
-
-    fireEvent.change(screen.getByPlaceholderText(/Search name/), {
-      target: { value: "AX" },
-    });
-
-    expect(screen.getByText("Akrotiri")).toBeTruthy();
-    expect(screen.queryByText("Afghanistan")).toBeNull();
-
-    fireEvent.change(screen.getByPlaceholderText(/Search name/), {
-      target: { value: "Duplicate ISO territory" },
-    });
-
-    expect(screen.getByText("Baker Island")).toBeTruthy();
-    expect(screen.queryByText("1 visible")).toBeNull();
-    expect(screen.queryByText("3 visible")).toBeNull();
-
-    fireEvent.change(screen.getByPlaceholderText(/Search name/), {
-      target: { value: "FQ" },
-    });
-
-    expect(screen.getByText("Baker Island")).toBeTruthy();
-    expect(screen.queryByText("Akrotiri")).toBeNull();
-
-    fireEvent.change(screen.getByPlaceholderText(/Search name/), {
-      target: { value: "Islamic Republic" },
-    });
-
-    expect(screen.getByText("Afghanistan")).toBeTruthy();
-    expect(screen.queryByText("Baker Island")).toBeNull();
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
+      "/api/reference-resources/country-territory-codes/entries?limit=100&search=Afganistan",
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    ));
+    await waitFor(() => expect(screen.queryByText("Akrotiri")).toBeNull());
   });
 
   it("opens a right-side detail sheet with hidden fields and smoke markers", () => {
     render(
       <IsoCountryCodesClient
         initialResource={initialResource}
+        activeVersion={activeVersion}
+        initialNextCursor={null}
         canRefresh
         canEditAlternativeNames
       />,
@@ -231,6 +238,8 @@ describe("IsoCountryCodesClient", () => {
     render(
       <IsoCountryCodesClient
         initialResource={initialResource}
+        activeVersion={activeVersion}
+        initialNextCursor={null}
         canRefresh={false}
         canEditAlternativeNames={false}
       />,
@@ -249,6 +258,8 @@ describe("IsoCountryCodesClient", () => {
     render(
       <IsoCountryCodesClient
         initialResource={initialResource}
+        activeVersion={activeVersion}
+        initialNextCursor={null}
         canRefresh
         canEditAlternativeNames
       />,
@@ -288,14 +299,16 @@ describe("IsoCountryCodesClient", () => {
     };
     fetchMock
       .mockResolvedValueOnce(
-        buildJsonResponse({ entry: addedEntry, resource: addedResource }),
+        buildJsonResponse({ entry: addedEntry, resource: addedResource, version: { ...activeVersion, versionNumber: 2 } }),
       )
       .mockResolvedValueOnce(
-        buildJsonResponse({ entry: deletedEntry, resource: deletedResource }),
+        buildJsonResponse({ entry: deletedEntry, resource: deletedResource, version: { ...activeVersion, versionNumber: 3 } }),
       );
     render(
       <IsoCountryCodesClient
         initialResource={initialResource}
+        activeVersion={activeVersion}
+        initialNextCursor={null}
         canRefresh
         canEditAlternativeNames
       />,
@@ -325,16 +338,6 @@ describe("IsoCountryCodesClient", () => {
     });
     expect(await screen.findByText("Afghan Republic")).toBeTruthy();
 
-    fireEvent.change(screen.getByPlaceholderText(/Search name/), {
-      target: { value: "Afghan Republic" },
-    });
-
-    expect(screen.getAllByText("Afghanistan").length).toBeGreaterThan(0);
-    expect(screen.queryByText("1 visible")).toBeNull();
-
-    fireEvent.change(screen.getByPlaceholderText(/Search name/), {
-      target: { value: "" },
-    });
     fireEvent.click(
       screen.getByRole("button", { name: "Delete alternate name Afganistan" }),
     );
@@ -357,10 +360,12 @@ describe("IsoCountryCodesClient", () => {
     expect(screen.queryByText("Afganistan")).toBeNull();
   });
 
-  it("downloads the current visible resource rows as CSV", async () => {
+  it("links downloads to the complete matching server export", () => {
     render(
       <IsoCountryCodesClient
         initialResource={initialResource}
+        activeVersion={activeVersion}
+        initialNextCursor={null}
         canRefresh={false}
         canEditAlternativeNames={false}
       />,
@@ -372,54 +377,21 @@ describe("IsoCountryCodesClient", () => {
     fireEvent.change(screen.getByPlaceholderText(/Search name/), {
       target: { value: "Afganistan" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Download" }));
-
-    expect(createObjectUrlMock).toHaveBeenCalledTimes(1);
-    const blob = createObjectUrlMock.mock.calls[0]?.[0] as Blob;
-    const csv = await blob.text();
-
-    expect(blob.type).toBe("text/csv;charset=utf-8");
-    expect(csv).toContain(
-      "Country/Territory,Status,ISO3,ISO2,Numeric,Official UN short name,Official UN formal name,Official name source,FIPS,ROG3,GENC3,GENC2,GENC numeric,Classification,Alternative names,Source URI",
+    expect(screen.getByRole("link", { name: "Download" }).getAttribute("href")).toBe(
+      "/api/reference-resources/country-territory-codes/download?search=Afganistan",
     );
-    expect(csv).toContain(
-      "Afghanistan,Active,AFG,AF,004,Afghanistan,the Islamic Republic of Afghanistan,unterm-m49,AF,AF,AFG,AF,004,ISO official,Afganistan; Islamic Republic of Afghanistan,iso:code:3166:AF",
-    );
-    expect(csv).not.toContain("Akrotiri");
-    expect(revokeObjectUrlMock).toHaveBeenCalledWith("blob:country-codes");
   });
 
-  it("refreshes visible entries from the authenticated API", async () => {
-    const refreshedResource: IsoCountryCodeResource = {
-      ...initialResource,
-      entryCount: 1,
-      activeCount: 1,
-      entries: [
-        {
-          displayName: "Zimbabwe",
-          active: true,
-          primaryAlpha3: "ZWE",
-          officialIsoAlpha2: "ZW",
-          officialIsoAlpha3: "ZWE",
-          officialIsoNumeric: "716",
-          untermEnglishShortName: "Zimbabwe",
-          untermEnglishFormalName: "the Republic of Zimbabwe",
-          untermNameSource: "unterm-m49",
-          gencAlpha2: "ZW",
-          gencAlpha3: "ZWE",
-          gencNumeric: "716",
-          fips: "ZI",
-          rog3: "ZI",
-          alternativeNames: ["Zimbawe"],
-          classification: "iso-official",
-          sourceUri: "iso:code:3166:ZW",
-        },
-      ],
-    };
-    fetchMock.mockResolvedValue(buildJsonResponse(refreshedResource));
+  it("persists refresh as a candidate while active rows remain visible", async () => {
+    fetchMock.mockResolvedValue(buildJsonResponse({
+      unchanged: false,
+      version: { ...activeVersion, id: "10000000-0000-4000-8000-000000000002", versionNumber: 2, isActive: false },
+    }));
     render(
       <IsoCountryCodesClient
         initialResource={initialResource}
+        activeVersion={activeVersion}
+        initialNextCursor={null}
         canRefresh
         canEditAlternativeNames
       />,
@@ -432,12 +404,12 @@ describe("IsoCountryCodesClient", () => {
         method: "POST",
       });
     });
-    expect(await screen.findByText("Zimbabwe")).toBeTruthy();
+    expect(await screen.findByText("Version 2 is ready for review")).toBeTruthy();
     expect(screen.queryByText("Refresh source data")).toBeNull();
     expect(
       screen.getByRole("button", { name: "Refresh" }).querySelector(".text-emerald-600"),
     ).toBeTruthy();
-    expect(screen.queryByText("Afghanistan")).toBeNull();
+    expect(screen.getByText("Afghanistan")).toBeTruthy();
   });
 
   it("keeps generated entries visible when refresh fails", async () => {
@@ -445,6 +417,8 @@ describe("IsoCountryCodesClient", () => {
     render(
       <IsoCountryCodesClient
         initialResource={initialResource}
+        activeVersion={activeVersion}
+        initialNextCursor={null}
         canRefresh
         canEditAlternativeNames
       />,
@@ -455,5 +429,31 @@ describe("IsoCountryCodesClient", () => {
     expect(await screen.findByText(/Could not refresh country and territory/)).toBeTruthy();
     expect(screen.queryByText("Refresh source data")).toBeNull();
     expect(screen.getByText("Afghanistan")).toBeTruthy();
+  });
+
+  it("appends the next stable cursor page", async () => {
+    const firstPage = { ...initialResource, entries: [initialResource.entries[0]] };
+    const nextPage = { ...initialResource, entries: [initialResource.entries[1]] };
+    fetchMock.mockResolvedValue(buildJsonResponse({
+      resource: nextPage,
+      entries: nextPage.entries,
+      nextCursor: null,
+      version: activeVersion,
+    }));
+    render(
+      <IsoCountryCodesClient
+        initialResource={firstPage}
+        activeVersion={activeVersion}
+        initialNextCursor="cursor-1"
+        canRefresh={false}
+        canEditAlternativeNames={false}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Load more" }));
+    expect(await screen.findByText("Akrotiri")).toBeTruthy();
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/reference-resources/country-territory-codes/entries?cursor=cursor-1&limit=100",
+    );
   });
 });

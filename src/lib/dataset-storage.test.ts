@@ -3,15 +3,20 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   API_CONNECTION_RUN_ARTIFACT_CONTENT_TYPE,
   createPartnerExportRunOutputStoragePath,
+  createReferenceResourceArtifactStoragePath,
   getApiConnectionRunArtifactReadBuckets,
   getApiConnectionRunArtifactStorageBucket,
   getPartnerExportArtifactStorageBucket,
+  getReferenceResourceArtifactStorageBucket,
+  isReferenceResourceArtifactStoragePath,
 } from "@/lib/dataset-storage";
 
 const originalArtifactBucket = process.env.SUPABASE_API_CONNECTION_ARTIFACT_BUCKET;
 const originalDatasetBucket = process.env.SUPABASE_STORAGE_BUCKET;
 const originalPartnerExportBucket =
   process.env.SUPABASE_PARTNER_EXPORT_ARTIFACT_BUCKET;
+const originalReferenceResourceBucket =
+  process.env.SUPABASE_REFERENCE_RESOURCE_ARTIFACT_BUCKET;
 
 afterEach(() => {
   if (originalArtifactBucket === undefined) {
@@ -32,6 +37,37 @@ afterEach(() => {
     process.env.SUPABASE_PARTNER_EXPORT_ARTIFACT_BUCKET =
       originalPartnerExportBucket;
   }
+
+  if (originalReferenceResourceBucket === undefined) {
+    delete process.env.SUPABASE_REFERENCE_RESOURCE_ARTIFACT_BUCKET;
+  } else {
+    process.env.SUPABASE_REFERENCE_RESOURCE_ARTIFACT_BUCKET =
+      originalReferenceResourceBucket;
+  }
+});
+
+describe("reference resource artifact storage", () => {
+  it("uses a dedicated private bucket and deterministic version paths", () => {
+    delete process.env.SUPABASE_REFERENCE_RESOURCE_ARTIFACT_BUCKET;
+
+    expect(getReferenceResourceArtifactStorageBucket()).toBe(
+      "reference-resource-artifacts",
+    );
+    const path = createReferenceResourceArtifactStoragePath({
+      resourceKey: "country-territory-codes",
+      versionId: "version-1",
+      kind: "normalized",
+    });
+    expect(path).toBe(
+      "reference-resources/country-territory-codes/version-1/normalized.json",
+    );
+    expect(isReferenceResourceArtifactStoragePath(path)).toBe(true);
+  });
+
+  it("supports a server-side bucket override", () => {
+    process.env.SUPABASE_REFERENCE_RESOURCE_ARTIFACT_BUCKET = "custom-reference";
+    expect(getReferenceResourceArtifactStorageBucket()).toBe("custom-reference");
+  });
 });
 
 describe("partner export artifact storage", () => {

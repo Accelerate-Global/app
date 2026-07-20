@@ -49,6 +49,13 @@ merged to `main` for the production Vercel deployment.
    pnpm db:push:remote
    ```
 
+   This command also runs the idempotent reference-resource reconciliation.
+   It folds any legacy country aliases into the candidate package, activates
+   only complete healthy packages, emits machine-readable version/checksum/
+   health output, and is a checksum no-op on repeat. Review that output before
+   application cutover. It requires `DATABASE_URL`, the Supabase URL and
+   server-only service-role key in `.env.local`.
+
 5. Ship the reviewed PR:
 
    ```bash

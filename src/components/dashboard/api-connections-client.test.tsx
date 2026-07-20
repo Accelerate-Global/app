@@ -65,6 +65,8 @@ describe("ApiConnectionsClient", () => {
       <ApiConnectionsClient
         initialConnections={[connection]}
         initialRuns={[run]}
+        capturedResources={[]}
+        referenceResources={[]}
       />,
     );
 
@@ -86,6 +88,8 @@ describe("ApiConnectionsClient", () => {
       <ApiConnectionsClient
         initialConnections={[connection]}
         initialRuns={[]}
+        capturedResources={[]}
+        referenceResources={[]}
       />,
     );
     const row = screen.getByText(connection.name).closest("tr")!;
@@ -105,9 +109,46 @@ describe("ApiConnectionsClient", () => {
       <ApiConnectionsClient
         initialConnections={[]}
         initialRuns={[]}
+        capturedResources={[]}
+        referenceResources={[]}
       />,
     );
     expect(screen.getByText(/No connections exist yet/)).toBeTruthy();
     expect(screen.queryByText("Reference resources")).toBeNull();
+  });
+
+  it("renders catalog-backed and captured resources as label-only rows", () => {
+    render(
+      <ApiConnectionsClient
+        initialConnections={[]}
+        initialRuns={[]}
+        referenceResources={[{
+          id: "resource-1",
+          resourceKey: "country-territory-codes",
+          resourceKind: "country-geography",
+          label: "Country & territory code resource",
+          description: "Shared geography codes",
+          routePath: "/dashboard/country-codes",
+          sortOrder: 10,
+          activeVersion: null,
+        }]}
+        capturedResources={[{
+          id: "captured-1",
+          connectionId: connection.id,
+          runId: run.id,
+          resourceUrl: "https://example.com/secret-path",
+          normalizedUrl: "https://example.com/secret-path",
+          webText: "Source documentation",
+          sourceRowIndex: 0,
+          sourceResourceIndex: 0,
+          createdAt: run.createdAt,
+        }]}
+      />,
+    );
+
+    expect(screen.getByRole("link", { name: "Country & territory code resource" }).getAttribute("href")).toBe("/dashboard/country-codes");
+    expect(screen.getByText("Source documentation")).toBeTruthy();
+    expect(screen.queryByText("https://example.com/secret-path")).toBeNull();
+    expect(screen.queryByText("Category")).toBeNull();
   });
 });

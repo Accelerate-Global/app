@@ -2,11 +2,8 @@ import { readFile } from "node:fs/promises";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getCurrentIdentity } from "@/lib/auth";
-import {
-  mergeIsoCountryCodeEntryOverrides,
-  refreshIsoCountryCodeResourceFromOfficialSource,
-} from "@/lib/iso-country-codes";
 import type { IsoCountryCodeResource } from "@/lib/iso-country-codes";
+import { refreshReferenceResourceCandidate } from "@/lib/reference-resources/refresh";
 import { GET, POST } from "./route";
 
 vi.mock("@/lib/auth", () => ({
@@ -17,17 +14,13 @@ vi.mock("@/lib/error-logging", () => ({
   logError: vi.fn(),
 }));
 
-vi.mock("@/lib/iso-country-codes", () => ({
-  mergeIsoCountryCodeEntryOverrides: vi.fn(),
-  refreshIsoCountryCodeResourceFromOfficialSource: vi.fn(),
+vi.mock("@/lib/reference-resources/refresh", () => ({
+  refreshReferenceResourceCandidate: vi.fn(),
 }));
 
 const getCurrentIdentityMock = vi.mocked(getCurrentIdentity);
-const mergeIsoCountryCodeEntryOverridesMock = vi.mocked(
-  mergeIsoCountryCodeEntryOverrides,
-);
-const refreshIsoCountryCodeResourceFromOfficialSourceMock = vi.mocked(
-  refreshIsoCountryCodeResourceFromOfficialSource,
+const refreshReferenceResourceCandidateMock = vi.mocked(
+  refreshReferenceResourceCandidate,
 );
 
 describe("/api/iso-country-codes/refresh", () => {
@@ -44,7 +37,7 @@ describe("/api/iso-country-codes/refresh", () => {
       error: "Method not allowed.",
     });
     expect(
-      refreshIsoCountryCodeResourceFromOfficialSourceMock,
+      refreshReferenceResourceCandidateMock,
     ).not.toHaveBeenCalled();
   });
 
@@ -55,7 +48,7 @@ describe("/api/iso-country-codes/refresh", () => {
 
     expect(response.status).toBe(401);
     expect(
-      refreshIsoCountryCodeResourceFromOfficialSourceMock,
+      refreshReferenceResourceCandidateMock,
     ).not.toHaveBeenCalled();
   });
 
@@ -76,7 +69,7 @@ describe("/api/iso-country-codes/refresh", () => {
       error: "Only admins can refresh country and territory codes.",
     });
     expect(
-      refreshIsoCountryCodeResourceFromOfficialSourceMock,
+      refreshReferenceResourceCandidateMock,
     ).not.toHaveBeenCalled();
   });
 
@@ -136,27 +129,36 @@ describe("/api/iso-country-codes/refresh", () => {
       isDatasetAdmin: true,
       mode: "supabase",
     });
-    const mergedResource = {
-      ...resource,
-      entries: [
-        {
-          ...resource.entries[0],
-          alternativeNames: ["Persisted alias"],
-        },
-      ],
-    } satisfies IsoCountryCodeResource;
-    refreshIsoCountryCodeResourceFromOfficialSourceMock.mockResolvedValue(
-      resource,
-    );
-    mergeIsoCountryCodeEntryOverridesMock.mockResolvedValue(mergedResource);
+    const candidate = {
+      unchanged: false,
+      version: {
+        id: "candidate-1",
+        resourceKey: "country-territory-codes",
+        versionNumber: 2,
+        lifecycleState: "valid",
+        schemaVersion: 1,
+        contentChecksum: "a".repeat(64),
+        sourceRetrievedAt: resource.sourceRetrievedAt,
+        entryCount: resource.entryCount,
+        validationSummary: {},
+        diffSummary: { added: 0, changed: 1, removed: 0 },
+        createdByOwnerId: "owner-1",
+        createdAt: resource.sourceRetrievedAt,
+        finalizedAt: resource.sourceRetrievedAt,
+        rejectionReason: null,
+        isActive: false,
+      },
+    } as const;
+    refreshReferenceResourceCandidateMock.mockResolvedValue(candidate);
 
     const response = await POST();
 
     expect(response.status).toBe(200);
-    expect(mergeIsoCountryCodeEntryOverridesMock).toHaveBeenCalledWith(
-      resource,
-    );
-    await expect(response.json()).resolves.toEqual(mergedResource);
+    expect(refreshReferenceResourceCandidateMock).toHaveBeenCalledWith({
+      resourceKey: "country-territory-codes",
+      actorOwnerId: "owner-1",
+    });
+    await expect(response.json()).resolves.toEqual(candidate);
   });
 
   it("returns a gateway error when source refresh fails", async () => {
@@ -168,7 +170,7 @@ describe("/api/iso-country-codes/refresh", () => {
       isDatasetAdmin: true,
       mode: "supabase",
     });
-    refreshIsoCountryCodeResourceFromOfficialSourceMock.mockRejectedValue(
+    refreshReferenceResourceCandidateMock.mockRejectedValue(
       new Error("ISO unavailable"),
     );
 

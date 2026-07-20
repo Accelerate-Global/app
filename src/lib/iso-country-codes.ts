@@ -1332,58 +1332,6 @@ export async function getGeneratedIsoCountryCodeResourceWithOverrides() {
   return mergeIsoCountryCodeEntryOverrides(getGeneratedIsoCountryCodeResource());
 }
 
-export async function updateIsoCountryCodeAlternativeNames(input: {
-  displayName: string;
-  alternativeNames: string[];
-  updatedByOwnerId: string;
-}) {
-  const generatedResource = getGeneratedIsoCountryCodeResource();
-  const entry = generatedResource.entries.find(
-    (resourceEntry) => resourceEntry.displayName === input.displayName,
-  );
-
-  if (!entry) {
-    return null;
-  }
-
-  const alternativeNames = normalizeCountryCodeAlternativeNames(
-    entry.displayName,
-    input.alternativeNames,
-  );
-  const updatedAt = new Date();
-
-  await getDb()
-    .insert(isoCountryCodeEntryOverrides)
-    .values({
-      displayName: entry.displayName,
-      alternativeNames,
-      updatedByOwnerId: input.updatedByOwnerId,
-      updatedAt,
-    })
-    .onConflictDoUpdate({
-      target: isoCountryCodeEntryOverrides.displayName,
-      set: {
-        alternativeNames,
-        updatedByOwnerId: input.updatedByOwnerId,
-        updatedAt,
-      },
-    });
-
-  const resource = await getGeneratedIsoCountryCodeResourceWithOverrides();
-  const updatedEntry = resource.entries.find(
-    (resourceEntry) => resourceEntry.displayName === entry.displayName,
-  );
-
-  if (!updatedEntry) {
-    return null;
-  }
-
-  return {
-    entry: updatedEntry,
-    resource,
-  };
-}
-
 function getSetCookies(headers: Headers) {
   const maybeGetSetCookie = (
     headers as Headers & { getSetCookie?: () => string[] }

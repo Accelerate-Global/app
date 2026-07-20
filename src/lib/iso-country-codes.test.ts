@@ -516,7 +516,7 @@ Country Alt Names 12,,,,
     ]);
   });
 
-  it("normalizes and applies persisted alternate-name overrides", () => {
+  it("normalizes legacy aliases for one-way bootstrap fold-in without mutating the seed", () => {
     const resource = getGeneratedIsoCountryCodeResource();
     const afghanistan = resource.entries.find(
       (entry) => entry.displayName === "Afghanistan",
@@ -545,6 +545,10 @@ Country Alt Names 12,,,,
     ).toMatchObject({
       alternativeNames: ["Persisted alias"],
     });
+    expect(
+      resource.entries.find((entry) => entry.displayName === "Afghanistan")
+        ?.alternativeNames,
+    ).not.toEqual(["Persisted alias"]);
   });
 
   it("rejects duplicate official ISO3 entries", () => {

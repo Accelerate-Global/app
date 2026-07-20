@@ -6,7 +6,7 @@ import { RopCodesClient } from "@/components/dashboard/rop-codes-client";
 import { DashboardPageShell } from "@/components/layout/dashboard-page-shell";
 import { buttonVariants } from "@/components/ui/button";
 import { getCurrentIdentity } from "@/lib/auth";
-import { getGeneratedRopCodeResource } from "@/lib/rop-codes";
+import { getReferenceResourcePage, ROP_RESOURCE_KEY } from "@/lib/reference-resources";
 import { cn } from "@/lib/utils";
 
 export default async function RopCodesPage() {
@@ -15,6 +15,11 @@ export default async function RopCodesPage() {
   if (!identity) {
     redirect("/");
   }
+
+  const { resource, version, nextCursor } = await getReferenceResourcePage({
+    resourceKey: ROP_RESOURCE_KEY,
+    limit: 250,
+  });
 
   return (
     <div
@@ -50,7 +55,9 @@ export default async function RopCodesPage() {
         </section>
 
         <RopCodesClient
-          initialResource={getGeneratedRopCodeResource()}
+          initialResource={resource}
+          activeVersion={version}
+          initialNextCursor={nextCursor}
           canRefresh={identity.isDatasetAdmin}
         />
       </DashboardPageShell>

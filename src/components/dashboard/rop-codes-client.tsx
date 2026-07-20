@@ -18,7 +18,8 @@ import {
 import { useVirtualizer } from "@tanstack/react-virtual";
 
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { ReferenceResourceLifecycle } from "@/components/dashboard/reference-resource-lifecycle";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
@@ -35,9 +36,16 @@ import type {
   RopTerm,
   RopTermDetail,
 } from "@/lib/rop-codes";
+import type {
+  ReferenceResourceCandidateResult,
+  ReferenceResourcePageByKey,
+  ReferenceResourceVersionSummary,
+} from "@/lib/reference-resources/types";
 
 type RopCodesClientProps = {
   initialResource: RopCodeResource;
+  activeVersion: ReferenceResourceVersionSummary;
+  initialNextCursor: string | null;
   canRefresh: boolean;
 };
 
@@ -45,20 +53,6 @@ type RefreshProgress = {
   progress: number;
   message: string;
 };
-
-const csvColumns = [
-  ["ROP1", (entry: RopCodeEntry) => entry.rop1?.display ?? ""],
-  ["ROP2", (entry: RopCodeEntry) => entry.rop2?.display ?? ""],
-  ["ROP25", (entry: RopCodeEntry) => entry.rop25?.display ?? ""],
-  ["ROP3", (entry: RopCodeEntry) => entry.rop3?.display ?? ""],
-  ["Status", (entry: RopCodeEntry) => entry.status],
-  ["Row type", (entry: RopCodeEntry) => entry.rowType],
-  ["Join issue", (entry: RopCodeEntry) => entry.joinIssueLabel],
-  ["Place", (entry: RopCodeEntry) => entry.place],
-  ["Language", (entry: RopCodeEntry) => entry.language],
-  ["Source", (entry: RopCodeEntry) => entry.source],
-  ["Ethnic ID", (entry: RopCodeEntry) => entry.ethnicId],
-] as const;
 
 function formatTimestamp(value: string) {
   return new Intl.DateTimeFormat("en-US", {
@@ -69,97 +63,6 @@ function formatTimestamp(value: string) {
 
 function formatNullable(value: string | number | null | undefined) {
   return value === null || value === undefined || value === "" ? "Not listed" : value;
-}
-
-function escapeCsvValue(value: string | null | undefined) {
-  const text = value ?? "";
-
-  if (/[",\n\r]/.test(text)) {
-    return `"${text.replaceAll('"', '""')}"`;
-  }
-
-  return text;
-}
-
-function buildCsv(entries: RopCodeEntry[]) {
-  const header = csvColumns.map(([label]) => escapeCsvValue(label)).join(",");
-  const rows = entries.map((entry) =>
-    csvColumns
-      .map(([, getValue]) => escapeCsvValue(getValue(entry)))
-      .join(","),
-  );
-
-  return `${[header, ...rows].join("\n")}\n`;
-}
-
-function downloadResource(entries: RopCodeEntry[]) {
-  const blob = new Blob([buildCsv(entries)], {
-    type: "text/csv;charset=utf-8",
-  });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-
-  link.href = url;
-  link.download = "rop-codes.csv";
-  document.body.append(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
-}
-
-function termSearchText(term: RopTerm | null) {
-  return term ? [term.code, term.name, term.display].join(" ") : "";
-}
-
-function getGeoSearchText(entry: RopCodeEntry, resource: RopCodeResource) {
-  const rop3 = entry.rop3?.code;
-
-  if (!rop3) {
-    return "";
-  }
-
-  return (resource.geoIndexByRop3[rop3] ?? [])
-    .map((row) =>
-      [
-        row.geoId,
-        row.rog,
-        row.geoName,
-        row.peopleName,
-        row.peopleId3,
-        row.isoAlpha3,
-        row.status,
-      ].join(" "),
-    )
-    .join(" ");
-}
-
-function filterEntries(resource: RopCodeResource, searchTerm: string) {
-  const normalizedSearchTerm = searchTerm.trim().toLocaleLowerCase();
-
-  if (!normalizedSearchTerm) {
-    return resource.entries;
-  }
-
-  return resource.entries.filter((entry) =>
-    [
-      termSearchText(entry.rop1),
-      termSearchText(entry.rop2),
-      termSearchText(entry.rop25),
-      termSearchText(entry.rop3),
-      entry.status,
-      entry.rowType,
-      entry.joinIssue,
-      entry.joinIssueLabel,
-      entry.place,
-      entry.language,
-      entry.source,
-      entry.ethnicId,
-      getGeoSearchText(entry, resource),
-    ]
-      .join(" ")
-      .toLocaleLowerCase()
-      .includes(normalizedSearchTerm),
-  );
 }
 
 function DetailValue({
@@ -350,9 +253,14 @@ function RopCell({ term }: { term: RopTerm | null }) {
 
 export function RopCodesClient({
   initialResource,
+  activeVersion,
+  initialNextCursor,
   canRefresh,
 }: RopCodesClientProps) {
   const [resource, setResource] = useState(initialResource);
+  const [nextCursor, setNextCursor] = useState(initialNextCursor);
+  const [isLoadingEntries, setIsLoadingEntries] = useState(false);
+  const [entryError, setEntryError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -361,12 +269,11 @@ export function RopCodesClient({
     null,
   );
   const [refreshError, setRefreshError] = useState<string | null>(null);
+  const [candidate, setCandidate] = useState<ReferenceResourceCandidateResult | null>(null);
   const refreshSuccessTimer = useRef<number | null>(null);
+  const initialSearchRender = useRef(true);
   const scrollRef = useRef<HTMLDivElement | null>(null);
-  const visibleEntries = useMemo(
-    () => filterEntries(resource, searchTerm),
-    [resource, searchTerm],
-  );
+  const visibleEntries = resource.entries;
   const selectedEntry = useMemo(
     () =>
       selectedEntryId
@@ -393,6 +300,70 @@ export function RopCodesClient({
   useEffect(() => {
     rowVirtualizer.scrollToIndex(0);
   }, [rowVirtualizer, searchTerm]);
+
+  useEffect(() => {
+    if (initialSearchRender.current) {
+      initialSearchRender.current = false;
+      return;
+    }
+    const controller = new AbortController();
+    const timer = window.setTimeout(async () => {
+      setIsLoadingEntries(true);
+      setEntryError(null);
+      try {
+        const params = new URLSearchParams({ limit: "250" });
+        if (searchTerm.trim()) params.set("search", searchTerm.trim());
+        const response = await fetch(
+          `/api/reference-resources/rop-codes/entries?${params.toString()}`,
+          { signal: controller.signal },
+        );
+        if (!response.ok) throw new Error("Search failed.");
+        const page = (await response.json()) as ReferenceResourcePageByKey["rop-codes"];
+        setResource(page.resource);
+        setNextCursor(page.nextCursor);
+        setSelectedEntryId(null);
+      } catch (error) {
+        if ((error as Error).name !== "AbortError") {
+          setEntryError("Could not load matching ROP codes.");
+        }
+      } finally {
+        if (!controller.signal.aborted) setIsLoadingEntries(false);
+      }
+    }, 250);
+    return () => {
+      controller.abort();
+      window.clearTimeout(timer);
+    };
+  }, [searchTerm]);
+
+  async function loadMoreEntries() {
+    if (!nextCursor || isLoadingEntries) return;
+    setIsLoadingEntries(true);
+    setEntryError(null);
+    try {
+      const params = new URLSearchParams({ cursor: nextCursor, limit: "250" });
+      if (searchTerm.trim()) params.set("search", searchTerm.trim());
+      const response = await fetch(
+        `/api/reference-resources/rop-codes/entries?${params.toString()}`,
+      );
+      if (!response.ok) throw new Error("Page failed.");
+      const page = (await response.json()) as ReferenceResourcePageByKey["rop-codes"];
+      setResource((current) => ({
+        ...page.resource,
+        entries: [...current.entries, ...page.resource.entries],
+        rop1DetailsByCode: { ...current.rop1DetailsByCode, ...page.resource.rop1DetailsByCode },
+        rop2DetailsByCode: { ...current.rop2DetailsByCode, ...page.resource.rop2DetailsByCode },
+        rop25DetailsByCode: { ...current.rop25DetailsByCode, ...page.resource.rop25DetailsByCode },
+        rop3DetailsByCode: { ...current.rop3DetailsByCode, ...page.resource.rop3DetailsByCode },
+        geoIndexByRop3: { ...current.geoIndexByRop3, ...page.resource.geoIndexByRop3 },
+      }));
+      setNextCursor(page.nextCursor);
+    } catch {
+      setEntryError("Could not load more ROP codes.");
+    } finally {
+      setIsLoadingEntries(false);
+    }
+  }
 
   function showRefreshSuccess() {
     setRefreshSucceeded(true);
@@ -455,17 +426,16 @@ export function RopCodesClient({
         throw new Error("Refresh failed.");
       }
 
-      const nextResource = (await response.json()) as RopCodeResource;
+      const nextCandidate = (await response.json()) as ReferenceResourceCandidateResult;
       setRefreshProgress({
         progress: 95,
-        message: "Updating visible list",
+        message: "Candidate ready for review",
       });
-      setResource(nextResource);
-      setSelectedEntryId(null);
+      setCandidate(nextCandidate);
       setRefreshProgress(null);
       showRefreshSuccess();
     } catch {
-      setRefreshError("Could not refresh ROP codes. The generated resource is still shown.");
+      setRefreshError("Could not refresh ROP codes. The active persisted version is still shown.");
       setRefreshProgress(null);
     } finally {
       window.clearInterval(stageTimer);
@@ -509,6 +479,8 @@ export function RopCodesClient({
                 <Button
                   type="button"
                   variant="outline"
+                  data-smoke-trigger="reference-resource-candidate"
+                  data-smoke-write="unsafe"
                   onClick={refreshFromHis}
                   disabled={isRefreshing}
                 >
@@ -520,18 +492,19 @@ export function RopCodesClient({
                   Refresh
                 </Button>
               ) : null}
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => downloadResource(visibleEntries)}
+              <a
+                className={buttonVariants({ variant: "outline" })}
+                href={`/api/reference-resources/rop-codes/download?search=${encodeURIComponent(searchTerm)}`}
               >
                 <DownloadIcon />
                 Download
-              </Button>
+              </a>
             </div>
           </div>
           <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
-            <Badge variant="outline">{visibleEntries.length.toLocaleString()} visible</Badge>
+            <Badge variant="outline">
+              {visibleEntries.length.toLocaleString()} loaded of {resource.entryCount.toLocaleString()}
+            </Badge>
             <Badge variant="outline">{resource.rop1Count.toLocaleString()} ROP1</Badge>
             <Badge variant="outline">{resource.rop2Count.toLocaleString()} ROP2</Badge>
             <Badge variant="outline">{resource.rop25Count.toLocaleString()} ROP25</Badge>
@@ -543,6 +516,7 @@ export function RopCodesClient({
           {refreshError ? (
             <p className="text-sm text-destructive">{refreshError}</p>
           ) : null}
+          {entryError ? <p className="text-sm text-destructive">{entryError}</p> : null}
           {refreshProgress ? (
             <div className="space-y-3 rounded-lg border bg-background p-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -615,9 +589,27 @@ export function RopCodesClient({
                 </div>
               )}
             </div>
+            {nextCursor ? (
+              <div className="flex justify-center pt-4">
+                <Button type="button" variant="outline" onClick={loadMoreEntries} disabled={isLoadingEntries}>
+                  {isLoadingEntries ? "Loading…" : "Load more"}
+                </Button>
+              </div>
+            ) : null}
           </div>
         </CardContent>
       </Card>
+      {canRefresh ? (
+        <ReferenceResourceLifecycle
+          resourceKey="rop-codes"
+          activeVersion={activeVersion}
+          candidate={candidate}
+        />
+      ) : (
+        <div className="text-sm text-muted-foreground">
+          Active version {activeVersion.versionNumber} · {activeVersion.contentChecksum?.slice(0, 12)}
+        </div>
+      )}
       <RopCodeDetailSheet
         entry={selectedEntry}
         resource={resource}

@@ -7,6 +7,7 @@ import { DashboardPageShell } from "@/components/layout/dashboard-page-shell";
 import { buttonVariants } from "@/components/ui/button";
 import { getCurrentIdentity } from "@/lib/auth";
 import { listApiConnections } from "@/lib/api-connections";
+import { listReferenceResourceCatalog } from "@/lib/reference-resources";
 import { cn } from "@/lib/utils";
 
 export default async function ApiConnectionsPage() {
@@ -20,7 +21,10 @@ export default async function ApiConnectionsPage() {
     redirect("/dashboard");
   }
 
-  const { connections, runs } = await listApiConnections();
+  const [{ connections, runs, resources }, referenceResources] = await Promise.all([
+    listApiConnections(),
+    listReferenceResourceCatalog(),
+  ]);
 
   return (
     <div
@@ -58,6 +62,8 @@ export default async function ApiConnectionsPage() {
         <ApiConnectionsClient
           initialConnections={connections}
           initialRuns={runs}
+          capturedResources={resources}
+          referenceResources={referenceResources.filter((resource) => resource.activeVersion)}
         />
       </DashboardPageShell>
     </div>

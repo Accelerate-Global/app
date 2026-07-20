@@ -7,6 +7,7 @@ import { redirect } from "next/navigation";
 
 import { listApiConnections } from "@/lib/api-connections";
 import { getCurrentIdentity } from "@/lib/auth";
+import { listReferenceResourceCatalog } from "@/lib/reference-resources";
 import ApiConnectionsPage from "./page";
 
 vi.mock("next/navigation", () => ({
@@ -23,15 +24,24 @@ vi.mock("@/lib/api-connections", () => ({
   listApiConnections: vi.fn(),
 }));
 
+vi.mock("@/lib/reference-resources", () => ({
+  listReferenceResourceCatalog: vi.fn(),
+}));
+
 vi.mock("@/components/dashboard/api-connections-client", () => ({
   ApiConnectionsClient: ({
     initialConnections,
+    referenceResources,
   }: {
     initialConnections: Array<{ name: string }>;
+    referenceResources: Array<{ id: string; label: string }>;
   }) => (
     <div data-testid="api-connections-client">
       {initialConnections.map((connection) => (
         <span key={connection.name}>{connection.name}</span>
+      ))}
+      {referenceResources.map((resource) => (
+        <span key={resource.id}>{resource.label}</span>
       ))}
     </div>
   ),
@@ -40,11 +50,13 @@ vi.mock("@/components/dashboard/api-connections-client", () => ({
 
 const getCurrentIdentityMock = vi.mocked(getCurrentIdentity);
 const listApiConnectionsMock = vi.mocked(listApiConnections);
+const listReferenceResourceCatalogMock = vi.mocked(listReferenceResourceCatalog);
 const redirectMock = vi.mocked(redirect);
 
 describe("/dashboard/api-connections", () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    listReferenceResourceCatalogMock.mockResolvedValue([]);
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue({
@@ -140,12 +152,25 @@ describe("/dashboard/api-connections", () => {
         },
       ],
     });
+    listReferenceResourceCatalogMock.mockResolvedValue([
+      {
+        id: "catalog-1",
+        resourceKey: "country-territory-codes",
+        resourceKind: "country-geography",
+        label: "Country & territory code resource",
+        description: "Shared codes",
+        routePath: "/dashboard/country-codes",
+        sortOrder: 10,
+        activeVersion: { id: "active-1" } as never,
+      },
+    ]);
     render(await ApiConnectionsPage());
 
     expect(document.querySelector(".max-w-7xl")).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Connections" })).toBeTruthy();
     expect(screen.getByText("IMB (People Groups)")).toBeTruthy();
     expect(screen.getByText("Etnopedia")).toBeTruthy();
+    expect(screen.getByText("Country & territory code resource")).toBeTruthy();
     expect(screen.queryByText("https://example.com/resource")).toBeNull();
     expect(screen.getByTestId("api-connections-client")).toBeTruthy();
     expect(screen.queryByLabelText("URL")).toBeNull();

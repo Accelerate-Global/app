@@ -6,7 +6,10 @@ import { IsoCountryCodesClient } from "@/components/dashboard/iso-country-codes-
 import { DashboardPageShell } from "@/components/layout/dashboard-page-shell";
 import { buttonVariants } from "@/components/ui/button";
 import { getCurrentIdentity } from "@/lib/auth";
-import { getGeneratedIsoCountryCodeResourceWithOverrides } from "@/lib/iso-country-codes";
+import {
+  getReferenceResourcePage,
+  COUNTRY_RESOURCE_KEY,
+} from "@/lib/reference-resources";
 import { cn } from "@/lib/utils";
 
 export default async function CountryCodesPage() {
@@ -16,7 +19,10 @@ export default async function CountryCodesPage() {
     redirect("/");
   }
 
-  const resource = await getGeneratedIsoCountryCodeResourceWithOverrides();
+  const { resource, version, nextCursor } = await getReferenceResourcePage({
+    resourceKey: COUNTRY_RESOURCE_KEY,
+    limit: 100,
+  });
 
   return (
     <div
@@ -54,6 +60,8 @@ export default async function CountryCodesPage() {
 
         <IsoCountryCodesClient
           initialResource={resource}
+          activeVersion={version}
+          initialNextCursor={nextCursor}
           canRefresh={identity.isDatasetAdmin}
           canEditAlternativeNames={identity.isDatasetAdmin}
         />

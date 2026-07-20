@@ -380,6 +380,39 @@
       "bootstrapScope": "admin-config"
     },
     {
+      "id": "reference-resources",
+      "label": "Reference resource catalog, paging, and lifecycle flows",
+      "patterns": [
+        "src/app/dashboard/resources/**",
+        "src/app/dashboard/country-codes/**",
+        "src/app/dashboard/rop-codes/**",
+        "src/components/dashboard/iso-country-codes-client.tsx",
+        "src/components/dashboard/rop-codes-client.tsx",
+        "src/components/dashboard/reference-resource-lifecycle.tsx",
+        "src/app/api/reference-resources/**",
+        "src/app/api/iso-country-codes/**",
+        "src/app/api/rop-codes/**",
+        "src/lib/reference-resources/**"
+      ],
+      "routeIds": [
+        "resources-pro",
+        "resources-basic",
+        "resources-admin",
+        "iso-country-codes-pro",
+        "iso-country-codes-basic",
+        "iso-country-codes-admin",
+        "rop-codes-pro",
+        "rop-codes-basic",
+        "rop-codes-admin"
+      ],
+      "journeyTitles": [
+        "admin can inspect country reference history",
+        "admin can inspect ROP reference history"
+      ],
+      "projectNames": ["desktop-pro", "desktop-basic", "desktop-admin"],
+      "bootstrapScope": "full"
+    },
+    {
       "id": "api-connections",
       "label": "API Connections route and admin import flow",
       "patterns": [

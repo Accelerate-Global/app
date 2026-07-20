@@ -2,8 +2,8 @@ import { readFile } from "node:fs/promises";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getCurrentIdentity } from "@/lib/auth";
-import { refreshRopCodeResourceFromHis } from "@/lib/rop-codes";
 import type { RopCodeResource } from "@/lib/rop-codes";
+import { refreshReferenceResourceCandidate } from "@/lib/reference-resources/refresh";
 import { GET, POST } from "./route";
 
 vi.mock("@/lib/auth", () => ({
@@ -14,13 +14,13 @@ vi.mock("@/lib/error-logging", () => ({
   logError: vi.fn(),
 }));
 
-vi.mock("@/lib/rop-codes", () => ({
-  refreshRopCodeResourceFromHis: vi.fn(),
+vi.mock("@/lib/reference-resources/refresh", () => ({
+  refreshReferenceResourceCandidate: vi.fn(),
 }));
 
 const getCurrentIdentityMock = vi.mocked(getCurrentIdentity);
-const refreshRopCodeResourceFromHisMock = vi.mocked(
-  refreshRopCodeResourceFromHis,
+const refreshReferenceResourceCandidateMock = vi.mocked(
+  refreshReferenceResourceCandidate,
 );
 
 const resource = {
@@ -60,7 +60,7 @@ describe("/api/rop-codes/refresh", () => {
     await expect(response.json()).resolves.toEqual({
       error: "Method not allowed.",
     });
-    expect(refreshRopCodeResourceFromHisMock).not.toHaveBeenCalled();
+    expect(refreshReferenceResourceCandidateMock).not.toHaveBeenCalled();
   });
 
   it("rejects anonymous refresh requests", async () => {
@@ -69,7 +69,7 @@ describe("/api/rop-codes/refresh", () => {
     const response = await POST();
 
     expect(response.status).toBe(401);
-    expect(refreshRopCodeResourceFromHisMock).not.toHaveBeenCalled();
+    expect(refreshReferenceResourceCandidateMock).not.toHaveBeenCalled();
   });
 
   it("rejects non-admin refresh requests", async () => {
@@ -88,7 +88,7 @@ describe("/api/rop-codes/refresh", () => {
     await expect(response.json()).resolves.toEqual({
       error: "Only admins can refresh ROP codes.",
     });
-    expect(refreshRopCodeResourceFromHisMock).not.toHaveBeenCalled();
+    expect(refreshReferenceResourceCandidateMock).not.toHaveBeenCalled();
   });
 
   it("returns live ROP code resource for admins", async () => {
@@ -100,12 +100,36 @@ describe("/api/rop-codes/refresh", () => {
       isDatasetAdmin: true,
       mode: "supabase",
     });
-    refreshRopCodeResourceFromHisMock.mockResolvedValue(resource);
+    const candidate = {
+      unchanged: false,
+      version: {
+        id: "candidate-1",
+        resourceKey: "rop-codes",
+        versionNumber: 2,
+        lifecycleState: "valid",
+        schemaVersion: 1,
+        contentChecksum: "b".repeat(64),
+        sourceRetrievedAt: resource.sourceRetrievedAt,
+        entryCount: resource.entryCount,
+        validationSummary: {},
+        diffSummary: {},
+        createdByOwnerId: "owner-1",
+        createdAt: resource.sourceRetrievedAt,
+        finalizedAt: resource.sourceRetrievedAt,
+        rejectionReason: null,
+        isActive: false,
+      },
+    } as const;
+    refreshReferenceResourceCandidateMock.mockResolvedValue(candidate);
 
     const response = await POST();
 
     expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toEqual(resource);
+    expect(refreshReferenceResourceCandidateMock).toHaveBeenCalledWith({
+      resourceKey: "rop-codes",
+      actorOwnerId: "owner-1",
+    });
+    await expect(response.json()).resolves.toEqual(candidate);
   });
 
   it("returns a gateway error when HIS refresh fails", async () => {
@@ -117,7 +141,7 @@ describe("/api/rop-codes/refresh", () => {
       isDatasetAdmin: true,
       mode: "supabase",
     });
-    refreshRopCodeResourceFromHisMock.mockRejectedValue(
+    refreshReferenceResourceCandidateMock.mockRejectedValue(
       new Error("HIS unavailable"),
     );
 

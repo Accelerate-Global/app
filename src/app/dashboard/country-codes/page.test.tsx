@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { redirect } from "next/navigation";
 
 import { getCurrentIdentity } from "@/lib/auth";
-import { getGeneratedIsoCountryCodeResourceWithOverrides } from "@/lib/iso-country-codes";
+import { getReferenceResourcePage } from "@/lib/reference-resources";
 import type { IsoCountryCodeResource } from "@/lib/iso-country-codes";
 import CountryCodesPage from "./page";
 
@@ -24,8 +24,9 @@ vi.mock("@/lib/auth", () => ({
   getCurrentIdentity: vi.fn(),
 }));
 
-vi.mock("@/lib/iso-country-codes", () => ({
-  getGeneratedIsoCountryCodeResourceWithOverrides: vi.fn(),
+vi.mock("@/lib/reference-resources", () => ({
+  COUNTRY_RESOURCE_KEY: "country-territory-codes",
+  getReferenceResourcePage: vi.fn(),
 }));
 
 
@@ -34,9 +35,7 @@ vi.mock("@/components/dashboard/iso-country-codes-client", () => ({
 }));
 
 const getCurrentIdentityMock = vi.mocked(getCurrentIdentity);
-const getGeneratedIsoCountryCodeResourceWithOverridesMock = vi.mocked(
-  getGeneratedIsoCountryCodeResourceWithOverrides,
-);
+const getReferenceResourcePageMock = vi.mocked(getReferenceResourcePage);
 const redirectMock = vi.mocked(redirect);
 
 describe("/dashboard/country-codes", () => {
@@ -105,7 +104,28 @@ describe("/dashboard/country-codes", () => {
       isDatasetAdmin: false,
       mode: "supabase",
     });
-    getGeneratedIsoCountryCodeResourceWithOverridesMock.mockResolvedValue(resource);
+    getReferenceResourcePageMock.mockResolvedValue({
+      resource,
+      entries: resource.entries,
+      nextCursor: null,
+      version: {
+        id: "10000000-0000-4000-8000-000000000001",
+        resourceKey: "country-territory-codes",
+        versionNumber: 1,
+        lifecycleState: "valid",
+        schemaVersion: 1,
+        contentChecksum: "a".repeat(64),
+        sourceRetrievedAt: resource.sourceRetrievedAt,
+        entryCount: resource.entryCount,
+        validationSummary: {},
+        diffSummary: {},
+        createdByOwnerId: "admin-1",
+        createdAt: resource.sourceRetrievedAt,
+        finalizedAt: resource.sourceRetrievedAt,
+        rejectionReason: null,
+        isActive: true,
+      },
+    });
 
     render(await CountryCodesPage());
 
@@ -158,7 +178,28 @@ describe("/dashboard/country-codes", () => {
       isDatasetAdmin: true,
       mode: "supabase",
     });
-    getGeneratedIsoCountryCodeResourceWithOverridesMock.mockResolvedValue(resource);
+    getReferenceResourcePageMock.mockResolvedValue({
+      resource,
+      entries: resource.entries,
+      nextCursor: null,
+      version: {
+        id: "10000000-0000-4000-8000-000000000001",
+        resourceKey: "country-territory-codes",
+        versionNumber: 1,
+        lifecycleState: "valid",
+        schemaVersion: 1,
+        contentChecksum: "a".repeat(64),
+        sourceRetrievedAt: resource.sourceRetrievedAt,
+        entryCount: resource.entryCount,
+        validationSummary: {},
+        diffSummary: {},
+        createdByOwnerId: "admin-1",
+        createdAt: resource.sourceRetrievedAt,
+        finalizedAt: resource.sourceRetrievedAt,
+        rejectionReason: null,
+        isActive: true,
+      },
+    });
 
     render(await CountryCodesPage());
 
