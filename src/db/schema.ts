@@ -678,7 +678,13 @@ export const ropReferencePeople = privateSchema.table(
     ethnicId: text("ethnic_id"),
     directRop2: text("direct_rop2"),
     joinIssue: text("join_issue")
-      .$type<"missing-rop25" | "rop2-conflict" | "parent-only-rop25" | null>(),
+      .$type<
+        | "missing-rop2"
+        | "missing-rop25"
+        | "rop2-conflict"
+        | "parent-only-rop25"
+        | null
+      >(),
     joinIssueLabel: text("join_issue_label"),
     searchText: text("search_text").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })

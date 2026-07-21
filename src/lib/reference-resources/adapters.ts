@@ -258,13 +258,18 @@ function validateRopResource(resource: RopCodeResource) {
     ids.add(entry.id);
     for (const level of ["rop1", "rop2", "rop25", "rop3"] as const) {
       const term = entry[level];
-      const allowedMissingRop25 =
-        level === "rop25" && entry.joinIssue === "missing-rop25";
-      if (term && !resource[`${level}DetailsByCode`][term.code] && !allowedMissingRop25) {
+      const allowedMissingSourceTerm =
+        (level === "rop25" && entry.joinIssue === "missing-rop25") ||
+        (level === "rop2" && entry.joinIssue === "missing-rop2");
+      if (
+        term &&
+        !resource[`${level}DetailsByCode`][term.code] &&
+        !allowedMissingSourceTerm
+      ) {
         throw new Error(`ROP resource is missing ${level.toUpperCase()} term ${term.code}.`);
       }
     }
-    if (entry.rop2 && !entry.rop1) {
+    if (entry.rop2 && !entry.rop1 && entry.joinIssue !== "missing-rop2") {
       throw new Error(`ROP resource entry ${entry.id} is missing its ROP1 parent.`);
     }
     if (entry.rop25 && !entry.rop2) {

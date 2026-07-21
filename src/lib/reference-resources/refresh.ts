@@ -3,7 +3,10 @@ import {
   type IsoCountryCodeResource,
 } from "@/lib/iso-country-codes";
 import { normalizeErrorForLogging } from "@/lib/error-logging";
-import { refreshRopCodeResourceFromHis } from "@/lib/rop-codes";
+import {
+  refreshRopCodeResourceFromHis,
+  type RopCodeResource,
+} from "@/lib/rop-codes";
 
 import {
   createReferenceResourceCandidate,
@@ -15,7 +18,32 @@ import {
   ROP_RESOURCE_KEY,
   type ReferenceResourceKey,
   type ReferenceResourcePayloadByKey,
+  type ReferenceResourceValidationFinding,
 } from "./types";
+
+function getRopRefreshFindings(
+  resource: RopCodeResource,
+): ReferenceResourceValidationFinding[] {
+  return resource.entries.flatMap((entry) => {
+    if (entry.joinIssue !== "missing-rop2") return [];
+
+    const rop2Code = entry.rop2?.code ?? null;
+    const rop25Code = entry.rop25?.code ?? null;
+    return [
+      {
+        severity: "warning" as const,
+        ruleCode: "missing-rop2-parent",
+        stableEntryKey: entry.id,
+        fieldName: "rop2",
+        message: `ROP25 ${rop25Code ?? "Not listed"} references ROP2 ${rop2Code ?? "Not listed"}, which is absent from the HIS ROP2 layer.`,
+        details: {
+          rop2Code,
+          rop25Code,
+        },
+      },
+    ];
+  });
+}
 
 async function preserveActiveCountryAliases(resource: IsoCountryCodeResource) {
   try {
@@ -99,6 +127,7 @@ export async function refreshReferenceResourceCandidate(input: {
       resourceKey: ROP_RESOURCE_KEY,
       payload,
       actorOwnerId: input.actorOwnerId,
+      findings: getRopRefreshFindings(payload),
     });
   } catch (error) {
     return recordSourceRefreshFailure({ ...input, error });

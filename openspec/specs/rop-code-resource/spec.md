@@ -36,6 +36,8 @@ for ROP1, ROP2, ROP25, and ROP3.
 - **AND** each populated field combines the code and name for that ROP term
 - **AND** the row set includes ROP3 people and ROP25 parent-only rows with no
   ROP3 child
+- **AND** a ROP25 parent-only row shows `Not listed` for ROP3 without a warning
+  icon or join-issue badge
 
 #### Scenario: Source parent links are imperfect
 - **WHEN** a ROP3 row has a missing ROP25 parent or a conflicting direct ROP2
@@ -43,6 +45,7 @@ for ROP1, ROP2, ROP25, and ROP3.
 - **THEN** the row remains visible
 - **AND** the system uses the registry-chain match when available
 - **AND** the row exposes a join issue label for inspection and download
+- **AND** the table retains a warning icon for the genuine join issue
 
 ### Requirement: ROP code resource is searchable, downloadable, and inspectable
 The system SHALL allow signed-in users to search, download, page through, and
@@ -53,6 +56,12 @@ inspect the complete active ROP version without changing workspace data.
   place, language, status, geography, or join issue text
 - **THEN** matching rows from the complete active version remain visible in a
   deterministic cursor-paged result
+
+#### Scenario: User views ROP resource summary
+- **WHEN** a signed-in user views the ROP resource
+- **THEN** the summary shows ROP1, ROP2, ROP25, and ROP3 source counts and the
+  source retrieval time
+- **AND** the summary does not show a browser-page “loaded of total” badge
 
 #### Scenario: User downloads matching ROP rows
 - **WHEN** a signed-in user downloads the current ROP query
@@ -65,7 +74,7 @@ inspect the complete active ROP version without changing workspace data.
 - **WHEN** a signed-in user selects a visible ROP row
 - **THEN** a right-side detail sheet opens for that row
 - **AND** the sheet shows code, name, description, status, source metadata, and
-  join issue details
+  actionable join issue details
 - **AND** ROP3 geography rows from the same active version are shown when
   available
 
@@ -83,8 +92,8 @@ methods.
   and an active-version diff rather than replacing the visible resource
 
 #### Scenario: Admin activates a valid ROP candidate
-- **WHEN** a dataset admin reviews a valid ROP candidate and confirms activation
-  with a reason
+- **WHEN** a dataset admin reviews a valid ROP candidate, including any warning
+  findings, and confirms activation with a reason
 - **THEN** the candidate becomes the active persisted ROP version
 - **AND** later page loads, searches, details, and downloads use that version
 
@@ -94,7 +103,8 @@ methods.
   controls are not shown
 
 #### Scenario: Source refresh fails
-- **WHEN** HIS source data is unavailable or invalid
+- **WHEN** HIS source data is unavailable or invalid beyond the documented
+  tolerance limits
 - **THEN** the page keeps the active persisted ROP version visible
 - **AND** the admin can inspect the normalized failure or validation findings
 - **AND** no invalid candidate can be activated
@@ -107,18 +117,40 @@ methods.
 ### Requirement: ROP code resource validates source shape
 The system SHALL mark a ROP candidate invalid when it has malformed rows,
 duplicate codes, suspiciously low table counts, invalid required hierarchy
-links, or inconsistent package artifacts, projections, counts, or checksum.
+links beyond documented tolerance limits, or inconsistent package artifacts,
+projections, counts, or checksum.
 
 #### Scenario: HIS candidate is valid
-- **WHEN** all required HIS layers return valid rows and package integrity checks
-  pass
+- **WHEN** all required HIS layers return valid rows above their completeness
+  safety floors, any missing ROP2 parents remain within the bounded tolerance,
+  and package integrity checks pass
 - **THEN** the system produces sorted typed ROP term, people, and geography
   projections
 - **AND** the candidate becomes eligible for explicit activation
 
+#### Scenario: HIS ROP25 count changes within the safety buffer
+- **WHEN** the complete HIS ROP25 layer contains 8,991 valid unique rows
+- **THEN** the source-count safeguard accepts the layer for candidate building
+- **AND** the remaining hierarchy and package validations still run
+
+#### Scenario: Bounded ROP2 parent reference is missing
+- **WHEN** no more than 10 distinct ROP25 records and no more than 0.1% of the
+  ROP25 layer reference ROP2 codes absent from the ROP2 layer
+- **THEN** affected rows retain the referenced ROP2 code as `Not listed`, their
+  ROP25, ROP3, and geography data, and no invented ROP1 value
+- **AND** each visible affected row produces a structured warning finding
+- **AND** the warning-only candidate remains eligible for explicit activation
+
+#### Scenario: Missing ROP2 parents exceed tolerance
+- **WHEN** more than 10 distinct ROP25 records or more than 0.1% of the ROP25
+  layer reference absent ROP2 codes
+- **THEN** the source build fails hierarchy validation
+- **AND** no invalid candidate can replace the active version
+
 #### Scenario: HIS candidate is invalid
-- **WHEN** a required layer returns malformed rows, duplicate codes, too few
-  records, invalid hierarchy data, or inconsistent package content
+- **WHEN** a required layer returns malformed rows, duplicate codes, a row count
+  below its completeness safety floor, an untolerated hierarchy error, or
+  inconsistent package content
 - **THEN** the system persists structured validation findings
 - **AND** the candidate cannot replace the active version
 

@@ -7,20 +7,32 @@ export const HIS_ROP_FEATURE_SERVER_URL =
 const ARCGIS_PAGE_SIZE = 1000;
 const REQUEST_TIMEOUT_MS = 20000;
 
-const MIN_COUNTS = {
+export const HIS_ROP_MINIMUM_COUNTS = {
   rop1: 17,
   rop2: 290,
-  rop25: 9000,
+  rop25: 8500,
   rop3: 13000,
   geoIndex: 21000,
 } as const;
 
-type RopMinimumCounts = Record<keyof typeof MIN_COUNTS, number>;
+export const HIS_ROP_MISSING_ROP2_TOLERANCE = {
+  maxCount: 10,
+  maxRatio: 0.001,
+} as const;
+
+type RopMinimumCounts = Record<keyof typeof HIS_ROP_MINIMUM_COUNTS, number>;
 
 export type RopJoinIssue =
   | "missing-rop25"
+  | "missing-rop2"
   | "rop2-conflict"
   | "parent-only-rop25";
+
+export type RopJoinIssueCounts = Record<
+  Exclude<RopJoinIssue, "missing-rop2">,
+  number
+> &
+  Partial<Record<"missing-rop2", number>>;
 
 export type RopTerm = {
   code: string;
@@ -71,7 +83,7 @@ export type RopCodeResource = {
   rop25Count: number;
   rop3Count: number;
   geoIndexCount: number;
-  joinIssueCounts: Record<RopJoinIssue, number>;
+  joinIssueCounts: RopJoinIssueCounts;
   rop1DetailsByCode: Record<string, RopTermDetail>;
   rop2DetailsByCode: Record<string, RopTermDetail>;
   rop25DetailsByCode: Record<string, RopTermDetail>;
@@ -137,6 +149,7 @@ type ArcgisPage = {
 
 const joinIssueLabels: Record<RopJoinIssue, string> = {
   "missing-rop25": "ROP25 code is not listed in the ROP25 table",
+  "missing-rop2": "ROP2 code is not listed in the ROP2 table",
   "parent-only-rop25": "ROP25 code has no ROP3 child",
   "rop2-conflict": "ROP3 direct ROP2 differs from the ROP25 parent chain",
 };
@@ -473,10 +486,31 @@ function validateSourceTables(
     }
   }
 
-  for (const row of tables.rop25) {
-    if (!rop2Codes.has(row.rop2)) {
-      throw new Error(`ROP25 ${row.code} references missing ROP2 ${row.rop2}.`);
-    }
+  const missingRop2Count = tables.rop25.filter(
+    (row) => !rop2Codes.has(row.rop2),
+  ).length;
+  validateMissingRop2ParentTolerance({
+    missingCount: missingRop2Count,
+    totalCount: tables.rop25.length,
+  });
+}
+
+export function validateMissingRop2ParentTolerance(input: {
+  missingCount: number;
+  totalCount: number;
+}) {
+  const ratio = input.missingCount / Math.max(input.totalCount, 1);
+
+  if (
+    input.missingCount > HIS_ROP_MISSING_ROP2_TOLERANCE.maxCount ||
+    ratio > HIS_ROP_MISSING_ROP2_TOLERANCE.maxRatio
+  ) {
+    throw new Error(
+      `ROP25 contains ${input.missingCount} missing ROP2 parent relationships ` +
+        `(${(ratio * 100).toFixed(3)}%); tolerance is ` +
+        `${HIS_ROP_MISSING_ROP2_TOLERANCE.maxCount} rows and ` +
+        `${HIS_ROP_MISSING_ROP2_TOLERANCE.maxRatio * 100}%.`,
+    );
   }
 }
 
@@ -501,7 +535,7 @@ function compareEntries(left: RopCodeEntry, right: RopCodeEntry) {
 export function buildRopCodeResource(
   tables: RopSourceTables,
   sourceRetrievedAt = new Date().toISOString(),
-  minimumCounts: RopMinimumCounts = MIN_COUNTS,
+  minimumCounts: RopMinimumCounts = HIS_ROP_MINIMUM_COUNTS,
 ): RopCodeResource {
   validateSourceTables(tables, minimumCounts);
 
@@ -509,8 +543,9 @@ export function buildRopCodeResource(
   const rop2ByCode = new Map(tables.rop2.map((row) => [row.code, row]));
   const rop25ByCode = new Map(tables.rop25.map((row) => [row.code, row]));
   const rop3Rop25Codes = new Set(tables.rop3.map((row) => row.rop25));
-  const joinIssueCounts: Record<RopJoinIssue, number> = {
+  const joinIssueCounts: RopJoinIssueCounts = {
     "missing-rop25": 0,
+    "missing-rop2": 0,
     "parent-only-rop25": 0,
     "rop2-conflict": 0,
   };
@@ -523,12 +558,14 @@ export function buildRopCodeResource(
     if (!rop25) {
       joinIssue = "missing-rop25";
       rop2 = row.rop2 ? rop2ByCode.get(row.rop2) ?? null : null;
+    } else if (!rop2) {
+      joinIssue = "missing-rop2";
     } else if (row.rop2 && row.rop2 !== rop25.rop2) {
       joinIssue = "rop2-conflict";
     }
 
     if (joinIssue) {
-      joinIssueCounts[joinIssue] += 1;
+      joinIssueCounts[joinIssue] = (joinIssueCounts[joinIssue] ?? 0) + 1;
     }
 
     const rop1 = rop2 ? rop1ByCode.get(rop2.rop1) ?? null : null;
@@ -547,6 +584,11 @@ export function buildRopCodeResource(
             code: rop2.code,
             name: rop2.name,
           })
+        : joinIssue === "missing-rop2" && rop25
+          ? buildTerm({
+              code: rop25.rop2,
+              name: null,
+            })
         : null,
       rop25: buildTerm({
         code: row.rop25,
@@ -575,7 +617,10 @@ export function buildRopCodeResource(
     const rop2 = rop2ByCode.get(row.rop2) ?? null;
     const rop1 = rop2 ? rop1ByCode.get(rop2.rop1) ?? null : null;
 
-    joinIssueCounts["parent-only-rop25"] += 1;
+    const joinIssue: RopJoinIssue = rop2
+      ? "parent-only-rop25"
+      : "missing-rop2";
+    joinIssueCounts[joinIssue] = (joinIssueCounts[joinIssue] ?? 0) + 1;
     entries.push({
       id: `rop25-${row.code}`,
       rowType: "rop25-parent",
@@ -590,7 +635,10 @@ export function buildRopCodeResource(
             code: rop2.code,
             name: rop2.name,
           })
-        : null,
+        : buildTerm({
+            code: row.rop2,
+            name: null,
+          }),
       rop25: buildTerm({
         code: row.code,
         name: row.name,
@@ -602,8 +650,8 @@ export function buildRopCodeResource(
       source: null,
       ethnicId: null,
       directRop2: null,
-      joinIssue: "parent-only-rop25",
-      joinIssueLabel: issueLabel("parent-only-rop25"),
+      joinIssue,
+      joinIssueLabel: issueLabel(joinIssue),
     });
   }
 

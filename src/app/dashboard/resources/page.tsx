@@ -21,9 +21,7 @@ export default async function ResourcesPage() {
     redirect("/");
   }
 
-  const builtInResources = await listReferenceResourceCatalog({
-    includeAdminState: identity.isDatasetAdmin,
-  });
+  const builtInResources = await listReferenceResourceCatalog();
 
   return (
     <div
@@ -78,11 +76,6 @@ export default async function ResourcesPage() {
                       No active version
                     </CardDescription>
                   )}
-                  {resource.attentionState ? (
-                    <CardDescription className="font-medium text-amber-700">
-                      {resource.attentionState.replaceAll("-", " ")}
-                    </CardDescription>
-                  ) : null}
                 </CardHeader>
               </Card>
             </Link>

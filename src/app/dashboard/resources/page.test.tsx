@@ -58,6 +58,7 @@ describe("/dashboard/resources", () => {
         routePath: "/dashboard/country-codes",
         sortOrder: 10,
         activeVersion: version,
+        attentionState: "valid-candidate",
       },
       {
         id: "20000000-0000-4000-8000-000000000002",
@@ -68,6 +69,7 @@ describe("/dashboard/resources", () => {
         routePath: "/dashboard/rop-codes",
         sortOrder: 20,
         activeVersion: { ...version, id: "10000000-0000-4000-8000-000000000002", resourceKey: "rop-codes" },
+        attentionState: "invalid-build",
       },
     ]);
   });
@@ -111,5 +113,22 @@ describe("/dashboard/resources", () => {
     ).toBe("/dashboard/rop-codes");
     expect(screen.queryByText("Open resource")).toBeNull();
     expect(document.querySelector('[data-smoke-page="resources"]')).toBeTruthy();
+  });
+
+  it("does not show inactive candidate labels on usable resource cards", async () => {
+    getCurrentIdentityMock.mockResolvedValue({
+      ownerId: "admin-1",
+      email: "admin@example.com",
+      fullName: "Admin",
+      workspaceRole: "admin",
+      isDatasetAdmin: true,
+      mode: "supabase",
+    });
+
+    render(await ResourcesPage());
+
+    expect(listReferenceResourceCatalogMock).toHaveBeenCalledWith();
+    expect(screen.queryByText("valid candidate")).toBeNull();
+    expect(screen.queryByText("invalid build")).toBeNull();
   });
 });

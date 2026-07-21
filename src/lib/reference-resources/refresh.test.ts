@@ -95,4 +95,53 @@ describe("refreshReferenceResourceCandidate", () => {
       }),
     );
   });
+
+  it("persists bounded missing ROP2 relationships as candidate warnings", async () => {
+    const payload = {
+      sourceRetrievedAt: "2026-07-21T00:00:00.000Z",
+      entries: [
+        {
+          id: "rop3-117966",
+          rop1: null,
+          rop2: { code: "C0326", name: null, display: "C0326 - Not listed" },
+          rop25: { code: "303439", name: "Kabirpanthi", display: "303439 - Kabirpanthi" },
+          rop3: { code: "117966", name: "Kabirpanthi", display: "117966 - Kabirpanthi" },
+          joinIssue: "missing-rop2",
+          joinIssueLabel: "ROP2 code is not listed in the ROP2 table",
+        },
+      ],
+    };
+    vi.mocked(refreshRopCodeResourceFromHis).mockResolvedValue(payload as never);
+    vi.mocked(createReferenceResourceCandidate).mockResolvedValue({
+      unchanged: false,
+      version: { lifecycleState: "valid" },
+    } as never);
+
+    await expect(
+      refreshReferenceResourceCandidate({
+        resourceKey: "rop-codes",
+        actorOwnerId: "admin-1",
+      }),
+    ).resolves.toMatchObject({ version: { lifecycleState: "valid" } });
+
+    expect(createReferenceResourceCandidate).toHaveBeenCalledWith({
+      resourceKey: "rop-codes",
+      payload,
+      actorOwnerId: "admin-1",
+      findings: [
+        {
+          severity: "warning",
+          ruleCode: "missing-rop2-parent",
+          stableEntryKey: "rop3-117966",
+          fieldName: "rop2",
+          message:
+            "ROP25 303439 references ROP2 C0326, which is absent from the HIS ROP2 layer.",
+          details: {
+            rop2Code: "C0326",
+            rop25Code: "303439",
+          },
+        },
+      ],
+    });
+  });
 });
