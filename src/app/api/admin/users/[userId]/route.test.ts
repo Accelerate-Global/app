@@ -3,11 +3,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getCurrentIdentity } from "@/lib/auth";
 import {
+  deleteWorkspaceUser,
   updateWorkspaceUser,
   WorkspaceUserNotFoundError,
   WorkspaceUserPermissionError,
 } from "@/lib/user-management";
-import { PATCH } from "./route";
+import { DELETE, PATCH } from "./route";
 
 vi.mock("@/lib/auth", () => ({
   getCurrentIdentity: vi.fn(),
@@ -20,11 +21,13 @@ vi.mock("@/lib/user-management", async () => {
 
   return {
     ...actual,
+    deleteWorkspaceUser: vi.fn(),
     updateWorkspaceUser: vi.fn(),
   };
 });
 
 const getCurrentIdentityMock = vi.mocked(getCurrentIdentity);
+const deleteWorkspaceUserMock = vi.mocked(deleteWorkspaceUser);
 const updateWorkspaceUserMock = vi.mocked(updateWorkspaceUser);
 
 const identity = {
@@ -203,6 +206,55 @@ describe("/api/admin/users/[userId]", () => {
     expect(response.status).toBe(500);
     await expect(response.json()).resolves.toEqual({
       error: "Could not update the user.",
+    });
+  });
+
+  it("rejects unauthenticated deletions", async () => {
+    getCurrentIdentityMock.mockResolvedValue(null);
+
+    const response = await DELETE(
+      new Request("http://localhost/api/admin/users/user-1", { method: "DELETE" }),
+      { params: Promise.resolve({ userId: "user-1" }) },
+    );
+
+    expect(response.status).toBe(401);
+    expect(deleteWorkspaceUserMock).not.toHaveBeenCalled();
+  });
+
+  it("returns the domain denial when a standard admin tries to delete", async () => {
+    deleteWorkspaceUserMock.mockRejectedValue(
+      new WorkspaceUserPermissionError("Only super admins can delete accounts.", 403),
+    );
+
+    const response = await DELETE(
+      new Request("http://localhost/api/admin/users/user-1", { method: "DELETE" }),
+      { params: Promise.resolve({ userId: "user-1" }) },
+    );
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toEqual({
+      error: "Only super admins can delete accounts.",
+    });
+  });
+
+  it("deletes an eligible account for a super admin", async () => {
+    getCurrentIdentityMock.mockResolvedValue({
+      ...identity,
+      workspaceRole: "super_admin",
+    });
+    deleteWorkspaceUserMock.mockResolvedValue(user);
+
+    const response = await DELETE(
+      new Request("http://localhost/api/admin/users/user-1", { method: "DELETE" }),
+      { params: Promise.resolve({ userId: "user-1" }) },
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({ deletedUserId: "user-1" });
+    expect(deleteWorkspaceUserMock).toHaveBeenCalledWith({
+      currentUserId: "admin-1",
+      currentUserRole: "super_admin",
+      userId: "user-1",
     });
   });
 });

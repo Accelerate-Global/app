@@ -83,7 +83,7 @@ describe("/dashboard/user-management", () => {
     expect(document.querySelector(".max-w-7xl")).toBeTruthy();
     expect(
       screen.getByText(
-        "Review account access and sign-in recency, invite new users, promote admins, and disable accounts from one place.",
+        "Review account access and sign-in recency, invite new users, promote admins, and manage account access from one place.",
       ),
     ).toBeTruthy();
     expect(userManagementClientSpy).toHaveBeenCalledWith(

@@ -516,7 +516,7 @@ export function RopCodesClient({
             <Badge variant="outline">{resource.rop25Count.toLocaleString()} ROP25</Badge>
             <Badge variant="outline">{resource.rop3Count.toLocaleString()} ROP3</Badge>
             <span className="py-1">
-              Retrieved {formatTimestamp(resource.sourceRetrievedAt)}
+              Updated {formatTimestamp(resource.sourceRetrievedAt)}
             </span>
           </div>
           {refreshError ? (
@@ -613,7 +613,7 @@ export function RopCodesClient({
         />
       ) : (
         <div className="text-sm text-muted-foreground">
-          Active version {activeVersion.versionNumber} · {activeVersion.contentChecksum?.slice(0, 12)}
+          Updated {formatTimestamp(activeVersion.sourceRetrievedAt)}
         </div>
       )}
       <RopCodeDetailSheet

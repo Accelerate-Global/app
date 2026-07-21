@@ -37,8 +37,9 @@ describe("ReferenceResourceLifecycle", () => {
         }}
       />,
     );
-    expect(screen.getByText("Active v1")).toBeTruthy();
-    expect(screen.getByText("Retrieved Jul 17, 2026, 12:00 AM UTC")).toBeTruthy();
+    expect(screen.getByText("Updated Jul 17, 2026, 12:00 AM UTC")).toBeTruthy();
+    expect(screen.queryByText("Active v1")).toBeNull();
+    expect(screen.queryByText(/Retrieved/u)).toBeNull();
     expect(screen.getByText("Version 2 is ready for review")).toBeTruthy();
     expect(screen.getByText(/"changed": 2/u)).toBeTruthy();
   });

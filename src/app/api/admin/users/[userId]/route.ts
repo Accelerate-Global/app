@@ -2,6 +2,7 @@ import { logError } from "@/lib/error-logging";
 import { jsonError } from "@/lib/http";
 import { withRoute } from "@/lib/route-guard";
 import {
+  deleteWorkspaceUser,
   updateWorkspaceUser,
   WorkspaceUserNotFoundError,
   WorkspaceUserPermissionError,
@@ -45,6 +46,33 @@ export const PATCH = withRoute(
 
       logError("Failed to update workspace user", error);
       return jsonError("Could not update the user.", 500);
+    }
+  },
+);
+
+export const DELETE = withRoute(
+  { access: "admin", action: "delete users" },
+  async (identity, _request: Request, context: UserContext) => {
+    try {
+      const { userId } = await context.params;
+      const user = await deleteWorkspaceUser({
+        currentUserId: identity.ownerId,
+        currentUserRole: identity.workspaceRole,
+        userId,
+      });
+
+      return Response.json({ deletedUserId: user.id });
+    } catch (error) {
+      if (error instanceof WorkspaceUserNotFoundError) {
+        return jsonError(error.message, 404);
+      }
+
+      if (error instanceof WorkspaceUserPermissionError) {
+        return jsonError(error.message, error.status);
+      }
+
+      logError("Failed to delete workspace user", error);
+      return jsonError("Could not delete the user.", 500);
     }
   },
 );

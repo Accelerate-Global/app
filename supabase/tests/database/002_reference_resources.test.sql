@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(29);
+select plan(31);
 
 select results_eq(
   $$
@@ -440,6 +440,47 @@ select throws_ok(
   '23514',
   null,
   'rejected versions require actor, reason, and timestamp'
+);
+
+select lives_ok(
+  $$
+    insert into private.rop_reference_people (
+      version_id, stable_key, row_type, rop2_code, rop25_code, status,
+      join_issue, join_issue_label, search_text
+    ) values (
+      '71000000-0000-4000-8000-000000000003',
+      'rop25:missing-parent',
+      'rop25-parent',
+      'C9999',
+      '399999',
+      'Active',
+      'missing-rop2',
+      'ROP2 C9999 is not listed',
+      '399999 missing parent'
+    )
+  $$,
+  'bounded missing ROP2 warnings persist in typed projections'
+);
+
+select throws_ok(
+  $$
+    insert into private.rop_reference_people (
+      version_id, stable_key, row_type, rop25_code, status,
+      join_issue, join_issue_label, search_text
+    ) values (
+      '71000000-0000-4000-8000-000000000003',
+      'rop25:unknown-warning',
+      'rop25-parent',
+      '399998',
+      'Active',
+      'unknown-warning',
+      'Unrecognized warning',
+      '399998 unknown warning'
+    )
+  $$,
+  '23514',
+  null,
+  'unknown ROP join warnings remain rejected'
 );
 
 set local role anon;

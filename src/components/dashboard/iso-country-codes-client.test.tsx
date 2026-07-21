@@ -182,6 +182,9 @@ describe("IsoCountryCodesClient", () => {
     expect(screen.queryByRole("columnheader", { name: "Classification" })).toBeNull();
     expect(screen.queryByRole("columnheader", { name: "Copy" })).toBeNull();
     expect(screen.queryByText(/curated rows/)).toBeNull();
+    expect(screen.getByText("Updated May 6, 2026, 12:00 AM UTC")).toBeTruthy();
+    expect(screen.queryByText(/Active v/u)).toBeNull();
+    expect(screen.queryByText(/Retrieved/u)).toBeNull();
     expect(screen.getByRole("button", { name: "Refresh" }).getAttribute("data-smoke-write")).toBe(
       "unsafe",
     );
@@ -223,6 +226,7 @@ describe("IsoCountryCodesClient", () => {
     expect(screen.getByText("the Islamic Republic of Afghanistan")).toBeTruthy();
     expect(screen.getByText("unterm-m49")).toBeTruthy();
     expect(screen.getByText("Source URI")).toBeTruthy();
+    expect(screen.getAllByText("Updated").length).toBeGreaterThan(0);
     expect(screen.getByText("Afganistan")).toBeTruthy();
     expect(screen.getByText("Islamic Republic of Afghanistan")).toBeTruthy();
     expect(screen.getAllByText("004").length).toBeGreaterThan(0);

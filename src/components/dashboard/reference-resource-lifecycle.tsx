@@ -148,9 +148,7 @@ export function ReferenceResourceLifecycle({
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-        <Badge variant="outline">Active v{activeVersion.versionNumber}</Badge>
-        <span>Retrieved {formatLifecycleTimestamp(activeVersion.sourceRetrievedAt)}</span>
-        <span className="font-mono text-xs">{activeVersion.contentChecksum?.slice(0, 12)}</span>
+        <span>Updated {formatLifecycleTimestamp(activeVersion.sourceRetrievedAt)}</span>
       </div>
 
       {reviewCandidate ? (

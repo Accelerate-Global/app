@@ -530,6 +530,40 @@ export function assertWorkspaceUserMutationAllowed(input: {
   }
 }
 
+export function assertWorkspaceUserDeletionAllowed(input: {
+  currentUserId: string;
+  currentUserRole: WorkspaceRole;
+  targetUser: WorkspaceUser;
+  users: WorkspaceUser[];
+}) {
+  if (!isWorkspaceSuperAdmin(input.currentUserRole)) {
+    throw new WorkspaceUserPermissionError(
+      "Only super admins can delete accounts.",
+      403,
+    );
+  }
+
+  if (input.targetUser.id === input.currentUserId) {
+    throw new WorkspaceUserPermissionError(
+      "You cannot delete your own account from User Management.",
+      400,
+    );
+  }
+
+  const isTargetActiveSuperAdmin =
+    isWorkspaceSuperAdmin(input.targetUser.workspaceRole) &&
+    input.targetUser.accountStatus !== "disabled";
+
+  if (
+    isTargetActiveSuperAdmin &&
+    getActiveWorkspaceSuperAdminCount(input.users) <= 1
+  ) {
+    throw new WorkspaceUserPermissionError(
+      "The last active super admin cannot be deleted.",
+    );
+  }
+}
+
 export function assertWorkspaceUserPasswordResetAllowed(
   targetUser: Pick<WorkspaceUser, "email" | "accountStatus">,
 ): asserts targetUser is Pick<WorkspaceUser, "accountStatus"> & { email: string } {
@@ -727,6 +761,43 @@ export async function updateWorkspaceUser(input: {
   return mapWorkspaceUserRecordToWorkspaceUser(
     await getWorkspaceUserRecordByIdOrThrow(input.userId),
   );
+}
+
+export async function deleteWorkspaceUser(input: {
+  currentUserId: string;
+  currentUserRole: WorkspaceRole;
+  userId: string;
+}) {
+  const [userRecords, targetUserRecord] = await Promise.all([
+    listWorkspaceUserRecords(),
+    getWorkspaceUserRecordByIdOrThrow(input.userId),
+  ]);
+  const users = sortWorkspaceUsers(
+    userRecords.map(mapWorkspaceUserRecordToWorkspaceUser),
+  );
+  const targetUser = mapWorkspaceUserRecordToWorkspaceUser(targetUserRecord);
+
+  assertWorkspaceUserDeletionAllowed({
+    currentUserId: input.currentUserId,
+    currentUserRole: input.currentUserRole,
+    targetUser,
+    users,
+  });
+
+  await revokeWorkspaceUserSessions(input.userId);
+
+  const admin = createSupabaseAdminClient();
+  const deleteResult = await admin.auth.admin.deleteUser(input.userId, false);
+
+  if (deleteResult.error) {
+    throw deleteResult.error;
+  }
+
+  if (targetUser.email) {
+    await removeSignupAllowlistEmail(normalizeEmail(targetUser.email));
+  }
+
+  return targetUser;
 }
 
 export async function sendWorkspaceUserPasswordResetEmail(input: {

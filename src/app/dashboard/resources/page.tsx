@@ -68,7 +68,7 @@ export default async function ResourcesPage() {
                   <CardDescription>{resource.description}</CardDescription>
                   {resource.activeVersion ? (
                     <CardDescription>
-                      Active v{resource.activeVersion.versionNumber} · Retrieved{" "}
+                      Updated{" "}
                       {new Date(resource.activeVersion.sourceRetrievedAt).toLocaleDateString()}
                     </CardDescription>
                   ) : (

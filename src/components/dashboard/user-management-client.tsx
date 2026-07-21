@@ -4,6 +4,7 @@ import {
   CopyIcon,
   Loader2Icon,
   ShieldIcon,
+  Trash2Icon,
   UserPlusIcon,
   UsersIcon,
 } from "lucide-react";
@@ -20,6 +21,16 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -186,6 +197,16 @@ async function updateUserRecord(input: {
   return ((await response.json()) as WorkspaceUserResponse).user;
 }
 
+async function deleteUserRecord(userId: string) {
+  const response = await fetch(`/api/admin/users/${userId}`, {
+    method: "DELETE",
+  });
+
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response, "The user could not be deleted."));
+  }
+}
+
 async function sendUserPasswordResetEmail(userId: string) {
   const response = await fetch(`/api/admin/users/${userId}/password-reset`, {
     method: "POST",
@@ -240,6 +261,7 @@ export function UserManagementClient({
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isInviting, setIsInviting] = useState(false);
   const [isUpdatingUserId, setIsUpdatingUserId] = useState<string | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const isActorSuperAdmin = workspaceRole === "super_admin";
   const filteredUsers = useMemo(() => {
     const normalizedSearch = searchQuery.trim().toLowerCase();
@@ -425,6 +447,32 @@ export function UserManagementClient({
     }
   }
 
+  async function handleDeleteUser() {
+    if (!selectedUser) {
+      return;
+    }
+
+    const deletedUserId = selectedUser.id;
+    const deletedUserName = getUserDisplayName(selectedUser);
+    setErrorMessage(null);
+    setSuccessMessage(null);
+    setIsUpdatingUserId(deletedUserId);
+
+    try {
+      await deleteUserRecord(deletedUserId);
+      setUsers((current) => current.filter((user) => user.id !== deletedUserId));
+      setIsDeleteDialogOpen(false);
+      setSelectedUserId(null);
+      setSuccessMessage(`${deletedUserName} was permanently deleted.`);
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "The user could not be deleted.",
+      );
+    } finally {
+      setIsUpdatingUserId(null);
+    }
+  }
+
   const isCurrentUserSelected = selectedUser?.id === currentUserId;
   const isSelectedUserSuperAdmin = selectedUser?.workspaceRole === "super_admin";
   const canManageSelectedUser =
@@ -487,6 +535,17 @@ export function UserManagementClient({
     !isSelectedUserBusy &&
     Boolean(selectedUser.email) &&
     selectedUser.accountStatus === "pending_invite";
+  const deletesLastActiveSuperAdmin =
+    selectedUser !== null &&
+    selectedUser.workspaceRole === "super_admin" &&
+    selectedUser.accountStatus !== "disabled" &&
+    activeSuperAdminCount <= 1;
+  const canDeleteSelectedUser =
+    selectedUser !== null &&
+    isActorSuperAdmin &&
+    !isCurrentUserSelected &&
+    !isSelectedUserBusy &&
+    !deletesLastActiveSuperAdmin;
 
   return (
     <div className="grid gap-6">
@@ -533,7 +592,15 @@ export function UserManagementClient({
               onValueChange={(value) => setInviteRole(value as WorkspaceRole)}
             >
               <SelectTrigger id="invite-role" className="w-full justify-between">
-                <SelectValue />
+                <SelectValue>
+                  {(selectedValue) =>
+                    ROLE_LABELS[
+                      (typeof selectedValue === "string"
+                        ? selectedValue
+                        : "pro") as WorkspaceRole
+                    ]
+                  }
+                </SelectValue>
               </SelectTrigger>
               <SelectContent align="start">
                 <SelectItem value="pro">Pro</SelectItem>
@@ -545,17 +612,19 @@ export function UserManagementClient({
               </SelectContent>
             </Select>
           </div>
-          <Button
-            type="button"
-            className="md:self-end"
-            disabled={isInviting || !inviteEmail.trim()}
-            onClick={() => {
-              void handleInviteUser();
-            }}
-          >
-            {isInviting ? <Loader2Icon className="animate-spin" /> : null}
-            Invite user
-          </Button>
+          <div className="flex h-full items-end">
+            <Button
+              type="button"
+              className="w-full"
+              disabled={isInviting || !inviteEmail.trim()}
+              onClick={() => {
+                void handleInviteUser();
+              }}
+            >
+              {isInviting ? <Loader2Icon className="animate-spin" /> : null}
+              Invite user
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
@@ -839,7 +908,15 @@ export function UserManagementClient({
                         id="selected-user-role"
                         className="w-full justify-between"
                       >
-                        <SelectValue />
+                        <SelectValue>
+                          {(selectedValue) =>
+                            ROLE_LABELS[
+                              (typeof selectedValue === "string"
+                                ? selectedValue
+                                : "pro") as WorkspaceRole
+                            ]
+                          }
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent align="start">
                         <SelectItem value="pro">Pro</SelectItem>
@@ -918,6 +995,64 @@ export function UserManagementClient({
                       {isSelectedUserBusy ? <Loader2Icon className="animate-spin" /> : null}
                       Re-enable account
                     </Button>
+                    {isActorSuperAdmin ? (
+                      <Dialog
+                        open={isDeleteDialogOpen}
+                        onOpenChange={setIsDeleteDialogOpen}
+                      >
+                        <DialogTrigger
+                          render={
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              className="w-full"
+                              disabled={!canDeleteSelectedUser}
+                            />
+                          }
+                          data-smoke-trigger="user-management-delete-dialog"
+                          data-smoke-write="unsafe"
+                        >
+                          <Trash2Icon />
+                          Delete account
+                        </DialogTrigger>
+                        <DialogContent
+                          className="max-w-md"
+                          data-smoke-surface="user-management-delete-dialog"
+                          data-smoke-ready="user-management-delete-dialog"
+                        >
+                          <DialogHeader>
+                            <DialogTitle>Permanently delete account?</DialogTitle>
+                            <DialogDescription>
+                              This removes {getUserDisplayName(selectedUser)} from
+                              Supabase Auth and the workspace allowlist. This action
+                              cannot be undone.
+                            </DialogDescription>
+                          </DialogHeader>
+                          <DialogFooter className="sm:flex-row sm:justify-end">
+                            <DialogClose
+                              render={<Button type="button" variant="outline" />}
+                            >
+                              Cancel
+                            </DialogClose>
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              disabled={!canDeleteSelectedUser}
+                              onClick={() => {
+                                void handleDeleteUser();
+                              }}
+                            >
+                              {isSelectedUserBusy ? (
+                                <Loader2Icon className="animate-spin" />
+                              ) : (
+                                <Trash2Icon />
+                              )}
+                              Permanently delete
+                            </Button>
+                          </DialogFooter>
+                        </DialogContent>
+                      </Dialog>
+                    ) : null}
                   </div>
 
                   {!selectedUser.email ? (
@@ -951,6 +1086,13 @@ export function UserManagementClient({
                     <p className="text-sm text-muted-foreground">
                       This account is the last active super admin and cannot be demoted
                       or disabled.
+                    </p>
+                  ) : null}
+
+                  {!isCurrentUserSelected && deletesLastActiveSuperAdmin ? (
+                    <p className="text-sm text-muted-foreground">
+                      This account is the last active super admin and cannot be
+                      deleted.
                     </p>
                   ) : null}
 
