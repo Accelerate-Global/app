@@ -118,7 +118,8 @@ methods.
 The system SHALL mark a ROP candidate invalid when it has malformed rows,
 duplicate codes, suspiciously low table counts, invalid required hierarchy
 links beyond documented tolerance limits, or inconsistent package artifacts,
-projections, counts, or checksum.
+projections, counts, or checksum. The persisted typed projection SHALL accept
+every structured join-warning value produced by valid bounded-tolerance builds.
 
 #### Scenario: HIS candidate is valid
 - **WHEN** all required HIS layers return valid rows above their completeness
@@ -139,6 +140,7 @@ projections, counts, or checksum.
 - **THEN** affected rows retain the referenced ROP2 code as `Not listed`, their
   ROP25, ROP3, and geography data, and no invented ROP1 value
 - **AND** each visible affected row produces a structured warning finding
+- **AND** each affected typed projection row persists the recognized warning state
 - **AND** the warning-only candidate remains eligible for explicit activation
 
 #### Scenario: Missing ROP2 parents exceed tolerance
@@ -159,6 +161,10 @@ projections, counts, or checksum.
   projections and private artifacts
 - **THEN** validation proves exact entry, term, geography, join-issue count, and
   canonical checksum parity before activation
+
+#### Scenario: Unknown join-warning value is rejected
+- **WHEN** a typed ROP projection attempts to persist an unrecognized join-warning value
+- **THEN** the database rejects the row
 
 ### Requirement: ROP code resource has UI smoke coverage
 The system SHALL register the ROP code page in the UI smoke route registry and

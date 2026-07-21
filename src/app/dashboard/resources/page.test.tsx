@@ -111,6 +111,9 @@ describe("/dashboard/resources", () => {
     expect(
       screen.getByRole("link", { name: /ROP Codes resource/ }).getAttribute("href"),
     ).toBe("/dashboard/rop-codes");
+    expect(screen.getAllByText(/Updated/u)).toHaveLength(2);
+    expect(screen.queryByText(/Active v/u)).toBeNull();
+    expect(screen.queryByText(/Retrieved/u)).toBeNull();
     expect(screen.queryByText("Open resource")).toBeNull();
     expect(document.querySelector('[data-smoke-page="resources"]')).toBeTruthy();
   });

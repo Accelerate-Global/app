@@ -49,7 +49,7 @@ export default async function UserManagementPage() {
               </h1>
               <p className="max-w-3xl text-base leading-7 text-muted-foreground sm:text-lg">
                 Review account access and sign-in recency, invite new users,
-                promote admins, and disable accounts from one place.
+                promote admins, and manage account access from one place.
               </p>
             </div>
           </div>

@@ -69,6 +69,11 @@ describe("UserManagementClient", () => {
     const inviteFormGrid = container.querySelector(".md\\:grid-cols-\\[minmax\\(0\\,1fr\\)_12rem_auto\\]");
 
     expect(inviteFormGrid?.className).toContain("md:items-start");
+    expect(screen.getByLabelText("Role").textContent).toContain("Pro");
+    expect(screen.getByLabelText("Role").textContent).not.toContain("pro");
+    expect(
+      screen.getByRole("button", { name: "Invite user" }).parentElement?.className,
+    ).toContain("items-end");
   });
 
   it("displays super admin, admin, pro, and basic workspace roles", () => {
@@ -143,6 +148,7 @@ describe("UserManagementClient", () => {
       (screen.getByRole("button", { name: "Disable account" }) as HTMLButtonElement)
         .disabled,
     ).toBe(true);
+    expect(screen.queryByRole("button", { name: "Delete account" })).toBeNull();
   });
 
   it("allows super admins to manage other super admin accounts", async () => {
@@ -216,6 +222,70 @@ describe("UserManagementClient", () => {
     expect(screen.getAllByText("email")).toHaveLength(1);
     expect(container.querySelector(".rounded-2xl.border.border-border.p-4")).toBeNull();
     expect(container.querySelector(".rounded-xl.border.border-border.p-3.text-sm")).toBeNull();
+  });
+
+  it("requires confirmation before a super admin deletes an account", async () => {
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ deletedUserId: "user-1" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    renderUserManagementClient(
+      [
+        createUser({
+          id: "admin-1",
+          email: "super@example.com",
+          fullName: "Current Super",
+          workspaceRole: "super_admin",
+        }),
+        createUser({ id: "user-1", fullName: "Delete Me" }),
+      ],
+      "super_admin",
+    );
+
+    fireEvent.click(screen.getByText("Delete Me").closest("tr")!);
+    fireEvent.click(await screen.findByRole("button", { name: "Delete account" }));
+
+    expect(
+      await screen.findByRole("heading", { name: "Permanently delete account?" }),
+    ).toBeTruthy();
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Permanently delete" }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith("/api/admin/users/user-1", {
+        method: "DELETE",
+      });
+    });
+    expect(await screen.findByText("Delete Me was permanently deleted.")).toBeTruthy();
+    expect(screen.queryByText("Delete Me")).toBeNull();
+  });
+
+  it("does not send a deletion request when confirmation is cancelled", async () => {
+    renderUserManagementClient(
+      [
+        createUser({
+          id: "admin-1",
+          workspaceRole: "super_admin",
+          fullName: "Current Super",
+        }),
+        createUser({ id: "user-1", fullName: "Keep Me" }),
+      ],
+      "super_admin",
+    );
+
+    fireEvent.click(screen.getByText("Keep Me").closest("tr")!);
+    fireEvent.click(await screen.findByRole("button", { name: "Delete account" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Cancel" }));
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole("heading", { name: "Permanently delete account?" }),
+      ).toBeNull();
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("resends invite emails for pending users", async () => {

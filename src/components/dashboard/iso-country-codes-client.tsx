@@ -366,7 +366,7 @@ function CountryCodeDetailSheet({
                   <DetailValue label="Resource source">
                     {resource.sourceName}
                   </DetailValue>
-                  <DetailValue label="Retrieved">
+                  <DetailValue label="Updated">
                     {formatTimestamp(resource.sourceRetrievedAt)}
                   </DetailValue>
                 </div>
@@ -799,7 +799,7 @@ export function IsoCountryCodesClient({
         />
       ) : (
         <div className="text-sm text-muted-foreground">
-          Active version {currentActiveVersion.versionNumber} · {currentActiveVersion.contentChecksum?.slice(0, 12)}
+          Updated {formatTimestamp(currentActiveVersion.sourceRetrievedAt)}
         </div>
       )}
       <CountryCodeDetailSheet

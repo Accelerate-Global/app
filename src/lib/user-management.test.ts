@@ -6,10 +6,12 @@ import { getDb } from "@/db";
 import type { WorkspaceUser } from "@/lib/api-types";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import {
+  assertWorkspaceUserDeletionAllowed,
   assertWorkspaceUserInviteResendAllowed,
   assertWorkspaceUserInviteAllowed,
   assertWorkspaceUserMutationAllowed,
   assertWorkspaceUserPasswordResetAllowed,
+  deleteWorkspaceUser,
   getActiveWorkspaceAdminCount,
   getActiveWorkspaceSuperAdminCount,
   getWorkspaceUserAccountStatus,
@@ -21,7 +23,8 @@ import {
   WorkspaceUserPermissionError,
 } from "@/lib/user-management";
 
-const { executeMock, inviteUserByEmailMock, updateUserByIdMock } = vi.hoisted(() => ({
+const { deleteUserMock, executeMock, inviteUserByEmailMock, updateUserByIdMock } = vi.hoisted(() => ({
+  deleteUserMock: vi.fn(),
   executeMock: vi.fn(),
   inviteUserByEmailMock: vi.fn(),
   updateUserByIdMock: vi.fn(),
@@ -146,12 +149,14 @@ describe("user-management", () => {
     createSupabaseAdminClientMock.mockReturnValue({
       auth: {
         admin: {
+          deleteUser: deleteUserMock,
           inviteUserByEmail: inviteUserByEmailMock,
           updateUserById: updateUserByIdMock,
         },
       },
     } as never);
     updateUserByIdMock.mockResolvedValue({ data: { user: null }, error: null });
+    deleteUserMock.mockResolvedValue({ data: { user: null }, error: null });
   });
 
   it("maps invited users to pending invite status", () => {
@@ -515,6 +520,93 @@ describe("user-management", () => {
         workspaceRole: "pro",
       }),
     ).not.toThrow();
+  });
+
+  it("allows only super admins to delete accounts", () => {
+    expect(() =>
+      assertWorkspaceUserDeletionAllowed({
+        currentUserId: "admin-1",
+        currentUserRole: "admin",
+        targetUser: createWorkspaceUser({ id: "user-1" }),
+        users: [createWorkspaceUser({ id: "user-1" })],
+      }),
+    ).toThrowError(
+      new WorkspaceUserPermissionError("Only super admins can delete accounts.", 403),
+    );
+  });
+
+  it("rejects super admin self-deletion", () => {
+    const currentUser = createWorkspaceUser({
+      id: "super-1",
+      workspaceRole: "super_admin",
+    });
+
+    expect(() =>
+      assertWorkspaceUserDeletionAllowed({
+        currentUserId: "super-1",
+        currentUserRole: "super_admin",
+        targetUser: currentUser,
+        users: [currentUser],
+      }),
+    ).toThrowError(
+      new WorkspaceUserPermissionError(
+        "You cannot delete your own account from User Management.",
+        400,
+      ),
+    );
+  });
+
+  it("rejects deleting the last active super admin", () => {
+    const targetUser = createWorkspaceUser({
+      id: "super-1",
+      workspaceRole: "super_admin",
+    });
+
+    expect(() =>
+      assertWorkspaceUserDeletionAllowed({
+        currentUserId: "super-2",
+        currentUserRole: "super_admin",
+        targetUser,
+        users: [targetUser],
+      }),
+    ).toThrowError(
+      new WorkspaceUserPermissionError(
+        "The last active super admin cannot be deleted.",
+      ),
+    );
+  });
+
+  it("revokes sessions, hard-deletes the auth user, and removes the allowlist entry", async () => {
+    const targetRecord = createWorkspaceUserRecord({
+      id: "user-1",
+      email: " Pro@Example.com ",
+      raw_app_meta_data: { workspace_role: "pro" },
+      confirmed_at: "2026-04-15T20:02:00.000Z",
+      email_confirmed_at: "2026-04-15T20:02:00.000Z",
+    });
+    const actorRecord = createWorkspaceUserRecord({
+      id: "super-1",
+      email: "super@example.com",
+      raw_app_meta_data: { workspace_role: "super_admin" },
+      confirmed_at: "2026-04-15T20:02:00.000Z",
+      email_confirmed_at: "2026-04-15T20:02:00.000Z",
+    });
+    executeMock
+      .mockResolvedValueOnce([actorRecord, targetRecord])
+      .mockResolvedValueOnce([targetRecord])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
+
+    await expect(
+      deleteWorkspaceUser({
+        currentUserId: "super-1",
+        currentUserRole: "super_admin",
+        userId: "user-1",
+      }),
+    ).resolves.toMatchObject({ id: "user-1", email: " Pro@Example.com " });
+
+    expect(deleteUserMock).toHaveBeenCalledWith("user-1", false);
+    expect(executeMock).toHaveBeenCalledTimes(4);
   });
 
   it("rejects password reset emails for users without an email address", () => {

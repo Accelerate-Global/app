@@ -186,6 +186,22 @@ describe("versioned reference-resource schema", () => {
     expect(migration).toContain("'reference-resource-artifacts'");
     expect(migration).toContain("revoke all on private.reference_resources from public, anon, authenticated");
   });
+
+  it("allows the bounded missing ROP2 projection warning", async () => {
+    const migration = await readFile(
+      path.join(
+        process.cwd(),
+        "supabase/migrations/20260721054141_allow_missing_rop2_join_issue.sql",
+      ),
+      "utf8",
+    );
+
+    expect(migration).toContain("rop_reference_people_join_issue_check");
+    expect(migration).toContain("'missing-rop2'");
+    expect(migration).toContain("'missing-rop25'");
+    expect(migration).toContain("'rop2-conflict'");
+    expect(migration).toContain("'parent-only-rop25'");
+  });
 });
 
 describe("dataset versioning schema", () => {
