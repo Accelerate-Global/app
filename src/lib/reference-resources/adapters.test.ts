@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import { getGeneratedIsoCountryCodeResource } from "@/lib/iso-country-codes";
-import { getGeneratedRopCodeResource } from "@/lib/rop-codes";
+import {
+  getGeneratedRopCodeResource,
+  type RopCodeEntry,
+} from "@/lib/rop-codes";
 
 import {
   diffReferenceResources,
@@ -56,6 +59,44 @@ describe("reference resource adapters", () => {
     expect(checksumReferenceResource(resource)).toBe(
       "7772f46db9391489866b8a042a7c61493e2a6dabf61d84b2524e9b91263b3f6a",
     );
+  });
+
+  it("projects a bounded missing ROP2 code without inventing a term or ROP1 parent", () => {
+    const resource = getGeneratedRopCodeResource();
+    const target = resource.entries.find((entry) => entry.id === "rop3-100425")!;
+    const prepared = prepareReferenceResource(ROP_RESOURCE_KEY, {
+      ...resource,
+      joinIssueCounts: {
+        ...resource.joinIssueCounts,
+        "missing-rop2": 1,
+      },
+      entries: resource.entries.map((entry) =>
+        entry.id === target.id
+          ? ({
+              ...entry,
+              rop1: null,
+              rop2: {
+                code: "C0999",
+                name: null,
+                display: "C0999 - Not listed",
+              },
+              joinIssue: "missing-rop2",
+              joinIssueLabel: "ROP2 code is not listed in the ROP2 table",
+            } satisfies RopCodeEntry)
+          : entry,
+      ),
+    });
+
+    expect(prepared.ropPeople.find((entry) => entry.stableKey === target.id)).toMatchObject({
+      rop1Code: null,
+      rop2Code: "C0999",
+      rop25Code: target.rop25?.code,
+      rop3Code: target.rop3?.code,
+      joinIssue: "missing-rop2",
+    });
+    expect(
+      prepared.ropTerms.some((term) => term.level === "rop2" && term.code === "C0999"),
+    ).toBe(false);
   });
 
   it("blocks duplicate country keys and malformed ROP parent/detail packages", () => {

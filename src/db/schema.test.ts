@@ -172,6 +172,7 @@ describe("versioned reference-resource schema", () => {
     expect(countryReferenceEntries.stableKey.name).toBe("stable_key");
     expect(ropReferenceTerms.parentCode.name).toBe("parent_code");
     expect(ropReferencePeople.rop3Code.name).toBe("rop3_code");
+    expect(ropReferencePeople.joinIssue.name).toBe("join_issue");
     expect(ropReferenceGeographies.peopleId3.name).toBe("people_id3");
   });
 

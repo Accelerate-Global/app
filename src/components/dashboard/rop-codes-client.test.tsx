@@ -235,6 +235,51 @@ describe("RopCodesClient", () => {
     );
   });
 
+  it("omits page-load counts and warns only for actionable join issues", () => {
+    const { container, rerender } = render(
+      <RopCodesClient
+        initialResource={buildResource()}
+        activeVersion={activeVersion}
+        initialNextCursor={null}
+        canRefresh={false}
+      />,
+    );
+
+    expect(screen.queryByText(/loaded of/i)).toBeNull();
+    expect(screen.getByText("1 ROP1")).toBeTruthy();
+    expect(screen.getByText("1 ROP2")).toBeTruthy();
+    expect(screen.getByText("2 ROP25")).toBeTruthy();
+    expect(screen.getByText("1 ROP3")).toBeTruthy();
+    expect(container.querySelector(".lucide-triangle-alert")).toBeNull();
+
+    fireEvent.click(screen.getByRole("row", { name: /300031 - Acharaj/ }));
+    expect(screen.queryByText("ROP25 code has no ROP3 child")).toBeNull();
+
+    const resourceWithActionableIssue = buildResource();
+    resourceWithActionableIssue.entries[1] = {
+      ...resourceWithActionableIssue.entries[1],
+      rop1: null,
+      rop2: { code: "C0326", name: null, display: "C0326 - Not listed" },
+      joinIssue: "missing-rop2",
+      joinIssueLabel: "ROP2 code is not listed in the ROP2 table",
+    };
+    rerender(
+      <RopCodesClient
+        key="actionable-join-issue"
+        initialResource={resourceWithActionableIssue}
+        activeVersion={activeVersion}
+        initialNextCursor={null}
+        canRefresh={false}
+      />,
+    );
+
+    expect(container.querySelector(".lucide-triangle-alert")).toBeTruthy();
+    fireEvent.click(screen.getByRole("row", { name: /300031 - Acharaj/ }));
+    expect(
+      screen.getByText("ROP2 code is not listed in the ROP2 table"),
+    ).toBeTruthy();
+  });
+
   it("refreshes from HIS for admins", async () => {
     vi.stubGlobal(
       "fetch",

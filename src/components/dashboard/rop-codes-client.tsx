@@ -104,6 +104,10 @@ function getTermDetail(
   return term ? detailsByCode[term.code] ?? null : null;
 }
 
+function hasActionableJoinIssue(entry: RopCodeEntry) {
+  return entry.joinIssue !== null && entry.joinIssue !== "parent-only-rop25";
+}
+
 function TermDetailSection({
   title,
   term,
@@ -196,7 +200,7 @@ function RopCodeDetailSheet({
                   <Badge variant={entry.status === "Active" ? "secondary" : "outline"}>
                     {entry.status}
                   </Badge>
-                  {entry.joinIssueLabel ? (
+                  {hasActionableJoinIssue(entry) && entry.joinIssueLabel ? (
                     <Badge variant="outline" className="gap-1">
                       <AlertTriangleIcon className="size-3.5" />
                       {entry.joinIssueLabel}
@@ -507,9 +511,6 @@ export function RopCodesClient({
             </div>
           </div>
           <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
-            <Badge variant="outline">
-              {visibleEntries.length.toLocaleString()} loaded of {resource.entryCount.toLocaleString()}
-            </Badge>
             <Badge variant="outline">{resource.rop1Count.toLocaleString()} ROP1</Badge>
             <Badge variant="outline">{resource.rop2Count.toLocaleString()} ROP2</Badge>
             <Badge variant="outline">{resource.rop25Count.toLocaleString()} ROP25</Badge>
@@ -580,7 +581,7 @@ export function RopCodesClient({
                           <span className="min-w-0 flex-1">
                             <RopCell term={entry.rop3} />
                           </span>
-                          {entry.joinIssueLabel ? (
+                          {hasActionableJoinIssue(entry) ? (
                             <AlertTriangleIcon className="size-4 shrink-0 text-amber-600" />
                           ) : null}
                         </span>
