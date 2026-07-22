@@ -1,12 +1,10 @@
 "use client";
 
-import { CableIcon, PlusIcon } from "lucide-react";
-import Link from "next/link";
+import { CableIcon } from "lucide-react";
 import { useMemo, type KeyboardEvent } from "react";
 import { useRouter } from "next/navigation";
 
 import { Badge } from "@/components/ui/badge";
-import { buttonVariants } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -118,25 +116,18 @@ export function ApiConnectionsClient({
           <div className="space-y-1.5">
             <CardTitle className="flex items-center gap-2 text-2xl">
               <CableIcon className="size-5 text-muted-foreground" />
-              Dataset sources
+              Datasets
             </CardTitle>
             <CardDescription>
               Open Google Sheets and code-managed integrations to refresh data or
               review diagnostics.
             </CardDescription>
           </div>
-          <Link
-            href="/dashboard/datasets/new?source=google-sheets"
-            className={buttonVariants({ size: "sm" })}
-          >
-            <PlusIcon className="size-4" />
-            Add connection
-          </Link>
         </CardHeader>
         <CardContent>
           {initialConnections.length === 0 ? (
             <div className="rounded-xl border border-dashed border-border px-4 py-8 text-sm text-muted-foreground">
-              No connections exist yet. Add a connection to connect a Google Sheet.
+              No datasets are connected.
             </div>
           ) : (
             <Table>

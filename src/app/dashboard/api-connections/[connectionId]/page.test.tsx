@@ -173,7 +173,7 @@ describe("/dashboard/api-connections/[connectionId]", () => {
     expect(container.querySelector(".max-w-7xl")).toBeTruthy();
     expect(screen.getByRole("link", { name: /Back to Connections/ })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "IMB (People Groups)" })).toBeTruthy();
-    expect(screen.getByText("Success")).toBeTruthy();
+    expect(screen.getByText("Up to date")).toBeTruthy();
     expect(screen.getByTestId("api-connection-detail-client").textContent).toBe(
       "IMB (People Groups):1:sheets@app-project.iam.gserviceaccount.com",
     );
