@@ -68,6 +68,7 @@ import type {
   GoogleSheetsHeaderSelectionInput,
   GoogleSheetsHeaderSelectionUpdateResponse,
 } from "@/lib/api-types";
+import { formatUtcTimestamp } from "@/lib/date-time";
 import type {
   ImbFormingRun,
   ImbFormingRunResponse,
@@ -107,17 +108,6 @@ function getGoogleSheetsProviderConfig(
     connection.providerConfig?.provider === "google_sheets"
     ? connection.providerConfig
     : null;
-}
-
-function formatTimestamp(value: string | null) {
-  if (!value) {
-    return "Not recorded";
-  }
-
-  return new Intl.DateTimeFormat("en-US", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
 }
 
 function formatDuration(run: ApiConnectionRun) {
@@ -668,7 +658,7 @@ function RunDetailSheet({
             <SheetHeader className="border-b border-border px-6 py-5">
               <SheetTitle>Run detail</SheetTitle>
               <SheetDescription>
-                {getRunLabel(run)} initiated {formatTimestamp(run.createdAt)}.
+                {getRunLabel(run)} initiated {formatUtcTimestamp(run.createdAt)}.
               </SheetDescription>
             </SheetHeader>
 
@@ -737,7 +727,7 @@ function RunDetailSheet({
                             : "text-muted-foreground",
                         )}
                       >
-                        <span>{formatTimestamp(log.createdAt)}</span>
+                        <span>{formatUtcTimestamp(log.createdAt)}</span>
                         <span>{log.message}</span>
                       </div>
                     ))}
@@ -1175,7 +1165,7 @@ export function ApiConnectionDetailClient({
         ),
         cell: ({ row }) => (
           <span className="font-mono text-xs">
-            {formatTimestamp(row.original.createdAt)}
+            {formatUtcTimestamp(row.original.createdAt)}
           </span>
         ),
         meta: { headerTitle: "Initiated At" },
@@ -1233,7 +1223,7 @@ export function ApiConnectionDetailClient({
         ),
         cell: ({ row }) => (
           <span className="font-mono text-xs">
-            {formatTimestamp(row.original.startedAt)}
+            {formatUtcTimestamp(row.original.startedAt)}
           </span>
         ),
         meta: { headerTitle: "Started At" },
@@ -1253,7 +1243,7 @@ export function ApiConnectionDetailClient({
         ),
         cell: ({ row }) => (
           <span className="font-mono text-xs">
-            {formatTimestamp(row.original.completedAt)}
+            {formatUtcTimestamp(row.original.completedAt)}
           </span>
         ),
         meta: { headerTitle: "Completed At" },
@@ -1692,7 +1682,7 @@ export function ApiConnectionDetailClient({
                 {getRunLabel(latestRun)}
               </Badge>
               <span className="font-mono text-xs">
-                Last initiated {formatTimestamp(latestRun.createdAt)}
+                Last initiated {formatUtcTimestamp(latestRun.createdAt)}
               </span>
             </div>
           ) : null}
