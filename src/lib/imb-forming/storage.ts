@@ -4,6 +4,7 @@ import {
   createImbFormingArtifactStoragePath,
   getApiConnectionRunArtifactStorageBucket,
 } from "@/lib/dataset-storage";
+import { logError } from "@/lib/error-logging";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 import type { ImbFormingArtifactKind } from "./types";
@@ -25,6 +26,7 @@ export async function uploadImbFormingArtifact(input: {
     });
 
   if (error) {
+    logError(`Failed to store IMB forming ${input.kind} artifact`, error);
     throw new Error(`Could not store IMB forming ${input.kind} artifact.`);
   }
 
