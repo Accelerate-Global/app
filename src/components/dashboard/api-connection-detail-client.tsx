@@ -424,43 +424,55 @@ function ImbFormingPanel({
           </div>
 
           <dl className="grid gap-2 text-xs sm:grid-cols-2">
-            <div>
+            <div className="min-w-0">
               <dt className="text-muted-foreground">Reference set</dt>
-              <dd className="truncate font-mono">{current.resourceSetId}</dd>
+              <dd className="break-all font-mono leading-relaxed">
+                {current.resourceSetId}
+              </dd>
             </div>
-            <div>
+            <div className="min-w-0">
               <dt className="text-muted-foreground">Reference checksum</dt>
-              <dd className="truncate font-mono">{current.resourceSetChecksum}</dd>
+              <dd className="break-all font-mono leading-relaxed">
+                {current.resourceSetChecksum}
+              </dd>
             </div>
-            <div>
+            <div className="min-w-0">
               <dt className="text-muted-foreground">Country version</dt>
-              <dd className="truncate font-mono">{current.countryVersionId}</dd>
+              <dd className="break-all font-mono leading-relaxed">
+                {current.countryVersionId}
+              </dd>
             </div>
-            <div>
+            <div className="min-w-0">
               <dt className="text-muted-foreground">ROP version</dt>
-              <dd className="truncate font-mono">{current.ropVersionId}</dd>
+              <dd className="break-all font-mono leading-relaxed">
+                {current.ropVersionId}
+              </dd>
             </div>
-            <div>
+            <div className="min-w-0">
               <dt className="text-muted-foreground">Field contract</dt>
-              <dd>
+              <dd className="break-all leading-relaxed">
                 v{current.fieldContractVersion}{" "}
                 <span className="font-mono">{current.fieldContractChecksum}</span>
               </dd>
             </div>
-            <div>
+            <div className="min-w-0">
               <dt className="text-muted-foreground">Transformation</dt>
-              <dd>
+              <dd className="break-all leading-relaxed">
                 {current.transformationVersion}{" "}
                 <span className="font-mono">{current.transformationChecksum}</span>
               </dd>
             </div>
-            <div>
+            <div className="min-w-0">
               <dt className="text-muted-foreground">Source checksum</dt>
-              <dd className="truncate font-mono">{current.sourceRowsChecksum}</dd>
+              <dd className="break-all font-mono leading-relaxed">
+                {current.sourceRowsChecksum}
+              </dd>
             </div>
-            <div>
+            <div className="min-w-0">
               <dt className="text-muted-foreground">Output checksum</dt>
-              <dd className="truncate font-mono">{current.outputChecksum ?? "Pending"}</dd>
+              <dd className="break-all font-mono leading-relaxed">
+                {current.outputChecksum ?? "Pending"}
+              </dd>
             </div>
           </dl>
 
@@ -649,7 +661,7 @@ function RunDetailSheet({
     <Sheet open={open && run !== null} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
-        className="w-full gap-0 sm:max-w-2xl"
+        className="w-full gap-0 sm:max-w-[50vw]"
         data-smoke-surface="api-connection-run-detail-sheet"
         data-smoke-ready="api-connection-run-detail-sheet"
       >

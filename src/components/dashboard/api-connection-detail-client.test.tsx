@@ -260,11 +260,11 @@ describe("ApiConnectionDetailClient", () => {
     fireEvent.click(screen.getByText("admin@example.com").closest("tr")!);
 
     expect(screen.getByText("Run detail")).toBeTruthy();
-    expect(
-      document.querySelector(
-        '[data-smoke-surface="api-connection-run-detail-sheet"][data-smoke-ready="api-connection-run-detail-sheet"]',
-      ),
-    ).toBeTruthy();
+    const runDetailSheet = document.querySelector(
+      '[data-smoke-surface="api-connection-run-detail-sheet"][data-smoke-ready="api-connection-run-detail-sheet"]',
+    );
+    expect(runDetailSheet).toBeTruthy();
+    expect(runDetailSheet?.className).toContain("sm:max-w-[50vw]");
     expect(screen.getByText("Archived output artifacts.")).toBeTruthy();
     expect(screen.getByText("[{\"name\":\"Alpha\"}]")).toBeTruthy();
     expect(
@@ -379,6 +379,12 @@ describe("ApiConnectionDetailClient", () => {
       );
     });
     expect(await screen.findByText("Forming")).toBeTruthy();
+    expect(screen.getByText("c".repeat(64)).parentElement?.className).toContain(
+      "break-all",
+    );
+    expect(screen.getByText("d".repeat(64)).parentElement?.className).toContain(
+      "break-all",
+    );
   });
 
   it("starts ingestion through the existing run endpoint and polls active runs", async () => {

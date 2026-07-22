@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(125);
+select plan(126);
 
 select results_eq(
   $$
@@ -132,6 +132,18 @@ select ok(
       and allowed_mime_types @> array['text/csv', 'application/json']::text[]
   ),
   'partner export artifact bucket is private and permits only expected artifact types'
+);
+select ok(
+  exists(
+    select 1
+    from storage.buckets
+    where id = 'api-connection-artifacts'
+      and public = false
+      and file_size_limit = 134217728
+      and allowed_mime_types @> array['application/json', 'text/csv']::text[]
+      and cardinality(allowed_mime_types) = 2
+  ),
+  'API connection artifact bucket is private and permits bounded JSON and CSV artifacts'
 );
 select ok(
   exists(
