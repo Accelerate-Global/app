@@ -41,10 +41,10 @@ The system SHALL leave archived source artifacts unchanged, SHALL retain every p
 - **AND** lineage/findings identify the rule, field, source value, and canonical or unresolved result
 
 ### Requirement: IMB field formation uses the approved versioned contract
-The system SHALL project IMB source rows through an ordered immutable field contract that records its version and checksum and includes the approved written-scripture mapping plus provenance fields.
+The system SHALL project IMB source rows through an ordered immutable field contract that records its version and checksum and includes the approved written-scripture mapping plus provenance fields. Source rows produced from the current IMB production schema SHALL pass through the approved source adapter whose version and checksum are recorded in the archived rows artifact without changing the version-1 formed output contract.
 
 #### Scenario: Known IMB schema is formed
-- **WHEN** all required version-1 source fields are present
+- **WHEN** all required version-1 source fields are present directly or through the approved replacement-source adapter
 - **THEN** the candidate uses the contract's canonical output names and order
 - **AND** maps `Bible` to `Resources_Written_Scripture`
 - **AND** includes `Data_Source`, `Dataset_ID`, `Dataset_Row_ID`, and `Dataset_Row_Key`
@@ -57,6 +57,11 @@ The system SHALL project IMB source rows through an ordered immutable field cont
 - **WHEN** IMB supplies a field not included in the pinned output contract
 - **THEN** the raw artifact preserves it
 - **AND** the formed candidate records schema drift without silently adding an unversioned output field
+
+#### Scenario: Replacement source omits a discontinued optional field
+- **WHEN** the replacement IMB schema has no trustworthy equivalent for an optional legacy source field
+- **THEN** the adapter leaves that legacy source field blank
+- **AND** does not invent or derive an unapproved value
 
 ### Requirement: IMB country formation preserves valid ISO3 authority
 The system SHALL resolve country data against the Country/ROG version in the pinned resource set using exact normalized identifiers and aliases without fuzzy matching or silent replacement of a valid source ISO3.

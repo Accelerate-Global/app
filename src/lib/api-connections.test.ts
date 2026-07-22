@@ -80,6 +80,9 @@ describe("listCodeManagedApiConnections", () => {
     expect(connections[2]?.headers).toEqual([
       { name: "api_key", value: "", isSecret: true },
     ]);
+    expect(connections[0]?.url).toBe(
+      "https://services2.arcgis.com/S4ydGgujXcif36k3/arcgis/rest/services/pIMBPeople/FeatureServer/0/query",
+    );
     expect(connections[2]?.url).not.toContain("api_key=");
   });
 });
@@ -534,6 +537,51 @@ describe("fetchArcgisFeaturePages", () => {
     );
     expect(log).toHaveBeenCalledWith("Fetched ArcGIS page 0: 2 features (2 total).");
     expect(log).toHaveBeenCalledWith("Fetched ArcGIS page 1: 1 features (3 total).");
+  });
+
+  it("continues from the actual row count when ArcGIS clamps a page", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            objectIdFieldName: "OBJECTID",
+            exceededTransferLimit: true,
+            features: [{ attributes: { OBJECTID: 1 } }],
+          }),
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            objectIdFieldName: "OBJECTID",
+            exceededTransferLimit: true,
+            features: [{ attributes: { OBJECTID: 1 } }],
+          }),
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            objectIdFieldName: "OBJECTID",
+            features: [{ attributes: { OBJECTID: 2 } }],
+          }),
+        ),
+      );
+
+    const result = await fetchArcgisFeaturePages({
+      url: "https://example.com/arcgis/rest/services/People/FeatureServer/0/query",
+      headers: new Headers(),
+      pageSize: 2,
+      fetchSafe: async ({ url, init }) => fetchMock(url, init),
+    });
+
+    expect(result.featureCount).toBe(2);
+    expect(
+      new URL(fetchMock.mock.calls[2]![0] as string).searchParams.get(
+        "resultOffset",
+      ),
+    ).toBe("1");
   });
 
   it("rejects a full page when ArcGIS cannot establish stable ordering", async () => {

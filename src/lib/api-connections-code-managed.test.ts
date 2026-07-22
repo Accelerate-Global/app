@@ -7,20 +7,25 @@ function createConnectionRow(overrides: Record<string, unknown> = {}) {
     id: codeManagedImbId,
     name: "IMB (People Groups)",
     description: "Materialized description.",
-    method: "GET",
+    method: "GET" as const,
     url: "https://services1.arcgis.com/mICk7VdFTP86wcbI/arcgis/rest/services/pIMBpeoplePublic/FeatureServer/0/query",
     requestHeaders: [],
     secretHeaderNames: [],
     secretVaultId: null,
     bodyTemplate: "",
-    responseFormat: "json",
+    responseFormat: "json" as const,
     responseDataPath: "features",
-    importMode: "create",
+    importMode: "create" as const,
     targetDatasetId: null,
     datasetName: "imb-people-groups.csv",
-    datasetClassification: "PGIC",
+    datasetClassification: "PGIC" as const,
+    provider: "http_api" as const,
+    providerConfig: { provider: "http_api" } as const,
     createdByOwnerId: "admin-1",
     updatedByOwnerId: "admin-1",
+    archivedByOwnerId: null,
+    archiveReason: null,
+    archivedAt: null,
     createdAt: new Date("2026-04-30T12:00:00.000Z"),
     updatedAt: new Date("2026-04-30T12:00:00.000Z"),
     ...overrides,
@@ -207,6 +212,21 @@ describe("code-managed API connection listing", () => {
 });
 
 describe("code-managed API connection resolver", () => {
+  it("uses deployed request fields while preserving persisted dataset linkage", async () => {
+    const materializedImb = createConnectionRow({
+      targetDatasetId: "dataset-1",
+    });
+    const { applyCodeManagedDefinitionForExecution } =
+      await importApiConnectionsWithDb({});
+
+    const result = applyCodeManagedDefinitionForExecution(materializedImb);
+
+    expect(result.url).toBe(
+      "https://services2.arcgis.com/S4ydGgujXcif36k3/arcgis/rest/services/pIMBPeople/FeatureServer/0/query",
+    );
+    expect(result.targetDatasetId).toBe("dataset-1");
+  });
+
   it("returns materialized connection rows first", async () => {
     const materializedImb = createConnectionRow();
     const db = {
