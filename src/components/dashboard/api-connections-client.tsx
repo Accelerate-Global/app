@@ -26,6 +26,7 @@ import type {
   ApiConnectionRun,
   GoogleSheetsConnectionProviderConfig,
 } from "@/lib/api-types";
+import { formatUtcTimestamp } from "@/lib/date-time";
 import type { ReferenceResourceCatalogItem } from "@/lib/reference-resources/types";
 
 type ApiConnectionsClientProps = {
@@ -34,18 +35,6 @@ type ApiConnectionsClientProps = {
   capturedResources: ApiConnectionResource[];
   referenceResources: ReferenceResourceCatalogItem[];
 };
-
-function formatTimestamp(value: string | null, emptyLabel = "No ingestions yet") {
-  if (!value) return emptyLabel;
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return emptyLabel;
-
-  return new Intl.DateTimeFormat("en-US", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(date);
-}
 
 function formatEntryCount(value: number | null) {
   return value === null ? "—" : new Intl.NumberFormat("en-US").format(value);
@@ -169,8 +158,9 @@ export function ApiConnectionsClient({
                       </Badge>
                     </TableCell>
                     <TableCell className="font-mono text-xs text-muted-foreground">
-                      {formatTimestamp(
+                      {formatUtcTimestamp(
                         latestRunsByConnection.get(connection.id)?.createdAt ?? null,
+                        "No ingestions yet",
                       )}
                     </TableCell>
                   </TableRow>
@@ -223,7 +213,7 @@ export function ApiConnectionsClient({
                       {formatEntryCount(resource.activeVersion?.entryCount ?? null)}
                     </TableCell>
                     <TableCell className="whitespace-nowrap font-mono text-xs text-muted-foreground">
-                      {formatTimestamp(
+                      {formatUtcTimestamp(
                         resource.activeVersion?.sourceRetrievedAt ?? null,
                         "Not available",
                       )}
@@ -248,7 +238,7 @@ export function ApiConnectionsClient({
                       {formatEntryCount(null)}
                     </TableCell>
                     <TableCell className="whitespace-nowrap font-mono text-xs text-muted-foreground">
-                      {formatTimestamp(resource.createdAt, "Not available")}
+                      {formatUtcTimestamp(resource.createdAt, "Not available")}
                     </TableCell>
                   </TableRow>
                 ))}

@@ -242,6 +242,9 @@ describe("ApiConnectionDetailClient", () => {
     expect(screen.getByText("Artifacts")).toBeTruthy();
     expect(screen.getAllByText("Test").length).toBeGreaterThan(0);
     expect(screen.getByText("admin@example.com")).toBeTruthy();
+    expect(
+      screen.getAllByText("Apr 24, 2026, 12:00 PM UTC").length,
+    ).toBeGreaterThan(0);
     expect(screen.queryByText("Archived output artifacts.")).toBeNull();
     expect(
       document.querySelector(

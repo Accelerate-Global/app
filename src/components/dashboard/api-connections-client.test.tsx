@@ -74,6 +74,7 @@ describe("ApiConnectionsClient", () => {
     expect(screen.queryByRole("link", { name: "Add connection" })).toBeNull();
     expect(screen.getByText("Source")).toBeTruthy();
     expect(screen.getByText("Reviewed people dataset")).toBeTruthy();
+    expect(screen.getByText("Apr 24, 2026, 12:00 PM UTC")).toBeTruthy();
     expect(
       screen.getByText("Google Sheet source: Mission Sheet / People"),
     ).toBeTruthy();
@@ -165,6 +166,7 @@ describe("ApiConnectionsClient", () => {
     expect(screen.getByText("Entries")).toBeTruthy();
     expect(screen.getByText("Last updated")).toBeTruthy();
     expect(screen.getByText("249")).toBeTruthy();
+    expect(screen.getByText("Apr 23, 2026, 12:00 PM UTC")).toBeTruthy();
     expect(screen.getByText("Shared geography codes")).toBeTruthy();
     expect(screen.getByText("Source documentation")).toBeTruthy();
     expect(
