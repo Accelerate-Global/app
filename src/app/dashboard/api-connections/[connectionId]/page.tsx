@@ -24,7 +24,7 @@ const HEADER_STATUS_LABELS: Record<HeaderStatus, string> = {
   idle: "Idle",
   queued: "Queued",
   running: "Running",
-  success: "Success",
+  success: "Up to date",
   failed: "Failed",
 };
 

@@ -70,10 +70,8 @@ describe("ApiConnectionsClient", () => {
       />,
     );
 
-    expect(screen.getByText("Dataset sources")).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Add connection" }).getAttribute("href")).toBe(
-      "/dashboard/datasets/new?source=google-sheets",
-    );
+    expect(screen.getByText("Datasets")).toBeTruthy();
+    expect(screen.queryByRole("link", { name: "Add connection" })).toBeNull();
     expect(screen.getByText("Source")).toBeTruthy();
     expect(screen.getByText("Reviewed people dataset")).toBeTruthy();
     expect(
@@ -113,7 +111,8 @@ describe("ApiConnectionsClient", () => {
         referenceResources={[]}
       />,
     );
-    expect(screen.getByText(/No connections exist yet/)).toBeTruthy();
+    expect(screen.getByText("No datasets are connected.")).toBeTruthy();
+    expect(screen.queryByRole("link", { name: "Add connection" })).toBeNull();
     expect(screen.queryByText("Reference resources")).toBeNull();
   });
 
