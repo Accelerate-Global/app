@@ -79,6 +79,11 @@ import {
 } from "./core";
 import { resolveConnectionProvider } from "./provider";
 import {
+  getImbSourceAdapterMetadata,
+  IMB_API_CONNECTION_ID,
+  IMB_ARCGIS_QUERY_URL,
+} from "./providers/imb";
+import {
   createVaultSecret,
   deleteVaultSecret,
   readVaultSecret,
@@ -158,7 +163,7 @@ export type ApiConnectionInput = {
 
 const CODE_MANAGED_CONNECTION_TIMESTAMP = "2026-04-30T00:00:00.000Z";
 
-export const IMB_API_CONNECTION_ID = "6f9f6ef2-1188-4f71-9c24-ef01debf7a01";
+export { IMB_API_CONNECTION_ID } from "./providers/imb";
 
 const CODE_MANAGED_API_CONNECTIONS: CodeManagedApiConnectionDefinition[] = [
   {
@@ -166,7 +171,7 @@ const CODE_MANAGED_API_CONNECTIONS: CodeManagedApiConnectionDefinition[] = [
     name: "IMB (People Groups)",
     description: "IMB public ArcGIS people groups layer.",
     method: "GET",
-    url: "https://services1.arcgis.com/mICk7VdFTP86wcbI/arcgis/rest/services/pIMBpeoplePublic/FeatureServer/0/query",
+    url: IMB_ARCGIS_QUERY_URL,
     requestHeaders: [],
     secretHeaderNames: [],
     bodyTemplate: "",
@@ -253,6 +258,30 @@ export function listCodeManagedApiConnections() {
 
 function getCodeManagedApiConnectionDefinition(connectionId: string) {
   return codeManagedApiConnectionById.get(connectionId) ?? null;
+}
+
+export function applyCodeManagedDefinitionForExecution(
+  connection: ApiConnectionRecord,
+) {
+  const definition = getCodeManagedApiConnectionDefinition(connection.id);
+
+  if (!definition) return connection;
+
+  return {
+    ...connection,
+    name: definition.name,
+    description: definition.description,
+    method: definition.method,
+    url: definition.url,
+    requestHeaders: definition.requestHeaders,
+    secretHeaderNames: definition.secretHeaderNames,
+    bodyTemplate: definition.bodyTemplate,
+    responseFormat: definition.responseFormat,
+    responseDataPath: definition.responseDataPath,
+    importMode: definition.importMode,
+    datasetName: definition.datasetName,
+    datasetClassification: definition.datasetClassification,
+  } satisfies ApiConnectionRecord;
 }
 
 function mergeCodeManagedApiConnections(connectionRows: ApiConnectionRecord[]) {
@@ -1666,6 +1695,9 @@ async function persistRunOutput(input: {
   const rowsArtifact = serializeApiConnectionRowsArtifact({
     rows: input.parsed.rows,
     columns: input.parsed.columns,
+    ...(input.connection.id === IMB_API_CONNECTION_ID
+      ? { sourceAdapter: getImbSourceAdapterMetadata() }
+      : {}),
   });
   const rawArtifact = serializeApiConnectionRawResponseArtifact({
     runId: input.run.id,
@@ -1858,7 +1890,7 @@ export async function executeApiConnectionRun(input: { runId: string }) {
     };
   }
 
-  let executableConnection = connection;
+  let executableConnection = applyCodeManagedDefinitionForExecution(connection);
   let secrets = new Map<string, string>();
   const startedAtDate = new Date();
   const startedAt = Date.now();

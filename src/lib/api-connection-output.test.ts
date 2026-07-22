@@ -37,9 +37,22 @@ describe("API connection output helpers", () => {
   });
 
   it("round-trips normalized rows artifacts", () => {
-    const artifact = serializeApiConnectionRowsArtifact({ columns, rows });
+    const sourceAdapter = {
+      name: "imb-arcgis-replacement",
+      version: "imb-arcgis-source-v2",
+      checksum: "adapter-checksum",
+    };
+    const artifact = serializeApiConnectionRowsArtifact({
+      columns,
+      rows,
+      sourceAdapter,
+    });
 
-    expect(parseApiConnectionRowsArtifact(artifact)).toEqual({ columns, rows });
+    expect(parseApiConnectionRowsArtifact(artifact)).toEqual({
+      columns,
+      rows,
+      sourceAdapter,
+    });
   });
 
   it("serializes redacted raw response artifacts as JSON", () => {

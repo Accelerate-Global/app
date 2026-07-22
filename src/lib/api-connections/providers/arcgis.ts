@@ -11,6 +11,11 @@ import {
   rowsToColumns,
 } from "../core";
 import type { ConnectionProvider } from "../provider";
+import {
+  adaptCurrentImbArcgisFeatures,
+  getImbSourceAdapterMetadata,
+  isImbApiConnection,
+} from "./imb";
 
 const MAX_ARCGIS_RESPONSE_BYTES = 64 * 1024 * 1024;
 const ARCGIS_FEATURE_PAGE_SIZE = 2000;
@@ -104,6 +109,7 @@ function parseArcgisFeaturePage(body: string) {
       typeof parsed.objectIdFieldName === "string"
         ? parsed.objectIdFieldName
         : null,
+    exceededTransferLimit: parsed.exceededTransferLimit === true,
   };
 }
 
@@ -177,7 +183,10 @@ export async function fetchArcgisFeaturePages(input: {
       );
       objectIdField = page.objectIdField;
 
-      if (!objectIdField && page.features.length >= pageSize) {
+      if (
+        !objectIdField &&
+        (page.exceededTransferLimit || page.features.length >= pageSize)
+      ) {
         throw new ApiConnectionError(
           "ArcGIS API did not identify an object ID field for stable pagination.",
           502,
@@ -199,11 +208,18 @@ export async function fetchArcgisFeaturePages(input: {
       `Fetched ArcGIS page ${pageIndex}: ${page.features.length} features (${features.length} total).`,
     );
 
-    if (page.features.length < pageSize) {
+    if (!page.exceededTransferLimit && page.features.length < pageSize) {
       break;
     }
 
-    offset += pageSize;
+    if (page.features.length === 0) {
+      throw new ApiConnectionError(
+        "ArcGIS API reported more rows but returned an empty page.",
+        502,
+      );
+    }
+
+    offset += page.features.length;
     pageIndex += 1;
   }
 
@@ -260,7 +276,13 @@ export const arcgisProvider: ConnectionProvider = {
       responseFormat: connection.responseFormat,
       responseDataPath: connection.responseDataPath,
     }),
-  fetch: async ({ requestConfig, log, onHttpStatus }) => {
+  fetch: async ({ connection, requestConfig, log, onHttpStatus }) => {
+    if (isImbApiConnection(connection)) {
+      const adapter = getImbSourceAdapterMetadata();
+      await log(
+        `Using ${adapter.version} source adapter (${adapter.checksum.slice(0, 12)}).`,
+      );
+    }
     const result = await fetchArcgisFeaturePages({
       url: requestConfig.url,
       headers: requestConfig.headers,
@@ -274,5 +296,12 @@ export const arcgisProvider: ConnectionProvider = {
       parsed: null,
     };
   },
-  parse: ({ body }) => parseArcgisFeatureRows(JSON.parse(body) as unknown[]),
+  parse: ({ body, connection }) => {
+    const features = JSON.parse(body) as unknown[];
+    return parseArcgisFeatureRows(
+      isImbApiConnection(connection)
+        ? adaptCurrentImbArcgisFeatures(features)
+        : features,
+    );
+  },
 };

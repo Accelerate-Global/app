@@ -8,6 +8,11 @@ export const UTF8_BOM = "\uFEFF";
 export type ApiConnectionRowsArtifact = {
   columns: CsvColumn[];
   rows: Record<string, string>[];
+  sourceAdapter?: {
+    name: string;
+    version: string;
+    checksum: string;
+  };
 };
 
 export type ApiConnectionRawResponseArtifact = {
@@ -56,5 +61,6 @@ export function parseApiConnectionRowsArtifact(value: string) {
   return {
     columns: Array.isArray(parsed.columns) ? parsed.columns : [],
     rows: Array.isArray(parsed.rows) ? parsed.rows : [],
+    ...(parsed.sourceAdapter ? { sourceAdapter: parsed.sourceAdapter } : {}),
   };
 }
