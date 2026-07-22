@@ -482,6 +482,17 @@ describe("fetchArcgisFeaturePages", () => {
         new Response(
           JSON.stringify({
             objectIdFieldName: "OBJECTID",
+            features: [
+              { attributes: { OBJECTID: 1 } },
+              { attributes: { OBJECTID: 2 } },
+            ],
+          }),
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            objectIdFieldName: "OBJECTID",
             features: [{ attributes: { OBJECTID: 3 } }],
           }),
         ),
@@ -506,6 +517,7 @@ describe("fetchArcgisFeaturePages", () => {
 
     const firstUrl = new URL(fetchMock.mock.calls[0]![0] as string);
     const secondUrl = new URL(fetchMock.mock.calls[1]![0] as string);
+    const thirdUrl = new URL(fetchMock.mock.calls[2]![0] as string);
 
     expect(firstUrl.searchParams.get("where")).toBe("1=1");
     expect(firstUrl.searchParams.get("outFields")).toBe("*");
@@ -513,10 +525,37 @@ describe("fetchArcgisFeaturePages", () => {
     expect(firstUrl.searchParams.get("resultRecordCount")).toBe("2");
     expect(firstUrl.searchParams.get("resultOffset")).toBe("0");
     expect(firstUrl.searchParams.get("orderByFields")).toBeNull();
-    expect(secondUrl.searchParams.get("resultOffset")).toBe("2");
+    expect(secondUrl.searchParams.get("resultOffset")).toBe("0");
     expect(secondUrl.searchParams.get("orderByFields")).toBe("OBJECTID");
+    expect(thirdUrl.searchParams.get("resultOffset")).toBe("2");
+    expect(thirdUrl.searchParams.get("orderByFields")).toBe("OBJECTID");
+    expect(log).toHaveBeenCalledWith(
+      "Discovered ArcGIS object ID field OBJECTID; refetching page zero in stable order.",
+    );
     expect(log).toHaveBeenCalledWith("Fetched ArcGIS page 0: 2 features (2 total).");
     expect(log).toHaveBeenCalledWith("Fetched ArcGIS page 1: 1 features (3 total).");
+  });
+
+  it("rejects a full page when ArcGIS cannot establish stable ordering", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          features: [
+            { attributes: { value: 1 } },
+            { attributes: { value: 2 } },
+          ],
+        }),
+      ),
+    );
+
+    await expect(
+      fetchArcgisFeaturePages({
+        url: "https://example.com/arcgis/rest/services/People/FeatureServer/0/query",
+        headers: new Headers(),
+        pageSize: 2,
+        fetchSafe: async ({ url, init }) => fetchMock(url, init),
+      }),
+    ).rejects.toThrow("stable pagination");
   });
 });
 
@@ -539,6 +578,20 @@ describe("api connection run artifact storage", () => {
 });
 
 describe("api connection import snapshots", () => {
+  it("archives IMB imports without passing unformed rows into dataset publication", async () => {
+    const source = await readFile(
+      path.join(process.cwd(), "src/lib/api-connections/index.ts"),
+      "utf8",
+    );
+
+    expect(source).toContain(
+      'run.mode === "import" && connection.id !== IMB_API_CONNECTION_ID',
+    );
+    expect(source).toContain(
+      "Archived IMB source rows for forming; no dataset was published.",
+    );
+  });
+
   it("uses the shared CSV cell escaping helper for import snapshot CSV", async () => {
     const source = await readFile(
       path.join(process.cwd(), "src/lib/api-connections/core.ts"),

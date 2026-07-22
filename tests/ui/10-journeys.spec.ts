@@ -540,7 +540,7 @@ test(
                 connectionId,
                 actorOwnerId: "smoke-admin",
                 actorEmail: "smoke-runner@example.com",
-                mode: "test",
+                mode: "import",
                 status: "success",
                 httpStatus: 200,
                 durationMs: 125,
@@ -564,6 +564,16 @@ test(
                 output: null,
               },
             }),
+          });
+        },
+      );
+      await page.route(
+        `**/api/admin/api-connections/${connectionId}/runs/${runId}/forming-candidates`,
+        async (route) => {
+          await route.fulfill({
+            status: 200,
+            contentType: "application/json",
+            body: JSON.stringify({ formingRuns: [] }),
           });
         },
       );
@@ -591,6 +601,14 @@ test(
       ).toBeVisible();
       await expect(detailSheet.getByText("Smoke run completed.")).toBeVisible();
       await expect(detailSheet.getByText('[{"name":"Smoke"}]')).toBeVisible();
+      await expect(
+        detailSheet.locator(
+          '[data-smoke-surface="imb-forming-candidate-review"][data-smoke-ready="imb-forming-candidate-review"]',
+        ),
+      ).toBeVisible();
+      await expect(
+        detailSheet.getByRole("button", { name: "Build formed candidate" }),
+      ).toBeVisible();
     });
   },
 );

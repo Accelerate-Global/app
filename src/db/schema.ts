@@ -41,6 +41,11 @@ import type {
   PartnerExportValidationSeverity,
   PartnerExportValidationSummary,
 } from "@/lib/partner-exports/types";
+import type {
+  ImbFormingArtifactManifest,
+  ImbFormingRunStatus,
+  ImbFormingValidationSummary,
+} from "@/lib/imb-forming/types";
 
 export const datasets = pgTable(
   "datasets",
@@ -901,6 +906,8 @@ export const apiConnectionRunOutputs = privateSchema.table(
     rawStoragePath: text("raw_storage_path").notNull(),
     rowsSizeBytes: integer("rows_size_bytes").notNull().default(0),
     rawSizeBytes: integer("raw_size_bytes").notNull().default(0),
+    rowsChecksum: text("rows_checksum"),
+    rawChecksum: text("raw_checksum"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -911,6 +918,123 @@ export const apiConnectionRunOutputs = privateSchema.table(
       table.connectionId,
       table.createdAt,
     ),
+  ],
+);
+
+export const datasetFormingRuns = privateSchema.table(
+  "dataset_forming_runs",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    connectionId: uuid("connection_id")
+      .notNull()
+      .references(() => apiConnections.id, { onDelete: "restrict" }),
+    sourceRunId: uuid("source_run_id")
+      .notNull()
+      .references(() => apiConnectionRuns.id, { onDelete: "restrict" }),
+    resourceSetId: uuid("resource_set_id")
+      .notNull()
+      .references(() => referenceResourceSets.id, { onDelete: "restrict" }),
+    actorOwnerId: text("actor_owner_id").notNull(),
+    actorEmail: text("actor_email"),
+    status: text("status").$type<ImbFormingRunStatus>().notNull().default("building"),
+    sourceRowsChecksum: text("source_rows_checksum").notNull(),
+    sourceRawChecksum: text("source_raw_checksum").notNull(),
+    fieldContractVersion: integer("field_contract_version").notNull(),
+    fieldContractChecksum: text("field_contract_checksum").notNull(),
+    transformationVersion: text("transformation_version").notNull(),
+    transformationChecksum: text("transformation_checksum").notNull(),
+    inputRowCount: integer("input_row_count").notNull(),
+    outputRowCount: integer("output_row_count"),
+    warningCount: integer("warning_count").notNull().default(0),
+    errorCount: integer("error_count").notNull().default(0),
+    validationSummary: jsonb("validation_summary")
+      .$type<ImbFormingValidationSummary>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
+    artifactManifest: jsonb("artifact_manifest")
+      .$type<ImbFormingArtifactManifest>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
+    outputChecksum: text("output_checksum"),
+    outputSizeBytes: integer("output_size_bytes"),
+    datasetId: uuid("dataset_id").references(() => datasets.id, {
+      onDelete: "set null",
+    }),
+    rejectionReason: text("rejection_reason"),
+    rejectedByOwnerId: text("rejected_by_owner_id"),
+    rejectedAt: timestamp("rejected_at", { withTimezone: true }),
+    publicationReason: text("publication_reason"),
+    warningsAcknowledged: boolean("warnings_acknowledged").notNull().default(false),
+    publishedByOwnerId: text("published_by_owner_id"),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+    errorMessage: text("error_message"),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("dataset_forming_runs_connection_created_idx").on(
+      table.connectionId,
+      table.createdAt,
+      table.id,
+    ),
+    index("dataset_forming_runs_source_created_idx").on(
+      table.sourceRunId,
+      table.createdAt,
+      table.id,
+    ),
+    index("dataset_forming_runs_resource_set_idx").on(
+      table.resourceSetId,
+      table.createdAt,
+      table.id,
+    ),
+    index("dataset_forming_runs_dataset_idx")
+      .on(table.datasetId)
+      .where(sql`${table.datasetId} is not null`),
+    uniqueIndex("dataset_forming_runs_active_build_idx")
+      .on(table.sourceRunId, table.resourceSetId, table.transformationChecksum)
+      .where(sql`${table.status} in ('building', 'valid', 'publishing')`),
+    uniqueIndex("dataset_forming_runs_connection_publishing_idx")
+      .on(table.connectionId)
+      .where(sql`${table.status} = 'publishing'`),
+  ],
+);
+
+export const datasetFormingFindings = privateSchema.table(
+  "dataset_forming_findings",
+  {
+    id: bigint("id", { mode: "number" }).generatedAlwaysAsIdentity().primaryKey(),
+    formingRunId: uuid("forming_run_id")
+      .notNull()
+      .references(() => datasetFormingRuns.id, { onDelete: "cascade" }),
+    severity: text("severity").$type<"warning" | "error">().notNull(),
+    ruleCode: text("rule_code").notNull(),
+    sourceRowIndex: integer("source_row_index"),
+    stableRowKey: text("stable_row_key"),
+    fieldName: text("field_name"),
+    sourceValue: text("source_value"),
+    canonicalValue: text("canonical_value"),
+    message: text("message").notNull(),
+    details: jsonb("details")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("dataset_forming_findings_run_created_idx").on(table.formingRunId, table.id),
+    index("dataset_forming_findings_run_severity_idx").on(
+      table.formingRunId,
+      table.severity,
+      table.id,
+    ),
+    index("dataset_forming_findings_run_row_idx")
+      .on(table.formingRunId, table.sourceRowIndex, table.id)
+      .where(sql`${table.sourceRowIndex} is not null`),
   ],
 );
 

@@ -124,6 +124,7 @@ export async function fetchArcgisFeaturePages(input: {
   let pageIndex = 0;
   let totalBytes = 0;
   let httpStatus: number | null = null;
+  let orderingDiscovered = false;
 
   if (pageSize <= 0) {
     throw new ApiConnectionError("ArcGIS page size must be greater than zero.");
@@ -171,7 +172,25 @@ export async function fetchArcgisFeaturePages(input: {
     const page = parseArcgisFeaturePage(body);
 
     if (!objectIdField) {
-      objectIdField = page.objectIdField || "OBJECTID";
+      const requestAlreadyOrdered = Boolean(
+        new URL(pageUrl).searchParams.get("orderByFields")?.trim(),
+      );
+      objectIdField = page.objectIdField;
+
+      if (!objectIdField && page.features.length >= pageSize) {
+        throw new ApiConnectionError(
+          "ArcGIS API did not identify an object ID field for stable pagination.",
+          502,
+        );
+      }
+
+      if (objectIdField && !requestAlreadyOrdered && !orderingDiscovered) {
+        orderingDiscovered = true;
+        await input.log?.(
+          `Discovered ArcGIS object ID field ${objectIdField}; refetching page zero in stable order.`,
+        );
+        continue;
+      }
     }
 
     features.push(...page.features);

@@ -50,6 +50,7 @@ configuration, not intended future architecture.
 
 - API handlers live under `src/app/api`.
 - API connection runs are orchestrated by `src/lib/api-connections/index.ts`; upstream-specific fetch/parse behavior lives behind the `ConnectionProvider` seam in `src/lib/api-connections/provider.ts` with adapters under `src/lib/api-connections/providers/` (google-sheets, etnopedia, arcgis, generic-http; registry order is precedence, generic-http last).
+- IMB imports stop at immutable, checksummed run artifacts. `src/lib/imb-forming/` builds reviewable candidates pinned to an exact resource set and rule checksums; an explicit admin decision publishes through normal dataset versioning. See `docs/operations/imb-forming.md`.
 - Dataset row filtering is owned by `src/lib/dataset-filtering.ts` behind `applyDatasetFilterSections` (canonical state: `DatasetFilterSections`); saved views parse the persisted wire format through `getDatasetFilterSectionsFromSavedView` in `src/lib/saved-dataset-filters.ts`. Domain vocabulary lives in `CONTEXT.md`.
 - Dataset APIs cover listing, upload registration, replacement, row reads, batch row writes, downloads, ordering, derived-view assignment, version listing, and version revert.
 - Admin APIs cover user management and API connection configuration/runs.

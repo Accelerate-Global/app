@@ -26,15 +26,20 @@ The system SHALL persist lifecycle status and timestamped log messages for each 
 - **THEN** the system records a failed run with a redacted error message and a failure log
 
 ### Requirement: API connection runs preserve downloadable outputs
-The system SHALL persist successful run outputs as archived artifacts containing normalized rows for CSV export and redacted raw response data for JSON export.
+The system SHALL persist successful run outputs as archived artifacts containing normalized rows for CSV export and redacted raw response data for JSON export, while requiring approved source-specific forming before an IMB import output becomes a workspace dataset.
 
 #### Scenario: Successful test run output
 - **WHEN** a saved API connection test run succeeds
 - **THEN** the system archives parsed rows, columns, a redacted raw response artifact, and output metadata without creating or replacing a dataset
 
-#### Scenario: Successful import run output
-- **WHEN** a saved API connection import run succeeds
+#### Scenario: Successful non-IMB import run output
+- **WHEN** a saved API connection import run other than IMB succeeds
 - **THEN** the system archives parsed output artifacts and also creates or replaces the configured dataset using the existing import settings
+
+#### Scenario: Successful IMB import run output
+- **WHEN** the repo-owned IMB connection import run succeeds
+- **THEN** the system archives parsed source rows and redacted raw output with checksums
+- **AND** does not create or replace a workspace dataset until an admin explicitly publishes a valid formed candidate
 
 ### Requirement: Admin can inspect run history and outputs
 The system SHALL allow dataset admins to list recent runs for a connection, inspect one run with logs and output metadata, and view the latest output in the API Connections page.
@@ -110,6 +115,23 @@ The system SHALL normalize ArcGIS feature rows by preserving all feature attribu
 #### Scenario: Raw ArcGIS output remains inspectable
 - **WHEN** an ArcGIS features run succeeds
 - **THEN** the archived JSON output includes the raw feature list used for normalization without exposing secret header values
+
+### Requirement: ArcGIS feature paging retains one stable object-ID order
+The system SHALL apply the discovered ArcGIS object identifier as the ordering field before retaining offset zero and SHALL use the same ordering for every retained page.
+
+#### Scenario: Object identifier must be discovered
+- **WHEN** the first ArcGIS query response identifies the object-ID field and the request did not already include an ordering field
+- **THEN** the system treats that response as discovery only
+- **AND** refetches offset zero ordered by the discovered object-ID field before retaining features
+
+#### Scenario: Ordered ArcGIS pages continue
+- **WHEN** an ordered retained page contains the configured page size
+- **THEN** the system requests the next offset with the same ordering field
+- **AND** archives rows in that deterministic page order
+
+#### Scenario: ArcGIS response omits a usable object identifier
+- **WHEN** stable ordering cannot be established for a paged feature response
+- **THEN** the run fails with a normalized error instead of archiving potentially duplicated or skipped rows
 
 ### Requirement: Joshua Project PGIC runs send the stored key as an upstream query parameter
 The system SHALL translate the stored `api_key` secret into the Joshua Project upstream query parameter for Joshua Project people-groups runs while preserving existing API connection safety controls and secret redaction.

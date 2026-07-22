@@ -167,6 +167,8 @@ const successfulRun: ApiConnectionRun = {
     rawStoragePath: "api-connection-runs/run/raw-response.json",
     rowsSizeBytes: 20,
     rawSizeBytes: 24,
+    rowsChecksum: null,
+    rawChecksum: null,
     createdAt: "2026-04-24T12:00:02.000Z",
   },
 };
@@ -281,6 +283,99 @@ describe("ApiConnectionDetailClient", () => {
     expect(screen.queryByText("Run detail")).toBeNull();
     expect(screen.getByText("Run history")).toBeTruthy();
     expect(screen.getByText("admin@example.com")).toBeTruthy();
+  });
+
+  it("offers a formed candidate build for a successful IMB ingestion", async () => {
+    const imbConnection = {
+      ...connection,
+      id: "6f9f6ef2-1188-4f71-9c24-ef01debf7a01",
+      name: "IMB (People Groups)",
+    };
+    const imbRun = {
+      ...successfulRun,
+      connectionId: imbConnection.id,
+      mode: "import" as const,
+      datasetId: null,
+    };
+    const buildingCandidate = {
+      id: "77777777-7777-4777-8777-777777777777",
+      connectionId: imbConnection.id,
+      sourceRunId: imbRun.id,
+      resourceSetId: "88888888-8888-4888-8888-888888888888",
+      resourceSetChecksum: "e".repeat(64),
+      countryVersionId: "99999999-9999-4999-8999-999999999991",
+      ropVersionId: "99999999-9999-4999-8999-999999999992",
+      actorOwnerId: "admin-1",
+      actorEmail: "admin@example.com",
+      status: "building" as const,
+      sourceRowsChecksum: "a".repeat(64),
+      sourceRawChecksum: "b".repeat(64),
+      fieldContractVersion: 1,
+      fieldContractChecksum: "c".repeat(64),
+      transformationVersion: "imb-forming-v1",
+      transformationChecksum: "d".repeat(64),
+      inputRowCount: 2,
+      outputRowCount: null,
+      warningCount: 0,
+      errorCount: 0,
+      validationSummary: {
+        warningCount: 0,
+        errorCount: 0,
+        unresolvedCountryRows: 0,
+        unresolvedRopRows: 0,
+        countryConflictRows: 0,
+        ropParentConflictRows: 0,
+        invalidValueCount: 0,
+        schemaDriftFields: [],
+      },
+      artifactManifest: {},
+      outputChecksum: null,
+      outputSizeBytes: null,
+      datasetId: null,
+      rejectionReason: null,
+      rejectedByOwnerId: null,
+      rejectedAt: null,
+      publicationReason: null,
+      warningsAcknowledged: false,
+      publishedByOwnerId: null,
+      publishedAt: null,
+      errorMessage: null,
+      startedAt: "2026-04-24T12:00:00.000Z",
+      completedAt: null,
+      createdAt: "2026-04-24T12:00:00.000Z",
+      findings: [],
+      findingsTruncated: false,
+    };
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) =>
+      init?.method === "POST"
+        ? Response.json({ formingRun: buildingCandidate }, { status: 202 })
+        : Response.json({ formingRuns: [] }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(
+      <ApiConnectionDetailClient
+        connection={imbConnection}
+        initialRuns={[imbRun]}
+        serviceAccountEmail={serviceAccountEmail}
+      />,
+    );
+    fireEvent.click(screen.getByText("admin@example.com").closest("tr")!);
+
+    expect(await screen.findByText("Formed dataset candidate")).toBeTruthy();
+    expect(
+      document.querySelector(
+        '[data-smoke-surface="imb-forming-candidate-review"][data-smoke-ready="imb-forming-candidate-review"]',
+      ),
+    ).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Build formed candidate" }));
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        `/api/admin/api-connections/${imbConnection.id}/runs/${imbRun.id}/forming-candidates`,
+        { method: "POST" },
+      );
+    });
+    expect(await screen.findByText("Forming")).toBeTruthy();
   });
 
   it("starts ingestion through the existing run endpoint and polls active runs", async () => {
