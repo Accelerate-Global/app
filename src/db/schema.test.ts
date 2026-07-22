@@ -12,6 +12,8 @@ import {
   datasetVersionRows,
   datasetVersions,
   datasets,
+  datasetFormingFindings,
+  datasetFormingRuns,
   fieldDefinitions,
   isoCountryCodeEntryOverrides,
   referenceResources,
@@ -398,12 +400,39 @@ describe("apiConnections schema", () => {
     expect(apiConnectionRunLogs.message.name).toBe("message");
     expect(apiConnectionRunOutputs.rowsStoragePath.name).toBe("rows_storage_path");
     expect(apiConnectionRunOutputs.rawStoragePath.name).toBe("raw_storage_path");
+    expect(apiConnectionRunOutputs.rowsChecksum.name).toBe("rows_checksum");
+    expect(apiConnectionRunOutputs.rawChecksum.name).toBe("raw_checksum");
     expect(apiConnectionResources.resourceUrl.name).toBe("resource_url");
     expect(apiConnectionResources.normalizedUrl.name).toBe("normalized_url");
     expect(apiConnectionResources).not.toHaveProperty("category");
     expect(apiConnectionResources.webText.name).toBe("web_text");
     expect(apiConnectionResources.sourceResourceIndex.name).toBe(
       "source_resource_index",
+    );
+  });
+
+  it("declares the private IMB forming lifecycle and migration protections", async () => {
+    expect(datasetFormingRuns.sourceRunId.name).toBe("source_run_id");
+    expect(datasetFormingRuns.resourceSetId.name).toBe("resource_set_id");
+    expect(datasetFormingRuns.transformationChecksum.name).toBe(
+      "transformation_checksum",
+    );
+    expect(datasetFormingRuns.artifactManifest.name).toBe("artifact_manifest");
+    expect(datasetFormingFindings.formingRunId.name).toBe("forming_run_id");
+    expect(datasetFormingFindings.ruleCode.name).toBe("rule_code");
+
+    const migration = await readFile(
+      path.join(
+        process.cwd(),
+        "supabase/migrations/20260722051234_add_imb_forming_candidates.sql",
+      ),
+      "utf8",
+    );
+    expect(migration).toContain("create table if not exists private.dataset_forming_runs");
+    expect(migration).toContain("create table if not exists private.dataset_forming_findings");
+    expect(migration).toContain("Dataset forming findings are append-only.");
+    expect(migration).toContain(
+      "revoke all on private.dataset_forming_runs from public, anon, authenticated",
     );
   });
 

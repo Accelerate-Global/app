@@ -9,6 +9,7 @@ import {
   apiConnections,
 } from "@/db/schema";
 import {
+  checksumApiConnectionArtifact,
   parseApiConnectionRowsArtifact,
   serializeApiConnectionRawResponseArtifact,
   serializeApiConnectionRowsArtifact,
@@ -157,9 +158,11 @@ export type ApiConnectionInput = {
 
 const CODE_MANAGED_CONNECTION_TIMESTAMP = "2026-04-30T00:00:00.000Z";
 
+export const IMB_API_CONNECTION_ID = "6f9f6ef2-1188-4f71-9c24-ef01debf7a01";
+
 const CODE_MANAGED_API_CONNECTIONS: CodeManagedApiConnectionDefinition[] = [
   {
-    id: "6f9f6ef2-1188-4f71-9c24-ef01debf7a01",
+    id: IMB_API_CONNECTION_ID,
     name: "IMB (People Groups)",
     description: "IMB public ArcGIS people groups layer.",
     method: "GET",
@@ -415,6 +418,8 @@ function toApiConnectionRunOutput(
     rawStoragePath: row.rawStoragePath,
     rowsSizeBytes: row.rowsSizeBytes,
     rawSizeBytes: row.rawSizeBytes,
+    rowsChecksum: row.rowsChecksum,
+    rawChecksum: row.rawChecksum,
     createdAt: row.createdAt.toISOString(),
   };
 }
@@ -1695,6 +1700,8 @@ async function persistRunOutput(input: {
       rawStoragePath,
       rowsSizeBytes: Buffer.byteLength(rowsArtifact),
       rawSizeBytes: Buffer.byteLength(rawArtifact),
+      rowsChecksum: checksumApiConnectionArtifact(rowsArtifact),
+      rawChecksum: checksumApiConnectionArtifact(rawArtifact),
     })
     .returning();
 
@@ -1935,7 +1942,7 @@ export async function executeApiConnectionRun(input: { runId: string }) {
 
     let datasetId: string | null = null;
 
-    if (run.mode === "import") {
+    if (run.mode === "import" && connection.id !== IMB_API_CONNECTION_ID) {
       const dataset = await persistImportedRows({
         identity: identityFromRun(run),
         connection: executableConnection,
@@ -1948,6 +1955,12 @@ export async function executeApiConnectionRun(input: { runId: string }) {
         runId: run.id,
         connectionId: connection.id,
         message: datasetId ? "Imported dataset rows." : "Import completed.",
+      });
+    } else if (run.mode === "import") {
+      await insertRunLog({
+        runId: run.id,
+        connectionId: connection.id,
+        message: "Archived IMB source rows for forming; no dataset was published.",
       });
     }
 

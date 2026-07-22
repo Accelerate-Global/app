@@ -5,6 +5,7 @@ import { getSupabaseConfig } from "@/lib/supabase/config";
 
 const DATASET_STORAGE_PATH_PREFIX = "datasets/csv/";
 const API_CONNECTION_RUN_OUTPUT_PATH_PREFIX = "api-connection-runs/";
+const IMB_FORMING_OUTPUT_PATH_PREFIX = "imb-forming-runs/";
 const PARTNER_EXPORT_RUN_OUTPUT_PATH_PREFIX = "partner-export-runs/";
 const REFERENCE_RESOURCE_PATH_PREFIX = "reference-resources/";
 const DEFAULT_DATASET_STORAGE_BUCKET = "datasets";
@@ -54,6 +55,17 @@ export function createApiConnectionRunOutputStoragePath(
   fileName: string,
 ) {
   return `${API_CONNECTION_RUN_OUTPUT_PATH_PREFIX}${runId}/${randomUUID()}-${sanitizeFileName(fileName)}`;
+}
+
+export type ImbFormingArtifactKind = "rows" | "findings" | "manifest" | "csv";
+
+export function createImbFormingArtifactStoragePath(input: {
+  sourceRunId: string;
+  formingRunId: string;
+  kind: ImbFormingArtifactKind;
+}) {
+  const extension = input.kind === "csv" ? "csv" : "json";
+  return `${IMB_FORMING_OUTPUT_PATH_PREFIX}${input.sourceRunId}/${input.formingRunId}/${input.kind}.${extension}`;
 }
 
 export function createPartnerExportRunOutputStoragePath(

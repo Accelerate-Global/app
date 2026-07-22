@@ -376,6 +376,8 @@ export type ApiConnectionRunOutput = {
   rawStoragePath: string;
   rowsSizeBytes: number;
   rawSizeBytes: number;
+  rowsChecksum: string | null;
+  rawChecksum: string | null;
   createdAt: string;
 };
 

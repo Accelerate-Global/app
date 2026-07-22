@@ -68,6 +68,11 @@ import type {
   GoogleSheetsHeaderSelectionInput,
   GoogleSheetsHeaderSelectionUpdateResponse,
 } from "@/lib/api-types";
+import type {
+  ImbFormingRun,
+  ImbFormingRunResponse,
+  ImbFormingRunsResponse,
+} from "@/lib/imb-forming/types";
 import { cn } from "@/lib/utils";
 
 type ApiConnectionDetailClientProps = {
@@ -84,6 +89,7 @@ type DetailMessage = {
 
 const RUN_HISTORY_VISIBLE_ROW_LIMIT = 5;
 const RUN_HISTORY_SCROLL_AREA_HEIGHT = "h-[268px]";
+const IMB_API_CONNECTION_ID = "6f9f6ef2-1188-4f71-9c24-ef01debf7a01";
 
 async function getErrorMessage(response: Response, fallback: string) {
   try {
@@ -258,11 +264,393 @@ function ArtifactCell({ run }: { run: ApiConnectionRun }) {
   );
 }
 
+function getFormingStatusLabel(run: ImbFormingRun) {
+  return {
+    building: "Forming",
+    valid: "Ready for review",
+    invalid: "Needs correction",
+    rejected: "Rejected",
+    publishing: "Publishing",
+    published: "Published",
+    failed: "Build failed",
+  }[run.status];
+}
+
+function ImbFormingPanel({
+  connectionId,
+  sourceRun,
+}: {
+  connectionId: string;
+  sourceRun: ApiConnectionRun;
+}) {
+  const [formingRuns, setFormingRuns] = useState<ImbFormingRun[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busyAction, setBusyAction] = useState<"build" | "publish" | "reject" | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [reason, setReason] = useState("");
+  const [warningsAcknowledged, setWarningsAcknowledged] = useState(false);
+  const current = formingRuns[0] ?? null;
+  const baseUrl = `/api/admin/api-connections/${connectionId}/runs/${sourceRun.id}/forming-candidates`;
+
+  const load = useCallback(async () => {
+    const response = await fetch(baseUrl);
+    if (!response.ok) {
+      throw new Error(
+        await getErrorMessage(response, "Forming candidates could not be loaded."),
+      );
+    }
+    const payload = (await response.json()) as ImbFormingRunsResponse;
+    setFormingRuns(payload.formingRuns ?? []);
+  }, [baseUrl]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void load()
+      .catch((loadError) => {
+        if (!cancelled) {
+          setError(
+            loadError instanceof Error
+              ? loadError.message
+              : "Forming candidates could not be loaded.",
+          );
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [load]);
+
+  useEffect(() => {
+    if (
+      !current ||
+      (current.status !== "building" && current.status !== "publishing")
+    ) {
+      return;
+    }
+    const interval = window.setInterval(() => {
+      void load().catch(() => undefined);
+    }, 1500);
+    return () => window.clearInterval(interval);
+  }, [current, load]);
+
+  async function buildCandidate() {
+    setBusyAction("build");
+    setError(null);
+    try {
+      const response = await fetch(baseUrl, { method: "POST" });
+      if (!response.ok) {
+        throw new Error(
+          await getErrorMessage(response, "Candidate build could not start."),
+        );
+      }
+      const payload = (await response.json()) as ImbFormingRunResponse;
+      setFormingRuns((runs) => [
+        payload.formingRun,
+        ...runs.filter((run) => run.id !== payload.formingRun.id),
+      ]);
+    } catch (buildError) {
+      setError(
+        buildError instanceof Error
+          ? buildError.message
+          : "Candidate build could not start.",
+      );
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
+  async function decide(action: "publish" | "reject") {
+    if (!current) return;
+    setBusyAction(action);
+    setError(null);
+    try {
+      const response = await fetch(`${baseUrl}/${current.id}/${action}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason, warningsAcknowledged }),
+      });
+      if (!response.ok) {
+        throw new Error(
+          await getErrorMessage(response, "Candidate decision failed."),
+        );
+      }
+      const payload = (await response.json()) as ImbFormingRunResponse;
+      setFormingRuns((runs) => [
+        payload.formingRun,
+        ...runs.filter((run) => run.id !== payload.formingRun.id),
+      ]);
+      setReason("");
+      setWarningsAcknowledged(false);
+    } catch (decisionError) {
+      setError(
+        decisionError instanceof Error
+          ? decisionError.message
+          : "Candidate decision failed.",
+      );
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
+  return (
+    <section
+      className="space-y-4 rounded-lg border border-border bg-muted/20 p-4"
+      data-smoke-surface="imb-forming-candidate-review"
+      data-smoke-ready="imb-forming-candidate-review"
+    >
+      <div className="space-y-1">
+        <h3 className="text-sm font-semibold">Formed dataset candidate</h3>
+        <p className="text-xs text-muted-foreground">
+          Apply the pinned field, country, and ROP rules to this archived IMB run
+          before publishing a dataset.
+        </p>
+      </div>
+
+      {error ? (
+        <Alert variant="destructive">
+          <XCircleIcon className="size-4" />
+          <AlertTitle>Candidate action failed</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      ) : null}
+
+      {loading ? (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2Icon className="size-4 animate-spin" /> Loading candidate history…
+        </div>
+      ) : current ? (
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="outline">{getFormingStatusLabel(current)}</Badge>
+            <span className="font-mono text-xs text-muted-foreground">
+              {current.outputRowCount ?? current.inputRowCount} rows
+            </span>
+            <span className="text-xs text-muted-foreground">
+              {current.warningCount} warnings · {current.errorCount} errors
+            </span>
+          </div>
+
+          <dl className="grid gap-2 text-xs sm:grid-cols-2">
+            <div>
+              <dt className="text-muted-foreground">Reference set</dt>
+              <dd className="truncate font-mono">{current.resourceSetId}</dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground">Reference checksum</dt>
+              <dd className="truncate font-mono">{current.resourceSetChecksum}</dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground">Country version</dt>
+              <dd className="truncate font-mono">{current.countryVersionId}</dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground">ROP version</dt>
+              <dd className="truncate font-mono">{current.ropVersionId}</dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground">Field contract</dt>
+              <dd>
+                v{current.fieldContractVersion}{" "}
+                <span className="font-mono">{current.fieldContractChecksum}</span>
+              </dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground">Transformation</dt>
+              <dd>
+                {current.transformationVersion}{" "}
+                <span className="font-mono">{current.transformationChecksum}</span>
+              </dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground">Source checksum</dt>
+              <dd className="truncate font-mono">{current.sourceRowsChecksum}</dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground">Output checksum</dt>
+              <dd className="truncate font-mono">{current.outputChecksum ?? "Pending"}</dd>
+            </div>
+          </dl>
+
+          {current.errorMessage ? (
+            <Alert variant="destructive">
+              <XCircleIcon className="size-4" />
+              <AlertTitle>Candidate error</AlertTitle>
+              <AlertDescription>{current.errorMessage}</AlertDescription>
+            </Alert>
+          ) : null}
+
+          {current.findings.length > 0 ? (
+            <div className="space-y-2">
+              <h4 className="text-xs font-semibold uppercase text-muted-foreground">
+                Findings
+              </h4>
+              <div className="max-h-56 overflow-auto rounded-md border border-border">
+                {current.findings.map((finding, index) => (
+                  <div
+                    key={`${finding.ruleCode}-${finding.sourceRowIndex ?? "all"}-${index}`}
+                    className="border-b border-border p-3 text-xs last:border-0"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-semibold">{finding.ruleCode}</span>
+                      <Badge variant="outline" className="capitalize">
+                        {finding.severity}
+                      </Badge>
+                    </div>
+                    <p className="mt-1 text-muted-foreground">{finding.message}</p>
+                    {finding.sourceRowIndex !== null ? (
+                      <p className="mt-1 font-mono text-muted-foreground">
+                        Source row {finding.sourceRowIndex + 1}
+                      </p>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+              {current.findingsTruncated ? (
+                <p className="text-xs text-muted-foreground">
+                  Showing the first 250 findings. Download the full findings artifact
+                  for the complete list.
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+
+          {current.artifactManifest.rows ? (
+            <div className="flex flex-wrap gap-2">
+              {(["csv", "findings", "manifest"] as const).map((kind) =>
+                current.artifactManifest[kind] ? (
+                  <a
+                    key={kind}
+                    href={`${baseUrl}/${current.id}/download?kind=${kind}`}
+                    className={buttonVariants({ variant: "outline", size: "sm" })}
+                  >
+                    <DownloadIcon className="size-3.5" />
+                    {kind === "csv"
+                      ? "Formed CSV"
+                      : kind[0].toUpperCase() + kind.slice(1)}
+                  </a>
+                ) : null,
+              )}
+            </div>
+          ) : null}
+
+          {current.status === "valid" || current.status === "invalid" ? (
+            <div
+              className="space-y-3 border-t border-border pt-4"
+              data-smoke-surface="imb-forming-decision"
+              data-smoke-ready="imb-forming-decision"
+            >
+              <label className="block space-y-1 text-xs font-medium">
+                Decision reason
+                <textarea
+                  value={reason}
+                  onChange={(event) => setReason(event.target.value)}
+                  maxLength={500}
+                  className="mt-1 min-h-20 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  placeholder="Record why this candidate is being published or rejected."
+                />
+              </label>
+              {current.status === "valid" && current.warningCount > 0 ? (
+                <label className="flex items-start gap-2 text-xs text-muted-foreground">
+                  <input
+                    type="checkbox"
+                    checked={warningsAcknowledged}
+                    onChange={(event) =>
+                      setWarningsAcknowledged(event.target.checked)
+                    }
+                    className="mt-0.5"
+                  />
+                  I reviewed and accept the {current.warningCount} non-blocking
+                  warnings.
+                </label>
+              ) : null}
+              <div className="flex flex-wrap gap-2">
+                {current.status === "valid" ? (
+                  <Button
+                    size="sm"
+                    onClick={() => void decide("publish")}
+                    disabled={
+                      !reason.trim() ||
+                      busyAction !== null ||
+                      (current.warningCount > 0 && !warningsAcknowledged)
+                    }
+                    data-smoke-trigger="imb-forming-decision"
+                  >
+                    {busyAction === "publish" ? (
+                      <Loader2Icon className="size-4 animate-spin" />
+                    ) : (
+                      <CheckCircle2Icon className="size-4" />
+                    )}
+                    Publish dataset
+                  </Button>
+                ) : null}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => void decide("reject")}
+                  disabled={!reason.trim() || busyAction !== null}
+                  data-smoke-trigger="imb-forming-decision"
+                >
+                  Reject candidate
+                </Button>
+              </div>
+            </div>
+          ) : null}
+
+          {current.status === "invalid" || current.status === "failed" ? (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => void buildCandidate()}
+              disabled={busyAction !== null}
+              data-smoke-trigger="imb-forming-candidate-review"
+            >
+              {busyAction === "build" ? (
+                <Loader2Icon className="size-4 animate-spin" />
+              ) : (
+                <RefreshCcwIcon className="size-4" />
+              )}
+              Build with current resources
+            </Button>
+          ) : null}
+
+          {current.datasetId ? (
+            <a
+              href={`/dashboard/datasets/${current.datasetId}`}
+              className={buttonVariants({ variant: "outline", size: "sm" })}
+            >
+              <ExternalLinkIcon className="size-3.5" /> Open published dataset
+            </a>
+          ) : null}
+        </div>
+      ) : (
+        <Button
+          size="sm"
+          onClick={() => void buildCandidate()}
+          disabled={busyAction !== null}
+          data-smoke-trigger="imb-forming-candidate-review"
+        >
+          {busyAction === "build" ? (
+            <Loader2Icon className="size-4 animate-spin" />
+          ) : (
+            <Settings2Icon className="size-4" />
+          )}
+          Build formed candidate
+        </Button>
+      )}
+    </section>
+  );
+}
+
 function RunDetailSheet({
+  connectionId,
   run,
   open,
   onOpenChange,
 }: {
+  connectionId: string;
   run: ApiConnectionRun | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -325,6 +713,12 @@ function RunDetailSheet({
                   <AlertTitle>Run error</AlertTitle>
                   <AlertDescription>{run.errorMessage}</AlertDescription>
                 </Alert>
+              ) : null}
+
+              {connectionId === IMB_API_CONNECTION_ID &&
+              run.mode === "import" &&
+              run.status === "success" ? (
+                <ImbFormingPanel connectionId={connectionId} sourceRun={run} />
               ) : null}
 
               <div className="space-y-2 rounded-lg border border-border bg-muted/20 p-3">
@@ -1340,6 +1734,7 @@ export function ApiConnectionDetailClient({
       </Card>
 
       <RunDetailSheet
+        connectionId={connection.id}
         run={selectedRun}
         open={isRunDetailSheetOpen}
         onOpenChange={setIsRunDetailSheetOpen}

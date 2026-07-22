@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import {
   API_CONNECTION_RUN_ARTIFACT_CONTENT_TYPE,
+  createImbFormingArtifactStoragePath,
   createPartnerExportRunOutputStoragePath,
   createReferenceResourceArtifactStoragePath,
   getApiConnectionRunArtifactReadBuckets,
@@ -90,6 +91,23 @@ describe("partner export artifact storage", () => {
 });
 
 describe("API connection run artifact storage", () => {
+  it("uses deterministic run-scoped paths for immutable IMB forming artifacts", () => {
+    expect(
+      createImbFormingArtifactStoragePath({
+        sourceRunId: "source-1",
+        formingRunId: "forming-1",
+        kind: "manifest",
+      }),
+    ).toBe("imb-forming-runs/source-1/forming-1/manifest.json");
+    expect(
+      createImbFormingArtifactStoragePath({
+        sourceRunId: "source-1",
+        formingRunId: "forming-1",
+        kind: "csv",
+      }),
+    ).toBe("imb-forming-runs/source-1/forming-1/csv.csv");
+  });
+
   it("uses a dedicated JSON artifact bucket by default", () => {
     delete process.env.SUPABASE_API_CONNECTION_ARTIFACT_BUCKET;
 

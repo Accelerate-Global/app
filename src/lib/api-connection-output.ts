@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import type { ApiConnectionRunMode, CsvColumn } from "@/lib/api-types";
 import { escapeCsvCell } from "@/lib/csv";
 
@@ -18,6 +20,10 @@ export type ApiConnectionRawResponseArtifact = {
   rowCount: number;
   rawResponse: string;
 };
+
+export function checksumApiConnectionArtifact(value: string) {
+  return createHash("sha256").update(value).digest("hex");
+}
 
 export function serializeApiConnectionRowsToCsv(input: ApiConnectionRowsArtifact) {
   const lines = [

