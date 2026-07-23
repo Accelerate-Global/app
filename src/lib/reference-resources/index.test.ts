@@ -3,6 +3,9 @@ import { describe, expect, it, vi } from "vitest";
 import type { IsoCountryCodeEntry } from "@/lib/iso-country-codes";
 
 import { createReferenceResourceCsvStream } from "./index";
+import sourceAliasesFixture from "./fixtures/source-aliases.sanitized.json";
+import { preparePipelineResource } from "./pipeline-adapters";
+import { SOURCE_ALIASES_RESOURCE_KEY } from "./pipeline-types";
 import { COUNTRY_RESOURCE_KEY } from "./types";
 
 const entry: IsoCountryCodeEntry = {
@@ -42,5 +45,37 @@ describe("reference resource CSV streaming", () => {
     expect(csv).toContain("Second");
     expect(query).toHaveBeenNthCalledWith(1, expect.objectContaining({ cursor: null, search: "example", limit: 500 }));
     expect(query).toHaveBeenNthCalledWith(2, expect.objectContaining({ cursor: "cursor-1" }));
+  });
+
+  it("streams pipeline resource pages with one deterministic typed header", async () => {
+    const prepared = preparePipelineResource(
+      SOURCE_ALIASES_RESOURCE_KEY,
+      sourceAliasesFixture,
+    );
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({
+        entries: [prepared.entries[0]],
+        nextCursor: "cursor-1",
+        version: {},
+      })
+      .mockResolvedValueOnce({
+        entries: [prepared.entries[1]],
+        nextCursor: null,
+        version: {},
+      });
+    const stream = createReferenceResourceCsvStream(
+      { resourceKey: SOURCE_ALIASES_RESOURCE_KEY, search: "example" },
+      { query: query as never },
+    );
+    const csv = await new Response(stream).text();
+
+    expect(csv.match(/Stable key/g)).toHaveLength(1);
+    expect(csv).toContain("source:im");
+    expect(csv).toContain("source:jp");
+    expect(query).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ cursor: "cursor-1" }),
+    );
   });
 });

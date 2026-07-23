@@ -162,6 +162,7 @@ describe("/dashboard/api-connections", () => {
         routePath: "/dashboard/country-codes",
         sortOrder: 10,
         activeVersion: { id: "active-1" } as never,
+        impact: { affectedEngines: ["Country normalization"], olderOutputCount: 0 },
       },
     ]);
     render(await ApiConnectionsPage());

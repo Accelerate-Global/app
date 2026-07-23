@@ -35,6 +35,7 @@ function createConnectionRow(overrides: Record<string, unknown> = {}) {
 function createRunRecord(connectionId = codeManagedImbId) {
   return {
     id: "22222222-2222-4222-8222-222222222222",
+    operationKey: null as string | null,
     connectionId,
     actorOwnerId: "admin-1",
     actorEmail: "admin@example.com",
@@ -293,7 +294,9 @@ describe("code-managed API connection materialization", () => {
       }),
     });
     const runValues = vi.fn().mockReturnValue({
-      returning: vi.fn().mockResolvedValue([runRecord]),
+      onConflictDoNothing: vi.fn().mockReturnValue({
+        returning: vi.fn().mockResolvedValue([runRecord]),
+      }),
     });
     const logValues = vi.fn().mockReturnValue({
       returning: vi.fn().mockResolvedValue([runLogRecord]),
@@ -369,6 +372,74 @@ describe("code-managed API connection materialization", () => {
     expect(result?.run.logs).toEqual([
       expect.objectContaining({ message: "Run queued." }),
     ]);
+  });
+
+  it("returns the retained run without adding duplicate queue logs for an operation key", async () => {
+    const connectionRow = createConnectionRow();
+    const retainedRun = createRunRecord(connectionRow.id);
+    retainedRun.operationKey = "pipeline:flow-1:imb-ingest";
+    const runReturning = vi.fn().mockResolvedValue([]);
+    const runValues = vi.fn().mockReturnValue({
+      onConflictDoNothing: vi.fn().mockReturnValue({ returning: runReturning }),
+    });
+    const select = vi
+      .fn()
+      .mockReturnValueOnce({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([connectionRow]),
+          }),
+        }),
+      })
+      .mockReturnValueOnce({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([retainedRun]),
+          }),
+        }),
+      })
+      .mockReturnValueOnce({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([retainedRun]),
+          }),
+        }),
+      })
+      .mockReturnValueOnce({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            orderBy: vi.fn().mockResolvedValue([]),
+          }),
+        }),
+      })
+      .mockReturnValueOnce({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockResolvedValue([]),
+        }),
+      });
+    const insert = vi.fn().mockReturnValue({ values: runValues });
+    const { startApiConnectionRun } = await importApiConnectionsWithDb({
+      select,
+      insert,
+    });
+
+    const result = await startApiConnectionRun({
+      connectionId: codeManagedImbId,
+      operationKey: retainedRun.operationKey,
+      identity: {
+        ownerId: "admin-1",
+        email: "admin@example.com",
+        fullName: "Admin",
+        workspaceRole: "admin",
+        isDatasetAdmin: true,
+        mode: "supabase",
+      },
+      importEnabled: true,
+    });
+
+    expect(result?.run.id).toBe(retainedRun.id);
+    expect(result?.run.logs).toEqual([]);
+    expect(insert).toHaveBeenCalledOnce();
   });
 });
 

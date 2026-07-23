@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "fallbackOrder": ["JP", "IMB", "AX", "ETNO", "WCD"],
+  "fields": ["peopleName", "population", "countryName", "frontier"],
+  "priorities": {
+    "peopleName": ["JP", "IMB", "AX", "ETNO", "WCD"],
+    "population": ["IMB", "JP", "AX", "ETNO", "WCD"],
+    "frontier": ["JP", "IMB", "AX", "ETNO", "WCD"]
+  },
+  "rows": [
+    {
+      "caseId": "cross-source-jp",
+      "pgic": "10-JP-100001-LAO",
+      "source": "JP",
+      "peopleName": "JP River People",
+      "population": 900,
+      "countryName": "Laos",
+      "frontier": true
+    },
+    {
+      "caseId": "cross-source-imb",
+      "pgic": "10-JP-100001-LAO",
+      "source": "IMB",
+      "peopleName": "IMB River People",
+      "population": 1000,
+      "countryName": "Lao PDR",
+      "frontier": false
+    },
+    {
+      "caseId": "cross-source-ax",
+      "pgic": "10-JP-100001-LAO",
+      "source": "AX",
+      "peopleName": "AX River People",
+      "population": null,
+      "countryName": "Laos",
+      "frontier": null
+    },
+    {
+      "caseId": "duplicate-source-a",
+      "pgic": "10-JP-100002-LAO",
+      "source": "JP",
+      "peopleName": "Duplicate A",
+      "population": 10,
+      "countryName": "Laos",
+      "frontier": false
+    },
+    {
+      "caseId": "duplicate-source-b",
+      "pgic": "10-JP-100002-LAO",
+      "source": "JP",
+      "peopleName": "Duplicate B",
+      "population": 11,
+      "countryName": "Laos",
+      "frontier": false
+    }
+  ]
+}

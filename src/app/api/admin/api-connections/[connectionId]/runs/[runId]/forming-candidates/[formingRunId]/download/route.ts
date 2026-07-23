@@ -13,7 +13,7 @@ type Context = {
 };
 
 export const GET = withRoute(
-  { access: "admin", action: "download IMB forming artifacts" },
+  { access: "admin", action: "download dataset forming artifacts" },
   async (_identity, request: Request, context: Context) => {
     const kind = imbFormingArtifactKindSchema.safeParse(
       new URL(request.url).searchParams.get("kind"),
@@ -27,7 +27,7 @@ export const GET = withRoute(
         formingRunId,
         kind: kind.data,
       });
-      if (!download) return jsonError("IMB forming artifact not found.", 404);
+      if (!download) return jsonError("Dataset forming artifact not found.", 404);
       return new Response(download.body, {
         headers: {
           "Content-Type": download.contentType,
@@ -36,8 +36,8 @@ export const GET = withRoute(
         },
       });
     } catch (error) {
-      logError("Failed to download IMB forming artifact", error);
-      return jsonError("Could not download the IMB forming artifact.", 500);
+      logError("Failed to download dataset forming artifact", error);
+      return jsonError("Could not download the dataset forming artifact.", 500);
     }
   },
 );

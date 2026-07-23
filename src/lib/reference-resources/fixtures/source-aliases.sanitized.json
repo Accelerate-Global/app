@@ -1,0 +1,24 @@
+{
+  "resourceKey": "source-aliases",
+  "schemaVersion": 1,
+  "sourceName": "Sanitized Database Sources fixture",
+  "sourceRetrievedAt": "2026-01-01T00:00:00.000Z",
+  "entries": [
+    {
+      "fieldId": "F_2",
+      "canonicalSourceKey": "jp",
+      "displayName": "Example People Source",
+      "initials": "jp",
+      "aliases": ["example people", "jp sample"],
+      "active": true
+    },
+    {
+      "fieldId": "F_3",
+      "canonicalSourceKey": "im",
+      "displayName": "Example Registry Source",
+      "initials": "im",
+      "aliases": ["example registry", "im sample"],
+      "active": true
+    }
+  ]
+}

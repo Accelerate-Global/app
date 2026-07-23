@@ -1,44 +1,41 @@
 import type { CsvColumn } from "@/lib/api-types";
+import type {
+  DatasetFormingArtifactKind,
+  DatasetFormingArtifactManifest,
+  DatasetFormingDecisionInput,
+  DatasetFormingFinding,
+  DatasetFormingFindingSeverity,
+  DatasetFormingLineageManifest,
+  DatasetFormingResourceBinding,
+  DatasetFormingRunStatus,
+  DatasetFormingValidationSummary,
+} from "@/lib/dataset-forming/types";
+import type { AxIdentityRunStatus } from "@/lib/identity-registry/types";
 
-export type ImbFormingRunStatus =
-  | "building"
-  | "valid"
-  | "invalid"
-  | "rejected"
-  | "publishing"
-  | "published"
-  | "failed";
+export type ImbFormingRunStatus = DatasetFormingRunStatus;
 
-export type ImbFormingFindingSeverity = "warning" | "error";
+export type ImbFormingFindingSeverity = DatasetFormingFindingSeverity;
 
-export type ImbFormingFinding = {
-  severity: ImbFormingFindingSeverity;
-  ruleCode: string;
-  sourceRowIndex: number | null;
-  stableRowKey: string | null;
-  fieldName: string | null;
-  sourceValue: string | null;
-  canonicalValue: string | null;
-  message: string;
-  details: Record<string, unknown>;
-};
+export type ImbFormingFinding = DatasetFormingFinding;
 
-export type ImbFormingValidationSummary = {
-  warningCount: number;
-  errorCount: number;
+export type ImbFormingValidationSummary = DatasetFormingValidationSummary<{
+  inputRowCount?: number;
+  outputRowCount?: number;
+  missingStableKeyRows?: number;
+  duplicateStableKeyRows?: number;
+  duplicateDomainKeyRows?: number;
   unresolvedCountryRows: number;
+  ambiguousCountryRows?: number;
   unresolvedRopRows: number;
   countryConflictRows: number;
   ropParentConflictRows: number;
   invalidValueCount: number;
   schemaDriftFields: string[];
-};
+}>;
 
-export type ImbFormingArtifactKind = "rows" | "findings" | "manifest" | "csv";
+export type ImbFormingArtifactKind = DatasetFormingArtifactKind;
 
-export type ImbFormingArtifactManifest = Partial<
-  Record<ImbFormingArtifactKind, string>
->;
+export type ImbFormingArtifactManifest = DatasetFormingArtifactManifest;
 
 export type ImbFormingResourceBinding = {
   resourceSetId: string;
@@ -63,7 +60,16 @@ export type ImbFormingLineageManifest = {
   outputChecksum: string;
   columns: CsvColumn[];
   validation: ImbFormingValidationSummary;
+  /** Generic lineage retained alongside the legacy IMB projection. */
+  datasetForming?: DatasetFormingLineageManifest<ImbFormingValidationSummary>;
 };
+
+export type ImbFormingDownstreamIdentityRun = Readonly<{
+  runId: string;
+  status: AxIdentityRunStatus;
+  publicationId: string | null;
+  registryRevisionId: string | null;
+}>;
 
 export type ImbFormingRun = {
   id: string;
@@ -73,6 +79,15 @@ export type ImbFormingRun = {
   resourceSetChecksum: string;
   countryVersionId: string;
   ropVersionId: string;
+  sourceProfileKey: string;
+  engineKey: string;
+  engineLabel: string;
+  artifactSchemaVersion: number;
+  inputFingerprint: string;
+  attemptNumber: number;
+  publicationTargetKey: string;
+  expectedCurrentPublicationId: string | null;
+  resourceBindings: DatasetFormingResourceBinding[];
   actorOwnerId: string;
   actorEmail: string | null;
   status: ImbFormingRunStatus;
@@ -91,6 +106,8 @@ export type ImbFormingRun = {
   outputChecksum: string | null;
   outputSizeBytes: number | null;
   datasetId: string | null;
+  publicationId: string | null;
+  downstreamIdentityRun: ImbFormingDownstreamIdentityRun | null;
   rejectionReason: string | null;
   rejectedByOwnerId: string | null;
   rejectedAt: string | null;
@@ -98,6 +115,7 @@ export type ImbFormingRun = {
   warningsAcknowledged: boolean;
   publishedByOwnerId: string | null;
   publishedAt: string | null;
+  publishingStartedAt: string | null;
   errorMessage: string | null;
   startedAt: string | null;
   completedAt: string | null;
@@ -109,10 +127,7 @@ export type ImbFormingRun = {
 export type ImbFormingRunResponse = { formingRun: ImbFormingRun };
 export type ImbFormingRunsResponse = { formingRuns: ImbFormingRun[] };
 
-export type ImbFormingDecisionInput = {
-  reason: string;
-  warningsAcknowledged?: boolean;
-};
+export type ImbFormingDecisionInput = DatasetFormingDecisionInput;
 
 export class ImbFormingError extends Error {
   constructor(

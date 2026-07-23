@@ -2,7 +2,10 @@ import { readFile } from "node:fs/promises";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getCurrentIdentity } from "@/lib/auth";
-import { insertDatasetRowBatch } from "@/lib/datasets";
+import {
+  insertDatasetRowBatch,
+  PipelineManagedDatasetMutationError,
+} from "@/lib/datasets";
 import { POST } from "./route";
 
 vi.mock("@/lib/auth", () => ({
@@ -18,6 +21,16 @@ vi.mock("@/lib/datasets", () => ({
     ) {
       super(message);
       this.name = "DerivedDatasetMutationError";
+    }
+  },
+  PipelineManagedDatasetMutationError: class PipelineManagedDatasetMutationError extends Error {
+    readonly status = 409;
+
+    constructor(
+      message = "Pipeline-managed dataset rows cannot be changed through CSV batch upload.",
+    ) {
+      super(message);
+      this.name = "PipelineManagedDatasetMutationError";
     }
   },
   insertDatasetRowBatch: vi.fn(),
@@ -195,6 +208,34 @@ describe("/api/datasets/[datasetId]/rows/batch", () => {
     expect(response.status).toBe(409);
     await expect(response.json()).resolves.toEqual({
       error: "Derived dataset views cannot store their own dataset rows.",
+    });
+  });
+
+  it("rejects row batch writes for pipeline-managed datasets", async () => {
+    insertDatasetRowBatchMock.mockRejectedValue(
+      new PipelineManagedDatasetMutationError(),
+    );
+
+    const response = await POST(
+      new Request(
+        "http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001/rows/batch",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            startIndex: 0,
+            rows: [{ email: "ada@example.com" }],
+            isFinalBatch: true,
+            totalRows: 1,
+          }),
+        },
+      ),
+      context,
+    );
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual({
+      error:
+        "Pipeline-managed dataset rows cannot be changed through CSV batch upload.",
     });
   });
 });

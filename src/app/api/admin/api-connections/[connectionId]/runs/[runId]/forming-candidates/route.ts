@@ -15,7 +15,7 @@ type Context = {
 };
 
 export const GET = withRoute(
-  { access: "admin", action: "view IMB forming candidates" },
+  { access: "admin", action: "view dataset forming candidates" },
   async (_identity, _request: Request, context: Context) => {
     const { connectionId, runId } = await context.params;
     try {
@@ -26,14 +26,14 @@ export const GET = withRoute(
         }),
       });
     } catch (error) {
-      logError("Failed to load IMB forming candidates", error);
-      return jsonError("Could not load IMB forming candidates.", 500);
+      logError("Failed to load dataset forming candidates", error);
+      return jsonError("Could not load dataset forming candidates.", 500);
     }
   },
 );
 
 export const POST = withRoute(
-  { access: "admin", action: "build IMB forming candidates" },
+  { access: "admin", action: "build dataset forming candidates" },
   async (identity, _request: Request, context: Context) => {
     const { connectionId, runId } = await context.params;
     try {
@@ -50,8 +50,8 @@ export const POST = withRoute(
       if (error instanceof ImbFormingError) {
         return jsonError(error.message, error.status);
       }
-      logError("Failed to start IMB forming candidate", error);
-      return jsonError("Could not start the IMB forming candidate.", 500);
+      logError("Failed to start dataset forming candidate", error);
+      return jsonError("Could not start the dataset forming candidate.", 500);
     }
   },
 );

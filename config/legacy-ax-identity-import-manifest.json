@@ -1,0 +1,133 @@
+{
+  "schemaVersion": 1,
+  "namespace": "people-groups",
+  "files": {
+    "sharedUuidLedger": {
+      "relativePath": "resources/AX_UUID_Ledger/20260330_204116.csv",
+      "sha256": "b396b75dea893b36c58db3cf8c4e6fe65d8846b423ba2a8435113e997964a654",
+      "rowCount": 2054
+    },
+    "tier1UuidLedger": {
+      "relativePath": "resources/AX_UUID_Tier_1/20260330_204116.csv",
+      "sha256": "b396b75dea893b36c58db3cf8c4e6fe65d8846b423ba2a8435113e997964a654",
+      "rowCount": 2054
+    },
+    "tier2UuidLedger": {
+      "relativePath": "resources/AX_UUID_Tier_2/20260330_204116.csv",
+      "sha256": "2c0c31a8d122229085b06dcd8c63101e4fa51bcccb3ee8bdff5a65ef3113980a",
+      "rowCount": 1051
+    },
+    "sharedRop3Ledger": {
+      "relativePath": "resources/AX_UUID/20260413_233144_AX_ROP3_CODE_LEDGER.csv",
+      "sha256": "04cbae3b84f4ebdf71e28f0e1eef148ea0fbdb4d459f4e744d70cfd7ed83cfe1",
+      "rowCount": 294248
+    },
+    "tier2Rop3Ledger": {
+      "relativePath": "resources/AX_UUID_TIER2/20260121_171952_AX_ROP3_CODE_LEDGER.csv",
+      "sha256": "e60604bed314012a3a3be8ce51f743af5d518c999b259d58361c9cd9003a4d14",
+      "rowCount": 34675
+    }
+  },
+  "tier1SourceProfiles": {
+    "ax": "accelerate-owned-people-groups",
+    "et": "etnopedia-people-groups",
+    "etno": "etnopedia-people-groups",
+    "im": "imb-people-groups",
+    "jp": "joshua-project-pgic",
+    "wc": "wcd-people-groups",
+    "wcd": "wcd-people-groups"
+  },
+  "tier2Components": {
+    "dataset:ax_final_58_lao_engagement_data": {
+      "expectedRowCount": 302,
+      "profileKey": null
+    },
+    "dataset:ax_final_sudan_sudan_engagement_data": {
+      "expectedRowCount": 79,
+      "profileKey": null
+    },
+    "dataset:ff_finishing_fund_global_engagement_data": {
+      "expectedRowCount": 580,
+      "profileKey": null
+    },
+    "dataset:ftt_finishing_the_task_calc_global_engagement_data": {
+      "expectedRowCount": 417,
+      "profileKey": null
+    },
+    "dataset:ftt_finishing_the_task_dante_global_engagement_data": {
+      "expectedRowCount": 1409,
+      "profileKey": null
+    },
+    "dataset:nema_nigerian_evangelical_mission_association_nigerian_engagement_data": {
+      "expectedRowCount": 42,
+      "profileKey": null
+    },
+    "dataset:tti_timothy_training_initiative_global_engagement_data": {
+      "expectedRowCount": 1495,
+      "profileKey": null
+    },
+    "spreadsheet:15DT8zdBzD20wi6bHeQJiFGqed5R0qza4": {
+      "expectedRowCount": 283,
+      "profileKey": null
+    },
+    "spreadsheet:1cc1X6n6X9QCFk10m4gmkaUb6hkLXd9xU": {
+      "expectedRowCount": 1,
+      "profileKey": null
+    },
+    "spreadsheet:1ijiGnFWJIV7nzIF9gWhej9_KEcVpsf_t": {
+      "expectedRowCount": 47,
+      "profileKey": null
+    },
+    "spreadsheet:1IPu4X8gg3wFI65RTUKCNAxreRMZRqEtf": {
+      "expectedRowCount": 47,
+      "profileKey": null
+    },
+    "spreadsheet:1laACwEG21Fgupg-TBe9HOFry5ABDg4BG": {
+      "expectedRowCount": 97,
+      "profileKey": null
+    },
+    "spreadsheet:1QQlaWRpOxs-MAi5oKyuVDvgT5ZFoJ0PM": {
+      "expectedRowCount": 4,
+      "profileKey": null
+    },
+    "spreadsheet:1sELmOVmrq0aLgvP9u-wwIUKiutsmAquj": {
+      "expectedRowCount": 101,
+      "profileKey": null
+    },
+    "spreadsheet:1tbvqshecxGAuJk0qZ57Y-H0nE0DrJGtT": {
+      "expectedRowCount": 463,
+      "profileKey": null
+    },
+    "spreadsheet:1vo_a2Ih1btvxs0HxHCYcVHldcWW7qUjS": {
+      "expectedRowCount": 7,
+      "profileKey": null
+    },
+    "spreadsheet:1yttyfhDckRg6IwAUM5EW1XiveBpbg9dj": {
+      "expectedRowCount": 1,
+      "profileKey": null
+    }
+  },
+  "bindingTranslation": {
+    "status": "blocked-pending-pinned-source-crosswalk",
+    "algorithmVersion": "source-forming-runtime-stable-row-key-v1",
+    "relativePath": null,
+    "sha256": null,
+    "rawBindingCount": 296297,
+    "selectedActiveBindingCount": 0
+  },
+  "expected": {
+    "tier2Rop3UnionAddedRowCount": 156,
+    "bindingCount": 296297,
+    "pgacCount": 37004,
+    "pgicCount": 52233,
+    "identityCount": 89237,
+    "rawUnionPgacCount": 37007,
+    "rawUnionPgicCount": 52236,
+    "rawUnionIdentityCount": 89243,
+    "supersededCanonicalCodeCount": 6,
+    "shortPrimaryNormalizationCount": 564,
+    "crossLedgerMismatchCount": 3,
+    "quarantinedAliasConflictCount": 3,
+    "allocationCounterFloor": 2055
+  }
+}

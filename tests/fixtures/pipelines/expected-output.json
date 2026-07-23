@@ -1,0 +1,323 @@
+{
+  "schemaVersion": 1,
+  "inputChecksum": "6db487d56183920c729b11d1012c33139bd2120b2aa5c1c887b3b93a9b876f61",
+  "source": {
+    "columns": [
+      "caseId",
+      "source",
+      "datasetRowKey",
+      "peopleName",
+      "countryName",
+      "iso3",
+      "rop1",
+      "rop3",
+      "population",
+      "frontier",
+      "domainKey",
+      "publishable"
+    ],
+    "rows": [
+      {
+        "caseId": "country-alias",
+        "source": "AX",
+        "datasetRowKey": "ax:local:003",
+        "peopleName": "Forest People",
+        "countryName": "Côte d’Ivoire",
+        "iso3": "CIV",
+        "rop1": "A013",
+        "rop3": "100003",
+        "population": 900,
+        "frontier": false,
+        "domainKey": "AX:100003:CIV",
+        "publishable": true
+      },
+      {
+        "caseId": "duplicate-domain-a",
+        "source": "JP",
+        "datasetRowKey": "jp:peoples:007",
+        "peopleName": "Duplicate One",
+        "countryName": "Laos",
+        "iso3": "LAO",
+        "rop1": "A010",
+        "rop3": "100007",
+        "population": 100,
+        "frontier": false,
+        "domainKey": "JP:100007:LAO",
+        "publishable": false
+      },
+      {
+        "caseId": "duplicate-domain-b",
+        "source": "JP",
+        "datasetRowKey": "jp:peoples:008",
+        "peopleName": "Duplicate Two",
+        "countryName": "Laos",
+        "iso3": "LAO",
+        "rop1": "A010",
+        "rop3": "100007",
+        "population": 101,
+        "frontier": false,
+        "domainKey": "JP:100007:LAO",
+        "publishable": false
+      },
+      {
+        "caseId": "invalid-types",
+        "source": "IMB",
+        "datasetRowKey": "imb:people:009",
+        "peopleName": "Typed People",
+        "countryName": "Laos",
+        "iso3": "LAO",
+        "rop1": "A010",
+        "rop3": "100009",
+        "population": null,
+        "frontier": null,
+        "domainKey": "IMB:100009:LAO",
+        "publishable": false
+      },
+      {
+        "caseId": "missing-identifier",
+        "source": "AX",
+        "datasetRowKey": null,
+        "peopleName": "Hill People",
+        "countryName": "Laos",
+        "iso3": "LAO",
+        "rop1": "A010",
+        "rop3": "100002",
+        "population": 400,
+        "frontier": true,
+        "domainKey": "AX:100002:LAO",
+        "publishable": false
+      },
+      {
+        "caseId": "normal-row",
+        "source": "JP",
+        "datasetRowKey": "jp:peoples:001",
+        "peopleName": "River People",
+        "countryName": "Laos",
+        "iso3": "LAO",
+        "rop1": "A010",
+        "rop3": "100001",
+        "population": 1250,
+        "frontier": false,
+        "domainKey": "JP:100001:LAO",
+        "publishable": true
+      },
+      {
+        "caseId": "rop3-absent",
+        "source": "ETNO",
+        "datasetRowKey": "etno:people:005",
+        "peopleName": "Unmapped People",
+        "countryName": "Laos",
+        "iso3": "LAO",
+        "rop1": "A010",
+        "rop3": null,
+        "population": 50,
+        "frontier": false,
+        "domainKey": null,
+        "publishable": true
+      },
+      {
+        "caseId": "schema-drift",
+        "source": "AX",
+        "datasetRowKey": "ax:local:010",
+        "peopleName": null,
+        "countryName": "Laos",
+        "iso3": "LAO",
+        "rop1": "A010",
+        "rop3": "100010",
+        "population": 250,
+        "frontier": true,
+        "domainKey": "AX:100010:LAO",
+        "publishable": false
+      },
+      {
+        "caseId": "unknown-country",
+        "source": "IMB",
+        "datasetRowKey": "imb:people:004",
+        "peopleName": "Island People",
+        "countryName": null,
+        "iso3": null,
+        "rop1": "A010",
+        "rop3": "100004",
+        "population": 75,
+        "frontier": true,
+        "domainKey": null,
+        "publishable": true
+      },
+      {
+        "caseId": "wcd-rop-fallback",
+        "source": "WCD",
+        "datasetRowKey": "wcd:people:006",
+        "peopleName": "Fallback People",
+        "countryName": "Laos",
+        "iso3": "LAO",
+        "rop1": "A010",
+        "rop3": "100006",
+        "population": 650,
+        "frontier": false,
+        "domainKey": "WCD:100006:LAO",
+        "publishable": true
+      }
+    ],
+    "findings": [
+      {
+        "caseId": "duplicate-domain-a",
+        "code": "duplicate_domain_key",
+        "severity": "error",
+        "detail": "Duplicate source/ROP3/ISO3 key: JP:100007:LAO."
+      },
+      {
+        "caseId": "duplicate-domain-b",
+        "code": "duplicate_domain_key",
+        "severity": "error",
+        "detail": "Duplicate source/ROP3/ISO3 key: JP:100007:LAO."
+      },
+      {
+        "caseId": "invalid-types",
+        "code": "invalid_boolean",
+        "severity": "error",
+        "detail": "Frontier is not a recognized boolean: sometimes."
+      },
+      {
+        "caseId": "invalid-types",
+        "code": "invalid_numeric",
+        "severity": "error",
+        "detail": "Population is not numeric: many."
+      },
+      {
+        "caseId": "missing-identifier",
+        "code": "missing_identifier",
+        "severity": "error",
+        "detail": "A stable Dataset_Row_Key is required."
+      },
+      {
+        "caseId": "rop3-absent",
+        "code": "missing_rop3",
+        "severity": "warning",
+        "detail": "The preserved row requires UUID-backed identity because ROP3 is absent."
+      },
+      {
+        "caseId": "schema-drift",
+        "code": "missing_required_field",
+        "severity": "error",
+        "detail": "peopleName is absent after field mapping."
+      },
+      {
+        "caseId": "schema-drift",
+        "code": "unexpected_source_field",
+        "severity": "warning",
+        "detail": "Unmapped source field detected: renamed_people_name."
+      },
+      {
+        "caseId": "unknown-country",
+        "code": "unknown_country",
+        "severity": "warning",
+        "detail": "No approved country alias matches Atlantis."
+      }
+    ]
+  },
+  "identity": {
+    "rows": [
+      { "caseId": "invalid-source-uuid", "outcome": "blocked", "uuid": null, "pgac": null, "pgic": null },
+      { "caseId": "ledger-reuse", "outcome": "ledger-reused", "uuid": "000041", "pgac": "10-IMB-000041", "pgic": "10-IMB-000041-LAO" },
+      { "caseId": "missing-row-key", "outcome": "blocked", "uuid": null, "pgac": null, "pgic": null },
+      { "caseId": "rop3-derived", "outcome": "rop3-derived", "uuid": null, "pgac": "10-JP-100001", "pgic": "10-JP-100001-LAO" },
+      { "caseId": "source-registry-conflict", "outcome": "blocked", "uuid": null, "pgac": null, "pgic": null },
+      { "caseId": "uuid-mint", "outcome": "uuid-minted", "uuid": "000042", "pgac": "13-WCD-000042", "pgic": "13-WCD-000042-CIV" }
+    ],
+    "findings": [
+      {
+        "caseId": "invalid-source-uuid",
+        "code": "invalid_source_uuid",
+        "severity": "error",
+        "detail": "Source UUID is not one to six digits: not-a-code."
+      },
+      {
+        "caseId": "missing-row-key",
+        "code": "missing_dataset_row_key",
+        "severity": "error",
+        "detail": "A no-ROP3 row cannot reuse or allocate an identity without Dataset_Row_Key."
+      },
+      {
+        "caseId": "source-registry-conflict",
+        "code": "identity_registry_conflict",
+        "severity": "error",
+        "detail": "Source UUID 000099 conflicts with registry UUID 000040."
+      }
+    ],
+    "nextUuid": 43
+  },
+  "merge": {
+    "rows": [
+      {
+        "pgic": "10-JP-100001-LAO",
+        "values": {
+          "peopleName": "JP River People",
+          "population": 1000,
+          "countryName": "Laos",
+          "frontier": true
+        },
+        "provenance": {
+          "peopleName": "JP",
+          "population": "IMB",
+          "countryName": "JP",
+          "frontier": "JP"
+        }
+      }
+    ],
+    "findings": [
+      {
+        "caseId": "10-JP-100001-LAO",
+        "code": "priority_fallback_used",
+        "severity": "warning",
+        "detail": "countryName used fallback JP > IMB > AX > ETNO > WCD; winner JP."
+      },
+      {
+        "caseId": "10-JP-100002-LAO",
+        "code": "duplicate_source_binding",
+        "severity": "error",
+        "detail": "One source contributes more than one row for the same canonical PGIC."
+      }
+    ]
+  },
+  "aggregate": {
+    "aggregate1": [
+      {
+        "rop3": "100001",
+        "population": 1000,
+        "percentChristian": 13,
+        "percentEvangelical": 2.9,
+        "primaryCountry": "Laos",
+        "alternateCountries": ["Côte d’Ivoire"],
+        "contributingSources": ["JP", "IMB", "AX", "ETNO", "WCD"],
+        "joint": true,
+        "workersNeeded": 1
+      },
+      {
+        "rop3": "100002",
+        "population": 100,
+        "percentChristian": 1,
+        "percentEvangelical": 0.01,
+        "primaryCountry": "India",
+        "alternateCountries": [],
+        "contributingSources": ["JP", "IMB"],
+        "joint": false,
+        "workersNeeded": 1
+      }
+    ],
+    "classifications": [
+      { "caseId": "phase-without-ax-is-unavailable", "evangelicalBelievers": 100, "selfEngaged": false, "watchlist": false },
+      { "caseId": "self-engaged-percent-branch", "evangelicalBelievers": 1100, "selfEngaged": true, "watchlist": false },
+      { "caseId": "watchlist-low-evangelical", "evangelicalBelievers": 10, "selfEngaged": false, "watchlist": true },
+      { "caseId": "watchlist-one-percent-boundary", "evangelicalBelievers": 1000, "selfEngaged": false, "watchlist": false }
+    ],
+    "tier2Conflicts": [
+      {
+        "pgic": "10-JP-100010-LAO",
+        "severity": "error",
+        "caseIds": ["tier2-a", "tier2-b"],
+        "sources": ["Partner A", "Partner B"]
+      }
+    ]
+  },
+  "checksum": "29a75bf8312a1bc54e36690452a5e9809e45a7134efe9739d537054778171aec"
+}

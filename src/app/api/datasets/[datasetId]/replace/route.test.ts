@@ -2,7 +2,11 @@ import { readFile } from "node:fs/promises";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getCurrentIdentity } from "@/lib/auth";
-import { replaceDatasetContents } from "@/lib/datasets";
+import {
+  DatasetStoragePathConflictError,
+  PipelineManagedDatasetMutationError,
+  replaceDatasetContents,
+} from "@/lib/datasets";
 import { POST } from "./route";
 
 vi.mock("@/lib/auth", () => ({
@@ -10,6 +14,26 @@ vi.mock("@/lib/auth", () => ({
 }));
 
 vi.mock("@/lib/datasets", () => ({
+  DatasetStoragePathConflictError: class DatasetStoragePathConflictError extends Error {
+    readonly status = 409;
+
+    constructor(
+      message = "That uploaded file is already owned by another dataset.",
+    ) {
+      super(message);
+      this.name = "DatasetStoragePathConflictError";
+    }
+  },
+  PipelineManagedDatasetMutationError: class PipelineManagedDatasetMutationError extends Error {
+    readonly status = 409;
+
+    constructor(
+      message = "Pipeline-managed datasets cannot be replaced through dataset upload.",
+    ) {
+      super(message);
+      this.name = "PipelineManagedDatasetMutationError";
+    }
+  },
   replaceDatasetContents: vi.fn(),
 }));
 
@@ -169,6 +193,60 @@ describe("/api/datasets/[datasetId]/replace", () => {
     );
 
     expect(response.status).toBe(404);
+  });
+
+  it("rejects replacements for pipeline-managed datasets", async () => {
+    replaceDatasetContentsMock.mockRejectedValue(
+      new PipelineManagedDatasetMutationError(),
+    );
+
+    const response = await POST(
+      new Request(
+        "http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001/replace",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            blobPath: "datasets/csv/customers-v2.csv",
+            sizeBytes: 100,
+            columns: [{ key: "email", label: "Email", sourceIndex: 0 }],
+            classification: "PGAC",
+          }),
+        },
+      ),
+      context,
+    );
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual({
+      error: "Pipeline-managed datasets cannot be replaced through dataset upload.",
+    });
+  });
+
+  it("returns a conflict when another dataset owns the replacement storage path", async () => {
+    replaceDatasetContentsMock.mockRejectedValue(
+      new DatasetStoragePathConflictError(),
+    );
+
+    const response = await POST(
+      new Request(
+        "http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001/replace",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            blobPath: "datasets/csv/customers-v2.csv",
+            sizeBytes: 100,
+            columns: [{ key: "email", label: "Email", sourceIndex: 0 }],
+            classification: "PGAC",
+          }),
+        },
+      ),
+      context,
+    );
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual({
+      error: "That uploaded file is already owned by another dataset.",
+    });
   });
 
   it("rejects replacement payloads without a PGAC or PGIC classification", async () => {

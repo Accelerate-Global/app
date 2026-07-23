@@ -10,7 +10,7 @@ vi.mock("@/lib/imb-forming", () => ({ rejectImbFormingRun: vi.fn() }));
 const identity = { ownerId: "admin-1", email: null, fullName: null, workspaceRole: "admin" as const, isDatasetAdmin: true, mode: "supabase" as const };
 const context = { params: Promise.resolve({ connectionId: "connection-1", runId: "run-1", formingRunId: "forming-1" }) };
 
-describe("IMB forming candidate reject route", () => {
+describe("dataset forming candidate reject route", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     vi.mocked(getCurrentIdentity).mockResolvedValue(identity);
@@ -26,5 +26,20 @@ describe("IMB forming candidate reject route", () => {
   it("requires a reason", async () => {
     const response = await POST(new Request("http://localhost", { method: "POST", body: JSON.stringify({ reason: "" }) }), context);
     expect(response.status).toBe(400);
+  });
+
+  it("uses a source-neutral failure response", async () => {
+    vi.mocked(rejectImbFormingRun).mockRejectedValue(new Error("database detail"));
+    const response = await POST(
+      new Request("http://localhost", {
+        method: "POST",
+        body: JSON.stringify({ reason: "Reviewed" }),
+      }),
+      context,
+    );
+    expect(response.status).toBe(500);
+    await expect(response.json()).resolves.toEqual({
+      error: "Could not reject the dataset forming candidate.",
+    });
   });
 });

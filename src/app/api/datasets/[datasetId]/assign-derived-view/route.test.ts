@@ -2,7 +2,10 @@ import { readFile } from "node:fs/promises";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getCurrentIdentity } from "@/lib/auth";
-import { assignDatasetDerivedView } from "@/lib/datasets";
+import {
+  assignDatasetDerivedView,
+  PipelineManagedDatasetMutationError,
+} from "@/lib/datasets";
 import { POST } from "./route";
 
 vi.mock("@/lib/auth", () => ({
@@ -18,6 +21,16 @@ vi.mock("@/lib/datasets", () => ({
     ) {
       super(message);
       this.name = "DerivedDatasetSourceConflictError";
+    }
+  },
+  PipelineManagedDatasetMutationError: class PipelineManagedDatasetMutationError extends Error {
+    readonly status = 409;
+
+    constructor(
+      message = "Pipeline-managed datasets cannot be reassigned as derived views.",
+    ) {
+      super(message);
+      this.name = "PipelineManagedDatasetMutationError";
     }
   },
   assignDatasetDerivedView: vi.fn(),
@@ -241,6 +254,28 @@ describe("/api/datasets/[datasetId]/assign-derived-view", () => {
     await expect(response.json()).resolves.toEqual({
       error:
         "Derived dataset views cannot reference themselves as a backing dataset.",
+    });
+  });
+
+  it("rejects derived-view assignment for pipeline-managed targets", async () => {
+    assignDatasetDerivedViewMock.mockRejectedValue(
+      new PipelineManagedDatasetMutationError(),
+    );
+
+    const response = await POST(
+      new Request(
+        "http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001/assign-derived-view",
+        {
+          method: "POST",
+          body: JSON.stringify(payload),
+        },
+      ),
+      context,
+    );
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual({
+      error: "Pipeline-managed datasets cannot be reassigned as derived views.",
     });
   });
 });

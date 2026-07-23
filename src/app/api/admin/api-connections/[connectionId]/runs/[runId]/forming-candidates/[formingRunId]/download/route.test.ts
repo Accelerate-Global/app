@@ -10,7 +10,7 @@ vi.mock("@/lib/imb-forming", () => ({ getImbFormingArtifactDownload: vi.fn() }))
 const identity = { ownerId: "admin-1", email: null, fullName: null, workspaceRole: "admin" as const, isDatasetAdmin: true, mode: "supabase" as const };
 const context = { params: Promise.resolve({ connectionId: "connection-1", runId: "run-1", formingRunId: "forming-1" }) };
 
-describe("IMB forming candidate download route", () => {
+describe("dataset forming candidate download route", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     vi.mocked(getCurrentIdentity).mockResolvedValue(identity);
@@ -26,5 +26,14 @@ describe("IMB forming candidate download route", () => {
   it("rejects unknown artifact kinds", async () => {
     expect((await GET(new Request("http://localhost?kind=zip"), context)).status).toBe(400);
     expect(getImbFormingArtifactDownload).not.toHaveBeenCalled();
+  });
+
+  it("uses a source-neutral not-found response", async () => {
+    vi.mocked(getImbFormingArtifactDownload).mockResolvedValue(null);
+    const response = await GET(new Request("http://localhost?kind=csv"), context);
+    expect(response.status).toBe(404);
+    await expect(response.json()).resolves.toEqual({
+      error: "Dataset forming artifact not found.",
+    });
   });
 });

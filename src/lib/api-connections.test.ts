@@ -626,17 +626,17 @@ describe("api connection run artifact storage", () => {
 });
 
 describe("api connection import snapshots", () => {
-  it("archives IMB imports without passing unformed rows into dataset publication", async () => {
+  it("archives every engine-managed import without passing unformed rows into dataset publication", async () => {
     const source = await readFile(
       path.join(process.cwd(), "src/lib/api-connections/index.ts"),
       "utf8",
     );
 
     expect(source).toContain(
-      'run.mode === "import" && connection.id !== IMB_API_CONNECTION_ID',
+      'run.mode === "import" && !pinnedSourceProfile',
     );
     expect(source).toContain(
-      "Archived IMB source rows for forming; no dataset was published.",
+      'Archived ${pinnedSourceProfile?.sourceProfileLabel ?? "formed source"} rows for review; no dataset was published.',
     );
   });
 
@@ -795,6 +795,19 @@ describe("Google Sheets provider runs", () => {
     expect(source).toContain("synchronizeGoogleSheetsConnectionTab");
     expect(source).toContain("isNull(apiConnections.archivedAt)");
     expect(source).toContain('archiveReason: "Disconnected by administrator."');
+    const disconnectSource = source.slice(
+      source.indexOf("export async function disconnectGoogleSheetsConnection"),
+      source.indexOf("function normalizeApiConnectionResourceUrl"),
+    );
+    expect(disconnectSource).toContain("getDb().transaction(async (tx) =>");
+    expect(disconnectSource).toContain('.for("update")');
+    expect(disconnectSource).toContain(".delete(sourceProfileBindings)");
+    expect(disconnectSource).toContain(
+      ".where(eq(sourceProfileBindings.connectionId, connection.id))",
+    );
+    expect(disconnectSource.indexOf(".delete(sourceProfileBindings)")).toBeLessThan(
+      disconnectSource.indexOf(".update(apiConnections)"),
+    );
     expect(source).not.toContain(
       ".delete(apiConnections)\n    .where(eq(apiConnections.id, connection.id))",
     );

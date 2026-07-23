@@ -1,4 +1,15 @@
-import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  inArray,
+  isNotNull,
+  isNull,
+  lte,
+  or,
+  sql,
+} from "drizzle-orm";
 
 import { getDb } from "@/db";
 import {
@@ -7,6 +18,7 @@ import {
   apiConnectionRunOutputs,
   apiConnectionRuns,
   apiConnections,
+  sourceProfileBindings,
 } from "@/db/schema";
 import {
   checksumApiConnectionArtifact,
@@ -17,6 +29,11 @@ import {
 } from "@/lib/api-connection-output";
 import type { CurrentIdentity } from "@/lib/auth";
 import { chunkRows, sanitizeFileName } from "@/lib/csv";
+import {
+  createApiConnectionSourceProfileSnapshot,
+  DatasetFormingError,
+  resolveApiConnectionSourceProfileSnapshot,
+} from "@/lib/dataset-forming";
 import {
   createDataset,
   insertDatasetRowBatch,
@@ -44,6 +61,11 @@ import {
   parseGoogleSheetUrl,
 } from "@/lib/google-sheets";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import {
+  getCodeManagedSourceProfile,
+  resolveSourceProfile,
+} from "@/lib/source-profiles";
+import type { SourceProfileSummary } from "@/lib/source-profiles";
 import type {
   ApiConnection,
   ApiConnectionHeader,
@@ -247,6 +269,7 @@ function toApiConnectionFromCodeManagedDefinition(
     datasetClassification: definition.datasetClassification,
     provider: "http_api",
     providerConfig: HTTP_API_PROVIDER_CONFIG,
+    sourceProfile: getCodeManagedSourceProfile(definition.id),
     createdAt: CODE_MANAGED_CONNECTION_TIMESTAMP,
     updatedAt: CODE_MANAGED_CONNECTION_TIMESTAMP,
   };
@@ -284,7 +307,10 @@ export function applyCodeManagedDefinitionForExecution(
   } satisfies ApiConnectionRecord;
 }
 
-function mergeCodeManagedApiConnections(connectionRows: ApiConnectionRecord[]) {
+function mergeCodeManagedApiConnections(
+  connectionRows: ApiConnectionRecord[],
+  sourceProfiles: ReadonlyMap<string, SourceProfileSummary> = new Map(),
+) {
   const materializedById = new Map(
     connectionRows.map((connection) => [connection.id, connection]),
   );
@@ -293,13 +319,19 @@ function mergeCodeManagedApiConnections(connectionRows: ApiConnectionRecord[]) {
       const materialized = materializedById.get(definition.id);
 
       return materialized
-        ? toApiConnection(materialized)
+        ? {
+            ...toApiConnection(materialized),
+            sourceProfile: getCodeManagedSourceProfile(materialized.id),
+          }
         : toApiConnectionFromCodeManagedDefinition(definition);
     },
   );
   const customConnections = connectionRows
     .filter((connection) => !codeManagedApiConnectionById.has(connection.id))
-    .map(toApiConnection);
+    .map((connection) => ({
+      ...toApiConnection(connection),
+      sourceProfile: sourceProfiles.get(connection.id) ?? null,
+    }));
 
   return [
     ...codeManagedConnections,
@@ -403,6 +435,8 @@ function toApiConnectionRun(row: ApiConnectionRunRecord): ApiConnectionRun {
   return {
     id: row.id,
     connectionId: row.connectionId,
+    sourceProfileSnapshot: row.sourceProfileSnapshot,
+    sourceProfileChecksum: row.sourceProfileChecksum,
     actorOwnerId: row.actorOwnerId,
     actorEmail: row.actorEmail,
     mode: row.mode,
@@ -1169,8 +1203,21 @@ export async function listApiConnections() {
             .limit(500),
         ]);
 
+  const resolvedProfiles = await Promise.all(
+    connectionRows.map(async (connection) => [
+      connection.id,
+      await resolveSourceProfile(connection.id),
+    ] as const),
+  );
+  const sourceProfiles = new Map(
+    resolvedProfiles.filter(
+      (entry): entry is readonly [string, SourceProfileSummary] =>
+        entry[1] !== null,
+    ),
+  );
+
   return {
-    connections: mergeCodeManagedApiConnections(connectionRows),
+    connections: mergeCodeManagedApiConnections(connectionRows, sourceProfiles),
     runs: await hydrateRunDetails(runRows),
     resources: resourceRows.map(toApiConnectionResource),
   };
@@ -1184,7 +1231,10 @@ export async function getApiConnection(connectionId: string) {
     .limit(1);
 
   if (connection) {
-    return toApiConnection(connection);
+    return {
+      ...toApiConnection(connection),
+      sourceProfile: await resolveSourceProfile(connection.id),
+    };
   }
 
   const codeManagedDefinition = getCodeManagedApiConnectionDefinition(connectionId);
@@ -1325,37 +1375,44 @@ export async function disconnectGoogleSheetsConnection(input: {
   connectionId: string;
   identity: CurrentIdentity;
 }) {
-  const [connection] = await getDb()
-    .select()
-    .from(apiConnections)
-    .where(eq(apiConnections.id, input.connectionId))
-    .limit(1);
+  return getDb().transaction(async (tx) => {
+    const [connection] = await tx
+      .select()
+      .from(apiConnections)
+      .where(eq(apiConnections.id, input.connectionId))
+      .limit(1)
+      .for("update");
 
-  if (!connection || connection.provider !== GOOGLE_SHEETS_PROVIDER) {
-    return null;
-  }
+    if (!connection || connection.provider !== GOOGLE_SHEETS_PROVIDER) {
+      return null;
+    }
 
-  if (connection.archivedAt) {
-    return toApiConnection(connection);
-  }
+    if (connection.archivedAt) {
+      return toApiConnection(connection);
+    }
 
-  const [archived] = await getDb()
-    .update(apiConnections)
-    .set({
-      archivedAt: new Date(),
-      archivedByOwnerId: input.identity.ownerId,
-      archiveReason: "Disconnected by administrator.",
-      updatedByOwnerId: input.identity.ownerId,
-      updatedAt: new Date(),
-    })
-    .where(eq(apiConnections.id, connection.id))
-    .returning();
+    await tx
+      .delete(sourceProfileBindings)
+      .where(eq(sourceProfileBindings.connectionId, connection.id));
 
-  if (!archived) {
-    return null;
-  }
+    const [archived] = await tx
+      .update(apiConnections)
+      .set({
+        archivedAt: new Date(),
+        archivedByOwnerId: input.identity.ownerId,
+        archiveReason: "Disconnected by administrator.",
+        updatedByOwnerId: input.identity.ownerId,
+        updatedAt: new Date(),
+      })
+      .where(eq(apiConnections.id, connection.id))
+      .returning();
 
-  return toApiConnection(archived);
+    if (!archived) {
+      return null;
+    }
+
+    return toApiConnection(archived);
+  });
 }
 
 function normalizeApiConnectionResourceUrl(value: string) {
@@ -1573,6 +1630,9 @@ async function bindGoogleSheetsConnectionTarget(input: {
 
 async function insertRun(input: {
   connectionId: string;
+  sourceProfileSnapshot: ApiConnectionRunRecord["sourceProfileSnapshot"];
+  sourceProfileChecksum: string | null;
+  operationKey?: string | null;
   identity: CurrentIdentity;
   mode: ApiConnectionRunMode;
   status: ApiConnectionRunStatus;
@@ -1589,6 +1649,9 @@ async function insertRun(input: {
     .insert(apiConnectionRuns)
     .values({
       connectionId: input.connectionId,
+      sourceProfileSnapshot: input.sourceProfileSnapshot,
+      sourceProfileChecksum: input.sourceProfileChecksum,
+      operationKey: input.operationKey ?? null,
       actorOwnerId: input.identity.ownerId,
       actorEmail: input.identity.email,
       mode: input.mode,
@@ -1602,9 +1665,19 @@ async function insertRun(input: {
       startedAt: input.startedAt ?? null,
       completedAt: input.completedAt ?? null,
     })
+    .onConflictDoNothing()
     .returning();
-
-  return toApiConnectionRun(run);
+  if (run) return { run: toApiConnectionRun(run), created: true } as const;
+  if (!input.operationKey) {
+    throw new Error("The API connection run could not be created.");
+  }
+  const [retained] = await getDb()
+    .select()
+    .from(apiConnectionRuns)
+    .where(eq(apiConnectionRuns.operationKey, input.operationKey))
+    .limit(1);
+  if (!retained) throw new Error("The idempotent API connection run could not be resolved.");
+  return { run: toApiConnectionRun(retained), created: false } as const;
 }
 
 async function insertRunLog(input: {
@@ -1676,7 +1749,8 @@ async function uploadRunArtifact(input: {
     );
 
   if (result.error) {
-    throw result.error;
+    const retained = await downloadStorageText(path).catch(() => null);
+    if (retained !== input.content) throw result.error;
   }
 
   return path;
@@ -1721,7 +1795,7 @@ async function persistRunOutput(input: {
       content: rawArtifact,
     }),
   ]);
-  const [output] = await getDb()
+  const [inserted] = await getDb()
     .insert(apiConnectionRunOutputs)
     .values({
       runId: input.run.id,
@@ -1735,8 +1809,24 @@ async function persistRunOutput(input: {
       rowsChecksum: checksumApiConnectionArtifact(rowsArtifact),
       rawChecksum: checksumApiConnectionArtifact(rawArtifact),
     })
+    .onConflictDoNothing({ target: apiConnectionRunOutputs.runId })
     .returning();
-
+  const output = inserted ?? (
+    await getDb()
+      .select()
+      .from(apiConnectionRunOutputs)
+      .where(eq(apiConnectionRunOutputs.runId, input.run.id))
+      .limit(1)
+  )[0];
+  if (
+    !output ||
+    output.rowsChecksum !== checksumApiConnectionArtifact(rowsArtifact) ||
+    output.rawChecksum !== checksumApiConnectionArtifact(rawArtifact)
+  ) {
+    throw new Error(
+      "The retained API run output does not match this recovery attempt.",
+    );
+  }
   return toApiConnectionRunOutput(output);
 }
 
@@ -1773,6 +1863,7 @@ export async function startApiConnectionRun(input: {
   connectionId: string;
   identity: CurrentIdentity;
   importEnabled: boolean;
+  operationKey?: string;
 }) {
   let [connection] = await getDb()
     .select()
@@ -1800,8 +1891,18 @@ export async function startApiConnectionRun(input: {
     });
   }
 
-  const run = await insertRun({
+  const sourceProfile = await resolveSourceProfile(connection.id);
+  const sourceProfileBinding = sourceProfile
+    ? createApiConnectionSourceProfileSnapshot({
+        connectionId: connection.id,
+        sourceProfile,
+      })
+    : null;
+  const inserted = await insertRun({
     connectionId: connection.id,
+    sourceProfileSnapshot: sourceProfileBinding?.snapshot ?? null,
+    sourceProfileChecksum: sourceProfileBinding?.checksum ?? null,
+    operationKey: input.operationKey,
     identity: input.identity,
     mode: input.importEnabled ? "import" : "test",
     status: "queued",
@@ -1813,11 +1914,14 @@ export async function startApiConnectionRun(input: {
     responsePreview: "",
   });
 
-  await insertRunLog({
-    runId: run.id,
-    connectionId: connection.id,
-    message: "Run queued.",
-  });
+  const run = inserted.run;
+  if (inserted.created) {
+    await insertRunLog({
+      runId: run.id,
+      connectionId: connection.id,
+      message: "Run queued.",
+    });
+  }
 
   return {
     connection: toApiConnection(connection),
@@ -1840,13 +1944,38 @@ function identityFromRun(run: ApiConnectionRunRecord): CurrentIdentity {
 }
 
 export async function executeApiConnectionRun(input: { runId: string }) {
+  const startedAtDate = new Date();
+  const staleBefore = new Date(startedAtDate.getTime() - 60_000);
   const [run] = await getDb()
-    .select()
-    .from(apiConnectionRuns)
-    .where(eq(apiConnectionRuns.id, input.runId))
-    .limit(1);
+    .update(apiConnectionRuns)
+    .set({
+      status: "running",
+      startedAt: startedAtDate,
+      durationMs: 0,
+      completedAt: null,
+      errorMessage: null,
+    })
+    .where(
+      and(
+        eq(apiConnectionRuns.id, input.runId),
+        or(
+          eq(apiConnectionRuns.status, "queued"),
+          and(
+            eq(apiConnectionRuns.status, "running"),
+            isNotNull(apiConnectionRuns.operationKey),
+            isNotNull(apiConnectionRuns.startedAt),
+            lte(apiConnectionRuns.startedAt, staleBefore),
+          ),
+          and(
+            eq(apiConnectionRuns.status, "failed"),
+            isNotNull(apiConnectionRuns.operationKey),
+          ),
+        ),
+      ),
+    )
+    .returning();
 
-  if (!run || run.status !== "queued") {
+  if (!run) {
     return null;
   }
 
@@ -1892,17 +2021,10 @@ export async function executeApiConnectionRun(input: { runId: string }) {
 
   let executableConnection = applyCodeManagedDefinitionForExecution(connection);
   let secrets = new Map<string, string>();
-  const startedAtDate = new Date();
   const startedAt = Date.now();
   let httpStatus: number | null = null;
   let responsePreview = "";
 
-  await updateRun({
-    runId: run.id,
-    status: "running",
-    startedAt: startedAtDate,
-    durationMs: 0,
-  });
   await insertRunLog({
     runId: run.id,
     connectionId: connection.id,
@@ -1910,6 +2032,19 @@ export async function executeApiConnectionRun(input: { runId: string }) {
   });
 
   try {
+    const pinnedSourceProfile = run.sourceProfileSnapshot
+      ? resolveApiConnectionSourceProfileSnapshot({
+          connectionId: run.connectionId,
+          snapshot: run.sourceProfileSnapshot,
+          checksum: run.sourceProfileChecksum,
+        }).snapshot
+      : null;
+    if (!pinnedSourceProfile && (await resolveSourceProfile(run.connectionId))) {
+      throw new ApiConnectionError(
+        "This queued run predates immutable source-profile snapshots. Start a new ingestion.",
+        409,
+      );
+    }
     if (connection.provider === GOOGLE_SHEETS_PROVIDER) {
       executableConnection = (
         await synchronizeGoogleSheetsConnectionTab(connection)
@@ -1973,8 +2108,7 @@ export async function executeApiConnectionRun(input: { runId: string }) {
     });
 
     let datasetId: string | null = null;
-
-    if (run.mode === "import" && connection.id !== IMB_API_CONNECTION_ID) {
+    if (run.mode === "import" && !pinnedSourceProfile) {
       const dataset = await persistImportedRows({
         identity: identityFromRun(run),
         connection: executableConnection,
@@ -1992,7 +2126,7 @@ export async function executeApiConnectionRun(input: { runId: string }) {
       await insertRunLog({
         runId: run.id,
         connectionId: connection.id,
-        message: "Archived IMB source rows for forming; no dataset was published.",
+        message: `Archived ${pinnedSourceProfile?.sourceProfileLabel ?? "formed source"} rows for review; no dataset was published.`,
       });
     }
 
@@ -2067,11 +2201,17 @@ export async function executeApiConnectionRun(input: { runId: string }) {
         ? error.message
         : error instanceof GoogleSheetsError
           ? error.message
+        : error instanceof DatasetFormingError
+          ? error.message
         : error instanceof Error && error.name === "AbortError"
           ? "API request timed out."
           : "API connection run failed.";
 
-    if (!(error instanceof ApiConnectionError) && !(error instanceof GoogleSheetsError)) {
+    if (
+      !(error instanceof ApiConnectionError) &&
+      !(error instanceof GoogleSheetsError) &&
+      !(error instanceof DatasetFormingError)
+    ) {
       logError("Failed to run API connection", error);
     }
 

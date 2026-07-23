@@ -4,7 +4,7 @@ import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getCurrentIdentity } from "@/lib/auth";
-import { getDataset } from "@/lib/datasets";
+import { getDataset, isPipelineManagedDataset } from "@/lib/datasets";
 import UploadPage from "./page";
 
 const datasetUploadClientSpy = vi.fn();
@@ -15,7 +15,10 @@ vi.mock("next/navigation", () => ({
   }),
 }));
 vi.mock("@/lib/auth", () => ({ getCurrentIdentity: vi.fn() }));
-vi.mock("@/lib/datasets", () => ({ getDataset: vi.fn() }));
+vi.mock("@/lib/datasets", () => ({
+  getDataset: vi.fn(),
+  isPipelineManagedDataset: vi.fn(),
+}));
 vi.mock("@/components/dashboard/dataset-upload-client", () => ({
   DatasetUploadClient: (props: unknown) => {
     datasetUploadClientSpy(props);
@@ -25,6 +28,7 @@ vi.mock("@/components/dashboard/dataset-upload-client", () => ({
 
 const getCurrentIdentityMock = vi.mocked(getCurrentIdentity);
 const getDatasetMock = vi.mocked(getDataset);
+const isPipelineManagedDatasetMock = vi.mocked(isPipelineManagedDataset);
 
 const identity = {
   ownerId: "admin-1",
@@ -39,6 +43,7 @@ describe("/dashboard/upload", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     getCurrentIdentityMock.mockResolvedValue(identity);
+    isPipelineManagedDatasetMock.mockResolvedValue(false);
   });
 
   it("redirects new uploads into onboarding", async () => {
@@ -76,5 +81,33 @@ describe("/dashboard/upload", () => {
     expect(datasetUploadClientSpy).toHaveBeenCalledWith(
       expect.not.objectContaining({ actorOwnerId: expect.anything() }),
     );
+  });
+
+  it("redirects pipeline-managed replacements back to their locked edit page", async () => {
+    getDatasetMock.mockResolvedValue({
+      id: "dataset-1",
+      backingDatasetId: null,
+      sortOrder: 0,
+      fileName: "Published product.csv",
+      blobUrl: "https://example.com/published.csv",
+      blobPath: "datasets/published.csv",
+      isPrimary: false,
+      isWorkspaceVisible: true,
+      status: "ready",
+      rowCount: 1,
+      sizeBytes: 20,
+      columns: [{ key: "name", label: "Name", sourceIndex: 0 }],
+      hiddenColumnKeys: [],
+      defaultFilters: null,
+      tags: [],
+      error: null,
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    });
+    isPipelineManagedDatasetMock.mockResolvedValue(true);
+
+    await expect(
+      UploadPage({ searchParams: Promise.resolve({ replace: "dataset-1" }) }),
+    ).rejects.toThrow("NEXT_REDIRECT:/dashboard/datasets/dataset-1/edit");
   });
 });

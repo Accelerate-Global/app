@@ -1,0 +1,24 @@
+{
+  "resourceKey": "jp-peopleid3",
+  "schemaVersion": 1,
+  "sourceName": "Sanitized PeopleID3 fixture",
+  "sourceRetrievedAt": "2026-01-01T00:00:00.000Z",
+  "entries": [
+    {
+      "peopleId3": "900001",
+      "rop3": "100001",
+      "iso3": "AGO",
+      "active": true,
+      "parentStatus": "linked",
+      "missingParentReason": null
+    },
+    {
+      "peopleId3": "900002",
+      "rop3": "100004",
+      "iso3": "PNG",
+      "active": true,
+      "parentStatus": "linked",
+      "missingParentReason": null
+    }
+  ]
+}

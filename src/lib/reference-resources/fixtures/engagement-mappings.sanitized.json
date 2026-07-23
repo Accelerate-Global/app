@@ -1,0 +1,24 @@
+{
+  "resourceKey": "engagement-mappings",
+  "schemaVersion": 1,
+  "sourceName": "Sanitized engagement mapping fixture",
+  "sourceRetrievedAt": "2026-01-01T00:00:00.000Z",
+  "entries": [
+    {
+      "fieldId": "F_2",
+      "sourceField": "Reporting organization",
+      "canonicalField": "reporting_group",
+      "displayName": "Reporting Group",
+      "active": true,
+      "dataType": "string"
+    },
+    {
+      "fieldId": "F_3",
+      "sourceField": "Tracking identifier source",
+      "canonicalField": "tracking_id_source",
+      "displayName": "Tracking ID Source",
+      "active": true,
+      "dataType": "identifier"
+    }
+  ]
+}

@@ -2,6 +2,7 @@ import type { InferInsertModel } from "drizzle-orm";
 
 import {
   countryReferenceEntries,
+  pipelineReferenceEntries,
   ropReferenceGeographies,
   ropReferencePeople,
   ropReferenceTerms,
@@ -20,10 +21,21 @@ import type {
 
 import { canonicalizeReferenceResource } from "./canonical";
 import {
+  preparePipelineResource,
+  serializePipelineResourceCsv,
+} from "./pipeline-adapters";
+import {
+  isPipelineResourceKey,
+  type PipelineResourceKey,
+  type PipelineResourceValidationContext,
+} from "./pipeline-types";
+import {
   COUNTRY_RESOURCE_KEY,
+  ROP_RESOURCE_KEY,
   type ReferenceResourceDiffSummary,
   type ReferenceResourceKey,
   type ReferenceResourcePayloadByKey,
+  type ReferenceResourceValidationFinding,
 } from "./types";
 
 type CountryProjection = Omit<
@@ -42,6 +54,10 @@ type RopGeographyProjection = Omit<
   InferInsertModel<typeof ropReferenceGeographies>,
   "id" | "versionId" | "createdAt"
 >;
+type PipelineProjection = Omit<
+  InferInsertModel<typeof pipelineReferenceEntries>,
+  "id" | "versionId" | "createdAt"
+>;
 
 export type PreparedReferenceResource = {
   sourceRetrievedAt: Date;
@@ -52,6 +68,8 @@ export type PreparedReferenceResource = {
   ropTerms: RopTermProjection[];
   ropPeople: RopPersonProjection[];
   ropGeographies: RopGeographyProjection[];
+  pipelineEntries: PipelineProjection[];
+  findings: ReferenceResourceValidationFinding[];
   csv: string;
 };
 
@@ -234,6 +252,8 @@ function prepareCountry(resource: IsoCountryCodeResource): PreparedReferenceReso
     ropTerms: [],
     ropPeople: [],
     ropGeographies: [],
+    pipelineEntries: [],
+    findings: [],
     csv: serializeCountryCsvRows(resource.entries),
   };
 }
@@ -426,17 +446,69 @@ function prepareRop(resource: RopCodeResource): PreparedReferenceResource {
       status: row.status,
       searchText: geographySearchText(row),
     })),
+    pipelineEntries: [],
+    findings: [],
     csv: serializeRopCsvRows(resource.entries),
+  };
+}
+
+function pipelineSearchText(value: Record<string, unknown>) {
+  return Object.values(value)
+    .flatMap((entry) => (Array.isArray(entry) ? entry : [entry]))
+    .filter((entry) => entry !== null && entry !== undefined)
+    .map(String)
+    .join(" ")
+    .toLocaleLowerCase();
+}
+
+function preparePipeline(
+  resourceKey: PipelineResourceKey,
+  payload: ReferenceResourcePayloadByKey[PipelineResourceKey],
+  context: PipelineResourceValidationContext,
+): PreparedReferenceResource {
+  const resource = preparePipelineResource(resourceKey, payload, context);
+  return {
+    sourceRetrievedAt: new Date(resource.sourceRetrievedAt),
+    sourceMetadata: {
+      sourceName: resource.sourceName,
+      resourceKey,
+      normalizedContentChecksum: resource.contentChecksum,
+    },
+    entryCount: resource.entryCount,
+    stableEntries: new Map(
+      resource.entries.map((entry) => [entry.stableKey, entry]),
+    ),
+    countryEntries: [],
+    ropTerms: [],
+    ropPeople: [],
+    ropGeographies: [],
+    pipelineEntries: resource.entries.map((entry) => ({
+      stableKey: entry.stableKey,
+      active: entry.active,
+      data: entry as unknown as Record<string, unknown>,
+      searchText: pipelineSearchText(entry as unknown as Record<string, unknown>),
+    })),
+    findings: resource.findings.map((item) => ({ ...item })),
+    csv: serializePipelineResourceCsv(resourceKey, resource.entries as never),
   };
 }
 
 export function prepareReferenceResource<K extends ReferenceResourceKey>(
   resourceKey: K,
   payload: ReferenceResourcePayloadByKey[K],
+  context: PipelineResourceValidationContext = {},
 ) {
-  return resourceKey === COUNTRY_RESOURCE_KEY
-    ? prepareCountry(payload as IsoCountryCodeResource)
-    : prepareRop(payload as RopCodeResource);
+  if (resourceKey === COUNTRY_RESOURCE_KEY) {
+    return prepareCountry(payload as IsoCountryCodeResource);
+  }
+  if (resourceKey === ROP_RESOURCE_KEY) {
+    return prepareRop(payload as RopCodeResource);
+  }
+  return preparePipeline(
+    resourceKey,
+    payload as ReferenceResourcePayloadByKey[PipelineResourceKey],
+    context,
+  );
 }
 
 export function getStableEntries(
@@ -447,8 +519,18 @@ export function getStableEntries(
     const country = payload as IsoCountryCodeResource;
     return new Map(country.entries.map((entry) => [getCountryStableKey(entry), entry]));
   }
-  const rop = payload as RopCodeResource;
-  return new Map(rop.entries.map((entry) => [entry.id, entry]));
+  if (resourceKey === ROP_RESOURCE_KEY) {
+    const rop = payload as RopCodeResource;
+    return new Map(rop.entries.map((entry) => [entry.id, entry]));
+  }
+  if (isPipelineResourceKey(resourceKey)) {
+    const prepared = preparePipelineResource(
+      resourceKey,
+      payload as ReferenceResourcePayloadByKey[PipelineResourceKey],
+    );
+    return new Map(prepared.entries.map((entry) => [entry.stableKey, entry]));
+  }
+  return new Map<string, unknown>();
 }
 
 export function diffReferenceResources(input: {

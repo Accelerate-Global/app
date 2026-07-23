@@ -6,7 +6,12 @@ import { DatasetEditPageClient } from "@/components/dashboard/dataset-edit-page-
 import { DashboardPageShell } from "@/components/layout/dashboard-page-shell";
 import { buttonVariants } from "@/components/ui/button";
 import { getCurrentIdentity } from "@/lib/auth";
-import { getDataset, listDatasetVersions, listDatasets } from "@/lib/datasets";
+import {
+  getDataset,
+  isPipelineManagedDataset,
+  listDatasetVersions,
+  listDatasets,
+} from "@/lib/datasets";
 import { getReusableDatasetTags } from "@/lib/dataset-tags";
 import { cn } from "@/lib/utils";
 
@@ -36,9 +41,10 @@ export default async function DatasetEditPage({
     redirect(`/dashboard/datasets/${dataset.id}`);
   }
 
-  const [datasets, versions] = await Promise.all([
+  const [datasets, versions, isPipelineManaged] = await Promise.all([
     listDatasets({ includeDisabled: true }),
     dataset.backingDatasetId ? Promise.resolve([]) : listDatasetVersions(dataset.id),
+    isPipelineManagedDataset(dataset.id),
   ]);
   const backingDatasetName =
     dataset.backingDatasetId
@@ -79,6 +85,7 @@ export default async function DatasetEditPage({
           backingDatasetName={backingDatasetName}
           availableTags={availableTags}
           initialVersions={versions ?? []}
+          isPipelineManaged={isPipelineManaged}
         />
       </DashboardPageShell>
     </div>

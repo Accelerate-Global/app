@@ -2,7 +2,11 @@ import { readFile } from "node:fs/promises";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getCurrentIdentity } from "@/lib/auth";
-import { createDataset, listDatasets } from "@/lib/datasets";
+import {
+  DatasetStoragePathConflictError,
+  createDataset,
+  listDatasets,
+} from "@/lib/datasets";
 import { GET, POST } from "./route";
 
 vi.mock("@/lib/auth", () => ({
@@ -10,6 +14,16 @@ vi.mock("@/lib/auth", () => ({
 }));
 
 vi.mock("@/lib/datasets", () => ({
+  DatasetStoragePathConflictError: class DatasetStoragePathConflictError extends Error {
+    readonly status = 409;
+
+    constructor(
+      message = "That uploaded file is already owned by another dataset.",
+    ) {
+      super(message);
+      this.name = "DatasetStoragePathConflictError";
+    }
+  },
   createDataset: vi.fn(),
   listDatasets: vi.fn(),
 }));
@@ -137,6 +151,29 @@ describe("/api/datasets", () => {
         isWorkspaceVisible: false,
       }),
     );
+  });
+
+  it("returns a conflict when another dataset already owns the storage path", async () => {
+    getCurrentIdentityMock.mockResolvedValue(identity);
+    createDatasetMock.mockRejectedValue(new DatasetStoragePathConflictError());
+
+    const response = await POST(
+      new Request("http://localhost/api/datasets", {
+        method: "POST",
+        body: JSON.stringify({
+          fileName: "customers.csv",
+          blobPath: "datasets/csv/customers.csv",
+          sizeBytes: 100,
+          columns: [{ key: "email", label: "Email", sourceIndex: 0 }],
+          classification: "PGAC",
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual({
+      error: "That uploaded file is already owned by another dataset.",
+    });
   });
 
   it("rejects dataset creation for non-admin users", async () => {

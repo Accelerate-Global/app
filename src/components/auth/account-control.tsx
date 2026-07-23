@@ -6,11 +6,15 @@ import {
   ChevronDownIcon,
   FileTextIcon,
   LayoutDashboardIcon,
+  Layers3Icon,
   LogOutIcon,
+  NetworkIcon,
   MonitorIcon,
+  RouteIcon,
   UploadIcon,
   UserIcon,
   UsersIcon,
+  WorkflowIcon,
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -272,6 +276,34 @@ export function AccountControl({ identity }: AccountControlProps) {
                 onPrefetch={prefetchRoute}
               >
                 User Management
+              </MenuNavigationItem>
+              <MenuNavigationItem
+                href="/admin/pipeline-operations"
+                icon={WorkflowIcon}
+                onPrefetch={prefetchRoute}
+              >
+                Pipelines
+              </MenuNavigationItem>
+              <MenuNavigationItem
+                href="/admin/pipeline-products"
+                icon={RouteIcon}
+                onPrefetch={prefetchRoute}
+              >
+                Pipeline Products
+              </MenuNavigationItem>
+              <MenuNavigationItem
+                href="/admin/identity-registry"
+                icon={NetworkIcon}
+                onPrefetch={prefetchRoute}
+              >
+                Identity Registry
+              </MenuNavigationItem>
+              <MenuNavigationItem
+                href="/admin/tier2-products"
+                icon={Layers3Icon}
+                onPrefetch={prefetchRoute}
+              >
+                Tier 2 Products
               </MenuNavigationItem>
               <MenuNavigationItem
                 href="/dashboard/upload"

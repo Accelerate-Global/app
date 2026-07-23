@@ -1,0 +1,131 @@
+{
+  "schemaVersion": 1,
+  "expectedFields": [
+    "datasetRowKey",
+    "peopleName",
+    "country",
+    "rop1",
+    "rop3",
+    "population",
+    "frontier"
+  ],
+  "countryAliases": {
+    "Cote d Ivoire": { "iso3": "CIV", "name": "Côte d’Ivoire" },
+    "Lao People's Democratic Republic": { "iso3": "LAO", "name": "Laos" },
+    "Laos": { "iso3": "LAO", "name": "Laos" }
+  },
+  "rows": [
+    {
+      "caseId": "normal-row",
+      "source": "JP",
+      "datasetRowKey": "jp:peoples:001",
+      "peopleName": "River People",
+      "country": "Lao People's Democratic Republic",
+      "rop1": "A010",
+      "rop3": "100001",
+      "population": "1250",
+      "frontier": "false"
+    },
+    {
+      "caseId": "missing-identifier",
+      "source": "AX",
+      "datasetRowKey": null,
+      "peopleName": "Hill People",
+      "country": "Laos",
+      "rop1": "A010",
+      "rop3": "100002",
+      "population": "400",
+      "frontier": "true"
+    },
+    {
+      "caseId": "country-alias",
+      "source": "AX",
+      "datasetRowKey": "ax:local:003",
+      "peopleName": "Forest People",
+      "country": "Cote d Ivoire",
+      "rop1": "A013",
+      "rop3": "100003",
+      "population": "900",
+      "frontier": "0"
+    },
+    {
+      "caseId": "unknown-country",
+      "source": "IMB",
+      "datasetRowKey": "imb:people:004",
+      "peopleName": "Island People",
+      "country": "Atlantis",
+      "rop1": "A010",
+      "rop3": "100004",
+      "population": "75",
+      "frontier": "1"
+    },
+    {
+      "caseId": "rop3-absent",
+      "source": "ETNO",
+      "datasetRowKey": "etno:people:005",
+      "peopleName": "Unmapped People",
+      "country": "Laos",
+      "rop1": "A010",
+      "rop3": null,
+      "population": "50",
+      "frontier": "false"
+    },
+    {
+      "caseId": "wcd-rop-fallback",
+      "source": "WCD",
+      "datasetRowKey": "wcd:people:006",
+      "peopleName": "Fallback People",
+      "country": "Laos",
+      "rop1": "A010",
+      "rop3": null,
+      "ropPeopleCode": "100006",
+      "population": "650",
+      "frontier": "no"
+    },
+    {
+      "caseId": "duplicate-domain-a",
+      "source": "JP",
+      "datasetRowKey": "jp:peoples:007",
+      "peopleName": "Duplicate One",
+      "country": "Laos",
+      "rop1": "A010",
+      "rop3": "100007",
+      "population": "100",
+      "frontier": "false"
+    },
+    {
+      "caseId": "duplicate-domain-b",
+      "source": "JP",
+      "datasetRowKey": "jp:peoples:008",
+      "peopleName": "Duplicate Two",
+      "country": "Laos",
+      "rop1": "A010",
+      "rop3": "100007",
+      "population": "101",
+      "frontier": "false"
+    },
+    {
+      "caseId": "invalid-types",
+      "source": "IMB",
+      "datasetRowKey": "imb:people:009",
+      "peopleName": "Typed People",
+      "country": "Laos",
+      "rop1": "A010",
+      "rop3": "100009",
+      "population": "many",
+      "frontier": "sometimes"
+    },
+    {
+      "caseId": "schema-drift",
+      "source": "AX",
+      "datasetRowKey": "ax:local:010",
+      "peopleName": null,
+      "country": "Laos",
+      "rop1": "A010",
+      "rop3": "100010",
+      "population": "250",
+      "frontier": "true",
+      "unexpectedFields": ["renamed_people_name"]
+    }
+  ]
+}

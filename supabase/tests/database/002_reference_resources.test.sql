@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(31);
+select plan(37);
 
 select results_eq(
   $$
@@ -19,12 +19,14 @@ select results_eq(
         'country_reference_entries',
         'rop_reference_terms',
         'rop_reference_people',
-        'rop_reference_geographies'
+        'rop_reference_geographies',
+        'pipeline_reference_entries'
       )
     order by tablename
   $$,
   array[
     'country_reference_entries'::name,
+    'pipeline_reference_entries'::name,
     'reference_resource_activation_events'::name,
     'reference_resource_set_members'::name,
     'reference_resource_sets'::name,
@@ -54,11 +56,12 @@ select is(
         'country_reference_entries',
         'rop_reference_terms',
         'rop_reference_people',
-        'rop_reference_geographies'
+        'rop_reference_geographies',
+        'pipeline_reference_entries'
       )
       and pg_class.relrowsecurity
   ),
-  10::bigint,
+  11::bigint,
   'all reference-resource tables have RLS enabled'
 );
 
@@ -111,13 +114,13 @@ select is(
 
 select is(
   (select count(*)::bigint from private.reference_resources),
-  2::bigint,
-  'Country/ROG and ROP definitions are registered'
+  7::bigint,
+  'Country/ROG, ROP, and all five pipeline resource definitions are registered'
 );
 
 select ok(
   (
-    select count(*) >= 18
+    select count(*) >= 21
     from pg_indexes
     where schemaname = 'private'
       and indexname in (
@@ -138,7 +141,10 @@ select ok(
         'rop_reference_people_version_rop3_idx',
         'rop_reference_geographies_version_geo_idx',
         'rop_reference_geographies_version_rop3_idx',
-        'rop_reference_geographies_version_people_id3_idx'
+        'rop_reference_geographies_version_people_id3_idx',
+        'pipeline_reference_entries_version_key_idx',
+        'pipeline_reference_entries_version_active_idx',
+        'pipeline_reference_entries_search_idx'
       )
   ),
   'foreign keys and dominant typed lookup paths are indexed'
@@ -165,6 +171,7 @@ delete from private.reference_resource_activation_events;
 delete from private.reference_resource_set_members;
 delete from private.reference_resource_sets;
 delete from private.reference_resource_validation_findings;
+delete from private.pipeline_reference_entries;
 delete from private.country_reference_entries;
 delete from private.rop_reference_geographies;
 delete from private.rop_reference_people;
@@ -375,6 +382,104 @@ select throws_ok(
   'P0001',
   'Finalized reference-resource projections are immutable.',
   'finalized typed projections cannot change'
+);
+
+insert into private.reference_resource_versions (
+  id,
+  resource_id,
+  version_number,
+  schema_version,
+  source_retrieved_at,
+  created_by_owner_id
+)
+select
+  '71000000-0000-4000-8000-000000000004',
+  id,
+  1,
+  1,
+  now(),
+  'security-test-admin'
+from private.reference_resources
+where resource_key = 'source-aliases';
+
+select lives_ok(
+  $$
+    insert into private.pipeline_reference_entries (
+      version_id, stable_key, active, data, search_text
+    ) values (
+      '71000000-0000-4000-8000-000000000004',
+      'source:jp',
+      true,
+      '{"fieldId":"F_2","canonicalSourceKey":"jp"}'::jsonb,
+      'joshua project jp'
+    )
+  $$,
+  'building pipeline versions accept typed projections'
+);
+
+update private.reference_resource_versions
+set
+  lifecycle_state = 'valid',
+  content_checksum = repeat('c', 64),
+  normalized_resource = '{"resourceKey":"source-aliases","entries":[]}'::jsonb,
+  artifact_manifest = '{"raw-manifest":"raw.json","normalized":"normalized.json","csv":"resource.csv","validation":"validation.json","diff":"diff.json"}'::jsonb,
+  validation_summary = '{"errorCount":0}'::jsonb,
+  diff_summary = '{"added":1,"changed":0,"removed":0}'::jsonb,
+  entry_count = 1,
+  finalized_at = now()
+where id = '71000000-0000-4000-8000-000000000004';
+
+select lives_ok(
+  $$
+    select private.activate_reference_resource(
+      'source-aliases',
+      '71000000-0000-4000-8000-000000000004',
+      null,
+      'security-test-admin',
+      'Activate pipeline fixture',
+      'activate'
+    )
+  $$,
+  'valid pipeline resource activates through the guarded path'
+);
+
+select is(
+  (select active_version_id from private.reference_resources where resource_key = 'source-aliases'),
+  '71000000-0000-4000-8000-000000000004'::uuid,
+  'pipeline activation swaps its catalog pointer'
+);
+
+select throws_ok(
+  $$
+    update private.pipeline_reference_entries
+    set search_text = 'changed'
+    where version_id = '71000000-0000-4000-8000-000000000004'
+  $$,
+  'P0001',
+  'Finalized reference-resource projections are immutable.',
+  'active pipeline projections are immutable'
+);
+
+select throws_ok(
+  $$
+    update private.reference_resources
+    set active_version_id = null
+    where resource_key = 'source-aliases'
+  $$,
+  'P0001',
+  'Reference-resource activation must use the guarded activation function.',
+  'direct active-pointer mutations are rejected'
+);
+
+select throws_ok(
+  $$
+    update private.reference_resource_versions
+    set lifecycle_state = 'invalid'
+    where id = '71000000-0000-4000-8000-000000000004'
+  $$,
+  'P0001',
+  'Active reference-resource versions are immutable.',
+  'active version lifecycle state cannot be changed'
 );
 
 select throws_ok(

@@ -28,6 +28,8 @@ const identity = {
 const run = {
   id: "22222222-2222-4222-8222-222222222222",
   connectionId: "11111111-1111-4111-8111-111111111111",
+  sourceProfileSnapshot: null,
+  sourceProfileChecksum: null,
   actorOwnerId: "admin-1",
   actorEmail: "admin@example.com",
   mode: "test" as const,

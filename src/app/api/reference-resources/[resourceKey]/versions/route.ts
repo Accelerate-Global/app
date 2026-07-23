@@ -1,4 +1,5 @@
 import { jsonError } from "@/lib/http";
+import { getDatasetFormingResourceImpact } from "@/lib/dataset-forming/impact";
 import {
   listReferenceResourceActivationHistory,
   listReferenceResourceVersions,
@@ -17,6 +18,15 @@ export const GET = withRoute(
       listReferenceResourceVersions(resourceKey),
       listReferenceResourceActivationHistory(resourceKey),
     ]);
-    return Response.json({ versions, activationHistory });
+    const activeVersion = versions.find((version) => version.isActive) ?? null;
+    const impact =
+      activeVersion?.contentChecksum
+        ? await getDatasetFormingResourceImpact({
+            resourceKey,
+            currentVersionId: activeVersion.id,
+            currentChecksum: activeVersion.contentChecksum,
+          })
+        : null;
+    return Response.json({ versions, activationHistory, impact });
   },
 );

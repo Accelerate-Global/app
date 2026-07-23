@@ -134,6 +134,8 @@ const googleSheetsConnection: ApiConnection = {
 const successfulRun: ApiConnectionRun = {
   id: "22222222-2222-4222-8222-222222222222",
   connectionId: connection.id,
+  sourceProfileSnapshot: null,
+  sourceProfileChecksum: null,
   actorOwnerId: "admin-1",
   actorEmail: "admin@example.com",
   mode: "test",
@@ -293,10 +295,32 @@ describe("ApiConnectionDetailClient", () => {
       ...connection,
       id: "6f9f6ef2-1188-4f71-9c24-ef01debf7a01",
       name: "IMB (People Groups)",
+      sourceProfile: {
+        key: "imb-people-groups",
+        engineKey: "imb",
+        label: "IMB forming",
+        stableKeyColumn: null,
+        configurable: false,
+      },
     };
     const imbRun = {
       ...successfulRun,
       connectionId: imbConnection.id,
+      sourceProfileSnapshot: {
+        schemaVersion: 1 as const,
+        connectionId: imbConnection.id,
+        sourceProfileKey: "imb-people-groups",
+        sourceProfileLabel: "IMB forming",
+        stableKeyColumn: null,
+        configurable: false,
+        engineKey: "imb",
+        engineLabel: "IMB forming",
+        engineVersion: "imb-forming-v1",
+        engineChecksum: "d".repeat(64),
+        artifactSchemaVersion: 1,
+        publicationTargetKey: "imb-people-groups",
+      },
+      sourceProfileChecksum: "e".repeat(64),
       mode: "import" as const,
       datasetId: null,
     };
@@ -308,6 +332,13 @@ describe("ApiConnectionDetailClient", () => {
       resourceSetChecksum: "e".repeat(64),
       countryVersionId: "99999999-9999-4999-8999-999999999991",
       ropVersionId: "99999999-9999-4999-8999-999999999992",
+      sourceProfileKey: "imb-people-groups",
+      engineKey: "imb",
+      engineLabel: "IMB forming",
+      artifactSchemaVersion: 1,
+      inputFingerprint: "f".repeat(64),
+      publicationTargetKey: "imb-people-groups",
+      resourceBindings: [],
       actorOwnerId: "admin-1",
       actorEmail: "admin@example.com",
       status: "building" as const,
@@ -335,6 +366,8 @@ describe("ApiConnectionDetailClient", () => {
       outputChecksum: null,
       outputSizeBytes: null,
       datasetId: null,
+      publicationId: null,
+      downstreamIdentityRun: null,
       rejectionReason: null,
       rejectedByOwnerId: null,
       rejectedAt: null,
@@ -342,6 +375,7 @@ describe("ApiConnectionDetailClient", () => {
       warningsAcknowledged: false,
       publishedByOwnerId: null,
       publishedAt: null,
+      publishingStartedAt: null,
       errorMessage: null,
       startedAt: "2026-04-24T12:00:00.000Z",
       completedAt: null,
@@ -379,12 +413,355 @@ describe("ApiConnectionDetailClient", () => {
       );
     });
     expect(await screen.findByText("Forming")).toBeTruthy();
-    expect(screen.getByText("c".repeat(64)).parentElement?.className).toContain(
-      "break-all",
+    expect(screen.getByTitle("c".repeat(64)).className).toContain("truncate");
+    expect(screen.getByTitle("d".repeat(64)).className).toContain("truncate");
+    expect(
+      screen.getByRole("button", { name: "Copy field contract checksum" }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "Copy transformation checksum" }),
+    ).toBeTruthy();
+  });
+
+  it("links a published source candidate to its exact downstream identity lineage", async () => {
+    const sourceConnection: ApiConnection = {
+      ...connection,
+      id: "6f9f6ef2-1188-4f71-9c24-ef01debf7a01",
+      name: "IMB (People Groups)",
+      sourceProfile: {
+        key: "imb-people-groups",
+        engineKey: "imb",
+        label: "IMB forming",
+        stableKeyColumn: null,
+        configurable: false,
+      },
+    };
+    const sourceRun: ApiConnectionRun = {
+      ...successfulRun,
+      connectionId: sourceConnection.id,
+      sourceProfileSnapshot: {
+        schemaVersion: 1,
+        connectionId: sourceConnection.id,
+        sourceProfileKey: "imb-people-groups",
+        sourceProfileLabel: "IMB forming",
+        stableKeyColumn: null,
+        configurable: false,
+        engineKey: "imb",
+        engineLabel: "IMB forming",
+        engineVersion: "imb-forming-v1",
+        engineChecksum: "d".repeat(64),
+        artifactSchemaVersion: 1,
+        publicationTargetKey: "imb-people-groups",
+      },
+      sourceProfileChecksum: "e".repeat(64),
+      mode: "import",
+      datasetId: null,
+    };
+    const identityRunId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+    const identityPublicationId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+    const registryRevisionId = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json({
+          formingRuns: [
+            {
+              id: "77777777-7777-4777-8777-777777777777",
+              connectionId: sourceConnection.id,
+              sourceRunId: sourceRun.id,
+              resourceSetId: "88888888-8888-4888-8888-888888888888",
+              resourceSetChecksum: "e".repeat(64),
+              countryVersionId: "99999999-9999-4999-8999-999999999991",
+              ropVersionId: "99999999-9999-4999-8999-999999999992",
+              sourceProfileKey: "imb-people-groups",
+              engineKey: "imb",
+              engineLabel: "IMB forming",
+              artifactSchemaVersion: 1,
+              inputFingerprint: "f".repeat(64),
+              publicationTargetKey: "imb-people-groups",
+              expectedCurrentPublicationId: null,
+              resourceBindings: [],
+              actorOwnerId: "admin-1",
+              actorEmail: "admin@example.com",
+              status: "published",
+              sourceRowsChecksum: "a".repeat(64),
+              sourceRawChecksum: "b".repeat(64),
+              fieldContractVersion: 1,
+              fieldContractChecksum: "c".repeat(64),
+              transformationVersion: "imb-forming-v1",
+              transformationChecksum: "d".repeat(64),
+              inputRowCount: 2,
+              outputRowCount: 2,
+              warningCount: 0,
+              errorCount: 0,
+              validationSummary: {
+                warningCount: 0,
+                errorCount: 0,
+                unresolvedCountryRows: 0,
+                unresolvedRopRows: 0,
+                countryConflictRows: 0,
+                ropParentConflictRows: 0,
+                invalidValueCount: 0,
+                schemaDriftFields: [],
+              },
+              artifactManifest: {},
+              outputChecksum: "1".repeat(64),
+              outputSizeBytes: 256,
+              datasetId: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+              publicationId: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+              downstreamIdentityRun: {
+                runId: identityRunId,
+                status: "published",
+                publicationId: identityPublicationId,
+                registryRevisionId,
+              },
+              rejectionReason: null,
+              rejectedByOwnerId: null,
+              rejectedAt: null,
+              publicationReason: "Approved source",
+              warningsAcknowledged: false,
+              publishedByOwnerId: "admin-1",
+              publishedAt: "2026-04-24T12:05:00.000Z",
+              publishingStartedAt: null,
+              errorMessage: null,
+              startedAt: "2026-04-24T12:00:00.000Z",
+              completedAt: "2026-04-24T12:05:00.000Z",
+              createdAt: "2026-04-24T12:00:00.000Z",
+              findings: [],
+              findingsTruncated: false,
+            },
+          ],
+        }),
+      ),
     );
-    expect(screen.getByText("d".repeat(64)).parentElement?.className).toContain(
-      "break-all",
+
+    render(
+      <ApiConnectionDetailClient
+        connection={sourceConnection}
+        initialRuns={[sourceRun]}
+        serviceAccountEmail={serviceAccountEmail}
+      />,
     );
+    fireEvent.click(screen.getByText("admin@example.com").closest("tr")!);
+
+    expect(await screen.findByText(identityPublicationId)).toBeTruthy();
+    expect(screen.getByText(registryRevisionId)).toBeTruthy();
+    expect(
+      screen.getByRole("link", { name: identityRunId }).getAttribute("href"),
+    ).toBe(`/admin/identity-registry?runId=${identityRunId}`);
+    expect(
+      document.querySelector("[data-smoke-downstream-identity-lineage]"),
+    ).toBeTruthy();
+  });
+
+  it("renders another source engine with its dynamic pinned resource bindings", async () => {
+    const etnopediaConnection: ApiConnection = {
+      ...connection,
+      id: "6f9f6ef2-1188-4f71-9c24-ef01debf7a02",
+      name: "Etnopedia",
+      sourceProfile: {
+        key: "etnopedia-people-groups",
+        engineKey: "etnopedia",
+        label: "Etnopedia forming",
+        stableKeyColumn: null,
+        configurable: false,
+      },
+    };
+    const run: ApiConnectionRun = {
+      ...successfulRun,
+      connectionId: etnopediaConnection.id,
+      sourceProfileSnapshot: {
+        schemaVersion: 1,
+        connectionId: etnopediaConnection.id,
+        sourceProfileKey: "etnopedia-people-groups",
+        sourceProfileLabel: "Etnopedia forming",
+        stableKeyColumn: null,
+        configurable: false,
+        engineKey: "etnopedia",
+        engineLabel: "Etnopedia forming",
+        engineVersion: "etnopedia-forming-v1",
+        engineChecksum: "d".repeat(64),
+        artifactSchemaVersion: 1,
+        publicationTargetKey: "etnopedia-people-groups",
+      },
+      sourceProfileChecksum: "e".repeat(64),
+      mode: "import",
+      datasetId: null,
+    };
+    const countryVersionId = "99999999-9999-4999-8999-999999999991";
+    const countryChecksum = "7".repeat(64);
+    const fieldContractChecksum = "8".repeat(64);
+    const clipboardWrite = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal("navigator", { clipboard: { writeText: clipboardWrite } });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json({
+          formingRuns: [{
+            id: "77777777-7777-4777-8777-777777777778",
+            connectionId: etnopediaConnection.id,
+            sourceRunId: run.id,
+            resourceSetId: "88888888-8888-4888-8888-888888888888",
+            resourceSetChecksum: "e".repeat(64),
+            countryVersionId,
+            ropVersionId: "99999999-9999-4999-8999-999999999992",
+            sourceProfileKey: "etnopedia-people-groups",
+            engineKey: "etnopedia",
+            engineLabel: "Etnopedia source forming",
+            artifactSchemaVersion: 1,
+            inputFingerprint: "f".repeat(64),
+            publicationTargetKey: "etnopedia-people-groups",
+            resourceBindings: [{
+              position: 0,
+              key: "country-territory-codes",
+              bindingType: "catalog",
+              required: true,
+              kind: "country-geography",
+              schemaVersion: 1,
+              version: "2",
+              checksum: countryChecksum,
+              resourceSetId: "88888888-8888-4888-8888-888888888888",
+              resourceSetChecksum: "e".repeat(64),
+              resourceId: "resource-country",
+              resourceVersionId: countryVersionId,
+            }, {
+              position: 1,
+              key: "etnopedia-field-contract",
+              bindingType: "code",
+              required: true,
+              kind: "field-contract",
+              schemaVersion: 1,
+              version: "v1",
+              checksum: fieldContractChecksum,
+              resourceSetId: null,
+              resourceSetChecksum: null,
+              resourceId: null,
+              resourceVersionId: null,
+            }],
+            actorOwnerId: "admin-1",
+            actorEmail: "admin@example.com",
+            status: "valid",
+            sourceRowsChecksum: "a".repeat(64),
+            sourceRawChecksum: "b".repeat(64),
+            fieldContractVersion: 1,
+            fieldContractChecksum,
+            transformationVersion: "etnopedia-forming-v1",
+            transformationChecksum: "d".repeat(64),
+            inputRowCount: 2,
+            outputRowCount: 2,
+            warningCount: 0,
+            errorCount: 0,
+            validationSummary: {
+              warningCount: 0,
+              errorCount: 0,
+              inputRowCount: 2,
+              outputRowCount: 2,
+              missingStableKeyRows: 1,
+              duplicateStableKeyRows: 0,
+              duplicateDomainKeyRows: 0,
+              unresolvedCountryRows: 0,
+              ambiguousCountryRows: 0,
+              unresolvedRopRows: 0,
+              countryConflictRows: 0,
+              ropParentConflictRows: 0,
+              invalidValueCount: 0,
+              schemaDriftFields: [],
+            },
+            artifactManifest: {},
+            outputChecksum: "1".repeat(64),
+            outputSizeBytes: 256,
+            datasetId: null,
+            publicationId: null,
+            downstreamIdentityRun: null,
+            rejectionReason: null,
+            rejectedByOwnerId: null,
+            rejectedAt: null,
+            publicationReason: null,
+            warningsAcknowledged: false,
+            publishedByOwnerId: null,
+            publishedAt: null,
+            publishingStartedAt: null,
+            errorMessage: null,
+            startedAt: "2026-04-24T12:00:00.000Z",
+            completedAt: "2026-04-24T12:05:00.000Z",
+            createdAt: "2026-04-24T12:00:00.000Z",
+            findings: [],
+            findingsTruncated: false,
+          }],
+        }),
+      ),
+    );
+    render(
+      <ApiConnectionDetailClient
+        connection={etnopediaConnection}
+        initialRuns={[run]}
+        serviceAccountEmail={serviceAccountEmail}
+      />,
+    );
+    fireEvent.click(screen.getByText("admin@example.com").closest("tr")!);
+    expect(await screen.findByText("Formed dataset candidate")).toBeTruthy();
+    expect(
+      screen.getByText(
+        /Etnopedia source forming engine and resource rules/,
+      ),
+    ).toBeTruthy();
+    expect(
+      screen.getAllByText(/Etnopedia source forming/u).length,
+    ).toBeGreaterThan(0);
+    expect(screen.getByText("Validation summary")).toBeTruthy();
+    expect(screen.getByText("Missing stable-key rows")).toBeTruthy();
+    expect(screen.getByText("country-territory-codes")).toBeTruthy();
+    expect(screen.getByText("etnopedia-field-contract")).toBeTruthy();
+    expect(screen.queryByText("Country version")).toBeNull();
+    expect(screen.queryByText("ROP version")).toBeNull();
+    const versionValue = screen.getByTitle(countryVersionId);
+    expect(versionValue.className).toContain("truncate");
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Copy country-territory-codes checksum",
+      }),
+    );
+    expect(clipboardWrite).toHaveBeenCalledWith(countryChecksum);
+  });
+
+  it("configures a Google Sheets forming profile and durable key", async () => {
+    const fetchMock = vi.fn(async () =>
+      Response.json({
+        profile: {
+          key: "wcd-people-groups",
+          engineKey: "wcd",
+          label: "World Christian Database forming",
+          stableKeyColumn: "Record ID",
+          configurable: true,
+        },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    render(
+      <ApiConnectionDetailClient
+        connection={{ ...googleSheetsConnection, sourceProfile: null }}
+        initialRuns={[]}
+        serviceAccountEmail={serviceAccountEmail}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText("Source contract"), {
+      target: { value: "wcd-people-groups" },
+    });
+    fireEvent.change(screen.getByLabelText("Stable-key column"), {
+      target: { value: "Record ID" },
+    });
+    const saveProfileButton = screen.getByRole("button", {
+      name: "Save profile",
+    });
+    expect(saveProfileButton.getAttribute("data-smoke-write")).toBe("unsafe");
+    fireEvent.click(saveProfileButton);
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        `/api/admin/api-connections/${googleSheetsConnection.id}/source-profile`,
+        expect.objectContaining({ method: "PUT" }),
+      ),
+    );
+    expect(refreshMock).toHaveBeenCalled();
   });
 
   it("starts ingestion through the existing run endpoint and polls active runs", async () => {
@@ -672,6 +1049,11 @@ describe("ApiConnectionDetailClient", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Review headers" }));
     expect(await screen.findByLabelText("Header row for Alpha")).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "Cancel" }).getAttribute(
+        "data-smoke-close",
+      ),
+    ).toBe("google-sheets-header-selection");
     fireEvent.change(screen.getByLabelText("Header row for Alpha"), {
       target: { value: "2" },
     });

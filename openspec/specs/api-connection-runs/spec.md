@@ -637,3 +637,51 @@ The Google Sheets setup flow MUST distinguish imported dataset visibility from t
 - **WHEN** the setup flow displays both service-account sharing instructions and the dataset visibility choice
 - **THEN** the sharing instructions describe access to the source Google Sheet
 - **AND** the visibility choice describes access by non-admin users to the imported datasets
+
+### Requirement: Import snapshots advertise registered forming eligibility
+The system SHALL derive forming eligibility from the deployed source profile and registered engine instead of hard-coding candidate behavior to one connection identifier.
+
+#### Scenario: Engine-managed import succeeds
+- **WHEN** a source profile with a registered forming engine completes an import and archives complete checksummed artifacts
+- **THEN** the run detail identifies the eligible engine and offers generic candidate actions
+- **AND** source rows are not treated as a reviewed published dataset until a valid candidate is explicitly published
+
+#### Scenario: Source is not engine-managed
+- **WHEN** an import succeeds for a source profile without a registered engine
+- **THEN** the existing source-specific import behavior remains unchanged
+- **AND** the UI does not offer an unsupported forming action
+
+### Requirement: Run detail presents generic candidate metadata
+The run-detail surface SHALL render generic engine, resource, lifecycle, finding, artifact, and decision data without exposing source-specific internal implementation names.
+
+#### Scenario: Administrator inspects a candidate
+- **WHEN** an administrator selects an engine-managed run with a candidate
+- **THEN** the drawer shows its source engine label, lifecycle, counts, bindings, findings, downloads, and available decisions
+- **AND** long identifiers and checksums remain contained, truncated, and copyable
+
+### Requirement: Engine-managed imports stage rather than directly publish
+The system SHALL archive successful import artifacts for every connection with an active registered forming profile and SHALL require an explicit valid candidate publication before changing its curated dataset target.
+
+#### Scenario: Engine-managed import succeeds
+- **WHEN** a registered Tier 1 profile completes an import
+- **THEN** the run succeeds with checksummed raw and parsed artifacts and forming eligibility
+- **AND** does not expose the parsed source rows as the curated workspace dataset
+
+#### Scenario: Unregistered import succeeds
+- **WHEN** an import has no active forming profile
+- **THEN** its existing provider-specific direct import behavior remains unchanged
+
+### Requirement: Coordinated ingestion reuses existing run lifecycle
+The coordinator SHALL start and observe source ingestion through existing API connection run records/artifacts and SHALL not create an alternate unversioned ingestion path.
+
+#### Scenario: Coordinated source stage succeeds
+- **WHEN** the existing connection import run archives valid output
+- **THEN** the coordinator records that exact run/output checksum as the next-stage input
+
+### Requirement: Source history exposes exact downstream identity anchors
+The admin source-run detail SHALL expose the formed source publication and the exact most-recent identity candidate derived from that publication, including its immutable identity publication and registry revision when present.
+
+#### Scenario: Formed source publication has downstream identity work
+- **WHEN** an administrator inspects a source run whose formed publication has an identity candidate
+- **THEN** the detail links the exact identity run by immutable run ID
+- **AND** it shows that run's identity publication and registry revision when they exist

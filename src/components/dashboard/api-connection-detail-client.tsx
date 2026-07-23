@@ -23,6 +23,7 @@ import {
   type RowSelectionState,
   type SortingState,
 } from "@tanstack/react-table";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   useCallback,
@@ -90,7 +91,6 @@ type DetailMessage = {
 
 const RUN_HISTORY_VISIBLE_ROW_LIMIT = 5;
 const RUN_HISTORY_SCROLL_AREA_HEIGHT = "h-[268px]";
-const IMB_API_CONNECTION_ID = "6f9f6ef2-1188-4f71-9c24-ef01debf7a01";
 
 async function getErrorMessage(response: Response, fallback: string) {
   try {
@@ -266,12 +266,77 @@ function getFormingStatusLabel(run: ImbFormingRun) {
   }[run.status];
 }
 
+const FORMING_VALIDATION_DETAIL_LABELS = {
+  inputRowCount: "Input rows",
+  outputRowCount: "Output rows",
+  missingStableKeyRows: "Missing stable-key rows",
+  duplicateStableKeyRows: "Duplicate stable-key rows",
+  duplicateDomainKeyRows: "Duplicate person-country rows",
+  unresolvedCountryRows: "Unresolved country rows",
+  ambiguousCountryRows: "Ambiguous country rows",
+  countryConflictRows: "Country conflict rows",
+  unresolvedRopRows: "Unresolved ROP rows",
+  ropParentConflictRows: "ROP parent conflict rows",
+  invalidValueCount: "Invalid source values",
+  schemaDriftFields: "Unexpected source fields",
+} as const;
+
+function getFormingValidationDetails(run: ImbFormingRun) {
+  const summary = run.validationSummary as Record<string, unknown>;
+  return Object.entries(FORMING_VALIDATION_DETAIL_LABELS).flatMap(
+    ([key, label]) => {
+      const value = summary[key];
+      if (typeof value === "number" && Number.isFinite(value)) {
+        return [{ key, label, value: value.toLocaleString() }];
+      }
+      if (
+        Array.isArray(value) &&
+        value.every((entry) => typeof entry === "string")
+      ) {
+        return [{ key, label, value: value.length > 0 ? value.join(", ") : "None" }];
+      }
+      return [];
+    },
+  );
+}
+
+function CopyableMetadataValue({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <span className="flex min-w-0 items-center gap-1">
+      <span
+        className="min-w-0 flex-1 truncate font-mono leading-relaxed"
+        title={value}
+      >
+        {value}
+      </span>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon-xs"
+        aria-label={`Copy ${label}`}
+        title={`Copy ${label}`}
+        onClick={() => void navigator.clipboard?.writeText(value)}
+      >
+        <CopyIcon />
+      </Button>
+    </span>
+  );
+}
+
 function ImbFormingPanel({
   connectionId,
   sourceRun,
+  profileLabel,
 }: {
   connectionId: string;
   sourceRun: ApiConnectionRun;
+  profileLabel: string;
 }) {
   const [formingRuns, setFormingRuns] = useState<ImbFormingRun[]>([]);
   const [loading, setLoading] = useState(true);
@@ -280,6 +345,9 @@ function ImbFormingPanel({
   const [reason, setReason] = useState("");
   const [warningsAcknowledged, setWarningsAcknowledged] = useState(false);
   const current = formingRuns[0] ?? null;
+  const validationDetails = current
+    ? getFormingValidationDetails(current)
+    : [];
   const baseUrl = `/api/admin/api-connections/${connectionId}/runs/${sourceRun.id}/forming-candidates`;
 
   const load = useCallback(async () => {
@@ -394,8 +462,9 @@ function ImbFormingPanel({
       <div className="space-y-1">
         <h3 className="text-sm font-semibold">Formed dataset candidate</h3>
         <p className="text-xs text-muted-foreground">
-          Apply the pinned field, country, and ROP rules to this archived IMB run
-          before publishing a dataset.
+          Apply the pinned {current?.engineLabel ?? profileLabel} engine and
+          resource rules to this archived source snapshot before publishing a
+          dataset.
         </p>
       </div>
 
@@ -423,57 +492,179 @@ function ImbFormingPanel({
             </span>
           </div>
 
+          {validationDetails.length > 0 ? (
+            <div className="space-y-2 rounded-md border border-border bg-background/60 p-3">
+              <h4 className="text-xs font-semibold uppercase text-muted-foreground">
+                Validation summary
+              </h4>
+              <dl className="grid gap-x-4 gap-y-2 text-xs sm:grid-cols-2">
+                {validationDetails.map((detail) => (
+                  <div key={detail.key} className="flex min-w-0 justify-between gap-3">
+                    <dt className="text-muted-foreground">{detail.label}</dt>
+                    <dd
+                      className="min-w-0 truncate text-right font-mono"
+                      title={detail.value}
+                    >
+                      {detail.value}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+          ) : null}
+
           <dl className="grid gap-2 text-xs sm:grid-cols-2">
             <div className="min-w-0">
               <dt className="text-muted-foreground">Reference set</dt>
-              <dd className="break-all font-mono leading-relaxed">
-                {current.resourceSetId}
+              <dd>
+                <CopyableMetadataValue
+                  label="reference set"
+                  value={current.resourceSetId}
+                />
               </dd>
             </div>
             <div className="min-w-0">
               <dt className="text-muted-foreground">Reference checksum</dt>
-              <dd className="break-all font-mono leading-relaxed">
-                {current.resourceSetChecksum}
+              <dd>
+                <CopyableMetadataValue
+                  label="reference checksum"
+                  value={current.resourceSetChecksum}
+                />
               </dd>
             </div>
             <div className="min-w-0">
-              <dt className="text-muted-foreground">Country version</dt>
-              <dd className="break-all font-mono leading-relaxed">
-                {current.countryVersionId}
-              </dd>
-            </div>
-            <div className="min-w-0">
-              <dt className="text-muted-foreground">ROP version</dt>
-              <dd className="break-all font-mono leading-relaxed">
-                {current.ropVersionId}
+              <dt className="text-muted-foreground">Forming engine</dt>
+              <dd className="truncate leading-relaxed" title={current.engineLabel}>
+                {current.engineLabel} ({current.transformationVersion})
               </dd>
             </div>
             <div className="min-w-0">
               <dt className="text-muted-foreground">Field contract</dt>
-              <dd className="break-all leading-relaxed">
-                v{current.fieldContractVersion}{" "}
-                <span className="font-mono">{current.fieldContractChecksum}</span>
+              <dd>
+                <CopyableMetadataValue
+                  label="field contract checksum"
+                  value={current.fieldContractChecksum}
+                />
               </dd>
             </div>
             <div className="min-w-0">
               <dt className="text-muted-foreground">Transformation</dt>
-              <dd className="break-all leading-relaxed">
-                {current.transformationVersion}{" "}
-                <span className="font-mono">{current.transformationChecksum}</span>
+              <dd className="space-y-1">
+                <span className="block truncate" title={current.transformationVersion}>
+                  {current.transformationVersion}
+                </span>
+                <CopyableMetadataValue
+                  label="transformation checksum"
+                  value={current.transformationChecksum}
+                />
               </dd>
             </div>
             <div className="min-w-0">
               <dt className="text-muted-foreground">Source checksum</dt>
-              <dd className="break-all font-mono leading-relaxed">
-                {current.sourceRowsChecksum}
+              <dd>
+                <CopyableMetadataValue
+                  label="source checksum"
+                  value={current.sourceRowsChecksum}
+                />
               </dd>
             </div>
             <div className="min-w-0">
               <dt className="text-muted-foreground">Output checksum</dt>
-              <dd className="break-all font-mono leading-relaxed">
-                {current.outputChecksum ?? "Pending"}
+              <dd>
+                <CopyableMetadataValue
+                  label="output checksum"
+                  value={current.outputChecksum ?? "Pending"}
+                />
               </dd>
             </div>
+            {current.resourceBindings.length > 0 ? (
+              <div className="min-w-0 space-y-2 sm:col-span-2">
+                <dt className="text-muted-foreground">Pinned resources</dt>
+                <dd className="grid gap-2 sm:grid-cols-2">
+                  {current.resourceBindings.map((binding) => (
+                    <div
+                      key={`${binding.position}-${binding.key}`}
+                      className="min-w-0 space-y-2 rounded-md border border-border bg-background/60 p-3"
+                    >
+                      <div className="flex min-w-0 items-center justify-between gap-2">
+                        <span
+                          className="min-w-0 truncate font-medium"
+                          title={binding.key}
+                        >
+                          {binding.key}
+                        </span>
+                        <Badge variant="outline" className="shrink-0 capitalize">
+                          {binding.bindingType}
+                        </Badge>
+                      </div>
+                      <div className="min-w-0">
+                        <span className="text-muted-foreground">Version</span>
+                        <CopyableMetadataValue
+                          label={`${binding.key} version`}
+                          value={binding.resourceVersionId ?? binding.version}
+                        />
+                      </div>
+                      <div className="min-w-0">
+                        <span className="text-muted-foreground">Checksum</span>
+                        <CopyableMetadataValue
+                          label={`${binding.key} checksum`}
+                          value={binding.checksum}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </dd>
+              </div>
+            ) : null}
+            {current.publicationId ? (
+              <div className="min-w-0 sm:col-span-2">
+                <dt className="text-muted-foreground">Formed publication</dt>
+                <dd>
+                  <CopyableMetadataValue
+                    label="formed publication"
+                    value={current.publicationId}
+                  />
+                </dd>
+              </div>
+            ) : null}
+            {current.downstreamIdentityRun ? (
+              <div
+                className="grid min-w-0 gap-3 rounded-lg border border-border bg-background/70 p-3 sm:col-span-2 sm:grid-cols-3"
+                data-smoke-downstream-identity-lineage
+              >
+                <div className="min-w-0">
+                  <dt className="text-muted-foreground">
+                    Downstream identity run
+                  </dt>
+                  <dd className="break-all font-mono leading-relaxed">
+                    <Link
+                      href={`/admin/identity-registry?runId=${current.downstreamIdentityRun.runId}`}
+                      className="underline underline-offset-4"
+                      data-smoke-downstream-identity-run-link
+                    >
+                      {current.downstreamIdentityRun.runId}
+                    </Link>
+                    <span className="ml-2 font-sans text-muted-foreground">
+                      ({current.downstreamIdentityRun.status})
+                    </span>
+                  </dd>
+                </div>
+                <div className="min-w-0">
+                  <dt className="text-muted-foreground">
+                    Identity publication
+                  </dt>
+                  <dd className="break-all font-mono leading-relaxed">
+                    {current.downstreamIdentityRun.publicationId ?? "Pending"}
+                  </dd>
+                </div>
+                <div className="min-w-0">
+                  <dt className="text-muted-foreground">Registry revision</dt>
+                  <dd className="break-all font-mono leading-relaxed">
+                    {current.downstreamIdentityRun.registryRevisionId ?? "Pending"}
+                  </dd>
+                </div>
+              </div>
+            ) : null}
           </dl>
 
           {current.errorMessage ? (
@@ -579,6 +770,7 @@ function ImbFormingPanel({
                       (current.warningCount > 0 && !warningsAcknowledged)
                     }
                     data-smoke-trigger="imb-forming-decision"
+                    data-smoke-forming-publish
                   >
                     {busyAction === "publish" ? (
                       <Loader2Icon className="size-4 animate-spin" />
@@ -608,6 +800,7 @@ function ImbFormingPanel({
               onClick={() => void buildCandidate()}
               disabled={busyAction !== null}
               data-smoke-trigger="imb-forming-candidate-review"
+              data-smoke-forming-build
             >
               {busyAction === "build" ? (
                 <Loader2Icon className="size-4 animate-spin" />
@@ -633,6 +826,7 @@ function ImbFormingPanel({
           onClick={() => void buildCandidate()}
           disabled={busyAction !== null}
           data-smoke-trigger="imb-forming-candidate-review"
+          data-smoke-forming-build
         >
           {busyAction === "build" ? (
             <Loader2Icon className="size-4 animate-spin" />
@@ -717,10 +911,14 @@ function RunDetailSheet({
                 </Alert>
               ) : null}
 
-              {connectionId === IMB_API_CONNECTION_ID &&
+              {run.sourceProfileSnapshot &&
               run.mode === "import" &&
               run.status === "success" ? (
-                <ImbFormingPanel connectionId={connectionId} sourceRun={run} />
+                <ImbFormingPanel
+                  connectionId={connectionId}
+                  sourceRun={run}
+                  profileLabel={run.sourceProfileSnapshot.sourceProfileLabel}
+                />
               ) : null}
 
               <div className="space-y-2 rounded-lg border border-border bg-muted/20 p-3">
@@ -773,7 +971,9 @@ export function ApiConnectionDetailClient({
   const router = useRouter();
   const googleSheetsConfig = getGoogleSheetsProviderConfig(connection);
   const isGoogleSheetsConnection = googleSheetsConfig !== null;
-  const importActionLabel = isGoogleSheetsConnection
+  const importActionLabel = connection.sourceProfile
+    ? "Start ingestion"
+    : isGoogleSheetsConnection
     ? connection.targetDatasetId
       ? "Refresh dataset"
       : "Import sheet"
@@ -798,8 +998,22 @@ export function ApiConnectionDetailClient({
   const [sourceEmailCopied, setSourceEmailCopied] = useState(false);
   const [confirmDisconnect, setConfirmDisconnect] = useState(false);
   const [sourceBusyAction, setSourceBusyAction] = useState<
-    "check-access" | "disconnect" | "header-preview" | "header-save" | null
+    | "check-access"
+    | "disconnect"
+    | "header-preview"
+    | "header-save"
+    | "profile-save"
+    | "profile-remove"
+    | null
   >(null);
+  const [sourceProfileKey, setSourceProfileKey] = useState(
+    connection.sourceProfile?.configurable ? connection.sourceProfile.key : "",
+  );
+  const [stableKeyColumn, setStableKeyColumn] = useState(
+    connection.sourceProfile?.configurable
+      ? (connection.sourceProfile.stableKeyColumn ?? "")
+      : "",
+  );
   const [isHeaderEditorOpen, setIsHeaderEditorOpen] = useState(false);
   const [headerPreview, setHeaderPreview] =
     useState<GoogleSheetsHeaderPreview | null>(null);
@@ -1065,6 +1279,79 @@ export function ApiConnectionDetailClient({
             : "Google Sheets connection could not be disconnected.",
         tone: "error",
       });
+      setSourceBusyAction(null);
+    }
+  }
+
+  async function saveSourceProfile() {
+    if (!sourceProfileKey || !stableKeyColumn.trim()) return;
+    setSourceBusyAction("profile-save");
+    setMessage(null);
+    try {
+      const response = await fetch(
+        `/api/admin/api-connections/${connection.id}/source-profile`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sourceProfileKey, stableKeyColumn }),
+        },
+      );
+      if (!response.ok) {
+        throw new Error(
+          await getErrorMessage(response, "The source profile could not be saved."),
+        );
+      }
+      setMessage({
+        title: "Source profile configured",
+        detail: "Future ingestion runs will stage reviewable formed candidates.",
+        tone: "success",
+      });
+      router.refresh();
+    } catch (error) {
+      setMessage({
+        title: "Source profile failed",
+        detail:
+          error instanceof Error
+            ? error.message
+            : "The source profile could not be saved.",
+        tone: "error",
+      });
+    } finally {
+      setSourceBusyAction(null);
+    }
+  }
+
+  async function removeSourceProfile() {
+    setSourceBusyAction("profile-remove");
+    setMessage(null);
+    try {
+      const response = await fetch(
+        `/api/admin/api-connections/${connection.id}/source-profile`,
+        { method: "DELETE" },
+      );
+      if (!response.ok) {
+        throw new Error(
+          await getErrorMessage(response, "The source profile could not be removed."),
+        );
+      }
+      setSourceProfileKey("");
+      setStableKeyColumn("");
+      setMessage({
+        title: "Source profile removed",
+        detail: "Future imports will publish through the standard connection flow.",
+        tone: "success",
+      });
+      router.refresh();
+    } catch (error) {
+      setMessage({
+        title: "Source profile removal failed",
+        detail:
+          error instanceof Error
+            ? error.message
+            : "The source profile could not be removed.",
+        tone: "error",
+      });
+    } finally {
       setSourceBusyAction(null);
     }
   }
@@ -1491,6 +1778,80 @@ export function ApiConnectionDetailClient({
               </Alert>
             ) : null}
 
+            <div
+              className="space-y-3 rounded-lg border border-border bg-muted/20 p-3"
+              data-smoke-surface="source-profile-binding"
+              data-smoke-ready="source-profile-binding"
+            >
+              <div>
+                <div className="text-xs font-semibold uppercase text-muted-foreground">
+                  Forming profile
+                </div>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Choose the source contract and a column whose value remains
+                  stable across refreshes.
+                </p>
+              </div>
+              <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] md:items-end">
+                <label className="space-y-1 text-xs font-medium">
+                  Source contract
+                  <select
+                    value={sourceProfileKey}
+                    onChange={(event) => setSourceProfileKey(event.target.value)}
+                    className="block h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                  >
+                    <option value="">Standard dataset import</option>
+                    <option value="accelerate-owned-people-groups">
+                      Accelerate-owned people groups
+                    </option>
+                    <option value="wcd-people-groups">
+                      World Christian Database
+                    </option>
+                  </select>
+                </label>
+                <label className="space-y-1 text-xs font-medium">
+                  Stable-key column
+                  <input
+                    value={stableKeyColumn}
+                    onChange={(event) => setStableKeyColumn(event.target.value)}
+                    disabled={!sourceProfileKey}
+                    placeholder="Record ID"
+                    className="block h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                  />
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {sourceProfileKey ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={
+                        !stableKeyColumn.trim() || sourceBusyAction !== null
+                      }
+                      onClick={() => void saveSourceProfile()}
+                      data-smoke-trigger="source-profile-binding"
+                      data-smoke-write="unsafe"
+                    >
+                      {sourceBusyAction === "profile-save" ? (
+                        <Loader2Icon className="size-3.5 animate-spin" />
+                      ) : null}
+                      Save profile
+                    </Button>
+                  ) : null}
+                  {connection.sourceProfile?.configurable ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={sourceBusyAction !== null}
+                      onClick={() => void removeSourceProfile()}
+                    >
+                      Remove
+                    </Button>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+
             {isHeaderEditorOpen ? (
               <div className="space-y-3">
                 <GoogleSheetsHeaderSelection
@@ -1510,6 +1871,7 @@ export function ApiConnectionDetailClient({
                     size="sm"
                     disabled={sourceBusyAction !== null}
                     onClick={() => setIsHeaderEditorOpen(false)}
+                    data-smoke-close="google-sheets-header-selection"
                   >
                     Cancel
                   </Button>

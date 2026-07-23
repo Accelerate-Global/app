@@ -32,17 +32,29 @@ const context = {
   params: Promise.resolve({ connectionId: "connection-1", runId: "run-1" }),
 };
 
-describe("IMB forming candidate collection route", () => {
+describe("dataset forming candidate collection route", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     vi.mocked(getCurrentIdentity).mockResolvedValue(identity);
   });
 
   it("lists candidates for admins", async () => {
-    vi.mocked(listImbFormingRuns).mockResolvedValue([]);
+    const formingRun = {
+      id: "forming-1",
+      publicationId: "source-publication-1",
+      downstreamIdentityRun: {
+        runId: "identity-run-1",
+        status: "published",
+        publicationId: "identity-publication-1",
+        registryRevisionId: "registry-revision-1",
+      },
+    };
+    vi.mocked(listImbFormingRuns).mockResolvedValue([formingRun] as never);
     const response = await GET(new Request("http://localhost"), context);
     expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toEqual({ formingRuns: [] });
+    await expect(response.json()).resolves.toEqual({
+      formingRuns: [formingRun],
+    });
   });
 
   it("queues candidate execution", async () => {
@@ -58,5 +70,14 @@ describe("IMB forming candidate collection route", () => {
   it("rejects non-admins", async () => {
     vi.mocked(getCurrentIdentity).mockResolvedValue({ ...identity, isDatasetAdmin: false });
     expect((await GET(new Request("http://localhost"), context)).status).toBe(403);
+  });
+
+  it("returns source-neutral errors for generic engine failures", async () => {
+    vi.mocked(listImbFormingRuns).mockRejectedValue(new Error("provider detail"));
+    const response = await GET(new Request("http://localhost"), context);
+    expect(response.status).toBe(500);
+    await expect(response.json()).resolves.toEqual({
+      error: "Could not load dataset forming candidates.",
+    });
   });
 });

@@ -91,7 +91,7 @@ export function getImbTransformationChecksum() {
     fieldContractChecksum: getImbFieldContractChecksum(),
     countryRulesVersion: 1,
     ropRulesVersion: 1,
-    conversionRulesVersion: 1,
+    conversionRulesVersion: 2,
     identityRulesVersion: 1,
   });
 }
@@ -320,14 +320,26 @@ export function formImbRows(input: FormImbRowsInput): FormImbRowsResult {
       formed[outputKeys.get(entry.outputField)!] = converted.value;
       if (converted.invalid) {
         addFinding(findings, {
-          severity: "warning",
-          ruleCode: "invalid-optional-value",
+          severity: "error",
+          ruleCode: "invalid-source-value",
           sourceRowIndex,
           stableRowKey,
           fieldName: entry.outputField,
           sourceValue: rawValue,
           canonicalValue: "",
           message: `${entry.outputField} could not be converted to ${entry.type}.`,
+        });
+      } else if (entry.requiredMappedValue && !converted.value) {
+        addFinding(findings, {
+          severity: "error",
+          ruleCode: "missing-required-mapped-value",
+          sourceRowIndex,
+          stableRowKey,
+          fieldName: entry.outputField,
+          sourceValue: rawValue,
+          canonicalValue: "",
+          message: `${entry.outputField} is required after source mapping.`,
+          details: { sourceField: entry.sourceField },
         });
       }
     }
@@ -495,7 +507,9 @@ export function formImbRows(input: FormImbRowsInput): FormImbRowsResult {
     unresolvedRopRows: findings.filter((finding) => finding.ruleCode === "unresolved-rop3").length,
     countryConflictRows: findings.filter((finding) => finding.ruleCode === "country-iso-conflict").length,
     ropParentConflictRows: findings.filter((finding) => finding.ruleCode === "rop-parent-conflict").length,
-    invalidValueCount: findings.filter((finding) => finding.ruleCode === "invalid-optional-value").length,
+    invalidValueCount: findings.filter(
+      (finding) => finding.ruleCode === "invalid-source-value",
+    ).length,
     schemaDriftFields,
   };
   const outputChecksum = checksumImbValue({ columns: outputColumns, rows });

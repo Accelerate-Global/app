@@ -1,0 +1,22 @@
+{
+  "resourceKey": "tier1-merge-priorities",
+  "schemaVersion": 1,
+  "sourceName": "Sanitized Tier 1 priorities fixture",
+  "sourceRetrievedAt": "2026-01-01T00:00:00.000Z",
+  "entries": [
+    {
+      "fieldId": "F_2",
+      "canonicalField": "PG_Name_Main",
+      "displayName": "People Group Name",
+      "active": true,
+      "prioritySourceKeys": ["jp", "im"]
+    },
+    {
+      "fieldId": "F_3",
+      "canonicalField": "Christianity_GSEC",
+      "displayName": "GSEC",
+      "active": true,
+      "prioritySourceKeys": ["im"]
+    }
+  ]
+}

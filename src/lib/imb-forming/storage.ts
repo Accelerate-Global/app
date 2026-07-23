@@ -1,11 +1,9 @@
-import { Buffer } from "node:buffer";
-
 import {
-  createImbFormingArtifactStoragePath,
-  getApiConnectionRunArtifactStorageBucket,
-} from "@/lib/dataset-storage";
-import { logError } from "@/lib/error-logging";
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+  deleteDatasetFormingArtifacts,
+  readDatasetFormingArtifact,
+  uploadDatasetFormingArtifact,
+} from "@/lib/dataset-forming/storage";
+import { IMB_FORMING_ENGINE_KEY } from "@/lib/dataset-forming/engines/imb";
 
 import type { ImbFormingArtifactKind } from "./types";
 
@@ -15,42 +13,16 @@ export async function uploadImbFormingArtifact(input: {
   kind: ImbFormingArtifactKind;
   body: string;
 }) {
-  const path = createImbFormingArtifactStoragePath(input);
-  const contentType =
-    input.kind === "csv" ? "text/csv; charset=utf-8" : "application/json";
-  const { error } = await createSupabaseAdminClient()
-    .storage.from(getApiConnectionRunArtifactStorageBucket())
-    .upload(path, Buffer.from(input.body, "utf8"), {
-      contentType,
-      upsert: false,
-    });
-
-  if (error) {
-    logError(`Failed to store IMB forming ${input.kind} artifact`, error);
-    throw new Error(`Could not store IMB forming ${input.kind} artifact.`);
-  }
-
-  return path;
+  return uploadDatasetFormingArtifact(
+    { ...input, engineKey: IMB_FORMING_ENGINE_KEY },
+    "IMB forming",
+  );
 }
 
 export async function readImbFormingArtifact(path: string) {
-  const { data, error } = await createSupabaseAdminClient()
-    .storage.from(getApiConnectionRunArtifactStorageBucket())
-    .download(path);
-
-  if (error || !data) {
-    throw new Error("Could not read IMB forming artifact.");
-  }
-
-  return data.text();
+  return readDatasetFormingArtifact(path, "IMB forming");
 }
 
 export async function deleteImbFormingArtifacts(paths: string[]) {
-  if (paths.length === 0) return;
-  const { error } = await createSupabaseAdminClient()
-    .storage.from(getApiConnectionRunArtifactStorageBucket())
-    .remove(paths);
-  if (error) {
-    throw new Error("Could not clean up IMB forming artifacts.");
-  }
+  return deleteDatasetFormingArtifacts(paths, "IMB forming");
 }

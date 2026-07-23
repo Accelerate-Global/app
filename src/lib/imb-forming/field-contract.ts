@@ -1,5 +1,5 @@
-export const IMB_FIELD_CONTRACT_VERSION = 1 as const;
-export const IMB_FORMING_TRANSFORMATION_VERSION = "imb-forming-v1" as const;
+export const IMB_FIELD_CONTRACT_VERSION = 2 as const;
+export const IMB_FORMING_TRANSFORMATION_VERSION = "imb-forming-v2" as const;
 export const IMB_DATA_SOURCE_CODE = "im" as const;
 
 export type ImbFieldSemanticType =
@@ -14,11 +14,12 @@ export type ImbFieldContractEntry = {
   outputField: string;
   type: ImbFieldSemanticType;
   requiredSourceColumn: boolean;
+  requiredMappedValue?: boolean;
 };
 
 export const IMB_FIELD_CONTRACT: readonly ImbFieldContractEntry[] = [
   { sourceField: "PEID", outputField: "PG_PEID", type: "identifier", requiredSourceColumn: true },
-  { sourceField: "Name", outputField: "PG_Name_Main", type: "string", requiredSourceColumn: true },
+  { sourceField: "Name", outputField: "PG_Name_Main", type: "string", requiredSourceColumn: true, requiredMappedValue: true },
   { sourceField: "ISOalpha3", outputField: "Geo_ISO3", type: "identifier", requiredSourceColumn: true },
   { sourceField: "Ctry", outputField: "Geo_Country_Name", type: "string", requiredSourceColumn: true },
   { sourceField: "Regn", outputField: "Geo_Continent_Name", type: "string", requiredSourceColumn: false },

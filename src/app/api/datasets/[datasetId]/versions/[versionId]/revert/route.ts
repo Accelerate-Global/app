@@ -1,6 +1,7 @@
 import {
   DerivedDatasetMutationError,
   DatasetVersionRevertConflictError,
+  PipelineManagedDatasetMutationError,
   revertDatasetVersion,
 } from "@/lib/datasets";
 import { jsonError } from "@/lib/http";
@@ -29,7 +30,8 @@ export const POST = withRoute(
     } catch (error) {
       if (
         error instanceof DatasetVersionRevertConflictError ||
-        error instanceof DerivedDatasetMutationError
+        error instanceof DerivedDatasetMutationError ||
+        error instanceof PipelineManagedDatasetMutationError
       ) {
         return jsonError(error.message, error.status);
       }

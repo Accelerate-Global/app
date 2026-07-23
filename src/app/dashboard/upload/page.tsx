@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { DatasetUploadClient } from "@/components/dashboard/dataset-upload-client";
 import { DashboardPageShell } from "@/components/layout/dashboard-page-shell";
 import { getCurrentIdentity } from "@/lib/auth";
-import { getDataset } from "@/lib/datasets";
+import { getDataset, isPipelineManagedDataset } from "@/lib/datasets";
 import { getDatasetClassification } from "@/lib/dataset-tags";
 
 type UploadPageProps = {
@@ -37,6 +37,10 @@ export default async function UploadPage({ searchParams }: UploadPageProps) {
 
   if (!targetDataset) {
     redirect("/dashboard");
+  }
+
+  if (await isPipelineManagedDataset(targetDataset.id)) {
+    redirect(`/dashboard/datasets/${targetDataset.id}/edit`);
   }
 
   return (
