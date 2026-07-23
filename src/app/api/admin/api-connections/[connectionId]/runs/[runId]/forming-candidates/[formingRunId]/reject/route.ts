@@ -14,7 +14,7 @@ type Context = {
 };
 
 export const POST = withRoute(
-  { access: "admin", action: "reject IMB forming candidates" },
+  { access: "admin", action: "reject dataset forming candidates" },
   async (identity, request: Request, context: Context) => {
     const decision = imbFormingDecisionSchema.safeParse(await request.json());
     if (!decision.success) return jsonError("A rejection reason is required.");
@@ -31,8 +31,8 @@ export const POST = withRoute(
       });
     } catch (error) {
       if (error instanceof ImbFormingError) return jsonError(error.message, error.status);
-      logError("Failed to reject IMB forming candidate", error);
-      return jsonError("Could not reject the IMB forming candidate.", 500);
+      logError("Failed to reject dataset forming candidate", error);
+      return jsonError("Could not reject the dataset forming candidate.", 500);
     }
   },
 );

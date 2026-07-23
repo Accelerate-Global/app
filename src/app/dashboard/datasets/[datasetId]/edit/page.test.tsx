@@ -6,7 +6,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { notFound, redirect } from "next/navigation";
 
 import { getCurrentIdentity } from "@/lib/auth";
-import { getDataset, listDatasetVersions, listDatasets } from "@/lib/datasets";
+import {
+  getDataset,
+  isPipelineManagedDataset,
+  listDatasetVersions,
+  listDatasets,
+} from "@/lib/datasets";
 import DatasetEditPage from "./page";
 
 const datasetEditPageClientSpy = vi.fn();
@@ -26,6 +31,7 @@ vi.mock("@/lib/auth", () => ({
 
 vi.mock("@/lib/datasets", () => ({
   getDataset: vi.fn(),
+  isPipelineManagedDataset: vi.fn(),
   listDatasetVersions: vi.fn(),
   listDatasets: vi.fn(),
 }));
@@ -40,6 +46,7 @@ vi.mock("@/components/dashboard/dataset-edit-page-client", () => ({
 
 const getCurrentIdentityMock = vi.mocked(getCurrentIdentity);
 const getDatasetMock = vi.mocked(getDataset);
+const isPipelineManagedDatasetMock = vi.mocked(isPipelineManagedDataset);
 const listDatasetVersionsMock = vi.mocked(listDatasetVersions);
 const listDatasetsMock = vi.mocked(listDatasets);
 const redirectMock = vi.mocked(redirect);
@@ -114,6 +121,7 @@ describe("/dashboard/datasets/[datasetId]/edit", () => {
     });
     getDatasetMock.mockResolvedValue(createDataset());
     listDatasetVersionsMock.mockResolvedValue([createVersion()]);
+    isPipelineManagedDatasetMock.mockResolvedValue(false);
     listDatasetsMock.mockResolvedValue([
       createDataset(),
       createDataset({
@@ -176,6 +184,7 @@ describe("/dashboard/datasets/[datasetId]/edit", () => {
       backingDatasetName: string | null;
       availableTags: Array<{ label: string }>;
       initialVersions: ReturnType<typeof createVersion>[];
+      isPipelineManaged: boolean;
       actorOwnerId: string;
       workspaceRole: string;
     };
@@ -187,13 +196,30 @@ describe("/dashboard/datasets/[datasetId]/edit", () => {
       includeDisabled: true,
     });
     expect(listDatasetVersionsMock).toHaveBeenCalledWith("dataset-1");
+    expect(isPipelineManagedDatasetMock).toHaveBeenCalledWith("dataset-1");
     expect(props.initialDataset.fileName).toBe("Global");
     expect(props.backingDatasetName).toBeNull();
     expect(props.initialVersions).toEqual([createVersion()]);
+    expect(props.isPipelineManaged).toBe(false);
     expect(props.availableTags.map((tag) => tag.label)).toEqual([
       "Primary",
       "Regional focus",
     ]);
+  });
+
+  it("marks pipeline-published datasets so lineage controls stay locked", async () => {
+    isPipelineManagedDatasetMock.mockResolvedValue(true);
+
+    render(
+      await DatasetEditPage({
+        params: Promise.resolve({ datasetId: "dataset-1" }),
+      }),
+    );
+
+    const props = datasetEditPageClientSpy.mock.lastCall?.[0] as {
+      isPipelineManaged: boolean;
+    };
+    expect(props.isPipelineManaged).toBe(true);
   });
 
   it("skips upload history loading for derived dataset views", async () => {

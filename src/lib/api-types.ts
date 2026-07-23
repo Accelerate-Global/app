@@ -189,6 +189,21 @@ export type ApiConnectionProvider = "http_api" | "google_sheets";
 export type ApiConnectionRunMode = "test" | "import";
 export type ApiConnectionRunStatus = "queued" | "running" | "success" | "failed";
 export type ApiConnectionRunLogLevel = "info" | "error";
+
+export type ApiConnectionSourceProfileSnapshot = {
+  schemaVersion: 1;
+  connectionId: string;
+  sourceProfileKey: string;
+  sourceProfileLabel: string;
+  stableKeyColumn: string | null;
+  configurable: boolean;
+  engineKey: string;
+  engineLabel: string;
+  engineVersion: string;
+  engineChecksum: string;
+  artifactSchemaVersion: number;
+  publicationTargetKey: string;
+};
 export type GoogleSheetsRangeMode = "full_tab";
 export type GoogleSheetsHeaderSelectionMode = "auto" | "manual";
 export type GoogleSheetsHeaderConfidence = "high" | "medium" | "low";
@@ -244,6 +259,14 @@ export type ApiConnectionHeader = {
   isSecret: boolean;
 };
 
+export type ApiConnectionSourceProfile = {
+  key: string;
+  engineKey: string;
+  label: string;
+  stableKeyColumn: string | null;
+  configurable: boolean;
+};
+
 export type ApiConnection = {
   id: string;
   name: string;
@@ -260,6 +283,7 @@ export type ApiConnection = {
   datasetClassification: DatasetClassification;
   provider?: ApiConnectionProvider;
   providerConfig?: ApiConnectionProviderConfig;
+  sourceProfile?: ApiConnectionSourceProfile | null;
   archivedAt?: string | null;
   archivedByOwnerId?: string | null;
   archiveReason?: string | null;
@@ -340,6 +364,8 @@ export type GoogleSheetsHeaderSelectionUpdateResponse = {
 export type ApiConnectionRun = {
   id: string;
   connectionId: string;
+  sourceProfileSnapshot: ApiConnectionSourceProfileSnapshot | null;
+  sourceProfileChecksum: string | null;
   actorOwnerId: string;
   actorEmail: string | null;
   mode: ApiConnectionRunMode;

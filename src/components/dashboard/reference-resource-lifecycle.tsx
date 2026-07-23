@@ -15,6 +15,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import type { DatasetFormingResourceImpact } from "@/lib/dataset-forming/impact";
 import type {
   ReferenceResourceCandidateResult,
   ReferenceResourceKey,
@@ -35,6 +36,7 @@ type HistoryPayload = {
     reason: string;
     createdAt: string;
   }>;
+  impact: DatasetFormingResourceImpact | null;
 };
 
 function formatLifecycleTimestamp(value: string) {
@@ -242,6 +244,33 @@ export function ReferenceResourceLifecycle({
               Immutable versions remain available for audit and controlled rollback.
             </DialogDescription>
           </DialogHeader>
+          {history?.impact ? (
+            <div className="mx-4 space-y-2 rounded-lg border border-border bg-muted/20 p-4">
+              <h3 className="text-sm font-semibold">Pipeline impact</h3>
+              {history.impact.affectedEngines.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {history.impact.affectedEngines.map((engine) => (
+                    <Badge key={engine.engineKey} variant="outline">
+                      {engine.displayName}
+                    </Badge>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  No registered forming engine requires this resource.
+                </p>
+              )}
+              <p className="text-sm text-muted-foreground">
+                {history.impact.olderBindings.length === 0
+                  ? "No existing candidates or publications use an older version."
+                  : `${history.impact.olderBindings.length.toLocaleString()} existing ${
+                      history.impact.olderBindings.length === 1
+                        ? "candidate or publication uses"
+                        : "candidates or publications use"
+                    } an older version.`}
+              </p>
+            </div>
+          ) : null}
           <div className="max-h-[55vh] space-y-2 overflow-y-auto p-4">
             {history?.versions.map((version) => (
               <div key={version.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3">

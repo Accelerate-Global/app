@@ -135,14 +135,35 @@ describe("formImbRows", () => {
     expect(result.validation.unresolvedRopRows).toBe(1);
   });
 
-  it("records invalid optional values and schema drift without dropping rows", () => {
+  it("blocks invalid semantic values without dropping rows", () => {
     const result = run([source({ Pop: "many", NewField: "raw only" })]);
 
-    expect(result.valid).toBe(true);
+    expect(result.valid).toBe(false);
     expect(result.rows).toHaveLength(1);
     expect(value(result, "PG_Population")).toBe("");
     expect(result.validation.invalidValueCount).toBe(1);
     expect(result.validation.schemaDriftFields).toEqual(["NewField"]);
+    expect(result.findings).toContainEqual(
+      expect.objectContaining({
+        severity: "error",
+        ruleCode: "invalid-source-value",
+        fieldName: "PG_Population",
+      }),
+    );
+  });
+
+  it("blocks a blank contract-required mapped value without dropping the row", () => {
+    const result = run([source({ Name: "" })]);
+
+    expect(result.valid).toBe(false);
+    expect(result.rows).toHaveLength(1);
+    expect(result.findings).toContainEqual(
+      expect.objectContaining({
+        severity: "error",
+        ruleCode: "missing-required-mapped-value",
+        fieldName: "PG_Name_Main",
+      }),
+    );
   });
 
   it("blocks missing and duplicate object identifiers", () => {

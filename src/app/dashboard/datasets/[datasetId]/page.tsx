@@ -11,7 +11,11 @@ import {
   getDatasetDefaultOpenPreset,
   getDatasetDefaultSorting,
 } from "@/lib/dataset-default-view";
-import { getDataset, listDatasets } from "@/lib/datasets";
+import {
+  getDataset,
+  listDatasets,
+  listPipelineManagedDatasetIds,
+} from "@/lib/datasets";
 import { getDatasetTitleFromTags } from "@/lib/dataset-tags";
 import { listFieldDefinitionPresentationByColumnKey } from "@/lib/field-definitions";
 import { getDatasetViewOption } from "@/lib/dataset-view-options";
@@ -82,7 +86,13 @@ export default async function DatasetPage({
     JSON.stringify(dataset.tags),
   ].join(":");
 
-  const [regions, headerDescription, fieldDefinitionPresentationByColumnKey, allDatasets] =
+  const [
+    regions,
+    headerDescription,
+    fieldDefinitionPresentationByColumnKey,
+    allDatasets,
+    pipelineManagedDatasetIds,
+  ] =
     await Promise.all([
       listFilterRegions(),
       Promise.resolve(getDatasetViewOption(dataset.fileName)?.description),
@@ -90,9 +100,17 @@ export default async function DatasetPage({
       identity.isDatasetAdmin
         ? listDatasets({ includeDisabled: true })
         : Promise.resolve([]),
+      identity.isDatasetAdmin
+        ? listPipelineManagedDatasetIds()
+        : Promise.resolve([]),
     ]);
+  const pipelineManagedDatasetIdSet = new Set(pipelineManagedDatasetIds);
   const assignableDatasets = identity.isDatasetAdmin
-    ? allDatasets.filter((candidate) => candidate.id !== sourceDataset?.id)
+    ? allDatasets.filter(
+        (candidate) =>
+          candidate.id !== sourceDataset?.id &&
+          !pipelineManagedDatasetIdSet.has(candidate.id),
+      )
     : [];
 
   return (

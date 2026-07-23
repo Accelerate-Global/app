@@ -58,6 +58,7 @@ describe("/dashboard/resources", () => {
         routePath: "/dashboard/country-codes",
         sortOrder: 10,
         activeVersion: version,
+        impact: { affectedEngines: ["Country normalization"], olderOutputCount: 0 },
         attentionState: "valid-candidate",
       },
       {
@@ -69,6 +70,7 @@ describe("/dashboard/resources", () => {
         routePath: "/dashboard/rop-codes",
         sortOrder: 20,
         activeVersion: { ...version, id: "10000000-0000-4000-8000-000000000002", resourceKey: "rop-codes" },
+        impact: { affectedEngines: ["ROP normalization"], olderOutputCount: 2 },
         attentionState: "invalid-build",
       },
     ]);

@@ -2,6 +2,7 @@ import {
   DatasetClassificationError,
   DatasetDeleteConflictError,
   DerivedDatasetMutationError,
+  PipelineManagedDatasetMutationError,
   deleteDataset,
   getDataset,
   updateDatasetDetails,
@@ -68,7 +69,8 @@ export const PATCH = withRoute(
     } catch (error) {
       if (
         error instanceof DatasetClassificationError ||
-        error instanceof DerivedDatasetMutationError
+        error instanceof DerivedDatasetMutationError ||
+        error instanceof PipelineManagedDatasetMutationError
       ) {
         return jsonError(error.message, error.status);
       }
@@ -93,7 +95,10 @@ export const DELETE = withRoute(
     try {
       deleted = await deleteDataset(datasetId);
     } catch (error) {
-      if (error instanceof DatasetDeleteConflictError) {
+      if (
+        error instanceof DatasetDeleteConflictError ||
+        error instanceof PipelineManagedDatasetMutationError
+      ) {
         return jsonError(error.message, error.status);
       }
 
@@ -104,20 +109,22 @@ export const DELETE = withRoute(
       return jsonError("Dataset not found.", 404);
     }
 
-    try {
-      const supabase = createSupabaseAdminClient();
-      const deletion = await supabase.storage
-        .from(getDatasetStorageBucket())
-        .remove(deleted.blobPaths);
+    if (deleted.blobPaths.length > 0) {
+      try {
+        const supabase = createSupabaseAdminClient();
+        const deletion = await supabase.storage
+          .from(getDatasetStorageBucket())
+          .remove(deleted.blobPaths);
 
-      if (deletion.error) {
-        logError(
-          "Failed to delete dataset file from Supabase Storage",
-          deletion.error,
-        );
+        if (deletion.error) {
+          logError(
+            "Failed to delete dataset file from Supabase Storage",
+            deletion.error,
+          );
+        }
+      } catch (error) {
+        logError("Failed to delete dataset file from Supabase Storage", error);
       }
-    } catch (error) {
-      logError("Failed to delete dataset file from Supabase Storage", error);
     }
 
     return Response.json({ dataset: deleted.dataset });

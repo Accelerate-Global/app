@@ -14,7 +14,7 @@ type Context = {
 };
 
 export const POST = withRoute(
-  { access: "admin", action: "publish IMB forming candidates" },
+  { access: "admin", action: "publish dataset forming candidates" },
   async (identity, request: Request, context: Context) => {
     const decision = imbFormingDecisionSchema.safeParse(await request.json());
     if (!decision.success) return jsonError("A publication reason is required.");
@@ -31,8 +31,8 @@ export const POST = withRoute(
       });
     } catch (error) {
       if (error instanceof ImbFormingError) return jsonError(error.message, error.status);
-      logError("Failed to publish IMB forming candidate", error);
-      return jsonError("Could not publish the IMB forming candidate.", 500);
+      logError("Failed to publish dataset forming candidate", error);
+      return jsonError("Could not publish the dataset forming candidate.", 500);
     }
   },
 );

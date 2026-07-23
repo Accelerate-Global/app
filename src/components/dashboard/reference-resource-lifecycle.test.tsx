@@ -46,10 +46,35 @@ describe("ReferenceResourceLifecycle", () => {
 
   it("loads immutable history through the guarded API", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response(JSON.stringify({ versions: [activeVersion], activationHistory: [] }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      }),
+      new Response(
+        JSON.stringify({
+          versions: [activeVersion],
+          activationHistory: [],
+          impact: {
+            resourceKey: "country-territory-codes",
+            affectedEngines: [{
+              engineKey: "joshua-project",
+              displayName: "Joshua Project source forming",
+              sourceProfileKeys: ["joshua-project-people-groups"],
+              publicationTargetKey: "joshua-project-people-groups",
+            }],
+            olderBindings: [{
+              formingRunId: "run-1",
+              sourceProfileKey: "joshua-project-people-groups",
+              engineKey: "joshua-project",
+              status: "published",
+              datasetId: "dataset-1",
+              createdAt: "2026-07-16T00:00:00.000Z",
+              resourceVersionId: "older-version",
+              checksum: "b".repeat(64),
+            }],
+          },
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
     );
     render(
       <ReferenceResourceLifecycle
@@ -61,6 +86,13 @@ describe("ReferenceResourceLifecycle", () => {
     fireEvent.click(screen.getByRole("button", { name: /version history/iu }));
     await waitFor(() => expect(screen.getByText(/Version 1 · Active/u)).toBeTruthy());
     expect(screen.getByText(/Jul 17, 2026, 12:00 AM UTC · valid/u)).toBeTruthy();
+    expect(screen.getByText("Pipeline impact")).toBeTruthy();
+    expect(screen.getByText("Joshua Project source forming")).toBeTruthy();
+    expect(
+      screen.getByText(
+        "1 existing candidate or publication uses an older version.",
+      ),
+    ).toBeTruthy();
     expect(globalThis.fetch).toHaveBeenCalledWith(
       "/api/reference-resources/country-territory-codes/versions",
     );

@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "definitionKey": "tier1-pgic-merge",
+  "retainedRows": [
+    { "PG_AX_unique_PG_ID_PGIC": "10-SAMPLE-100001-AAA", "PG_Name_Main": "Retained Sample" }
+  ],
+  "currentRows": [
+    { "PG_AX_unique_PG_ID_PGIC": "10-SAMPLE-100001-AAA", "PG_Name_Main": "Current Sample" }
+  ],
+  "expectedExplanation": "1 shared key(s) have changed values or provenance."
+}

@@ -10,7 +10,7 @@ vi.mock("@/lib/imb-forming", () => ({ getImbFormingRun: vi.fn() }));
 const identity = { ownerId: "admin-1", email: null, fullName: null, workspaceRole: "admin" as const, isDatasetAdmin: true, mode: "supabase" as const };
 const context = { params: Promise.resolve({ connectionId: "connection-1", runId: "run-1", formingRunId: "forming-1" }) };
 
-describe("IMB forming candidate detail route", () => {
+describe("dataset forming candidate detail route", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     vi.mocked(getCurrentIdentity).mockResolvedValue(identity);
@@ -25,6 +25,10 @@ describe("IMB forming candidate detail route", () => {
 
   it("returns not found", async () => {
     vi.mocked(getImbFormingRun).mockResolvedValue(null);
-    expect((await GET(new Request("http://localhost"), context)).status).toBe(404);
+    const response = await GET(new Request("http://localhost"), context);
+    expect(response.status).toBe(404);
+    await expect(response.json()).resolves.toEqual({
+      error: "Dataset forming candidate not found.",
+    });
   });
 });

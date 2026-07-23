@@ -170,6 +170,10 @@ describe("AccountControl", () => {
       "separator",
       "Connections",
       "User Management",
+      "Pipelines",
+      "Pipeline Products",
+      "Identity Registry",
+      "Tier 2 Products",
       "Add Dataset",
       "separator",
       "Sign out",
@@ -179,6 +183,15 @@ describe("AccountControl", () => {
     );
     expect(screen.getByText("User Management").closest("a")?.getAttribute("href")).toBe(
       "/dashboard/user-management",
+    );
+    expect(screen.getByText("Pipelines").closest("a")?.getAttribute("href")).toBe(
+      "/admin/pipeline-operations",
+    );
+    expect(screen.getByText("Identity Registry").closest("a")?.getAttribute("href")).toBe(
+      "/admin/identity-registry",
+    );
+    expect(screen.getByText("Tier 2 Products").closest("a")?.getAttribute("href")).toBe(
+      "/admin/tier2-products",
     );
   });
 

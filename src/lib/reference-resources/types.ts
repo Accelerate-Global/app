@@ -1,18 +1,36 @@
 import type { IsoCountryCodeResource } from "@/lib/iso-country-codes";
 import type { RopCodeResource } from "@/lib/rop-codes";
 
+import {
+  PIPELINE_RESOURCE_KEYS,
+  type PipelineResourceEntryByKey,
+  type PipelineResourceKey,
+  type PipelineResourcePayloadByKey,
+} from "./pipeline-types";
+
 export const COUNTRY_RESOURCE_KEY = "country-territory-codes" as const;
 export const ROP_RESOURCE_KEY = "rop-codes" as const;
 
 export type ReferenceResourceKey =
   | typeof COUNTRY_RESOURCE_KEY
-  | typeof ROP_RESOURCE_KEY;
+  | typeof ROP_RESOURCE_KEY
+  | PipelineResourceKey;
 
 export function isReferenceResourceKey(value: string): value is ReferenceResourceKey {
-  return value === COUNTRY_RESOURCE_KEY || value === ROP_RESOURCE_KEY;
+  return (
+    value === COUNTRY_RESOURCE_KEY ||
+    value === ROP_RESOURCE_KEY ||
+    (PIPELINE_RESOURCE_KEYS as readonly string[]).includes(value)
+  );
 }
 
-export type ReferenceResourceKind = "country-geography" | "rop-taxonomy";
+export type ReferenceResourceKind =
+  | "country-geography"
+  | "rop-taxonomy"
+  | "source-registry"
+  | "people-crosswalk"
+  | "merge-priority"
+  | "field-mapping";
 export type ReferenceResourceLifecycleState =
   | "building"
   | "valid"
@@ -27,10 +45,15 @@ export type ReferenceResourceValidationSeverity = "info" | "warning" | "error";
 export type ReferenceResourcePayloadByKey = {
   [COUNTRY_RESOURCE_KEY]: IsoCountryCodeResource;
   [ROP_RESOURCE_KEY]: RopCodeResource;
-};
+} & PipelineResourcePayloadByKey;
 
 export type ReferenceResourcePayload =
   ReferenceResourcePayloadByKey[ReferenceResourceKey];
+
+export type ReferenceResourceEntryByKey = {
+  [COUNTRY_RESOURCE_KEY]: IsoCountryCodeResource["entries"][number];
+  [ROP_RESOURCE_KEY]: RopCodeResource["entries"][number];
+} & PipelineResourceEntryByKey;
 
 export type ReferenceResourceValidationFinding = {
   severity: ReferenceResourceValidationSeverity;
@@ -77,6 +100,10 @@ export type ReferenceResourceCatalogItem = {
   sortOrder: number;
   activeVersion: ReferenceResourceVersionSummary | null;
   attentionState?: "valid-candidate" | "invalid-build" | "interrupted-build" | null;
+  impact: {
+    affectedEngines: string[];
+    olderOutputCount: number;
+  };
 };
 
 export type ReferenceResourceCandidateResult = {
@@ -97,6 +124,10 @@ export type ReferenceResourcePageByKey = {
   [ROP_RESOURCE_KEY]: ReferenceResourceQueryResult<
     RopCodeResource["entries"][number]
   > & { resource: RopCodeResource };
+} & {
+  [Key in PipelineResourceKey]: ReferenceResourceQueryResult<
+    PipelineResourceEntryByKey[Key]
+  > & { resource: PipelineResourcePayloadByKey[Key] };
 };
 
 export type ReferenceResourceHealthItem = {

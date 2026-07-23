@@ -55,6 +55,16 @@ vi.mock("@/lib/datasets", () => ({
       this.name = "DerivedDatasetMutationError";
     }
   },
+  PipelineManagedDatasetMutationError: class PipelineManagedDatasetMutationError extends Error {
+    readonly status = 409;
+
+    constructor(
+      message = "Pipeline-managed datasets can only be changed through Pipeline Products.",
+    ) {
+      super(message);
+      this.name = "PipelineManagedDatasetMutationError";
+    }
+  },
   DatasetDeleteConflictError: class DatasetDeleteConflictError extends Error {
     readonly status = 409;
 
@@ -311,6 +321,82 @@ describe("/api/datasets/[datasetId]", () => {
     });
   });
 
+  it("rejects generic visibility changes for pipeline-managed datasets", async () => {
+    const { PipelineManagedDatasetMutationError } = await import("@/lib/datasets");
+    updateDatasetDetailsMock.mockRejectedValue(
+      new PipelineManagedDatasetMutationError(
+        "Pipeline-managed dataset visibility is controlled by its published product definition.",
+      ),
+    );
+
+    const response = await PATCH(
+      new Request("http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001", {
+        method: "PATCH",
+        body: JSON.stringify({ isWorkspaceVisible: false }),
+      }),
+      context,
+    );
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual({
+      error:
+        "Pipeline-managed dataset visibility is controlled by its published product definition.",
+    });
+  });
+
+  it("rejects generic classification and tag changes for pipeline-managed datasets", async () => {
+    const { PipelineManagedDatasetMutationError } = await import("@/lib/datasets");
+    updateDatasetDetailsMock.mockRejectedValue(
+      new PipelineManagedDatasetMutationError(
+        "Pipeline-managed dataset classification and tags are controlled by its published product definition.",
+      ),
+    );
+
+    const response = await PATCH(
+      new Request("http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001", {
+        method: "PATCH",
+        body: JSON.stringify({
+          tags: [
+            {
+              id: "dataset-classification-pgic",
+              label: "PGIC",
+              color: "#078bc9",
+            },
+          ],
+        }),
+      }),
+      context,
+    );
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual({
+      error:
+        "Pipeline-managed dataset classification and tags are controlled by its published product definition.",
+    });
+  });
+
+  it("rejects generic status changes for pipeline-managed datasets", async () => {
+    const { PipelineManagedDatasetMutationError } = await import("@/lib/datasets");
+    updateDatasetStatusMock.mockRejectedValue(
+      new PipelineManagedDatasetMutationError(
+        "Pipeline-managed dataset status is controlled by Pipeline Products.",
+      ),
+    );
+
+    const response = await PATCH(
+      new Request("http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001", {
+        method: "PATCH",
+        body: JSON.stringify({ status: "failed", error: "manual override" }),
+      }),
+      context,
+    );
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual({
+      error: "Pipeline-managed dataset status is controlled by Pipeline Products.",
+    });
+  });
+
   it("updates hidden dataset fields for the configured admin", async () => {
     updateDatasetDetailsMock.mockResolvedValue({
       ...dataset,
@@ -431,6 +517,44 @@ describe("/api/datasets/[datasetId]", () => {
 
     expect(response.status).toBe(403);
     expect(deleteDatasetMock).not.toHaveBeenCalled();
+    expect(removeMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects deletion of pipeline-managed datasets without touching storage", async () => {
+    const { PipelineManagedDatasetMutationError } = await import("@/lib/datasets");
+    deleteDatasetMock.mockRejectedValue(
+      new PipelineManagedDatasetMutationError(
+        "Pipeline-managed datasets cannot be deleted through dataset administration.",
+      ),
+    );
+
+    const response = await DELETE(
+      new Request("http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001"),
+      context,
+    );
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual({
+      error:
+        "Pipeline-managed datasets cannot be deleted through dataset administration.",
+    });
+    expect(createSupabaseAdminClientMock).not.toHaveBeenCalled();
+    expect(removeMock).not.toHaveBeenCalled();
+  });
+
+  it("does not remove storage paths that remain referenced after dataset deletion", async () => {
+    deleteDatasetMock.mockResolvedValue({
+      dataset,
+      blobPaths: [],
+    });
+
+    const response = await DELETE(
+      new Request("http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001"),
+      context,
+    );
+
+    expect(response.status).toBe(200);
+    expect(createSupabaseAdminClientMock).not.toHaveBeenCalled();
     expect(removeMock).not.toHaveBeenCalled();
   });
 

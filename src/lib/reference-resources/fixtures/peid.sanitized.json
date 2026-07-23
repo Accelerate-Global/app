@@ -1,0 +1,28 @@
+{
+  "resourceKey": "peid",
+  "schemaVersion": 1,
+  "sourceName": "Sanitized PEID fixture",
+  "sourceRetrievedAt": "2026-01-01T00:00:00.000Z",
+  "entries": [
+    {
+      "peid": "800001",
+      "peopleName": "Example People One",
+      "iso3": "AGO",
+      "rop3": "100001",
+      "rop1": "A013",
+      "active": true,
+      "parentStatus": "linked",
+      "missingParentReason": null
+    },
+    {
+      "peid": "800002",
+      "peopleName": "Example People Two",
+      "iso3": "PNG",
+      "rop3": "100004",
+      "rop1": "A010",
+      "active": true,
+      "parentStatus": "linked",
+      "missingParentReason": null
+    }
+  ]
+}

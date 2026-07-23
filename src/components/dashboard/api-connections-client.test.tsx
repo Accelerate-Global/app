@@ -42,6 +42,8 @@ const connection: ApiConnection = {
 const run: ApiConnectionRun = {
   id: "22222222-2222-4222-8222-222222222222",
   connectionId: connection.id,
+  sourceProfileSnapshot: null,
+  sourceProfileChecksum: null,
   actorOwnerId: "admin-1",
   actorEmail: "admin@example.com",
   mode: "import",
@@ -147,6 +149,7 @@ describe("ApiConnectionsClient", () => {
             rejectionReason: null,
             isActive: true,
           },
+          impact: { affectedEngines: ["Country normalization"], olderOutputCount: 0 },
         }]}
         capturedResources={[{
           id: "captured-1",
@@ -165,6 +168,8 @@ describe("ApiConnectionsClient", () => {
     expect(screen.getAllByText("Source").length).toBeGreaterThan(0);
     expect(screen.getByText("Entries")).toBeTruthy();
     expect(screen.getByText("Last updated")).toBeTruthy();
+    expect(screen.getByText("Impact")).toBeTruthy();
+    expect(screen.getByText("Country normalization")).toBeTruthy();
     expect(screen.getByText("249")).toBeTruthy();
     expect(screen.getByText("Apr 23, 2026, 12:00 PM UTC")).toBeTruthy();
     expect(screen.getByText("Shared geography codes")).toBeTruthy();

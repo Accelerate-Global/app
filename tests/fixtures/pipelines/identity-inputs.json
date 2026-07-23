@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "nextUuid": 42,
+  "ledger": {
+    "imb:people:005": "000041",
+    "jp:people:conflict": "000040"
+  },
+  "rows": [
+    {
+      "caseId": "rop3-derived",
+      "source": "JP",
+      "datasetRowKey": "jp:people:001",
+      "rop1": "A010",
+      "rop3": "100001",
+      "iso3": "LAO"
+    },
+    {
+      "caseId": "ledger-reuse",
+      "source": "IMB",
+      "datasetRowKey": "imb:people:005",
+      "rop1": "A010",
+      "rop3": null,
+      "iso3": "LAO"
+    },
+    {
+      "caseId": "uuid-mint",
+      "source": "WCD",
+      "datasetRowKey": "wcd:people:006",
+      "rop1": "A013",
+      "rop3": null,
+      "iso3": "CIV"
+    },
+    {
+      "caseId": "missing-row-key",
+      "source": "ETNO",
+      "datasetRowKey": null,
+      "rop1": "A010",
+      "rop3": null,
+      "iso3": "LAO"
+    },
+    {
+      "caseId": "invalid-source-uuid",
+      "source": "AX",
+      "datasetRowKey": "ax:local:009",
+      "rop1": "A010",
+      "rop3": null,
+      "iso3": "LAO",
+      "sourceUuid": "not-a-code"
+    },
+    {
+      "caseId": "source-registry-conflict",
+      "source": "JP",
+      "datasetRowKey": "jp:people:conflict",
+      "rop1": "A010",
+      "rop3": null,
+      "iso3": "LAO",
+      "sourceUuid": "000099"
+    }
+  ]
+}

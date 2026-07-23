@@ -149,6 +149,380 @@ function pageWait(milliseconds: number) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
+const PIPELINE_SMOKE_RUN_ID = "55555555-5555-4555-8555-555555555555";
+const PIPELINE_SMOKE_STAGE_ID = "55555555-5555-4555-8555-555555555556";
+
+type PipelineSmokeStatus =
+  | "queued"
+  | "awaiting_review"
+  | "succeeded"
+  | "failed";
+
+function createPipelineSmokeDetail(status: PipelineSmokeStatus) {
+  const isTerminal = status === "succeeded" || status === "failed";
+  const stageStatus =
+    status === "awaiting_review"
+      ? "awaiting_review"
+      : status === "succeeded"
+        ? "succeeded"
+        : status === "failed"
+          ? "failed"
+          : "queued";
+  const currentStageKey =
+    status === "succeeded" ? null : "imb-people-groups-review";
+  const warningCount = status === "awaiting_review" ? 1 : 0;
+  const errorCount = status === "failed" ? 1 : 0;
+
+  return {
+    id: PIPELINE_SMOKE_RUN_ID,
+    definitionKey: "source-imb-people-groups",
+    definitionVersion: "pipeline-operations-v1",
+    definitionChecksum: "a".repeat(64),
+    correlationId: "smoke-pipeline-correlation",
+    launchKind: "manual",
+    inputFingerprint: "b".repeat(64),
+    status,
+    currentStageKey,
+    actorOwnerId: "smoke-admin",
+    actorEmail: "smoke-admin@accelerate-global.test",
+    progressCurrent: status === "succeeded" ? 4 : 2,
+    progressTotal: 4,
+    rowCount: 1,
+    warningCount,
+    errorCount,
+    publicationId:
+      status === "succeeded"
+        ? "55555555-5555-4555-8555-555555555559"
+        : null,
+    outOfDate: false,
+    errorCode: status === "failed" ? "SMOKE_STAGE_FAILED" : null,
+    errorMessage: status === "failed" ? "Mock source stage failed." : null,
+    stageCount: 4,
+    completedStageCount: status === "succeeded" ? 4 : 2,
+    retryCount: status === "queued" ? 1 : 0,
+    startedAt: "2026-07-22T16:00:00.000Z",
+    completedAt: isTerminal ? "2026-07-22T16:01:00.000Z" : null,
+    createdAt: "2026-07-22T16:00:00.000Z",
+    updatedAt: "2026-07-22T16:01:00.000Z",
+    exactInputs: {
+      connectionIds: {
+        "imb-people-groups": "6f9f6ef2-1188-4f71-9c24-ef01debf7a01",
+      },
+      publicationIds: {
+        source: "55555555-5555-4555-8555-555555555558",
+      },
+    },
+    stages: [
+      {
+        id: PIPELINE_SMOKE_STAGE_ID,
+        key: "imb-people-groups-review",
+        index: 2,
+        kind: "review",
+        effectKey: "manual-review",
+        status: stageStatus,
+        maxAttempts: 1,
+        attemptCount: 1,
+        progressCurrent: 1,
+        progressTotal: 1,
+        exactInputs: {
+          sourcePublicationId: "55555555-5555-4555-8555-555555555558",
+        },
+        output: { candidateId: "smoke-candidate" },
+        findingSummary: { warningCount, errorCount },
+        errorCode: status === "failed" ? "SMOKE_STAGE_FAILED" : null,
+        errorMessage:
+          status === "failed" ? "Mock source stage failed." : null,
+        startedAt: "2026-07-22T16:00:30.000Z",
+        completedAt: isTerminal ? "2026-07-22T16:01:00.000Z" : null,
+        attempts: [
+          {
+            id: "55555555-5555-4555-8555-555555555557",
+            attemptNumber: 1,
+            workerId: "smoke-worker",
+            status:
+              status === "failed"
+                ? "failed"
+                : status === "awaiting_review"
+                  ? "awaiting_review"
+                  : "succeeded",
+            retryable: status === "failed",
+            progress: { current: 1, total: 1 },
+            output: { candidateId: "smoke-candidate" },
+            findingSummary: { warningCount, errorCount },
+            errorCode: status === "failed" ? "SMOKE_STAGE_FAILED" : null,
+            errorMessage:
+              status === "failed" ? "Mock source stage failed." : null,
+            startedAt: "2026-07-22T16:00:30.000Z",
+            heartbeatAt: "2026-07-22T16:01:00.000Z",
+            completedAt: isTerminal
+              ? "2026-07-22T16:01:00.000Z"
+              : null,
+          },
+        ],
+      },
+    ],
+    events: [],
+  };
+}
+
+function pipelineSmokeSummary(
+  detail: ReturnType<typeof createPipelineSmokeDetail>,
+) {
+  return Object.fromEntries(
+    Object.entries(detail).filter(
+      ([key]) => !["exactInputs", "stages", "events"].includes(key),
+    ),
+  );
+}
+
+function createSourceSmokeRun(input: {
+  connectionId: string;
+  runId: string;
+  sourceProfileKey: string;
+  engineKey: string;
+  engineLabel: string;
+  actorEmail: string;
+}) {
+  return {
+    id: input.runId,
+    connectionId: input.connectionId,
+    sourceProfileSnapshot: {
+      schemaVersion: 1,
+      connectionId: input.connectionId,
+      sourceProfileKey: input.sourceProfileKey,
+      sourceProfileLabel: input.engineLabel,
+      stableKeyColumn: null,
+      configurable: false,
+      engineKey: input.engineKey,
+      engineLabel: input.engineLabel,
+      engineVersion: `${input.engineKey}-smoke-v1`,
+      engineChecksum: "a".repeat(64),
+      artifactSchemaVersion: 1,
+      publicationTargetKey: `source:${input.sourceProfileKey}`,
+    },
+    sourceProfileChecksum: "b".repeat(64),
+    actorOwnerId: "smoke-admin",
+    actorEmail: input.actorEmail,
+    mode: "import",
+    status: "success",
+    httpStatus: 200,
+    durationMs: 125,
+    rowCount: 1,
+    datasetId: null,
+    errorMessage: null,
+    responsePreview: '[{"record_id":"smoke-1","name":"Smoke"}]',
+    startedAt: "2026-07-22T16:00:00.000Z",
+    completedAt: "2026-07-22T16:00:00.125Z",
+    createdAt: "2026-07-22T16:00:00.000Z",
+    logs: [
+      {
+        id: `${input.runId.slice(0, -1)}9`,
+        runId: input.runId,
+        connectionId: input.connectionId,
+        level: "info",
+        message: "Mock source ingestion completed.",
+        createdAt: "2026-07-22T16:00:00.125Z",
+      },
+    ],
+    output: null,
+  };
+}
+
+function createSourceFormingCandidate(input: {
+  connectionId: string;
+  runId: string;
+  formingRunId: string;
+  sourceProfileKey: string;
+  engineKey: string;
+  engineLabel: string;
+  status: "valid" | "published";
+}) {
+  const published = input.status === "published";
+  return {
+    id: input.formingRunId,
+    connectionId: input.connectionId,
+    sourceRunId: input.runId,
+    resourceSetId: "66666666-6666-4666-8666-666666666661",
+    resourceSetChecksum: "c".repeat(64),
+    countryVersionId: "66666666-6666-4666-8666-666666666662",
+    ropVersionId: "66666666-6666-4666-8666-666666666663",
+    sourceProfileKey: input.sourceProfileKey,
+    engineKey: input.engineKey,
+    engineLabel: input.engineLabel,
+    artifactSchemaVersion: 1,
+    inputFingerprint: "d".repeat(64),
+    publicationTargetKey: `source:${input.sourceProfileKey}`,
+    expectedCurrentPublicationId: null,
+    resourceBindings: [],
+    actorOwnerId: "smoke-admin",
+    actorEmail: "smoke-admin@accelerate-global.test",
+    status: input.status,
+    sourceRowsChecksum: "e".repeat(64),
+    sourceRawChecksum: "f".repeat(64),
+    fieldContractVersion: 1,
+    fieldContractChecksum: "1".repeat(64),
+    transformationVersion: `${input.engineKey}-smoke-v1`,
+    transformationChecksum: "2".repeat(64),
+    inputRowCount: 1,
+    outputRowCount: 1,
+    warningCount: 0,
+    errorCount: 0,
+    validationSummary: {
+      warningCount: 0,
+      errorCount: 0,
+      unresolvedCountryRows: 0,
+      unresolvedRopRows: 0,
+      countryConflictRows: 0,
+      ropParentConflictRows: 0,
+      invalidValueCount: 0,
+      schemaDriftFields: [],
+    },
+    artifactManifest: {},
+    outputChecksum: "3".repeat(64),
+    outputSizeBytes: 256,
+    datasetId: published
+      ? "66666666-6666-4666-8666-666666666664"
+      : null,
+    publicationId: published
+      ? "66666666-6666-4666-8666-666666666665"
+      : null,
+    downstreamIdentityRun: published
+      ? {
+          runId: "66666666-6666-4666-8666-666666666666",
+          status: "published",
+          publicationId: "66666666-6666-4666-8666-666666666667",
+          registryRevisionId: "66666666-6666-4666-8666-666666666668",
+        }
+      : null,
+    rejectionReason: null,
+    rejectedByOwnerId: null,
+    rejectedAt: null,
+    publicationReason: published ? "Smoke candidate approved" : null,
+    warningsAcknowledged: false,
+    publishedByOwnerId: published ? "smoke-admin" : null,
+    publishedAt: published ? "2026-07-22T16:02:00.000Z" : null,
+    publishingStartedAt: null,
+    errorMessage: null,
+    startedAt: "2026-07-22T16:01:00.000Z",
+    completedAt: "2026-07-22T16:01:01.000Z",
+    createdAt: "2026-07-22T16:01:00.000Z",
+    findings: [],
+    findingsTruncated: false,
+  };
+}
+
+async function runSourceCandidateLifecycle(
+  page: Page,
+  input: {
+    connectionId: string;
+    runId: string;
+    formingRunId: string;
+    sourceProfileKey: string;
+    engineKey: string;
+    engineLabel: string;
+    actorEmail: string;
+  },
+) {
+  const sourceRun = createSourceSmokeRun(input);
+  let formingRun:
+    | ReturnType<typeof createSourceFormingCandidate>
+    | null = null;
+
+  await page.route(
+    `**/api/admin/api-connections/${input.connectionId}/run`,
+    async (route) => {
+      expect(route.request().postDataJSON()).toEqual({ importEnabled: true });
+      await route.fulfill({
+        status: 202,
+        contentType: "application/json",
+        body: JSON.stringify({ run: sourceRun }),
+      });
+    },
+  );
+  await page.route(
+    `**/api/admin/api-connections/${input.connectionId}/runs/${input.runId}/forming-candidates**`,
+    async (route) => {
+      const request = route.request();
+      const pathname = new URL(request.url()).pathname;
+      if (request.method() === "GET") {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            formingRuns: formingRun ? [formingRun] : [],
+          }),
+        });
+        return;
+      }
+      if (pathname.endsWith("/publish")) {
+        expect(request.postDataJSON()).toEqual({
+          reason: "Smoke candidate approved",
+          warningsAcknowledged: false,
+        });
+        formingRun = createSourceFormingCandidate({
+          ...input,
+          status: "published",
+        });
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({ formingRun }),
+        });
+        return;
+      }
+      formingRun = createSourceFormingCandidate({
+        ...input,
+        status: "valid",
+      });
+      await route.fulfill({
+        status: 202,
+        contentType: "application/json",
+        body: JSON.stringify({ formingRun }),
+      });
+    },
+  );
+
+  await page.goto(`/dashboard/api-connections/${input.connectionId}`);
+  await expect(
+    page.locator('[data-smoke-page="api-connection-detail"]'),
+  ).toBeVisible();
+  await page.locator("[data-smoke-api-connection-import]").click();
+  const runTrigger = page.locator(
+    '[data-smoke-trigger="api-connection-run-detail-sheet"]',
+    { hasText: input.actorEmail },
+  );
+  await expect(runTrigger).toBeVisible();
+  await runTrigger.click();
+  const candidateSurface = page.locator(
+    '[data-smoke-surface="imb-forming-candidate-review"][data-smoke-ready="imb-forming-candidate-review"]',
+  );
+  await expect(candidateSurface).toBeVisible();
+  await candidateSurface.locator("[data-smoke-forming-build]").click();
+  await expect(candidateSurface.getByText("Ready for review")).toBeVisible();
+  await candidateSurface.getByLabel("Decision reason").fill(
+    "Smoke candidate approved",
+  );
+  await candidateSurface.locator("[data-smoke-forming-publish]").click();
+  await expect(
+    candidateSurface.getByText("Published", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    candidateSurface.locator("[data-smoke-downstream-identity-lineage]"),
+  ).toBeVisible();
+  await expect(
+    candidateSurface.locator("[data-smoke-downstream-identity-run-link]"),
+  ).toHaveAttribute(
+    "href",
+    "/admin/identity-registry?runId=66666666-6666-4666-8666-666666666666",
+  );
+  await expect(
+    candidateSurface.getByText("66666666-6666-4666-8666-666666666667"),
+  ).toBeVisible();
+  await expect(
+    candidateSurface.getByText("66666666-6666-4666-8666-666666666668"),
+  ).toBeVisible();
+}
+
 async function waitForResetPasswordPath(page: Page) {
   await page.waitForURL((url) => url.pathname === "/reset-password");
 }
@@ -538,6 +912,21 @@ test(
               run: {
                 id: runId,
                 connectionId,
+                sourceProfileSnapshot: {
+                  schemaVersion: 1,
+                  connectionId,
+                  sourceProfileKey: "imb-people-groups",
+                  sourceProfileLabel: "IMB forming",
+                  stableKeyColumn: null,
+                  configurable: false,
+                  engineKey: "imb",
+                  engineLabel: "IMB forming",
+                  engineVersion: "imb-smoke-v1",
+                  engineChecksum: "a".repeat(64),
+                  artifactSchemaVersion: 1,
+                  publicationTargetKey: "source:imb-people-groups",
+                },
+                sourceProfileChecksum: "b".repeat(64),
                 actorOwnerId: "smoke-admin",
                 actorEmail: "smoke-runner@example.com",
                 mode: "import",
@@ -610,6 +999,296 @@ test(
         detailSheet.getByRole("button", { name: "Build formed candidate" }),
       ).toBeVisible();
     });
+  },
+);
+
+test(
+  "admin can complete a code-managed source candidate lifecycle",
+  async ({ page }, testInfo) => {
+    test.skip(skipUnlessDesktopAdmin(testInfo.project.name));
+
+    await runSmokeJourney(
+      "admin can complete a code-managed source candidate lifecycle",
+      async () => {
+        const bootstrap = await readUiSmokeBootstrap();
+        await runSourceCandidateLifecycle(page, {
+          connectionId: bootstrap.aliases.codeManagedSourceConnectionId,
+          runId: "77777777-7777-4777-8777-777777777771",
+          formingRunId: "77777777-7777-4777-8777-777777777772",
+          sourceProfileKey: "imb-people-groups",
+          engineKey: "imb",
+          engineLabel: "IMB forming",
+          actorEmail: "smoke-code-managed@example.com",
+        });
+      },
+    );
+  },
+);
+
+test(
+  "admin can complete a configurable Sheet candidate lifecycle",
+  async ({ page }, testInfo) => {
+    test.skip(skipUnlessDesktopAdmin(testInfo.project.name));
+
+    await runSmokeJourney(
+      "admin can complete a configurable Sheet candidate lifecycle",
+      async () => {
+        const bootstrap = await readUiSmokeBootstrap();
+        await runSourceCandidateLifecycle(page, {
+          connectionId:
+            bootstrap.aliases.configurableSheetSourceConnectionId,
+          runId: "77777777-7777-4777-8777-777777777773",
+          formingRunId: "77777777-7777-4777-8777-777777777774",
+          sourceProfileKey: "wcd-people-groups",
+          engineKey: "wcd",
+          engineLabel: "World Christian Database forming",
+          actorEmail: "smoke-configurable-sheet@example.com",
+        });
+      },
+    );
+  },
+);
+
+test(
+  "admin can manually launch and resume a reviewed pipeline",
+  async ({ page }, testInfo) => {
+    test.skip(skipUnlessDesktopAdmin(testInfo.project.name));
+
+    await runSmokeJourney(
+      "admin can manually launch and resume a reviewed pipeline",
+      async () => {
+        let status: PipelineSmokeStatus = "awaiting_review";
+        await page.route(
+          "**/api/admin/pipeline-operations/**",
+          async (route) => {
+            const request = route.request();
+            const pathname = new URL(request.url()).pathname;
+            if (
+              pathname === "/api/admin/pipeline-operations/runs" &&
+              request.method() === "POST"
+            ) {
+              expect(request.postDataJSON()).toMatchObject({
+                definitionKey: "source-imb-people-groups",
+                launchKind: "manual",
+              });
+              const detail = createPipelineSmokeDetail(status);
+              await route.fulfill({
+                status: 202,
+                contentType: "application/json",
+                body: JSON.stringify({ run: detail }),
+              });
+              return;
+            }
+            if (pathname.endsWith("/review")) {
+              expect(request.postDataJSON()).toEqual({
+                stageKey: "imb-people-groups-review",
+                decision: "approve",
+                reason: "Reviewed smoke candidate",
+                acknowledgeWarnings: true,
+              });
+              status = "succeeded";
+              await route.fulfill({
+                status: 202,
+                contentType: "application/json",
+                body: JSON.stringify({ accepted: true }),
+              });
+              return;
+            }
+            const detail = createPipelineSmokeDetail(status);
+            if (pathname === "/api/admin/pipeline-operations/runs") {
+              await route.fulfill({
+                status: 200,
+                contentType: "application/json",
+                body: JSON.stringify({
+                  runs: [pipelineSmokeSummary(detail)],
+                }),
+              });
+              return;
+            }
+            await route.fulfill({
+              status: 200,
+              contentType: "application/json",
+              body: JSON.stringify({ run: detail }),
+            });
+          },
+        );
+
+        await page.goto("/admin/pipeline-operations");
+        await expect(
+          page.locator('[data-smoke-page="pipeline-operations"]'),
+        ).toBeVisible();
+        await page.locator("[data-smoke-pipeline-launch]").click();
+        const detailSheet = page.locator(
+          '[data-smoke-surface="pipeline-run-detail"][data-smoke-ready="pipeline-run-detail"]',
+        );
+        await expect(detailSheet).toBeVisible();
+        await expect(
+          detailSheet.getByText("Review Required", { exact: true }),
+        ).toBeVisible();
+        await expect(
+          detailSheet.locator("[data-smoke-pipeline-stage-timeline]"),
+        ).toBeVisible();
+        await detailSheet
+          .locator("[data-smoke-pipeline-reason]")
+          .fill("Reviewed smoke candidate");
+        await detailSheet
+          .locator("[data-smoke-pipeline-warning-acknowledgement]")
+          .check();
+        await detailSheet
+          .locator("[data-smoke-pipeline-review-approve]")
+          .click();
+        await expect(
+          detailSheet.getByText("Up To Date", { exact: true }),
+        ).toBeVisible();
+        await expect(page.getByText("Review approved.")).toBeVisible();
+      },
+    );
+  },
+);
+
+test(
+  "admin can retry a failed pipeline stage",
+  async ({ page }, testInfo) => {
+    test.skip(skipUnlessDesktopAdmin(testInfo.project.name));
+
+    await runSmokeJourney(
+      "admin can retry a failed pipeline stage",
+      async () => {
+        let status: PipelineSmokeStatus = "failed";
+        await page.route(
+          "**/api/admin/pipeline-operations/**",
+          async (route) => {
+            const request = route.request();
+            const pathname = new URL(request.url()).pathname;
+            if (
+              pathname === "/api/admin/pipeline-operations/runs" &&
+              request.method() === "POST"
+            ) {
+              const detail = createPipelineSmokeDetail(status);
+              await route.fulfill({
+                status: 202,
+                contentType: "application/json",
+                body: JSON.stringify({ run: detail }),
+              });
+              return;
+            }
+            if (pathname.endsWith("/retry")) {
+              expect(request.postDataJSON()).toEqual({
+                stageKey: "imb-people-groups-review",
+                reason: "Retry mock transient failure",
+              });
+              status = "queued";
+              await route.fulfill({
+                status: 202,
+                contentType: "application/json",
+                body: JSON.stringify({ accepted: true }),
+              });
+              return;
+            }
+            const detail = createPipelineSmokeDetail(status);
+            if (pathname === "/api/admin/pipeline-operations/runs") {
+              await route.fulfill({
+                status: 200,
+                contentType: "application/json",
+                body: JSON.stringify({
+                  runs: [pipelineSmokeSummary(detail)],
+                }),
+              });
+              return;
+            }
+            await route.fulfill({
+              status: 200,
+              contentType: "application/json",
+              body: JSON.stringify({ run: detail }),
+            });
+          },
+        );
+
+        await page.goto("/admin/pipeline-operations");
+        await page.locator("[data-smoke-pipeline-launch]").click();
+        const detailSheet = page.locator(
+          '[data-smoke-surface="pipeline-run-detail"][data-smoke-ready="pipeline-run-detail"]',
+        );
+        await expect(detailSheet.getByText("Failed", { exact: true })).toBeVisible();
+        await detailSheet
+          .locator("[data-smoke-pipeline-reason]")
+          .fill("Retry mock transient failure");
+        await detailSheet.locator("[data-smoke-pipeline-retry]").click();
+        await expect(page.getByText("Retry accepted.")).toBeVisible();
+        await expect(detailSheet.getByText("Queued", { exact: true })).toBeVisible();
+      },
+    );
+  },
+);
+
+test(
+  "admin can inspect pipeline run history",
+  async ({ page }, testInfo) => {
+    test.skip(skipUnlessDesktopAdmin(testInfo.project.name));
+
+    await runSmokeJourney(
+      "admin can inspect pipeline run history",
+      async () => {
+        const detail = createPipelineSmokeDetail("succeeded");
+        await page.route(
+          "**/api/admin/pipeline-operations/**",
+          async (route) => {
+            const request = route.request();
+            const pathname = new URL(request.url()).pathname;
+            if (
+              pathname === "/api/admin/pipeline-operations/runs" &&
+              request.method() === "POST"
+            ) {
+              await route.fulfill({
+                status: 202,
+                contentType: "application/json",
+                body: JSON.stringify({ run: detail }),
+              });
+              return;
+            }
+            if (pathname === "/api/admin/pipeline-operations/runs") {
+              await route.fulfill({
+                status: 200,
+                contentType: "application/json",
+                body: JSON.stringify({
+                  runs: [pipelineSmokeSummary(detail)],
+                }),
+              });
+              return;
+            }
+            await route.fulfill({
+              status: 200,
+              contentType: "application/json",
+              body: JSON.stringify({ run: detail }),
+            });
+          },
+        );
+
+        await page.goto("/admin/pipeline-operations");
+        await page.locator("[data-smoke-pipeline-launch]").click();
+        const detailSheet = page.locator(
+          '[data-smoke-surface="pipeline-run-detail"][data-smoke-ready="pipeline-run-detail"]',
+        );
+        await expect(detailSheet).toBeVisible();
+        await page.keyboard.press("Escape");
+        await expect(detailSheet).toBeHidden();
+        const history = page.locator("[data-smoke-pipeline-history]");
+        await expect(history).toBeVisible();
+        await history
+          .locator('[data-smoke-trigger="pipeline-run-detail"]')
+          .click();
+        await expect(detailSheet).toBeVisible();
+        await expect(
+          detailSheet.locator("[data-smoke-pipeline-exact-inputs]"),
+        ).toContainText("55555555-5555-4555-8555-555555555558");
+        const attemptHistory = detailSheet.locator(
+          "[data-smoke-pipeline-attempt-history]",
+        );
+        await expect(attemptHistory).toBeVisible();
+        await attemptHistory.locator("summary").click();
+        await expect(attemptHistory).toContainText("#1 · succeeded");
+      },
+    );
   },
 );
 

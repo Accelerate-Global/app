@@ -12,6 +12,11 @@ import {
   prepareReferenceResource,
 } from "./adapters";
 import { checksumReferenceResource } from "./canonical";
+import sourceAliasesFixture from "./fixtures/source-aliases.sanitized.json";
+import {
+  SOURCE_ALIASES_RESOURCE_KEY,
+  type PipelineResourcePayloadByKey,
+} from "./pipeline-types";
 import { COUNTRY_RESOURCE_KEY, ROP_RESOURCE_KEY } from "./types";
 
 describe("reference resource adapters", () => {
@@ -59,6 +64,26 @@ describe("reference resource adapters", () => {
     expect(checksumReferenceResource(resource)).toBe(
       "7772f46db9391489866b8a042a7c61493e2a6dabf61d84b2524e9b91263b3f6a",
     );
+  });
+
+  it("projects pipeline packages into immutable typed catalog rows", () => {
+    const prepared = prepareReferenceResource(
+      SOURCE_ALIASES_RESOURCE_KEY,
+      sourceAliasesFixture as PipelineResourcePayloadByKey[typeof SOURCE_ALIASES_RESOURCE_KEY],
+    );
+
+    expect(prepared.countryEntries).toEqual([]);
+    expect(prepared.ropPeople).toEqual([]);
+    expect(prepared.pipelineEntries).toHaveLength(2);
+    expect(prepared.pipelineEntries[0]).toMatchObject({
+      stableKey: "source:im",
+      active: true,
+      data: expect.objectContaining({ canonicalSourceKey: "im" }),
+    });
+    expect(prepared.pipelineEntries[0]?.searchText).toContain(
+      "example registry source",
+    );
+    expect(prepared.csv).toContain("Stable key,Field ID,Source key");
   });
 
   it("projects a bounded missing ROP2 code without inventing a term or ROP1 parent", () => {

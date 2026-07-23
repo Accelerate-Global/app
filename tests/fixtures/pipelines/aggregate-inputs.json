@@ -1,0 +1,83 @@
+{
+  "schemaVersion": 1,
+  "specificPeopleGroups": [
+    {
+      "caseId": "aggregate-laos",
+      "rop3": "100001",
+      "countryName": "Laos",
+      "population": 700,
+      "percentChristian": 10,
+      "percentEvangelical": 2,
+      "contributingSources": ["JP", "IMB"]
+    },
+    {
+      "caseId": "aggregate-civ",
+      "rop3": "100001",
+      "countryName": "Côte d’Ivoire",
+      "population": 300,
+      "percentChristian": 20,
+      "percentEvangelical": 5,
+      "contributingSources": ["AX", "ETNO", "WCD"]
+    },
+    {
+      "caseId": "aggregate-india",
+      "rop3": "100002",
+      "countryName": "India",
+      "population": 100,
+      "percentChristian": 1,
+      "percentEvangelical": 0.01,
+      "contributingSources": ["JP", "IMB"]
+    }
+  ],
+  "classificationCases": [
+    {
+      "caseId": "self-engaged-percent-branch",
+      "gsec": 2,
+      "frontier": false,
+      "population": 100000,
+      "percentEvangelical": 1.1,
+      "engagementPhase": null,
+      "axSource": false,
+      "gsecSource": "IMB",
+      "frontierSource": "JP"
+    },
+    {
+      "caseId": "phase-without-ax-is-unavailable",
+      "gsec": 2,
+      "frontier": false,
+      "population": 100000,
+      "percentEvangelical": 0.1,
+      "engagementPhase": 7,
+      "axSource": false,
+      "gsecSource": "IMB",
+      "frontierSource": "JP"
+    },
+    {
+      "caseId": "watchlist-low-evangelical",
+      "gsec": 2,
+      "frontier": true,
+      "population": 100000,
+      "percentEvangelical": 0.01,
+      "engagementPhase": null,
+      "axSource": false,
+      "gsecSource": "IMB",
+      "frontierSource": "JP"
+    },
+    {
+      "caseId": "watchlist-one-percent-boundary",
+      "gsec": 2,
+      "frontier": true,
+      "population": 100000,
+      "percentEvangelical": 1,
+      "engagementPhase": null,
+      "axSource": false,
+      "gsecSource": "IMB",
+      "frontierSource": "JP"
+    }
+  ],
+  "tier2Rows": [
+    { "caseId": "tier2-a", "pgic": "10-JP-100010-LAO", "source": "Partner A" },
+    { "caseId": "tier2-b", "pgic": "10-JP-100010-LAO", "source": "Partner B" },
+    { "caseId": "tier2-c", "pgic": "13-IMB-100011-CIV", "source": "Partner C" }
+  ]
+}

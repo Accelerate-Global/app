@@ -10,14 +10,21 @@ import {
 } from "./engine";
 
 describe("IMB field contract", () => {
-  it("pins the approved v1 fields and restores written scripture", () => {
-    expect(IMB_FIELD_CONTRACT_VERSION).toBe(1);
+  it("pins the approved v2 fields and restores written scripture", () => {
+    expect(IMB_FIELD_CONTRACT_VERSION).toBe(2);
     expect(IMB_FIELD_CONTRACT).toHaveLength(36);
     expect(IMB_FIELD_CONTRACT).toContainEqual({
       sourceField: "Bible",
       outputField: "Resources_Written_Scripture",
       type: "boolean",
       requiredSourceColumn: false,
+    });
+    expect(IMB_FIELD_CONTRACT).toContainEqual({
+      sourceField: "Name",
+      outputField: "PG_Name_Main",
+      type: "string",
+      requiredSourceColumn: true,
+      requiredMappedValue: true,
     });
     expect(IMB_FIELD_CONTRACT.slice(-4).map((entry) => entry.outputField)).toEqual([
       "Data_Source",

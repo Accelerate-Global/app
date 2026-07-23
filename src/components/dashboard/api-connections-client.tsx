@@ -186,6 +186,7 @@ export function ApiConnectionsClient({
                   <TableHead>Source</TableHead>
                   <TableHead>Entries</TableHead>
                   <TableHead>Last updated</TableHead>
+                  <TableHead>Impact</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -218,6 +219,14 @@ export function ApiConnectionsClient({
                         "Not available",
                       )}
                     </TableCell>
+                    <TableCell className="min-w-64 text-xs text-muted-foreground">
+                      <span>{resource.impact.affectedEngines.join(", ")}</span>
+                      {resource.impact.olderOutputCount > 0 ? (
+                        <span className="block">
+                          {resource.impact.olderOutputCount.toLocaleString()} recent {resource.impact.olderOutputCount === 1 ? "output uses" : "outputs use"} an older version
+                        </span>
+                      ) : null}
+                    </TableCell>
                   </TableRow>
                 ))}
                 {capturedResources.map((resource) => (
@@ -239,6 +248,9 @@ export function ApiConnectionsClient({
                     </TableCell>
                     <TableCell className="whitespace-nowrap font-mono text-xs text-muted-foreground">
                       {formatUtcTimestamp(resource.createdAt, "Not available")}
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
+                      Captured evidence
                     </TableCell>
                   </TableRow>
                 ))}

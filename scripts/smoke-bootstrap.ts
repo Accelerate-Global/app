@@ -29,6 +29,10 @@ const SECONDARY_DATASET_ID = "22222222-2222-4222-8222-222222222222";
 const DERIVED_DATASET_ID = "99999999-9999-4999-8999-999999999999";
 const JOSHUA_PROJECT_SOURCE_TYPE_ID = "55555555-5555-4555-8555-555555555555";
 const ACCELERATE_SOURCE_TYPE_ID = "66666666-6666-4666-8666-666666666666";
+const CODE_MANAGED_SOURCE_CONNECTION_ID =
+  "6f9f6ef2-1188-4f71-9c24-ef01debf7a01";
+const CONFIGURABLE_SHEETS_SOURCE_CONNECTION_ID =
+  "44444444-4444-4444-8444-444444444444";
 
 const FILTER_REGION_IDS: Record<CanonicalFilterRegionKey, string> = {
   global: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
@@ -110,6 +114,10 @@ function shouldSeedWorkspaceMetadata(scope: UiSmokeBootstrapScope) {
 
 function shouldSeedDatasets(scope: UiSmokeBootstrapScope) {
   return scope === "full" || scope === "datasets";
+}
+
+function shouldSeedSourceConnections(scope: UiSmokeBootstrapScope) {
+  return scope === "full";
 }
 
 function normalizeHeaderIdentity(value: string, index = 0) {
@@ -232,6 +240,34 @@ async function resetSmokeData(sql: postgres.Sql) {
   await sql`
     delete from public.datasets
     where backing_dataset_id is null
+  `;
+  // UI smoke runs against a disposable local database and intentionally
+  // recreates the same fixture identities. Clear only those local fixture
+  // tombstones after their datasets are gone; production paths never call
+  // this bootstrap and retain permanent dataset/path claims.
+  await sql`
+    delete from private.dataset_storage_path_claims
+    where dataset_id in (
+      ${PRIMARY_DATASET_ID}::uuid,
+      ${SECONDARY_DATASET_ID}::uuid,
+      ${DERIVED_DATASET_ID}::uuid
+    )
+  `;
+  await sql`
+    delete from private.dataset_storage_path_owners
+    where storage_path in (
+      'datasets/csv/smoke-primary-dataset.csv',
+      'datasets/csv/smoke-secondary-dataset.csv',
+      'datasets/csv/smoke-derived-dataset.csv'
+    )
+  `;
+  await sql`
+    delete from private.dataset_identity_claims
+    where dataset_id in (
+      ${PRIMARY_DATASET_ID}::uuid,
+      ${SECONDARY_DATASET_ID}::uuid,
+      ${DERIVED_DATASET_ID}::uuid
+    )
   `;
   await sql`delete from public.filter_region_countries`;
   await sql`delete from public.filter_regions`;
@@ -743,6 +779,69 @@ async function insertFieldDefinitionSources(sql: postgres.Sql) {
   `;
 }
 
+async function insertSourceConnections(input: {
+  sql: postgres.Sql;
+  ownerId: string;
+}) {
+  await input.sql`
+    delete from private.source_profile_bindings
+    where connection_id = ${CONFIGURABLE_SHEETS_SOURCE_CONNECTION_ID}
+      or source_profile_key = 'wcd-people-groups'
+  `;
+  await input.sql`
+    delete from private.api_connections
+    where id = ${CONFIGURABLE_SHEETS_SOURCE_CONNECTION_ID}
+  `;
+  await input.sql`
+    insert into private.api_connections (
+      id, name, description, method, url, request_headers,
+      secret_header_names, body_template, response_format,
+      response_data_path, import_mode, target_dataset_id,
+      dataset_name, dataset_classification, provider, provider_config,
+      created_by_owner_id, updated_by_owner_id
+    ) values (
+      ${CONFIGURABLE_SHEETS_SOURCE_CONNECTION_ID},
+      'Smoke configurable Sheet source',
+      'Local-only UI smoke fixture for configurable source forming.',
+      'GET',
+      'https://docs.google.com/spreadsheets/d/smoke-configurable-source/edit',
+      '[]'::jsonb,
+      '[]'::jsonb,
+      '',
+      'json',
+      '',
+      'create',
+      null,
+      'smoke-configurable-source.csv',
+      'PGIC',
+      'google_sheets',
+      ${input.sql.json({
+        provider: "google_sheets",
+        spreadsheetId: "smoke-configurable-source",
+        spreadsheetUrl:
+          "https://docs.google.com/spreadsheets/d/smoke-configurable-source/edit",
+        spreadsheetTitle: "Smoke configurable source",
+        sheetId: 101,
+        sheetTitle: "People Groups",
+        rangeMode: "full_tab",
+      })},
+      ${input.ownerId},
+      ${input.ownerId}
+    )
+  `;
+  await input.sql`
+    insert into private.source_profile_bindings (
+      connection_id, source_profile_key, stable_key_column,
+      configured_by_owner_id
+    ) values (
+      ${CONFIGURABLE_SHEETS_SOURCE_CONNECTION_ID},
+      'wcd-people-groups',
+      'Record ID',
+      ${input.ownerId}
+    )
+  `;
+}
+
 async function main() {
   const { scope } = parseSmokeBootstrapArgs(process.argv);
   const smokeEnv = getUiSmokeEnv();
@@ -768,7 +867,9 @@ async function main() {
     await resetSmokeData(sql);
     await insertAllowlist(sql);
     if (shouldSeedWorkspaceMetadata(scope)) {
-      const referenceResult = await runBootstrapReferenceResources();
+      const referenceResult = await runBootstrapReferenceResources(undefined, {
+        includeLocalPipelineSeeds: true,
+      });
       if (!referenceResult.health.healthy) {
         throw new Error("Reference-resource smoke bootstrap health check failed.");
       }
@@ -887,6 +988,12 @@ async function main() {
         bucket: smokeEnv.storageBucket,
       });
     }
+    if (shouldSeedSourceConnections(scope)) {
+      await insertSourceConnections({
+        sql,
+        ownerId: adminUser.id,
+      });
+    }
 
     const payload: UiSmokeBootstrap = {
       generatedAt: new Date().toISOString(),
@@ -898,6 +1005,9 @@ async function main() {
         derivedDatasetId: DERIVED_DATASET_ID,
         editableFieldDefinitionId: FIELD_DEFINITION_IDS.pgPeopleId1,
         editableFieldSourceTypeId: JOSHUA_PROJECT_SOURCE_TYPE_ID,
+        codeManagedSourceConnectionId: CODE_MANAGED_SOURCE_CONNECTION_ID,
+        configurableSheetSourceConnectionId:
+          CONFIGURABLE_SHEETS_SOURCE_CONNECTION_ID,
       },
       users: {
         admin: adminUser,

@@ -9,6 +9,12 @@ import {
   referenceResourceVersions,
   ropReferencePeople,
 } from "@/db/schema";
+import { IMB_FORMING_ENGINE } from "@/lib/dataset-forming/engines/imb";
+import {
+  requireDatasetFormingResourceBindings,
+  type DatasetFormingCatalogResource,
+} from "@/lib/dataset-forming/resources";
+import type { DatasetFormingResourceBinding } from "@/lib/dataset-forming/types";
 import {
   COUNTRY_RESOURCE_KEY,
   ROP_RESOURCE_KEY,
@@ -19,11 +25,18 @@ import type { ImbFormingResourceBinding } from "./types";
 
 export type ImbFormingResources = {
   binding: ImbFormingResourceBinding;
+  resourceBindings: DatasetFormingResourceBinding[];
   countries: ImbCountryReference[];
   ropEntries: ImbRopReference[];
 };
 
-export async function loadImbFormingResourceBinding(resourceSetId?: string) {
+type LoadedImbFormingBinding = ImbFormingResourceBinding & {
+  resourceBindings: DatasetFormingResourceBinding[];
+};
+
+export async function loadImbFormingResourceBinding(
+  resourceSetId?: string,
+): Promise<LoadedImbFormingBinding> {
   const db = getDb();
   const [set] = resourceSetId
     ? await db
@@ -43,8 +56,12 @@ export async function loadImbFormingResourceBinding(resourceSetId?: string) {
 
   const members = await db
     .select({
+      resourceId: referenceResources.id,
       resourceKey: referenceResources.resourceKey,
+      resourceKind: referenceResources.resourceKind,
       versionId: referenceResourceSetMembers.versionId,
+      versionNumber: referenceResourceVersions.versionNumber,
+      schemaVersion: referenceResourceVersions.schemaVersion,
       lifecycleState: referenceResourceVersions.lifecycleState,
       contentChecksum: referenceResourceVersions.contentChecksum,
     })
@@ -81,12 +98,29 @@ export async function loadImbFormingResourceBinding(resourceSetId?: string) {
     throw new Error("The pinned resource set is missing Country or ROP data.");
   }
 
+  const catalogResources = members.map((member) => ({
+    key: member.resourceKey,
+    kind: member.resourceKind,
+    resourceId: member.resourceId,
+    versionId: member.versionId,
+    version: member.versionNumber,
+    schemaVersion: member.schemaVersion,
+    checksum: member.contentChecksum,
+    lifecycleState: member.lifecycleState,
+  })) satisfies DatasetFormingCatalogResource[];
+  const resourceBindings = requireDatasetFormingResourceBindings({
+    requirements: IMB_FORMING_ENGINE.resourceRequirements,
+    resourceSet: { id: set.id, checksum: set.contentChecksum },
+    catalogResources,
+  });
+
   return {
     resourceSetId: set.id,
     resourceSetChecksum: set.contentChecksum,
     countryVersionId,
     ropVersionId,
-  } satisfies ImbFormingResourceBinding;
+    resourceBindings,
+  } satisfies LoadedImbFormingBinding;
 }
 
 export async function loadImbFormingResources(resourceSetId?: string) {
@@ -133,6 +167,7 @@ export async function loadImbFormingResources(resourceSetId?: string) {
 
   return {
     binding,
+    resourceBindings: binding.resourceBindings,
     countries,
     ropEntries,
   } satisfies ImbFormingResources;

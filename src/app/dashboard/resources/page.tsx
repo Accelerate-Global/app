@@ -59,7 +59,12 @@ export default async function ResourcesPage() {
           {builtInResources.map((resource) => (
             <Link
               key={resource.id}
-              href={resource.routePath}
+              id={resource.resourceKey}
+              href={
+                resource.routePath === "/dashboard/resources"
+                  ? `${resource.routePath}#${resource.resourceKey}`
+                  : resource.routePath
+              }
               className="block rounded-lg no-underline outline-none transition-opacity hover:opacity-85 focus-visible:ring-[3px] focus-visible:ring-ring/50"
             >
               <Card className="h-full cursor-pointer transition-colors hover:bg-muted/30">
@@ -76,6 +81,14 @@ export default async function ResourcesPage() {
                       No active version
                     </CardDescription>
                   )}
+                  <CardDescription>
+                    Used by {resource.impact.affectedEngines.join(", ")}.
+                  </CardDescription>
+                  {resource.impact.olderOutputCount > 0 ? (
+                    <CardDescription>
+                      {resource.impact.olderOutputCount.toLocaleString()} recent {resource.impact.olderOutputCount === 1 ? "output uses" : "outputs use"} an older version.
+                    </CardDescription>
+                  ) : null}
                 </CardHeader>
               </Card>
             </Link>

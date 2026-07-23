@@ -16,6 +16,9 @@ import {
 import { getDb } from "@/db";
 import {
   countryReferenceEntries,
+  datasetFormingResourceBindings,
+  datasetFormingRuns,
+  pipelineReferenceEntries,
   referenceResourceActivationEvents,
   referenceResources,
   referenceResourceSetMembers,
@@ -42,6 +45,17 @@ import {
   decodeReferenceResourceCursor,
   encodeReferenceResourceCursor,
 } from "./canonical";
+import { affectedEnginesForResource } from "./catalog-metadata";
+import {
+  preparePipelineResource,
+  serializePipelineResourceCsv,
+  validatePipelineResource,
+} from "./pipeline-adapters";
+import {
+  isPipelineResourceKey,
+  type PipelineResourceKey,
+  type PipelineResourceValidationContext,
+} from "./pipeline-types";
 import {
   deleteReferenceResourceArtifacts,
   referenceResourceArtifactExists,
@@ -56,6 +70,7 @@ import {
   type ReferenceResourceCandidateResult,
   type ReferenceResourceCatalogItem,
   type ReferenceResourceHealth,
+  type ReferenceResourceEntryByKey,
   type ReferenceResourceKey,
   type ReferenceResourcePayloadByKey,
   type ReferenceResourcePageByKey,
@@ -163,6 +178,11 @@ async function writeProjections(
       .insert(ropReferenceGeographies)
       .values(rows.map((row) => ({ ...row, versionId }))),
   );
+  await insertBatches(prepared.pipelineEntries, (rows) =>
+    getDb()
+      .insert(pipelineReferenceEntries)
+      .values(rows.map((row) => ({ ...row, versionId }))),
+  );
 }
 
 async function verifyCandidatePackage(input: {
@@ -179,18 +199,26 @@ async function verifyCandidatePackage(input: {
       throw new Error(`Reference resource artifact is missing: ${path}.`);
     }
   }
-  const [[{ countryCount }], [{ termCount }], [{ peopleCount }], [{ geographyCount }]] =
+  const [
+    [{ countryCount }],
+    [{ termCount }],
+    [{ peopleCount }],
+    [{ geographyCount }],
+    [{ pipelineCount }],
+  ] =
     await Promise.all([
       getDb().select({ countryCount: count() }).from(countryReferenceEntries).where(eq(countryReferenceEntries.versionId, input.versionId)),
       getDb().select({ termCount: count() }).from(ropReferenceTerms).where(eq(ropReferenceTerms.versionId, input.versionId)),
       getDb().select({ peopleCount: count() }).from(ropReferencePeople).where(eq(ropReferencePeople.versionId, input.versionId)),
       getDb().select({ geographyCount: count() }).from(ropReferenceGeographies).where(eq(ropReferenceGeographies.versionId, input.versionId)),
+      getDb().select({ pipelineCount: count() }).from(pipelineReferenceEntries).where(eq(pipelineReferenceEntries.versionId, input.versionId)),
     ]);
   if (
     countryCount !== input.prepared.countryEntries.length ||
     termCount !== input.prepared.ropTerms.length ||
     peopleCount !== input.prepared.ropPeople.length ||
-    geographyCount !== input.prepared.ropGeographies.length
+    geographyCount !== input.prepared.ropGeographies.length ||
+    pipelineCount !== input.prepared.pipelineEntries.length
   ) {
     throw new Error("Reference resource typed projection counts do not match the normalized package.");
   }
@@ -262,14 +290,25 @@ export async function createReferenceResourceCandidate<K extends ReferenceResour
     schemaVersion?: number;
     findings?: ReferenceResourceValidationFinding[];
     rawManifest?: Record<string, unknown>;
+    validationContext?: PipelineResourceValidationContext;
   },
   dependencies: { artifactStore?: ArtifactStore } = {},
 ): Promise<ReferenceResourceCandidateResult> {
   const artifactStore = dependencies.artifactStore ?? defaultArtifactStore;
   const resource = await getResourceDefinition(input.resourceKey);
-  const prepared = prepareReferenceResource(input.resourceKey, input.payload);
+  const prepared = prepareReferenceResource(
+    input.resourceKey,
+    input.payload,
+    input.validationContext,
+  );
   const schemaVersion = input.schemaVersion ?? 1;
-  const checksum = checksumReferenceResource(input.payload);
+  const checksum = isPipelineResourceKey(input.resourceKey)
+    ? preparePipelineResource(
+        input.resourceKey,
+        input.payload,
+        input.validationContext,
+      ).contentChecksum
+    : checksumReferenceResource(input.payload);
   const equivalent = await findEquivalentVersion({
     resourceId: resource.id,
     schemaVersion,
@@ -294,13 +333,16 @@ export async function createReferenceResourceCandidate<K extends ReferenceResour
     previous: activePayload as never,
     next: input.payload as never,
   });
-  const findings = input.findings ?? [];
+  const findings = [...prepared.findings, ...(input.findings ?? [])];
   const hasErrors = findings.some((finding) => finding.severity === "error");
   const version = await createBuildingVersion({
     resourceId: resource.id,
     schemaVersion,
     sourceRetrievedAt: prepared.sourceRetrievedAt,
-    sourceMetadata: prepared.sourceMetadata,
+    sourceMetadata: {
+      ...prepared.sourceMetadata,
+      ...(input.rawManifest ? { importManifest: input.rawManifest } : {}),
+    },
     actorOwnerId: input.actorOwnerId,
   });
   const uploadedPaths: string[] = [];
@@ -407,6 +449,198 @@ export async function createReferenceResourceCandidate<K extends ReferenceResour
   }
 }
 
+export async function createPipelineReferenceResourceCandidate<
+  K extends PipelineResourceKey,
+>(
+  input: {
+    resourceKey: K;
+    payload: unknown;
+    actorOwnerId: string;
+    rawManifest: Record<string, unknown>;
+    validationContext?: PipelineResourceValidationContext;
+  },
+  dependencies: { artifactStore?: ArtifactStore } = {},
+): Promise<ReferenceResourceCandidateResult> {
+  const validation = validatePipelineResource(
+    input.resourceKey,
+    input.payload,
+    input.validationContext,
+  );
+  if (validation.valid && validation.resource) {
+    return createReferenceResourceCandidate(
+      {
+        resourceKey: input.resourceKey,
+        payload: input.payload as ReferenceResourcePayloadByKey[K],
+        actorOwnerId: input.actorOwnerId,
+        schemaVersion: validation.resource.schemaVersion,
+        rawManifest: input.rawManifest,
+        validationContext: input.validationContext,
+      },
+      dependencies,
+    );
+  }
+
+  const artifactStore = dependencies.artifactStore ?? defaultArtifactStore;
+  const resource = await getResourceDefinition(input.resourceKey);
+  const payload =
+    input.payload && typeof input.payload === "object" && !Array.isArray(input.payload)
+      ? (input.payload as Record<string, unknown>)
+      : { value: input.payload };
+  const sourceRetrievedAtValue = payload.sourceRetrievedAt;
+  const parsedRetrievedAt =
+    typeof sourceRetrievedAtValue === "string"
+      ? new Date(sourceRetrievedAtValue)
+      : new Date();
+  const sourceRetrievedAt = Number.isNaN(parsedRetrievedAt.getTime())
+    ? new Date()
+    : parsedRetrievedAt;
+  const checksum = checksumReferenceResource(payload);
+  const version = await createBuildingVersion({
+    resourceId: resource.id,
+    schemaVersion: 1,
+    sourceRetrievedAt,
+    sourceMetadata: {
+      sourceName:
+        typeof payload.sourceName === "string"
+          ? payload.sourceName
+          : "Invalid pipeline resource import",
+      importManifest: input.rawManifest,
+    },
+    actorOwnerId: input.actorOwnerId,
+  });
+  const uploadedPaths: string[] = [];
+  try {
+    const manifest: ReferenceResourceArtifactManifest = {};
+    const summary = {
+      added: 0,
+      changed: 0,
+      removed: 0,
+      unchanged: 0,
+      highRisk: validation.findings.filter((item) => item.severity === "error")
+        .length,
+    };
+    for (const artifact of [
+      {
+        kind: "raw-manifest" as const,
+        body: JSON.stringify(input.rawManifest, null, 2),
+      },
+      {
+        kind: "normalized" as const,
+        body: canonicalizeReferenceResource(payload),
+      },
+      { kind: "csv" as const, body: "" },
+      {
+        kind: "validation" as const,
+        body: JSON.stringify({ findings: validation.findings }, null, 2),
+      },
+      { kind: "diff" as const, body: JSON.stringify({ summary }, null, 2) },
+    ]) {
+      const path = await artifactStore.upload({
+        resourceKey: input.resourceKey,
+        versionId: version.id,
+        kind: artifact.kind,
+        body: artifact.body,
+      });
+      manifest[artifact.kind] = path;
+      uploadedPaths.push(path);
+    }
+    for (const path of uploadedPaths) {
+      if (!(await artifactStore.exists(path))) {
+        throw new Error(`Reference resource artifact is missing: ${path}.`);
+      }
+    }
+    if (validation.findings.length > 0) {
+      await getDb().insert(referenceResourceValidationFindings).values(
+        validation.findings.map((item) => ({
+          versionId: version.id,
+          severity: item.severity,
+          ruleCode: item.ruleCode,
+          stableEntryKey: item.stableEntryKey,
+          fieldName: item.fieldName,
+          message: item.message,
+          details: item.details,
+        })),
+      );
+    }
+    const rawEntries = Array.isArray(payload.entries) ? payload.entries.length : 0;
+    const [finalized] = await getDb()
+      .update(referenceResourceVersions)
+      .set({
+        lifecycleState: "invalid",
+        contentChecksum: checksum,
+        normalizedResource: payload,
+        artifactManifest: manifest as Record<string, string>,
+        validationSummary: {
+          errorCount: validation.findings.filter(
+            (item) => item.severity === "error",
+          ).length,
+          warningCount: validation.findings.filter(
+            (item) => item.severity === "warning",
+          ).length,
+          findingCount: validation.findings.length,
+        },
+        diffSummary: summary,
+        entryCount: rawEntries,
+        finalizedAt: new Date(),
+        buildError: "Pipeline resource validation failed.",
+      })
+      .where(
+        and(
+          eq(referenceResourceVersions.id, version.id),
+          eq(referenceResourceVersions.lifecycleState, "building"),
+        ),
+      )
+      .returning();
+    if (!finalized) {
+      throw new ReferenceResourceConflictError(
+        "Reference resource build was finalized elsewhere.",
+      );
+    }
+    return {
+      unchanged: false,
+      version: toVersionSummary({
+        version: finalized,
+        resourceKey: input.resourceKey,
+        activeVersionId: resource.activeVersionId,
+      }),
+    };
+  } catch (error) {
+    await artifactStore.remove(uploadedPaths).catch(() => undefined);
+    await getDb()
+      .update(referenceResourceVersions)
+      .set({
+        lifecycleState: "invalid",
+        contentChecksum: checksum,
+        normalizedResource: payload,
+        validationSummary: {
+          errorCount: Math.max(
+            1,
+            validation.findings.filter((item) => item.severity === "error")
+              .length,
+          ),
+          warningCount: validation.findings.filter(
+            (item) => item.severity === "warning",
+          ).length,
+          findingCount: Math.max(1, validation.findings.length),
+        },
+        diffSummary: {},
+        entryCount: Array.isArray(payload.entries) ? payload.entries.length : 0,
+        finalizedAt: new Date(),
+        buildError:
+          error instanceof Error
+            ? error.message
+            : "Reference resource build failed.",
+      })
+      .where(
+        and(
+          eq(referenceResourceVersions.id, version.id),
+          eq(referenceResourceVersions.lifecycleState, "building"),
+        ),
+      );
+    throw error;
+  }
+}
+
 export async function activateReferenceResource(input: {
   resourceKey: ReferenceResourceKey;
   versionId: string;
@@ -493,6 +727,37 @@ export async function listReferenceResourceCatalog(input?: { includeAdminState?:
         .where(inArray(referenceResourceVersions.id, activeIds))
     : [];
   const activeById = new Map(activeVersions.map((version) => [version.id, version]));
+  const recentBindings = await getDb()
+    .select({
+      resourceId: datasetFormingResourceBindings.resourceId,
+      resourceVersionId: datasetFormingResourceBindings.resourceVersionId,
+      formingRunId: datasetFormingResourceBindings.formingRunId,
+    })
+    .from(datasetFormingResourceBindings)
+    .innerJoin(
+      datasetFormingRuns,
+      eq(datasetFormingResourceBindings.formingRunId, datasetFormingRuns.id),
+    )
+    .where(
+      and(
+        eq(datasetFormingResourceBindings.bindingType, "catalog"),
+        gt(
+          datasetFormingRuns.createdAt,
+          new Date(Date.now() - 90 * 24 * 60 * 60 * 1000),
+        ),
+      ),
+    );
+  const olderRunsByResource = new Map<string, Set<string>>();
+  for (const binding of recentBindings) {
+    if (!binding.resourceId || !binding.resourceVersionId) continue;
+    const activeVersionId = resources.find(
+      (resource) => resource.id === binding.resourceId,
+    )?.activeVersionId;
+    if (!activeVersionId || binding.resourceVersionId === activeVersionId) continue;
+    const runs = olderRunsByResource.get(binding.resourceId) ?? new Set<string>();
+    runs.add(binding.formingRunId);
+    olderRunsByResource.set(binding.resourceId, runs);
+  }
   const attentionByResource = new Map<string, ReferenceResourceCatalogItem["attentionState"]>();
   if (input?.includeAdminState) {
     const candidates = await getDb()
@@ -531,6 +796,12 @@ export async function listReferenceResourceCatalog(input?: { includeAdminState?:
             activeVersionId: resource.activeVersionId,
           })
         : null,
+      impact: {
+        affectedEngines: affectedEnginesForResource(
+          resource.resourceKey as ReferenceResourceKey,
+        ),
+        olderOutputCount: olderRunsByResource.get(resource.id)?.size ?? 0,
+      },
       ...(input?.includeAdminState
         ? { attentionState: attentionByResource.get(resource.id) ?? null }
         : {}),
@@ -615,6 +886,32 @@ export async function getActiveReferenceResource<K extends ReferenceResourceKey>
   };
 }
 
+export async function getReferenceResourceVersion<K extends ReferenceResourceKey>(
+  resourceKey: K,
+  versionId: string,
+) {
+  const resource = await getResourceDefinition(resourceKey);
+  const version = await getVersionRecord(versionId);
+  if (
+    !version ||
+    version.resourceId !== resource.id ||
+    version.lifecycleState !== "valid" ||
+    !version.normalizedResource
+  ) {
+    throw new ReferenceResourceNotFoundError(
+      `${resource.label} version ${versionId} is unavailable or unhealthy.`,
+    );
+  }
+  return {
+    payload: version.normalizedResource as ReferenceResourcePayloadByKey[K],
+    version: toVersionSummary({
+      version,
+      resourceKey,
+      activeVersionId: resource.activeVersionId,
+    }),
+  };
+}
+
 export async function getActiveReferenceResourceVersion(resourceKey: ReferenceResourceKey) {
   const resource = await getResourceDefinition(resourceKey);
   if (!resource.activeVersionId) {
@@ -660,7 +957,7 @@ export async function queryReferenceResourceEntries<K extends ReferenceResourceK
   cursor?: string | null;
   limit?: number;
   versionId?: string;
-}): Promise<ReferenceResourceQueryResult<K extends typeof COUNTRY_RESOURCE_KEY ? IsoCountryCodeEntry : RopCodeEntry>> {
+}): Promise<ReferenceResourceQueryResult<ReferenceResourceEntryByKey[K]>> {
   const resource = await getResourceDefinition(input.resourceKey);
   const versionId = input.versionId ?? resource.activeVersionId;
   if (!versionId) throw new ReferenceResourceNotFoundError("Reference resource has no active version.");
@@ -693,6 +990,36 @@ export async function queryReferenceResourceEntries<K extends ReferenceResourceK
     return {
       entries: page.map(mapCountryRow) as never,
       nextCursor: hasMore ? encodeReferenceResourceCursor(page.at(-1)!.stableKey) : null,
+      version: toVersionSummary({
+        version,
+        resourceKey: input.resourceKey,
+        activeVersionId: resource.activeVersionId,
+      }),
+    };
+  }
+
+  if (isPipelineResourceKey(input.resourceKey)) {
+    const rows = await getDb()
+      .select()
+      .from(pipelineReferenceEntries)
+      .where(
+        and(
+          eq(pipelineReferenceEntries.versionId, versionId),
+          cursor ? gt(pipelineReferenceEntries.stableKey, cursor) : undefined,
+          search
+            ? ilike(pipelineReferenceEntries.searchText, `%${search}%`)
+            : undefined,
+        ),
+      )
+      .orderBy(asc(pipelineReferenceEntries.stableKey))
+      .limit(limit + 1);
+    const hasMore = rows.length > limit;
+    const page = rows.slice(0, limit);
+    return {
+      entries: page.map((row) => row.data) as ReferenceResourceEntryByKey[K][],
+      nextCursor: hasMore
+        ? encodeReferenceResourceCursor(page.at(-1)!.stableKey)
+        : null,
       version: toVersionSummary({
         version,
         resourceKey: input.resourceKey,
@@ -775,12 +1102,21 @@ export async function getReferenceResourcePage<K extends ReferenceResourceKey>(i
       },
     } as unknown as ReferenceResourcePageByKey[K];
   }
+  if (input.resourceKey === ROP_RESOURCE_KEY) {
+    return {
+      ...query,
+      resource: buildRopPageResource(
+        payload as RopCodeResource,
+        query.entries as RopCodeEntry[],
+      ),
+    } as unknown as ReferenceResourcePageByKey[K];
+  }
   return {
     ...query,
-    resource: buildRopPageResource(
-      payload as RopCodeResource,
-      query.entries as RopCodeEntry[],
-    ),
+    resource: {
+      ...(payload as ReferenceResourcePayloadByKey[PipelineResourceKey]),
+      entries: query.entries,
+    },
   } as unknown as ReferenceResourcePageByKey[K];
 }
 
@@ -804,6 +1140,13 @@ export async function getReferenceResourceCsv(input: {
         ),
       ),
     }).csv;
+  }
+  if (isPipelineResourceKey(input.resourceKey)) {
+    const query = input.search.trim().toLocaleLowerCase();
+    const matching = prepared.pipelineEntries
+      .filter((entry) => entry.searchText.includes(query))
+      .map((entry) => entry.data);
+    return serializePipelineResourceCsv(input.resourceKey, matching as never);
   }
   const payload = active.payload as RopCodeResource;
   const matching = new Set(
@@ -838,7 +1181,9 @@ export function createReferenceResourceCsvStream(input: {
         if (!headerSent) {
           const header = input.resourceKey === COUNTRY_RESOURCE_KEY
             ? serializeCountryCsvRows([])
-            : serializeRopCsvRows([]);
+            : input.resourceKey === ROP_RESOURCE_KEY
+              ? serializeRopCsvRows([])
+              : serializePipelineResourceCsv(input.resourceKey, []);
           controller.enqueue(encoder.encode(header));
           headerSent = true;
           return;
@@ -851,7 +1196,12 @@ export function createReferenceResourceCsvStream(input: {
         });
         const rows = input.resourceKey === COUNTRY_RESOURCE_KEY
           ? serializeCountryCsvRows(page.entries as IsoCountryCodeEntry[], { includeHeader: false })
-          : serializeRopCsvRows(page.entries as RopCodeEntry[], { includeHeader: false });
+          : input.resourceKey === ROP_RESOURCE_KEY
+            ? serializeRopCsvRows(page.entries as RopCodeEntry[], { includeHeader: false })
+            : serializePipelineResourceCsv(input.resourceKey, page.entries as never)
+                .split("\n")
+                .slice(1)
+                .join("\n");
         if (rows) controller.enqueue(encoder.encode(rows));
         cursor = page.nextCursor;
         if (!cursor) complete = true;
@@ -907,8 +1257,20 @@ export async function checkReferenceResourceHealth(
     } else {
       const record = await getVersionRecord(item.activeVersion.id);
       if (!record || record.lifecycleState !== "valid") problems.push("active-version-not-valid");
-      if (record?.normalizedResource && record.contentChecksum !== checksumReferenceResource(record.normalizedResource)) {
-        problems.push("active-checksum-mismatch");
+      if (record?.normalizedResource) {
+        try {
+          const expectedChecksum = isPipelineResourceKey(item.resourceKey)
+            ? preparePipelineResource(
+                item.resourceKey,
+                record.normalizedResource,
+              ).contentChecksum
+            : checksumReferenceResource(record.normalizedResource);
+          if (record.contentChecksum !== expectedChecksum) {
+            problems.push("active-checksum-mismatch");
+          }
+        } catch {
+          problems.push("active-payload-invalid");
+        }
       }
       const artifactPaths = Object.values(record?.artifactManifest ?? {});
       if (artifactPaths.length < 5) problems.push("artifact-manifest-incomplete");
@@ -922,7 +1284,7 @@ export async function checkReferenceResourceHealth(
             .from(countryReferenceEntries)
             .where(eq(countryReferenceEntries.versionId, record.id));
           if (projectionCount !== record.entryCount) problems.push("country-projection-count-mismatch");
-        } else {
+        } else if (item.resourceKey === ROP_RESOURCE_KEY) {
           const [[{ peopleCount }], [{ termCount }], [{ geographyCount }]] = await Promise.all([
             getDb().select({ peopleCount: count() }).from(ropReferencePeople).where(eq(ropReferencePeople.versionId, record.id)),
             getDb().select({ termCount: count() }).from(ropReferenceTerms).where(eq(ropReferenceTerms.versionId, record.id)),
@@ -934,6 +1296,14 @@ export async function checkReferenceResourceHealth(
           if (peopleCount !== record.entryCount) problems.push("rop-people-count-mismatch");
           if (termCount !== expectedTerms) problems.push("rop-term-count-mismatch");
           if (geographyCount !== Number(metadata.geoIndexCount ?? 0)) problems.push("rop-geography-count-mismatch");
+        } else {
+          const [{ projectionCount }] = await getDb()
+            .select({ projectionCount: count() })
+            .from(pipelineReferenceEntries)
+            .where(eq(pipelineReferenceEntries.versionId, record.id));
+          if (projectionCount !== record.entryCount) {
+            problems.push("pipeline-projection-count-mismatch");
+          }
         }
       }
       if (members.get(item.id) !== item.activeVersion.id) problems.push("current-set-mismatch");
@@ -1013,4 +1383,12 @@ export async function deriveAndActivateCountryAliases(input: {
 }
 
 export { COUNTRY_RESOURCE_KEY, ROP_RESOURCE_KEY } from "./types";
+export {
+  loadPinnedPipelineReferenceResource,
+  loadPinnedPipelineReferenceResources,
+  loadPinnedTier1PriorityRules,
+  PinnedPipelineResourceError,
+  validatePinnedPipelineResourceRecord,
+} from "./pinned-runtime";
 export type * from "./types";
+export type * from "./pinned-runtime";

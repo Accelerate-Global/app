@@ -13,6 +13,7 @@ import {
   datasetVersions,
   datasets,
   datasetFormingFindings,
+  datasetFormingResourceBindings,
   datasetFormingRuns,
   fieldDefinitions,
   isoCountryCodeEntryOverrides,
@@ -22,6 +23,7 @@ import {
   referenceResourceSets,
   referenceResourceSetMembers,
   countryReferenceEntries,
+  pipelineReferenceEntries,
   ropReferenceTerms,
   ropReferencePeople,
   ropReferenceGeographies,
@@ -29,6 +31,7 @@ import {
   partnerExportProfiles,
   partnerExportRuns,
   savedDatasetTables,
+  sourceProfileBindings,
 } from "./schema";
 
 describe("datasets schema", () => {
@@ -59,6 +62,57 @@ describe("datasets schema", () => {
     expect(migration).toContain("create table if not exists public.dataset_versions");
     expect(migration).toContain(
       'create policy "dataset admin can read dataset versions"',
+    );
+  });
+
+  it("hardens pipeline dataset writes and storage-path ownership", async () => {
+    const migrationPath = path.join(
+      process.cwd(),
+      "supabase/migrations/20260723042404_harden_pipeline_dataset_integrity.sql",
+    );
+
+    const migration = await readFile(migrationPath, "utf8");
+
+    expect(migration).toContain(
+      "create unique index if not exists datasets_blob_path_unique_idx",
+    );
+    expect(migration).toContain(
+      "create table if not exists private.dataset_storage_path_claims",
+    );
+    expect(migration).toContain("primary key (storage_path, dataset_id)");
+    expect(migration).toContain(
+      "create table if not exists private.dataset_storage_path_owners",
+    );
+    expect(migration).toContain(
+      "create table if not exists private.dataset_identity_claims",
+    );
+    expect(migration).toContain(
+      "check (is_grandfathered or btrim(storage_path) <> '')",
+    );
+    expect(migration).toContain(
+      "excluded.owner_dataset_ids <@ ownership.owner_dataset_ids",
+    );
+    expect(migration).toContain(
+      "group by historical_path.blob_path, historical_path.dataset_id",
+    );
+    expect(migration).not.toContain(
+      "Resolve the aliases before applying the integrity migration.",
+    );
+    expect(migration).toContain("Dataset identifiers are immutable.");
+    expect(migration).toContain(
+      "before update of id on public.datasets",
+    );
+    expect(migration).toContain(
+      "after insert or update of blob_path on public.datasets",
+    );
+    expect(migration).toContain(
+      "after insert or update of blob_path, dataset_id on public.dataset_versions",
+    );
+    expect(migration).toContain(
+      "create trigger datasets_pipeline_managed_guard",
+    );
+    expect(migration).toContain(
+      "create trigger dataset_version_rows_pipeline_managed_guard",
     );
   });
 
@@ -176,6 +230,8 @@ describe("versioned reference-resource schema", () => {
     expect(ropReferencePeople.rop3Code.name).toBe("rop3_code");
     expect(ropReferencePeople.joinIssue.name).toBe("join_issue");
     expect(ropReferenceGeographies.peopleId3.name).toBe("people_id3");
+    expect(pipelineReferenceEntries.stableKey.name).toBe("stable_key");
+    expect(pipelineReferenceEntries.data.name).toBe("data");
   });
 
   it("commits private security, immutability, activation, bucket, and catalog SQL", async () => {
@@ -203,6 +259,29 @@ describe("versioned reference-resource schema", () => {
     expect(migration).toContain("'missing-rop25'");
     expect(migration).toContain("'rop2-conflict'");
     expect(migration).toContain("'parent-only-rop25'");
+  });
+
+  it("commits immutable pipeline resource projections and guarded activation", async () => {
+    const migration = await readFile(
+      path.join(
+        process.cwd(),
+        "supabase/migrations/20260723004707_add_pipeline_reference_resources.sql",
+      ),
+      "utf8",
+    );
+
+    expect(migration).toContain(
+      "create table if not exists private.pipeline_reference_entries",
+    );
+    expect(migration).toContain(
+      "Reference-resource activation must use the guarded activation function.",
+    );
+    expect(migration).toContain("Active reference-resource versions are immutable.");
+    expect(migration).toContain("'source-aliases'");
+    expect(migration).toContain("'jp-peopleid3'");
+    expect(migration).toContain("'peid'");
+    expect(migration).toContain("'tier1-merge-priorities'");
+    expect(migration).toContain("'engagement-mappings'");
   });
 });
 
@@ -393,6 +472,12 @@ describe("apiConnections schema", () => {
       ),
     ).toBe(false);
     expect(apiConnectionRuns.connectionId.name).toBe("connection_id");
+    expect(apiConnectionRuns.sourceProfileSnapshot.name).toBe(
+      "source_profile_snapshot",
+    );
+    expect(apiConnectionRuns.sourceProfileChecksum.name).toBe(
+      "source_profile_checksum",
+    );
     expect(apiConnectionRuns.responsePreview.name).toBe("response_preview");
     expect(apiConnectionRuns.startedAt.name).toBe("started_at");
     expect(apiConnectionRuns.completedAt.name).toBe("completed_at");
@@ -414,10 +499,43 @@ describe("apiConnections schema", () => {
   it("declares the private IMB forming lifecycle and migration protections", async () => {
     expect(datasetFormingRuns.sourceRunId.name).toBe("source_run_id");
     expect(datasetFormingRuns.resourceSetId.name).toBe("resource_set_id");
+    expect(datasetFormingRuns.sourceProfileKey.name).toBe("source_profile_key");
+    expect(datasetFormingRuns.engineKey.name).toBe("engine_key");
+    expect(datasetFormingRuns.artifactSchemaVersion.name).toBe(
+      "artifact_schema_version",
+    );
+    expect(datasetFormingRuns.inputFingerprint.name).toBe("input_fingerprint");
+    expect(datasetFormingRuns.attemptNumber.name).toBe("attempt_number");
+    expect(datasetFormingRuns.executionClaimedAt.name).toBe(
+      "execution_claimed_at",
+    );
+    expect(datasetFormingRuns.publicationTargetKey.name).toBe(
+      "publication_target_key",
+    );
+    expect(datasetFormingRuns.expectedCurrentPublicationId.name).toBe(
+      "expected_current_publication_id",
+    );
     expect(datasetFormingRuns.transformationChecksum.name).toBe(
       "transformation_checksum",
     );
     expect(datasetFormingRuns.artifactManifest.name).toBe("artifact_manifest");
+    expect(datasetFormingRuns.publicationId.name).toBe("publication_id");
+    expect(datasetFormingRuns.publishingStartedAt.name).toBe(
+      "publishing_started_at",
+    );
+    expect(datasetFormingRuns.publicationAttemptId.name).toBe(
+      "publication_attempt_id",
+    );
+    expect(datasetFormingRuns.publicationBlobPath.name).toBe(
+      "publication_blob_path",
+    );
+    expect(datasetFormingResourceBindings.formingRunId.name).toBe(
+      "forming_run_id",
+    );
+    expect(datasetFormingResourceBindings.bindingKey.name).toBe("binding_key");
+    expect(datasetFormingResourceBindings.resourceVersionId.name).toBe(
+      "resource_version_id",
+    );
     expect(datasetFormingFindings.formingRunId.name).toBe("forming_run_id");
     expect(datasetFormingFindings.ruleCode.name).toBe("rule_code");
 
@@ -433,6 +551,57 @@ describe("apiConnections schema", () => {
     expect(migration).toContain("Dataset forming findings are append-only.");
     expect(migration).toContain(
       "revoke all on private.dataset_forming_runs from public, anon, authenticated",
+    );
+
+    const hardeningMigration = await readFile(
+      path.join(
+        process.cwd(),
+        "supabase/migrations/20260723064114_harden_forming_execution_snapshots.sql",
+      ),
+      "utf8",
+    );
+    expect(hardeningMigration).toContain(
+      "api_connection_runs_source_snapshot_immutable",
+    );
+    expect(hardeningMigration).toContain(
+      "dataset_forming_runs_fingerprint_attempt_idx",
+    );
+    expect(hardeningMigration).toContain(
+      "dataset_forming_runs_execution_metadata_immutable",
+    );
+    const guardDisabledAt = hardeningMigration.indexOf(
+      "disable trigger dataset_forming_runs_immutable",
+    );
+    const backfillAt = hardeningMigration.indexOf("with numbered as (");
+    const guardEnabledAt = hardeningMigration.indexOf(
+      "enable trigger dataset_forming_runs_immutable",
+    );
+    expect(guardDisabledAt).toBeGreaterThan(-1);
+    expect(backfillAt).toBeGreaterThan(guardDisabledAt);
+    expect(guardEnabledAt).toBeGreaterThan(backfillAt);
+  });
+
+  it("generalizes forming metadata with normalized immutable resource bindings", async () => {
+    const migration = await readFile(
+      path.join(
+        process.cwd(),
+        "supabase/migrations/20260722233404_generalize_dataset_forming_metadata.sql",
+      ),
+      "utf8",
+    );
+
+    expect(migration).toContain("add column if not exists source_profile_key text");
+    expect(migration).toContain("add column if not exists engine_key text");
+    expect(migration).toContain("'legacy-imb-input-v1'");
+    expect(migration).toContain("create table if not exists private.dataset_forming_resource_bindings");
+    expect(migration).toContain("dataset_forming_resource_bindings_run_set_fk");
+    expect(migration).toContain("dataset_forming_resource_bindings_membership_fk");
+    expect(migration).toContain("'imb-field-contract'");
+    expect(migration).toContain(
+      "Finalized dataset forming resource bindings are immutable.",
+    );
+    expect(migration).toContain(
+      "revoke all on private.dataset_forming_resource_bindings from public, anon, authenticated",
     );
   });
 
@@ -584,5 +753,48 @@ describe("apiConnections schema", () => {
     expect(migration).toContain(`drop table if exists ${staleDraftTable}`);
     expect(migration).toContain(`drop column if exists ${staleCredentialColumn}`);
     expect(migration).toContain(`drop table if exists ${staleCredentialTable}`);
+  });
+});
+
+describe("sourceProfileBindings schema", () => {
+  it("declares durable Google Sheets forming profile metadata", async () => {
+    expect(sourceProfileBindings.connectionId.name).toBe("connection_id");
+    expect(sourceProfileBindings.sourceProfileKey.name).toBe(
+      "source_profile_key",
+    );
+    expect(sourceProfileBindings.stableKeyColumn.name).toBe(
+      "stable_key_column",
+    );
+
+    const migration = await readFile(
+      path.join(
+        process.cwd(),
+        "supabase/migrations/20260722233500_add_source_profile_bindings.sql",
+      ),
+      "utf8",
+    );
+    expect(migration).toContain(
+      "create table if not exists private.source_profile_bindings",
+    );
+    expect(migration).toContain(
+      "Only Google Sheets connections can use configurable source profiles.",
+    );
+    expect(migration).toContain(
+      "revoke all on private.source_profile_bindings from public, anon, authenticated",
+    );
+    expect(migration).toContain(
+      "create unique index if not exists source_profile_bindings_source_profile_unique",
+    );
+
+    const uniquenessMigration = await readFile(
+      path.join(
+        process.cwd(),
+        "supabase/migrations/20260723014846_enforce_unique_source_profile_bindings.sql",
+      ),
+      "utf8",
+    );
+    expect(uniquenessMigration).toContain(
+      "on private.source_profile_bindings(source_profile_key)",
+    );
   });
 });

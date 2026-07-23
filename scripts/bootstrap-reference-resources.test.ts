@@ -1,11 +1,15 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { ReferenceResourceNotFoundError } from "@/lib/reference-resources";
-import { COUNTRY_RESOURCE_KEY, ROP_RESOURCE_KEY } from "@/lib/reference-resources/types";
+import {
+  COUNTRY_RESOURCE_KEY,
+  ROP_RESOURCE_KEY,
+  type ReferenceResourceKey,
+} from "@/lib/reference-resources/types";
 
 import { runBootstrapReferenceResources } from "./bootstrap-reference-resources";
 
-function version(resourceKey: typeof COUNTRY_RESOURCE_KEY | typeof ROP_RESOURCE_KEY, id: string) {
+function version(resourceKey: ReferenceResourceKey, id: string) {
   return {
     id,
     resourceKey,
@@ -76,6 +80,48 @@ describe("reference resource bootstrap", () => {
     expect(result.resources.every((resource) => resource.unchanged)).toBe(true);
     expect(activate).not.toHaveBeenCalled();
     expect(closeDb).toHaveBeenCalledOnce();
+  });
+
+  it("activates all five deterministic pipeline fixtures during local bootstrap", async () => {
+    const createCandidate = vi.fn(async (input: { resourceKey: ReferenceResourceKey }) => ({
+      unchanged: false,
+      version: version(input.resourceKey, `${input.resourceKey}-v1`),
+    }));
+    const activate = vi.fn().mockResolvedValue("set-id");
+
+    const result = await runBootstrapReferenceResources(
+      {
+        loadCountry: vi.fn().mockResolvedValue({ entries: [] }),
+        loadRop: vi.fn().mockReturnValue({
+          rop1DetailsByCode: {},
+          rop3DetailsByCode: {},
+        }),
+        createCandidate: createCandidate as never,
+        activate,
+        getActive: vi
+          .fn()
+          .mockRejectedValue(new ReferenceResourceNotFoundError("missing")) as never,
+        health: vi.fn().mockResolvedValue({
+          healthy: true,
+          resources: [],
+          currentSetId: "set-id",
+        }),
+        closeDb: vi.fn().mockResolvedValue(undefined),
+      },
+      { includeLocalPipelineSeeds: true },
+    );
+
+    expect(result.resources.map((resource) => resource.resourceKey)).toEqual([
+      "country-territory-codes",
+      "rop-codes",
+      "source-aliases",
+      "jp-peopleid3",
+      "peid",
+      "tier1-merge-priorities",
+      "engagement-mappings",
+    ]);
+    expect(createCandidate).toHaveBeenCalledTimes(7);
+    expect(activate).toHaveBeenCalledTimes(7);
   });
 
   it("fails closed on unhealthy parity and still closes DB", async () => {

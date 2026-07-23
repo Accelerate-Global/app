@@ -68,6 +68,24 @@ export async function assertSmokeRoute(page: Page, route: SmokeRouteSpec) {
   const bootstrap = await readUiSmokeBootstrap();
   const targetPath = resolveUiSmokeTemplate(route.path, bootstrap);
 
+  for (const requestMock of route.requestMocks ?? []) {
+    await page.route(requestMock.url, async (interceptedRoute) => {
+      if (
+        requestMock.method &&
+        interceptedRoute.request().method() !== requestMock.method
+      ) {
+        await interceptedRoute.fallback();
+        return;
+      }
+
+      await interceptedRoute.fulfill({
+        status: requestMock.status ?? 200,
+        contentType: "application/json",
+        body: JSON.stringify(requestMock.responseBody),
+      });
+    });
+  }
+
   await runSmokeStep({
     classification: "product",
     context: `Smoke route ${route.id} navigation`,

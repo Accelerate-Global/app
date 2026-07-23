@@ -45,11 +45,17 @@ import { syncFieldDefinitionsForColumns } from "@/lib/field-definitions";
 import { normalizeSavedDatasetFilterState } from "@/lib/saved-dataset-filters";
 
 type DbExecutor = Parameters<Parameters<ReturnType<typeof getDb>["transaction"]>[0]>[0];
+export type PreparedDatasetPublicationTransaction = Pick<
+  DbExecutor,
+  "update" | "insert" | "execute"
+>;
 type DatasetRecord = typeof datasets.$inferSelect;
 type DatasetVersionRecord = typeof datasetVersions.$inferSelect;
 type DatasetAccessOptions = {
   includeDisabled?: boolean;
 };
+
+const DATASET_PUBLICATION_ROW_BATCH_SIZE = 5_000;
 
 function toDatasetSummary(row: DatasetRecord): DatasetSummary {
   return {
@@ -125,6 +131,55 @@ export class DatasetVersionRevertConflictError extends Error {
   }
 }
 
+export class PipelineManagedDatasetMutationError extends Error {
+  readonly status = 409;
+
+  constructor(
+    message = "Pipeline-managed datasets can only be changed through Pipeline Products. Rebuild the retained lineage, review it, and publish a new auditable version there.",
+  ) {
+    super(message);
+    this.name = "PipelineManagedDatasetMutationError";
+  }
+}
+
+export function assertDatasetIsNotPipelineManaged(
+  pipelinePublicationId: string | null,
+  message?: string,
+) {
+  if (pipelinePublicationId) {
+    throw new PipelineManagedDatasetMutationError(message);
+  }
+}
+
+async function findPipelinePublicationId(
+  executor: Pick<DbExecutor, "execute">,
+  datasetId: string,
+) {
+  const publications = ((await executor.execute(sql<{ id: string }>`
+    select publication.id
+    from private.pipeline_publications as publication
+    where publication.dataset_id = ${datasetId}::uuid
+    order by publication.created_at desc, publication.id desc
+    limit 1
+  `)) ?? []) as unknown as Array<{ id: string }>;
+
+  return publications[0]?.id ?? null;
+}
+
+export async function isPipelineManagedDataset(datasetId: string) {
+  return Boolean(await findPipelinePublicationId(getDb(), datasetId));
+}
+
+export async function listPipelineManagedDatasetIds() {
+  const publications = ((await getDb().execute(sql<{ datasetId: string }>`
+    select distinct publication.dataset_id as "datasetId"
+    from private.pipeline_publications as publication
+    order by publication.dataset_id
+  `)) ?? []) as unknown as Array<{ datasetId: string }>;
+
+  return publications.map((publication) => publication.datasetId);
+}
+
 export class DerivedDatasetMutationError extends Error {
   readonly status = 409;
 
@@ -163,6 +218,64 @@ export class DatasetClassificationError extends Error {
     super(message);
     this.name = "DatasetClassificationError";
   }
+}
+
+export class DatasetStoragePathConflictError extends Error {
+  readonly status = 409;
+
+  constructor(
+    message = "That uploaded file is already owned by another dataset. Upload the file again to create a new, uniquely owned dataset object.",
+  ) {
+    super(message);
+    this.name = "DatasetStoragePathConflictError";
+  }
+}
+
+function isDatasetStoragePathConflict(error: unknown) {
+  let current = error;
+
+  for (let depth = 0; depth < 4 && current; depth += 1) {
+    if (typeof current !== "object") {
+      return false;
+    }
+
+    const candidate = current as {
+      code?: unknown;
+      constraint?: unknown;
+      constraint_name?: unknown;
+      message?: unknown;
+      cause?: unknown;
+    };
+    const constraint =
+      typeof candidate.constraint === "string"
+        ? candidate.constraint
+        : typeof candidate.constraint_name === "string"
+          ? candidate.constraint_name
+          : "";
+    const message =
+      typeof candidate.message === "string" ? candidate.message : "";
+
+    if (
+      candidate.code === "23505" &&
+      (constraint === "datasets_blob_path_unique_idx" ||
+        constraint === "dataset_storage_path_claims_pkey" ||
+        message.includes("Dataset storage path is already owned"))
+    ) {
+      return true;
+    }
+
+    current = candidate.cause;
+  }
+
+  return false;
+}
+
+function rethrowDatasetStoragePathConflict(error: unknown): never {
+  if (isDatasetStoragePathConflict(error)) {
+    throw new DatasetStoragePathConflictError();
+  }
+
+  throw error;
 }
 
 function getValidatedSourceDatasetClassification(tags: DatasetTag[]) {
@@ -316,6 +429,31 @@ async function archiveDatasetVersion(tx: DbExecutor, dataset: DatasetRecord) {
   `);
 
   return version;
+}
+
+async function insertCompleteDatasetRows(input: {
+  tx: DbExecutor;
+  datasetId: string;
+  rows: Record<string, string>[];
+}) {
+  for (
+    let startIndex = 0;
+    startIndex < input.rows.length;
+    startIndex += DATASET_PUBLICATION_ROW_BATCH_SIZE
+  ) {
+    const rows = input.rows.slice(
+      startIndex,
+      startIndex + DATASET_PUBLICATION_ROW_BATCH_SIZE,
+    );
+
+    await input.tx.insert(datasetRows).values(
+      rows.map((row, index) => ({
+        datasetId: input.datasetId,
+        rowIndex: startIndex + index,
+        data: row,
+      })),
+    );
+  }
 }
 
 async function restoreDatasetVersionRows(
@@ -564,47 +702,212 @@ export async function createDataset(input: {
   classification: DatasetClassification;
   isWorkspaceVisible?: boolean;
 }) {
-  const dataset = await getDb().transaction(async (tx) => {
-    const [position] = await tx
-      .select({
-        value: sql<number>`coalesce(max(${datasets.sortOrder}), -1)`,
-      })
-      .from(datasets);
+  try {
+    const dataset = await getDb().transaction(async (tx) => {
+      const [position] = await tx
+        .select({
+          value: sql<number>`coalesce(max(${datasets.sortOrder}), -1)`,
+        })
+        .from(datasets);
+
+      const now = new Date();
+      const [created] = await tx
+        .insert(datasets)
+        .values({
+          ownerId: input.ownerId,
+          backingDatasetId: null,
+          fileName: input.fileName,
+          sortOrder: (position?.value ?? -1) + 1,
+          blobUrl: getDatasetStorageObjectUrl(input.blobPath),
+          blobPath: input.blobPath,
+          currentVersionAction: "upload",
+          currentVersionActorOwnerId: input.ownerId,
+          currentVersionActorEmail: input.actorEmail ?? null,
+          currentVersionCreatedAt: now,
+          sizeBytes: input.sizeBytes,
+          columns: input.columns,
+          hiddenColumnKeys: [],
+          defaultFilters: null,
+          isWorkspaceVisible: input.isWorkspaceVisible ?? true,
+          tags: composeDatasetTagsWithClassification([], input.classification),
+          status: "processing",
+          rowCount: 0,
+        })
+        .returning();
+
+      await syncFieldDefinitionsForColumns({
+        columns: input.columns,
+        executor: tx,
+      });
+
+      return created;
+    });
+
+    return toDatasetSummary(dataset);
+  } catch (error) {
+    rethrowDatasetStoragePathConflict(error);
+  }
+}
+
+/**
+ * Commits a fully prepared dataset and all of its parsed rows as one database
+ * transaction. The caller owns the storage object lifecycle, so a rejected
+ * transaction can safely be followed by removal of the newly uploaded object.
+ */
+export async function publishPreparedDataset(input: {
+  targetDatasetId?: string | null;
+  actorOwnerId: string;
+  actorEmail?: string | null;
+  fileName: string;
+  blobPath: string;
+  sizeBytes: number;
+  columns: CsvColumn[];
+  rows: Record<string, string>[];
+  classification: DatasetClassification;
+  isWorkspaceVisible?: boolean;
+  finalize?: (context: {
+    executor: PreparedDatasetPublicationTransaction;
+    datasetId: string;
+    created: boolean;
+    archivedVersionId: string | null;
+  }) => Promise<void>;
+}) {
+  return getDb().transaction(async (tx) => {
+    await tx.execute(sql`select private.authorize_pipeline_dataset_mutation()`);
 
     const now = new Date();
-    const [created] = await tx
-      .insert(datasets)
-      .values({
-        ownerId: input.ownerId,
-        backingDatasetId: null,
-        fileName: input.fileName,
-        sortOrder: (position?.value ?? -1) + 1,
-        blobUrl: getDatasetStorageObjectUrl(input.blobPath),
-        blobPath: input.blobPath,
-        currentVersionAction: "upload",
-        currentVersionActorOwnerId: input.ownerId,
-        currentVersionActorEmail: input.actorEmail ?? null,
-        currentVersionCreatedAt: now,
-        sizeBytes: input.sizeBytes,
-        columns: input.columns,
-        hiddenColumnKeys: [],
-        defaultFilters: null,
-        isWorkspaceVisible: input.isWorkspaceVisible ?? true,
-        tags: composeDatasetTagsWithClassification([], input.classification),
-        status: "processing",
-        rowCount: 0,
-      })
-      .returning();
+    let dataset: DatasetRecord;
+    let archivedVersionId: string | null = null;
+    let created = false;
 
+    if (input.targetDatasetId) {
+      const [existing] = await tx
+        .select()
+        .from(datasets)
+        .where(eq(datasets.id, input.targetDatasetId))
+        .limit(1)
+        .for("update");
+
+      if (!existing) {
+        return null;
+      }
+
+      if (!existing.backingDatasetId) {
+        const archivedVersion = await archiveDatasetVersion(tx, existing);
+        archivedVersionId = archivedVersion.id;
+      }
+
+      await tx.delete(datasetRows).where(eq(datasetRows.datasetId, existing.id));
+
+      const isWorkspaceVisible =
+        input.isWorkspaceVisible ?? existing.isWorkspaceVisible;
+      const tags = composeDatasetTagsWithWorkspaceVisibility(
+        composeDatasetTagsWithClassification(
+          existing.tags,
+          input.classification,
+        ),
+        isWorkspaceVisible,
+      );
+      const [updated] = await tx
+        .update(datasets)
+        .set({
+          backingDatasetId: null,
+          fileName: existing.fileName,
+          blobUrl: getDatasetStorageObjectUrl(input.blobPath),
+          blobPath: input.blobPath,
+          currentVersionAction: "replace",
+          currentVersionActorOwnerId: input.actorOwnerId,
+          currentVersionActorEmail: input.actorEmail ?? null,
+          currentVersionCreatedAt: now,
+          sizeBytes: input.sizeBytes,
+          columns: input.columns,
+          hiddenColumnKeys: normalizeDatasetHiddenColumnKeys(
+            existing.hiddenColumnKeys,
+            input.columns,
+          ),
+          defaultFilters: null,
+          isWorkspaceVisible,
+          isPrimary: isWorkspaceVisible ? existing.isPrimary : false,
+          tags,
+          status: "ready",
+          rowCount: input.rows.length,
+          error: null,
+          updatedAt: now,
+        })
+        .where(eq(datasets.id, existing.id))
+        .returning();
+
+      if (!updated) {
+        throw new Error("The dataset publication target was not found.");
+      }
+
+      dataset = updated;
+    } else {
+      const [position] = await tx
+        .select({
+          value: sql<number>`coalesce(max(${datasets.sortOrder}), -1)`,
+        })
+        .from(datasets);
+      const isWorkspaceVisible = input.isWorkspaceVisible ?? true;
+      const tags = composeDatasetTagsWithWorkspaceVisibility(
+        composeDatasetTagsWithClassification([], input.classification),
+        isWorkspaceVisible,
+      );
+      const [inserted] = await tx
+        .insert(datasets)
+        .values({
+          ownerId: input.actorOwnerId,
+          backingDatasetId: null,
+          fileName: input.fileName,
+          sortOrder: (position?.value ?? -1) + 1,
+          blobUrl: getDatasetStorageObjectUrl(input.blobPath),
+          blobPath: input.blobPath,
+          currentVersionAction: "upload",
+          currentVersionActorOwnerId: input.actorOwnerId,
+          currentVersionActorEmail: input.actorEmail ?? null,
+          currentVersionCreatedAt: now,
+          sizeBytes: input.sizeBytes,
+          columns: input.columns,
+          hiddenColumnKeys: [],
+          defaultFilters: null,
+          isWorkspaceVisible,
+          tags,
+          status: "ready",
+          rowCount: input.rows.length,
+          error: null,
+        })
+        .returning();
+
+      dataset = inserted;
+      created = true;
+    }
+
+    await insertCompleteDatasetRows({
+      tx,
+      datasetId: dataset.id,
+      rows: input.rows,
+    });
     await syncFieldDefinitionsForColumns({
       columns: input.columns,
       executor: tx,
     });
+    await refreshDerivedDatasets({
+      sourceDatasetId: dataset.id,
+      executor: tx,
+    });
+    await input.finalize?.({
+      executor: tx,
+      datasetId: dataset.id,
+      created,
+      archivedVersionId,
+    });
 
-    return created;
+    return {
+      dataset: toDatasetSummary(dataset),
+      created,
+      archivedVersionId,
+    };
   });
-
-  return toDatasetSummary(dataset);
 }
 
 export async function updateDatasetStatus(input: {
@@ -612,15 +915,35 @@ export async function updateDatasetStatus(input: {
   status: DatasetStatus;
   error?: string | null;
 }) {
-  const [dataset] = await getDb()
-    .update(datasets)
-    .set({
-      status: input.status,
-      error: input.error ?? null,
-      updatedAt: new Date(),
-    })
-    .where(eq(datasets.id, input.datasetId))
-    .returning();
+  const dataset = await getDb().transaction(async (tx) => {
+    const [existingDataset] = await tx
+      .select()
+      .from(datasets)
+      .where(eq(datasets.id, input.datasetId))
+      .limit(1)
+      .for("update");
+
+    if (!existingDataset) {
+      return null;
+    }
+
+    assertDatasetIsNotPipelineManaged(
+      await findPipelinePublicationId(tx, input.datasetId),
+      "Pipeline-managed dataset status is controlled by Pipeline Products. Rebuild the retained lineage, review it, and publish a new auditable version there.",
+    );
+
+    const [updatedDataset] = await tx
+      .update(datasets)
+      .set({
+        status: input.status,
+        error: input.error ?? null,
+        updatedAt: new Date(),
+      })
+      .where(eq(datasets.id, input.datasetId))
+      .returning();
+
+    return updatedDataset ?? null;
+  });
 
   if (!dataset) {
     return null;
@@ -649,7 +972,8 @@ export async function updateDatasetDetails(input: {
       .select()
       .from(datasets)
       .where(eq(datasets.id, input.datasetId))
-      .limit(1);
+      .limit(1)
+      .for("update");
 
     if (!existingDataset) {
       return null;
@@ -686,6 +1010,13 @@ export async function updateDatasetDetails(input: {
     }
 
     if (input.isWorkspaceVisible !== undefined) {
+      if (input.isWorkspaceVisible !== existingDataset.isWorkspaceVisible) {
+        assertDatasetIsNotPipelineManaged(
+          await findPipelinePublicationId(tx, input.datasetId),
+          "Pipeline-managed dataset visibility is controlled by its published product definition. Rebuild the retained lineage, review it, and publish a new auditable version through Pipeline Products.",
+        );
+      }
+
       updates.isWorkspaceVisible = input.isWorkspaceVisible;
     }
 
@@ -711,6 +1042,10 @@ export async function updateDatasetDetails(input: {
     }
 
     if (JSON.stringify(nextTags) !== JSON.stringify(currentTags)) {
+      assertDatasetIsNotPipelineManaged(
+        await findPipelinePublicationId(tx, input.datasetId),
+        "Pipeline-managed dataset classification and tags are controlled by its published product definition. Rebuild the retained lineage, review it, and publish a new auditable version through Pipeline Products.",
+      );
       updates.tags = nextTags;
     }
 
@@ -744,11 +1079,17 @@ export async function assignDatasetDerivedView(input: {
       .select()
       .from(datasets)
       .where(eq(datasets.id, input.datasetId))
-      .limit(1);
+      .limit(1)
+      .for("update");
 
     if (!targetDataset) {
       return null;
     }
+
+    assertDatasetIsNotPipelineManaged(
+      await findPipelinePublicationId(tx, input.datasetId),
+      "Pipeline-managed datasets cannot be reassigned as derived views. Use the target-aware Pipeline Products publication or rollback operation.",
+    );
 
     const resolvedSource = await resolveDatasetSourceRecord({
       datasetId: input.sourceDatasetId,
@@ -826,66 +1167,78 @@ export async function replaceDatasetContents(input: {
   columns: CsvColumn[];
   classification: DatasetClassification;
 }) {
-  const replacement = await getDb().transaction(async (tx) => {
-    const [existing] = await tx
-      .select()
-      .from(datasets)
-      .where(eq(datasets.id, input.datasetId))
-      .limit(1);
+  let replacement: { dataset: DatasetSummary } | null;
 
-    if (!existing) {
-      return null;
-    }
+  try {
+    replacement = await getDb().transaction(async (tx) => {
+      const [existing] = await tx
+        .select()
+        .from(datasets)
+        .where(eq(datasets.id, input.datasetId))
+        .limit(1)
+        .for("update");
 
-    // Derived views do not own standalone row history yet, so materializing them
-    // starts a new physical dataset instead of archiving the inherited view state.
-    if (!existing.backingDatasetId) {
-      await archiveDatasetVersion(tx, existing);
-    }
-    await tx.delete(datasetRows).where(eq(datasetRows.datasetId, input.datasetId));
+      if (!existing) {
+        return null;
+      }
 
-    const now = new Date();
-    const preservedSourceClassification =
-      !existing.backingDatasetId && hasExactDatasetClassificationTag(existing.tags)
-        ? getDatasetClassification(existing.tags)
-        : null;
-    const classification = preservedSourceClassification ?? input.classification;
-    const [updated] = await tx
-      .update(datasets)
-      .set({
-        backingDatasetId: null,
-        fileName: existing.fileName,
-        blobUrl: getDatasetStorageObjectUrl(input.blobPath),
-        blobPath: input.blobPath,
-        currentVersionAction: "replace",
-        currentVersionActorOwnerId: input.actorOwnerId,
-        currentVersionActorEmail: input.actorEmail ?? null,
-        currentVersionCreatedAt: now,
-        sizeBytes: input.sizeBytes,
+      assertDatasetIsNotPipelineManaged(
+        await findPipelinePublicationId(tx, input.datasetId),
+        "Pipeline-managed datasets cannot be replaced through dataset upload. Rebuild the retained lineage, review it, and publish a new auditable version through Pipeline Products.",
+      );
+
+      // Derived views do not own standalone row history yet, so materializing them
+      // starts a new physical dataset instead of archiving the inherited view state.
+      if (!existing.backingDatasetId) {
+        await archiveDatasetVersion(tx, existing);
+      }
+      await tx.delete(datasetRows).where(eq(datasetRows.datasetId, input.datasetId));
+
+      const now = new Date();
+      const preservedSourceClassification =
+        !existing.backingDatasetId && hasExactDatasetClassificationTag(existing.tags)
+          ? getDatasetClassification(existing.tags)
+          : null;
+      const classification = preservedSourceClassification ?? input.classification;
+      const [updated] = await tx
+        .update(datasets)
+        .set({
+          backingDatasetId: null,
+          fileName: existing.fileName,
+          blobUrl: getDatasetStorageObjectUrl(input.blobPath),
+          blobPath: input.blobPath,
+          currentVersionAction: "replace",
+          currentVersionActorOwnerId: input.actorOwnerId,
+          currentVersionActorEmail: input.actorEmail ?? null,
+          currentVersionCreatedAt: now,
+          sizeBytes: input.sizeBytes,
+          columns: input.columns,
+          hiddenColumnKeys: normalizeDatasetHiddenColumnKeys(
+            existing.hiddenColumnKeys,
+            input.columns,
+          ),
+          defaultFilters: null,
+          tags: composeDatasetTagsWithClassification(existing.tags, classification),
+          status: "processing",
+          rowCount: 0,
+          error: null,
+          updatedAt: now,
+        })
+        .where(eq(datasets.id, input.datasetId))
+        .returning();
+
+      await syncFieldDefinitionsForColumns({
         columns: input.columns,
-        hiddenColumnKeys: normalizeDatasetHiddenColumnKeys(
-          existing.hiddenColumnKeys,
-          input.columns,
-        ),
-        defaultFilters: null,
-        tags: composeDatasetTagsWithClassification(existing.tags, classification),
-        status: "processing",
-        rowCount: 0,
-        error: null,
-        updatedAt: now,
-      })
-      .where(eq(datasets.id, input.datasetId))
-      .returning();
+        executor: tx,
+      });
 
-    await syncFieldDefinitionsForColumns({
-      columns: input.columns,
-      executor: tx,
+      return {
+        dataset: toDatasetSummary(updated),
+      };
     });
-
-    return {
-      dataset: toDatasetSummary(updated),
-    };
-  });
+  } catch (error) {
+    rethrowDatasetStoragePathConflict(error);
+  }
 
   if (!replacement) {
     return null;
@@ -907,7 +1260,8 @@ export async function revertDatasetVersion(input: {
       .select()
       .from(datasets)
       .where(eq(datasets.id, input.datasetId))
-      .limit(1);
+      .limit(1)
+      .for("update");
 
     if (!existing) {
       return null;
@@ -918,6 +1272,11 @@ export async function revertDatasetVersion(input: {
         "Derived dataset views do not have upload history to revert.",
       );
     }
+
+    assertDatasetIsNotPipelineManaged(
+      await findPipelinePublicationId(tx, input.datasetId),
+      "Pipeline-managed datasets cannot use upload-history revert. Rebuild the retained lineage, review it, and publish a new auditable version through Pipeline Products.",
+    );
 
     const [version] = await tx
       .select()
@@ -992,11 +1351,17 @@ export async function deleteDataset(datasetId: string) {
       .select()
       .from(datasets)
       .where(eq(datasets.id, datasetId))
-      .limit(1);
+      .limit(1)
+      .for("update");
 
     if (!dataset) {
       return null;
     }
+
+    assertDatasetIsNotPipelineManaged(
+      await findPipelinePublicationId(tx, datasetId),
+      "Pipeline-managed datasets cannot be deleted through dataset administration. Use the target-aware Pipeline Products publication or rollback operation.",
+    );
 
     const [dependentDerivedView] = await tx
       .select({ id: datasets.id })
@@ -1012,13 +1377,59 @@ export async function deleteDataset(datasetId: string) {
       .select({ blobPath: datasetVersions.blobPath })
       .from(datasetVersions)
       .where(eq(datasetVersions.datasetId, datasetId));
+    const candidateBlobPaths = [
+      ...new Set([dataset.blobPath, ...versionBlobRows.map((row) => row.blobPath)]),
+    ];
 
     await tx.delete(datasetRows).where(eq(datasetRows.datasetId, datasetId));
     await tx.delete(datasets).where(eq(datasets.id, datasetId));
 
+    const deletableBlobRows = (await tx.execute(sql<{ blobPath: string }>`
+      with candidate("blobPath") as (
+        select unnest(${candidateBlobPaths}::text[])
+      )
+      select candidate."blobPath"
+      from candidate
+      where not exists (
+        select 1
+        from public.datasets as current_dataset
+        where current_dataset.blob_path = candidate."blobPath"
+      )
+      and not exists (
+        select 1
+        from public.dataset_versions as version
+        where version.blob_path = candidate."blobPath"
+      )
+      and not exists (
+        select 1
+        from private.dataset_storage_path_claims as claim
+        where claim.storage_path = candidate."blobPath"
+          and claim.dataset_id <> ${datasetId}::uuid
+      )
+      and not exists (
+        select 1
+        from private.pipeline_runs as run
+        where run.publication_id is not null
+          and run.publication_blob_path = candidate."blobPath"
+      )
+      and not exists (
+        select 1
+        from private.ax_identity_runs as run
+        where run.publication_id is not null
+          and run.publication_blob_path = candidate."blobPath"
+      )
+      and not exists (
+        select 1
+        from private.dataset_forming_runs as run
+        where run.publication_id is not null
+          and run.publication_blob_path = candidate."blobPath"
+      )
+      order by candidate."blobPath"
+    `)) as unknown as Array<{ blobPath: string }>;
+
     return {
       dataset: toDatasetSummary(dataset),
-      blobPaths: [...new Set([dataset.blobPath, ...versionBlobRows.map((row) => row.blobPath)])],
+      blobPaths: deletableBlobRows.map((row) => row.blobPath),
     };
   });
 }
@@ -1063,52 +1474,68 @@ export async function insertDatasetRowBatch(input: {
   isFinalBatch: boolean;
   totalRows?: number;
 }) {
-  const dataset = await getDatasetRecord(input.datasetId);
+  const summary = await getDb().transaction(async (tx) => {
+    const [dataset] = await tx
+      .select()
+      .from(datasets)
+      .where(eq(datasets.id, input.datasetId))
+      .limit(1)
+      .for("update");
 
-  if (!dataset) {
+    if (!dataset) {
+      return null;
+    }
+
+    if (dataset.backingDatasetId) {
+      throw new DerivedDatasetMutationError(
+        "Derived dataset views cannot store their own dataset rows.",
+      );
+    }
+
+    assertDatasetIsNotPipelineManaged(
+      await findPipelinePublicationId(tx, input.datasetId),
+      "Pipeline-managed dataset rows cannot be changed through CSV batch upload. Use the target-aware Pipeline Products publication or rollback operation.",
+    );
+
+    if (input.rows.length > 0) {
+      await tx
+        .insert(datasetRows)
+        .values(
+          input.rows.map((row, index) => ({
+            datasetId: input.datasetId,
+            rowIndex: input.startIndex + index,
+            data: row,
+          })),
+        )
+        .onConflictDoUpdate({
+          target: [datasetRows.datasetId, datasetRows.rowIndex],
+          set: {
+            data: sql`excluded.data`,
+          },
+        });
+    }
+
+    const batchEnd = input.startIndex + input.rows.length;
+    const nextRowCount = input.totalRows ?? batchEnd;
+    const nextStatus = input.isFinalBatch ? "ready" : "processing";
+
+    const [updated] = await tx
+      .update(datasets)
+      .set({
+        rowCount: sql`greatest(${datasets.rowCount}, ${nextRowCount})`,
+        status: nextStatus,
+        error: null,
+        updatedAt: new Date(),
+      })
+      .where(eq(datasets.id, input.datasetId))
+      .returning();
+
+    return toDatasetSummary(updated);
+  });
+
+  if (!summary) {
     return null;
   }
-
-  if (dataset.backingDatasetId) {
-    throw new DerivedDatasetMutationError(
-      "Derived dataset views cannot store their own dataset rows.",
-    );
-  }
-
-  if (input.rows.length > 0) {
-    await getDb()
-      .insert(datasetRows)
-      .values(
-        input.rows.map((row, index) => ({
-          datasetId: input.datasetId,
-          rowIndex: input.startIndex + index,
-          data: row,
-        })),
-      )
-      .onConflictDoUpdate({
-        target: [datasetRows.datasetId, datasetRows.rowIndex],
-        set: {
-          data: sql`excluded.data`,
-        },
-      });
-  }
-
-  const batchEnd = input.startIndex + input.rows.length;
-  const nextRowCount = input.totalRows ?? batchEnd;
-  const nextStatus = input.isFinalBatch ? "ready" : "processing";
-
-  const [updated] = await getDb()
-    .update(datasets)
-    .set({
-      rowCount: sql`greatest(${datasets.rowCount}, ${nextRowCount})`,
-      status: nextStatus,
-      error: null,
-      updatedAt: new Date(),
-    })
-    .where(eq(datasets.id, input.datasetId))
-    .returning();
-
-  const summary = toDatasetSummary(updated);
 
   if (input.isFinalBatch) {
     await refreshDerivedDatasetsForSource(summary.id);

@@ -187,6 +187,67 @@ describe("DatasetEditPageClient", () => {
     expect(pushMock).toHaveBeenCalledWith("/dashboard/upload?replace=dataset-1");
   });
 
+  it("locks lineage-changing controls for pipeline-managed datasets", () => {
+    render(
+      <DatasetEditPageClient
+        initialDataset={createDataset({
+          tags: [
+            {
+              id: "tag-1",
+              label: "PGAC",
+              color: "#fcab2a",
+            },
+            {
+              id: "tag-2",
+              label: "Reviewed",
+              color: "#8f9f6f",
+            },
+          ],
+        })}
+        availableTags={[]}
+        initialVersions={[
+          createVersion(),
+          createVersion({
+            id: "dataset-version-0",
+            isCurrent: false,
+            action: "replace",
+            archivedAt: new Date("2026-04-16T16:00:00.000Z").toISOString(),
+          }),
+        ]}
+        isPipelineManaged
+      />,
+    );
+
+    expect(
+      screen.getByText(/immutable pipeline publication/i),
+    ).toBeTruthy();
+    expect(
+      screen
+        .getByRole("switch", {
+          name: "Workspace-visible dataset",
+        })
+        .getAttribute("aria-disabled"),
+    ).toBe("true");
+    expect(screen.queryByRole("button", { name: "Replace dataset" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Revert" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Delete dataset" })).toBeNull();
+    expect(
+      (screen.getByLabelText("Dataset classification") as HTMLButtonElement)
+        .disabled,
+    ).toBe(true);
+    expect((screen.getByLabelText("New tag") as HTMLInputElement).disabled).toBe(
+      true,
+    );
+    expect(
+      (screen.getByRole("button", {
+        name: "Remove Reviewed",
+      }) as HTMLButtonElement).disabled,
+    ).toBe(true);
+    expect(
+      screen.getByText(/controls the tags on this published dataset/i),
+    ).toBeTruthy();
+  });
+
   it("routes derived dataset views to replace themselves and explains the conversion", () => {
     render(
       <DatasetEditPageClient

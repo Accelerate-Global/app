@@ -1,4 +1,8 @@
-import { replaceDatasetContents } from "@/lib/datasets";
+import {
+  DatasetStoragePathConflictError,
+  PipelineManagedDatasetMutationError,
+  replaceDatasetContents,
+} from "@/lib/datasets";
 import { isDatasetStoragePath } from "@/lib/dataset-storage";
 import { jsonError } from "@/lib/http";
 import { withRoute } from "@/lib/route-guard";
@@ -24,12 +28,25 @@ export const POST = withRoute(
     }
 
     const { datasetId } = await context.params;
-    const replacement = await replaceDatasetContents({
-      datasetId,
-      actorOwnerId: identity.ownerId,
-      actorEmail: identity.email,
-      ...parsed.data,
-    });
+    let replacement;
+
+    try {
+      replacement = await replaceDatasetContents({
+        datasetId,
+        actorOwnerId: identity.ownerId,
+        actorEmail: identity.email,
+        ...parsed.data,
+      });
+    } catch (error) {
+      if (
+        error instanceof PipelineManagedDatasetMutationError ||
+        error instanceof DatasetStoragePathConflictError
+      ) {
+        return jsonError(error.message, error.status);
+      }
+
+      throw error;
+    }
 
     if (!replacement) {
       return jsonError("Dataset not found.", 404);

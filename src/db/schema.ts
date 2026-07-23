@@ -9,6 +9,7 @@ import type {
   ApiConnectionResponseFormat,
   ApiConnectionRunLogLevel,
   ApiConnectionRunMode,
+  ApiConnectionSourceProfileSnapshot,
   ApiConnectionRunStatus,
   CsvColumn,
   DatasetStatus,
@@ -20,6 +21,7 @@ import {
   type AnyPgColumn,
   bigint,
   boolean,
+  foreignKey,
   index,
   integer,
   jsonb,
@@ -95,6 +97,7 @@ export const datasets = pgTable(
       .notNull(),
   },
   (table) => [
+    uniqueIndex("datasets_blob_path_unique_idx").on(table.blobPath),
     index("datasets_owner_created_idx").on(table.ownerId, table.createdAt),
     index("datasets_backing_dataset_idx").on(table.backingDatasetId),
     index("datasets_sort_order_idx").on(table.sortOrder, table.createdAt),
@@ -537,6 +540,10 @@ export const referenceResourceSets = privateSchema.table(
   },
   (table) => [
     uniqueIndex("reference_resource_sets_sequence_idx").on(table.sequenceNumber),
+    uniqueIndex("reference_resource_sets_id_checksum_idx").on(
+      table.id,
+      table.contentChecksum,
+    ),
     index("reference_resource_sets_created_idx").on(table.createdAt, table.id),
   ],
 );
@@ -561,6 +568,11 @@ export const referenceResourceSetMembers = privateSchema.table(
     uniqueIndex("reference_resource_set_members_set_resource_idx").on(
       table.setId,
       table.resourceId,
+    ),
+    uniqueIndex("reference_resource_set_members_membership_idx").on(
+      table.setId,
+      table.resourceId,
+      table.versionId,
     ),
     index("reference_resource_set_members_resource_idx").on(
       table.resourceId,
@@ -755,6 +767,34 @@ export const ropReferenceGeographies = privateSchema.table(
   ],
 );
 
+export const pipelineReferenceEntries = privateSchema.table(
+  "pipeline_reference_entries",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    versionId: uuid("version_id")
+      .notNull()
+      .references(() => referenceResourceVersions.id, { onDelete: "cascade" }),
+    stableKey: text("stable_key").notNull(),
+    active: boolean("active").notNull(),
+    data: jsonb("data").$type<Record<string, unknown>>().notNull(),
+    searchText: text("search_text").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("pipeline_reference_entries_version_key_idx").on(
+      table.versionId,
+      table.stableKey,
+    ),
+    index("pipeline_reference_entries_version_active_idx").on(
+      table.versionId,
+      table.active,
+      table.stableKey,
+    ),
+  ],
+);
+
 export const apiConnections = privateSchema.table(
   "api_connections",
   {
@@ -828,13 +868,42 @@ export const apiConnections = privateSchema.table(
   ],
 );
 
+export const sourceProfileBindings = privateSchema.table(
+  "source_profile_bindings",
+  {
+    connectionId: uuid("connection_id")
+      .primaryKey()
+      .references(() => apiConnections.id, { onDelete: "restrict" }),
+    sourceProfileKey: text("source_profile_key")
+      .$type<"accelerate-owned-people-groups" | "wcd-people-groups">()
+      .notNull(),
+    stableKeyColumn: text("stable_key_column").notNull(),
+    configuredByOwnerId: text("configured_by_owner_id").notNull(),
+    configuredAt: timestamp("configured_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("source_profile_bindings_source_profile_unique").on(
+      table.sourceProfileKey,
+    ),
+  ],
+);
+
 export const apiConnectionRuns = privateSchema.table(
   "api_connection_runs",
   {
     id: uuid("id").defaultRandom().primaryKey(),
+    operationKey: text("operation_key"),
     connectionId: uuid("connection_id")
       .notNull()
       .references(() => apiConnections.id, { onDelete: "cascade" }),
+    sourceProfileSnapshot: jsonb("source_profile_snapshot")
+      .$type<ApiConnectionSourceProfileSnapshot | null>(),
+    sourceProfileChecksum: text("source_profile_checksum"),
     actorOwnerId: text("actor_owner_id").notNull(),
     actorEmail: text("actor_email"),
     mode: text("mode").$type<ApiConnectionRunMode>().notNull(),
@@ -859,6 +928,9 @@ export const apiConnectionRuns = privateSchema.table(
       table.createdAt,
     ),
     index("api_connection_runs_created_at_idx").on(table.createdAt),
+    uniqueIndex("api_connection_runs_operation_key_idx")
+      .on(table.operationKey)
+      .where(sql`${table.operationKey} is not null`),
   ],
 );
 
@@ -934,6 +1006,13 @@ export const datasetFormingRuns = privateSchema.table(
     resourceSetId: uuid("resource_set_id")
       .notNull()
       .references(() => referenceResourceSets.id, { onDelete: "restrict" }),
+    sourceProfileKey: text("source_profile_key").notNull(),
+    engineKey: text("engine_key").notNull(),
+    artifactSchemaVersion: integer("artifact_schema_version").notNull(),
+    inputFingerprint: text("input_fingerprint").notNull(),
+    attemptNumber: integer("attempt_number").notNull().default(1),
+    publicationTargetKey: text("publication_target_key").notNull(),
+    expectedCurrentPublicationId: uuid("expected_current_publication_id"),
     actorOwnerId: text("actor_owner_id").notNull(),
     actorEmail: text("actor_email"),
     status: text("status").$type<ImbFormingRunStatus>().notNull().default("building"),
@@ -960,6 +1039,7 @@ export const datasetFormingRuns = privateSchema.table(
     datasetId: uuid("dataset_id").references(() => datasets.id, {
       onDelete: "set null",
     }),
+    publicationId: uuid("publication_id"),
     rejectionReason: text("rejection_reason"),
     rejectedByOwnerId: text("rejected_by_owner_id"),
     rejectedAt: timestamp("rejected_at", { withTimezone: true }),
@@ -967,7 +1047,15 @@ export const datasetFormingRuns = privateSchema.table(
     warningsAcknowledged: boolean("warnings_acknowledged").notNull().default(false),
     publishedByOwnerId: text("published_by_owner_id"),
     publishedAt: timestamp("published_at", { withTimezone: true }),
+    publishingStartedAt: timestamp("publishing_started_at", {
+      withTimezone: true,
+    }),
+    publicationAttemptId: uuid("publication_attempt_id"),
+    publicationBlobPath: text("publication_blob_path"),
     errorMessage: text("error_message"),
+    executionClaimedAt: timestamp("execution_claimed_at", {
+      withTimezone: true,
+    }),
     startedAt: timestamp("started_at", { withTimezone: true }),
     completedAt: timestamp("completed_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
@@ -990,15 +1078,112 @@ export const datasetFormingRuns = privateSchema.table(
       table.createdAt,
       table.id,
     ),
+    uniqueIndex("dataset_forming_runs_id_resource_set_idx").on(
+      table.id,
+      table.resourceSetId,
+    ),
+    index("dataset_forming_runs_source_profile_idx").on(
+      table.sourceProfileKey,
+      table.createdAt,
+      table.id,
+    ),
+    index("dataset_forming_runs_engine_status_idx").on(
+      table.engineKey,
+      table.status,
+      table.createdAt,
+      table.id,
+    ),
+    index("dataset_forming_runs_publication_target_idx").on(
+      table.publicationTargetKey,
+      table.createdAt,
+      table.id,
+    ),
     index("dataset_forming_runs_dataset_idx")
       .on(table.datasetId)
       .where(sql`${table.datasetId} is not null`),
+    uniqueIndex("dataset_forming_runs_publication_idx")
+      .on(table.publicationId)
+      .where(sql`${table.publicationId} is not null`),
     uniqueIndex("dataset_forming_runs_active_build_idx")
       .on(table.sourceRunId, table.resourceSetId, table.transformationChecksum)
       .where(sql`${table.status} in ('building', 'valid', 'publishing')`),
+    uniqueIndex("dataset_forming_runs_fingerprint_attempt_idx").on(
+      table.sourceRunId,
+      table.resourceSetId,
+      table.inputFingerprint,
+      table.attemptNumber,
+    ),
     uniqueIndex("dataset_forming_runs_connection_publishing_idx")
       .on(table.connectionId)
       .where(sql`${table.status} = 'publishing'`),
+    uniqueIndex("dataset_forming_runs_target_publishing_idx")
+      .on(table.publicationTargetKey)
+      .where(sql`${table.status} = 'publishing'`),
+    index("dataset_forming_runs_publication_lease_idx")
+      .on(table.publishingStartedAt, table.id)
+      .where(sql`${table.status} = 'publishing' and ${table.engineKey} = 'tier2-partner-forming'`),
+  ],
+);
+
+export const datasetFormingResourceBindings = privateSchema.table(
+  "dataset_forming_resource_bindings",
+  {
+    id: bigint("id", { mode: "number" }).generatedAlwaysAsIdentity().primaryKey(),
+    formingRunId: uuid("forming_run_id")
+      .notNull()
+      .references(() => datasetFormingRuns.id, { onDelete: "restrict" }),
+    position: integer("position").notNull(),
+    bindingKey: text("binding_key").notNull(),
+    bindingType: text("binding_type").$type<"catalog" | "code">().notNull(),
+    required: boolean("required").notNull(),
+    kind: text("kind").notNull(),
+    version: text("version").notNull(),
+    checksum: text("checksum").notNull(),
+    schemaVersion: integer("schema_version").notNull(),
+    resourceSetId: uuid("resource_set_id"),
+    resourceSetChecksum: text("resource_set_checksum"),
+    resourceId: uuid("resource_id"),
+    resourceVersionId: uuid("resource_version_id"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("dataset_forming_resource_bindings_run_position_idx").on(
+      table.formingRunId,
+      table.position,
+    ),
+    uniqueIndex("dataset_forming_resource_bindings_run_key_idx").on(
+      table.formingRunId,
+      table.bindingKey,
+    ),
+    index("dataset_forming_resource_bindings_key_idx").on(
+      table.bindingKey,
+      table.createdAt,
+      table.id,
+    ),
+    index("dataset_forming_resource_bindings_version_idx")
+      .on(table.resourceVersionId, table.formingRunId)
+      .where(sql`${table.resourceVersionId} is not null`),
+    foreignKey({
+      name: "dataset_forming_resource_bindings_run_set_fk",
+      columns: [table.formingRunId, table.resourceSetId],
+      foreignColumns: [datasetFormingRuns.id, datasetFormingRuns.resourceSetId],
+    }).onDelete("restrict"),
+    foreignKey({
+      name: "dataset_forming_resource_bindings_set_checksum_fk",
+      columns: [table.resourceSetId, table.resourceSetChecksum],
+      foreignColumns: [referenceResourceSets.id, referenceResourceSets.contentChecksum],
+    }).onDelete("restrict"),
+    foreignKey({
+      name: "dataset_forming_resource_bindings_membership_fk",
+      columns: [table.resourceSetId, table.resourceId, table.resourceVersionId],
+      foreignColumns: [
+        referenceResourceSetMembers.setId,
+        referenceResourceSetMembers.resourceId,
+        referenceResourceSetMembers.versionId,
+      ],
+    }).onDelete("restrict"),
   ],
 );
 

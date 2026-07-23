@@ -1,6 +1,7 @@
 import {
   DerivedDatasetMutationError,
   insertDatasetRowBatch,
+  PipelineManagedDatasetMutationError,
 } from "@/lib/datasets";
 import { jsonError } from "@/lib/http";
 import { withRoute } from "@/lib/route-guard";
@@ -30,7 +31,10 @@ export const POST = withRoute(
         ...parsed.data,
       });
     } catch (error) {
-      if (error instanceof DerivedDatasetMutationError) {
+      if (
+        error instanceof DerivedDatasetMutationError ||
+        error instanceof PipelineManagedDatasetMutationError
+      ) {
         return jsonError(error.message, error.status);
       }
 

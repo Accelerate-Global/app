@@ -12,7 +12,7 @@ type Context = {
 };
 
 export const GET = withRoute(
-  { access: "admin", action: "view IMB forming candidates" },
+  { access: "admin", action: "view dataset forming candidates" },
   async (_identity, _request: Request, context: Context) => {
     const { connectionId, runId, formingRunId } = await context.params;
     try {
@@ -21,11 +21,11 @@ export const GET = withRoute(
         sourceRunId: runId,
         formingRunId,
       });
-      if (!formingRun) return jsonError("IMB forming candidate not found.", 404);
+      if (!formingRun) return jsonError("Dataset forming candidate not found.", 404);
       return Response.json({ formingRun });
     } catch (error) {
-      logError("Failed to load IMB forming candidate", error);
-      return jsonError("Could not load the IMB forming candidate.", 500);
+      logError("Failed to load dataset forming candidate", error);
+      return jsonError("Could not load the dataset forming candidate.", 500);
     }
   },
 );

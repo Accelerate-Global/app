@@ -48,6 +48,26 @@ describe("IMB forming artifact storage", () => {
     );
   });
 
+  it("uses the shared engine-aware artifact layout without changing legacy IMB paths", async () => {
+    uploadMock.mockResolvedValue({ error: null });
+
+    await uploadImbFormingArtifact({
+      sourceRunId: "source-run",
+      formingRunId: "forming-run",
+      kind: "manifest",
+      body: "{}",
+    });
+
+    expect(uploadMock).toHaveBeenCalledOnce();
+    const [path, body, options] = uploadMock.mock.calls[0];
+    expect(path).toBe("imb-forming-runs/source-run/forming-run/manifest.json");
+    expect(Buffer.from(body).toString("utf8")).toBe("{}");
+    expect(options).toEqual({
+      contentType: "application/json",
+      upsert: false,
+    });
+  });
+
   it("logs normalized provider context and keeps the user-facing error safe", async () => {
     const providerError = {
       message: "mime type text/csv is not supported",

@@ -1,0 +1,39 @@
+# pipeline-contract-characterization Specification
+
+## Purpose
+Preserve a version-controlled, evidence-labeled account of the legacy AX Data flows so migrated behavior can be compared, approved, and reproduced without relying on undocumented assumptions.
+## Requirements
+### Requirement: Legacy flow behavior has a reviewed inventory
+The system repository SHALL contain a version-controlled inventory of every legacy source, forming step, resource, identity rule, merge, aggregate product, and publication outcome, with each rule labeled by its evidence state.
+
+#### Scenario: Engineer evaluates a legacy rule
+- **WHEN** an engineer opens the pipeline inventory
+- **THEN** the rule is labeled `confirmed by code`, `confirmed by fixture`, `documented only`, `conflicting`, or `unused`
+- **AND** the inventory points to the source evidence and intended AX Online stage
+
+#### Scenario: Rule evidence conflicts
+- **WHEN** code, retained output, and documentation disagree about a behavior
+- **THEN** the decision log records the alternatives and blocks publication enablement for the affected future engine until one expectation is approved
+
+### Requirement: Characterization fixtures are safe and deterministic
+The repository SHALL include sanitized fixtures and deterministic expected results for representative source, identity, merge, and aggregate edge cases without including credentials or production records.
+
+#### Scenario: Offline characterization runs twice
+- **WHEN** the comparison command runs twice against the checked-in fixture corpus
+- **THEN** both executions produce identical columns, rows, findings, identity outcomes, merge winners, provenance, and aggregate totals
+
+#### Scenario: Characterization runs in an isolated environment
+- **WHEN** tests run without AX Data, Google Drive, provider APIs, or production Supabase access
+- **THEN** the characterization suite completes using only checked-in sanitized inputs
+
+### Requirement: Required characterization is repository-contained
+Required CI characterization SHALL run from version-controlled sanitized fixtures and SHALL NOT require production records, sibling-repository files, or a developer-specific filesystem layout. Production inventory expectations SHALL remain pinned in the repository manifest, and the explicit production-snapshot import workflow SHALL validate every exact input before use.
+
+#### Scenario: Required CI runs without private legacy ledgers
+- **WHEN** the required test suite runs in a clean checkout without the sibling AX Data repository
+- **THEN** identity reconciliation, stable-key hashing, audit redaction, and deterministic checksum assertions run against committed sanitized fixtures
+- **AND** the suite completes without skipping or attempting to read external production ledgers
+
+#### Scenario: Pinned production ledgers are available locally
+- **WHEN** an administrator runs the explicit legacy identity import with every checksummed production ledger named by the repository manifest
+- **THEN** the import validates each ledger checksum and row count plus the exact expected reconciliation and inventory outcomes before any authority can be created

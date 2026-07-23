@@ -1,6 +1,7 @@
 import {
   assignDatasetDerivedView,
   DerivedDatasetSourceConflictError,
+  PipelineManagedDatasetMutationError,
 } from "@/lib/datasets";
 import { jsonError } from "@/lib/http";
 import { withRoute } from "@/lib/route-guard";
@@ -42,7 +43,10 @@ export const POST = withRoute(
 
       return Response.json({ dataset });
     } catch (error) {
-      if (error instanceof DerivedDatasetSourceConflictError) {
+      if (
+        error instanceof DerivedDatasetSourceConflictError ||
+        error instanceof PipelineManagedDatasetMutationError
+      ) {
         return jsonError(error.message, error.status);
       }
 

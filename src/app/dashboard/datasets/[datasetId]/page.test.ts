@@ -6,7 +6,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { notFound, redirect } from "next/navigation";
 
 import { getCurrentIdentity } from "@/lib/auth";
-import { getDataset, listDatasets } from "@/lib/datasets";
+import {
+  getDataset,
+  listDatasets,
+  listPipelineManagedDatasetIds,
+} from "@/lib/datasets";
 import { listFieldDefinitionPresentationByColumnKey } from "@/lib/field-definitions";
 import { getDatasetViewOption } from "@/lib/dataset-view-options";
 import { listFilterRegions } from "@/lib/filter-settings";
@@ -32,6 +36,7 @@ vi.mock("@/lib/auth", () => ({
 vi.mock("@/lib/datasets", () => ({
   getDataset: vi.fn(),
   listDatasets: vi.fn(),
+  listPipelineManagedDatasetIds: vi.fn(),
 }));
 
 vi.mock("@/lib/field-definitions", () => ({
@@ -68,6 +73,9 @@ vi.mock("@/components/dashboard/dataset-partner-exports", () => ({
 const getCurrentIdentityMock = vi.mocked(getCurrentIdentity);
 const getDatasetMock = vi.mocked(getDataset);
 const listDatasetsMock = vi.mocked(listDatasets);
+const listPipelineManagedDatasetIdsMock = vi.mocked(
+  listPipelineManagedDatasetIds,
+);
 const listFieldDefinitionPresentationByColumnKeyMock = vi.mocked(
   listFieldDefinitionPresentationByColumnKey,
 );
@@ -127,6 +135,7 @@ describe("/dashboard/datasets/[datasetId]", () => {
     });
     getDatasetMock.mockResolvedValue(createDataset());
     listDatasetsMock.mockResolvedValue([createDataset()]);
+    listPipelineManagedDatasetIdsMock.mockResolvedValue([]);
     listFieldDefinitionPresentationByColumnKeyMock.mockResolvedValue({});
     getDatasetViewOptionMock.mockReturnValue({
       id: "global",
@@ -442,6 +451,42 @@ describe("/dashboard/datasets/[datasetId]", () => {
     expect(
       screen.getByRole("heading", { level: 1, name: "PGIC Dataset" }),
     ).toBeTruthy();
+  });
+
+  it("excludes pipeline-managed datasets from derived-view assignment targets", async () => {
+    listDatasetsMock.mockResolvedValue([
+      createDataset(),
+      {
+        ...createDataset(),
+        id: "dataset-ordinary-target",
+        fileName: "Ordinary target",
+        isPrimary: false,
+      },
+      {
+        ...createDataset(),
+        id: "dataset-pipeline-target",
+        fileName: "Pipeline target",
+        isPrimary: false,
+      },
+    ]);
+    listPipelineManagedDatasetIdsMock.mockResolvedValue([
+      "dataset-pipeline-target",
+    ]);
+
+    render(
+      await DatasetPage({
+        params: Promise.resolve({ datasetId: "dataset-1" }),
+        searchParams: Promise.resolve({}),
+      }),
+    );
+
+    const props = datasetDetailClientSpy.mock.lastCall?.[0] as {
+      assignableDatasets: Array<{ id: string }>;
+    };
+    expect(props.assignableDatasets).toEqual([
+      expect.objectContaining({ id: "dataset-ordinary-target" }),
+    ]);
+    expect(listPipelineManagedDatasetIdsMock).toHaveBeenCalledOnce();
   });
 
   it("ignores a saved table from another dataset when no dataset defaults exist", async () => {

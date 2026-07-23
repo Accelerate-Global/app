@@ -56,6 +56,7 @@ type DatasetEditPageClientProps = {
   backingDatasetName?: string | null;
   availableTags: DatasetTag[];
   initialVersions: DatasetVersionSummary[];
+  isPipelineManaged?: boolean;
 };
 
 type DatasetEditFormProps = {
@@ -68,6 +69,7 @@ type DatasetEditFormProps = {
   isLoadingVersions: boolean;
   versionHistoryError: string | null;
   revertingVersionId: string | null;
+  isPipelineManaged: boolean;
   onCancel: () => void;
   onSaveDataset: (input: {
     datasetId: string;
@@ -427,6 +429,7 @@ function DatasetEditForm({
   isLoadingVersions,
   versionHistoryError,
   revertingVersionId,
+  isPipelineManaged,
   onCancel,
   onSaveDataset,
   onDeleteDataset,
@@ -791,15 +794,16 @@ function DatasetEditForm({
           <section className="space-y-2">
             <DatasetClassificationMenu
               value={classification}
-              disabled={isWorking}
+              disabled={isWorking || isPipelineManaged}
               onChange={(nextClassification) => {
                 setClassification(nextClassification);
                 setErrorMessage(null);
               }}
             />
             <p className="text-sm text-muted-foreground">
-              This drives the dataset detail title and is required for every
-              source dataset.
+              {isPipelineManaged
+                ? "Pipeline Products controls this published dataset classification. Publish a reviewed retained-lineage build to change it."
+                : "This drives the dataset detail title and is required for every source dataset."}
             </p>
             {!hasValidInitialClassification ? (
               <p className="text-sm text-muted-foreground">
@@ -833,7 +837,7 @@ function DatasetEditForm({
             <Switch
               id="dataset-is-workspace-visible"
               checked={isWorkspaceVisible}
-              disabled={isWorking}
+              disabled={isWorking || isPipelineManaged}
               aria-label="Set dataset visibility for non-admin users"
               data-smoke-dataset-workspace-visible-toggle
               onCheckedChange={(checked) => {
@@ -845,6 +849,13 @@ function DatasetEditForm({
               }}
             />
           </div>
+          {isPipelineManaged ? (
+            <p className="text-sm text-muted-foreground">
+              Pipeline Products controls visibility for this published dataset.
+              Rebuild its retained lineage, review it, and publish a new auditable
+              version to change the product definition.
+            </p>
+          ) : null}
         </section>
 
         <section className="flex items-start justify-between gap-4">
@@ -924,7 +935,9 @@ function DatasetEditForm({
           <div className="space-y-1">
             <p className="text-sm font-medium text-foreground">Tags</p>
             <p className="text-sm text-muted-foreground">
-              Add small colored tags shown in the dataset list.
+              {isPipelineManaged
+                ? "Pipeline Products controls the tags on this published dataset. Publish a reviewed retained-lineage build to change them."
+                : "Add small colored tags shown in the dataset list."}
             </p>
           </div>
 
@@ -949,7 +962,7 @@ function DatasetEditForm({
           <NewTagComposer
             label={newTagLabel}
             color={newTagColor}
-            disabled={isWorking}
+            disabled={isWorking || isPipelineManaged}
             onLabelChange={setNewTagLabel}
             onColorChange={setNewTagColor}
             onAdd={handleAddTag}
@@ -968,7 +981,7 @@ function DatasetEditForm({
                   <button
                     key={getDatasetTagIdentity(tag)}
                     type="button"
-                    disabled={isWorking}
+                    disabled={isWorking || isPipelineManaged}
                     className="inline-flex items-center rounded-full border px-2.5 py-1 text-[0.72rem] font-medium leading-none text-[var(--dataset-tag-text-light)] transition-opacity hover:opacity-75 disabled:cursor-not-allowed disabled:opacity-45 dark:text-[var(--dataset-tag-text-dark)]"
                     style={getDatasetTagStyle(tag.color)}
                     onClick={() => handleAddExistingTag(tag)}
@@ -986,7 +999,7 @@ function DatasetEditForm({
                 <DatasetTagEditor
                   key={tag.id}
                   tag={tag}
-                  disabled={isWorking}
+                  disabled={isWorking || isPipelineManaged}
                   onChange={handleTagChange}
                   onRemove={handleRemoveTag}
                 />
@@ -1010,7 +1023,9 @@ function DatasetEditForm({
           <div className="space-y-1">
             <p className="text-sm font-medium text-foreground">Upload history</p>
             <p className="text-sm text-muted-foreground">
-              {isDerivedView
+              {isPipelineManaged
+                ? "Pipeline Products owns this published history. Prior versions remain visible for audit, but rollback requires a retained-lineage rebuild, review, and publication."
+                : isDerivedView
                 ? "Derived dataset views reuse a backing dataset until they are replaced with their own source CSV."
                 : "Review prior uploads and revert this dataset if needed."}
             </p>
@@ -1063,7 +1078,7 @@ function DatasetEditForm({
                         </p>
                       </div>
 
-                      {!version.isCurrent ? (
+                      {!version.isCurrent && !isPipelineManaged ? (
                         <Button
                           type="button"
                           variant="outline"
@@ -1127,16 +1142,24 @@ function DatasetEditForm({
 
       <div className="border-t border-border px-6 py-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full sm:w-auto"
-            disabled={isWorking}
-            data-smoke-dataset-replace
-            onClick={onReplaceDataset}
-          >
-            {replaceButtonLabel}
-          </Button>
+          {isPipelineManaged ? (
+            <p className="max-w-xl text-sm text-muted-foreground">
+              Replace and revert are unavailable because this dataset is an
+              immutable pipeline publication. Use Pipeline Products to build and
+              publish its next version.
+            </p>
+          ) : (
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full sm:w-auto"
+              disabled={isWorking}
+              data-smoke-dataset-replace
+              onClick={onReplaceDataset}
+            >
+              {replaceButtonLabel}
+            </Button>
+          )}
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
             <Button
               type="button"
@@ -1157,19 +1180,21 @@ function DatasetEditForm({
             </Button>
           </div>
         </div>
-        <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-start">
-          <Button
-            type="button"
-            variant="destructive"
-            className="w-full sm:w-auto"
-            disabled={isWorking}
-            data-smoke-dataset-delete
-            onClick={handleDeleteDataset}
-          >
-            <Trash2Icon />
-            {isDeleting ? "Deleting..." : "Delete dataset"}
-          </Button>
-        </div>
+        {!isPipelineManaged ? (
+          <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-start">
+            <Button
+              type="button"
+              variant="destructive"
+              className="w-full sm:w-auto"
+              disabled={isWorking}
+              data-smoke-dataset-delete
+              onClick={handleDeleteDataset}
+            >
+              <Trash2Icon />
+              {isDeleting ? "Deleting..." : "Delete dataset"}
+            </Button>
+          </div>
+        ) : null}
       </div>
     </form>
   );
@@ -1180,6 +1205,7 @@ export function DatasetEditPageClient({
   backingDatasetName = null,
   availableTags,
   initialVersions,
+  isPipelineManaged = false,
 }: DatasetEditPageClientProps) {
   const router = useRouter();
   const [dataset, setDataset] = useState(initialDataset);
@@ -1294,6 +1320,7 @@ export function DatasetEditPageClient({
       isLoadingVersions={isLoadingVersions}
       versionHistoryError={versionHistoryError}
       revertingVersionId={revertingVersionId}
+      isPipelineManaged={isPipelineManaged}
       onCancel={() => router.push("/dashboard")}
       onSaveDataset={handleSaveDataset}
       onDeleteDataset={handleDeleteDataset}

@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getCurrentIdentity } from "@/lib/auth";
 import {
   DatasetVersionRevertConflictError,
+  PipelineManagedDatasetMutationError,
   revertDatasetVersion,
 } from "@/lib/datasets";
 import { POST } from "./route";
@@ -29,6 +30,16 @@ vi.mock("@/lib/datasets", () => ({
     constructor(message = "Only ready dataset versions can be reverted.") {
       super(message);
       this.name = "DatasetVersionRevertConflictError";
+    }
+  },
+  PipelineManagedDatasetMutationError: class PipelineManagedDatasetMutationError extends Error {
+    readonly status = 409;
+
+    constructor(
+      message = "Pipeline-managed datasets cannot use upload-history revert.",
+    ) {
+      super(message);
+      this.name = "PipelineManagedDatasetMutationError";
     }
   },
   revertDatasetVersion: vi.fn(),
@@ -197,6 +208,27 @@ describe("/api/datasets/[datasetId]/versions/[versionId]/revert", () => {
     expect(response.status).toBe(409);
     await expect(response.json()).resolves.toEqual({
       error: "Derived dataset views do not have upload history to revert.",
+    });
+  });
+
+  it("rejects upload-history reverts for pipeline-managed datasets", async () => {
+    revertDatasetVersionMock.mockRejectedValue(
+      new PipelineManagedDatasetMutationError(),
+    );
+
+    const response = await POST(
+      new Request(
+        "http://localhost/api/datasets/dataset-1/versions/version-1/revert",
+        {
+          method: "POST",
+        },
+      ),
+      context,
+    );
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual({
+      error: "Pipeline-managed datasets cannot use upload-history revert.",
     });
   });
 });

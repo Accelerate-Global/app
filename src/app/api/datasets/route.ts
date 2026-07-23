@@ -1,4 +1,8 @@
-import { createDataset, listDatasets } from "@/lib/datasets";
+import {
+  DatasetStoragePathConflictError,
+  createDataset,
+  listDatasets,
+} from "@/lib/datasets";
 import { isDatasetStoragePath } from "@/lib/dataset-storage";
 import { jsonError } from "@/lib/http";
 import { withRoute } from "@/lib/route-guard";
@@ -24,11 +28,21 @@ export const POST = withRoute(
       return jsonError("Dataset storage path is invalid.", 403);
     }
 
-    const dataset = await createDataset({
-      ownerId: identity.ownerId,
-      actorEmail: identity.email,
-      ...parsed.data,
-    });
+    let dataset;
+
+    try {
+      dataset = await createDataset({
+        ownerId: identity.ownerId,
+        actorEmail: identity.email,
+        ...parsed.data,
+      });
+    } catch (error) {
+      if (error instanceof DatasetStoragePathConflictError) {
+        return jsonError(error.message, error.status);
+      }
+
+      throw error;
+    }
 
     return Response.json({ dataset }, { status: 201 });
   },
