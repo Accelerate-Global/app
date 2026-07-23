@@ -1,17 +1,23 @@
 autoInstallPeers: false
 
 overrides:
+  '@babel/core': 7.29.6
   '@esbuild-kit/core-utils>esbuild': 0.28.1
+  '@hono/node-server': 2.0.11
+  'brace-expansion@<1.1.16': 1.1.16
+  'brace-expansion@>=3.0.0 <5.0.7': 5.0.7
+  body-parser: 2.3.0
   'esbuild@>=0.27.3 <0.28.1': 0.28.1
   express-rate-limit: 8.5.1
-  fast-uri: 3.1.2
-  hono: 4.12.25
+  fast-uri: 3.1.4
+  hono: 4.12.27
   ip-address: 10.1.1
   'js-yaml@>=4.0.0 <=4.1.1': 4.3.0
   postcss: 8.5.14
   'qs@>=6.11.1 <=6.15.1': 6.15.3
   vite: 8.0.16
   ws: 8.21.0
+  next>sharp: 0.35.3
   '@vercel/blob>undici': 6.27.0
   jsdom>undici: 7.28.0
 
