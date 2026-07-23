@@ -1,7 +1,6 @@
 import { Buffer } from "node:buffer";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
@@ -424,6 +423,9 @@ describe("production legacy AX identity graph", () => {
       identityCount: 89_237,
       rawUnionIdentityCount: 89_243,
       supersededCanonicalCodeCount: 6,
+      shortPrimaryNormalizationCount: 564,
+      crossLedgerMismatchCount: 3,
+      quarantinedAliasConflictCount: 3,
       allocationCounterFloor: 2_055,
     });
     expect(Object.values(manifest.tier2Components)).toHaveLength(17);
@@ -432,19 +434,12 @@ describe("production legacy AX identity graph", () => {
     );
   });
 
-  it("binds the reviewable hashed production reconciliation decisions into the report", () => {
-    const manifest = parseLegacyAxIdentityGraphManifest(
-      JSON.parse(
-        readFileSync("config/legacy-ax-identity-import-manifest.json", "utf8"),
-      ) as unknown,
-    );
-    const files = Object.fromEntries(
-      Object.entries(manifest.files).map(([key, file]) => [
-        key,
-        readFileSync(resolve("../data", file.relativePath)),
-      ]),
-    ) as Record<LegacyAxGraphFileKey, Buffer>;
-    const plan = buildLegacyAxIdentityGraph({ manifest, files });
+  it("binds reviewable hashed reconciliation decisions into the report", () => {
+    const fixture = graphFixture();
+    const plan = buildLegacyAxIdentityGraph({
+      manifest: fixture.manifest,
+      files: fixture.bodies,
+    });
     const mismatchDecisions = plan.report.audit.decisions.filter(
       (decision) => decision.auditKind === "cross-ledger-mismatch",
     );
@@ -452,24 +447,26 @@ describe("production legacy AX identity graph", () => {
       (decision) => decision.auditKind === "alias-conflict-quarantined",
     );
 
-    expect(plan.report.audit.records).toBe(570);
-    expect(mismatchDecisions).toHaveLength(3);
-    expect(quarantineDecisions).toHaveLength(3);
+    expect(plan.report.audit.records).toBe(3);
+    expect(mismatchDecisions).toHaveLength(1);
+    expect(quarantineDecisions).toHaveLength(1);
     expect(
       plan.report.audit.decisions.every((decision) =>
         /^[0-9a-f]{64}$/u.test(decision.stableRowKeyHash),
       ),
     ).toBe(true);
     expect(JSON.stringify(plan.report.audit.decisions)).not.toContain("Dataset_Row_Key");
+    expect(JSON.stringify(plan.report.audit.decisions)).not.toContain("jp:tier1:2");
+    expect(JSON.stringify(plan.report.audit.decisions)).not.toContain("im:tier1:4");
     expect(plan.report.audit.artifactChecksum).toMatch(/^[0-9a-f]{64}$/u);
     expect(plan.report.bindingTranslation).toMatchObject({
       present: false,
-      rawBindingCount: 296_297,
+      rawBindingCount: 5,
       selectedActiveBindingCount: 0,
-      historicalUnboundCount: 296_297,
+      historicalUnboundCount: 5,
     });
     expect(plan.blocking).toBe(true);
-  }, 30_000);
+  });
 
   it("accepts only Tier 2 profile-key edits in a reviewed manifest overlay", () => {
     const raw = JSON.parse(
