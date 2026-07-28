@@ -82,6 +82,7 @@ describe("ApiConnectionsClient", () => {
     ).toBeTruthy();
     expect(screen.queryByText("Add Google Sheet")).toBeNull();
     expect(screen.queryByLabelText("Google Sheet link")).toBeNull();
+    expect(document.querySelector(".lucide-database")).toBeTruthy();
   });
 
   it("opens sources with pointer and keyboard interaction", () => {
@@ -124,33 +125,62 @@ describe("ApiConnectionsClient", () => {
       <ApiConnectionsClient
         initialConnections={[connection]}
         initialRuns={[]}
-        referenceResources={[{
-          id: "resource-1",
-          resourceKey: "country-territory-codes",
-          resourceKind: "country-geography",
-          label: "Country & territory code resource",
-          description: "Shared geography codes",
-          routePath: "/dashboard/country-codes",
-          sortOrder: 10,
-          activeVersion: {
-            id: "version-1",
+        referenceResources={[
+          {
+            id: "resource-1",
             resourceKey: "country-territory-codes",
-            versionNumber: 3,
-            lifecycleState: "valid",
-            schemaVersion: 1,
-            contentChecksum: "checksum",
-            sourceRetrievedAt: "2026-04-23T12:00:00.000Z",
-            entryCount: 249,
-            validationSummary: {},
-            diffSummary: {},
-            createdByOwnerId: "admin-1",
-            createdAt: "2026-04-23T12:00:00.000Z",
-            finalizedAt: "2026-04-23T12:01:00.000Z",
-            rejectionReason: null,
-            isActive: true,
+            resourceKind: "country-geography",
+            label: "Country & territory code resource",
+            description: "Shared geography codes",
+            routePath: "/dashboard/country-codes",
+            sortOrder: 10,
+            activeVersion: {
+              id: "version-1",
+              resourceKey: "country-territory-codes",
+              versionNumber: 3,
+              lifecycleState: "valid",
+              schemaVersion: 1,
+              contentChecksum: "checksum",
+              sourceRetrievedAt: "2026-04-23T12:00:00.000Z",
+              entryCount: 249,
+              validationSummary: {},
+              diffSummary: {},
+              createdByOwnerId: "admin-1",
+              createdAt: "2026-04-23T12:00:00.000Z",
+              finalizedAt: "2026-04-23T12:01:00.000Z",
+              rejectionReason: null,
+              isActive: true,
+            },
+            impact: { affectedEngines: ["Country normalization"], olderOutputCount: 0 },
           },
-          impact: { affectedEngines: ["Country normalization"], olderOutputCount: 0 },
-        }]}
+          {
+            id: "resource-2",
+            resourceKey: "source-aliases",
+            resourceKind: "source-registry",
+            label: "Dataset source aliases",
+            description: "Canonical source aliases",
+            routePath: "/dashboard/resources",
+            sortOrder: 30,
+            activeVersion: {
+              id: "version-2",
+              resourceKey: "source-aliases",
+              versionNumber: 1,
+              lifecycleState: "valid",
+              schemaVersion: 1,
+              contentChecksum: "checksum-2",
+              sourceRetrievedAt: "2026-03-30T20:41:00.000Z",
+              entryCount: 10,
+              validationSummary: {},
+              diffSummary: {},
+              createdByOwnerId: "admin-1",
+              createdAt: "2026-03-30T20:41:00.000Z",
+              finalizedAt: "2026-03-30T20:42:00.000Z",
+              rejectionReason: null,
+              isActive: true,
+            },
+            impact: { affectedEngines: ["Tier 1 source forming"], olderOutputCount: 0 },
+          },
+        ]}
         capturedResources={[{
           id: "captured-1",
           connectionId: connection.id,
@@ -179,8 +209,14 @@ describe("ApiConnectionsClient", () => {
     ).toBeTruthy();
     expect(screen.queryByText("https://example.com/secret-path")).toBeNull();
     expect(screen.queryByText("Category")).toBeNull();
+    expect(document.querySelector(".lucide-book-open")).toBeTruthy();
 
     fireEvent.click(screen.getByText("Country & territory code resource").closest("tr")!);
     expect(pushMock).toHaveBeenCalledWith("/dashboard/country-codes");
+    pushMock.mockClear();
+    fireEvent.click(screen.getByText("Dataset source aliases").closest("tr")!);
+    expect(pushMock).toHaveBeenCalledWith(
+      "/dashboard/resources/source-aliases",
+    );
   });
 });

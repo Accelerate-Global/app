@@ -73,6 +73,22 @@ describe("/dashboard/resources", () => {
         impact: { affectedEngines: ["ROP normalization"], olderOutputCount: 2 },
         attentionState: "invalid-build",
       },
+      {
+        id: "20000000-0000-4000-8000-000000000003",
+        resourceKey: "source-aliases",
+        resourceKind: "source-registry",
+        label: "Dataset source aliases",
+        description: "Canonical source keys and accepted dataset source names.",
+        routePath: "/dashboard/resources",
+        sortOrder: 30,
+        activeVersion: {
+          ...version,
+          id: "10000000-0000-4000-8000-000000000003",
+          resourceKey: "source-aliases",
+        },
+        impact: { affectedEngines: ["Tier 1 source forming"], olderOutputCount: 0 },
+        attentionState: null,
+      },
     ]);
   });
 
@@ -113,7 +129,10 @@ describe("/dashboard/resources", () => {
     expect(
       screen.getByRole("link", { name: /ROP Codes resource/ }).getAttribute("href"),
     ).toBe("/dashboard/rop-codes");
-    expect(screen.getAllByText(/Updated/u)).toHaveLength(2);
+    expect(
+      screen.getByRole("link", { name: /Dataset source aliases/ }).getAttribute("href"),
+    ).toBe("/dashboard/resources/source-aliases");
+    expect(screen.getAllByText(/Updated/u)).toHaveLength(3);
     expect(screen.queryByText(/Active v/u)).toBeNull();
     expect(screen.queryByText(/Retrieved/u)).toBeNull();
     expect(screen.queryByText("Open resource")).toBeNull();

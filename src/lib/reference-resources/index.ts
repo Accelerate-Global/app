@@ -56,6 +56,7 @@ import {
   type PipelineResourceKey,
   type PipelineResourceValidationContext,
 } from "./pipeline-types";
+import { getReferenceResourceRoutePath } from "./routes";
 import {
   deleteReferenceResourceArtifacts,
   referenceResourceArtifactExists,
@@ -787,7 +788,9 @@ export async function listReferenceResourceCatalog(input?: { includeAdminState?:
       resourceKind: resource.resourceKind,
       label: resource.label,
       description: resource.description,
-      routePath: resource.routePath,
+      routePath: getReferenceResourceRoutePath(
+        resource.resourceKey as ReferenceResourceKey,
+      ),
       sortOrder: resource.sortOrder,
       activeVersion: active
         ? toVersionSummary({

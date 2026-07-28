@@ -283,6 +283,24 @@ describe("versioned reference-resource schema", () => {
     expect(migration).toContain("'tier1-merge-priorities'");
     expect(migration).toContain("'engagement-mappings'");
   });
+
+  it("assigns exact detail routes to every pipeline resource", async () => {
+    const migration = await readFile(
+      path.join(
+        process.cwd(),
+        "supabase/migrations/20260728182000_add_pipeline_resource_detail_routes.sql",
+      ),
+      "utf8",
+    );
+
+    expect(migration).toContain("/dashboard/resources/source-aliases");
+    expect(migration).toContain("/dashboard/resources/jp-peopleid3");
+    expect(migration).toContain("/dashboard/resources/peid");
+    expect(migration).toContain(
+      "/dashboard/resources/tier1-merge-priorities",
+    );
+    expect(migration).toContain("/dashboard/resources/engagement-mappings");
+  });
 });
 
 describe("dataset versioning schema", () => {
