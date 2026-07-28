@@ -1583,3 +1583,28 @@ test("admin can inspect ROP reference history", async ({ page }, testInfo) => {
     await expect(page.getByText("Reference resource history")).toBeVisible();
   });
 });
+
+test("authenticated user can inspect pipeline reference resource", async ({
+  page,
+}, testInfo) => {
+  test.skip(skipUnlessDesktopAdmin(testInfo.project.name));
+  await runSmokeJourney(
+    "authenticated user can inspect pipeline reference resource",
+    async () => {
+      await page.goto("/dashboard/resources");
+      await page
+        .getByRole("link", { name: /Dataset source aliases/u })
+        .click();
+      await expect(
+        page.locator('[data-smoke-page="pipeline-reference-resource"]'),
+      ).toBeVisible();
+      await expect(
+        page.getByRole("heading", { name: "Dataset source aliases" }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole("link", { name: "Download CSV" }),
+      ).toBeVisible();
+      await expect(page.getByText("Accepted aliases")).toBeVisible();
+    },
+  );
+});

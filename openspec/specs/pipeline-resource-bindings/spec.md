@@ -16,12 +16,17 @@ Each forming engine SHALL declare every catalog resource and code-defined contra
 - **AND** reports the affected engine and dependency without substituting a mutable latest value
 
 ### Requirement: Resource changes expose pipeline impact
-The system SHALL identify pipeline definitions and recent candidates or publications that bind a superseded resource or contract version without automatically rebuilding or republishing them.
+The system SHALL identify pipeline definitions and recent candidates or publications that bind a superseded resource or contract version without automatically rebuilding or republishing them, and SHALL expose that impact on the exact selected resource’s detail view.
 
 #### Scenario: New resource version activates
 - **WHEN** an administrator activates a valid resource version
 - **THEN** the resource detail can report registered engines that require that resource and recent outputs built with older bindings
 - **AND** existing candidates and publications remain unchanged until an administrator starts and approves a new build
+
+#### Scenario: User opens a resource impact summary
+- **WHEN** an authenticated user selects a catalog-backed resource from Connections or the Resources index
+- **THEN** the system opens that resource’s canonical detail view
+- **AND** displays the engines affected by its active version without changing any pipeline binding
 
 ### Requirement: Tier 1 engines pin complete dependency sets
 Each Tier 1 forming engine SHALL bind its exact Country/ROG, ROP when applicable, source-alias resource, source-specific crosswalks, field contract, type contract, and transformation contract before execution.

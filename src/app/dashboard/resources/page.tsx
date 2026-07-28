@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/card";
 import { getCurrentIdentity } from "@/lib/auth";
 import { listReferenceResourceCatalog } from "@/lib/reference-resources";
+import { getReferenceResourceRoutePath } from "@/lib/reference-resources/routes";
 import { cn } from "@/lib/utils";
 
 export default async function ResourcesPage() {
@@ -60,11 +61,7 @@ export default async function ResourcesPage() {
             <Link
               key={resource.id}
               id={resource.resourceKey}
-              href={
-                resource.routePath === "/dashboard/resources"
-                  ? `${resource.routePath}#${resource.resourceKey}`
-                  : resource.routePath
-              }
+              href={getReferenceResourceRoutePath(resource.resourceKey)}
               className="block rounded-lg no-underline outline-none transition-opacity hover:opacity-85 focus-visible:ring-[3px] focus-visible:ring-ring/50"
             >
               <Card className="h-full cursor-pointer transition-colors hover:bg-muted/30">

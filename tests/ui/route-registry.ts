@@ -262,6 +262,28 @@ export const smokeRouteSpecs: SmokeRouteSpec[] = [
     pageFile: "src/app/dashboard/resources/page.tsx",
     path: "/dashboard/resources",
     pageId: "resources",
+    journeys: ["authenticated user can inspect pipeline reference resource"],
+  },
+  {
+    id: "pipeline-reference-resource-pro",
+    role: "pro",
+    pageFile: "src/app/dashboard/resources/[resourceKey]/page.tsx",
+    path: "/dashboard/resources/source-aliases",
+    pageId: "pipeline-reference-resource",
+  },
+  {
+    id: "pipeline-reference-resource-basic",
+    role: "basic",
+    pageFile: "src/app/dashboard/resources/[resourceKey]/page.tsx",
+    path: "/dashboard/resources/source-aliases",
+    pageId: "pipeline-reference-resource",
+  },
+  {
+    id: "pipeline-reference-resource-admin",
+    role: "admin",
+    pageFile: "src/app/dashboard/resources/[resourceKey]/page.tsx",
+    path: "/dashboard/resources/source-aliases",
+    pageId: "pipeline-reference-resource",
   },
   {
     id: "profile-pro",

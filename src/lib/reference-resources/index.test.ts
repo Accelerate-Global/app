@@ -2,7 +2,18 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { IsoCountryCodeEntry } from "@/lib/iso-country-codes";
 
-import { createReferenceResourceCsvStream } from "./index";
+const { getDbMock } = vi.hoisted(() => ({
+  getDbMock: vi.fn(),
+}));
+
+vi.mock("@/db", () => ({
+  getDb: getDbMock,
+}));
+
+import {
+  createReferenceResourceCsvStream,
+  listReferenceResourceCatalog,
+} from "./index";
 import sourceAliasesFixture from "./fixtures/source-aliases.sanitized.json";
 import { preparePipelineResource } from "./pipeline-adapters";
 import { SOURCE_ALIASES_RESOURCE_KEY } from "./pipeline-types";
@@ -76,6 +87,45 @@ describe("reference resource CSV streaming", () => {
     expect(query).toHaveBeenNthCalledWith(
       2,
       expect.objectContaining({ cursor: "cursor-1" }),
+    );
+  });
+});
+
+describe("reference resource catalog", () => {
+  it("replaces a stale stored route with the canonical resource detail route", async () => {
+    getDbMock
+      .mockReturnValueOnce({
+        select: () => ({
+          from: () => ({
+            orderBy: async () => [
+              {
+                id: "resource-id",
+                resourceKey: SOURCE_ALIASES_RESOURCE_KEY,
+                resourceKind: "pipeline",
+                label: "Dataset source aliases",
+                description: "Aliases",
+                routePath: "/dashboard/resources",
+                sortOrder: 3,
+                activeVersionId: null,
+              },
+            ],
+          }),
+        }),
+      })
+      .mockReturnValueOnce({
+        select: () => ({
+          from: () => ({
+            innerJoin: () => ({
+              where: async () => [],
+            }),
+          }),
+        }),
+      });
+
+    const catalog = await listReferenceResourceCatalog();
+
+    expect(catalog[0]?.routePath).toBe(
+      "/dashboard/resources/source-aliases",
     );
   });
 });

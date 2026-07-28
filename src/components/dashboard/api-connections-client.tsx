@@ -1,6 +1,6 @@
 "use client";
 
-import { CableIcon } from "lucide-react";
+import { BookOpenIcon, DatabaseIcon } from "lucide-react";
 import { useMemo, type KeyboardEvent } from "react";
 import { useRouter } from "next/navigation";
 
@@ -27,6 +27,7 @@ import type {
   GoogleSheetsConnectionProviderConfig,
 } from "@/lib/api-types";
 import { formatUtcTimestamp } from "@/lib/date-time";
+import { getReferenceResourceRoutePath } from "@/lib/reference-resources/routes";
 import type { ReferenceResourceCatalogItem } from "@/lib/reference-resources/types";
 
 type ApiConnectionsClientProps = {
@@ -104,7 +105,7 @@ export function ApiConnectionsClient({
         <CardHeader className="gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="space-y-1.5">
             <CardTitle className="flex items-center gap-2 text-2xl">
-              <CableIcon className="size-5 text-muted-foreground" />
+              <DatabaseIcon className="size-5 text-muted-foreground" />
               Datasets
             </CardTitle>
             <CardDescription>
@@ -174,7 +175,10 @@ export function ApiConnectionsClient({
       {(referenceResources.length > 0 || capturedResources.length > 0) ? (
         <Card>
           <CardHeader>
-            <CardTitle className="text-2xl">Resources</CardTitle>
+            <CardTitle className="flex items-center gap-2 text-2xl">
+              <BookOpenIcon className="size-5 text-muted-foreground" />
+              Resources
+            </CardTitle>
             <CardDescription>
               Active built-in references and resources captured during source ingestion.
             </CardDescription>
@@ -195,9 +199,17 @@ export function ApiConnectionsClient({
                     key={resource.id}
                     tabIndex={0}
                     className="cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-2"
-                    onClick={() => router.push(resource.routePath)}
+                    onClick={() =>
+                      router.push(
+                        getReferenceResourceRoutePath(resource.resourceKey),
+                      )
+                    }
                     onKeyDown={(event) =>
-                      handleRowKeyDown(event, () => router.push(resource.routePath))
+                      handleRowKeyDown(event, () =>
+                        router.push(
+                          getReferenceResourceRoutePath(resource.resourceKey),
+                        ),
+                      )
                     }
                   >
                     <TableCell className="min-w-72 py-3 whitespace-normal">
