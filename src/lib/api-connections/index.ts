@@ -87,8 +87,13 @@ import type {
   GoogleSheetsGridRange,
   GoogleSheetsHeaderPreview,
   GoogleSheetsHeaderSelectionInput,
+  GoogleSheetsWorkflowAssignment,
 } from "@/lib/api-types";
 
+import {
+  OnboardingWorkflowError,
+  validateGoogleSheetsWorkflowAssignments,
+} from "./onboarding-workflows";
 import {
   ApiConnectionError,
   HTTP_API_PROVIDER_CONFIG,
@@ -802,6 +807,7 @@ export async function createGoogleSheetsConnections(input: {
   }>;
   datasetClassification: DatasetClassification;
   isWorkspaceVisible: boolean;
+  workflowAssignments?: GoogleSheetsWorkflowAssignment[];
 }) {
   const { parsedUrl, metadata, accessToken } = await loadGoogleSheetsServiceAccountPreview(
     input.spreadsheetUrl,
@@ -850,6 +856,24 @@ export async function createGoogleSheetsConnections(input: {
       }),
     ),
   );
+  let workflowBySheetId: Map<number, GoogleSheetsWorkflowAssignment>;
+  try {
+    workflowBySheetId = validateGoogleSheetsWorkflowAssignments({
+      assignments: input.workflowAssignments ?? [],
+      selectedSheetIds: input.selectedSheetIds,
+      headersBySheetId: new Map(
+        [...confirmedHeaderBySheetId].map(([sheetId, configuration]) => [
+          sheetId,
+          configuration.headers,
+        ]),
+      ),
+    });
+  } catch (error) {
+    if (error instanceof OnboardingWorkflowError) {
+      throw new ApiConnectionError(error.message, 400);
+    }
+    throw error;
+  }
 
   const spreadsheetTitle = metadata.spreadsheetTitle || "Google Sheet";
   try {
@@ -896,8 +920,16 @@ export async function createGoogleSheetsConnections(input: {
       }
 
       const rows: ApiConnectionRecord[] = [];
+      const connectionBySheetId = new Map<number, ApiConnectionRecord>();
       for (const sheet of selectedSheets) {
         const reviewedDatasetName = datasetSettingBySheetId?.get(sheet.sheetId);
+        const workflowAssignment = workflowBySheetId.get(sheet.sheetId)!;
+        const datasetClassification =
+          workflowAssignment.kind === "tier1"
+            ? "PGIC"
+            : workflowAssignment.kind === "tier2"
+              ? "PGAC"
+              : input.datasetClassification;
         const providerConfig = {
             provider: GOOGLE_SHEETS_PROVIDER,
             spreadsheetId: metadata.spreadsheetId,
@@ -932,7 +964,7 @@ export async function createGoogleSheetsConnections(input: {
                 spreadsheetTitle,
                 sheetTitle: sheet.title,
               }),
-            datasetClassification: input.datasetClassification,
+            datasetClassification,
             provider: GOOGLE_SHEETS_PROVIDER,
             providerConfig,
             updatedByOwnerId: input.identity.ownerId,
@@ -948,6 +980,7 @@ export async function createGoogleSheetsConnections(input: {
             .where(eq(apiConnections.id, archived.id))
             .returning();
           rows.push(reactivated);
+          connectionBySheetId.set(sheet.sheetId, reactivated);
         } else {
           const [inserted] = await tx
             .insert(apiConnections)
@@ -957,6 +990,124 @@ export async function createGoogleSheetsConnections(input: {
             })
             .returning();
           rows.push(inserted);
+          connectionBySheetId.set(sheet.sheetId, inserted);
+        }
+      }
+
+      const tier1Assignments = [...workflowBySheetId.values()].filter(
+        (assignment) => assignment.kind === "tier1",
+      );
+      if (
+        new Set(tier1Assignments.map((assignment) => assignment.sourceProfileKey)).size !==
+        tier1Assignments.length
+      ) {
+        throw new OnboardingWorkflowError(
+          "Each Tier 1 workflow can be assigned to only one selected Sheet tab.",
+        );
+      }
+      for (const assignment of tier1Assignments) {
+        const connection = connectionBySheetId.get(assignment.sheetId)!;
+        await tx
+          .insert(sourceProfileBindings)
+          .values({
+            connectionId: connection.id,
+            sourceProfileKey: assignment.sourceProfileKey,
+            stableKeyColumn: assignment.stableKeyColumn,
+            configuredByOwnerId: input.identity.ownerId,
+          })
+          .onConflictDoUpdate({
+            target: sourceProfileBindings.connectionId,
+            set: {
+              sourceProfileKey: assignment.sourceProfileKey,
+              stableKeyColumn: assignment.stableKeyColumn,
+              configuredByOwnerId: input.identity.ownerId,
+              updatedAt: new Date(),
+            },
+          });
+      }
+
+      const tier2Assignments = [...workflowBySheetId.values()].filter(
+        (assignment) => assignment.kind === "tier2",
+      );
+      if (tier2Assignments.length > 0) {
+        if (
+          new Set(tier2Assignments.map((assignment) => assignment.feedKey)).size !==
+          tier2Assignments.length
+        ) {
+          throw new OnboardingWorkflowError(
+            "Each Tier 2 engagement feed needs a unique feed name.",
+          );
+        }
+        const contracts = (await tx.execute(sql<{
+          version_number: number | string;
+          content_checksum: string;
+        }>`
+          select version.version_number, version.content_checksum
+          from private.tier2_contract_resources as resource
+          join private.tier2_contract_resource_versions as version
+            on version.id = resource.active_version_id
+          where resource.resource_key = 'engagement-mappings'
+            and version.lifecycle_state = 'valid'
+            and version.content_checksum is not null
+          limit 2
+        `)) as unknown as Array<{
+          version_number: number | string;
+          content_checksum: string;
+        }>;
+        if (contracts.length !== 1) {
+          throw new OnboardingWorkflowError(
+            "A valid active engagement field-mapping contract is required before linking a Tier 2 workflow.",
+          );
+        }
+        const activeOwners = (await tx.execute(sql<{ owner_key: string }>`
+          select entry ->> 'canonicalSourceKey' as owner_key
+          from private.reference_resource_sets as resource_set
+          join private.reference_resource_set_members as member
+            on member.set_id = resource_set.id
+          join private.reference_resources as resource
+            on resource.resource_key = 'source-aliases'
+          join private.reference_resource_versions as version
+            on version.id = member.version_id
+            and version.resource_id = resource.id
+          cross join lateral jsonb_array_elements(
+            version.normalized_resource -> 'entries'
+          ) as entry
+          where resource_set.id = (
+            select id from private.reference_resource_sets
+            order by sequence_number desc limit 1
+          )
+            and version.lifecycle_state = 'valid'
+            and (entry ->> 'active')::boolean
+        `)) as unknown as Array<{ owner_key: string }>;
+        const activeOwnerKeys = new Set(activeOwners.map((entry) => entry.owner_key));
+        for (const assignment of tier2Assignments) {
+          if (!activeOwnerKeys.has(assignment.ownerKey)) {
+            throw new OnboardingWorkflowError(
+              "Choose an active dataset owner from the source registry.",
+            );
+          }
+          const connection = connectionBySheetId.get(assignment.sheetId)!;
+          const sheet = selectedSheets.find(
+            (candidate) => candidate.sheetId === assignment.sheetId,
+          )!;
+          await tx.execute(sql`
+            insert into private.tier2_partner_profiles (
+              profile_key, partner_key, display_name, api_connection_id,
+              spreadsheet_id, sheet_id, sheet_title, stable_row_key_column,
+              tracking_id_column, tracking_id_source, source_rop3_column,
+              source_country_column, source_iso3_column, contract_version,
+              contract_checksum, active, created_by_owner_id, updated_by_owner_id
+            ) values (
+              ${assignment.feedKey}, ${assignment.ownerKey}, ${assignment.feedName},
+              ${connection.id}::uuid, ${metadata.spreadsheetId}, ${sheet.sheetId},
+              ${sheet.title}, ${assignment.stableRowKeyColumn},
+              ${assignment.trackingIdColumn}, ${assignment.trackingIdSource},
+              ${assignment.sourceRop3Column}, ${assignment.sourceCountryColumn},
+              ${assignment.sourceIso3Column}, ${String(contracts[0]!.version_number)},
+              ${contracts[0]!.content_checksum}, true, ${input.identity.ownerId},
+              ${input.identity.ownerId}
+            )
+          `);
         }
       }
 
@@ -965,6 +1116,9 @@ export async function createGoogleSheetsConnections(input: {
 
     return created.map(toApiConnection);
   } catch (error) {
+    if (error instanceof OnboardingWorkflowError) {
+      throw new ApiConnectionError(error.message, 409);
+    }
     if (
       typeof error === "object" &&
       error !== null &&
@@ -972,7 +1126,7 @@ export async function createGoogleSheetsConnections(input: {
       error.code === "23505"
     ) {
       throw new ApiConnectionError(
-        "One or more selected Google Sheet tabs are already connected.",
+        "A selected Sheet tab or workflow is already configured. Refresh and review the assignments before trying again.",
         409,
       );
     }

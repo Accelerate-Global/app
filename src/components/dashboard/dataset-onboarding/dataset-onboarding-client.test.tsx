@@ -60,6 +60,9 @@ function installGoogleFetch(options: {
   failFirstRun?: boolean;
   failSecondFirst?: boolean;
   twoTabs?: boolean;
+  expectedWorkflowAssignments?: unknown[];
+  expectedDatasetClassification?: "PGIC" | "PGAC";
+  expectedDatasetName?: string;
 } = {}) {
   const runAttempts = new Map<string, number>();
   const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -116,9 +119,15 @@ function installGoogleFetch(options: {
       } else {
         expect(body).toMatchObject({
           selectedSheetIds: [1],
-          datasetSettings: [{ sheetId: 1, datasetName: "Reviewed People" }],
-          datasetClassification: "PGIC",
+          datasetSettings: [{
+            sheetId: 1,
+            datasetName: options.expectedDatasetName ?? "Reviewed People",
+          }],
+          datasetClassification: options.expectedDatasetClassification ?? "PGIC",
           isWorkspaceVisible: false,
+          workflowAssignments: options.expectedWorkflowAssignments ?? [
+            { sheetId: 1, kind: "none" },
+          ],
         });
       }
       return response({
@@ -250,6 +259,72 @@ describe("DatasetOnboardingClient", () => {
     const openDataset = await screen.findByRole("link", { name: "Open dataset" });
     expect(openDataset.getAttribute("href")).toBe("/dashboard/datasets/dataset-1");
     expect(screen.getByRole("heading", { name: "Import complete" })).toBeTruthy();
+  });
+
+  it("links an Accelerate-managed engagement dataset to the Tier 2 workflow", async () => {
+    installGoogleFetch({
+      expectedDatasetClassification: "PGAC",
+      expectedDatasetName: "Final-58",
+      expectedWorkflowAssignments: [
+        {
+          sheetId: 1,
+          kind: "tier2",
+          ownerKey: "ax",
+          feedKey: "final-58",
+          feedName: "Final-58",
+          stableRowKeyColumn: "People Group",
+          trackingIdColumn: "Country",
+          trackingIdSource: "provider-native",
+          sourceRop3Column: null,
+          sourceCountryColumn: null,
+          sourceIso3Column: null,
+        },
+      ],
+    });
+    render(
+      <DatasetOnboardingClient
+        serviceAccountEmail={serviceAccountEmail}
+        tier2OwnerOptions={[{ key: "ax", label: "Accelerate" }]}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /Google Sheet/ }));
+    fireEvent.change(screen.getByLabelText("Google Sheet link"), {
+      target: { value: spreadsheetUrl },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Check access" }));
+    await screen.findByText("Access confirmed");
+    fireEvent.click(screen.getByRole("checkbox", { name: "People" }));
+    await screen.findByText("high confidence");
+    fireEvent.click(screen.getByRole("button", { name: "Review dataset details" }));
+    fireEvent.change(screen.getByLabelText("Workflow for People"), {
+      target: { value: "tier2" },
+    });
+    fireEvent.change(screen.getByLabelText("Dataset owner for People"), {
+      target: { value: "ax" },
+    });
+    fireEvent.change(screen.getByLabelText("Engagement feed name for People"), {
+      target: { value: "Final-58" },
+    });
+    fireEvent.change(screen.getByLabelText("Permanent Tier 2 row ID for People"), {
+      target: { value: "People Group" },
+    });
+    fireEvent.change(screen.getByLabelText("Tracking ID type for People"), {
+      target: { value: "provider-native" },
+    });
+    fireEvent.change(screen.getByLabelText("Tracking ID column for People"), {
+      target: { value: "Country" },
+    });
+    fireEvent.change(screen.getByLabelText("Dataset name for People"), {
+      target: { value: "Final-58" },
+    });
+    fireEvent.click(screen.getByRole("radio", { name: /Only administrators/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Review import" }));
+
+    expect(screen.getByText("Tier 2 · Accelerate · Final-58 · provider-native: Country")).toBeTruthy();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Connect and import datasets" }),
+    );
+    expect(await screen.findByRole("link", { name: "Open dataset" })).toBeTruthy();
   });
 
   it("retries a failed import without reconnecting", async () => {

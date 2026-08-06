@@ -160,6 +160,7 @@ describe("/api/admin/api-connections/google-sheets/connect", () => {
       ],
       datasetClassification: "PGAC",
       isWorkspaceVisible: false,
+      workflowAssignments: [],
     });
   });
 
@@ -190,7 +191,46 @@ describe("/api/admin/api-connections/google-sheets/connect", () => {
       datasetSettings: undefined,
       datasetClassification: "PGAC",
       isWorkspaceVisible: true,
+      workflowAssignments: [],
     });
+  });
+
+  it("passes reviewed workflow assignments to connection creation", async () => {
+    createGoogleSheetsConnectionsMock.mockResolvedValue([connection]);
+    const workflowAssignment = {
+      sheetId: 1,
+      kind: "tier2" as const,
+      ownerKey: "ax",
+      feedKey: "final-58",
+      feedName: "Final-58",
+      stableRowKeyColumn: "Engagement ID",
+      trackingIdColumn: "PeopleID3",
+      trackingIdSource: "peopleid3" as const,
+      sourceRop3Column: "ROP3",
+      sourceCountryColumn: "Country",
+      sourceIso3Column: "ISO3",
+    };
+
+    const response = await POST(
+      new Request(
+        "http://localhost/api/admin/api-connections/google-sheets/connect",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            spreadsheetUrl: "https://docs.google.com/spreadsheets/d/sheet/edit",
+            selectedSheetIds: [1],
+            headerSelections: [alphaHeaderSelection],
+            datasetClassification: "PGAC",
+            workflowAssignments: [workflowAssignment],
+          }),
+        },
+      ),
+    );
+
+    expect(response.status).toBe(201);
+    expect(createGoogleSheetsConnectionsMock).toHaveBeenCalledWith(
+      expect.objectContaining({ workflowAssignments: [workflowAssignment] }),
+    );
   });
 
   it("rejects invalid reviewed dataset names at the route boundary", async () => {

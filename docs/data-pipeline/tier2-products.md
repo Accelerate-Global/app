@@ -4,10 +4,14 @@ Tier 2 is a review-gated pipeline. Ingestion, forming, identity reconciliation, 
 
 ## Onboard a partner profile
 
-1. Create one active Google Sheets API connection for the partner’s exact spreadsheet and tab.
-2. In **Admin → Tier 2 Products**, create a profile with a unique `profileKey` and `partnerKey`, the connection ID, exact spreadsheet ID and numeric sheet ID, a stable row-key column, and one tracking discriminator: `peopleid3`, `peid`, `rop3`, or `provider-native`.
-3. Record the active `engagement-mappings` numeric version (without the UI's `v` prefix) and its exact content checksum as the profile contract version/checksum. Forming fails closed unless both values match the exact engagement-mappings resource selected for that run. Once a profile has produced a forming run, its stable identity fields cannot change. Create a new profile for a different source identity.
+1. In **Datasets → Add dataset**, connect the exact Google spreadsheet and tab.
+2. On the dataset-details step, select **Tier 2 — Engagement dataset**, choose the active dataset owner, name the distinct feed, and select the stable row-key, tracking-ID, and any available country/ROP evidence columns from the reviewed headers.
+3. Confirm the final review. The app creates the Google Sheets connection and exact Tier 2 profile together, using the currently active `engagement-mappings` version and checksum. If either record cannot be created, neither is retained.
 4. Select the profile before launching its flow. The launch snapshot pins that profile and connection instead of resolving a generic “Tier 2 partner” at execution time.
+
+One owner can have several distinct engagement feeds. For example, Final-58 and Final-Sudan are separate Tier 2 profiles and Sheet-tab identities under the same active Accelerate owner. This does not make either feed the **Accelerate-owned people groups** source; that is a separate Tier 1 source profile selected independently during onboarding.
+
+The Tier 2 administrator page remains the place to inspect profiles and operate their lifecycle. Once a profile has produced a forming run, its stable identity fields cannot change; onboard a new profile for a different source identity.
 
 Schedules are profile-specific. Run one successful manual canary for the exact profile, then enable that profile’s interval from the Tier 2 admin page. Enabling or disabling one partner never changes another partner’s schedule or canary evidence.
 

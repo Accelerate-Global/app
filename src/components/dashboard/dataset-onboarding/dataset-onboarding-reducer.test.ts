@@ -36,6 +36,7 @@ describe("datasetOnboardingReducer", () => {
       },
       selectedSheetIds: [1],
       datasetNames: { 1: "People" },
+      workflowAssignments: { 1: { sheetId: 1, kind: "none" as const } },
     };
     const next = datasetOnboardingReducer(state, {
       type: "set-spreadsheet-url",
@@ -44,6 +45,7 @@ describe("datasetOnboardingReducer", () => {
     expect(next.preview).toBeNull();
     expect(next.selectedSheetIds).toEqual([]);
     expect(next.datasetNames).toEqual({});
+    expect(next.workflowAssignments).toEqual({});
   });
 
   it("ignores stale access responses", () => {
@@ -82,10 +84,37 @@ describe("datasetOnboardingReducer", () => {
     });
     expect(state.selectedSheetIds).toEqual([2]);
     expect(state.datasetNames).toEqual({ 2: "Two" });
+    expect(state.workflowAssignments).toEqual({ 2: { sheetId: 2, kind: "none" } });
 
     const locked = datasetOnboardingReducer(state, { type: "lock-import" });
     expect(
       datasetOnboardingReducer(locked, { type: "set-stage", stage: "details" }),
     ).toBe(locked);
+  });
+
+  it("stores one reviewed workflow assignment per selected Sheet tab", () => {
+    let state = datasetOnboardingReducer(initialDatasetOnboardingState, {
+      type: "toggle-sheet",
+      sheetId: 42,
+      defaultName: "Final-58",
+    });
+    state = datasetOnboardingReducer(state, {
+      type: "set-workflow-assignment",
+      sheetId: 42,
+      assignment: {
+        sheetId: 42,
+        kind: "tier2",
+        ownerKey: "ax",
+        feedKey: "final-58",
+        feedName: "Final-58",
+        stableRowKeyColumn: "Row ID",
+        trackingIdColumn: "PeopleID3",
+        trackingIdSource: "peopleid3",
+        sourceRop3Column: null,
+        sourceCountryColumn: null,
+        sourceIso3Column: null,
+      },
+    });
+    expect(state.workflowAssignments[42]?.kind).toBe("tier2");
   });
 });

@@ -342,6 +342,38 @@ export type GoogleSheetsConnectionPreviewResponse = {
   serviceAccountEmail: string;
 };
 
+export type Tier2WorkflowOwnerOption = {
+  key: string;
+  label: string;
+};
+
+export type GoogleSheetsWorkflowAssignment =
+  | {
+      sheetId: number;
+      kind: "none";
+    }
+  | {
+      sheetId: number;
+      kind: "tier1";
+      sourceProfileKey:
+        | "accelerate-owned-people-groups"
+        | "wcd-people-groups";
+      stableKeyColumn: string;
+    }
+  | {
+      sheetId: number;
+      kind: "tier2";
+      ownerKey: string;
+      feedKey: string;
+      feedName: string;
+      stableRowKeyColumn: string;
+      trackingIdColumn: string;
+      trackingIdSource: "peopleid3" | "peid" | "rop3" | "provider-native";
+      sourceRop3Column: string | null;
+      sourceCountryColumn: string | null;
+      sourceIso3Column: string | null;
+    };
+
 export type GoogleSheetsConnectionConnectResponse = {
   connections: ApiConnection[];
 };

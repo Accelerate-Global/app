@@ -7,6 +7,7 @@ import {
   DatabaseIcon,
   FileSpreadsheetIcon,
   FileUpIcon,
+  GitBranchIcon,
   Loader2Icon,
   LockIcon,
   RefreshCcwIcon,
@@ -47,7 +48,10 @@ import type {
   GoogleSheetsConnectionPreviewResponse,
   GoogleSheetsHeaderPreviewResponse,
   GoogleSheetsHeaderSelectionInput,
+  GoogleSheetsWorkflowAssignment,
+  Tier2WorkflowOwnerOption,
 } from "@/lib/api-types";
+import { normalizeWorkflowKey } from "@/lib/api-connections/onboarding-workflows";
 import { cn } from "@/lib/utils";
 import {
   createInitialDatasetOnboardingState,
@@ -60,6 +64,7 @@ import { parseDatasetCsvHeader, uploadNewDatasetCsv } from "./csv-upload-operati
 type DatasetOnboardingClientProps = {
   serviceAccountEmail: string | null;
   initialSource?: OnboardingSource | null;
+  tier2OwnerOptions?: Tier2WorkflowOwnerOption[];
 };
 
 type ImportResult = {
@@ -112,6 +117,7 @@ function sourceLabel(source: OnboardingSource | null) {
 export function DatasetOnboardingClient({
   serviceAccountEmail,
   initialSource = null,
+  tier2OwnerOptions = [],
 }: DatasetOnboardingClientProps) {
   const [state, dispatch] = useReducer(
     datasetOnboardingReducer,
@@ -148,6 +154,91 @@ export function DatasetOnboardingClient({
     datasetNames.some((name) => !name) ||
     new Set(datasetNames.map((name) => name.toLocaleLowerCase())).size !==
       datasetNames.length;
+  const workflowAssignments = state.selectedSheetIds.map(
+    (sheetId) =>
+      state.workflowAssignments[sheetId] ?? ({ sheetId, kind: "none" } as const),
+  );
+  const workflowsValid = workflowAssignments.every((assignment) => {
+    if (assignment.kind === "none") return true;
+    if (assignment.kind === "tier1") return Boolean(assignment.stableKeyColumn);
+    return Boolean(
+      assignment.ownerKey &&
+        assignment.feedName.trim() &&
+        assignment.feedKey &&
+        assignment.stableRowKeyColumn &&
+        assignment.trackingIdColumn &&
+        assignment.stableRowKeyColumn !== assignment.trackingIdColumn &&
+        (assignment.trackingIdSource !== "rop3" ||
+          !assignment.sourceRop3Column ||
+          assignment.sourceRop3Column === assignment.trackingIdColumn),
+    );
+  });
+
+  function setWorkflowKind(sheetId: number, value: string) {
+    const feedName = state.datasetNames[sheetId]?.trim() ?? "";
+    let assignment: GoogleSheetsWorkflowAssignment;
+    if (value === "tier1-accelerate" || value === "tier1-wcd") {
+      assignment = {
+        sheetId,
+        kind: "tier1",
+        sourceProfileKey:
+          value === "tier1-accelerate"
+            ? "accelerate-owned-people-groups"
+            : "wcd-people-groups",
+        stableKeyColumn: "",
+      };
+    } else if (value === "tier2") {
+      assignment = {
+        sheetId,
+        kind: "tier2",
+        ownerKey: "",
+        feedKey: normalizeWorkflowKey(feedName),
+        feedName,
+        stableRowKeyColumn: "",
+        trackingIdColumn: "",
+        trackingIdSource: "peopleid3",
+        sourceRop3Column: null,
+        sourceCountryColumn: null,
+        sourceIso3Column: null,
+      };
+    } else {
+      assignment = { sheetId, kind: "none" };
+    }
+    dispatch({ type: "set-workflow-assignment", sheetId, assignment });
+  }
+
+  function updateTier2Assignment(
+    sheetId: number,
+    updates: Partial<Extract<GoogleSheetsWorkflowAssignment, { kind: "tier2" }>>,
+  ) {
+    const current = state.workflowAssignments[sheetId];
+    if (current?.kind !== "tier2") return;
+    dispatch({
+      type: "set-workflow-assignment",
+      sheetId,
+      assignment: { ...current, ...updates },
+    });
+  }
+
+  function workflowSelectValue(assignment: GoogleSheetsWorkflowAssignment) {
+    if (assignment.kind === "tier1") {
+      return assignment.sourceProfileKey === "accelerate-owned-people-groups"
+        ? "tier1-accelerate"
+        : "tier1-wcd";
+    }
+    return assignment.kind;
+  }
+
+  function workflowSummary(assignment: GoogleSheetsWorkflowAssignment) {
+    if (assignment.kind === "none") return "Not linked to a data workflow";
+    if (assignment.kind === "tier1") {
+      return assignment.sourceProfileKey === "accelerate-owned-people-groups"
+        ? `Tier 1 · Accelerate-owned people groups · key: ${assignment.stableKeyColumn}`
+        : `Tier 1 · World Christian Database · key: ${assignment.stableKeyColumn}`;
+    }
+    const owner = tier2OwnerOptions.find((option) => option.key === assignment.ownerKey);
+    return `Tier 2 · ${owner?.label ?? assignment.ownerKey} · ${assignment.feedName} · ${assignment.trackingIdSource}: ${assignment.trackingIdColumn}`;
+  }
 
   function goBack() {
     setError(null);
@@ -344,6 +435,7 @@ export function DatasetOnboardingClient({
             })),
             datasetClassification: state.classification,
             isWorkspaceVisible: state.isWorkspaceVisible,
+            workflowAssignments,
           }),
         },
       );
@@ -699,6 +791,166 @@ export function DatasetOnboardingClient({
             <p className="text-sm text-destructive">Every dataset needs a unique name.</p>
           ) : null}
         </div>
+        {state.source === "google-sheets" ? (
+          <section
+            className="space-y-3"
+            aria-labelledby="workflow-linking-heading"
+            data-smoke-surface="dataset-workflow-linking"
+            data-smoke-ready="dataset-workflow-linking"
+          >
+            <div>
+              <h3 id="workflow-linking-heading" className="flex items-center gap-2 font-semibold">
+                <GitBranchIcon className="size-4" /> Link to a data workflow
+              </h3>
+              <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                Optional. This tells Accelerate how each Sheet tab should be formed later; it does not publish anything automatically.
+              </p>
+            </div>
+            {selectedSheets.map((sheet) => {
+              const assignment =
+                state.workflowAssignments[sheet.sheetId] ??
+                ({ sheetId: sheet.sheetId, kind: "none" } as const);
+              const headers = state.headerPreviews[sheet.sheetId]?.selected.headers ?? [];
+              return (
+                <div key={sheet.sheetId} className="space-y-4 rounded-xl border p-4">
+                  <div>
+                    <p className="font-medium">{state.datasetNames[sheet.sheetId] || sheet.title}</p>
+                    <p className="text-sm text-muted-foreground">Source tab: {sheet.title}</p>
+                  </div>
+                  <label className="block space-y-1.5 text-sm">
+                    <span className="font-medium">Workflow</span>
+                    <select
+                      aria-label={`Workflow for ${sheet.title}`}
+                      className="h-10 w-full rounded-md border border-input bg-background px-3"
+                      data-smoke-trigger="dataset-workflow-linking"
+                      value={workflowSelectValue(assignment)}
+                      onChange={(event) => setWorkflowKind(sheet.sheetId, event.target.value)}
+                    >
+                      <option value="none">No workflow link</option>
+                      <option value="tier1-accelerate">Tier 1 — Accelerate-owned people groups</option>
+                      <option value="tier1-wcd">Tier 1 — World Christian Database</option>
+                      <option value="tier2">Tier 2 — Engagement dataset</option>
+                    </select>
+                  </label>
+                  {assignment.kind === "tier1" ? (
+                    <label className="block space-y-1.5 text-sm">
+                      <span className="font-medium">Permanent source-row ID column</span>
+                      <select
+                        aria-label={`Permanent source-row ID for ${sheet.title}`}
+                        className="h-10 w-full rounded-md border border-input bg-background px-3"
+                        value={assignment.stableKeyColumn}
+                        onChange={(event) => dispatch({
+                          type: "set-workflow-assignment",
+                          sheetId: sheet.sheetId,
+                          assignment: { ...assignment, stableKeyColumn: event.target.value },
+                        })}
+                      >
+                        <option value="">Choose a reviewed column</option>
+                        {headers.map((header) => <option key={header} value={header}>{header}</option>)}
+                      </select>
+                    </label>
+                  ) : null}
+                  {assignment.kind === "tier2" ? (
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <label className="block space-y-1.5 text-sm">
+                        <span className="font-medium">Dataset owner</span>
+                        <select
+                          aria-label={`Dataset owner for ${sheet.title}`}
+                          className="h-10 w-full rounded-md border border-input bg-background px-3"
+                          value={assignment.ownerKey}
+                          onChange={(event) => updateTier2Assignment(sheet.sheetId, { ownerKey: event.target.value })}
+                        >
+                          <option value="">Choose an owner</option>
+                          {tier2OwnerOptions.map((owner) => <option key={owner.key} value={owner.key}>{owner.label}</option>)}
+                        </select>
+                        {tier2OwnerOptions.length === 0 ? (
+                          <span className="block text-xs text-destructive">No active dataset owners are available in the source registry.</span>
+                        ) : null}
+                      </label>
+                      <label className="block space-y-1.5 text-sm">
+                        <span className="font-medium">Engagement feed name</span>
+                        <input
+                          aria-label={`Engagement feed name for ${sheet.title}`}
+                          className="h-10 w-full rounded-md border border-input bg-background px-3"
+                          value={assignment.feedName}
+                          onChange={(event) => updateTier2Assignment(sheet.sheetId, {
+                            feedName: event.target.value,
+                            feedKey: normalizeWorkflowKey(event.target.value),
+                          })}
+                        />
+                      </label>
+                      <label className="block space-y-1.5 text-sm">
+                        <span className="font-medium">Permanent source-row ID column</span>
+                        <select
+                          aria-label={`Permanent Tier 2 row ID for ${sheet.title}`}
+                          className="h-10 w-full rounded-md border border-input bg-background px-3"
+                          value={assignment.stableRowKeyColumn}
+                          onChange={(event) => updateTier2Assignment(sheet.sheetId, { stableRowKeyColumn: event.target.value })}
+                        >
+                          <option value="">Choose a reviewed column</option>
+                          {headers.map((header) => <option key={header} value={header}>{header}</option>)}
+                        </select>
+                      </label>
+                      <label className="block space-y-1.5 text-sm">
+                        <span className="font-medium">Tracking ID type</span>
+                        <select
+                          aria-label={`Tracking ID type for ${sheet.title}`}
+                          className="h-10 w-full rounded-md border border-input bg-background px-3"
+                          value={assignment.trackingIdSource}
+                          onChange={(event) => updateTier2Assignment(sheet.sheetId, {
+                            trackingIdSource: event.target.value as Extract<GoogleSheetsWorkflowAssignment, { kind: "tier2" }>["trackingIdSource"],
+                          })}
+                        >
+                          <option value="peopleid3">Joshua Project PeopleID3</option>
+                          <option value="peid">PEID</option>
+                          <option value="rop3">ROP3</option>
+                          <option value="provider-native">Provider-native ID</option>
+                        </select>
+                      </label>
+                      <label className="block space-y-1.5 text-sm sm:col-span-2">
+                        <span className="font-medium">Tracking ID column</span>
+                        <select
+                          aria-label={`Tracking ID column for ${sheet.title}`}
+                          className="h-10 w-full rounded-md border border-input bg-background px-3"
+                          value={assignment.trackingIdColumn}
+                          onChange={(event) => updateTier2Assignment(sheet.sheetId, {
+                            trackingIdColumn: event.target.value,
+                            ...(assignment.trackingIdSource === "rop3" ? { sourceRop3Column: event.target.value || null } : {}),
+                          })}
+                        >
+                          <option value="">Choose a reviewed column</option>
+                          {headers.map((header) => <option key={header} value={header}>{header}</option>)}
+                        </select>
+                      </label>
+                      {([
+                        ["ROP3 evidence column", "sourceRop3Column"],
+                        ["Country evidence column", "sourceCountryColumn"],
+                        ["ISO3 evidence column", "sourceIso3Column"],
+                      ] as const).map(([label, field]) => (
+                        <label key={field} className="block space-y-1.5 text-sm">
+                          <span className="font-medium">{label} <span className="font-normal text-muted-foreground">(optional)</span></span>
+                          <select
+                            aria-label={`${label} for ${sheet.title}`}
+                            className="h-10 w-full rounded-md border border-input bg-background px-3"
+                            value={assignment[field] ?? ""}
+                            disabled={field === "sourceRop3Column" && assignment.trackingIdSource === "rop3"}
+                            onChange={(event) => updateTier2Assignment(sheet.sheetId, { [field]: event.target.value || null })}
+                          >
+                            <option value="">Not provided</option>
+                            {headers.map((header) => <option key={header} value={header}>{header}</option>)}
+                          </select>
+                        </label>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
+            {!workflowsValid ? (
+              <p className="text-sm text-destructive">Complete every selected workflow field before continuing.</p>
+            ) : null}
+          </section>
+        ) : null}
         <label className="block space-y-1.5 text-sm">
           <span className="font-medium">Dataset classification</span>
           <select
@@ -712,6 +964,11 @@ export function DatasetOnboardingClient({
             <option value="PGAC">PGAC — engagement and activity data</option>
             <option value="PGIC">PGIC — people-group identity data</option>
           </select>
+          {workflowAssignments.some((assignment) => assignment.kind !== "none") ? (
+            <span className="block text-xs text-muted-foreground">
+              Linked Tier 1 sources are stored as PGIC; linked Tier 2 engagement feeds are stored as PGAC.
+            </span>
+          ) : null}
         </label>
         <fieldset className="space-y-3">
           <legend className="font-semibold">Who can see the imported dataset?</legend>
@@ -751,7 +1008,7 @@ export function DatasetOnboardingClient({
           </label>
         </fieldset>
         <div className="flex justify-end">
-          <Button disabled={hasInvalidNames} onClick={() => dispatch({ type: "set-stage", stage: "review" })}>Review import</Button>
+          <Button disabled={hasInvalidNames || !workflowsValid} onClick={() => dispatch({ type: "set-stage", stage: "review" })}>Review import</Button>
         </div>
       </div>
     );
@@ -764,6 +1021,24 @@ export function DatasetOnboardingClient({
           <div className="rounded-lg border p-3"><dt className="text-xs font-semibold uppercase text-muted-foreground">Source</dt><dd className="mt-1 font-medium">{sourceLabel(state.source)}</dd></div>
           <div className="rounded-lg border p-3"><dt className="text-xs font-semibold uppercase text-muted-foreground">Classification</dt><dd className="mt-1 font-medium">{state.classification}</dd></div>
           <div className="rounded-lg border p-3 sm:col-span-2"><dt className="text-xs font-semibold uppercase text-muted-foreground">Datasets</dt><dd className="mt-2 space-y-1">{datasetNames.map((name) => <div key={name} className="font-medium">{name}</div>)}</dd></div>
+          {state.source === "google-sheets" ? (
+            <div className="rounded-lg border p-3 sm:col-span-2">
+              <dt className="text-xs font-semibold uppercase text-muted-foreground">Workflow links</dt>
+              <dd className="mt-2 space-y-2">
+                {selectedSheets.map((sheet) => {
+                  const assignment =
+                    state.workflowAssignments[sheet.sheetId] ??
+                    ({ sheetId: sheet.sheetId, kind: "none" } as const);
+                  return (
+                    <div key={sheet.sheetId}>
+                      <span className="font-medium">{state.datasetNames[sheet.sheetId]}</span>
+                      <span className="block text-sm text-muted-foreground">{workflowSummary(assignment)}</span>
+                    </div>
+                  );
+                })}
+              </dd>
+            </div>
+          ) : null}
           <div className="rounded-lg border p-3 sm:col-span-2"><dt className="text-xs font-semibold uppercase text-muted-foreground">Access</dt><dd className="mt-1 font-medium">{state.isWorkspaceVisible ? "Everyone in the workspace" : "Only administrators"}</dd></div>
         </dl>
         <Alert>

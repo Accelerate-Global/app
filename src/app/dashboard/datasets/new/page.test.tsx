@@ -18,10 +18,24 @@ vi.mock("@/lib/google-sheets", () => ({
   getGoogleSheetsServiceAccountEmail: () =>
     "sheets@app-project.iam.gserviceaccount.com",
 }));
+vi.mock("@/lib/reference-resources", () => ({
+  getActiveReferenceResource: vi.fn(async () => ({
+    payload: {
+      entries: [{
+        canonicalSourceKey: "ax",
+        displayName: "Accelerate",
+        active: true,
+      }],
+    },
+  })),
+}));
 vi.mock(
   "@/components/dashboard/dataset-onboarding/dataset-onboarding-client",
   () => ({
-    DatasetOnboardingClient: (props: { initialSource: string | null }) => {
+    DatasetOnboardingClient: (props: {
+      initialSource: string | null;
+      tier2OwnerOptions: Array<{ key: string; label: string }>;
+    }) => {
       onboardingClientSpy(props);
       return <div data-testid="onboarding-client">{props.initialSource ?? "choose"}</div>;
     },
@@ -70,6 +84,11 @@ describe("/dashboard/datasets/new", () => {
     expect(screen.getByTestId("onboarding-client").textContent).toBe("csv");
     expect(onboardingClientSpy).toHaveBeenCalledWith(
       expect.not.objectContaining({ actorOwnerId: expect.anything() }),
+    );
+    expect(onboardingClientSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tier2OwnerOptions: [{ key: "ax", label: "Accelerate" }],
+      }),
     );
     expect(document.querySelector('[data-smoke-page="dataset-onboarding"]')).toBeTruthy();
   });

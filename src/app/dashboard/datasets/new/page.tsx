@@ -5,6 +5,13 @@ import type { OnboardingSource } from "@/components/dashboard/dataset-onboarding
 import { DashboardPageShell } from "@/components/layout/dashboard-page-shell";
 import { getCurrentIdentity } from "@/lib/auth";
 import { getGoogleSheetsServiceAccountEmail } from "@/lib/google-sheets";
+import {
+  buildTier2WorkflowOwnerOptions,
+} from "@/lib/api-connections/onboarding-workflows";
+import {
+  getActiveReferenceResource,
+} from "@/lib/reference-resources";
+import { SOURCE_ALIASES_RESOURCE_KEY } from "@/lib/reference-resources/pipeline-types";
 
 type DatasetOnboardingPageProps = {
   searchParams: Promise<{ source?: string }>;
@@ -15,6 +22,15 @@ function configuredServiceAccountEmail() {
     return getGoogleSheetsServiceAccountEmail();
   } catch {
     return null;
+  }
+}
+
+async function configuredTier2Owners() {
+  try {
+    const active = await getActiveReferenceResource(SOURCE_ALIASES_RESOURCE_KEY);
+    return buildTier2WorkflowOwnerOptions(active.payload.entries);
+  } catch {
+    return [];
   }
 }
 
@@ -49,6 +65,7 @@ export default async function DatasetOnboardingPage({
         <DatasetOnboardingClient
           serviceAccountEmail={configuredServiceAccountEmail()}
           initialSource={initialSource}
+          tier2OwnerOptions={await configuredTier2Owners()}
         />
       </DashboardPageShell>
     </div>

@@ -828,4 +828,28 @@ describe("Google Sheets provider runs", () => {
     expect(source).toContain("const archived =");
     expect(source).toContain("archivedAt: null");
   });
+
+  it("creates reviewed Sheet connections and workflow configuration atomically", async () => {
+    const source = await readFile(
+      path.join(process.cwd(), "src/lib/api-connections/index.ts"),
+      "utf8",
+    );
+    const start = source.indexOf("export async function createGoogleSheetsConnections");
+    const end = source.indexOf("export async function checkGoogleSheetsConnectionAccess", start);
+    const createSource = source.slice(start, end);
+    const transactionStart = createSource.indexOf("getDb().transaction(async (tx) =>");
+    const connectionInsert = createSource.indexOf(".insert(apiConnections)", transactionStart);
+    const tier1Insert = createSource.indexOf(".insert(sourceProfileBindings)", connectionInsert);
+    const tier2Insert = createSource.indexOf("insert into private.tier2_partner_profiles", tier1Insert);
+    const transactionReturn = createSource.indexOf("return rows;", tier2Insert);
+
+    expect(transactionStart).toBeGreaterThan(-1);
+    expect(connectionInsert).toBeGreaterThan(transactionStart);
+    expect(tier1Insert).toBeGreaterThan(connectionInsert);
+    expect(tier2Insert).toBeGreaterThan(tier1Insert);
+    expect(transactionReturn).toBeGreaterThan(tier2Insert);
+    expect(createSource).toContain("validateGoogleSheetsWorkflowAssignments");
+    expect(createSource).toContain("A valid active engagement field-mapping contract is required");
+    expect(createSource).toContain("Choose an active dataset owner from the source registry");
+  });
 });

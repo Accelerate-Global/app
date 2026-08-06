@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(51);
+select plan(52);
 
 select has_table('private', 'tier2_contract_resources', 'Tier 2 contract resources exist');
 select has_table('private', 'tier2_contract_resource_versions', 'Tier 2 resource versions exist');
@@ -98,6 +98,36 @@ select lives_ok(
   'a profile can bind the exact configured Google Sheet tab'
 );
 
+insert into private.api_connections (
+  id, name, description, method, url, request_headers, secret_header_names,
+  body_template, response_format, response_data_path, import_mode,
+  dataset_name, dataset_classification, provider, provider_config,
+  created_by_owner_id, updated_by_owner_id
+) values (
+  '81000000-0000-4000-8000-000000000002', 'Tier 2 Partner Alpha second feed', '', 'GET',
+  'https://docs.google.com/spreadsheets/d/tier2-alpha-second/edit', '[]'::jsonb, '[]'::jsonb,
+  '', 'csv', '', 'create', 'tier2-alpha-second.csv', 'PGAC', 'google_sheets',
+  '{"provider":"google_sheets","spreadsheetId":"tier2-alpha-second","spreadsheetUrl":"https://docs.google.com/spreadsheets/d/tier2-alpha-second/edit","spreadsheetTitle":"Alpha","sheetId":43,"sheetTitle":"Second engagement feed","rangeMode":"full_tab"}'::jsonb,
+  'tier2-test-admin', 'tier2-test-admin'
+);
+
+select lives_ok(
+  $$
+    insert into private.tier2_partner_profiles (
+      profile_key, partner_key, display_name, api_connection_id,
+      spreadsheet_id, sheet_id, sheet_title, stable_row_key_column,
+      tracking_id_column, tracking_id_source, contract_version,
+      contract_checksum, created_by_owner_id, updated_by_owner_id
+    ) values (
+      'partner-alpha-second-feed', 'alpha', 'Partner Alpha second feed',
+      '81000000-0000-4000-8000-000000000002', 'tier2-alpha-second', 43,
+      'Second engagement feed', 'Partner Row ID', 'PeopleID3', 'peopleid3',
+      'v1', repeat('a', 64), 'tier2-test-admin', 'tier2-test-admin'
+    )
+  $$,
+  'multiple exact feed profiles can share one partner owner key'
+);
+
 create temporary table tier2_profile_display_metadata_before as
 select updated_at
 from private.tier2_partner_profiles
@@ -151,8 +181,12 @@ select throws_ok(
   $$,
   '23505',
   null,
-  'duplicate partner or Sheet bindings are rejected'
+  'duplicate Sheet bindings are rejected even when an owner can have multiple feeds'
 );
+
+update private.tier2_partner_profiles
+set active = false
+where profile_key = 'partner-alpha-second-feed';
 
 insert into private.tier2_contract_resource_versions (
   id, resource_id, version_number, lifecycle_state, schema_version,
