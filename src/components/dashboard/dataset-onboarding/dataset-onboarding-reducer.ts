@@ -4,6 +4,7 @@ import type {
   GoogleSheetsConnectionPreview,
   GoogleSheetsHeaderPreview,
   GoogleSheetsHeaderSelectionInput,
+  GoogleSheetsWorkflowAssignment,
 } from "@/lib/api-types";
 
 export type OnboardingSource = "google-sheets" | "csv";
@@ -26,6 +27,7 @@ export type DatasetOnboardingState = {
   headerPreviews: Record<number, GoogleSheetsHeaderPreview>;
   headerSelections: Record<number, GoogleSheetsHeaderSelectionInput>;
   datasetNames: Record<number, string>;
+  workflowAssignments: Record<number, GoogleSheetsWorkflowAssignment>;
   csvFile: File | null;
   csvColumns: CsvColumn[];
   csvDatasetName: string;
@@ -53,6 +55,11 @@ export type DatasetOnboardingAction =
     }
   | { type: "set-dataset-name"; sheetId: number; value: string }
   | {
+      type: "set-workflow-assignment";
+      sheetId: number;
+      assignment: GoogleSheetsWorkflowAssignment;
+    }
+  | {
       type: "set-csv";
       file: File;
       columns: CsvColumn[];
@@ -74,6 +81,7 @@ export const initialDatasetOnboardingState: DatasetOnboardingState = {
   headerPreviews: {},
   headerSelections: {},
   datasetNames: {},
+  workflowAssignments: {},
   csvFile: null,
   csvColumns: [],
   csvDatasetName: "",
@@ -116,6 +124,7 @@ export function datasetOnboardingReducer(
         headerPreviews: {},
         headerSelections: {},
         datasetNames: {},
+        workflowAssignments: {},
       };
     case "access-started":
       return { ...state, accessRequestKey: action.requestKey };
@@ -128,9 +137,11 @@ export function datasetOnboardingReducer(
         const nextPreviews = { ...state.headerPreviews };
         const nextSelections = { ...state.headerSelections };
         const nextNames = { ...state.datasetNames };
+        const nextAssignments = { ...state.workflowAssignments };
         delete nextPreviews[action.sheetId];
         delete nextSelections[action.sheetId];
         delete nextNames[action.sheetId];
+        delete nextAssignments[action.sheetId];
         return {
           ...state,
           selectedSheetIds: state.selectedSheetIds.filter(
@@ -139,6 +150,7 @@ export function datasetOnboardingReducer(
           headerPreviews: nextPreviews,
           headerSelections: nextSelections,
           datasetNames: nextNames,
+          workflowAssignments: nextAssignments,
         };
       }
 
@@ -148,6 +160,10 @@ export function datasetOnboardingReducer(
         datasetNames: {
           ...state.datasetNames,
           [action.sheetId]: action.defaultName,
+        },
+        workflowAssignments: {
+          ...state.workflowAssignments,
+          [action.sheetId]: { sheetId: action.sheetId, kind: "none" },
         },
       };
     }
@@ -169,6 +185,14 @@ export function datasetOnboardingReducer(
       return {
         ...state,
         datasetNames: { ...state.datasetNames, [action.sheetId]: action.value },
+      };
+    case "set-workflow-assignment":
+      return {
+        ...state,
+        workflowAssignments: {
+          ...state.workflowAssignments,
+          [action.sheetId]: action.assignment,
+        },
       };
     case "set-csv":
       return {

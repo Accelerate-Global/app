@@ -50,7 +50,7 @@ describe("Tier 2 partner profiles", () => {
     ]);
   });
 
-  it("enforces unique profile, partner, and spreadsheet-tab bindings", () => {
+  it("allows shared owners while enforcing unique profile and spreadsheet-tab bindings", () => {
     const issues = validateTier2ProfileCollection([
       profile,
       { ...profile, displayName: "Duplicate" },
@@ -58,9 +58,19 @@ describe("Tier 2 partner profiles", () => {
 
     expect(issues.map((entry) => entry.code)).toEqual([
       "duplicate-profile-key",
-      "duplicate-partner-key",
       "duplicate-sheet-binding",
     ]);
+
+    expect(validateTier2ProfileCollection([
+      profile,
+      {
+        ...profile,
+        profileKey: "partner-alpha-second-feed",
+        displayName: "Partner Alpha second feed",
+        spreadsheetId: "sheet-alpha-second",
+        sheetId: 43,
+      },
+    ])).toEqual([]);
   });
 
   it("refreshes display metadata without changing bound sheet identity", () => {

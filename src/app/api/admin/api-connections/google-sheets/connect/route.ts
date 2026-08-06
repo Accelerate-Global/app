@@ -4,6 +4,7 @@ import {
   ApiConnectionError,
   createGoogleSheetsConnections,
 } from "@/lib/api-connections";
+import { googleSheetsWorkflowAssignmentsSchema } from "@/lib/api-connections/onboarding-workflows";
 import { logError } from "@/lib/error-logging";
 import { GoogleSheetsError } from "@/lib/google-sheets";
 import { jsonError } from "@/lib/http";
@@ -42,6 +43,7 @@ const googleSheetsConnectSchema = z.object({
     .optional(),
   datasetClassification: z.enum(["PGAC", "PGIC"]).default("PGAC"),
   isWorkspaceVisible: z.boolean().default(true),
+  workflowAssignments: googleSheetsWorkflowAssignmentsSchema,
 });
 
 export const POST = withRoute(
@@ -63,6 +65,7 @@ export const POST = withRoute(
         datasetSettings: parsed.data.datasetSettings,
         datasetClassification: parsed.data.datasetClassification,
         isWorkspaceVisible: parsed.data.isWorkspaceVisible,
+        workflowAssignments: parsed.data.workflowAssignments,
       });
 
       return Response.json({ connections }, { status: 201 });

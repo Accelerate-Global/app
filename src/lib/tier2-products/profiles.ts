@@ -94,7 +94,6 @@ export function validateTier2ProfileCollection(
 ) {
   const issues: Tier2ProfileValidationIssue[] = [];
   const profileKeys = new Set<string>();
-  const partnerKeys = new Set<string>();
   const sheets = new Set<string>();
 
   for (const profile of profiles) {
@@ -104,15 +103,6 @@ export function validateTier2ProfileCollection(
           "profileKey",
           "duplicate-profile-key",
           `Profile key ${profile.profileKey} is already configured.`,
-        ),
-      );
-    }
-    if (partnerKeys.has(profile.partnerKey)) {
-      issues.push(
-        issue(
-          "partnerKey",
-          "duplicate-partner-key",
-          `Partner key ${profile.partnerKey} is already configured.`,
         ),
       );
     }
@@ -127,7 +117,6 @@ export function validateTier2ProfileCollection(
       );
     }
     profileKeys.add(profile.profileKey);
-    partnerKeys.add(profile.partnerKey);
     sheets.add(sheetKey);
   }
   return issues;

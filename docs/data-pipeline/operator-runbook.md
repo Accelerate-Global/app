@@ -16,15 +16,21 @@ and required secret are available in that environment.
 | IMB people groups | Code-managed ArcGIS connection and source-forming engine | No profile binding; verify provider reachability. |
 | Etnopedia people groups | Code-managed MediaWiki connection and source-forming engine | No profile binding; verify provider reachability. |
 | Joshua Project people groups | Code-managed HTTPS connection and source-forming engine | The Joshua Project API secret must be configured. |
-| Accelerate-owned people groups | Google Sheets source-forming engine | Bind one active Sheet/tab connection to `accelerate-owned-people-groups` and select a durable stable-key column. |
-| World Christian Database | Google Sheets source-forming engine | Bind one active Sheet/tab connection to `wcd-people-groups` and select a durable stable-key column. |
-| Tier 2 engagement partners | Profile-specific Sheet forming, identity, release, and schedule support | Create one active profile per partner with exact spreadsheet/tab identity, stable key, tracking discriminator, and contract. No partner profile is implied by deployment. |
+| Accelerate-owned people groups | Google Sheets source-forming engine | During dataset onboarding, link one active Sheet/tab to `accelerate-owned-people-groups` and select a durable stable-key column. This is a specific Tier 1 people-group source. |
+| World Christian Database | Google Sheets source-forming engine | During dataset onboarding, link one active Sheet/tab to `wcd-people-groups` and select a durable stable-key column. |
+| Tier 2 engagement partners | Profile-specific Sheet forming, identity, release, and schedule support | During dataset onboarding, create one exact profile per engagement feed with its spreadsheet/tab identity, stable key, tracking discriminator, active owner, and current mapping contract. Several feeds may share one owner; Final-58 and Final-Sudan are distinct Accelerate-managed Tier 2 feeds. |
 | Tier 1, Aggregate 1, Tier 2, Aggregate 2 | Code-defined product and publication definitions | Exact upstream publications, healthy resources, and registry revisions must exist before a release can finalize. |
 | Scheduling | Authenticated bounded continuation and per-profile Tier 2 schedule support | Schedules start disabled. Each schedule requires its own matching successful manual production canary. |
 
 Use the Connections, Resources, Identity Registry, Pipeline Products, Tier 2
 Products, and Pipelines admin pages to verify the actual environment state. Do
 not infer configuration from this table.
+
+Workflow linkage is optional for an ordinary imported Sheet. When selected,
+the final onboarding review shows the exact Tier 1 source or Tier 2 feed that
+will be configured. Connection creation and workflow configuration are one
+transaction, so a rejected owner, column, duplicate feed, or missing active
+contract leaves no partial connection behind.
 
 ## Exact launch snapshot
 
