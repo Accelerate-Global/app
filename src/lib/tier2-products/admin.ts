@@ -42,6 +42,8 @@ type ProfileRow = {
   stable_row_key_column: string;
   tracking_id_column: string;
   tracking_id_source: Tier2PartnerProfileConfig["trackingIdSource"];
+  tracking_id_source_column: string | null;
+  tracking_id_source_mappings: Tier2PartnerProfileConfig["trackingIdSourceMappings"];
   source_rop3_column: string | null;
   source_country_column: string | null;
   source_iso3_column: string | null;
@@ -85,6 +87,8 @@ function mapProfile(row: ProfileRow): Tier2PartnerProfile {
     stableRowKeyColumn: row.stable_row_key_column,
     trackingIdColumn: row.tracking_id_column,
     trackingIdSource: row.tracking_id_source,
+    trackingIdSourceColumn: row.tracking_id_source_column,
+    trackingIdSourceMappings: row.tracking_id_source_mappings,
     sourceRop3Column: row.source_rop3_column,
     sourceCountryColumn: row.source_country_column,
     sourceIso3Column: row.source_iso3_column,
@@ -203,14 +207,17 @@ export async function createTier2PartnerProfile(input: {
       insert into private.tier2_partner_profiles (
         profile_key, partner_key, display_name, api_connection_id,
         spreadsheet_id, sheet_id, sheet_title, stable_row_key_column,
-        tracking_id_column, tracking_id_source, source_rop3_column,
-        source_country_column, source_iso3_column, contract_version,
+        tracking_id_column, tracking_id_source, tracking_id_source_column,
+        tracking_id_source_mappings, source_rop3_column, source_country_column,
+        source_iso3_column, contract_version,
         contract_checksum, active, created_by_owner_id, updated_by_owner_id
       ) values (
         ${profile.profileKey}, ${profile.partnerKey}, ${profile.displayName},
         ${profile.apiConnectionId}::uuid, ${profile.spreadsheetId}, ${profile.sheetId},
         ${profile.sheetTitle}, ${profile.stableRowKeyColumn},
         ${profile.trackingIdColumn}, ${profile.trackingIdSource},
+        ${profile.trackingIdSourceColumn},
+        ${JSON.stringify(profile.trackingIdSourceMappings)}::jsonb,
         ${profile.sourceRop3Column}, ${profile.sourceCountryColumn},
         ${profile.sourceIso3Column}, ${profile.contractVersion},
         ${profile.contractChecksum}, ${profile.active}, ${input.actorOwnerId},
@@ -252,6 +259,8 @@ export async function updateTier2PartnerProfile(input: {
         stable_row_key_column = ${profile.stableRowKeyColumn},
         tracking_id_column = ${profile.trackingIdColumn},
         tracking_id_source = ${profile.trackingIdSource},
+        tracking_id_source_column = ${profile.trackingIdSourceColumn},
+        tracking_id_source_mappings = ${JSON.stringify(profile.trackingIdSourceMappings)}::jsonb,
         source_rop3_column = ${profile.sourceRop3Column},
         source_country_column = ${profile.sourceCountryColumn},
         source_iso3_column = ${profile.sourceIso3Column},

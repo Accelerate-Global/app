@@ -24,6 +24,8 @@ function profile(id: string, key: string, name: string) {
     stableRowKeyColumn: "Row ID",
     trackingIdColumn: "PeopleID3",
     trackingIdSource: "peopleid3" as const,
+    trackingIdSourceColumn: null,
+    trackingIdSourceMappings: [],
     sourceRop3Column: null,
     sourceCountryColumn: null,
     sourceIso3Column: null,

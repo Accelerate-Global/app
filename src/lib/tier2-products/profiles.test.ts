@@ -18,6 +18,8 @@ const profile: Tier2PartnerProfileConfig = {
   stableRowKeyColumn: "Partner row ID",
   trackingIdColumn: "PeopleID3",
   trackingIdSource: "peopleid3",
+  trackingIdSourceColumn: null,
+  trackingIdSourceMappings: [],
   sourceRop3Column: "ROP3",
   sourceCountryColumn: "Country",
   sourceIso3Column: "ISO3",
@@ -33,6 +35,44 @@ describe("Tier 2 partner profiles", () => {
       profile,
       issues: [],
     });
+  });
+
+  it("accepts one reviewed row-specific tracking map without a fallback", () => {
+    const mixedProfile = {
+      ...profile,
+      trackingIdSource: null,
+      trackingIdSourceColumn: "Tracking source",
+      trackingIdSourceMappings: [
+        {
+          sourceValue: "PGID3 (Joshua Project)",
+          trackingIdSource: "peopleid3" as const,
+        },
+        { sourceValue: "ROP3", trackingIdSource: "rop3" as const },
+      ],
+    };
+
+    expect(validateTier2PartnerProfileConfig(mixedProfile)).toEqual({
+      valid: true,
+      profile: mixedProfile,
+      issues: [],
+    });
+  });
+
+  it("rejects a row-specific source without mappings or with duplicate values", () => {
+    const invalid = validateTier2PartnerProfileConfig({
+      ...profile,
+      trackingIdSource: null,
+      trackingIdSourceColumn: "Tracking source",
+      trackingIdSourceMappings: [
+        { sourceValue: "ROP3", trackingIdSource: "rop3" },
+        { sourceValue: " rop3 ", trackingIdSource: "provider-native" },
+      ],
+    });
+
+    expect(invalid.valid).toBe(false);
+    expect(invalid.issues.map((entry) => entry.code)).toContain(
+      "duplicate-tracking-source-value",
+    );
   });
 
   it("rejects positional identity and ambiguous ROP3 configuration", () => {

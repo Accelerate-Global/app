@@ -12,6 +12,7 @@ import {
   LockIcon,
   RefreshCcwIcon,
   ShieldCheckIcon,
+  Trash2Icon,
   UsersIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -76,6 +77,13 @@ type ImportResult = {
   status: "connecting" | "queued" | "importing" | "ready" | "failed";
   error: string | null;
 };
+
+const TRACKING_ID_SOURCE_OPTIONS = [
+  { value: "peopleid3", label: "Joshua Project PeopleID3" },
+  { value: "peid", label: "PEID" },
+  { value: "rop3", label: "ROP3" },
+  { value: "provider-native", label: "Provider-native ID" },
+] as const;
 
 const steps: Array<{ stage: OnboardingStage; label: string }> = [
   { stage: "source", label: "Source" },
@@ -168,6 +176,29 @@ export function DatasetOnboardingClient({
         assignment.stableRowKeyColumn &&
         assignment.trackingIdColumn &&
         assignment.stableRowKeyColumn !== assignment.trackingIdColumn &&
+        (assignment.trackingIdSource
+          ? !assignment.trackingIdSourceColumn &&
+            assignment.trackingIdSourceMappings.length === 0
+          : Boolean(
+              assignment.trackingIdSourceColumn &&
+                assignment.trackingIdSourceColumn !==
+                  assignment.stableRowKeyColumn &&
+                assignment.trackingIdSourceColumn !==
+                  assignment.trackingIdColumn &&
+                assignment.trackingIdSourceMappings.length > 0 &&
+                assignment.trackingIdSourceMappings.every((mapping) =>
+                  mapping.sourceValue.trim(),
+                ) &&
+                new Set(
+                  assignment.trackingIdSourceMappings.map((mapping) =>
+                    mapping.sourceValue
+                      .normalize("NFKC")
+                      .trim()
+                      .replace(/\s+/gu, " ")
+                      .toLowerCase(),
+                  ),
+                ).size === assignment.trackingIdSourceMappings.length,
+            )) &&
         (assignment.trackingIdSource !== "rop3" ||
           !assignment.sourceRop3Column ||
           assignment.sourceRop3Column === assignment.trackingIdColumn),
@@ -197,6 +228,8 @@ export function DatasetOnboardingClient({
         stableRowKeyColumn: "",
         trackingIdColumn: "",
         trackingIdSource: "peopleid3",
+        trackingIdSourceColumn: null,
+        trackingIdSourceMappings: [],
         sourceRop3Column: null,
         sourceCountryColumn: null,
         sourceIso3Column: null,
@@ -237,7 +270,10 @@ export function DatasetOnboardingClient({
         : `Tier 1 · World Christian Database · key: ${assignment.stableKeyColumn}`;
     }
     const owner = tier2OwnerOptions.find((option) => option.key === assignment.ownerKey);
-    return `Tier 2 · ${owner?.label ?? assignment.ownerKey} · ${assignment.feedName} · ${assignment.trackingIdSource}: ${assignment.trackingIdColumn}`;
+    const trackingSource = assignment.trackingIdSourceColumn
+      ? `per row from ${assignment.trackingIdSourceColumn}`
+      : assignment.trackingIdSource;
+    return `Tier 2 · ${owner?.label ?? assignment.ownerKey} · ${assignment.feedName} · ${trackingSource}: ${assignment.trackingIdColumn}`;
   }
 
   function goBack() {
@@ -896,17 +932,94 @@ export function DatasetOnboardingClient({
                         <select
                           aria-label={`Tracking ID type for ${sheet.title}`}
                           className="h-10 w-full rounded-md border border-input bg-background px-3"
-                          value={assignment.trackingIdSource}
-                          onChange={(event) => updateTier2Assignment(sheet.sheetId, {
-                            trackingIdSource: event.target.value as Extract<GoogleSheetsWorkflowAssignment, { kind: "tier2" }>["trackingIdSource"],
-                          })}
+                          value={assignment.trackingIdSourceColumn ? "per-row" : assignment.trackingIdSource ?? ""}
+                          onChange={(event) => {
+                            if (event.target.value === "per-row") {
+                              updateTier2Assignment(sheet.sheetId, {
+                                trackingIdSource: null,
+                                trackingIdSourceColumn: "",
+                                trackingIdSourceMappings: [{ sourceValue: "", trackingIdSource: "peopleid3" }],
+                              });
+                              return;
+                            }
+                            const trackingIdSource = event.target.value as NonNullable<Extract<GoogleSheetsWorkflowAssignment, { kind: "tier2" }>["trackingIdSource"]>;
+                            updateTier2Assignment(sheet.sheetId, {
+                              trackingIdSource,
+                              trackingIdSourceColumn: null,
+                              trackingIdSourceMappings: [],
+                              ...(trackingIdSource === "rop3" ? { sourceRop3Column: assignment.trackingIdColumn || null } : {}),
+                            });
+                          }}
                         >
-                          <option value="peopleid3">Joshua Project PeopleID3</option>
-                          <option value="peid">PEID</option>
-                          <option value="rop3">ROP3</option>
-                          <option value="provider-native">Provider-native ID</option>
+                          {TRACKING_ID_SOURCE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                          <option value="per-row">Read the tracking type from each row</option>
                         </select>
                       </label>
+                      {assignment.trackingIdSourceColumn !== null ? (
+                        <div className="space-y-3 sm:col-span-2">
+                          <label className="block space-y-1.5 text-sm">
+                            <span className="font-medium">Tracking-type column</span>
+                            <select
+                              aria-label={`Tracking-type column for ${sheet.title}`}
+                              className="h-10 w-full rounded-md border border-input bg-background px-3"
+                              value={assignment.trackingIdSourceColumn}
+                              onChange={(event) => updateTier2Assignment(sheet.sheetId, { trackingIdSourceColumn: event.target.value })}
+                            >
+                              <option value="">Choose a reviewed column</option>
+                              {headers.map((header) => <option key={header} value={header}>{header}</option>)}
+                            </select>
+                          </label>
+                          <div className="space-y-2 rounded-md border border-border p-3">
+                            <p className="text-sm font-medium">Reviewed source-value mapping</p>
+                            <p className="text-xs text-muted-foreground">Blank or unknown values block that row; no fallback type is used.</p>
+                            {assignment.trackingIdSourceMappings.map((mapping, index) => (
+                              <div key={`${index}-${mapping.trackingIdSource}`} className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+                                <input
+                                  aria-label={`Tracking source value ${index + 1} for ${sheet.title}`}
+                                  className="h-10 rounded-md border border-input bg-background px-3"
+                                  placeholder="Exact source value"
+                                  value={mapping.sourceValue}
+                                  onChange={(event) => updateTier2Assignment(sheet.sheetId, {
+                                    trackingIdSourceMappings: assignment.trackingIdSourceMappings.map((entry, entryIndex) => entryIndex === index ? { ...entry, sourceValue: event.target.value } : entry),
+                                  })}
+                                />
+                                <select
+                                  aria-label={`Tracking source type ${index + 1} for ${sheet.title}`}
+                                  className="h-10 rounded-md border border-input bg-background px-3"
+                                  value={mapping.trackingIdSource}
+                                  onChange={(event) => updateTier2Assignment(sheet.sheetId, {
+                                    trackingIdSourceMappings: assignment.trackingIdSourceMappings.map((entry, entryIndex) => entryIndex === index ? { ...entry, trackingIdSource: event.target.value as typeof entry.trackingIdSource } : entry),
+                                  })}
+                                >
+                                  {TRACKING_ID_SOURCE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                                </select>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="icon"
+                                  aria-label={`Remove tracking source mapping ${index + 1} for ${sheet.title}`}
+                                  disabled={assignment.trackingIdSourceMappings.length === 1}
+                                  onClick={() => updateTier2Assignment(sheet.sheetId, {
+                                    trackingIdSourceMappings: assignment.trackingIdSourceMappings.filter((_, entryIndex) => entryIndex !== index),
+                                  })}
+                                >
+                                  <Trash2Icon className="size-4" />
+                                </Button>
+                              </div>
+                            ))}
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => updateTier2Assignment(sheet.sheetId, {
+                                trackingIdSourceMappings: [...assignment.trackingIdSourceMappings, { sourceValue: "", trackingIdSource: "peopleid3" }],
+                              })}
+                            >
+                              Add source value
+                            </Button>
+                          </div>
+                        </div>
+                      ) : null}
                       <label className="block space-y-1.5 text-sm sm:col-span-2">
                         <span className="font-medium">Tracking ID column</span>
                         <select
@@ -933,7 +1046,7 @@ export function DatasetOnboardingClient({
                             aria-label={`${label} for ${sheet.title}`}
                             className="h-10 w-full rounded-md border border-input bg-background px-3"
                             value={assignment[field] ?? ""}
-                            disabled={field === "sourceRop3Column" && assignment.trackingIdSource === "rop3"}
+                            disabled={field === "sourceRop3Column" && assignment.trackingIdSource === "rop3" && assignment.trackingIdSourceColumn === null}
                             onChange={(event) => updateTier2Assignment(sheet.sheetId, { [field]: event.target.value || null })}
                           >
                             <option value="">Not provided</option>

@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { normalizeExactLookup } from "@/lib/source-forming/primitives";
+
 import {
   TIER2_TRACKING_ID_SOURCES,
   type Tier2PartnerProfileConfig,
@@ -22,7 +24,18 @@ export const tier2PartnerProfileConfigSchema = z
     sheetTitle: z.string().trim().min(1).max(256),
     stableRowKeyColumn: z.string().trim().min(1).max(256),
     trackingIdColumn: z.string().trim().min(1).max(256),
-    trackingIdSource: z.enum(TIER2_TRACKING_ID_SOURCES),
+    trackingIdSource: z.enum(TIER2_TRACKING_ID_SOURCES).nullable(),
+    trackingIdSourceColumn: z.string().trim().min(1).max(256).nullable(),
+    trackingIdSourceMappings: z
+      .array(
+        z
+          .object({
+            sourceValue: z.string().trim().min(1).max(160),
+            trackingIdSource: z.enum(TIER2_TRACKING_ID_SOURCES),
+          })
+          .strict(),
+      )
+      .max(50),
     sourceRop3Column: z.string().trim().min(1).max(256).nullable(),
     sourceCountryColumn: z.string().trim().min(1).max(256).nullable(),
     sourceIso3Column: z.string().trim().min(1).max(256).nullable(),
@@ -82,6 +95,62 @@ export function validateTier2PartnerProfileConfig(value: unknown):
         "ROP3 tracking profiles must use one source ROP3 column.",
       ),
     );
+  }
+  const usesRowTrackingSource = profile.trackingIdSourceColumn !== null;
+  if (usesRowTrackingSource === (profile.trackingIdSource !== null)) {
+    issues.push(
+      issue(
+        "trackingIdSourceColumn",
+        "invalid-tracking-source-mode",
+        "Choose either one fixed tracking type or a row-specific tracking-type column.",
+      ),
+    );
+  }
+  if (
+    profile.trackingIdSourceColumn &&
+    [profile.stableRowKeyColumn, profile.trackingIdColumn].includes(
+      profile.trackingIdSourceColumn,
+    )
+  ) {
+    issues.push(
+      issue(
+        "trackingIdSourceColumn",
+        "tracking-source-column-conflict",
+        "Tracking type, tracking ID, and durable row ID must use distinct columns.",
+      ),
+    );
+  }
+  if (!usesRowTrackingSource && profile.trackingIdSourceMappings.length > 0) {
+    issues.push(
+      issue(
+        "trackingIdSourceMappings",
+        "unexpected-tracking-source-map",
+        "A fixed tracking type cannot also define row-specific mappings.",
+      ),
+    );
+  }
+  if (usesRowTrackingSource && profile.trackingIdSourceMappings.length === 0) {
+    issues.push(
+      issue(
+        "trackingIdSourceMappings",
+        "missing-tracking-source-map",
+        "Map at least one reviewed source value to a tracking type.",
+      ),
+    );
+  }
+  const normalizedSourceValues = new Set<string>();
+  for (const mapping of profile.trackingIdSourceMappings) {
+    const normalized = normalizeExactLookup(mapping.sourceValue);
+    if (normalizedSourceValues.has(normalized)) {
+      issues.push(
+        issue(
+          "trackingIdSourceMappings",
+          "duplicate-tracking-source-value",
+          `Tracking source value ${mapping.sourceValue} is mapped more than once.`,
+        ),
+      );
+    }
+    normalizedSourceValues.add(normalized);
   }
 
   return issues.length > 0

@@ -48,6 +48,8 @@ describe("Google Sheets onboarding workflow assignments", () => {
         stableRowKeyColumn: "Missing",
         trackingIdColumn: "PeopleID3",
         trackingIdSource: "peopleid3",
+        trackingIdSourceColumn: null,
+        trackingIdSourceMappings: [],
         sourceRop3Column: null,
         sourceCountryColumn: null,
         sourceIso3Column: null,
@@ -55,5 +57,46 @@ describe("Google Sheets onboarding workflow assignments", () => {
       selectedSheetIds: [1],
       headersBySheetId: new Map([[1, ["Row ID", "PeopleID3"]]]),
     })).toThrow(/not in the reviewed Sheet headers/u);
+  });
+
+  it("validates a row-specific Tier 2 tracking map without a fallback", () => {
+    const assignment = {
+      sheetId: 1,
+      kind: "tier2" as const,
+      ownerKey: "accelerate",
+      feedKey: "final-58",
+      feedName: "Final-58",
+      stableRowKeyColumn: "Accelerate source row ID",
+      trackingIdColumn: "Tracking ID# (any)",
+      trackingIdSource: null,
+      trackingIdSourceColumn: "Tracking # Source (from dropdown)",
+      trackingIdSourceMappings: [
+        {
+          sourceValue: "PGID3 (Joshua Project)",
+          trackingIdSource: "peopleid3" as const,
+        },
+        { sourceValue: "ROP3", trackingIdSource: "rop3" as const },
+        {
+          sourceValue: "Local / Organization code",
+          trackingIdSource: "provider-native" as const,
+        },
+      ],
+      sourceRop3Column: "People Group: 6dig Code ROP3 (PGIC)",
+      sourceCountryColumn: "Country (engagement took place)",
+      sourceIso3Column: null,
+    };
+    const result = validateGoogleSheetsWorkflowAssignments({
+      assignments: [assignment],
+      selectedSheetIds: [1],
+      headersBySheetId: new Map([[1, [
+        assignment.stableRowKeyColumn,
+        assignment.trackingIdColumn,
+        assignment.trackingIdSourceColumn,
+        assignment.sourceRop3Column,
+        assignment.sourceCountryColumn,
+      ]]]),
+    });
+
+    expect(result.get(1)).toEqual(assignment);
   });
 });

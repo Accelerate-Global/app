@@ -10,6 +10,7 @@ import {
   createSourceColumnIndex,
   createStableSourceRowKey,
   groupDuplicateIndexes,
+  normalizeExactLookup,
   normalizeIdentifier,
   resolveCountryReference,
 } from "@/lib/source-forming/primitives";
@@ -25,6 +26,10 @@ import type {
   Tier2FormingResult,
   Tier2FormingValidation,
   Tier2IdentityEvidence,
+} from "./types";
+import {
+  TIER2_TRACKING_ID_SOURCES,
+  type Tier2TrackingIdSource,
 } from "./types";
 
 const SYSTEM_FIELDS = [
@@ -141,6 +146,39 @@ function resolveTracking(input: {
   findings: DatasetFormingFinding[];
 }) {
   const profile = input.forming.profile;
+  let trackingIdSource: Tier2TrackingIdSource | null = profile.trackingIdSource;
+  if (profile.trackingIdSourceColumn) {
+    const sourceValue = normalizeIdentifier(
+      input.sourceColumns.value(
+        input.sourceRow,
+        profile.trackingIdSourceColumn,
+      ),
+    );
+    const normalizedSourceValue = normalizeExactLookup(sourceValue);
+    trackingIdSource =
+      profile.trackingIdSourceMappings.find(
+        (mapping) =>
+          normalizeExactLookup(mapping.sourceValue) === normalizedSourceValue,
+      )?.trackingIdSource ?? null;
+    if (!trackingIdSource) {
+      input.findings.push(
+        finding(
+          "error",
+          sourceValue
+            ? "unmapped-tracking-id-source"
+            : "missing-tracking-id-source",
+          input.rowIndex,
+          input.stableRowKey,
+          profile.trackingIdSourceColumn,
+          sourceValue,
+          null,
+          sourceValue
+            ? "The row's tracking source is not in the reviewed profile mapping."
+            : "The row's tracking source is blank; no fallback type is allowed.",
+        ),
+      );
+    }
+  }
   const trackingId = normalizeIdentifier(
     input.sourceColumns.value(input.sourceRow, profile.trackingIdColumn),
   );
@@ -149,7 +187,7 @@ function resolveTracking(input: {
     input.row,
     input.outputKeys,
     "Tier2_Tracking_ID_Source",
-    profile.trackingIdSource,
+    trackingIdSource ?? "",
   );
 
   if (!trackingId) {
@@ -165,19 +203,47 @@ function resolveTracking(input: {
         "The configured tracking identifier is blank.",
       ),
     );
-    return { trackingId, rop3: "", iso3: "", ambiguous: false };
+    return {
+      trackingId,
+      trackingIdSource,
+      rop3: "",
+      iso3: "",
+      ambiguous: false,
+    };
   }
 
-  if (profile.trackingIdSource === "provider-native") {
-    setValue(input.row, input.outputKeys, "Provider_Native_Identity", trackingId);
-    return { trackingId, rop3: "", iso3: "", ambiguous: false };
+  if (!trackingIdSource) {
+    return {
+      trackingId,
+      trackingIdSource,
+      rop3: "",
+      iso3: "",
+      ambiguous: false,
+    };
   }
-  if (profile.trackingIdSource === "rop3") {
-    return { trackingId, rop3: trackingId, iso3: "", ambiguous: false };
+
+  if (trackingIdSource === "provider-native") {
+    setValue(input.row, input.outputKeys, "Provider_Native_Identity", trackingId);
+    return {
+      trackingId,
+      trackingIdSource,
+      rop3: "",
+      iso3: "",
+      ambiguous: false,
+    };
+  }
+  if (trackingIdSource === "rop3") {
+    return {
+      trackingId,
+      trackingIdSource,
+      rop3: trackingId,
+      iso3: "",
+      ambiguous: false,
+    };
   }
 
   const matches =
-    profile.trackingIdSource === "peopleid3"
+    trackingIdSource === "peopleid3"
       ? input.peopleId3.get(trackingId) ?? []
       : input.peids.get(trackingId) ?? [];
   if (matches.length !== 1) {
@@ -193,20 +259,27 @@ function resolveTracking(input: {
         matches.length > 1
           ? "The pinned crosswalk returns more than one active match."
           : "The pinned crosswalk does not contain this tracking identifier.",
-        { trackingIdSource: profile.trackingIdSource, matchCount: matches.length },
+        { trackingIdSource, matchCount: matches.length },
       ),
     );
-    return { trackingId, rop3: "", iso3: "", ambiguous: matches.length > 1 };
+    return {
+      trackingId,
+      trackingIdSource,
+      rop3: "",
+      iso3: "",
+      ambiguous: matches.length > 1,
+    };
   }
 
   const match = matches[0]!;
-  if (profile.trackingIdSource === "peopleid3") {
+  if (trackingIdSource === "peopleid3") {
     setValue(input.row, input.outputKeys, "PG_PeopleID3", trackingId);
   } else {
     setValue(input.row, input.outputKeys, "PG_PEID", trackingId);
   }
   return {
     trackingId,
+    trackingIdSource,
     rop3: match.rop3 ?? "",
     iso3: match.iso3?.toUpperCase() ?? "",
     ambiguous: false,
@@ -533,7 +606,11 @@ export function formTier2PartnerRows(
       peids,
       findings,
     });
-    if (!tracking.trackingId || (!tracking.rop3 && input.profile.trackingIdSource !== "provider-native")) {
+    if (
+      !tracking.trackingIdSource ||
+      !tracking.trackingId ||
+      (!tracking.rop3 && tracking.trackingIdSource !== "provider-native")
+    ) {
       unresolvedTrackingRows += 1;
     }
     if (tracking.ambiguous) ambiguousTrackingRows += 1;
@@ -561,7 +638,7 @@ export function formTier2PartnerRows(
     ) {
       conflictingSourceRop3Rows += 1;
     }
-    if (!ropResolved && input.profile.trackingIdSource === "provider-native") {
+    if (!ropResolved && tracking.trackingIdSource === "provider-native") {
       unresolvedTrackingRows += 1;
     }
 
@@ -649,21 +726,38 @@ export function extractTier2IdentityEvidence(
   input: Tier2FormingInput,
   result: Tier2FormingResult,
 ): Tier2IdentityEvidence[] {
-  return result.rows.map((row) => ({
-    sourceProfileKey: input.profile.profileKey,
-    stableRowKey:
-      rowValueByLabel(result.columns, row, "Dataset_Row_Key") ?? "",
-    trackingIdSource: input.profile.trackingIdSource,
-    trackingId:
-      rowValueByLabel(result.columns, row, "Tier2_Tracking_ID") ?? "",
-    peopleId3: rowValueByLabel(result.columns, row, "PG_PeopleID3"),
-    peid: rowValueByLabel(result.columns, row, "PG_PEID"),
-    rop3: rowValueByLabel(result.columns, row, "PG_ROP3"),
-    iso3: rowValueByLabel(result.columns, row, "Geo_ISO3"),
-    providerNativeId: rowValueByLabel(
+  return result.rows.map((row) => {
+    const resolvedTrackingIdSource = rowValueByLabel(
       result.columns,
       row,
-      "Provider_Native_Identity",
-    ),
-  }));
+      "Tier2_Tracking_ID_Source",
+    );
+    if (
+      !resolvedTrackingIdSource ||
+      !TIER2_TRACKING_ID_SOURCES.includes(
+        resolvedTrackingIdSource as Tier2TrackingIdSource,
+      )
+    ) {
+      throw new Error(
+        "Tier 2 identity evidence requires one resolved tracking type per row.",
+      );
+    }
+    return {
+      sourceProfileKey: input.profile.profileKey,
+      stableRowKey:
+        rowValueByLabel(result.columns, row, "Dataset_Row_Key") ?? "",
+      trackingIdSource: resolvedTrackingIdSource as Tier2TrackingIdSource,
+      trackingId:
+        rowValueByLabel(result.columns, row, "Tier2_Tracking_ID") ?? "",
+      peopleId3: rowValueByLabel(result.columns, row, "PG_PeopleID3"),
+      peid: rowValueByLabel(result.columns, row, "PG_PEID"),
+      rop3: rowValueByLabel(result.columns, row, "PG_ROP3"),
+      iso3: rowValueByLabel(result.columns, row, "Geo_ISO3"),
+      providerNativeId: rowValueByLabel(
+        result.columns,
+        row,
+        "Provider_Native_Identity",
+      ),
+    };
+  });
 }

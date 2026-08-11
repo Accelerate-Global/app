@@ -1050,6 +1050,47 @@ test(
 );
 
 test(
+  "admin can link an existing Sheet to a data workflow",
+  async ({ page }, testInfo) => {
+    test.skip(skipUnlessDesktopAdmin(testInfo.project.name));
+
+    await runSmokeJourney(
+      "admin can link an existing Sheet to a data workflow",
+      async () => {
+        const bootstrap = await readUiSmokeBootstrap();
+        const connectionId =
+          bootstrap.aliases.unassignedSheetSourceConnectionId;
+        let submitted: unknown = null;
+        await page.route(
+          `**/api/admin/api-connections/${connectionId}/workflow`,
+          async (route) => {
+            submitted = route.request().postDataJSON();
+            await route.fulfill({
+              status: 200,
+              contentType: "application/json",
+              body: JSON.stringify({ assignment: submitted }),
+            });
+          },
+        );
+        await page.goto(`/dashboard/api-connections/${connectionId}`);
+        await expect(page.getByLabel("Data workflow")).toBeVisible();
+        await page.getByLabel("Data workflow").selectOption("tier1-accelerate");
+        await page
+          .getByLabel("Permanent source-row ID column")
+          .selectOption("Record ID");
+        await page.getByRole("button", { name: "Link workflow" }).click();
+        await expect.poll(() => submitted).toEqual({
+          sheetId: 202,
+          kind: "tier1",
+          sourceProfileKey: "accelerate-owned-people-groups",
+          stableKeyColumn: "Record ID",
+        });
+      },
+    );
+  },
+);
+
+test(
   "admin can manually launch and resume a reviewed pipeline",
   async ({ page }, testInfo) => {
     test.skip(skipUnlessDesktopAdmin(testInfo.project.name));

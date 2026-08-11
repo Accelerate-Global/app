@@ -589,7 +589,7 @@ select throws_ok(
     where profile_key = 'partner-cutover'
   $$,
   'P0001',
-  'A used Tier 2 profile cannot change stable identity fields.',
+  'A used Tier 2 profile cannot change identity or forming fields.',
   'a cutover-mapped profile cannot orphan imported stable source bindings'
 );
 

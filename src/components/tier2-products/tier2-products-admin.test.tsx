@@ -19,5 +19,7 @@ describe("Tier2ProductsAdmin", () => {
     expect(source).toContain("Legacy side-by-side comparison");
     expect(source).toContain("Retain comparison");
     expect(source).toContain("Download full retained report");
+    expect(source).toContain("profile.trackingIdSourceColumn");
+    expect(source).toContain("Per row from");
   });
 });

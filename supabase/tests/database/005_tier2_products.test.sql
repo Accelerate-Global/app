@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(52);
+select plan(56);
 
 select has_table('private', 'tier2_contract_resources', 'Tier 2 contract resources exist');
 select has_table('private', 'tier2_contract_resource_versions', 'Tier 2 resource versions exist');
@@ -29,6 +29,18 @@ select has_column(
   'dataset_forming_runs',
   'publication_blob_path',
   'formed-source publication records its attempt-owned blob'
+);
+select has_column(
+  'private',
+  'tier2_partner_profiles',
+  'tracking_id_source_column',
+  'Tier 2 profiles can bind a row-level tracking-type column'
+);
+select has_column(
+  'private',
+  'tier2_partner_profiles',
+  'tracking_id_source_mappings',
+  'Tier 2 profiles retain the reviewed row-level tracking-type mapping'
 );
 
 select is(
@@ -126,6 +138,33 @@ select lives_ok(
     )
   $$,
   'multiple exact feed profiles can share one partner owner key'
+);
+
+select throws_ok(
+  $$
+    update private.tier2_partner_profiles
+    set tracking_id_source_column = 'Tracking source',
+        tracking_id_source_mappings = '[{"sourceValue":"ROP3","trackingIdSource":"rop3"}]'::jsonb
+    where profile_key = 'partner-alpha-second-feed'
+  $$,
+  '23514',
+  null,
+  'a profile cannot combine a fixed tracking type with row-level tracking mappings'
+);
+
+select lives_ok(
+  $$
+    update private.tier2_partner_profiles
+    set tracking_id_source = null,
+        tracking_id_source_column = 'Tracking source',
+        tracking_id_source_mappings = '[
+          {"sourceValue":"PGID3 (Joshua Project)","trackingIdSource":"peopleid3"},
+          {"sourceValue":"ROP3","trackingIdSource":"rop3"},
+          {"sourceValue":"Local / Organization code","trackingIdSource":"provider-native"}
+        ]'::jsonb
+    where profile_key = 'partner-alpha-second-feed'
+  $$,
+  'a profile can use the approved exact row-level tracking-source contract'
 );
 
 create temporary table tier2_profile_display_metadata_before as
