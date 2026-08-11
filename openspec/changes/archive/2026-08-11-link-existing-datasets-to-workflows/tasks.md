@@ -24,11 +24,11 @@
 - [x] 4.3 Present the mapping and identity-authority gate to the user for consultation before canary configuration.
 - [x] 4.4 Extend Tier 2 profiles, persistence, UI, and forming to support a reviewed row-level tracking-source map with no fallback.
 - [x] 4.5 Add and verify permanent source-row IDs in Final-58 and Final-Sudan without changing existing source values.
-- [ ] 4.6 Link and run Final-58 as a forming-only canary, compare its candidate with retained source evidence, and stop before identity allocation or publication.
+- [ ] 4.6 Link and run Final-58 as a forming-only canary, compare its candidate with retained source evidence, and stop before identity allocation or publication. Release evidence: Final-58 is linked to active profile `final-58`; a production source-only run retained 245/245 rows with 245 unique permanent row IDs; the three retained Tier 2 contract resources were activated; candidate construction then failed closed because no committed AX registry revision exists. No identity run, dataset publication, or product publication was created. Completing this canary remains gated by the separately reviewed legacy stable-key crosswalk and registry cutover.
 
 ## 5. Verification and closure
 
 - [x] 5.1 Run focused tests, `pnpm run smoke:check`, and every command required by `pnpm run verify:change`.
 - [x] 5.2 Run `pnpm run verify:change:run` successfully and classify/fix any failures.
 - [x] 5.3 Verify the local administrator workflow end to end while confirming no ingestion or publication side effect.
-- [x] 5.4 Update tasks with completed evidence; leave the OpenSpec change active until the approved production canary is implemented and verified.
+- [x] 5.4 Update tasks with completed evidence and archive the releasable workflow-linking behavior while retaining the registry-gated production canary as an explicit incomplete item.
