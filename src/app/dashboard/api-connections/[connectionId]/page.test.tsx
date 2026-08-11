@@ -9,8 +9,10 @@ import {
   getApiConnection,
   listApiConnectionRuns,
 } from "@/lib/api-connections";
+import { getGoogleSheetsConnectionWorkflow } from "@/lib/api-connections/workflow-assignments";
 import { getCurrentIdentity } from "@/lib/auth";
 import { getGoogleSheetsServiceAccountEmail } from "@/lib/google-sheets";
+import { getActiveReferenceResource } from "@/lib/reference-resources";
 import ApiConnectionDetailPage from "./page";
 
 vi.mock("next/navigation", () => ({
@@ -35,18 +37,31 @@ vi.mock("@/lib/google-sheets", () => ({
   getGoogleSheetsServiceAccountEmail: vi.fn(),
 }));
 
+vi.mock("@/lib/api-connections/workflow-assignments", () => ({
+  getGoogleSheetsConnectionWorkflow: vi.fn(),
+}));
+
+vi.mock("@/lib/reference-resources", () => ({
+  getActiveReferenceResource: vi.fn(),
+}));
+
 vi.mock("@/components/dashboard/api-connection-detail-client", () => ({
   ApiConnectionDetailClient: ({
     connection,
     initialRuns,
     serviceAccountEmail,
+    initialWorkflow,
+    tier2OwnerOptions,
   }: {
     connection: { name: string };
     initialRuns: unknown[];
     serviceAccountEmail: string | null;
+    initialWorkflow: { kind: string } | null;
+    tier2OwnerOptions: Array<{ key: string }>;
   }) => (
     <div data-testid="api-connection-detail-client">
-      {connection.name}:{initialRuns.length}:{serviceAccountEmail ?? "missing-email"}
+      {connection.name}:{initialRuns.length}:{serviceAccountEmail ?? "missing-email"}:
+      {initialWorkflow?.kind ?? "none"}:{tier2OwnerOptions.length}
     </div>
   ),
 }));
@@ -58,6 +73,10 @@ const listApiConnectionRunsMock = vi.mocked(listApiConnectionRuns);
 const getGoogleSheetsServiceAccountEmailMock = vi.mocked(
   getGoogleSheetsServiceAccountEmail,
 );
+const getGoogleSheetsConnectionWorkflowMock = vi.mocked(
+  getGoogleSheetsConnectionWorkflow,
+);
+const getActiveReferenceResourceMock = vi.mocked(getActiveReferenceResource);
 const redirectMock = vi.mocked(redirect);
 const notFoundMock = vi.mocked(notFound);
 
@@ -177,9 +196,59 @@ describe("/dashboard/api-connections/[connectionId]", () => {
     expect(screen.getByRole("heading", { name: "IMB (People Groups)" })).toBeTruthy();
     expect(screen.getByText("Up to date")).toBeTruthy();
     expect(screen.getByTestId("api-connection-detail-client").textContent).toBe(
-      "IMB (People Groups):1:sheets@app-project.iam.gserviceaccount.com",
+      "IMB (People Groups):1:sheets@app-project.iam.gserviceaccount.com:none:0",
     );
     expect(getApiConnectionMock).toHaveBeenCalledWith(connection.id);
     expect(listApiConnectionRunsMock).toHaveBeenCalledWith(connection.id);
+  });
+
+  it("loads the existing workflow and active Tier 2 owners for a Sheet", async () => {
+    getCurrentIdentityMock.mockResolvedValue({
+      ownerId: "admin-1",
+      email: "admin@example.com",
+      fullName: "Admin",
+      workspaceRole: "admin",
+      isDatasetAdmin: true,
+      mode: "supabase",
+    });
+    getApiConnectionMock.mockResolvedValue({
+      ...connection,
+      provider: "google_sheets",
+      providerConfig: {
+        provider: "google_sheets",
+        spreadsheetId: "sheet-1",
+        spreadsheetUrl: "https://docs.google.com/spreadsheets/d/sheet-1/edit",
+        spreadsheetTitle: "Final",
+        sheetId: 1,
+        sheetTitle: "Final-58",
+        rangeMode: "full_tab",
+      },
+    });
+    listApiConnectionRunsMock.mockResolvedValue([]);
+    getGoogleSheetsConnectionWorkflowMock.mockResolvedValue({
+      sheetId: 1,
+      kind: "tier1",
+      sourceProfileKey: "wcd-people-groups",
+      stableKeyColumn: "Record ID",
+    });
+    getActiveReferenceResourceMock.mockResolvedValue({
+      payload: {
+        entries: [
+          {
+            canonicalSourceKey: "accelerate",
+            displayName: "Accelerate",
+            active: true,
+          },
+        ],
+      },
+    } as unknown as Awaited<ReturnType<typeof getActiveReferenceResource>>);
+
+    render(await renderPage());
+    expect(screen.getByTestId("api-connection-detail-client").textContent).toBe(
+      "IMB (People Groups):0:sheets@app-project.iam.gserviceaccount.com:tier1:1",
+    );
+    expect(getGoogleSheetsConnectionWorkflowMock).toHaveBeenCalledWith(
+      connection.id,
+    );
   });
 });

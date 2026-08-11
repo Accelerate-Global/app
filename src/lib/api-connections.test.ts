@@ -834,22 +834,36 @@ describe("Google Sheets provider runs", () => {
       path.join(process.cwd(), "src/lib/api-connections/index.ts"),
       "utf8",
     );
+    const workflowSource = await readFile(
+      path.join(
+        process.cwd(),
+        "src/lib/api-connections/workflow-assignments.ts",
+      ),
+      "utf8",
+    );
     const start = source.indexOf("export async function createGoogleSheetsConnections");
     const end = source.indexOf("export async function checkGoogleSheetsConnectionAccess", start);
     const createSource = source.slice(start, end);
     const transactionStart = createSource.indexOf("getDb().transaction(async (tx) =>");
     const connectionInsert = createSource.indexOf(".insert(apiConnections)", transactionStart);
-    const tier1Insert = createSource.indexOf(".insert(sourceProfileBindings)", connectionInsert);
-    const tier2Insert = createSource.indexOf("insert into private.tier2_partner_profiles", tier1Insert);
-    const transactionReturn = createSource.indexOf("return rows;", tier2Insert);
+    const workflowPersist = createSource.indexOf(
+      "persistGoogleSheetsWorkflowAssignments",
+      connectionInsert,
+    );
+    const transactionReturn = createSource.indexOf("return rows;", workflowPersist);
 
     expect(transactionStart).toBeGreaterThan(-1);
     expect(connectionInsert).toBeGreaterThan(transactionStart);
-    expect(tier1Insert).toBeGreaterThan(connectionInsert);
-    expect(tier2Insert).toBeGreaterThan(tier1Insert);
-    expect(transactionReturn).toBeGreaterThan(tier2Insert);
+    expect(workflowPersist).toBeGreaterThan(connectionInsert);
+    expect(transactionReturn).toBeGreaterThan(workflowPersist);
     expect(createSource).toContain("validateGoogleSheetsWorkflowAssignments");
-    expect(createSource).toContain("A valid active engagement field-mapping contract is required");
-    expect(createSource).toContain("Choose an active dataset owner from the source registry");
+    expect(workflowSource).toContain(".insert(sourceProfileBindings)");
+    expect(workflowSource).toContain("insert into private.tier2_partner_profiles");
+    expect(workflowSource).toContain(
+      "A valid active engagement field-mapping contract is required",
+    );
+    expect(workflowSource).toContain(
+      "Choose an active dataset owner from the source registry",
+    );
   });
 });

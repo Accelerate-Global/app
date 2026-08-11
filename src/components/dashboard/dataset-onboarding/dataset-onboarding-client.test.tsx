@@ -275,6 +275,8 @@ describe("DatasetOnboardingClient", () => {
           stableRowKeyColumn: "People Group",
           trackingIdColumn: "Country",
           trackingIdSource: "provider-native",
+          trackingIdSourceColumn: null,
+          trackingIdSourceMappings: [],
           sourceRop3Column: null,
           sourceCountryColumn: null,
           sourceIso3Column: null,

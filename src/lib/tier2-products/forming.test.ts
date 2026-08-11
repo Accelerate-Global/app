@@ -3,7 +3,10 @@ import { describe, expect, it } from "vitest";
 import { normalizeHeaders } from "@/lib/csv";
 import { buildAxIdentityCodes } from "@/lib/identity-registry";
 
-import { formTier2PartnerRows } from "./forming";
+import {
+  extractTier2IdentityEvidence,
+  formTier2PartnerRows,
+} from "./forming";
 import { resolveTier2PartnerSourceAlias } from "./resources";
 import type {
   Tier2FormingInput,
@@ -22,6 +25,8 @@ const profile: Tier2PartnerProfileConfig = {
   stableRowKeyColumn: "Partner row ID",
   trackingIdColumn: "Tracking ID",
   trackingIdSource: "peopleid3",
+  trackingIdSourceColumn: null,
+  trackingIdSourceMappings: [],
   sourceRop3Column: "Source ROP3",
   sourceCountryColumn: "Country",
   sourceIso3Column: "ISO3",
@@ -243,6 +248,132 @@ describe("Tier 2 partner forming", () => {
     expect(valueByLabel(result, 0, "Geo_Country_Name")).toBe("Alpha Country");
     expect(valueByLabel(result, 0, "Engage_Binary")).toBe("TRUE");
     expect(result.resourceLineage).toEqual(resources.lineage);
+  });
+
+  it("resolves reviewed mixed tracking types independently for every row", () => {
+    const mixedColumns = normalizeHeaders([
+      "Partner row ID",
+      "Tracking ID",
+      "Tracking source",
+      "Source ROP3",
+      "Country",
+      "ISO3",
+      "Name",
+      "Engaged",
+    ]);
+    const mixedProfile: Tier2PartnerProfileConfig = {
+      ...profile,
+      trackingIdSource: null,
+      trackingIdSourceColumn: "Tracking source",
+      trackingIdSourceMappings: [
+        {
+          sourceValue: "PGID3 (Joshua Project)",
+          trackingIdSource: "peopleid3",
+        },
+        { sourceValue: "ROP3", trackingIdSource: "rop3" },
+        {
+          sourceValue: "Local / Organization code",
+          trackingIdSource: "provider-native",
+        },
+      ],
+    };
+    const row = (values: Record<string, string>) =>
+      Object.fromEntries(
+        mixedColumns.map((column) => [column.key, values[column.label] ?? ""]),
+      );
+    const input: Tier2FormingInput = {
+      profile: mixedProfile,
+      sourceRunId: "mixed-run",
+      columns: mixedColumns,
+      rows: [
+        row({
+          "Partner row ID": "row-1",
+          "Tracking ID": "900001",
+          "Tracking source": "PGID3 (Joshua Project)",
+          "Source ROP3": "100001",
+          Country: "Alpha",
+          ISO3: "AAA",
+          Name: "People A",
+          Engaged: "yes",
+        }),
+        row({
+          "Partner row ID": "row-2",
+          "Tracking ID": "100002",
+          "Tracking source": "ROP3",
+          "Source ROP3": "100002",
+          Country: "Beta",
+          ISO3: "BBB",
+          Name: "People B",
+          Engaged: "yes",
+        }),
+        row({
+          "Partner row ID": "row-3",
+          "Tracking ID": "local-3",
+          "Tracking source": "Local / Organization code",
+          "Source ROP3": "100001",
+          Country: "Alpha",
+          ISO3: "AAA",
+          Name: "People C",
+          Engaged: "yes",
+        }),
+      ],
+      resources,
+    };
+    const result = formTier2PartnerRows(input);
+
+    expect(result.valid).toBe(true);
+    expect(result.rows.map((_, index) =>
+      valueByLabel(result, index, "Tier2_Tracking_ID_Source"),
+    )).toEqual(["peopleid3", "rop3", "provider-native"]);
+    expect(
+      extractTier2IdentityEvidence(input, result).map(
+        (entry) => entry.trackingIdSource,
+      ),
+    ).toEqual(["peopleid3", "rop3", "provider-native"]);
+  });
+
+  it("blocks an unknown row tracking source instead of using a fallback", () => {
+    const mixedColumns = normalizeHeaders([
+      "Partner row ID",
+      "Tracking ID",
+      "Tracking source",
+      "Source ROP3",
+      "Country",
+      "ISO3",
+    ]);
+    const row = Object.fromEntries(
+      mixedColumns.map((column) => [
+        column.key,
+        {
+          "Partner row ID": "row-1",
+          "Tracking ID": "900001",
+          "Tracking source": "Unknown registry",
+          "Source ROP3": "100001",
+          Country: "Alpha",
+          ISO3: "AAA",
+        }[column.label] ?? "",
+      ]),
+    );
+    const result = formTier2PartnerRows({
+      profile: {
+        ...profile,
+        trackingIdSource: null,
+        trackingIdSourceColumn: "Tracking source",
+        trackingIdSourceMappings: [
+          { sourceValue: "ROP3", trackingIdSource: "rop3" },
+        ],
+      },
+      sourceRunId: "unknown-source-run",
+      columns: mixedColumns,
+      rows: [row],
+      resources,
+    });
+
+    expect(result.valid).toBe(false);
+    expect(result.findings.map((entry) => entry.ruleCode)).toContain(
+      "unmapped-tracking-id-source",
+    );
+    expect(valueByLabel(result, 0, "Tier2_Tracking_ID_Source")).toBe("");
   });
 
   it("preserves conflicting source/crosswalk ROP evidence and blocks formation", () => {

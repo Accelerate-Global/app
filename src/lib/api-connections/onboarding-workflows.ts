@@ -8,6 +8,12 @@ import type {
 const workflowKeyPattern = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/u;
 
 const optionalColumnSchema = z.string().trim().min(1).max(256).nullable();
+const trackingIdSourceSchema = z.enum([
+  "peopleid3",
+  "peid",
+  "rop3",
+  "provider-native",
+]);
 
 export const googleSheetsWorkflowAssignmentSchema = z.discriminatedUnion("kind", [
   z.object({
@@ -23,19 +29,33 @@ export const googleSheetsWorkflowAssignmentSchema = z.discriminatedUnion("kind",
     ]),
     stableKeyColumn: z.string().trim().min(1).max(256),
   }).strict(),
-  z.object({
-    sheetId: z.number().int().nonnegative(),
-    kind: z.literal("tier2"),
-    ownerKey: z.string().trim().regex(workflowKeyPattern),
-    feedKey: z.string().trim().regex(workflowKeyPattern),
-    feedName: z.string().trim().min(1).max(160),
-    stableRowKeyColumn: z.string().trim().min(1).max(256),
-    trackingIdColumn: z.string().trim().min(1).max(256),
-    trackingIdSource: z.enum(["peopleid3", "peid", "rop3", "provider-native"]),
-    sourceRop3Column: optionalColumnSchema,
-    sourceCountryColumn: optionalColumnSchema,
-    sourceIso3Column: optionalColumnSchema,
-  }).strict(),
+  z
+    .object({
+      sheetId: z.number().int().nonnegative(),
+      kind: z.literal("tier2"),
+      ownerKey: z.string().trim().regex(workflowKeyPattern),
+      feedKey: z.string().trim().regex(workflowKeyPattern),
+      feedName: z.string().trim().min(1).max(160),
+      stableRowKeyColumn: z.string().trim().min(1).max(256),
+      trackingIdColumn: z.string().trim().min(1).max(256),
+      trackingIdSource: trackingIdSourceSchema.nullable(),
+      trackingIdSourceColumn: optionalColumnSchema,
+      trackingIdSourceMappings: z
+        .array(
+          z
+            .object({
+              sourceValue: z.string().trim().min(1).max(160),
+              trackingIdSource: trackingIdSourceSchema,
+            })
+            .strict(),
+        )
+        .min(0)
+        .max(50),
+      sourceRop3Column: optionalColumnSchema,
+      sourceCountryColumn: optionalColumnSchema,
+      sourceIso3Column: optionalColumnSchema,
+    })
+    .strict(),
 ]);
 
 export const googleSheetsWorkflowAssignmentsSchema = z
@@ -81,6 +101,7 @@ function assignmentColumns(assignment: GoogleSheetsWorkflowAssignment) {
   return [
     assignment.stableRowKeyColumn,
     assignment.trackingIdColumn,
+    assignment.trackingIdSourceColumn,
     assignment.sourceRop3Column,
     assignment.sourceCountryColumn,
     assignment.sourceIso3Column,
@@ -121,6 +142,54 @@ export function validateGoogleSheetsWorkflowAssignments(input: {
       throw new OnboardingWorkflowError(
         "Tier 2 stable row key and tracking ID must use different columns.",
       );
+    }
+    if (
+      assignment.kind === "tier2" &&
+      Boolean(assignment.trackingIdSourceColumn) ===
+        Boolean(assignment.trackingIdSource)
+    ) {
+      throw new OnboardingWorkflowError(
+        "Choose either one fixed tracking type or a row-specific tracking-type column.",
+      );
+    }
+    if (
+      assignment.kind === "tier2" &&
+      assignment.trackingIdSourceColumn &&
+      [assignment.stableRowKeyColumn, assignment.trackingIdColumn].includes(
+        assignment.trackingIdSourceColumn,
+      )
+    ) {
+      throw new OnboardingWorkflowError(
+        "Tier 2 row ID, tracking ID, and tracking-type columns must be distinct.",
+      );
+    }
+    if (
+      assignment.kind === "tier2" &&
+      !assignment.trackingIdSourceColumn &&
+      assignment.trackingIdSourceMappings.length > 0
+    ) {
+      throw new OnboardingWorkflowError(
+        "A fixed tracking type cannot also define row-specific mappings.",
+      );
+    }
+    if (
+      assignment.kind === "tier2" &&
+      assignment.trackingIdSourceColumn &&
+      assignment.trackingIdSourceMappings.length === 0
+    ) {
+      throw new OnboardingWorkflowError(
+        "Map at least one reviewed tracking-source value.",
+      );
+    }
+    if (assignment.kind === "tier2") {
+      const mappedValues = assignment.trackingIdSourceMappings.map((mapping) =>
+        mapping.sourceValue.normalize("NFKC").trim().replace(/\s+/gu, " ").toLowerCase(),
+      );
+      if (new Set(mappedValues).size !== mappedValues.length) {
+        throw new OnboardingWorkflowError(
+          "Each reviewed tracking-source value can be mapped only once.",
+        );
+      }
     }
     if (
       assignment.kind === "tier2" &&

@@ -33,6 +33,8 @@ const CODE_MANAGED_SOURCE_CONNECTION_ID =
   "6f9f6ef2-1188-4f71-9c24-ef01debf7a01";
 const CONFIGURABLE_SHEETS_SOURCE_CONNECTION_ID =
   "44444444-4444-4444-8444-444444444444";
+const UNASSIGNED_SHEETS_SOURCE_CONNECTION_ID =
+  "45454545-4545-4545-8545-454545454545";
 
 const FILTER_REGION_IDS: Record<CanonicalFilterRegionKey, string> = {
   global: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
@@ -790,7 +792,10 @@ async function insertSourceConnections(input: {
   `;
   await input.sql`
     delete from private.api_connections
-    where id = ${CONFIGURABLE_SHEETS_SOURCE_CONNECTION_ID}
+    where id in (
+      ${CONFIGURABLE_SHEETS_SOURCE_CONNECTION_ID},
+      ${UNASSIGNED_SHEETS_SOURCE_CONNECTION_ID}
+    )
   `;
   await input.sql`
     insert into private.api_connections (
@@ -837,6 +842,52 @@ async function insertSourceConnections(input: {
       ${CONFIGURABLE_SHEETS_SOURCE_CONNECTION_ID},
       'wcd-people-groups',
       'Record ID',
+      ${input.ownerId}
+    )
+  `;
+  await input.sql`
+    insert into private.api_connections (
+      id, name, description, method, url, request_headers,
+      secret_header_names, body_template, response_format,
+      response_data_path, import_mode, target_dataset_id,
+      dataset_name, dataset_classification, provider, provider_config,
+      created_by_owner_id, updated_by_owner_id
+    ) values (
+      ${UNASSIGNED_SHEETS_SOURCE_CONNECTION_ID},
+      'Smoke unassigned Sheet source',
+      'Local-only UI smoke fixture for existing workflow linking.',
+      'GET',
+      'https://docs.google.com/spreadsheets/d/smoke-unassigned-source/edit',
+      '[]'::jsonb,
+      '[]'::jsonb,
+      '',
+      'json',
+      '',
+      'create',
+      null,
+      'smoke-unassigned-source.csv',
+      'PGAC',
+      'google_sheets',
+      ${input.sql.json({
+        provider: "google_sheets",
+        spreadsheetId: "smoke-unassigned-source",
+        spreadsheetUrl:
+          "https://docs.google.com/spreadsheets/d/smoke-unassigned-source/edit",
+        spreadsheetTitle: "Smoke unassigned source",
+        sheetId: 202,
+        sheetTitle: "Engagement",
+        rangeMode: "full_tab",
+        headerSelection: {
+          mode: "auto",
+          startRow: 1,
+          endRow: 1,
+          headers: ["Record ID", "Tracking ID", "Country"],
+          fingerprint: "smoke-unassigned-source-header",
+          confidence: "high",
+          confirmedAt: "2026-08-06T00:00:00.000Z",
+        },
+      })},
+      ${input.ownerId},
       ${input.ownerId}
     )
   `;
@@ -1008,6 +1059,8 @@ async function main() {
         codeManagedSourceConnectionId: CODE_MANAGED_SOURCE_CONNECTION_ID,
         configurableSheetSourceConnectionId:
           CONFIGURABLE_SHEETS_SOURCE_CONNECTION_ID,
+        unassignedSheetSourceConnectionId:
+          UNASSIGNED_SHEETS_SOURCE_CONNECTION_ID,
       },
       users: {
         admin: adminUser,

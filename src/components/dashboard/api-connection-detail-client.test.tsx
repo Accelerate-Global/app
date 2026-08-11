@@ -126,6 +126,15 @@ const googleSheetsConnection: ApiConnection = {
     sheetId: 1,
     sheetTitle: "Alpha",
     rangeMode: "full_tab",
+    headerSelection: {
+      mode: "auto",
+      startRow: 1,
+      endRow: 1,
+      headers: ["Record ID", "Tracking ID", "ROP3", "Country"],
+      fingerprint: "header-fingerprint",
+      confidence: "high",
+      confirmedAt: "2026-04-24T12:00:00.000Z",
+    },
   },
   importMode: "replace",
   targetDatasetId: "dataset-1",
@@ -724,15 +733,14 @@ describe("ApiConnectionDetailClient", () => {
     expect(clipboardWrite).toHaveBeenCalledWith(countryChecksum);
   });
 
-  it("configures a Google Sheets forming profile and durable key", async () => {
+  it("links an existing Google Sheet to a Tier 1 workflow", async () => {
     const fetchMock = vi.fn(async () =>
       Response.json({
-        profile: {
-          key: "wcd-people-groups",
-          engineKey: "wcd",
-          label: "World Christian Database forming",
+        assignment: {
+          sheetId: 1,
+          kind: "tier1",
+          sourceProfileKey: "wcd-people-groups",
           stableKeyColumn: "Record ID",
-          configurable: true,
         },
       }),
     );
@@ -744,24 +752,170 @@ describe("ApiConnectionDetailClient", () => {
         serviceAccountEmail={serviceAccountEmail}
       />,
     );
-    fireEvent.change(screen.getByLabelText("Source contract"), {
-      target: { value: "wcd-people-groups" },
+    fireEvent.change(screen.getByLabelText("Data workflow"), {
+      target: { value: "tier1-wcd" },
     });
-    fireEvent.change(screen.getByLabelText("Stable-key column"), {
+    fireEvent.change(screen.getByLabelText("Permanent source-row ID column"), {
       target: { value: "Record ID" },
     });
-    const saveProfileButton = screen.getByRole("button", {
-      name: "Save profile",
+    const linkWorkflowButton = screen.getByRole("button", {
+      name: "Link workflow",
     });
-    expect(saveProfileButton.getAttribute("data-smoke-write")).toBe("unsafe");
-    fireEvent.click(saveProfileButton);
+    expect(linkWorkflowButton.getAttribute("data-smoke-write")).toBe("unsafe");
+    fireEvent.click(linkWorkflowButton);
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
-        `/api/admin/api-connections/${googleSheetsConnection.id}/source-profile`,
+        `/api/admin/api-connections/${googleSheetsConnection.id}/workflow`,
         expect.objectContaining({ method: "PUT" }),
       ),
     );
     expect(refreshMock).toHaveBeenCalled();
+  });
+
+  it("links an existing engagement dataset to an exact Tier 2 workflow", async () => {
+    const fetchMock = vi.fn(async () => Response.json({ assignment: {} }));
+    vi.stubGlobal("fetch", fetchMock);
+    render(
+      <ApiConnectionDetailClient
+        connection={{ ...googleSheetsConnection, sourceProfile: null }}
+        initialRuns={[]}
+        serviceAccountEmail={serviceAccountEmail}
+        tier2OwnerOptions={[{ key: "accelerate", label: "Accelerate" }]}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText("Data workflow"), {
+      target: { value: "tier2" },
+    });
+    fireEvent.change(screen.getByLabelText("Dataset owner"), {
+      target: { value: "accelerate" },
+    });
+    fireEvent.change(screen.getByLabelText("Permanent Tier 2 row ID"), {
+      target: { value: "Record ID" },
+    });
+    fireEvent.change(screen.getByLabelText("Tracking ID column"), {
+      target: { value: "Tracking ID" },
+    });
+    fireEvent.change(screen.getByLabelText("Country evidence column"), {
+      target: { value: "Country" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Link workflow" }));
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        `/api/admin/api-connections/${googleSheetsConnection.id}/workflow`,
+        expect.objectContaining({
+          method: "PUT",
+          body: expect.stringContaining('"kind":"tier2"'),
+        }),
+      ),
+    );
+  });
+
+  it("links a mixed-source engagement dataset with an explicit row map", async () => {
+    const fetchMock = vi.fn(async () => Response.json({ assignment: {} }));
+    vi.stubGlobal("fetch", fetchMock);
+    if (googleSheetsConnection.providerConfig?.provider !== "google_sheets") {
+      throw new Error("Expected the Google Sheets connection fixture.");
+    }
+    const mixedConnection: ApiConnection = {
+      ...googleSheetsConnection,
+      providerConfig: {
+        ...googleSheetsConnection.providerConfig,
+        headerSelection: {
+          ...googleSheetsConnection.providerConfig.headerSelection!,
+          headers: [
+            "Record ID",
+            "Tracking ID",
+            "Tracking source",
+            "ROP3",
+            "Country",
+          ],
+        },
+      },
+    };
+    render(
+      <ApiConnectionDetailClient
+        connection={mixedConnection}
+        initialRuns={[]}
+        serviceAccountEmail={serviceAccountEmail}
+        tier2OwnerOptions={[{ key: "accelerate", label: "Accelerate" }]}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText("Data workflow"), {
+      target: { value: "tier2" },
+    });
+    fireEvent.change(screen.getByLabelText("Dataset owner"), {
+      target: { value: "accelerate" },
+    });
+    fireEvent.change(screen.getByLabelText("Permanent Tier 2 row ID"), {
+      target: { value: "Record ID" },
+    });
+    fireEvent.change(screen.getByLabelText("Tracking ID type"), {
+      target: { value: "per-row" },
+    });
+    fireEvent.change(screen.getByLabelText("Tracking-type column"), {
+      target: { value: "Tracking source" },
+    });
+    fireEvent.change(screen.getByLabelText("Tracking ID column"), {
+      target: { value: "Tracking ID" },
+    });
+    fireEvent.change(screen.getByLabelText("Tracking source value 1"), {
+      target: { value: "PGID3 (Joshua Project)" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Add source value" }));
+    fireEvent.change(screen.getByLabelText("Tracking source value 2"), {
+      target: { value: "ROP3" },
+    });
+    fireEvent.change(screen.getByLabelText("Tracking source type 2"), {
+      target: { value: "rop3" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Link workflow" }));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    const request = (
+      fetchMock.mock.calls.at(-1) as unknown as
+        | [RequestInfo | URL, RequestInit]
+        | undefined
+    )?.[1];
+    expect(JSON.parse(String(request?.body))).toMatchObject({
+      trackingIdSource: null,
+      trackingIdSourceColumn: "Tracking source",
+      trackingIdSourceMappings: [
+        {
+          sourceValue: "PGID3 (Joshua Project)",
+          trackingIdSource: "peopleid3",
+        },
+        { sourceValue: "ROP3", trackingIdSource: "rop3" },
+      ],
+    });
+  });
+
+  it("shows an active workflow read-only without a relink control", () => {
+    render(
+      <ApiConnectionDetailClient
+        connection={{ ...googleSheetsConnection, sourceProfile: null }}
+        initialRuns={[]}
+        serviceAccountEmail={serviceAccountEmail}
+        initialWorkflow={{
+          sheetId: 1,
+          kind: "tier2",
+          ownerKey: "accelerate",
+          feedKey: "final-58",
+          feedName: "Final-58",
+          stableRowKeyColumn: "Record ID",
+          trackingIdColumn: "Tracking ID",
+          trackingIdSource: "peopleid3",
+          trackingIdSourceColumn: null,
+          trackingIdSourceMappings: [],
+          sourceRop3Column: "ROP3",
+          sourceCountryColumn: "Country",
+          sourceIso3Column: null,
+        }}
+        tier2OwnerOptions={[{ key: "accelerate", label: "Accelerate" }]}
+      />,
+    );
+    expect(screen.getByText("Active workflow")).toBeTruthy();
+    expect(screen.getByText(/This assignment is read-only/)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Link workflow" })).toBeNull();
   });
 
   it("starts ingestion through the existing run endpoint and polls active runs", async () => {

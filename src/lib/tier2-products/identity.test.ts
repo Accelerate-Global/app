@@ -13,6 +13,7 @@ import type {
 const columns = normalizeHeaders([
   "Dataset_Row_Key",
   "Tier2_Tracking_ID",
+  "Tier2_Tracking_ID_Source",
   "PG_PeopleID3",
   "PG_PEID",
   "PG_ROP3",
@@ -28,6 +29,8 @@ function row(stableRowKey: string) {
         ? stableRowKey
         : column.label === "Tier2_Tracking_ID"
           ? "900001"
+          : column.label === "Tier2_Tracking_ID_Source"
+            ? "peopleid3"
           : column.label === "PG_PeopleID3"
             ? "900001"
             : column.label === "PG_ROP3"
@@ -51,6 +54,8 @@ const formingInput = {
     stableRowKeyColumn: "ID",
     trackingIdColumn: "Tracking",
     trackingIdSource: "peopleid3",
+    trackingIdSourceColumn: null,
+    trackingIdSourceMappings: [],
     sourceRop3Column: null,
     sourceCountryColumn: null,
     sourceIso3Column: null,

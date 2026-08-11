@@ -110,6 +110,8 @@ describe("datasetOnboardingReducer", () => {
         stableRowKeyColumn: "Row ID",
         trackingIdColumn: "PeopleID3",
         trackingIdSource: "peopleid3",
+        trackingIdSourceColumn: null,
+        trackingIdSourceMappings: [],
         sourceRop3Column: null,
         sourceCountryColumn: null,
         sourceIso3Column: null,

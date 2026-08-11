@@ -7,9 +7,15 @@ import { DashboardPageShell } from "@/components/layout/dashboard-page-shell";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { getApiConnection, listApiConnectionRuns } from "@/lib/api-connections";
+import {
+  buildTier2WorkflowOwnerOptions,
+} from "@/lib/api-connections/onboarding-workflows";
+import { getGoogleSheetsConnectionWorkflow } from "@/lib/api-connections/workflow-assignments";
 import type { ApiConnectionRunStatus } from "@/lib/api-types";
 import { getCurrentIdentity } from "@/lib/auth";
 import { getGoogleSheetsServiceAccountEmail } from "@/lib/google-sheets";
+import { getActiveReferenceResource } from "@/lib/reference-resources";
+import { SOURCE_ALIASES_RESOURCE_KEY } from "@/lib/reference-resources/pipeline-types";
 import { cn } from "@/lib/utils";
 
 type ApiConnectionDetailPageProps = {
@@ -56,6 +62,15 @@ function getConfiguredGoogleSheetsServiceAccountEmail() {
   }
 }
 
+async function configuredTier2Owners() {
+  try {
+    const active = await getActiveReferenceResource(SOURCE_ALIASES_RESOURCE_KEY);
+    return buildTier2WorkflowOwnerOptions(active.payload.entries);
+  } catch {
+    return [];
+  }
+}
+
 export default async function ApiConnectionDetailPage({
   params,
 }: ApiConnectionDetailPageProps) {
@@ -76,9 +91,20 @@ export default async function ApiConnectionDetailPage({
     notFound();
   }
 
-  const [runs, googleSheetsServiceAccountEmail] = await Promise.all([
+  const [
+    runs,
+    googleSheetsServiceAccountEmail,
+    initialWorkflow,
+    tier2OwnerOptions,
+  ] = await Promise.all([
     listApiConnectionRuns(connection.id),
     Promise.resolve(getConfiguredGoogleSheetsServiceAccountEmail()),
+    connection.provider === "google_sheets"
+      ? getGoogleSheetsConnectionWorkflow(connection.id)
+      : Promise.resolve(null),
+    connection.provider === "google_sheets"
+      ? configuredTier2Owners()
+      : Promise.resolve([]),
   ]);
   const headerStatus = runs[0]?.status ?? "idle";
 
@@ -126,6 +152,8 @@ export default async function ApiConnectionDetailPage({
           connection={connection}
           initialRuns={runs}
           serviceAccountEmail={googleSheetsServiceAccountEmail}
+          initialWorkflow={initialWorkflow}
+          tier2OwnerOptions={tier2OwnerOptions}
         />
       </DashboardPageShell>
     </div>

@@ -347,6 +347,17 @@ export type Tier2WorkflowOwnerOption = {
   label: string;
 };
 
+export type Tier2TrackingIdSource =
+  | "peopleid3"
+  | "peid"
+  | "rop3"
+  | "provider-native";
+
+export type Tier2TrackingIdSourceMapping = {
+  sourceValue: string;
+  trackingIdSource: Tier2TrackingIdSource;
+};
+
 export type GoogleSheetsWorkflowAssignment =
   | {
       sheetId: number;
@@ -368,7 +379,9 @@ export type GoogleSheetsWorkflowAssignment =
       feedName: string;
       stableRowKeyColumn: string;
       trackingIdColumn: string;
-      trackingIdSource: "peopleid3" | "peid" | "rop3" | "provider-native";
+      trackingIdSource: Tier2TrackingIdSource | null;
+      trackingIdSourceColumn: string | null;
+      trackingIdSourceMappings: Tier2TrackingIdSourceMapping[];
       sourceRop3Column: string | null;
       sourceCountryColumn: string | null;
       sourceIso3Column: string | null;

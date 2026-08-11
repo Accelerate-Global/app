@@ -206,6 +206,8 @@ describe("/api/admin/api-connections/google-sheets/connect", () => {
       stableRowKeyColumn: "Engagement ID",
       trackingIdColumn: "PeopleID3",
       trackingIdSource: "peopleid3" as const,
+      trackingIdSourceColumn: null,
+      trackingIdSourceMappings: [],
       sourceRop3Column: "ROP3",
       sourceCountryColumn: "Country",
       sourceIso3Column: "ISO3",

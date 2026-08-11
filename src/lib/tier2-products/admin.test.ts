@@ -59,6 +59,8 @@ describe("Tier 2 partner administration", () => {
       stable_row_key_column: "row_id",
       tracking_id_column: "people_id",
       tracking_id_source: "peopleid3",
+      tracking_id_source_column: null,
+      tracking_id_source_mappings: [],
       source_rop3_column: null,
       source_country_column: null,
       source_iso3_column: null,

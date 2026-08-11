@@ -81,6 +81,7 @@ export type UiSmokeBootstrap = {
     editableFieldSourceTypeId: string;
     codeManagedSourceConnectionId: string;
     configurableSheetSourceConnectionId: string;
+    unassignedSheetSourceConnectionId: string;
   };
   users: {
     pro: {

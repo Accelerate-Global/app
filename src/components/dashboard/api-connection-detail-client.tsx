@@ -7,6 +7,7 @@ import {
   DownloadIcon,
   ExternalLinkIcon,
   FileSpreadsheetIcon,
+  GitBranchIcon,
   Loader2Icon,
   PlayIcon,
   RefreshCcwIcon,
@@ -68,7 +69,10 @@ import type {
   GoogleSheetsHeaderPreviewResponse,
   GoogleSheetsHeaderSelectionInput,
   GoogleSheetsHeaderSelectionUpdateResponse,
+  GoogleSheetsWorkflowAssignment,
+  Tier2WorkflowOwnerOption,
 } from "@/lib/api-types";
+import { normalizeWorkflowKey } from "@/lib/api-connections/onboarding-workflows";
 import { formatUtcTimestamp } from "@/lib/date-time";
 import type {
   ImbFormingRun,
@@ -81,6 +85,8 @@ type ApiConnectionDetailClientProps = {
   connection: ApiConnection;
   initialRuns: ApiConnectionRun[];
   serviceAccountEmail: string | null;
+  initialWorkflow?: GoogleSheetsWorkflowAssignment | null;
+  tier2OwnerOptions?: Tier2WorkflowOwnerOption[];
 };
 
 type DetailMessage = {
@@ -91,6 +97,12 @@ type DetailMessage = {
 
 const RUN_HISTORY_VISIBLE_ROW_LIMIT = 5;
 const RUN_HISTORY_SCROLL_AREA_HEIGHT = "h-[268px]";
+const TRACKING_ID_SOURCE_OPTIONS = [
+  { value: "peopleid3", label: "Joshua Project PeopleID3" },
+  { value: "peid", label: "PEID" },
+  { value: "rop3", label: "ROP3" },
+  { value: "provider-native", label: "Provider-native ID" },
+] as const;
 
 async function getErrorMessage(response: Response, fallback: string) {
   try {
@@ -967,6 +979,8 @@ export function ApiConnectionDetailClient({
   connection,
   initialRuns,
   serviceAccountEmail,
+  initialWorkflow = null,
+  tier2OwnerOptions = [],
 }: ApiConnectionDetailClientProps) {
   const router = useRouter();
   const googleSheetsConfig = getGoogleSheetsProviderConfig(connection);
@@ -1002,18 +1016,19 @@ export function ApiConnectionDetailClient({
     | "disconnect"
     | "header-preview"
     | "header-save"
-    | "profile-save"
-    | "profile-remove"
+    | "workflow-save"
     | null
   >(null);
-  const [sourceProfileKey, setSourceProfileKey] = useState(
-    connection.sourceProfile?.configurable ? connection.sourceProfile.key : "",
+  const [workflowAssignment, setWorkflowAssignment] = useState<
+    GoogleSheetsWorkflowAssignment
+  >(
+    initialWorkflow ?? {
+      sheetId: googleSheetsConfig?.sheetId ?? 0,
+      kind: "none",
+    },
   );
-  const [stableKeyColumn, setStableKeyColumn] = useState(
-    connection.sourceProfile?.configurable
-      ? (connection.sourceProfile.stableKeyColumn ?? "")
-      : "",
-  );
+  const reviewedHeaders = googleSheetsConfig?.headerSelection?.headers ?? [];
+  const hasActiveWorkflow = initialWorkflow !== null;
   const [isHeaderEditorOpen, setIsHeaderEditorOpen] = useState(false);
   const [headerPreview, setHeaderPreview] =
     useState<GoogleSheetsHeaderPreview | null>(null);
@@ -1283,72 +1298,156 @@ export function ApiConnectionDetailClient({
     }
   }
 
-  async function saveSourceProfile() {
-    if (!sourceProfileKey || !stableKeyColumn.trim()) return;
-    setSourceBusyAction("profile-save");
+  function setWorkflowKind(value: string) {
+    if (!googleSheetsConfig) return;
+    if (value === "tier1-accelerate" || value === "tier1-wcd") {
+      setWorkflowAssignment({
+        sheetId: googleSheetsConfig.sheetId,
+        kind: "tier1",
+        sourceProfileKey:
+          value === "tier1-accelerate"
+            ? "accelerate-owned-people-groups"
+            : "wcd-people-groups",
+        stableKeyColumn: "",
+      });
+      return;
+    }
+    if (value === "tier2") {
+      const feedName = connection.name;
+      setWorkflowAssignment({
+        sheetId: googleSheetsConfig.sheetId,
+        kind: "tier2",
+        ownerKey: "",
+        feedKey: normalizeWorkflowKey(feedName),
+        feedName,
+        stableRowKeyColumn: "",
+        trackingIdColumn: "",
+        trackingIdSource: "peopleid3",
+        trackingIdSourceColumn: null,
+        trackingIdSourceMappings: [],
+        sourceRop3Column: null,
+        sourceCountryColumn: null,
+        sourceIso3Column: null,
+      });
+      return;
+    }
+    setWorkflowAssignment({ sheetId: googleSheetsConfig.sheetId, kind: "none" });
+  }
+
+  function workflowSelectValue(assignment: GoogleSheetsWorkflowAssignment) {
+    if (assignment.kind === "tier1") {
+      return assignment.sourceProfileKey === "accelerate-owned-people-groups"
+        ? "tier1-accelerate"
+        : "tier1-wcd";
+    }
+    return assignment.kind;
+  }
+
+  function workflowSummary(assignment: GoogleSheetsWorkflowAssignment) {
+    if (assignment.kind === "tier1") {
+      const label =
+        assignment.sourceProfileKey === "accelerate-owned-people-groups"
+          ? "Tier 1 — Accelerate-owned people groups"
+          : "Tier 1 — World Christian Database";
+      return `${label} · Permanent row ID: ${assignment.stableKeyColumn}`;
+    }
+    if (assignment.kind === "tier2") {
+      const owner = tier2OwnerOptions.find(
+        (option) => option.key === assignment.ownerKey,
+      );
+      const trackingSource = assignment.trackingIdSourceColumn
+        ? `per row from ${assignment.trackingIdSourceColumn}`
+        : assignment.trackingIdSource;
+      return `Tier 2 — ${assignment.feedName} · ${owner?.label ?? assignment.ownerKey} · ${trackingSource}: ${assignment.trackingIdColumn}`;
+    }
+    return "Not linked";
+  }
+
+  function updateTier2Workflow(
+    updates: Partial<
+      Extract<GoogleSheetsWorkflowAssignment, { kind: "tier2" }>
+    >,
+  ) {
+    setWorkflowAssignment((current) =>
+      current.kind === "tier2" ? { ...current, ...updates } : current,
+    );
+  }
+
+  function workflowAssignmentIsComplete() {
+    if (workflowAssignment.kind === "none") return false;
+    if (workflowAssignment.kind === "tier1") {
+      return Boolean(workflowAssignment.stableKeyColumn.trim());
+    }
+    return Boolean(
+      workflowAssignment.ownerKey.trim() &&
+        workflowAssignment.feedKey.trim() &&
+        workflowAssignment.feedName.trim() &&
+        workflowAssignment.stableRowKeyColumn.trim() &&
+        workflowAssignment.trackingIdColumn.trim() &&
+        workflowAssignment.stableRowKeyColumn !==
+          workflowAssignment.trackingIdColumn &&
+        (workflowAssignment.trackingIdSource
+          ? !workflowAssignment.trackingIdSourceColumn &&
+            workflowAssignment.trackingIdSourceMappings.length === 0
+          : Boolean(
+              workflowAssignment.trackingIdSourceColumn?.trim() &&
+                workflowAssignment.trackingIdSourceColumn !==
+                  workflowAssignment.stableRowKeyColumn &&
+                workflowAssignment.trackingIdSourceColumn !==
+                  workflowAssignment.trackingIdColumn &&
+                workflowAssignment.trackingIdSourceMappings.length > 0 &&
+                workflowAssignment.trackingIdSourceMappings.every(
+                  (mapping) => mapping.sourceValue.trim(),
+                ) &&
+                new Set(
+                  workflowAssignment.trackingIdSourceMappings.map((mapping) =>
+                    mapping.sourceValue
+                      .normalize("NFKC")
+                      .trim()
+                      .replace(/\s+/gu, " ")
+                      .toLowerCase(),
+                  ),
+                ).size ===
+                  workflowAssignment.trackingIdSourceMappings.length,
+            )),
+    );
+  }
+
+  async function saveWorkflowAssignment() {
+    if (!workflowAssignmentIsComplete()) return;
+    setSourceBusyAction("workflow-save");
     setMessage(null);
     try {
       const response = await fetch(
-        `/api/admin/api-connections/${connection.id}/source-profile`,
+        `/api/admin/api-connections/${connection.id}/workflow`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ sourceProfileKey, stableKeyColumn }),
+          body: JSON.stringify(workflowAssignment),
         },
       );
       if (!response.ok) {
         throw new Error(
-          await getErrorMessage(response, "The source profile could not be saved."),
+          await getErrorMessage(
+            response,
+            "The data workflow could not be linked.",
+          ),
         );
       }
       setMessage({
-        title: "Source profile configured",
-        detail: "Future ingestion runs will stage reviewable formed candidates.",
+        title: "Data workflow linked",
+        detail:
+          "The connection is configured. No ingestion, forming, publication, schedule, or identity action was started.",
         tone: "success",
       });
       router.refresh();
     } catch (error) {
       setMessage({
-        title: "Source profile failed",
+        title: "Workflow linking failed",
         detail:
           error instanceof Error
             ? error.message
-            : "The source profile could not be saved.",
-        tone: "error",
-      });
-    } finally {
-      setSourceBusyAction(null);
-    }
-  }
-
-  async function removeSourceProfile() {
-    setSourceBusyAction("profile-remove");
-    setMessage(null);
-    try {
-      const response = await fetch(
-        `/api/admin/api-connections/${connection.id}/source-profile`,
-        { method: "DELETE" },
-      );
-      if (!response.ok) {
-        throw new Error(
-          await getErrorMessage(response, "The source profile could not be removed."),
-        );
-      }
-      setSourceProfileKey("");
-      setStableKeyColumn("");
-      setMessage({
-        title: "Source profile removed",
-        detail: "Future imports will publish through the standard connection flow.",
-        tone: "success",
-      });
-      router.refresh();
-    } catch (error) {
-      setMessage({
-        title: "Source profile removal failed",
-        detail:
-          error instanceof Error
-            ? error.message
-            : "The source profile could not be removed.",
+            : "The data workflow could not be linked.",
         tone: "error",
       });
     } finally {
@@ -1780,76 +1879,431 @@ export function ApiConnectionDetailClient({
 
             <div
               className="space-y-3 rounded-lg border border-border bg-muted/20 p-3"
-              data-smoke-surface="source-profile-binding"
-              data-smoke-ready="source-profile-binding"
             >
-              <div>
-                <div className="text-xs font-semibold uppercase text-muted-foreground">
-                  Forming profile
+              <div className="flex items-start gap-2">
+                <GitBranchIcon className="mt-0.5 size-4 shrink-0" />
+                <div>
+                  <div className="text-xs font-semibold uppercase text-muted-foreground">
+                    Data workflow
+                  </div>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Link this exact Sheet tab to its forming workflow. Saving the
+                    link does not start ingestion, forming, publication,
+                    scheduling, or identity work.
+                  </p>
                 </div>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Choose the source contract and a column whose value remains
-                  stable across refreshes.
-                </p>
               </div>
-              <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] md:items-end">
-                <label className="space-y-1 text-xs font-medium">
-                  Source contract
-                  <select
-                    value={sourceProfileKey}
-                    onChange={(event) => setSourceProfileKey(event.target.value)}
-                    className="block h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-                  >
-                    <option value="">Standard dataset import</option>
-                    <option value="accelerate-owned-people-groups">
-                      Accelerate-owned people groups
-                    </option>
-                    <option value="wcd-people-groups">
-                      World Christian Database
-                    </option>
-                  </select>
-                </label>
-                <label className="space-y-1 text-xs font-medium">
-                  Stable-key column
-                  <input
-                    value={stableKeyColumn}
-                    onChange={(event) => setStableKeyColumn(event.target.value)}
-                    disabled={!sourceProfileKey}
-                    placeholder="Record ID"
-                    className="block h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-                  />
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {sourceProfileKey ? (
-                    <Button
-                      type="button"
-                      size="sm"
-                      disabled={
-                        !stableKeyColumn.trim() || sourceBusyAction !== null
-                      }
-                      onClick={() => void saveSourceProfile()}
-                      data-smoke-trigger="source-profile-binding"
-                      data-smoke-write="unsafe"
+
+              {hasActiveWorkflow ? (
+                <div className="rounded-lg border border-border bg-background p-3">
+                  <div className="text-sm font-medium">Active workflow</div>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {workflowSummary(workflowAssignment)}
+                  </p>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    This assignment is read-only to preserve forming and identity
+                    lineage.
+                  </p>
+                </div>
+              ) : reviewedHeaders.length === 0 ? (
+                <Alert>
+                  <AlertTitle>Review headers first</AlertTitle>
+                  <AlertDescription>
+                    Save the current Sheet header selection before linking a data
+                    workflow.
+                  </AlertDescription>
+                </Alert>
+              ) : (
+                <div className="space-y-4">
+                  <label className="block space-y-1.5 text-sm">
+                    <span className="font-medium">Workflow</span>
+                    <select
+                      aria-label="Data workflow"
+                      className="h-10 w-full rounded-md border border-input bg-background px-3"
+                      value={workflowSelectValue(workflowAssignment)}
+                      onChange={(event) => setWorkflowKind(event.target.value)}
                     >
-                      {sourceBusyAction === "profile-save" ? (
-                        <Loader2Icon className="size-3.5 animate-spin" />
+                      <option value="none">No workflow link</option>
+                      <option value="tier1-accelerate">
+                        Tier 1 — Accelerate-owned people groups
+                      </option>
+                      <option value="tier1-wcd">
+                        Tier 1 — World Christian Database
+                      </option>
+                      <option value="tier2">
+                        Tier 2 — Engagement dataset
+                      </option>
+                    </select>
+                  </label>
+
+                  {workflowAssignment.kind === "tier1" ? (
+                    <label className="block space-y-1.5 text-sm">
+                      <span className="font-medium">
+                        Permanent source-row ID column
+                      </span>
+                      <select
+                        aria-label="Permanent source-row ID column"
+                        className="h-10 w-full rounded-md border border-input bg-background px-3"
+                        value={workflowAssignment.stableKeyColumn}
+                        onChange={(event) =>
+                          setWorkflowAssignment({
+                            ...workflowAssignment,
+                            stableKeyColumn: event.target.value,
+                          })
+                        }
+                      >
+                        <option value="">Choose a reviewed column</option>
+                        {reviewedHeaders.map((header) => (
+                          <option key={header} value={header}>
+                            {header}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  ) : null}
+
+                  {workflowAssignment.kind === "tier2" ? (
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <label className="block space-y-1.5 text-sm">
+                        <span className="font-medium">Dataset owner</span>
+                        <select
+                          aria-label="Dataset owner"
+                          className="h-10 w-full rounded-md border border-input bg-background px-3"
+                          value={workflowAssignment.ownerKey}
+                          onChange={(event) =>
+                            updateTier2Workflow({ ownerKey: event.target.value })
+                          }
+                        >
+                          <option value="">Choose an owner</option>
+                          {tier2OwnerOptions.map((owner) => (
+                            <option key={owner.key} value={owner.key}>
+                              {owner.label}
+                            </option>
+                          ))}
+                        </select>
+                        {tier2OwnerOptions.length === 0 ? (
+                          <span className="block text-xs text-destructive">
+                            No active dataset owners are available in the source
+                            registry.
+                          </span>
+                        ) : null}
+                      </label>
+                      <label className="block space-y-1.5 text-sm">
+                        <span className="font-medium">Engagement feed name</span>
+                        <input
+                          aria-label="Engagement feed name"
+                          className="h-10 w-full rounded-md border border-input bg-background px-3"
+                          value={workflowAssignment.feedName}
+                          onChange={(event) =>
+                            updateTier2Workflow({
+                              feedName: event.target.value,
+                              feedKey: normalizeWorkflowKey(event.target.value),
+                            })
+                          }
+                        />
+                      </label>
+                      <label className="block space-y-1.5 text-sm">
+                        <span className="font-medium">
+                          Permanent source-row ID column
+                        </span>
+                        <select
+                          aria-label="Permanent Tier 2 row ID"
+                          className="h-10 w-full rounded-md border border-input bg-background px-3"
+                          value={workflowAssignment.stableRowKeyColumn}
+                          onChange={(event) =>
+                            updateTier2Workflow({
+                              stableRowKeyColumn: event.target.value,
+                            })
+                          }
+                        >
+                          <option value="">Choose a reviewed column</option>
+                          {reviewedHeaders.map((header) => (
+                            <option key={header} value={header}>
+                              {header}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="block space-y-1.5 text-sm">
+                        <span className="font-medium">Tracking ID type</span>
+                        <select
+                          aria-label="Tracking ID type"
+                          className="h-10 w-full rounded-md border border-input bg-background px-3"
+                          value={
+                            workflowAssignment.trackingIdSourceColumn
+                              ? "per-row"
+                              : workflowAssignment.trackingIdSource ?? ""
+                          }
+                          onChange={(event) => {
+                            if (event.target.value === "per-row") {
+                              updateTier2Workflow({
+                                trackingIdSource: null,
+                                trackingIdSourceColumn: "",
+                                trackingIdSourceMappings: [
+                                  {
+                                    sourceValue: "",
+                                    trackingIdSource: "peopleid3",
+                                  },
+                                ],
+                              });
+                              return;
+                            }
+                            const trackingIdSource = event.target
+                              .value as NonNullable<
+                              Extract<
+                                GoogleSheetsWorkflowAssignment,
+                                { kind: "tier2" }
+                              >["trackingIdSource"]
+                            >;
+                            updateTier2Workflow({
+                              trackingIdSource,
+                              trackingIdSourceColumn: null,
+                              trackingIdSourceMappings: [],
+                              ...(trackingIdSource === "rop3"
+                                ? {
+                                    sourceRop3Column:
+                                      workflowAssignment.trackingIdColumn ||
+                                      null,
+                                  }
+                                : {}),
+                            });
+                          }}
+                        >
+                          {TRACKING_ID_SOURCE_OPTIONS.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                          <option value="per-row">
+                            Read the tracking type from each row
+                          </option>
+                        </select>
+                      </label>
+                      {workflowAssignment.trackingIdSourceColumn !== null ? (
+                        <div className="space-y-3 sm:col-span-2">
+                          <label className="block space-y-1.5 text-sm">
+                            <span className="font-medium">
+                              Tracking-type column
+                            </span>
+                            <select
+                              aria-label="Tracking-type column"
+                              className="h-10 w-full rounded-md border border-input bg-background px-3"
+                              value={workflowAssignment.trackingIdSourceColumn}
+                              onChange={(event) =>
+                                updateTier2Workflow({
+                                  trackingIdSourceColumn: event.target.value,
+                                })
+                              }
+                            >
+                              <option value="">Choose a reviewed column</option>
+                              {reviewedHeaders.map((header) => (
+                                <option key={header} value={header}>
+                                  {header}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                          <div className="space-y-2 rounded-md border border-border p-3">
+                            <p className="text-sm font-medium">
+                              Reviewed source-value mapping
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              Blank or unknown values will block that row; no
+                              fallback type is used.
+                            </p>
+                            {workflowAssignment.trackingIdSourceMappings.map(
+                              (mapping, index) => (
+                                <div
+                                  key={`${index}-${mapping.trackingIdSource}`}
+                                  className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]"
+                                >
+                                  <input
+                                    aria-label={`Tracking source value ${index + 1}`}
+                                    className="h-10 rounded-md border border-input bg-background px-3"
+                                    placeholder="Exact source value"
+                                    value={mapping.sourceValue}
+                                    onChange={(event) =>
+                                      updateTier2Workflow({
+                                        trackingIdSourceMappings:
+                                          workflowAssignment.trackingIdSourceMappings.map(
+                                            (entry, entryIndex) =>
+                                              entryIndex === index
+                                                ? {
+                                                    ...entry,
+                                                    sourceValue:
+                                                      event.target.value,
+                                                  }
+                                                : entry,
+                                          ),
+                                      })
+                                    }
+                                  />
+                                  <select
+                                    aria-label={`Tracking source type ${index + 1}`}
+                                    className="h-10 rounded-md border border-input bg-background px-3"
+                                    value={mapping.trackingIdSource}
+                                    onChange={(event) =>
+                                      updateTier2Workflow({
+                                        trackingIdSourceMappings:
+                                          workflowAssignment.trackingIdSourceMappings.map(
+                                            (entry, entryIndex) =>
+                                              entryIndex === index
+                                                ? {
+                                                    ...entry,
+                                                    trackingIdSource: event
+                                                      .target
+                                                      .value as typeof entry.trackingIdSource,
+                                                  }
+                                                : entry,
+                                          ),
+                                      })
+                                    }
+                                  >
+                                    {TRACKING_ID_SOURCE_OPTIONS.map((option) => (
+                                      <option
+                                        key={option.value}
+                                        value={option.value}
+                                      >
+                                        {option.label}
+                                      </option>
+                                    ))}
+                                  </select>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="icon"
+                                    aria-label={`Remove tracking source mapping ${index + 1}`}
+                                    disabled={
+                                      workflowAssignment
+                                        .trackingIdSourceMappings.length === 1
+                                    }
+                                    onClick={() =>
+                                      updateTier2Workflow({
+                                        trackingIdSourceMappings:
+                                          workflowAssignment.trackingIdSourceMappings.filter(
+                                            (_, entryIndex) =>
+                                              entryIndex !== index,
+                                          ),
+                                      })
+                                    }
+                                  >
+                                    <Trash2Icon className="size-4" />
+                                  </Button>
+                                </div>
+                              ),
+                            )}
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() =>
+                                updateTier2Workflow({
+                                  trackingIdSourceMappings: [
+                                    ...workflowAssignment.trackingIdSourceMappings,
+                                    {
+                                      sourceValue: "",
+                                      trackingIdSource: "peopleid3",
+                                    },
+                                  ],
+                                })
+                              }
+                            >
+                              Add source value
+                            </Button>
+                          </div>
+                        </div>
                       ) : null}
-                      Save profile
-                    </Button>
+                      <label className="block space-y-1.5 text-sm sm:col-span-2">
+                        <span className="font-medium">Tracking ID column</span>
+                        <select
+                          aria-label="Tracking ID column"
+                          className="h-10 w-full rounded-md border border-input bg-background px-3"
+                          value={workflowAssignment.trackingIdColumn}
+                          onChange={(event) =>
+                            updateTier2Workflow({
+                              trackingIdColumn: event.target.value,
+                              ...(workflowAssignment.trackingIdSource === "rop3"
+                                ? {
+                                    sourceRop3Column:
+                                      event.target.value || null,
+                                  }
+                                : {}),
+                            })
+                          }
+                        >
+                          <option value="">Choose a reviewed column</option>
+                          {reviewedHeaders.map((header) => (
+                            <option key={header} value={header}>
+                              {header}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      {(
+                        [
+                          ["ROP3 evidence column", "sourceRop3Column"],
+                          ["Country evidence column", "sourceCountryColumn"],
+                          ["ISO3 evidence column", "sourceIso3Column"],
+                        ] as const
+                      ).map(([label, field]) => (
+                        <label
+                          key={field}
+                          className="block space-y-1.5 text-sm"
+                        >
+                          <span className="font-medium">
+                            {label}{" "}
+                            <span className="font-normal text-muted-foreground">
+                              (optional)
+                            </span>
+                          </span>
+                          <select
+                            aria-label={label}
+                            className="h-10 w-full rounded-md border border-input bg-background px-3"
+                            value={workflowAssignment[field] ?? ""}
+                            disabled={
+                              field === "sourceRop3Column" &&
+                              workflowAssignment.trackingIdSource === "rop3" &&
+                              workflowAssignment.trackingIdSourceColumn === null
+                            }
+                            onChange={(event) =>
+                              updateTier2Workflow({
+                                [field]: event.target.value || null,
+                              })
+                            }
+                          >
+                            <option value="">Not provided</option>
+                            {reviewedHeaders.map((header) => (
+                              <option key={header} value={header}>
+                                {header}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      ))}
+                    </div>
                   ) : null}
-                  {connection.sourceProfile?.configurable ? (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      disabled={sourceBusyAction !== null}
-                      onClick={() => void removeSourceProfile()}
-                    >
-                      Remove
-                    </Button>
+
+                  {workflowAssignment.kind !== "none" ? (
+                    <div className="flex justify-end">
+                      <Button
+                        type="button"
+                        size="sm"
+                        disabled={
+                          !workflowAssignmentIsComplete() ||
+                          sourceBusyAction !== null
+                        }
+                        onClick={() => void saveWorkflowAssignment()}
+                        data-smoke-write="unsafe"
+                      >
+                        {sourceBusyAction === "workflow-save" ? (
+                          <Loader2Icon className="size-3.5 animate-spin" />
+                        ) : null}
+                        Link workflow
+                      </Button>
+                    </div>
                   ) : null}
                 </div>
-              </div>
+              )}
             </div>
 
             {isHeaderEditorOpen ? (

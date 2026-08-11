@@ -530,6 +530,45 @@ export const smokeRouteSpecs: SmokeRouteSpec[] = [
     ],
   },
   {
+    id: "api-connection-detail-unassigned-sheet-admin",
+    role: "admin",
+    pageFile: "src/app/dashboard/api-connections/[connectionId]/page.tsx",
+    path: "/dashboard/api-connections/45454545-4545-4545-8545-454545454545",
+    pageId: "api-connection-detail",
+    requestMocks: [
+      {
+        url: "**/api/admin/api-connections/google-sheets/45454545-4545-4545-8545-454545454545",
+        method: "POST",
+        responseBody: {
+          preview: {
+            sheetId: 202,
+            sheetTitle: "Engagement",
+            inspectedRowCount: 2,
+            candidates: [
+              {
+                rowNumber: 1,
+                score: 10,
+                confidence: "high",
+                values: ["Record ID", "Tracking ID", "Country"],
+              },
+            ],
+            recommendedRow: 1,
+            selected: {
+              mode: "auto",
+              startRow: 1,
+              endRow: 1,
+              headers: ["Record ID", "Tracking ID", "Country"],
+              fingerprint: "smoke-unassigned-source-header",
+              confidence: "high",
+            },
+            sampleRows: [["row-1", "tracking-1", "Country"]],
+          },
+        },
+      },
+    ],
+    journeys: ["admin can link an existing Sheet to a data workflow"],
+  },
+  {
     id: "upload-pro-redirect",
     role: "pro",
     pageFile: "src/app/dashboard/upload/page.tsx",

@@ -21,6 +21,11 @@ export const TIER2_TRACKING_ID_SOURCES = [
 export type Tier2TrackingIdSource =
   (typeof TIER2_TRACKING_ID_SOURCES)[number];
 
+export type Tier2TrackingIdSourceMapping = Readonly<{
+  sourceValue: string;
+  trackingIdSource: Tier2TrackingIdSource;
+}>;
+
 export const TIER2_PRODUCT_KINDS = ["tier2", "aggregate2"] as const;
 export type Tier2ProductKind = (typeof TIER2_PRODUCT_KINDS)[number];
 
@@ -47,7 +52,9 @@ export type Tier2PartnerProfileConfig = Readonly<{
   sheetTitle: string;
   stableRowKeyColumn: string;
   trackingIdColumn: string;
-  trackingIdSource: Tier2TrackingIdSource;
+  trackingIdSource: Tier2TrackingIdSource | null;
+  trackingIdSourceColumn: string | null;
+  trackingIdSourceMappings: readonly Tier2TrackingIdSourceMapping[];
   sourceRop3Column: string | null;
   sourceCountryColumn: string | null;
   sourceIso3Column: string | null;
