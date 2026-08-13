@@ -21,24 +21,21 @@ or different profile invalidates that evidence. Schedules are disabled by
 default and scheduled runs still stop at forming and identity review gates;
 they never acknowledge warnings or publish automatically.
 
-## Import contract resources
+## Maintain contract resources
 
-Import and activate the exact checksummed catalog snapshots before the first
+Validate and activate complete AX Online catalog versions before the first
 forming run:
 
 - `jp-peopleid3`
 - `peid`
 - `engagement-mappings`
 
-Use `pnpm run pipeline-resources:import:local` for the local database or
-`pnpm run pipeline-resources:import:remote` for the linked environment. The
-shared operation imports these alongside source aliases and Tier 1 merge
-priorities from a fixed path/checksum manifest. It validates schema, duplicate
-keys, active entries, and pinned Country/ROP cross-references before any of the
-five candidates activates. Finalized versions are immutable; activation and
-rollback only move the audited active-version pointer. A production environment
-intentionally fails closed until reviewed full payloads are imported—sanitized
-fixture packages are local bootstrap/test data only.
+Create new versions through the Tier 2 resource administration flow. It
+validates schema, duplicate keys, active entries, and pinned Country/ROP
+cross-references before activation. Finalized versions are immutable;
+activation and rollback only move the audited active-version pointer. The
+workflow accepts complete current packages and never reads an AX Data path or
+manifest.
 
 ## Review a partner flow
 
@@ -68,8 +65,6 @@ Publication first authenticates the immutable column contract and top-level arti
 
 Rollback selects a prior publication that belongs to the same target, reconstructs its exact rows and CSV from immutable publication evidence, and replaces the stable dataset through normal dataset-version history in the same transaction that advances the audited target. It preserves the stable target's existing workspace visibility instead of applying an intermediate-source default. The incident dataset version remains archived, while lineage, findings, releases, and publication evidence remain immutable. A stale expected-current value aborts the dataset replacement and target update together.
 
-## Legacy comparison and cutover
-
-Before freezing legacy writers, build the exact Tier 2 or Aggregate 2 candidate in the Tier 2 administrator page. In **Legacy side-by-side comparison**, select that completed candidate and upload the final read-only AX Data rows JSON artifact (`columns` plus `rows`) with the review reason. The application stores one immutable checksummed `comparison-json` artifact for the candidate. Review the retained/dropped/added/conflicting totals and explanations in the page, then download the full retained report to inspect every identity's exact legacy and candidate rows. Resolve every unexplained difference before publication, then disable the corresponding legacy writer. Preserve legacy Sheets/files and the downloaded comparison report read-only for audit; do not continue dual writes.
-
-The sanitized characterization fixture remains in `tests/fixtures/tier2-products/comparison.json` for regression testing only; it is not production cutover evidence. Product behavior and operator decisions are covered by `src/lib/tier2-products/*.test.ts`, `supabase/tests/database/005_tier2_products.test.sql`, and the Tier 2 admin smoke route.
+Tier 2 review uses only current formed rows, current crosswalk resources, AX
+Online identity evidence, and exact release inputs. The admin application does
+not accept or store AX Data rows for comparison or matching.

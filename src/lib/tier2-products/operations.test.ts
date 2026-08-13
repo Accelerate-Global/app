@@ -1,5 +1,3 @@
-import { Buffer } from "node:buffer";
-
 import { PgDialect } from "drizzle-orm/pg-core";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -20,7 +18,6 @@ vi.mock("@/lib/pipeline-products/storage", async () => {
   return {
     ...actual,
     uploadPipelineArtifact: vi.fn(),
-    readPipelineArtifact: vi.fn(),
     deletePipelineArtifacts: vi.fn(),
     uploadPipelineDatasetBlob: vi.fn(),
     deletePipelineDatasetBlob: vi.fn(),
@@ -31,7 +28,6 @@ import { getDb } from "@/db";
 import { publishPreparedDataset } from "@/lib/datasets";
 import {
   deletePipelineDatasetBlob,
-  readPipelineArtifact,
   uploadPipelineArtifact,
   uploadPipelineDatasetBlob,
 } from "@/lib/pipeline-products/storage";
@@ -47,7 +43,6 @@ import {
   assertTier2RollbackSnapshot,
   createTier2ProductRelease,
   finalizeTier2ProductReleaseCandidate,
-  getTier2LegacyComparison,
   publishTier2ProductRun,
   rejectTier2ProductRun,
   rollbackTier2ProductTarget,
@@ -84,7 +79,6 @@ const tier2RunRow = {
   publication_reason: null,
   created_at: "2026-07-23T00:00:00.000Z",
   completed_at: "2026-07-23T00:01:00.000Z",
-  legacy_comparison_available: false,
 };
 
 describe("Tier 2 release review lifecycle", () => {
@@ -177,8 +171,7 @@ describe("Tier 2 release review lifecycle", () => {
       }
       if (
         text.includes("from private.pipeline_runs as run") &&
-        text.includes("exists (") &&
-        text.includes("comparison-json")
+        text.includes("definition.stage in")
       ) {
         return [{
           ...tier2RunRow,
@@ -340,8 +333,7 @@ describe("Tier 2 release review lifecycle", () => {
       }
       if (
         text.includes("from private.pipeline_runs as run") &&
-        text.includes("exists (") &&
-        text.includes("comparison-json")
+        text.includes("definition.stage in")
       ) {
         return [{
           ...tier2RunRow,
@@ -379,29 +371,6 @@ describe("Tier 2 release review lifecycle", () => {
     );
     expect(cancelledIndex).toBeGreaterThan(-1);
     expect(rejectedIndex).toBeGreaterThan(cancelledIndex);
-  });
-});
-
-describe("Tier 2 retained legacy comparison", () => {
-  it("authenticates the retained comparison body against its audit record", async () => {
-    const artifact = {
-      schemaVersion: 1,
-      runId: "10000000-0000-4000-8000-000000000001",
-      report: { schemaVersion: 1 },
-    };
-    const body = JSON.stringify(artifact);
-    const execute = vi.fn().mockResolvedValue([{
-      storage_path: "pipeline-products/tier2/run/comparison-json.json",
-      content_checksum: checksumSourceFormingValue(body),
-      size_bytes: Buffer.byteLength(body, "utf8"),
-    }]);
-    vi.mocked(getDb).mockReturnValue({ execute } as never);
-    vi.mocked(readPipelineArtifact).mockResolvedValue(body);
-
-    await expect(getTier2LegacyComparison(artifact.runId)).resolves.toEqual({
-      artifact,
-      body,
-    });
   });
 });
 

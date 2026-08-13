@@ -2,8 +2,8 @@
 
 This runbook is the operating contract for AX Online ingestion, forming,
 identity, release, Tier 1, Tier 2, Aggregate 1, and Aggregate 2 flows. AX Data is
-not a runtime dependency. Its retained files are used only as explicit,
-checksummed migration inputs and read-only comparison evidence.
+outside the execution and identity boundary: it is not read, imported, matched,
+or retained by AX Online.
 
 ## What is implemented versus what must be configured
 
@@ -114,53 +114,15 @@ Field, type, transformation, aggregate, and scope rules that are maintained in
 code still carry explicit versions and deterministic checksums. They are pinned
 alongside catalog resources but are not represented as mutable uploaded files.
 
-### Import the complete retained snapshots
+### Maintain current AX Online resources
 
-The source-alias, PeopleID3, PEID, merge-priority, and engagement-mapping
-packages are imported from five exact retained AX Data CSVs. The built-in
-manifest fixes each relative path, SHA-256 checksum, and retrieval timestamp;
-the importer rejects checksum drift and never searches for a newest file.
-
-| Resource | Exact AX Data path | SHA-256 |
-| --- | --- | --- |
-| Source aliases | `resources/Database_Sources/20260330_204117.csv` | `1f55e3be68dadd4e99df8837357305f05024833b75b2a06c870ae6b677033f0a` |
-| JP PeopleID3 | `resources/jp/peopleid3/20260330_204114.csv` | `eeb4e3f4c7effe3e957334b8590409d9ecbf4303ddc4676750cd78e9a4d5f1f8` |
-| PEID | `resources/PEID/20260330_204115.csv` | `d4faef4315a42e6034c9e8352f4856de6fd589ea2234688f109ec3479a0b9cde` |
-| Tier 1 priorities | `resources/data_priority_agg_1/20260330_204115.csv` | `d498814f3f5c037b8bcbd65f772142cab5afb1ea3402ace86e384bdac6fea87f` |
-| Engagement mappings | `resources/engagement_template/20260128_122551.csv` | `c3195329a0d7e7d1591abb77190fe2397ddea53f4bc210ba15663c31038d2921` |
-
-After Country/ROP bootstrap, use the repository commands:
-
-```text
-pnpm run pipeline-resources:import:local
-pnpm run pipeline-resources:import:remote
-```
-
-For a reviewed replacement snapshot, call the importer directly with one
-explicit AX Data root and a JSON manifest containing all five resource keys,
-each with `resourceKey`, `relativePath`, `sha256`, and `sourceRetrievedAt`:
-
-```text
-node --import tsx scripts/import-pipeline-reference-resources.ts --remote --ax-data-root /absolute/path/to/data --manifest /absolute/path/to/reviewed-manifest.json
-```
-
-Both the environment and root are required. A partial manifest, unexpected
-resource key, path outside that root, invalid checksum, or changed file bytes
-fails before candidate creation; there is no timestamp, mtime, glob, or
-“latest” fallback.
-
-The importer reads and validates all five complete snapshots before activating
-any candidate. It records source-file checksum, validation resource-set
-ID/checksum, validation lineage, full typed payload, findings, entry count, and
-content checksum on immutable versions. Only valid candidates are activated.
-Activation uses expected-current checks, creates new immutable resource sets,
-and finishes with an all-resource health check. Sanitized fixture packages are
-for local bootstrap and tests; they are not production substitutes.
-
-`pnpm run db:push:remote` applies migrations, bootstraps core Country/ROP,
-imports the checksum-pinned full pipeline resources, and then verifies normal
-resource bootstrap health. This command is a deployment/migration operation,
-not a runtime application dependency.
+Country/ROP and the five pipeline resource families are immutable, versioned AX
+Online records. Built-in packages are bootstrapped with
+`pnpm run reference-resources:bootstrap:local` or the corresponding reviewed
+remote command. New source-alias, PeopleID3, PEID, priority, or engagement
+packages are created through their owning admin workflow, validated completely,
+and activated with an expected-current check. No command reads a sibling AX
+Data checkout or accepts an AX Data root.
 
 Activating a newer version affects only new launch snapshots. Existing runs,
 candidates, publications, and releases retain their exact prior bindings and
@@ -256,14 +218,11 @@ a dataset automatically.
 
 ## Production canary checklist
 
-Before enabling any matching schedule or disabling a legacy writer:
+Before enabling any matching schedule:
 
-1. Apply migrations and import the complete checksum-verified resource
-   snapshots.
-2. Before any identity stage, complete the fixed-manifest graph dry run,
-   resolve every explicit Tier 2 profile mapping, freeze the legacy identity
-   writer, commit the matching fingerprint/token, and verify the registry
-   cutover marker and allocation floor. Follow
+1. Apply migrations and verify all required immutable resources are healthy.
+2. Before any identity stage, complete the empty-authority CLI dry run and
+   commit, then verify empty revision 1 and allocation counter `000001`. Follow
    [AX identity registry operations](identity-registry.md).
 3. Verify the deployed profile is actually configured, readable, and bound to
    the intended stable key; verify required secrets without exposing them.
@@ -271,10 +230,7 @@ Before enabling any matching schedule or disabling a legacy writer:
    and record the exact partner profile.
 5. At every review gate, compare counts, findings, checksums, identity reuse/new
    allocations, release membership, field winners, provenance, and aggregate
-   totals. For Tier 2 and Aggregate 2, attach the final AX Data rows JSON to the
-   exact completed candidate in **Legacy side-by-side comparison**, review all
-   retained/dropped/added/conflicting outcomes, and download the immutable
-   `comparison-json` report before approval.
+   totals using current AX Online evidence only.
 6. Approve and publish only after every unexplained difference is resolved.
 7. Verify the live stable dataset target, publication ID, row count, output
    checksum, current/out-of-date state, and download artifacts.
@@ -289,40 +245,11 @@ Run a manual canary for every registered source/product flow used in the
 cutover, including both complete release definitions. Component tests or one
 successful source do not qualify as a canary for another definition/profile.
 
-## Legacy freeze and read-only cutover
-
-1. Preserve the final legacy input, identity-ledger, merge, and aggregate
-   snapshots with paths, timestamps, sizes, and SHA-256 checksums. Attach the
-   final legacy rows snapshot to the exact online candidate and preserve the
-   resulting downloaded comparison report with the same evidence inventory.
-2. Dry-run and commit the identity import according to
-   [AX identity registry operations](identity-registry.md).
-3. Shadow-build AX Online from the same retained evidence and obtain owner
-   approval for every intentional difference.
-4. Freeze the corresponding AX Data writer immediately before the first AX
-   Online authoritative publication. Do not dual-write identity ledgers or
-   publication targets.
-5. Keep legacy scripts, Sheets/files, ledgers, and reconciliation reports
-   read-only and access-controlled for audit. Do not delete them as part of
-   application deployment.
-6. Disable the legacy writer permanently only after the online canary, live
-   target verification, and rollback rehearsal pass for that exact flow.
-
-The identity ledger is the global exception to per-flow timing: its legacy
-writer is frozen before the verified graph commit, and it must not resume after
-the immutable registry cutover marker exists. All later identity corrections
-are forward-only AX Online revisions.
-
-Unconfigured profiles are not cut over. Their legacy writer remains unchanged
-until the profile, resources, canary, approval, and rollback requirements are
-satisfied.
-
 ## Deployment and rollback
 
 Deployment order is migrations → compatible application → core resources →
-exact pipeline resources → fixed identity-graph dry run → legacy identity
-writer freeze and atomic graph cutover → production flow canaries → optional
-schedules → per-flow legacy writer freeze/disable. Pass the repository's
+exact pipeline resources → empty-authority dry run and atomic revision-1 commit
+→ one-source-at-a-time production canaries → optional schedules. Pass the repository's
 current change gate, archive all active OpenSpec changes, and pass the pre-ship
 gate before release.
 
@@ -355,5 +282,5 @@ Stop publication and keep schedules disabled when a required profile is
 unconfigured, a provider/secret is unavailable, a resource is unhealthy, an
 exact checksum or row count differs, a run definition is stale, identity is
 conflicted, a release is incomplete, the chosen registry revision lacks a
-binding, a stable target has advanced since review, an unexplained legacy
-difference remains, or storage/database state cannot prove an atomic outcome.
+   binding, a stable target has advanced since review, or storage/database state
+   cannot prove an atomic outcome.

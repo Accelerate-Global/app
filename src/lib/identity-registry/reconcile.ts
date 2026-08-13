@@ -1,10 +1,9 @@
 import type { AxIdentityAssignmentStatus } from "./types";
-import { isStructurallyValidAxCode } from "./rules";
 
 export type AxIdentityExistingBinding = Readonly<{
   bindingId: string;
   pgacCode: string;
-  pgicCode: string;
+  pgicCode: string | null;
   state: "reserved" | "active";
 }>;
 
@@ -20,10 +19,7 @@ export type AxIdentityReconcileDecision = Readonly<{
 export function reconcileAxIdentity(input: {
   existing: AxIdentityExistingBinding | null;
   generatedPgac: string;
-  generatedPgic: string;
-  sourcePgac?: string | null;
-  sourcePgic?: string | null;
-  occupiedCodes: ReadonlyMap<string, string>;
+  generatedPgic: string | null;
 }): AxIdentityReconcileDecision {
   if (input.existing) {
     return {
@@ -36,60 +32,15 @@ export function reconcileAxIdentity(input: {
     };
   }
 
-  const sourcePgac = input.sourcePgac?.trim() || null;
-  const sourcePgic = input.sourcePgic?.trim() || null;
-  const sourcePairValid =
-    sourcePgac !== null &&
-    sourcePgic !== null &&
-    isStructurallyValidAxCode(sourcePgac, "pgac") &&
-    isStructurallyValidAxCode(sourcePgic, "pgic") &&
-    sourcePgic.startsWith(`${sourcePgac}-`);
-
-  if (sourcePgac || sourcePgic) {
-    if (!sourcePairValid) {
-      return {
-        status: "conflict",
-        bindingId: null,
-        pgacCode: null,
-        pgicCode: null,
-        aliases: [],
-        reason: "The source AX code pair is malformed or inconsistent.",
-      };
-    }
-
-    const occupiedBy = [sourcePgac, sourcePgic]
-      .map((code) => (code ? input.occupiedCodes.get(code) : null))
-      .find(Boolean);
-    if (occupiedBy) {
-      return {
-        status: "conflict",
-        bindingId: null,
-        pgacCode: null,
-        pgicCode: null,
-        aliases: [],
-        reason: `A source AX code is already bound to ${occupiedBy}.`,
-      };
-    }
-
-    return {
-      status: "retained",
-      bindingId: null,
-      pgacCode: sourcePgac,
-      pgicCode: sourcePgic,
-      aliases: [input.generatedPgac, input.generatedPgic].filter(
-        (code) => code !== sourcePgac && code !== sourcePgic,
-      ),
-      reason: "The structurally valid, collision-free source codes are retained.",
-    };
-  }
-
   return {
-    status: "reserved",
+    status: input.generatedPgic ? "reserved" : "pgac-only",
     bindingId: null,
     pgacCode: input.generatedPgac,
     pgicCode: input.generatedPgic,
     aliases: [],
-    reason: "A new AX identity binding is required.",
+    reason: input.generatedPgic
+      ? "A new AX Online PGAC/PGIC binding is required."
+      : "A new AX Online PGAC-only binding is required.",
   };
 }
 

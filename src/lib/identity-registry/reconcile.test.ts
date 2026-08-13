@@ -14,49 +14,38 @@ describe("AX identity reconciliation", () => {
         },
         generatedPgac: "10-jp-100001",
         generatedPgic: "10-jp-100001-LAO",
-        occupiedCodes: new Map(),
       }),
     ).toMatchObject({ status: "reused", bindingId: "binding-1" });
   });
 
-  it("retains a valid collision-free source code and records generated aliases", () => {
+  it("reserves newly generated PGAC and PGIC codes", () => {
     expect(
       reconcileAxIdentity({
         existing: null,
         generatedPgac: "10-jp-100001",
         generatedPgic: "10-jp-100001-LAO",
-        sourcePgac: "10-jp-100002",
-        sourcePgic: "10-jp-100002-LAO",
-        occupiedCodes: new Map(),
       }),
     ).toMatchObject({
-      status: "retained",
-      pgacCode: "10-jp-100002",
-      aliases: ["10-jp-100001", "10-jp-100001-LAO"],
+      status: "reserved",
+      pgacCode: "10-jp-100001",
+      pgicCode: "10-jp-100001-LAO",
+      aliases: [],
     });
   });
 
-  it("blocks malformed or colliding source codes", () => {
+  it("permits a PGAC-only identity when current geography is unresolved", () => {
     expect(
       reconcileAxIdentity({
         existing: null,
         generatedPgac: "10-jp-100001",
-        generatedPgic: "10-jp-100001-LAO",
-        sourcePgac: "bad",
-        sourcePgic: "bad-LAO",
-        occupiedCodes: new Map(),
-      }).status,
-    ).toBe("conflict");
-    expect(
-      reconcileAxIdentity({
-        existing: null,
-        generatedPgac: "10-jp-100001",
-        generatedPgic: "10-jp-100001-LAO",
-        sourcePgac: "10-jp-100002",
-        sourcePgic: "10-jp-100002-LAO",
-        occupiedCodes: new Map([["10-jp-100002", "other:key"]]),
-      }).status,
-    ).toBe("conflict");
+        generatedPgic: null,
+      }),
+    ).toMatchObject({
+      status: "pgac-only",
+      pgacCode: "10-jp-100001",
+      pgicCode: null,
+      aliases: [],
+    });
   });
 
   it("requires a distinct active supersession target", () => {

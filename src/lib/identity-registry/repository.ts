@@ -3,7 +3,9 @@ import { sql } from "drizzle-orm";
 import { getDb } from "@/db";
 
 import type {
+  AxIdentityAuthorityStatus,
   AxIdentityCandidateRow,
+  AxIdentityChangeDecision,
   AxIdentityFinding,
   AxIdentityRegistryEntry,
   AxIdentityRunDetail,
@@ -43,7 +45,6 @@ type RunRow = {
   input_row_count: number;
   output_row_count: number | null;
   reused_count: number;
-  retained_count: number;
   reserved_count: number;
   conflict_count: number;
   unassignable_count: number;
@@ -99,7 +100,6 @@ function mapRun(row: RunRow): AxIdentityRunSummary {
     inputRowCount: row.input_row_count,
     outputRowCount: row.output_row_count,
     reusedCount: row.reused_count,
-    retainedCount: row.retained_count,
     reservedCount: row.reserved_count,
     conflictCount: row.conflict_count,
     unassignableCount: row.unassignable_count,
@@ -242,6 +242,38 @@ export async function getAxIdentityRun(runId: string): Promise<AxIdentityRunDeta
     pgic_code: string | null;
     enriched_row: Record<string, string>;
   }>;
+  const decisions = (await getDb().execute(sql<{
+    id: string;
+    identity_run_id: string;
+    source_row_index: number;
+    source_profile_key: string;
+    stable_row_key: string;
+    current_binding_id: string;
+    current_evidence: Record<string, unknown>;
+    proposed_evidence: Record<string, unknown>;
+    allowed_actions: AxIdentityChangeDecision["allowedActions"];
+    selected_action: AxIdentityChangeDecision["selectedAction"];
+    selected_at: Date | string | null;
+  }>`
+    select id, identity_run_id, source_row_index, source_profile_key,
+      stable_row_key, current_binding_id, current_evidence, proposed_evidence,
+      allowed_actions, selected_action, selected_at
+    from private.ax_identity_change_decisions
+    where identity_run_id = ${runId}::uuid
+    order by source_row_index, id
+  `)) as unknown as Array<{
+    id: string;
+    identity_run_id: string;
+    source_row_index: number;
+    source_profile_key: string;
+    stable_row_key: string;
+    current_binding_id: string;
+    current_evidence: Record<string, unknown>;
+    proposed_evidence: Record<string, unknown>;
+    allowed_actions: AxIdentityChangeDecision["allowedActions"];
+    selected_action: AxIdentityChangeDecision["selectedAction"];
+    selected_at: Date | string | null;
+  }>;
 
   return {
     ...mapRun(runs[0]),
@@ -264,6 +296,19 @@ export async function getAxIdentityRun(runId: string): Promise<AxIdentityRunDeta
       pgicCode: entry.pgic_code,
       enrichedRow: entry.enriched_row,
     })),
+    decisions: decisions.map((entry) => ({
+      id: entry.id,
+      identityRunId: entry.identity_run_id,
+      sourceRowIndex: entry.source_row_index,
+      sourceProfileKey: entry.source_profile_key,
+      stableRowKey: entry.stable_row_key,
+      currentBindingId: entry.current_binding_id,
+      currentEvidence: entry.current_evidence ?? {},
+      proposedEvidence: entry.proposed_evidence ?? {},
+      allowedActions: entry.allowed_actions ?? [],
+      selectedAction: entry.selected_action,
+      selectedAt: iso(entry.selected_at),
+    })),
   };
 }
 
@@ -275,24 +320,28 @@ export async function listActiveIdentityBindings(revisionId?: string | null) {
     binding_state: AxIdentityRegistryEntry["bindingState"];
     identity_id: string;
     pgac_code: string;
-    pgic_code: string;
+    pgic_code: string | null;
     allocated_value: number | null;
-    normalized_iso3: string;
+    normalized_iso3: string | null;
+    identity_evidence: Record<string, unknown>;
     activated_revision_id: string | null;
     created_at: Date | string;
   }>`
     select
       binding.id as binding_id, binding.source_profile_key, binding.stable_row_key,
-      binding.binding_state, child.id as identity_id, parent_code.code as pgac_code,
-      child_code.code as pgic_code, parent.allocated_value, child.normalized_iso3,
-      binding.activated_revision_id, binding.created_at
+      binding.binding_state, assigned.id as identity_id, parent_code.code as pgac_code,
+      child_code.code as pgic_code, parent.allocated_value, assigned.normalized_iso3,
+      binding.identity_evidence, binding.activated_revision_id, binding.created_at
     from private.ax_identity_source_bindings as binding
-    join private.ax_identities as child on child.id = binding.identity_id
-    join private.ax_identities as parent on parent.id = child.parent_identity_id
+    join private.ax_identities as assigned on assigned.id = binding.identity_id
+    join private.ax_identities as parent
+      on parent.id = case when assigned.identity_kind = 'pgic'
+        then assigned.parent_identity_id else assigned.id end
     join private.ax_identity_codes as parent_code
       on parent_code.identity_id = parent.id and parent_code.code_kind = 'canonical'
-    join private.ax_identity_codes as child_code
-      on child_code.identity_id = child.id and child_code.code_kind = 'canonical'
+    left join private.ax_identity_codes as child_code
+      on child_code.identity_id = assigned.id and assigned.identity_kind = 'pgic'
+      and child_code.code_kind = 'canonical'
     where (
       ${revisionId ?? null}::uuid is null and binding.binding_state = 'active'
       or ${revisionId ?? null}::uuid is not null and exists (
@@ -309,9 +358,10 @@ export async function listActiveIdentityBindings(revisionId?: string | null) {
     binding_state: AxIdentityRegistryEntry["bindingState"];
     identity_id: string;
     pgac_code: string;
-    pgic_code: string;
+    pgic_code: string | null;
     allocated_value: number | null;
-    normalized_iso3: string;
+    normalized_iso3: string | null;
+    identity_evidence: Record<string, unknown>;
     activated_revision_id: string | null;
     created_at: Date | string;
   }>;
@@ -326,6 +376,7 @@ export async function listActiveIdentityBindings(revisionId?: string | null) {
       pgicCode: row.pgic_code,
       allocatedValue: row.allocated_value,
       normalizedIso3: row.normalized_iso3,
+      identityEvidence: row.identity_evidence ?? {},
       activatedRevisionId: row.activated_revision_id,
       createdAt: iso(row.created_at)!,
     }),
@@ -410,4 +461,51 @@ export async function listIdentityRegistryRevisions(limit = 50) {
       createdAt: iso(row.created_at)!,
     }),
   );
+}
+
+export async function getAxIdentityAuthorityStatus(): Promise<AxIdentityAuthorityStatus> {
+  const rows = (await getDb().execute(sql<{
+    environment: string;
+    registry_revision_id: string;
+    revision_number: number;
+    rules_checksum: string;
+    formatter_checksum: string;
+    activated_at: Date | string;
+  }>`
+    select authority.environment, authority.registry_revision_id,
+      revision.revision_number, authority.rules_checksum,
+      authority.formatter_checksum, authority.created_at as activated_at
+    from private.ax_identity_authorities as authority
+    join private.ax_registry_revisions as revision
+      on revision.id = authority.registry_revision_id
+    where authority.namespace = 'people-groups'
+    limit 1
+  `)) as unknown as Array<{
+    environment: string;
+    registry_revision_id: string;
+    revision_number: number;
+    rules_checksum: string;
+    formatter_checksum: string;
+    activated_at: Date | string;
+  }>;
+  const row = rows[0];
+  return row
+    ? {
+        initialized: true,
+        environment: row.environment,
+        registryRevisionId: row.registry_revision_id,
+        revisionNumber: Number(row.revision_number),
+        rulesChecksum: row.rules_checksum,
+        formatterChecksum: row.formatter_checksum,
+        activatedAt: iso(row.activated_at),
+      }
+    : {
+        initialized: false,
+        environment: null,
+        registryRevisionId: null,
+        revisionNumber: null,
+        rulesChecksum: null,
+        formatterChecksum: null,
+        activatedAt: null,
+      };
 }

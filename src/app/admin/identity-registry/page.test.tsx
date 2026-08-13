@@ -36,6 +36,16 @@ const admin = {
   mode: "supabase" as const,
 };
 
+const authority = {
+  initialized: true,
+  environment: "test",
+  registryRevisionId: "revision-1",
+  revisionNumber: 1,
+  rulesChecksum: "a".repeat(64),
+  formatterChecksum: "b".repeat(64),
+  activatedAt: "2026-08-12T00:00:00.000Z",
+};
+
 describe("/admin/identity-registry", () => {
   beforeEach(() => vi.resetAllMocks());
 
@@ -48,7 +58,7 @@ describe("/admin/identity-registry", () => {
 
   it("renders the admin registry page and smoke marker", async () => {
     vi.mocked(getCurrentIdentity).mockResolvedValue(admin);
-    vi.mocked(getAxIdentityRegistryOverview).mockResolvedValue({ bindings: [], revisions: [], runs: [] });
+    vi.mocked(getAxIdentityRegistryOverview).mockResolvedValue({ authority, bindings: [], revisions: [], runs: [] });
     render(await IdentityRegistryPage());
     expect(screen.getByRole("heading", { name: "AX Identity Registry" })).toBeTruthy();
     expect(document.querySelector('[data-smoke-page="identity-registry"]')).toBeTruthy();
@@ -57,6 +67,7 @@ describe("/admin/identity-registry", () => {
   it("passes an exact linked run into the registry client", async () => {
     vi.mocked(getCurrentIdentity).mockResolvedValue(admin);
     vi.mocked(getAxIdentityRegistryOverview).mockResolvedValue({
+      authority,
       bindings: [],
       revisions: [],
       runs: [],

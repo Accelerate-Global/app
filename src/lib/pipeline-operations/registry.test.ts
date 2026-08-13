@@ -49,7 +49,7 @@ describe("pipeline operations registry", () => {
       "fbd3f95e6d447c6247fa81c10b9dea3e7bb33713afbea697607301f4da165461",
     );
     expect(requirePipelineFlowDefinition("tier1-full").checksum).toBe(
-      "ed02e57d097330f5ff8dff06ed24be7c064edd88bb9ed6289656595790e5a794",
+      "cff685c47c82875e047304c4875be8984b8170f2ece24d2f64fb5e8566fe0d35",
     );
   });
 

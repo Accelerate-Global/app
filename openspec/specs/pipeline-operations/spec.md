@@ -104,15 +104,3 @@ The admin history SHALL show source/stages, inputs, actors, progress, timings, c
 #### Scenario: Administrator diagnoses failure
 - **WHEN** a stage fails or becomes stale
 - **THEN** history identifies the affected flow/stage, safe normalized reason, exact inputs, attempt history, and allowed recovery action
-
-### Requirement: Legacy cutover is per-flow and non-dual-write
-The system SHALL keep retained legacy inputs, ledgers, outputs, and comparison evidence read-only and SHALL NOT treat a legacy writer as retired until the matching online flow/profile has passed production canary, parity approval, live-target verification, and rollback rehearsal.
-
-#### Scenario: Configured flow becomes authoritative
-- **WHEN** the exact online flow passes its cutover checks
-- **THEN** the matching legacy writer is frozen immediately before authoritative online publication and then disabled
-- **AND** legacy evidence remains read-only for audit
-
-#### Scenario: Profile is not configured or has no matching canary
-- **WHEN** a supported source/profile has not passed the cutover checks
-- **THEN** its legacy writer remains unchanged and no online/legacy dual write begins

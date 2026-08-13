@@ -17,7 +17,6 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type {
   Tier2AdminOverview,
-  Tier2LegacyComparisonArtifact,
 } from "@/lib/tier2-products";
 
 type ProductKind = "tier2" | "aggregate2";
@@ -67,12 +66,6 @@ export function Tier2ProductsAdmin({
   const [acknowledgeWarnings, setAcknowledgeWarnings] = useState(false);
   const [identityRunId, setIdentityRunId] = useState("");
   const [rollbackPublicationId, setRollbackPublicationId] = useState("");
-  const [legacyComparisonRunId, setLegacyComparisonRunId] = useState(
-    initialOverview.runs[0]?.id ?? "",
-  );
-  const [legacySnapshotFile, setLegacySnapshotFile] = useState<File | null>(null);
-  const [legacyComparison, setLegacyComparison] =
-    useState<Tier2LegacyComparisonArtifact | null>(null);
   const [isWorking, setIsWorking] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -279,39 +272,6 @@ export function Tier2ProductsAdmin({
     });
   }
 
-  function retainLegacyComparison() {
-    if (!legacyComparisonRunId || !legacySnapshotFile) return;
-    void perform(async () => {
-      const legacy = JSON.parse(await legacySnapshotFile.text()) as unknown;
-      const result = await jsonRequest<{
-        comparison: Tier2LegacyComparisonArtifact;
-      }>(
-        `/api/admin/tier2-products/releases/${legacyComparisonRunId}/legacy-comparison`,
-        {
-          method: "POST",
-          body: JSON.stringify({ legacy, reason: reviewReason }),
-        },
-      );
-      setLegacyComparison(result.comparison);
-      setLegacySnapshotFile(null);
-      await refresh();
-      return "The side-by-side legacy comparison is retained as immutable release evidence.";
-    });
-  }
-
-  function viewLegacyComparison(runId: string) {
-    setLegacyComparisonRunId(runId);
-    void perform(async () => {
-      const result = await jsonRequest<{
-        comparison: Tier2LegacyComparisonArtifact;
-      }>(
-        `/api/admin/tier2-products/releases/${runId}/legacy-comparison`,
-      );
-      setLegacyComparison(result.comparison);
-      return "Retained legacy comparison loaded.";
-    });
-  }
-
   const releasesReady = Boolean(
     overview.system.resourceSet &&
     overview.system.registryRevision &&
@@ -373,41 +333,6 @@ export function Tier2ProductsAdmin({
           <div className="grid gap-3 md:grid-cols-3">{requiredKeys.map((inputKey) => <div className="space-y-2" key={inputKey}><Label htmlFor={`tier2-member-${inputKey}`}>{inputKey.toUpperCase()}</Label><select id={`tier2-member-${inputKey}`} className="flex h-10 w-full rounded-md border bg-background px-3 text-sm" value={memberIds[inputKey] ?? ""} onChange={(event) => setMemberIds((current) => ({ ...current, [inputKey]: event.target.value }))}><option value="">Select exact publication</option>{overview.eligiblePublications.filter((publication) => publication.eligibleInputKeys.includes(inputKey)).map((publication) => <option key={publication.id} value={publication.id} disabled={!publication.rowsPresent}>{formatDate(publication.createdAt)} · {publication.rowCount} rows</option>)}</select></div>)}</div>
           <Button disabled={isWorking || !releasesReady} onClick={buildRelease}>Build exact candidate</Button>
           <div className="overflow-x-auto"><Table><TableHeader><TableRow><TableHead>Built</TableHead><TableHead>Product</TableHead><TableHead>Status</TableHead><TableHead>Rows</TableHead><TableHead>Freshness</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader><TableBody>{overview.runs.length ? overview.runs.map((run) => <TableRow key={run.id}><TableCell>{formatDate(run.createdAt)}</TableCell><TableCell>{run.displayName}</TableCell><TableCell><Badge variant={run.status === "published" ? "default" : run.errorCount > 0 ? "destructive" : "outline"}>{run.status}</Badge></TableCell><TableCell>{run.outputRowCount ?? "—"}</TableCell><TableCell>{run.outOfDate ? `Out of date: ${run.changedInputs.join(", ")}` : "Exact inputs current"}</TableCell><TableCell><div className="flex gap-2">{run.status === "valid" ? <Button size="sm" onClick={() => decideProduct(run.id, "publish")}>Publish</Button> : null}{run.status === "valid" || run.status === "invalid" ? <Button size="sm" variant="destructive" onClick={() => decideProduct(run.id, "reject")}>Reject</Button> : null}</div></TableCell></TableRow>) : <TableRow><TableCell colSpan={6} className="py-8 text-center text-muted-foreground">No product candidates yet.</TableCell></TableRow>}</TableBody></Table></div>
-          <div className="space-y-4 rounded-xl border p-4">
-            <div>
-              <h3 className="font-semibold">Legacy side-by-side comparison</h3>
-              <p className="text-sm text-muted-foreground">Attach the final read-only AX Data rows JSON artifact to one completed candidate. The report retains exact rows and explains every retained, dropped, added, or conflicting canonical identity.</p>
-            </div>
-            <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto_auto] md:items-end">
-              <div className="space-y-2">
-                <Label htmlFor="tier2-comparison-run">Candidate</Label>
-                <select id="tier2-comparison-run" className="flex h-10 w-full rounded-md border bg-background px-3 text-sm" value={legacyComparisonRunId} onChange={(event) => { setLegacyComparisonRunId(event.target.value); setLegacyComparison(null); }}>
-                  <option value="">Select completed candidate</option>
-                  {overview.runs.map((run) => <option key={run.id} value={run.id}>{run.displayName} · {formatDate(run.createdAt)}</option>)}
-                </select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="tier2-legacy-snapshot">Legacy rows JSON</Label>
-                <Input id="tier2-legacy-snapshot" type="file" accept="application/json,.json" onChange={(event) => setLegacySnapshotFile(event.target.files?.[0] ?? null)} />
-              </div>
-              <Button disabled={isWorking || !legacyComparisonRunId || !legacySnapshotFile || overview.runs.find((run) => run.id === legacyComparisonRunId)?.legacyComparisonAvailable} onClick={retainLegacyComparison}>Retain comparison</Button>
-              <Button variant="outline" disabled={!overview.runs.find((run) => run.id === legacyComparisonRunId)?.legacyComparisonAvailable} onClick={() => viewLegacyComparison(legacyComparisonRunId)}>View retained report</Button>
-            </div>
-            {legacyComparison ? <div className="space-y-3">
-              <div className="flex flex-wrap items-center gap-2 text-sm">
-                <Badge variant="outline">{legacyComparison.report.counts.retained} retained</Badge>
-                <Badge variant="outline">{legacyComparison.report.counts.dropped} dropped</Badge>
-                <Badge variant="outline">{legacyComparison.report.counts.added} added</Badge>
-                <Badge variant={legacyComparison.report.counts.conflicting > 0 ? "destructive" : "outline"}>{legacyComparison.report.counts.conflicting} conflicting</Badge>
-                <span className="text-muted-foreground">{legacyComparison.report.legacyRowCount} legacy rows · {legacyComparison.report.candidateRowCount} candidate rows</span>
-                <a className="font-medium underline underline-offset-4" href={`/api/admin/tier2-products/releases/${legacyComparison.runId}/legacy-comparison?download=1`}>Download full retained report</a>
-              </div>
-              <div className="max-h-96 overflow-auto rounded-lg border">
-                <Table><TableHeader><TableRow><TableHead>Canonical identity</TableHead><TableHead>Outcome</TableHead><TableHead>Legacy</TableHead><TableHead>Candidate</TableHead><TableHead>Explanation</TableHead></TableRow></TableHeader><TableBody>{legacyComparison.report.differences.slice(0, 100).map((difference) => <TableRow key={difference.canonicalPgic}><TableCell className="font-mono text-xs">{difference.canonicalPgic}</TableCell><TableCell><Badge variant={difference.outcome === "conflicting" ? "destructive" : "outline"}>{difference.outcome}</Badge></TableCell><TableCell>{difference.legacyCount}</TableCell><TableCell>{difference.candidateCount}</TableCell><TableCell>{difference.explanation}</TableCell></TableRow>)}</TableBody></Table>
-              </div>
-              {legacyComparison.report.differences.length > 100 ? <p className="text-xs text-muted-foreground">Showing the first 100 identities. Download the retained report for every difference and its exact legacy/candidate rows.</p> : null}
-            </div> : null}
-          </div>
           <div className="grid gap-3 rounded-xl border p-4 md:grid-cols-[1fr_1fr_auto]"><div className="space-y-2"><Label htmlFor="tier2-rollback-product">Stable target</Label><select id="tier2-rollback-product" className="flex h-10 w-full rounded-md border bg-background px-3 text-sm" value={productKind} onChange={(event) => setProductKind(event.target.value as ProductKind)}><option value="tier2">Tier 2</option><option value="aggregate2">Aggregate 2</option></select></div><div className="space-y-2"><Label htmlFor="tier2-rollback-publication">Prior publication ID</Label><Input id="tier2-rollback-publication" value={rollbackPublicationId} onChange={(event) => setRollbackPublicationId(event.target.value)} /></div><div className="flex items-end"><Button variant="outline" disabled={!rollbackPublicationId.trim()} onClick={() => rollbackTarget(productKind)}>Restore prior release</Button></div></div>
         </CardContent>
       </Card>

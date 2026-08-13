@@ -87,6 +87,25 @@ describe("/api/admin/identity-registry/runs", () => {
     });
   });
 
+  it("rebuilds a reviewed candidate from the same pinned current inputs", async () => {
+    vi.mocked(buildAxIdentityCandidate).mockResolvedValue(null);
+    const sourcePublicationId = "00000000-0000-4000-8000-000000000001";
+    const reviewRunId = "00000000-0000-4000-8000-000000000002";
+    const response = await POST(
+      new Request("http://localhost/api/admin/identity-registry/runs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sourcePublicationId, reviewRunId }),
+      }),
+    );
+    expect(response.status).toBe(201);
+    expect(buildAxIdentityCandidate).toHaveBeenCalledWith(expect.objectContaining({
+      sourcePublicationId,
+      reviewRunId,
+      identity,
+    }));
+  });
+
   it("fails closed when an exact registry or resource pin is unavailable", async () => {
     vi.mocked(snapshotCurrentPipelineInputs).mockResolvedValue({
       referenceVersionBindings: {},

@@ -12,86 +12,48 @@ The system SHALL store PGAC/PGIC canonical and alias codes in one private regist
 - **AND** existing identities and history remain unchanged
 
 ### Requirement: ROP3 identity is deterministic and validated
-The system SHALL construct ROP3-backed PGAC/PGIC codes from normalized pinned ROP1, registered source initials, exact six-digit ROP3, and canonical ISO3.
+The system SHALL construct ROP3-backed PGAC/PGIC codes from the ROP3 entry's canonical pinned ROP1 parent, the reviewed establishing source initials, exact six-digit current ROP3, and canonical current ISO3. Missing source ROP1 SHALL be replaced by the ROP3 resource parent before code construction; a ROP3 without a valid parent SHALL block assignment.
 
 #### Scenario: Valid ROP3 identity is requested twice
-- **WHEN** the same stable source row and normalized inputs are reconciled repeatedly
-- **THEN** the system returns the same PGAC/PGIC identities and source binding
-- **AND** creates no duplicate code or revision entry
+- **WHEN** the same exact current ROP3 and ISO3 are reconciled repeatedly or by another current source
+- **THEN** the system returns the existing PGAC/PGIC identities and creates only the required source binding
+- **AND** creates no duplicate canonical code or allocation
 
-#### Scenario: Required normalized component is invalid
-- **WHEN** source initials, ROP3, or ISO3 cannot be validated against pinned contracts/resources
-- **THEN** the identity candidate records a blocking conflict and does not invent fallback canonical text
+#### Scenario: Source ROP1 conflicts with current ROP3 parent
+- **WHEN** formed ROP1 differs from the exact pinned ROP3 parent
+- **THEN** identity assignment uses the resource-derived parent and records or preserves the discrepancy finding
+- **AND** refuses an unexplained formed-contract mismatch
+
+#### Scenario: Current ROP3 has no valid ROP1 parent
+- **WHEN** ROP3 resolves but its pinned resource entry has no valid ROP1
+- **THEN** the row is unassignable and no `00` fallback, identity, or code is created
 
 ### Requirement: Six-digit allocation is atomic and non-recycling
-The system SHALL allocate no-ROP3 identifiers through a transactionally locked bounded namespace counter and SHALL never derive a value from an unlocked maximum or recycle an allocated value.
+The system SHALL allocate no-ROP3 identifiers from a transactionally locked counter beginning at `000001`, SHALL validate the complete proposed code against all owned code values, and SHALL never derive from an unlocked maximum or recycle allocated, skipped, cancelled, rejected, or superseded values.
 
 #### Scenario: Concurrent requests allocate different rows
-- **WHEN** two transactions request new identities in the same namespace concurrently
-- **THEN** each receives a unique six-digit value
+- **WHEN** two transactions request new identities in the same namespace
+- **THEN** each receives a unique collision-free six-digit value
 
-#### Scenario: Same row retries concurrently
-- **WHEN** multiple transactions request identity for the same profile and stable row key
-- **THEN** all resolve to one reserved or active binding and one allocated value
+#### Scenario: Required classification cannot be completed
+- **WHEN** a row lacks a stable key or a PGIC-classified row lacks canonical ISO3
+- **THEN** it remains unassignable and consumes no registry number
+
+#### Scenario: ROP1 is unavailable without ROP3
+- **WHEN** a complete allocatable row has neither valid ROP3 nor canonical ROP1
+- **THEN** the code uses the established `00` ROP1 representation and records a visible finding
 
 ### Requirement: Registry revisions are immutable publication anchors
-The system SHALL create an append-only checksummed registry revision whenever authoritative bindings activate and SHALL allow downstream runs to bind the exact revision.
+The system SHALL create an append-only checksummed registry revision only when authoritative identity graph content changes and SHALL allow data-only publications to reuse the current exact revision.
 
-#### Scenario: Identity publication succeeds
-- **WHEN** an administrator publishes a valid identity candidate
-- **THEN** the database activates its bindings, creates one revision and publication anchor, and records actor/reason/time atomically
-- **AND** the source candidate remains immutable
+#### Scenario: Identity graph changes
+- **WHEN** reviewed publication activates a new or changed identity, code, evidence owner, binding, or supersession
+- **THEN** the database creates one revision and publication anchor atomically with actor, reason, and time
 
-### Requirement: Legacy import is a fixed dry-run-first identity graph
-The system SHALL inspect only the repository-owned manifest of exact checksummed legacy snapshots, SHALL allow runtime reviewed copies to change only Tier 2 profile keys, SHALL construct deterministic PGAC parent → PGIC child identities plus complete historical binding evidence, SHALL require unique source-identity-matched Tier 2 profile and active connection mapping, and SHALL NOT expose a flat production API import. Positional historical keys SHALL NOT become active bindings. Dry-run evidence SHALL be append-only and bound to the exact target database state. Commit SHALL remain blocked until a repository-reviewed contract pins exact current source snapshots and engine/configuration checksums, recomputes runtime keys with production forming helpers, accounts for every historical row, and selects at most one code-agreeing identity per unique current key. A future enabled commit SHALL require one token-authorized database transaction that verifies the exact staged graph and audit checksums before creating authority.
-
-#### Scenario: Historical snapshots are characterized before a runtime crosswalk exists
-- **WHEN** every retained manifest path/checksum and canonical identity relationship validates but the checked-in runtime crosswalk contract remains pending
-- **THEN** dry run returns the exact state-bound evidence fingerprint, 296,297-row historical coverage, zero selected active bindings, findings, and checksummed reviewable audit artifacts in service-role-only storage without mutating registry authority
-- **AND** returns no commit token
-
-#### Scenario: A runtime crosswalk is proposed outside repository review
-- **WHEN** a runtime manifest tries to supply or alter a crosswalk path, checksum, selected count, source snapshot, or engine/configuration binding
-- **THEN** manifest validation refuses it and cutover remains blocked
-
-#### Scenario: Future verified commit handshake matches the dry run
-- **WHEN** the repository-pinned source/crosswalk implementation is complete and an administrator commits the identical inputs with the matching fingerprint/token and a reason
-- **THEN** the system imports the graph idempotently, creates one registry revision and durable cutover marker, and advances the non-ROP3 allocation floor to at least `2055`
-
-#### Scenario: Target state changes after dry run
-- **WHEN** a profile is remediated or any token-bound target registry state changes
-- **THEN** the old token is rejected and a new append-only dry run can issue a different evidence fingerprint without rewriting prior evidence
-
-#### Scenario: Alias cannot safely activate
-- **WHEN** a structurally valid legacy alias collides with a different canonical graph subject
-- **THEN** the importer preserves the conflict as quarantined audit evidence and does not activate that alias
-
-#### Scenario: Alias is malformed or identifies multiple intended subjects
-- **WHEN** a legacy alias is structurally invalid or resolves to more than one intended identity
-- **THEN** dry run reports a blocking graph failure and commit is refused
-
-#### Scenario: Tier 2 binding has no explicit mapping
-- **WHEN** a Tier 2 source binding cannot resolve through the declared profile mapping
-- **THEN** dry run reports a blocking finding and commit is refused
-
-#### Scenario: Tier 2 mapping points at an unrelated active profile
-- **WHEN** one profile is mapped from multiple legacy components, a `spreadsheet:<id>` component does not match the profile's exact spreadsheet ID, or the backing Google Sheets connection is archived or has different source identity
-- **THEN** dry run reports a blocking finding and database finalization independently refuses the mapping
-
-#### Scenario: Graph staging bypasses the reviewed handshake
-- **WHEN** a caller inserts import-owned identities, codes, bindings, or audits without the authorized transaction session, stages extra non-active rows, activates an import row after authorization is consumed, forges committed status/cutover authority, or stages same-count content whose checksum differs
-- **THEN** the database rejects staging or finalization and does not create a revision or cutover marker
-
-#### Scenario: Identical snapshot is imported again
-- **WHEN** an administrator repeats an already committed snapshot fingerprint
-- **THEN** the importer reports the existing import and creates no duplicate identities, bindings, aliases, or revision
-
-### Requirement: Authoritative identity work requires cutover evidence
-The system SHALL require the durable namespace cutover marker before creating authoritative post-legacy allocations or publications.
-
-#### Scenario: Legacy graph has not committed
-- **WHEN** an identity allocation or publication is requested without the namespace cutover marker
-- **THEN** the system fails closed without minting or activating identity values
+#### Scenario: Identity graph is unchanged
+- **WHEN** all rows reuse existing bindings and only non-identity data changes
+- **THEN** the identity publication reuses the current revision and consumes no number
+- **AND** an identical source and output is idempotent
 
 ### Requirement: Tier 1 releases pin registry revision
 Every Tier 1 merge release SHALL bind one immutable AX registry revision compatible with all source identity publications.
@@ -101,8 +63,34 @@ Every Tier 1 merge release SHALL bind one immutable AX registry revision compati
 - **THEN** the release cannot finalize
 
 ### Requirement: Registry spans Tier 1 and Tier 2
-The authoritative AX registry SHALL prevent canonical, alias, and allocated-value collisions across Tier 1 and Tier 2 while preserving distinct source-profile row bindings.
+The authoritative AX Online registry SHALL prevent canonical, alias, ROP3-evidence, and allocated-value collisions across Tier 1 and Tier 2 while preserving distinct current source-profile row bindings.
 
-#### Scenario: Tier 2 allocation would collide with Tier 1
-- **WHEN** a candidate attempts to reserve an allocated number or canonical code already used by Tier 1
-- **THEN** the transaction rejects the collision and records a candidate conflict
+#### Scenario: Tier 2 current ROP3 matches Tier 1
+- **WHEN** a Tier 2 row has the same exact validated ROP3 and ISO3 as an active Tier 1 identity
+- **THEN** it reuses the shared PGAC/PGIC and records a distinct Tier 2 source binding
+
+#### Scenario: Current ROP3 conflicts with another active identity
+- **WHEN** an exact current ROP3 is already claimed by an incompatible active identity
+- **THEN** publication is blocked and neither identity is silently rewritten
+
+### Requirement: Established AX code format remains authoritative
+The system SHALL format PGAC as `<ROP1 suffix>-<registered source initials>-<ROP3 or six-digit allocation>` and PGIC by appending `-<ISO3>`, with all inputs normalized through checksummed AX Online contracts.
+
+#### Scenario: Complete current evidence is formatted
+- **WHEN** canonical inputs are ROP1 `A010`, source `jp`, ROP3 `100001`, and ISO3 `LAO`
+- **THEN** PGAC is `10-jp-100001` and PGIC is `10-jp-100001-LAO`
+
+#### Scenario: ISO3 is unavailable
+- **WHEN** PGAC evidence is complete but canonical ISO3 is absent
+- **THEN** PGAC may be assigned for a PGAC-classified row but no PGIC or fabricated geography is created
+
+### Requirement: Existing bindings change only through reviewed current evidence
+The system SHALL preserve an active source binding through ordinary field changes and SHALL require an explicit reviewed decision for changes to ROP1, source, ROP3, ISO3, or real-world identity.
+
+#### Scenario: Ordinary data changes
+- **WHEN** a tracked row changes only non-identity fields
+- **THEN** its binding and AX codes remain unchanged
+
+#### Scenario: Identity component changes
+- **WHEN** current normalized evidence changes an identity component
+- **THEN** the candidate shows current and proposed evidence and cannot alter authority until an administrator approves a supported rebind, new identity, or canonical supersession

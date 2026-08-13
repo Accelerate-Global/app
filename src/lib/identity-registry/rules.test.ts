@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   AX_IDENTITY_RULES_CHECKSUM,
+  AX_IDENTITY_FORMATTER_CHECKSUM,
   AxIdentityRuleError,
   buildAxIdentityCodes,
   normalizeIso3,
@@ -44,6 +45,18 @@ describe("AX identity rules", () => {
     expect(() => buildAxIdentityCodes({ source: "IMB", rop1: null, sixDigit: 1, iso3: "" })).toThrow(AxIdentityRuleError);
   });
 
+  it("creates only a PGAC when ISO3 is unresolved and PGAC-only output is allowed", () => {
+    expect(
+      buildAxIdentityCodes({
+        source: "IMB",
+        rop1: "A010",
+        sixDigit: 42,
+        iso3: null,
+        allowPgacOnly: true,
+      }),
+    ).toEqual({ pgac: "10-im-000042", pgic: null, sixDigit: "000042" });
+  });
+
   it("uses one exact versioned source-alias binding for a partner", () => {
     expect(
       buildAxIdentityCodes({
@@ -81,6 +94,7 @@ describe("AX identity rules", () => {
     expect(() => normalizeIso3("XXX", new Set(["LAO"]))).toThrowError(/pinned/u);
     expect(() => normalizeSixDigit(1_000_000)).toThrowError(/out of range/u);
     expect(AX_IDENTITY_RULES_CHECKSUM).toMatch(/^[0-9a-f]{64}$/u);
+    expect(AX_IDENTITY_FORMATTER_CHECKSUM).toMatch(/^[0-9a-f]{64}$/u);
   });
 
   it("derives every built-in source mapping from the pinned semantic contract", () => {
@@ -94,8 +108,9 @@ describe("AX identity rules", () => {
     for (const source of ["AX", "ETNO", "IMB", "JP", "WCD"]) {
       for (const number of [0, 1, 999_999]) {
         const result = buildAxIdentityCodes({ source, rop1: "A010", sixDigit: number, iso3: "LAO" });
-        expect(codes.has(result.pgic)).toBe(false);
-        codes.add(result.pgic);
+        expect(result.pgic).not.toBeNull();
+        expect(codes.has(result.pgic!)).toBe(false);
+        codes.add(result.pgic!);
       }
     }
   });

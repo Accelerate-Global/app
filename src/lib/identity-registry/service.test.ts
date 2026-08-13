@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { checksumIdentityValue, prepareAxIdentityArtifacts } from "./artifacts";
 import {
   getAxIdentityRun,
+  getAxIdentityAuthorityStatus,
   getCurrentIdentityPublication,
   listActiveIdentityBindings,
   listAxIdentityRuns,
@@ -10,11 +11,11 @@ import {
 } from "./repository";
 import {
   assertExpectedIdentityPublication,
-  assertLegacyRegistryCutover,
+  assertFreshIdentityAuthority,
   getAxIdentityRegistryOverview,
   getAxIdentityPublicationTargetKey,
-  importLegacyIdentitySnapshots,
   publishAxIdentityCandidate,
+  stripSourceSuppliedAxCodes,
 } from "./service";
 
 const { executeMock, publishPreparedDatasetMock, readArtifactMock, uploadDatasetBlobMock } = vi.hoisted(() => ({
@@ -40,6 +41,7 @@ vi.mock("./repository", async () => {
   return {
     ...actual,
     getAxIdentityRun: vi.fn(),
+    getAxIdentityAuthorityStatus: vi.fn(),
     getCurrentIdentityPublication: vi.fn(),
     listActiveIdentityBindings: vi.fn(),
     listAxIdentityRuns: vi.fn(),
@@ -100,7 +102,6 @@ describe("AX identity registry service", () => {
       inputRowCount: 1,
       outputRowCount: 1,
       reusedCount: 1,
-      retainedCount: 0,
       reservedCount: 0,
       conflictCount: 0,
       unassignableCount: 0,
@@ -119,6 +120,7 @@ describe("AX identity registry service", () => {
       completedAt: "2026-07-22T00:00:01.000Z",
       findings: [],
       rows,
+      decisions: [],
     });
     const tamperedCsv = `${artifacts.csv}\r\ntampered`;
     const bodyByPath = new Map([
@@ -171,69 +173,66 @@ describe("AX identity registry service", () => {
     vi.mocked(listActiveIdentityBindings).mockResolvedValue([]);
     vi.mocked(listIdentityRegistryRevisions).mockResolvedValue([]);
     vi.mocked(listAxIdentityRuns).mockResolvedValue([]);
+    vi.mocked(getAxIdentityAuthorityStatus).mockResolvedValue({
+      initialized: true,
+      environment: "test",
+      registryRevisionId: "revision-1",
+      revisionNumber: 1,
+      rulesChecksum: "a".repeat(64),
+      formatterChecksum: "b".repeat(64),
+      activatedAt: "2026-08-12T00:00:00.000Z",
+    });
 
     await expect(getAxIdentityRegistryOverview()).resolves.toEqual({
+      authority: {
+        initialized: true,
+        environment: "test",
+        registryRevisionId: "revision-1",
+        revisionNumber: 1,
+        rulesChecksum: "a".repeat(64),
+        formatterChecksum: "b".repeat(64),
+        activatedAt: "2026-08-12T00:00:00.000Z",
+      },
       bindings: [],
       revisions: [],
       runs: [],
     });
   });
 
-  it("blocks allocations until a committed legacy cutover revision is pinned", () => {
+  it("blocks allocations until the fresh authority and a base revision are pinned", () => {
     expect(() =>
-      assertLegacyRegistryCutover({
-        cutoverRevisionNumber: null,
+      assertFreshIdentityAuthority({
+        initialized: false,
+        authorityRevisionId: null,
         baseRevisionId: null,
-        baseRevisionNumber: null,
       }),
-    ).toThrow("Legacy AX registry cutover is required");
+    ).toThrow("fresh AX Online identity authority");
     expect(() =>
-      assertLegacyRegistryCutover({
-        cutoverRevisionNumber: 4,
+      assertFreshIdentityAuthority({
+        initialized: true,
+        authorityRevisionId: "revision-1",
         baseRevisionId: undefined,
-        baseRevisionNumber: undefined,
       }),
-    ).toThrow("exact post-cutover AX registry revision");
+    ).toThrow("exact AX Online registry revision");
     expect(() =>
-      assertLegacyRegistryCutover({
-        cutoverRevisionNumber: 4,
-        baseRevisionId: null,
-        baseRevisionNumber: null,
-      }),
-    ).toThrow("exact post-cutover AX registry revision");
-    expect(() =>
-      assertLegacyRegistryCutover({
-        cutoverRevisionNumber: 4,
-        baseRevisionId: "revision-3",
-        baseRevisionNumber: 3,
-      }),
-    ).toThrow("predates the committed legacy cutover");
-    expect(() =>
-      assertLegacyRegistryCutover({
-        cutoverRevisionNumber: 4,
-        baseRevisionId: "revision-4",
-        baseRevisionNumber: 4,
+      assertFreshIdentityAuthority({
+        initialized: true,
+        authorityRevisionId: "revision-1",
+        baseRevisionId: "revision-1",
       }),
     ).not.toThrow();
   });
 
-  it("rejects generic snapshot commits so they cannot unlock the registry", async () => {
-    await expect(
-      importLegacyIdentitySnapshots({
-        snapshots: [],
-        commit: true,
-        reason: "Unsafe generic import",
-        identity: {
-          ownerId: "admin",
-          email: "admin@example.com",
-          fullName: "Admin",
-          workspaceRole: "admin",
-          isDatasetAdmin: true,
-          mode: "supabase",
-        },
-      }),
-    ).rejects.toThrow("pinned identity graph importer");
-    expect(listActiveIdentityBindings).not.toHaveBeenCalled();
-    expect(executeMock).not.toHaveBeenCalled();
+  it("removes source-supplied historical AX fields before forming output", () => {
+    expect(stripSourceSuppliedAxCodes({
+      Dataset_Row_Key: "jp:1",
+      AX_CODE: "legacy-code",
+      pgac: "legacy-pgac",
+      AX_PGIC: "legacy-pgic",
+      PeopleName: "Current name",
+    })).toEqual({
+      Dataset_Row_Key: "jp:1",
+      PeopleName: "Current name",
+    });
   });
 });

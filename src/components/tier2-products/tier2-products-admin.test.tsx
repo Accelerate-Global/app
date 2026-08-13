@@ -16,9 +16,8 @@ describe("Tier2ProductsAdmin", () => {
     expect(source).toContain("Build exact candidate");
     expect(source).toContain("Restore prior release");
     expect(source).toContain("Stable dataset restored");
-    expect(source).toContain("Legacy side-by-side comparison");
-    expect(source).toContain("Retain comparison");
-    expect(source).toContain("Download full retained report");
+    expect(source).not.toContain("AX Data");
+    expect(source).not.toContain("legacy-comparison");
     expect(source).toContain("profile.trackingIdSourceColumn");
     expect(source).toContain("Per row from");
   });

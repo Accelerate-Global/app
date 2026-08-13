@@ -16,6 +16,16 @@ const identity = {
   mode: "supabase" as const,
 };
 
+const authority = {
+  initialized: true,
+  environment: "test",
+  registryRevisionId: "revision-1",
+  revisionNumber: 1,
+  rulesChecksum: "a".repeat(64),
+  formatterChecksum: "b".repeat(64),
+  activatedAt: "2026-08-12T00:00:00.000Z",
+};
+
 describe("/api/admin/identity-registry", () => {
   beforeEach(() => {
     vi.resetAllMocks();
@@ -29,9 +39,9 @@ describe("/api/admin/identity-registry", () => {
   });
 
   it("returns the complete registry overview", async () => {
-    vi.mocked(getAxIdentityRegistryOverview).mockResolvedValue({ bindings: [], revisions: [], runs: [] });
+    vi.mocked(getAxIdentityRegistryOverview).mockResolvedValue({ authority, bindings: [], revisions: [], runs: [] });
     const response = await GET();
     expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toEqual({ bindings: [], revisions: [], runs: [] });
+    await expect(response.json()).resolves.toEqual({ authority, bindings: [], revisions: [], runs: [] });
   });
 });
