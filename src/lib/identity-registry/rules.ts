@@ -2,11 +2,12 @@ import {
   type AxIdentityCodes,
 } from "./types";
 import {
+  AX_IDENTITY_FORMATTER_CHECKSUM,
   AX_IDENTITY_RULES_CHECKSUM,
   AX_IDENTITY_SEMANTIC_CONTRACT,
 } from "./semantic-contract";
 
-export { AX_IDENTITY_RULES_CHECKSUM };
+export { AX_IDENTITY_FORMATTER_CHECKSUM, AX_IDENTITY_RULES_CHECKSUM };
 
 const SOURCE_INITIALS = new Map<string, string>(
   AX_IDENTITY_SEMANTIC_CONTRACT.sourceInitials,
@@ -112,6 +113,13 @@ export function normalizeIso3(value: unknown, allowedIso3?: ReadonlySet<string>)
   return normalized;
 }
 
+export function normalizeOptionalIso3(
+  value: unknown,
+  allowedIso3?: ReadonlySet<string>,
+) {
+  return normalizedText(value) ? normalizeIso3(value, allowedIso3) : null;
+}
+
 export function normalizeSixDigit(value: unknown) {
   if (typeof value === "number" && Number.isSafeInteger(value)) {
     if (value < 0 || value > 999999) {
@@ -139,6 +147,7 @@ export function buildAxIdentityCodes(input: {
   allowedRop3?: ReadonlySet<string>;
   allowedIso3?: ReadonlySet<string>;
   sixDigitKind?: "rop3" | "allocated";
+  allowPgacOnly?: boolean;
 }): AxIdentityCodes {
   const sourceInitials = normalizeSourceInitials(
     input.source,
@@ -149,14 +158,16 @@ export function buildAxIdentityCodes(input: {
     input.sixDigitKind === "rop3"
       ? normalizeRop3(input.sixDigit, input.allowedRop3)
       : normalizeSixDigit(input.sixDigit);
-  const iso3 = normalizeIso3(input.iso3, input.allowedIso3);
+  const iso3 = input.allowPgacOnly
+    ? normalizeOptionalIso3(input.iso3, input.allowedIso3)
+    : normalizeIso3(input.iso3, input.allowedIso3);
 
   if (!sixDigit) {
     throw new AxIdentityRuleError("ROP3 is required for deterministic identity.", "missing-rop3");
   }
 
   const pgac = `${rop1?.slice(-2) ?? "00"}-${sourceInitials}-${sixDigit}`;
-  return { pgac, pgic: `${pgac}-${iso3}`, sixDigit };
+  return { pgac, pgic: iso3 ? `${pgac}-${iso3}` : null, sixDigit };
 }
 
 export function isStructurallyValidAxCode(value: unknown, kind?: "pgac" | "pgic") {

@@ -1,7 +1,6 @@
 export * from "./adapters";
 export * from "./admin";
 export * from "./artifacts";
-export * from "./comparison";
 export * from "./definitions";
 export * from "./errors";
 export * from "./forming";

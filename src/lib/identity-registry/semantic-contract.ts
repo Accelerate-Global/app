@@ -66,11 +66,11 @@ export const AX_IDENTITY_SEMANTIC_CONTRACT = deepFreeze({
     source:
       "lowercase; collapse underscores and whitespace to hyphens; require one built-in source or one exact pinned source-alias key and initials",
     rop1:
-      "blank becomes null; otherwise uppercase one letter plus three digits; PGAC uses the final two digits and uses 00 when absent",
+      "blank becomes null; otherwise uppercase one letter plus three digits; a valid ROP3 supplies its pinned ROP1 parent before formatting; PGAC uses 00 only when both ROP1 and ROP3 are absent",
     rop3:
       "blank becomes null; otherwise exactly six digits present in the pinned active ROP resource",
     iso3:
-      "uppercase exactly three letters present in the pinned active Country resource",
+      "forming resolves current country evidence first; identity revalidates uppercase exactly three letters against the pinned active Country resource and never invents geography",
     allocatedSixDigit:
       "safe integer 0..999999 or exactly six digits, serialized as six zero-padded digits",
     pgac: "last2(ROP1)-sourceInitials-sixDigit",
@@ -117,94 +117,77 @@ export const AX_IDENTITY_SEMANTIC_CONTRACT = deepFreeze({
     {
       key: "existing-binding-reuse",
       condition:
-        "the stable source row has an active binding in the exact base revision or a reservation owned by this run",
+        "the stable source row has an active binding in the exact base revision and its canonical current identity evidence is unchanged",
       outcome:
         "reuse its canonical PGAC/PGIC and binding id without allocating or reserving another value",
     },
     {
-      key: "rop3-code-generation",
-      condition: "the row has a valid active pinned ROP3 and valid ISO3/source inputs",
+      key: "existing-binding-identity-change",
+      condition:
+        "ROP1, registered source initials, ROP3, or ISO3 differs from the active binding evidence",
       outcome:
-        "generate PGAC/PGIC from last2(ROP1)-sourceInitials-ROP3[-ISO3]",
+        "record a blocking reviewed event with rebind, new-identity, and supported canonical-supersession actions",
     },
     {
-      key: "rop3-source-pair-invalid",
+      key: "rop3-parent-validation",
       condition:
-        "a ROP3 row supplies only one source code or supplies a malformed/internally inconsistent PGAC/PGIC pair",
-      outcome: "record source-code-conflict and do not reserve an identity",
-    },
-    {
-      key: "rop3-source-pair-collision",
-      condition:
-        "a structurally valid source PGAC or PGIC is already canonical or alias evidence for another identity",
-      outcome: "record source-code-conflict and do not reserve an identity",
-    },
-    {
-      key: "rop3-source-pair-retained-with-generated-aliases",
-      condition:
-        "a ROP3 row supplies a structurally valid, internally consistent, collision-free source code pair",
+        "the row has a valid active pinned ROP3",
       outcome:
-        "reserve the source pair as canonical and reserve any differing generated ROP3 pair as aliases",
+        "replace a missing source ROP1 with the pinned ROP3 parent, reject a parentless ROP3, and preserve a source-parent discrepancy finding",
     },
     {
-      key: "rop3-generated-reservation",
-      condition: "a ROP3 row supplies no source PGAC/PGIC pair",
+      key: "rop3-current-evidence-reuse",
+      condition:
+        "exact current ROP3 ownership already exists",
       outcome:
-        "reserve the generated ROP3 PGAC/PGIC pair as canonical without consuming the allocation counter",
+        "reuse its PGAC across sources and reuse or create only the requested ROP3-plus-ISO3 PGIC child",
     },
     {
-      key: "no-rop3-source-pair-invalid",
+      key: "rop3-current-evidence-reservation",
       condition:
-        "a no-ROP3 row supplies only one source code, malformed codes, or a PGIC that is not a child of its PGAC",
-      outcome: "record invalid-source-code and leave the row unassignable",
-    },
-    {
-      key: "no-rop3-source-pair-iso-mismatch",
-      condition:
-        "a no-ROP3 source PGIC suffix does not equal the row's normalized pinned ISO3",
-      outcome: "record invalid-source-code and leave the row unassignable",
-    },
-    {
-      key: "no-rop3-source-pair-retained",
-      condition:
-        "a no-ROP3 row supplies a complete structurally valid PGAC/PGIC pair whose PGIC matches the normalized ISO3",
+        "the exact current ROP3 is unowned and its pinned ROP1 parent is valid",
       outcome:
-        "reserve the source pair as canonical, retain its six-digit value, and advance the allocation floor beyond that value",
+        "reserve canonical established-format PGAC/PGIC values without consuming the allocation counter and reserve ROP3 ownership",
     },
     {
-      key: "explicit-code-or-value-collision",
-      condition:
-        "a retained/generated canonical or alias code, or a retained allocated value, belongs to another identity",
+      key: "source-supplied-ax-code-inertness",
+      condition: "the raw or formed row contains historical or source-supplied AX code fields",
       outcome:
-        "record the corresponding rule error and leave the row unassignable without overwriting existing authority",
+        "exclude those fields from identity evidence, matching, allocation, findings, registry storage, graph checksums, and canonical output decisions",
+    },
+    {
+      key: "pgac-only",
+      condition:
+        "the source classification permits PGAC and canonical ISO3 is unavailable",
+      outcome:
+        "assign or reuse PGAC only without fabricating geography",
+    },
+    {
+      key: "pgic-geography-required",
+      condition:
+        "the source classification requires PGIC and canonical ISO3 is unavailable",
+      outcome: "leave the row unassignable without consuming a registry number",
     },
     {
       key: "allocated-counter-missing-or-exhausted",
       condition:
-        "a no-ROP3 row has no source pair and the people-groups counter is absent or beyond its maximum",
+        "a no-ROP3 allocatable row reaches a missing or exhausted people-groups counter",
       outcome:
         "record identity-namespace-exhausted and leave the row unassignable",
     },
     {
-      key: "allocated-binding-reuse",
-      condition:
-        "the serialized allocator finds this run's reservation or a binding visible in this run's exact base revision",
-      outcome:
-        "return the existing binding, canonical codes, and allocated value without consuming the counter",
-    },
-    {
       key: "allocated-next-value-reservation",
       condition:
-        "a no-ROP3 row has no source pair, no reusable binding, and an available counter value",
+        "a no-ROP3 row has a stable key, satisfies its classification, has no reusable binding, and has an available counter value",
       outcome:
-        "consume exactly the next value and reserve its zero-padded PGAC/PGIC and stable source binding",
+        "consume exactly the next non-recycling value beginning at 000001 and reserve its established-format PGAC or PGAC/PGIC binding",
     },
     {
       key: "row-rule-error",
       condition:
         "source alias, ROP1, ROP3, ISO3, code shape, collision, or allocated-value validation throws a rule error",
       outcome:
-        "retain the formed row as unassignable with one blocking finding and no canonical assignment",
+        "preserve the formed row as unassignable with one blocking finding and no canonical assignment",
     },
     {
       key: "candidate-validity",
@@ -241,10 +224,16 @@ export const AX_IDENTITY_SEMANTIC_CONTRACT = deepFreeze({
       key: "reservation-cancellation-without-recycling",
       condition: "the owning candidate is rejected, expires, or fails before activation",
       outcome:
-        "cancel its reserved bindings/codes/identities while never returning consumed or retained values to the counter",
+        "cancel its reserved bindings, ROP3 evidence, codes, and identities without returning consumed values to the counter",
     },
   ],
 } as const satisfies AxIdentitySemanticContract);
 
 export const AX_IDENTITY_RULES_CHECKSUM =
   checksumAxIdentitySemanticContract(AX_IDENTITY_SEMANTIC_CONTRACT);
+
+export const AX_IDENTITY_FORMATTER_CHECKSUM = checksumAxIdentitySemanticContract({
+  pgac: AX_IDENTITY_SEMANTIC_CONTRACT.normalization.pgac,
+  pgic: AX_IDENTITY_SEMANTIC_CONTRACT.normalization.pgic,
+  sourceInitials: AX_IDENTITY_SEMANTIC_CONTRACT.sourceInitials,
+});

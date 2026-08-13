@@ -135,16 +135,14 @@ after online publication succeeds.
 | Add-on fields | `resources/Add-on_Fields_Agg_1/` consumed by AX field/type processing | `confirmed by code` | Versioned rule contract. |
 | JP PeopleID3 and PEID | Tier 2 ROP derivation and mapping steps under `tier_2/03_processing/engagement_partners/` | `confirmed by code` | Versioned typed tabular resources. |
 | Engagement template mapping | Tier 2 field and identifier steps | `confirmed by code` | Versioned typed resource or code contract. |
-| AX ROP3/UUID ledgers | Fixed shared/Tier 1/Tier 2 snapshots under `resources/AX_UUID*` plus Tier 1/Tier 2 AX-code scripts | `confirmed by code`; mutable latest-file and flat-row import are rejected | One private transactional PGAC → PGIC → many-binding registry graph imported from a checksum manifest; unsafe aliases remain quarantined evidence and snapshots become read-only migration evidence only. |
+| AX ROP3/UUID ledgers | Fixed shared/Tier 1/Tier 2 snapshots under `resources/AX_UUID*` plus Tier 1/Tier 2 AX-code scripts | `confirmed by code`; historical identity behavior is rejected | Historical ledgers are characterization context only and cannot enter AX Online matching, allocation, storage, or publication. |
 | Tier 1 field priority | `resources/data_priority_agg_1/` and fallbacks in both Tier 1 merge scripts | `confirmed by code`; precedence fixture `confirmed by fixture` | Versioned priority resource pinned per merge. |
 | Aggregate mappings/thresholds | `merge_workflows/*.py` and `aggregate_2/agg_2.py` | `confirmed by code` except Aggregate 2 naming | Versioned code/rule contracts pinned per candidate. |
 
-The five retained tabular families beyond Country/ROP are imported as complete
-immutable snapshots by `pnpm run pipeline-resources:import:local` or
-`pnpm run pipeline-resources:import:remote`. Their built-in manifest fixes the
-exact AX Data relative path, SHA-256 checksum, and retrieval timestamp. All five
-files are validated before any candidate activates; sanitized fixture packages
-are local/test bootstrap only, not production resource substitutes.
+The five tabular families beyond Country/ROP are maintained as complete typed
+immutable AX Online versions. Built-in or administrator-submitted packages are
+fully validated before activation; no runtime or operator command reads this
+historical inventory or a sibling repository.
 
 ## Conflicts, superseded paths, and unused artifacts
 

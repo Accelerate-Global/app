@@ -16,6 +16,7 @@ import { withRoute } from "@/lib/route-guard";
 
 const buildSchema = z.object({
   sourcePublicationId: z.string().uuid(),
+  reviewRunId: z.string().uuid().optional(),
   reservationHours: z.number().int().min(1).max(720).optional(),
 });
 

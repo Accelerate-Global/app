@@ -111,53 +111,32 @@ insert into private.reference_resource_sets (
   'pipeline-test-admin', 'Pipeline product fixture'
 );
 
+insert into private.ax_identity_authority_activation_attempts (
+  id, namespace, environment, state_fingerprint, empty_graph_checksum,
+  rules_checksum, formatter_checksum, token_hash, actor_owner_id,
+  reason, expires_at, consumed_at
+) values (
+  '85000000-0000-4000-8000-000000000006', 'people-groups', 'test',
+  repeat('7', 64), repeat('b', 64), repeat('8', 64), repeat('9', 64),
+  repeat('a', 64), 'pipeline-test-admin', 'Fresh authority fixture',
+  now() + interval '30 minutes', now()
+);
 insert into private.ax_registry_revisions (
   id, content_checksum, binding_count, actor_owner_id, reason
 ) values (
   '85000000-0000-4000-8000-000000000002', repeat('b', 64), 0,
-  'pipeline-test-admin', 'Pipeline product fixture'
+  'pipeline-test-admin', 'Fresh empty authority revision'
 );
-
-insert into private.ax_identity_legacy_imports (
-  id, input_fingerprint, snapshot_manifest, status, finding_count,
-  registry_revision_id, actor_owner_id, reason, committed_at, import_kind,
-  state_fingerprint, graph_checksum, report_checksum, manifest_checksum,
-  dry_run_token_hash, report, dry_run_completed_at
+insert into private.ax_identity_authorities (
+  namespace, environment, registry_revision_id, activation_attempt_id,
+  state_fingerprint, empty_graph_checksum, rules_checksum,
+  formatter_checksum, actor_owner_id, reason
 ) values (
-  '85000000-0000-4000-8000-000000000006', repeat('6', 64), '{}'::jsonb,
-  'dry-run', 0, null,
-  'pipeline-test-admin', 'Verified identity graph fixture', null,
-  'verified-identity-graph', repeat('7', 64), repeat('8', 64),
-  repeat('9', 64), repeat('a', 64), repeat('b', 64), '{}'::jsonb, now()
+  'people-groups', 'test', '85000000-0000-4000-8000-000000000002',
+  '85000000-0000-4000-8000-000000000006', repeat('7', 64),
+  repeat('b', 64), repeat('8', 64), repeat('9', 64),
+  'pipeline-test-admin', 'Fresh authority fixture'
 );
-
-insert into private.ax_identity_graph_commit_sessions (
-  backend_pid, transaction_id, legacy_import_id, input_fingerprint,
-  token_hash, state_fingerprint
-) values (
-  pg_backend_pid(), txid_current(),
-  '85000000-0000-4000-8000-000000000006', repeat('6', 64),
-  repeat('b', 64), repeat('7', 64)
-);
-
-update private.ax_identity_legacy_imports
-set status = 'committed',
-  registry_revision_id = '85000000-0000-4000-8000-000000000002',
-  committed_at = now()
-where id = '85000000-0000-4000-8000-000000000006';
-
-insert into private.ax_identity_registry_cutovers (
-  namespace, legacy_import_id, registry_revision_id, input_fingerprint,
-  graph_checksum, report_checksum, actor_owner_id, reason
-) values (
-  'people-groups', '85000000-0000-4000-8000-000000000006',
-  '85000000-0000-4000-8000-000000000002', repeat('6', 64),
-  repeat('8', 64), repeat('9', 64), 'pipeline-test-admin',
-  'Verified identity graph fixture cutover'
-);
-
-delete from private.ax_identity_graph_commit_sessions
-where backend_pid = pg_backend_pid() and transaction_id = txid_current();
 
 insert into public.datasets (
   id, owner_id, file_name, blob_url, blob_path, current_version_action,

@@ -11,17 +11,14 @@ const EXPECTED_BRANCH_KEYS = [
   "stable-key-missing",
   "stable-key-duplicate",
   "existing-binding-reuse",
-  "rop3-code-generation",
-  "rop3-source-pair-invalid",
-  "rop3-source-pair-collision",
-  "rop3-source-pair-retained-with-generated-aliases",
-  "rop3-generated-reservation",
-  "no-rop3-source-pair-invalid",
-  "no-rop3-source-pair-iso-mismatch",
-  "no-rop3-source-pair-retained",
-  "explicit-code-or-value-collision",
+  "existing-binding-identity-change",
+  "rop3-parent-validation",
+  "rop3-current-evidence-reuse",
+  "rop3-current-evidence-reservation",
+  "source-supplied-ax-code-inertness",
+  "pgac-only",
+  "pgic-geography-required",
   "allocated-counter-missing-or-exhausted",
-  "allocated-binding-reuse",
   "allocated-next-value-reservation",
   "row-rule-error",
   "candidate-validity",
@@ -59,7 +56,7 @@ describe("AX identity semantic contract", () => {
 
   it("locks the reviewed semantic checksum", () => {
     expect(AX_IDENTITY_RULES_CHECKSUM).toBe(
-      "7c44588ea17c3402f03bd4b6ea5e366475759c2c97eae0bb8879251ebc958bfe",
+      "469173320cb943bb1cc8cfae59afb0a1768f0b60a505a12a9b684069eb27e19d",
     );
     expect(checksumAxIdentitySemanticContract(AX_IDENTITY_SEMANTIC_CONTRACT)).toBe(
       AX_IDENTITY_RULES_CHECKSUM,

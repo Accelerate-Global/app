@@ -18,8 +18,19 @@ const binding = {
   pgicCode: "10-jp-100001-LAO",
   allocatedValue: null,
   normalizedIso3: "LAO",
+  identityEvidence: { rop1: "A010", rop3: "100001", iso3: "LAO" },
   activatedRevisionId: "revision-1",
   createdAt: "2026-07-22T00:00:00.000Z",
+};
+
+const authority = {
+  initialized: true,
+  environment: "test",
+  registryRevisionId: "revision-1",
+  revisionNumber: 1,
+  rulesChecksum: "a".repeat(64),
+  formatterChecksum: "b".repeat(64),
+  activatedAt: "2026-08-12T00:00:00.000Z",
 };
 
 describe("IdentityRegistryClient", () => {
@@ -32,7 +43,7 @@ describe("IdentityRegistryClient", () => {
   });
 
   it("searches canonical bindings and exposes candidate controls", () => {
-    render(<IdentityRegistryClient initialOverview={{ bindings: [binding], revisions: [], runs: [] }} />);
+    render(<IdentityRegistryClient initialOverview={{ authority, bindings: [binding], revisions: [], runs: [] }} />);
     expect(screen.getByText("10-jp-100001-LAO")).toBeTruthy();
     fireEvent.change(screen.getByLabelText("Search registry"), { target: { value: "missing" } });
     expect(screen.getByText("No matching active bindings.")).toBeTruthy();
@@ -56,7 +67,6 @@ describe("IdentityRegistryClient", () => {
       inputRowCount: 1,
       outputRowCount: 1,
       reusedCount: 0,
-      retainedCount: 0,
       reservedCount: 1,
       conflictCount: 0,
       unassignableCount: 0,
@@ -75,6 +85,7 @@ describe("IdentityRegistryClient", () => {
       completedAt: "2026-07-22T00:01:00.000Z",
       findings: [],
       rows: [],
+      decisions: [],
     };
     const fetchMock = vi.fn(async () =>
       Response.json({ run: linkedRun }),
@@ -83,7 +94,7 @@ describe("IdentityRegistryClient", () => {
 
     render(
       <IdentityRegistryClient
-        initialOverview={{ bindings: [], revisions: [], runs: [linkedRun] }}
+        initialOverview={{ authority, bindings: [], revisions: [], runs: [linkedRun] }}
         initialSelectedRunId={linkedRun.id}
       />,
     );
@@ -97,5 +108,29 @@ describe("IdentityRegistryClient", () => {
       await screen.findByRole("heading", { name: "Identity candidate" }),
     ).toBeTruthy();
     expect(screen.getAllByText("Current").length).toBeGreaterThan(0);
+  });
+
+  it("keeps browser allocation disabled before CLI authority activation", () => {
+    render(
+      <IdentityRegistryClient
+        initialOverview={{
+          authority: {
+            initialized: false,
+            environment: null,
+            registryRevisionId: null,
+            revisionNumber: null,
+            rulesChecksum: null,
+            formatterChecksum: null,
+            activatedAt: null,
+          },
+          bindings: [],
+          revisions: [],
+          runs: [],
+        }}
+      />,
+    );
+    expect(screen.getByText("Fresh identity authority is not initialized")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Build candidate" }).hasAttribute("disabled")).toBe(true);
+    expect(screen.queryByRole("button", { name: /activate/iu })).toBeNull();
   });
 });

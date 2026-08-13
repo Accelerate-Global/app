@@ -35,6 +35,26 @@ import {
 } from "./schema";
 
 describe("datasets schema", () => {
+  it("creates the fresh AX Online identity authority without legacy import paths", async () => {
+    const migration = await readFile(
+      path.join(
+        process.cwd(),
+        "supabase/migrations/20260813014754_establish_fresh_ax_identity_authority.sql",
+      ),
+      "utf8",
+    );
+
+    expect(migration).toContain("create table private.ax_identity_authorities");
+    expect(migration).toContain("create table private.ax_identity_rop3_evidence");
+    expect(migration).toContain("create table private.ax_identity_change_decisions");
+    expect(migration).toContain("begin_ax_identity_authority_activation");
+    expect(migration).toContain("commit_ax_identity_authority_activation");
+    expect(migration).toContain("new_revision_number <> 1");
+    expect(migration).toContain("next_value from private.ax_identity_counters");
+    expect(migration).toContain("drop table private.ax_identity_legacy_imports");
+    expect(migration).not.toContain("AX2");
+  });
+
   it("declares the current version metadata columns", () => {
     expect(datasets.currentVersionAction.name).toBe("current_version_action");
     expect(datasets.currentVersionActorOwnerId.name).toBe(

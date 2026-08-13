@@ -1,14 +1,15 @@
 import type { CsvColumn } from "@/lib/api-types";
 
-export const AX_IDENTITY_RULES_VERSION = "ax-identity-v2" as const;
+export const AX_IDENTITY_RULES_VERSION = "ax-identity-v3" as const;
 export const AX_IDENTITY_NAMESPACE = "people-groups" as const;
 
 export type AxIdentityKind = "pgac" | "pgic";
 export type AxIdentityLifecycle = "reserved" | "active" | "cancelled" | "superseded";
 export type AxIdentityAssignmentStatus =
   | "reused"
-  | "retained"
   | "reserved"
+  | "pgac-only"
+  | "review-required"
   | "conflict"
   | "unassignable";
 
@@ -23,7 +24,7 @@ export type AxIdentityFinding = Readonly<{
 
 export type AxIdentityCodes = Readonly<{
   pgac: string;
-  pgic: string;
+  pgic: string | null;
   sixDigit: string;
 }>;
 
@@ -63,7 +64,6 @@ export type AxIdentityRunSummary = Readonly<{
   inputRowCount: number;
   outputRowCount: number | null;
   reusedCount: number;
-  retainedCount: number;
   reservedCount: number;
   conflictCount: number;
   unassignableCount: number;
@@ -86,6 +86,7 @@ export type AxIdentityRunDetail = AxIdentityRunSummary &
   Readonly<{
     findings: readonly AxIdentityFinding[];
     rows: readonly AxIdentityCandidateRow[];
+    decisions: readonly AxIdentityChangeDecision[];
   }>;
 
 export type AxRegistryRevision = Readonly<{
@@ -107,9 +108,10 @@ export type AxIdentityRegistryEntry = Readonly<{
   bindingState: AxIdentityLifecycle;
   identityId: string;
   pgacCode: string;
-  pgicCode: string;
+  pgicCode: string | null;
   allocatedValue: number | null;
-  normalizedIso3: string;
+  normalizedIso3: string | null;
+  identityEvidence: Readonly<Record<string, unknown>>;
   activatedRevisionId: string | null;
   createdAt: string;
 }>;
@@ -153,25 +155,31 @@ export type AxIdentityPreparedArtifacts = Readonly<{
   columns: readonly CsvColumn[];
 }>;
 
-export type LegacyIdentitySnapshot = Readonly<{
-  path: string;
-  expectedChecksum: string;
-  body: string;
+export type AxIdentityAuthorityStatus = Readonly<{
+  initialized: boolean;
+  environment: string | null;
+  registryRevisionId: string | null;
+  revisionNumber: number | null;
+  rulesChecksum: string | null;
+  formatterChecksum: string | null;
+  activatedAt: string | null;
 }>;
 
-export type LegacyIdentityRow = Readonly<{
+export type AxIdentityChangeAction =
+  | "rebind"
+  | "new-identity"
+  | "canonical-supersession";
+
+export type AxIdentityChangeDecision = Readonly<{
+  id: string;
+  identityRunId: string;
+  sourceRowIndex: number;
   sourceProfileKey: string;
   stableRowKey: string;
-  pgacCode: string;
-  pgicCode: string;
-  uuid: string | null;
-  aliases: readonly string[];
-}>;
-
-export type LegacyIdentityImportResult = Readonly<{
-  inputFingerprint: string;
-  rows: readonly LegacyIdentityRow[];
-  findings: readonly AxIdentityFinding[];
-  blocking: boolean;
-  committedImportId: string | null;
+  currentBindingId: string;
+  currentEvidence: Readonly<Record<string, unknown>>;
+  proposedEvidence: Readonly<Record<string, unknown>>;
+  allowedActions: readonly AxIdentityChangeAction[];
+  selectedAction: AxIdentityChangeAction | null;
+  selectedAt: string | null;
 }>;

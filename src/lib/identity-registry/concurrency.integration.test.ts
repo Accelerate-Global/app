@@ -18,143 +18,38 @@ function checksum(value: string) {
   return createHash("sha256").update(value).digest("hex");
 }
 
-async function ensureVerifiedCutover(sql: TransactionSql) {
+async function ensureFreshAuthority(sql: TransactionSql) {
   const [existing] = await sql<{ present: boolean }[]>`
     select true as present
-    from private.ax_identity_registry_cutovers
+    from private.ax_identity_authorities
     where namespace = 'people-groups'
   `;
   if (existing?.present) return;
 
-  const importId = randomUUID();
-  const rawToken = `verified-cutover-${importId}`;
-  const fingerprint = checksum(`cutover:people-groups:${importId}`);
-  const graphChecksum = checksum("parents\nchildren\naliases\nbindings\n");
-  const auditChecksum = checksum("audits\n");
-  const auditArtifactChecksum = checksum("[]");
-  const manifestChecksum = checksum(`manifest:${importId}`);
-  const bindingTranslationChecksum = checksum(`binding-translation:${importId}`);
-  const report = {
-    schemaVersion: 1,
-    blocking: false,
-    blockingReasons: [],
-    graphChecksum,
-    graph: {
-      bindings: 0,
-      pgacIdentities: 0,
-      pgicIdentities: 0,
-      identities: 0,
-      aliases: 0,
-      allocationCounterFloor: 2055,
-    },
-    audit: {
-      records: 0,
-      checksum: auditChecksum,
-      artifactChecksum: auditArtifactChecksum,
-      decisions: [],
-    },
-    bindingTranslation: {
-      algorithmVersion: "source-forming-runtime-stable-row-key-v1",
-      status: "verified-pinned-source-crosswalk",
-      present: true,
-      rawBindingCount: 0,
-      selectedActiveBindingCount: 0,
-      historicalUnboundCount: 0,
-      sha256: bindingTranslationChecksum,
-    },
-    tier2Components: [],
-  };
-  const [state] = await sql<{ state_fingerprint: string }[]>`
-    select private.ax_identity_registry_state_fingerprint() as state_fingerprint
-  `;
-  const [reportEvidence] = await sql<{ report_checksum: string }[]>`
-    select encode(extensions.digest(
-      private.ax_identity_canonical_jsonb(${sql.json(report)}::jsonb),
-      'sha256'
-    ), 'hex') as report_checksum
-  `;
-  if (!state || !reportEvidence) {
-    throw new Error("Could not prepare the verified cutover integration fixture.");
-  }
-
-  await sql`
-    insert into private.ax_identity_legacy_imports (
-      id, input_fingerprint, snapshot_manifest, status, actor_owner_id,
-      reason, import_kind, state_fingerprint,
-      graph_checksum, report_checksum, manifest_checksum, dry_run_token_hash,
-      report, dry_run_completed_at
-    ) values (
-      ${importId}, ${fingerprint}, ${sql.json({ schemaVersion: 1 })},
-      'dry-run', 'concurrency-test', 'Verified cutover integration fixture',
-      'verified-identity-graph', ${state.state_fingerprint},
-      ${graphChecksum}, ${reportEvidence.report_checksum}, ${manifestChecksum},
-      ${checksum(rawToken)}, ${sql.json(report)}, now()
+  const rulesChecksum = checksum("fresh-authority-rules");
+  const formatterChecksum = checksum("established-ax-formatter");
+  const [attempt] = await sql<{
+    activation_attempt_id: string;
+    activation_token: string;
+    state_fingerprint: string;
+  }[]>`
+    select activation_attempt_id, activation_token, state_fingerprint
+    from private.begin_ax_identity_authority_activation(
+      'test', ${rulesChecksum}, ${formatterChecksum},
+      'concurrency-test', 'concurrency-test@example.org',
+      'Initialize an empty integration-test authority'
     )
   `;
-
-  const evidencePrefix = `identity-registry-legacy-imports/${fingerprint}`;
-  const artifacts = [
-    "shared-uuid-ledger",
-    "tier1-uuid-ledger",
-    "tier2-uuid-ledger",
-    "shared-rop3-ledger",
-    "tier2-rop3-ledger",
-    "binding-translation",
-    "audit-report",
-    "manifest",
-    "report",
-  ].map((artifactKey) => ({
-    artifactKey,
-    artifactKind:
-      artifactKey === "manifest"
-        ? "manifest"
-        : artifactKey === "audit-report" || artifactKey === "report"
-          ? "report"
-          : "snapshot",
-    storagePath: `${evidencePrefix}/${artifactKey}.json`,
-    contentChecksum:
-      artifactKey === "audit-report"
-        ? auditArtifactChecksum
-        : artifactKey === "manifest"
-          ? manifestChecksum
-          : artifactKey === "report"
-            ? reportEvidence.report_checksum
-            : artifactKey === "binding-translation"
-              ? bindingTranslationChecksum
-              : checksum(`${artifactKey}:${importId}`),
-  }));
-  for (const artifact of artifacts) {
-    await sql`
-      insert into storage.objects (bucket_id, name, metadata)
-      values ('identity-registry-evidence', ${artifact.storagePath}, '{}'::jsonb)
-    `;
-    await sql`
-      insert into private.ax_identity_artifacts (
-        legacy_import_id, artifact_kind, artifact_key,
-        storage_path, content_checksum, size_bytes
-      ) values (
-        ${importId}, ${artifact.artifactKind}, ${artifact.artifactKey},
-        ${artifact.storagePath}, ${artifact.contentChecksum}, 1
-      )
-    `;
-  }
-
-  const [authorization] = await sql<{ proceed: boolean }[]>`
-    select private.begin_legacy_ax_identity_graph_commit(
-      ${importId}, ${fingerprint}, ${rawToken}
-    ) as proceed
+  if (!attempt) throw new Error("Could not prepare the fresh authority fixture.");
+  const [activated] = await sql<{ revision_number: number }[]>`
+    select revision_number
+    from private.commit_ax_identity_authority_activation(
+      ${attempt.activation_attempt_id}, ${attempt.activation_token},
+      ${attempt.state_fingerprint}, ${rulesChecksum}, ${formatterChecksum}
+    )
   `;
-  if (!authorization?.proceed) {
-    throw new Error("Verified cutover integration fixture was not authorized.");
-  }
-  const [finalized] = await sql<{ registry_revision_id: string }[]>`
-    select private.finalize_legacy_ax_identity_graph_import(
-      ${importId}, ${fingerprint}, ${rawToken},
-      'concurrency-test', null, 'Verified cutover integration fixture'
-    ) as registry_revision_id
-  `;
-  if (!finalized?.registry_revision_id) {
-    throw new Error("Verified cutover integration fixture did not finalize.");
+  if (Number(activated?.revision_number) !== 1) {
+    throw new Error("Fresh authority fixture did not establish revision 1.");
   }
 }
 
@@ -180,114 +75,6 @@ describe.runIf(enabled)("AX identity allocator concurrency", () => {
     }
   });
 
-  it.each(["profile", "connection"] as const)(
-    "serializes mapped %s changes against cutover authorization",
-    async (mutation) => {
-      const updater = postgres(databaseUrl!, { max: 1 });
-      const committer = postgres(databaseUrl!, { max: 1 });
-      const setup = postgres(databaseUrl!, { max: 1 });
-      const suffix = randomUUID().replaceAll("-", "").slice(0, 8);
-      const connectionId = randomUUID();
-      const profileKey = `cutover-race-${suffix}`;
-      const spreadsheetId = `cutover-race-${suffix}`;
-      const importId = randomUUID();
-      const fingerprint = checksum(`cutover-race:${importId}`);
-      const rawToken = `cutover-race-token-${suffix}`;
-
-      try {
-        const [state] = await setup.begin(async (sql) => {
-          await sql`
-            insert into private.api_connections (
-              id, name, description, method, url, request_headers, secret_header_names,
-              body_template, response_format, response_data_path, import_mode,
-              dataset_name, dataset_classification, provider, provider_config,
-              created_by_owner_id, updated_by_owner_id
-            ) values (
-              ${connectionId}, ${`Cutover race ${suffix}`}, '', 'GET',
-              ${`https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`},
-              '[]'::jsonb, '[]'::jsonb, '', 'csv', '', 'create',
-              ${`${profileKey}.csv`}, 'PGIC', 'google_sheets',
-              ${sql.json({
-                provider: "google_sheets",
-                spreadsheetId,
-                spreadsheetUrl: `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`,
-                spreadsheetTitle: "Cutover race",
-                sheetId: 1,
-                sheetTitle: "Engagement",
-                rangeMode: "full_tab",
-              })},
-              'concurrency-test', 'concurrency-test'
-            )
-          `;
-          await sql`
-            insert into private.tier2_partner_profiles (
-              profile_key, partner_key, display_name, api_connection_id,
-              spreadsheet_id, sheet_id, sheet_title, stable_row_key_column,
-              tracking_id_column, tracking_id_source, contract_version,
-              contract_checksum, created_by_owner_id, updated_by_owner_id
-            ) values (
-              ${profileKey}, ${`race-${suffix}`}, 'Cutover race', ${connectionId},
-              ${spreadsheetId}, 1, 'Engagement', 'Partner Row ID', 'ROP3', 'rop3',
-              'v1', ${checksum(`contract:${suffix}`)},
-              'concurrency-test', 'concurrency-test'
-            )
-          `;
-          return sql<{ state_fingerprint: string }[]>`
-            select private.ax_identity_registry_state_fingerprint() as state_fingerprint
-          `;
-        });
-        await setup`
-          insert into private.ax_identity_legacy_imports (
-            id, input_fingerprint, snapshot_manifest, status, actor_owner_id,
-            reason, import_kind, state_fingerprint, graph_checksum,
-            report_checksum, manifest_checksum, dry_run_token_hash, report,
-            dry_run_completed_at
-          ) values (
-            ${importId}, ${fingerprint}, '{}'::jsonb, 'dry-run', 'concurrency-test',
-            'Profile update cutover race', 'verified-identity-graph',
-            ${state.state_fingerprint}, ${checksum(`graph:${importId}`)},
-            ${checksum(`report:${importId}`)}, ${checksum(`manifest:${importId}`)},
-            ${checksum(rawToken)}, '{"blocking":false}'::jsonb, now()
-          )
-        `;
-
-        const sourceUpdate = updater.begin(async (sql) => {
-          if (mutation === "profile") {
-            await sql`
-              update private.tier2_partner_profiles
-              set active = false
-              where profile_key = ${profileKey}
-            `;
-          } else {
-            await sql`
-              update private.api_connections
-              set archived_at = now(), archived_by_owner_id = 'concurrency-test',
-                archive_reason = 'Cutover serialization test'
-              where id = ${connectionId}
-            `;
-          }
-          await sql`select pg_sleep(0.2)`;
-        });
-        await new Promise((resolve) => setTimeout(resolve, 40));
-        await expect(
-          committer`
-            select private.begin_legacy_ax_identity_graph_commit(
-              ${importId}, ${fingerprint}, ${rawToken}
-            )
-          `,
-        ).rejects.toMatchObject({ code: "40001" });
-        await sourceUpdate;
-      } finally {
-        await Promise.all([
-          updater.end({ timeout: 2 }),
-          committer.end({ timeout: 2 }),
-          setup.end({ timeout: 2 }),
-        ]);
-      }
-    },
-    20_000,
-  );
-
   it("serializes parallel allocations and makes same-key retries idempotent", async () => {
     const clients = Array.from({ length: 4 }, () => postgres(databaseUrl!, { max: 1 }));
     const setup = clients[0];
@@ -303,7 +90,7 @@ describe.runIf(enabled)("AX identity allocator concurrency", () => {
 
     try {
       await setup.begin(async (sql) => {
-        await ensureVerifiedCutover(sql);
+        await ensureFreshAuthority(sql);
         const [counter] = await sql<{ next_value: number }[]>`
           select next_value
           from private.ax_identity_counters
@@ -351,11 +138,21 @@ describe.runIf(enabled)("AX identity allocator concurrency", () => {
       const allocations = await Promise.all(
         Array.from({ length: 8 }, (_, index) => {
           const client = clients[index % clients.length];
+          const stableRowKey = `${sourceProfileKey}:row:${index}`;
+          const evidence = {
+            classification: "PGIC",
+            rop1: "A010",
+            sourceInitials,
+            rop3: null,
+            iso3: "LAO",
+            stableRowKey,
+          };
           return client`
             select allocated_value, pgac_code, reused
             from private.allocate_ax_identity_value(
-              ${namespace}, ${sourceProfileKey}, ${`${sourceProfileKey}:row:${index}`},
-              ${runId}, 'A010', ${sourceInitials}, 'LAO', now() + interval '1 day'
+              ${namespace}, ${sourceProfileKey}, ${stableRowKey},
+              ${runId}, 'A010', ${sourceInitials}, 'LAO', now() + interval '1 day',
+              ${client.json(evidence)}::jsonb, ${checksum(JSON.stringify(evidence))}, null
             )
           `;
         }),
@@ -368,12 +165,22 @@ describe.runIf(enabled)("AX identity allocator concurrency", () => {
       );
 
       const sharedKey = `${sourceProfileKey}:shared`;
+      const sharedEvidence = {
+        classification: "PGIC",
+        rop1: "A010",
+        sourceInitials,
+        rop3: null,
+        iso3: "LAO",
+        stableRowKey: sharedKey,
+      };
+      const sharedEvidenceChecksum = checksum(JSON.stringify(sharedEvidence));
       const [firstRetry, secondRetry] = await Promise.all(
         clients.slice(0, 2).map((client) => client`
           select binding_id, allocated_value, pgac_code, reused
           from private.allocate_ax_identity_value(
             ${namespace}, ${sourceProfileKey}, ${sharedKey}, ${runId},
-            'A010', ${sourceInitials}, 'LAO', now() + interval '1 day'
+            'A010', ${sourceInitials}, 'LAO', now() + interval '1 day',
+            ${client.json(sharedEvidence)}::jsonb, ${sharedEvidenceChecksum}, null
           )
         `),
       );
@@ -398,7 +205,7 @@ describe.runIf(enabled)("AX identity allocator concurrency", () => {
 
     try {
       await setup.begin(async (sql) => {
-        await ensureVerifiedCutover(sql);
+        await ensureFreshAuthority(sql);
         await sql`
           insert into public.datasets (
             id, owner_id, file_name, blob_url, blob_path, current_version_action,
@@ -483,7 +290,7 @@ describe.runIf(enabled)("AX identity allocator concurrency", () => {
 
     try {
       await setup.begin(async (sql) => {
-        await ensureVerifiedCutover(sql);
+        await ensureFreshAuthority(sql);
         await sql`
           insert into public.datasets (
             id, owner_id, file_name, blob_url, blob_path, current_version_action,

@@ -11,7 +11,6 @@ import {
   deletePipelineArtifacts,
   deletePipelineDatasetBlob,
   readPipelineArtifact,
-  uploadPipelineArtifact,
   uploadPipelineDatasetBlob,
 } from "@/lib/pipeline-products/storage";
 import { inferTier1ReleaseInputKey } from "@/lib/pipeline-products/release-sets";
@@ -27,7 +26,6 @@ import {
   createTier2ProductInputFingerprint,
   getTier2ProductDefinitionContract,
 } from "./definitions";
-import { compareTier2CandidateWithLegacy } from "./comparison";
 import { Tier2ProductError } from "./errors";
 import {
   buildAggregate2Candidate,
@@ -145,7 +143,6 @@ type RunRow = {
   publication_reason: string | null;
   created_at: Date | string;
   completed_at: Date | string | null;
-  legacy_comparison_available: boolean;
 };
 
 function iso(value: Date | string | null) {
@@ -474,7 +471,6 @@ function mapRun(row: RunRow, outOfDate: {
     publicationReason: row.publication_reason,
     outOfDate: outOfDate.outOfDate,
     changedInputs: outOfDate.changedInputs,
-    legacyComparisonAvailable: row.legacy_comparison_available,
     createdAt: iso(row.created_at)!,
     completedAt: iso(row.completed_at),
   };
@@ -490,12 +486,7 @@ async function readRunRows(where: SQL, limit?: number) {
       run.validation_summary, run.artifact_manifest, run.dataset_id, run.publication_id,
       run.expected_current_publication_id,
       definition.publication_target_key, run.rejection_reason,
-      run.publication_reason, run.created_at, run.completed_at,
-      exists (
-        select 1 from private.pipeline_artifacts as comparison
-        where comparison.run_id = run.id
-          and comparison.artifact_kind = 'comparison-json'
-      ) as legacy_comparison_available
+      run.publication_reason, run.created_at, run.completed_at
     from private.pipeline_runs as run
     join private.pipeline_definitions as definition
       on definition.definition_key = run.definition_key
@@ -623,221 +614,6 @@ export async function getTier2ProductRun(runId: string) {
       rowCount: member.publication_row_count,
     })),
   };
-}
-
-function legacyComparisonColumns(value: unknown): CsvColumn[] {
-  if (
-    !Array.isArray(value) ||
-    value.some((column) =>
-      !column ||
-      typeof column !== "object" ||
-      Array.isArray(column) ||
-      typeof (column as Record<string, unknown>).key !== "string" ||
-      typeof (column as Record<string, unknown>).label !== "string" ||
-      !Number.isInteger((column as Record<string, unknown>).sourceIndex)
-    )
-  ) {
-    throw new Tier2ProductError(
-      "The Tier 2 candidate has no immutable columns for legacy comparison.",
-      409,
-      "comparison-columns-missing",
-    );
-  }
-  return value.map((column) => ({
-    key: (column as Record<string, unknown>).key as string,
-    label: (column as Record<string, unknown>).label as string,
-    sourceIndex: Number((column as Record<string, unknown>).sourceIndex),
-  }));
-}
-
-export type Tier2LegacyComparisonArtifact = Readonly<{
-  schemaVersion: 1;
-  runId: string;
-  productKind: Tier2ProductKind;
-  definitionKey: string;
-  reason: string;
-  createdByOwnerId: string;
-  createdByEmail: string | null;
-  createdAt: string;
-  report: ReturnType<typeof compareTier2CandidateWithLegacy>;
-}>;
-
-export async function createTier2LegacyComparison(input: {
-  runId: string;
-  legacy: {
-    columns: readonly CsvColumn[];
-    rows: readonly Record<string, string>[];
-  };
-  reason: string;
-  actorOwnerId: string;
-  actorEmail: string | null;
-}) {
-  if (!input.reason.trim()) {
-    throw new Tier2ProductError(
-      "A legacy comparison reason is required.",
-      400,
-      "comparison-reason-missing",
-    );
-  }
-  const run = await getTier2ProductRun(input.runId);
-  if (
-    !run ||
-    !["valid", "invalid", "published", "rejected"].includes(run.status) ||
-    !run.outputChecksum ||
-    run.outputRowCount === null
-  ) {
-    throw new Tier2ProductError(
-      "A completed Tier 2 or Aggregate 2 candidate is required for comparison.",
-      409,
-      "comparison-run-not-ready",
-    );
-  }
-  if (run.legacyComparisonAvailable) {
-    throw new Tier2ProductError(
-      "This candidate already has an immutable legacy comparison report.",
-      409,
-      "comparison-already-retained",
-    );
-  }
-  const candidateRows = (await getDb().execute(sql<{
-    row_index: number;
-    data: Record<string, string>;
-  }>`
-    select row_index, data
-    from private.tier2_pipeline_run_rows
-    where run_id = ${input.runId}::uuid
-    order by row_index
-  `)) as unknown as Array<{
-    row_index: number;
-    data: Record<string, string>;
-  }>;
-  const candidate = {
-    columns: legacyComparisonColumns(run.validationSummary.columns),
-    rows: candidateRows.map((row) => row.data),
-  };
-  if (
-    candidate.rows.length !== run.outputRowCount ||
-    checksumSourceFormingValue(candidate) !== run.outputChecksum
-  ) {
-    throw new Tier2ProductError(
-      "The retained candidate rows no longer match their reviewed checksum.",
-      409,
-      "comparison-candidate-evidence-mismatch",
-    );
-  }
-  const artifact: Tier2LegacyComparisonArtifact = {
-    schemaVersion: 1,
-    runId: run.id,
-    productKind: run.productKind,
-    definitionKey: run.definitionKey,
-    reason: input.reason.trim(),
-    createdByOwnerId: input.actorOwnerId,
-    createdByEmail: input.actorEmail,
-    createdAt: new Date().toISOString(),
-    report: compareTier2CandidateWithLegacy({
-      legacy: input.legacy,
-      candidate,
-    }),
-  };
-  const body = JSON.stringify(artifact);
-  const storagePath = await uploadPipelineArtifact({
-    definitionKey: run.definitionKey,
-    runId: run.id,
-    kind: "comparison-json",
-    body,
-  });
-  try {
-    await getDb().transaction(async (tx) => {
-      await tx.execute(sql`
-        select pg_advisory_xact_lock(
-          hashtextextended(${`tier2-legacy-comparison:${run.id}`}, 0)
-        )
-      `);
-      const current = (await tx.execute(sql<{
-        status: string;
-        output_row_count: number | null;
-        output_checksum: string | null;
-      }>`
-        select status, output_row_count, output_checksum
-        from private.pipeline_runs
-        where id = ${run.id}::uuid
-        for share
-      `)) as unknown as Array<{
-        status: string;
-        output_row_count: number | null;
-        output_checksum: string | null;
-      }>;
-      if (
-        !current[0] ||
-        current[0].status !== run.status ||
-        current[0].output_row_count !== run.outputRowCount ||
-        current[0].output_checksum !== run.outputChecksum
-      ) {
-        throw new Tier2ProductError(
-          "The Tier 2 candidate changed while its legacy comparison was being retained.",
-          409,
-          "comparison-run-changed",
-        );
-      }
-      await tx.execute(sql`
-        insert into private.pipeline_artifacts (
-          run_id, artifact_kind, storage_path, content_checksum,
-          size_bytes, schema_version
-        ) values (
-          ${run.id}::uuid, 'comparison-json', ${storagePath},
-          ${checksumSourceFormingValue(body)},
-          ${Buffer.byteLength(body, "utf8")}, 1
-        )
-      `);
-    });
-  } catch (error) {
-    await deletePipelineArtifacts([storagePath]).catch(() => undefined);
-    throw error;
-  }
-  return artifact;
-}
-
-export async function getTier2LegacyComparison(runId: string) {
-  const rows = (await getDb().execute(sql<{
-    storage_path: string;
-    content_checksum: string;
-    size_bytes: number;
-  }>`
-    select storage_path, content_checksum, size_bytes
-    from private.pipeline_artifacts
-    where run_id = ${runId}::uuid
-      and artifact_kind = 'comparison-json'
-    limit 1
-  `)) as unknown as Array<{
-    storage_path: string;
-    content_checksum: string;
-    size_bytes: number;
-  }>;
-  if (!rows[0]) return null;
-  const body = await readPipelineArtifact(rows[0].storage_path);
-  if (
-    checksumSourceFormingValue(body) !== rows[0].content_checksum ||
-    Buffer.byteLength(body, "utf8") !== rows[0].size_bytes
-  ) {
-    throw new Tier2ProductError(
-      "The retained legacy comparison no longer matches its immutable audit record.",
-      409,
-      "comparison-artifact-mismatch",
-    );
-  }
-  const artifact = JSON.parse(body) as Tier2LegacyComparisonArtifact;
-  if (
-    artifact.schemaVersion !== 1 ||
-    artifact.runId !== runId ||
-    artifact.report?.schemaVersion !== 1
-  ) {
-    throw new Tier2ProductError(
-      "The retained legacy comparison has an unsupported shape.",
-      409,
-      "comparison-artifact-invalid",
-    );
-  }
-  return { artifact, body };
 }
 
 export async function listEligibleTier2Publications(limit = 250) {

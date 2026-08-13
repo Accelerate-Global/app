@@ -342,11 +342,31 @@ where version.id in (
   '83500000-0000-4000-8000-000000000003'
 );
 
+insert into private.ax_identity_authority_activation_attempts (
+  id, namespace, environment, state_fingerprint, empty_graph_checksum,
+  rules_checksum, formatter_checksum, token_hash, actor_owner_id,
+  actor_email, reason, expires_at, consumed_at
+) values (
+  '84500000-0000-4000-8000-000000000001', 'people-groups', 'test',
+  repeat('4', 64), repeat('d', 64), repeat('5', 64), repeat('6', 64),
+  repeat('7', 64), 'tier2-test-admin', 'admin@example.test',
+  'Fresh Tier 2 authority fixture', now() + interval '30 minutes', now()
+);
 insert into private.ax_registry_revisions (
   id, content_checksum, binding_count, actor_owner_id, actor_email, reason
 ) values (
   '84000000-0000-4000-8000-000000000001', repeat('d', 64), 0,
-  'tier2-test-admin', 'admin@example.test', 'Tier 2 pgTAP revision'
+  'tier2-test-admin', 'admin@example.test', 'Fresh empty Tier 2 authority revision'
+);
+insert into private.ax_identity_authorities (
+  namespace, environment, registry_revision_id, activation_attempt_id,
+  state_fingerprint, empty_graph_checksum, rules_checksum,
+  formatter_checksum, actor_owner_id, actor_email, reason
+) values (
+  'people-groups', 'test', '84000000-0000-4000-8000-000000000001',
+  '84500000-0000-4000-8000-000000000001', repeat('4', 64), repeat('d', 64),
+  repeat('5', 64), repeat('6', 64), 'tier2-test-admin',
+  'admin@example.test', 'Fresh Tier 2 authority fixture'
 );
 
 insert into private.ax_registry_revisions (
@@ -363,48 +383,6 @@ insert into private.ax_registry_revisions (
   '84000000-0000-4000-8000-000000000002', repeat('2', 64), 0,
   'tier2-test-admin', 'admin@example.test', 'Later incompatible Tier 2 revision'
 );
-
-insert into private.ax_identity_legacy_imports (
-  id, input_fingerprint, snapshot_manifest, status, finding_count,
-  registry_revision_id, actor_owner_id, actor_email, reason, committed_at,
-  import_kind, state_fingerprint, graph_checksum, report_checksum,
-  manifest_checksum, dry_run_token_hash, report, dry_run_completed_at
-) values (
-  '84500000-0000-4000-8000-000000000001', repeat('3', 64), '{}'::jsonb,
-  'dry-run', 0, null,
-  'tier2-test-admin', 'admin@example.test', 'Tier 2 pgTAP cutover fixture', null,
-  'verified-identity-graph', repeat('4', 64), repeat('5', 64),
-  repeat('6', 64), repeat('7', 64), repeat('8', 64),
-  '{"blocking":false}'::jsonb, now()
-);
-
-insert into private.ax_identity_graph_commit_sessions (
-  backend_pid, transaction_id, legacy_import_id, input_fingerprint,
-  token_hash, state_fingerprint
-) values (
-  pg_backend_pid(), txid_current(),
-  '84500000-0000-4000-8000-000000000001', repeat('3', 64),
-  repeat('8', 64), repeat('4', 64)
-);
-
-update private.ax_identity_legacy_imports
-set status = 'committed',
-  registry_revision_id = '84000000-0000-4000-8000-000000000001',
-  committed_at = now()
-where id = '84500000-0000-4000-8000-000000000001';
-
-insert into private.ax_identity_registry_cutovers (
-  namespace, legacy_import_id, registry_revision_id, input_fingerprint,
-  graph_checksum, report_checksum, actor_owner_id, actor_email, reason
-) values (
-  'people-groups', '84500000-0000-4000-8000-000000000001',
-  '84000000-0000-4000-8000-000000000001', repeat('3', 64),
-  repeat('5', 64), repeat('6', 64), 'tier2-test-admin',
-  'admin@example.test', 'Tier 2 pgTAP cutover fixture'
-);
-
-delete from private.ax_identity_graph_commit_sessions
-where backend_pid = pg_backend_pid() and transaction_id = txid_current();
 
 insert into public.datasets (
   id, owner_id, file_name, blob_url, blob_path, current_version_action,
@@ -665,7 +643,7 @@ insert into private.ax_identity_runs (
   rules_version, rules_checksum, resource_bindings, input_fingerprint,
   publication_target_key,
   actor_owner_id, actor_email, status, input_row_count, output_row_count,
-  retained_count, output_checksum, artifact_manifest, started_at, completed_at
+  reused_count, output_checksum, artifact_manifest, started_at, completed_at
 ) values (
   '87000000-0000-4000-8000-000000000001',
   '86000000-0000-4000-8000-000000000010', null, 'partner-alpha',
@@ -697,13 +675,14 @@ insert into private.ax_identities (
 
 insert into private.ax_identity_source_bindings (
   id, source_profile_key, stable_row_key, identity_id, identity_run_id,
-  binding_state, source_pgac_code, source_pgic_code,
+  binding_state, identity_evidence, evidence_checksum,
   activated_revision_id, activated_at
 ) values (
   '8b000000-0000-4000-8000-000000000001', 'partner-alpha', 'alpha:1',
   '8a000000-0000-4000-8000-000000000002',
   '87000000-0000-4000-8000-000000000001', 'active',
-  '10-jp-100001', '10-jp-100001-LAO',
+  '{"classification":"PGIC","rop1":"A010","sourceInitials":"jp","rop3":"100001","iso3":"LAO"}'::jsonb,
+  repeat('a', 64),
   '84000000-0000-4000-8000-000000000001', now()
 );
 
@@ -711,7 +690,7 @@ insert into private.ax_identity_run_rows (
   identity_run_id, source_row_index, stable_row_key, assignment_status,
   binding_id, pgac_code, pgic_code, enriched_row
 ) values (
-  '87000000-0000-4000-8000-000000000001', 0, 'alpha:1', 'retained',
+  '87000000-0000-4000-8000-000000000001', 0, 'alpha:1', 'reused',
   '8b000000-0000-4000-8000-000000000001',
   '10-jp-100001', '10-jp-100001-LAO',
   '{"AX_PGIC":"10-jp-100001-LAO","PG_Name_Main":"Alpha"}'::jsonb

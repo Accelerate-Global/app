@@ -6,7 +6,8 @@ import { sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import type { CurrentIdentity } from "@/lib/auth";
 import { createDatasetStoragePath } from "@/lib/dataset-storage";
-import { publishPreparedDataset } from "@/lib/datasets";
+import { getDatasetClassification } from "@/lib/dataset-tags";
+import { getDataset, publishPreparedDataset } from "@/lib/datasets";
 import {
   deletePipelineDatasetBlob,
   uploadPipelineDatasetBlob,
@@ -25,14 +26,13 @@ import {
 } from "@/lib/reference-resources/pipeline-types";
 
 import { checksumIdentityValue, prepareAxIdentityArtifacts } from "./artifacts";
-import { inspectLegacyIdentitySnapshots } from "./importer";
 import { reconcileAxIdentity } from "./reconcile";
 import {
+  AX_IDENTITY_FORMATTER_CHECKSUM,
   AX_IDENTITY_RULES_CHECKSUM,
   AxIdentityRuleError,
   buildAxIdentityCodes,
-  isStructurallyValidAxCode,
-  normalizeIso3,
+  normalizeOptionalIso3,
   normalizeRop1,
   normalizeRop3,
   normalizeSourceInitials,
@@ -46,10 +46,10 @@ import {
   AX_IDENTITY_NAMESPACE,
   AX_IDENTITY_RULES_VERSION,
   type AxIdentityArtifactKind,
+  type AxIdentityChangeAction,
   type AxIdentityCandidateRow,
   type AxIdentityFinding,
   type AxIdentityPublicationResult,
-  type LegacyIdentitySnapshot,
 } from "./types";
 import {
   getAxIdentityRun,
@@ -59,6 +59,7 @@ import {
   listActiveIdentityBindings,
   listAxIdentityRuns,
   listIdentityRegistryRevisions,
+  getAxIdentityAuthorityStatus,
 } from "./repository";
 
 type Db = ReturnType<typeof getDb>;
@@ -99,29 +100,20 @@ export function assertExpectedIdentityPublication(input: {
   }
 }
 
-export function assertLegacyRegistryCutover(input: {
-  cutoverRevisionNumber: number | null | undefined;
+export function assertFreshIdentityAuthority(input: {
+  initialized: boolean;
+  authorityRevisionId: string | null | undefined;
   baseRevisionId: string | null | undefined;
-  baseRevisionNumber: number | null | undefined;
 }) {
-  if (input.cutoverRevisionNumber == null) {
+  if (!input.initialized || !input.authorityRevisionId) {
     throw new AxIdentityRegistryError(
-      "Legacy AX registry cutover is required before new identity allocation can begin.",
+      "The fresh AX Online identity authority must be initialized before identity allocation can begin.",
       409,
     );
   }
   if (input.baseRevisionId == null) {
     throw new AxIdentityRegistryError(
-      "An exact post-cutover AX registry revision is required for identity allocation.",
-      409,
-    );
-  }
-  if (
-    input.baseRevisionNumber == null ||
-    input.baseRevisionNumber < input.cutoverRevisionNumber
-  ) {
-    throw new AxIdentityRegistryError(
-      "The selected AX registry revision predates the committed legacy cutover.",
+      "An exact AX Online registry revision is required for identity allocation.",
       409,
     );
   }
@@ -152,12 +144,32 @@ function errorFinding(input: {
   };
 }
 
+function warningFinding(input: {
+  ruleCode: string;
+  sourceRowIndex: number;
+  stableRowKey: string | null;
+  message: string;
+  details?: Record<string, unknown>;
+}): AxIdentityFinding {
+  return {
+    severity: "warning",
+    ruleCode: input.ruleCode,
+    sourceRowIndex: input.sourceRowIndex,
+    stableRowKey: input.stableRowKey,
+    message: input.message,
+    details: input.details ?? {},
+  };
+}
+
 type CurrentBinding = {
   binding_id: string;
   identity_id: string;
+  pgac_identity_id: string;
   pgac_code: string;
-  pgic_code: string;
+  pgic_code: string | null;
   binding_state: "reserved" | "active";
+  identity_evidence: Record<string, unknown>;
+  evidence_checksum: string | null;
 };
 
 async function currentBinding(
@@ -169,16 +181,20 @@ async function currentBinding(
 ) {
   const rows = (await tx.execute(sql<CurrentBinding>`
     select binding.id as binding_id, binding.identity_id,
+      parent.id as pgac_identity_id,
       parent_code.code as pgac_code, child_code.code as pgic_code,
-      binding.binding_state
+      binding.binding_state, binding.identity_evidence, binding.evidence_checksum
     from private.ax_identity_source_bindings as binding
-    join private.ax_identities as child on child.id = binding.identity_id
-    join private.ax_identities as parent on parent.id = child.parent_identity_id
+    join private.ax_identities as assigned on assigned.id = binding.identity_id
+    join private.ax_identities as parent
+      on parent.id = case when assigned.identity_kind = 'pgic'
+        then assigned.parent_identity_id else assigned.id end
     join private.ax_identity_codes as parent_code
       on parent_code.identity_id = parent.id and parent_code.code_kind = 'canonical'
         and parent_code.lifecycle_state in ('reserved', 'active')
-    join private.ax_identity_codes as child_code
-      on child_code.identity_id = child.id and child_code.code_kind = 'canonical'
+    left join private.ax_identity_codes as child_code
+      on child_code.identity_id = assigned.id and assigned.identity_kind = 'pgic'
+        and child_code.code_kind = 'canonical'
         and child_code.lifecycle_state in ('reserved', 'active')
     where binding.source_profile_key = ${sourceProfileKey}
       and binding.stable_row_key = ${stableRowKey}
@@ -213,103 +229,235 @@ async function occupiedCodeOwners(tx: DbTransaction, codes: readonly string[]) {
   return new Map(rows.map((row) => [row.code, row.owner]));
 }
 
-async function reserveExplicitIdentity(
+type CanonicalIdentityEvidence = Readonly<{
+  classification: "PGAC" | "PGIC";
+  rop1: string | null;
+  sourceInitials: string;
+  rop3: string | null;
+  iso3: string | null;
+  countryVersionId: string;
+  countryChecksum: string;
+  ropVersionId: string;
+  ropChecksum: string;
+}>;
+
+const IDENTITY_INERT_SOURCE_FIELDS = new Set([
+  "AX_CODE",
+  "AX_ID",
+  "AX_PGAC",
+  "AX_PGIC",
+  "AXCODE",
+  "PG_AC",
+  "PG_IC",
+  "PGAC",
+  "PGIC",
+]);
+
+export function stripSourceSuppliedAxCodes(row: Record<string, string>) {
+  return Object.fromEntries(
+    Object.entries(row).filter(
+      ([key]) => !IDENTITY_INERT_SOURCE_FIELDS.has(key.trim().toUpperCase()),
+    ),
+  );
+}
+
+function identityEvidenceChecksum(evidence: CanonicalIdentityEvidence) {
+  return checksumIdentityValue(evidence);
+}
+
+async function reserveRop3Identity(
   tx: DbTransaction,
   input: {
     runId: string;
     sourceProfileKey: string;
     stableRowKey: string;
     pgacCode: string;
-    pgicCode: string;
-    aliases: readonly string[];
-    rop3Component: string | null;
-    allocatedValue: number | null;
+    pgicCode: string | null;
+    rop3: string;
+    iso3: string | null;
+    ropVersionId: string;
+    ropChecksum: string;
+    identityEvidence: CanonicalIdentityEvidence;
     reservedUntil: Date;
+    supersedesBindingId?: string | null;
+    requireExistingOwner?: boolean;
+    forbidExistingOwner?: boolean;
+    allowedExistingOwnerId?: string | null;
   },
 ) {
-  await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended('ax-identity-explicit-codes', 13))`);
-  const occupied = await occupiedCodeOwners(tx, [input.pgacCode, input.pgicCode, ...input.aliases]);
-  if (occupied.size > 0) {
+  await tx.execute(sql`
+    select pg_advisory_xact_lock(hashtextextended(${`ax-identity-rop3:${input.rop3}`}, 13))
+  `);
+  const owners = (await tx.execute(sql<{
+    pgac_identity_id: string;
+    identity_run_id: string;
+    evidence_state: "reserved" | "active";
+    pgac_code: string;
+  }>`
+    select evidence.pgac_identity_id, evidence.identity_run_id,
+      evidence.evidence_state, code.code as pgac_code
+    from private.ax_identity_rop3_evidence as evidence
+    join private.ax_identity_codes as code
+      on code.identity_id = evidence.pgac_identity_id
+     and code.code_kind = 'canonical'
+     and code.lifecycle_state in ('reserved', 'active')
+    where evidence.rop3 = ${input.rop3}
+      and evidence.evidence_state in ('reserved', 'active')
+    limit 1
+  `)) as unknown as Array<{
+    pgac_identity_id: string;
+    identity_run_id: string;
+    evidence_state: "reserved" | "active";
+    pgac_code: string;
+  }>;
+
+  let parentId = owners[0]?.pgac_identity_id ?? null;
+  const pgacCode = owners[0]?.pgac_code ?? input.pgacCode;
+  if (owners[0]?.evidence_state === "reserved" && owners[0].identity_run_id !== input.runId) {
     throw new AxIdentityRuleError(
-      "An AX canonical or alias code is already assigned.",
-      "code-collision",
+      "The exact current ROP3 is reserved by another identity candidate.",
+      "rop3-evidence-reserved",
     );
   }
-  if (input.allocatedValue !== null) {
-    const allocatedRows = (await tx.execute(sql<{ identity_id: string }>`
-      select id as identity_id from private.ax_identities
-      where namespace = ${AX_IDENTITY_NAMESPACE} and identity_kind = 'pgac'
-        and allocated_value = ${input.allocatedValue}
-      limit 1
-    `)) as unknown as { identity_id: string }[];
-    if (allocatedRows[0]) {
+  if (input.requireExistingOwner && !parentId) {
+    throw new AxIdentityRuleError(
+      "Rebinding requires an active identity already owned by the exact current ROP3.",
+      "rebind-owner-missing",
+    );
+  }
+  if (input.forbidExistingOwner && parentId) {
+    throw new AxIdentityRuleError(
+      "A new identity cannot be created because the exact current ROP3 already has an active owner.",
+      "rop3-owner-already-exists",
+    );
+  }
+  if (
+    parentId && input.allowedExistingOwnerId !== undefined &&
+    parentId !== input.allowedExistingOwnerId
+  ) {
+    throw new AxIdentityRuleError(
+      "The proposed ROP3 belongs to another active identity; select rebind instead.",
+      "rop3-owner-conflict",
+    );
+  }
+
+  if (!parentId) {
+    const occupied = await occupiedCodeOwners(
+      tx,
+      [input.pgacCode, input.pgicCode].filter((code): code is string => Boolean(code)),
+    );
+    if (occupied.size > 0) {
       throw new AxIdentityRuleError(
-        "The retained six-digit AX value is already allocated to another identity.",
-        "allocated-value-collision",
+        "A current-source AX code would collide with existing AX Online authority.",
+        "code-collision",
       );
     }
-    await tx.execute(sql`
-      update private.ax_identity_counters
-      set next_value = greatest(next_value, ${input.allocatedValue + 1}), updated_at = now()
-      where namespace = ${AX_IDENTITY_NAMESPACE}
-    `);
-  }
-  const iso3 = input.pgicCode.slice(-3);
-  const parentRows = (await tx.execute(sql<{ id: string }>`
-    insert into private.ax_identities (
-      namespace, identity_kind, rop3_component, allocated_value,
-      lifecycle_state, created_by_run_id
-    ) values (
-      ${AX_IDENTITY_NAMESPACE}, 'pgac', ${input.rop3Component}, ${input.allocatedValue},
-      'reserved', ${input.runId}::uuid
-    ) returning id
-  `)) as unknown as { id: string }[];
-  const parentId = parentRows[0]!.id;
-  const childRows = (await tx.execute(sql<{ id: string }>`
-    insert into private.ax_identities (
-      namespace, identity_kind, parent_identity_id, normalized_iso3,
-      lifecycle_state, created_by_run_id
-    ) values (
-      ${AX_IDENTITY_NAMESPACE}, 'pgic', ${parentId}::uuid, ${iso3},
-      'reserved', ${input.runId}::uuid
-    ) returning id
-  `)) as unknown as { id: string }[];
-  const childId = childRows[0]!.id;
-  await tx.execute(sql`
-    insert into private.ax_identity_codes (
-      identity_id, code, code_kind, lifecycle_state, created_by_run_id
-    ) values
-      (${parentId}::uuid, ${input.pgacCode}, 'canonical', 'reserved', ${input.runId}::uuid),
-      (${childId}::uuid, ${input.pgicCode}, 'canonical', 'reserved', ${input.runId}::uuid)
-  `);
-  for (const alias of input.aliases) {
-    const identityId = alias.endsWith(`-${iso3}`) ? childId : parentId;
+    const parentRows = (await tx.execute(sql<{ id: string }>`
+      insert into private.ax_identities (
+        namespace, identity_kind, rop3_component,
+        lifecycle_state, created_by_run_id
+      ) values (
+        ${AX_IDENTITY_NAMESPACE}, 'pgac', ${input.rop3},
+        'reserved', ${input.runId}::uuid
+      ) returning id
+    `)) as unknown as { id: string }[];
+    parentId = parentRows[0]!.id;
     await tx.execute(sql`
       insert into private.ax_identity_codes (
         identity_id, code, code_kind, lifecycle_state, created_by_run_id
-      ) values (${identityId}::uuid, ${alias}, 'alias', 'reserved', ${input.runId}::uuid)
+      ) values (${parentId}::uuid, ${input.pgacCode}, 'canonical', 'reserved', ${input.runId}::uuid)
+    `);
+    await tx.execute(sql`
+      insert into private.ax_identity_rop3_evidence (
+        rop3, pgac_identity_id, identity_run_id, resource_version_id,
+        resource_checksum, evidence_state, reserved_until
+      ) values (
+        ${input.rop3}, ${parentId}::uuid, ${input.runId}::uuid,
+        ${input.ropVersionId}::uuid, ${input.ropChecksum}, 'reserved', ${input.reservedUntil}
+      )
     `);
   }
+
+  let bindingIdentityId = parentId;
+  let pgicCode: string | null = null;
+  if (input.iso3) {
+    const childRows = (await tx.execute(sql<{ id: string; code: string }>`
+      select child.id, code.code
+      from private.ax_identities as child
+      join private.ax_identity_codes as code
+        on code.identity_id = child.id and code.code_kind = 'canonical'
+       and code.lifecycle_state in ('reserved', 'active')
+      where child.parent_identity_id = ${parentId}::uuid
+        and child.normalized_iso3 = ${input.iso3}
+        and child.lifecycle_state in ('reserved', 'active')
+      limit 1
+    `)) as unknown as Array<{ id: string; code: string }>;
+    if (childRows[0]) {
+      bindingIdentityId = childRows[0].id;
+      pgicCode = childRows[0].code;
+    } else {
+      pgicCode = `${pgacCode}-${input.iso3}`;
+      const occupied = await occupiedCodeOwners(tx, [pgicCode]);
+      if (occupied.size > 0) {
+        throw new AxIdentityRuleError(
+          "The current ROP3 and ISO3 child code is owned by another identity.",
+          "pgic-code-collision",
+        );
+      }
+      const createdChildren = (await tx.execute(sql<{ id: string }>`
+        insert into private.ax_identities (
+          namespace, identity_kind, parent_identity_id, normalized_iso3,
+          lifecycle_state, created_by_run_id
+        ) values (
+          ${AX_IDENTITY_NAMESPACE}, 'pgic', ${parentId}::uuid, ${input.iso3},
+          'reserved', ${input.runId}::uuid
+        ) returning id
+      `)) as unknown as Array<{ id: string }>;
+      bindingIdentityId = createdChildren[0]!.id;
+      await tx.execute(sql`
+        insert into private.ax_identity_codes (
+          identity_id, code, code_kind, lifecycle_state, created_by_run_id
+        ) values (
+          ${bindingIdentityId}::uuid, ${pgicCode}, 'canonical', 'reserved', ${input.runId}::uuid
+        )
+      `);
+    }
+  }
+
   const bindingRows = (await tx.execute(sql<{ id: string }>`
     insert into private.ax_identity_source_bindings (
       source_profile_key, stable_row_key, identity_id, identity_run_id,
-      binding_state, reserved_until
+      binding_state, reserved_until, identity_evidence, evidence_checksum,
+      supersedes_binding_id
     ) values (
-      ${input.sourceProfileKey}, ${input.stableRowKey}, ${childId}::uuid,
-      ${input.runId}::uuid, 'reserved', ${input.reservedUntil}
+      ${input.sourceProfileKey}, ${input.stableRowKey}, ${bindingIdentityId}::uuid,
+      ${input.runId}::uuid, 'reserved', ${input.reservedUntil},
+      ${JSON.stringify(input.identityEvidence)}::jsonb,
+      ${identityEvidenceChecksum(input.identityEvidence)},
+      ${input.supersedesBindingId ?? null}::uuid
     ) returning id
   `)) as unknown as { id: string }[];
-  return bindingRows[0]!.id;
+  return {
+    bindingId: bindingRows[0]!.id,
+    identityId: bindingIdentityId,
+    pgacCode,
+    pgicCode,
+  };
 }
 
 function enrichedRow(
   source: Record<string, string>,
-  input: { runId: string; bindingId: string; pgacCode: string; pgicCode: string },
+  input: {
+    runId: string;
+    bindingId: string;
+    pgacCode: string;
+    pgicCode: string | null;
+  },
 ) {
   return {
-    ...source,
+    ...stripSourceSuppliedAxCodes(source),
     AX_PGAC: input.pgacCode,
-    AX_PGIC: input.pgicCode,
+    ...(input.pgicCode ? { AX_PGIC: input.pgicCode } : {}),
     AX_Registry_Binding_ID: input.bindingId,
     AX_Identity_Run_ID: input.runId,
   };
@@ -329,6 +477,7 @@ export async function buildAxIdentityCandidate(input: {
   sourceInitials?: string;
   baseRevisionId?: string | null;
   baseRevisionChecksum?: string;
+  reviewRunId?: string;
 }) {
   const publication = await getPipelinePublication(input.sourcePublicationId);
   if (!publication) throw new AxIdentityRegistryError("Formed publication not found.", 404);
@@ -336,6 +485,18 @@ export async function buildAxIdentityCandidate(input: {
     throw new AxIdentityRegistryError("The formed publication has no source profile.", 409);
   }
   const sourceProfileKey = publication.sourceProfileKey;
+  const sourceDataset = await getDataset(publication.datasetId, {
+    includeDisabled: true,
+  });
+  const sourceClassification = sourceDataset
+    ? getDatasetClassification(sourceDataset.tags)
+    : null;
+  if (!sourceDataset || !sourceClassification) {
+    throw new AxIdentityRegistryError(
+      "The formed publication does not have a supported people-group classification.",
+      409,
+    );
+  }
   const sourceRows = await getPipelinePublicationRows(publication.id);
   if (sourceRows.length !== publication.rowCount) {
     throw new AxIdentityRegistryError(
@@ -371,25 +532,20 @@ export async function buildAxIdentityCandidate(input: {
       .filter((entry) => entry.status === "Active" && entry.rop3)
       .map((entry) => entry.rop3!.code),
   );
-  const cutoverRows = (await getDb().execute(sql<{
-    registry_revision_id: string;
-    revision_number: number;
-  }>`
-    select cutover.registry_revision_id, revision.revision_number
-    from private.ax_identity_registry_cutovers as cutover
-    join private.ax_identity_legacy_imports as legacy
-      on legacy.id = cutover.legacy_import_id
-     and legacy.import_kind = 'verified-identity-graph'
-     and legacy.status = 'committed'
-     and legacy.registry_revision_id = cutover.registry_revision_id
-    join private.ax_registry_revisions as revision
-      on revision.id = cutover.registry_revision_id
-    where cutover.namespace = 'people-groups'
-    limit 1
-  `)) as unknown as Array<{
-    registry_revision_id: string;
-    revision_number: number;
-  }>;
+  const rop1ByRop3 = new Map<string, string | null>();
+  for (const entry of ropResource.payload.entries) {
+    if (entry.status !== "Active" || !entry.rop3) continue;
+    const prior = rop1ByRop3.get(entry.rop3.code);
+    const parent = entry.rop1?.code ?? null;
+    if (prior !== undefined && prior !== parent) {
+      throw new AxIdentityRegistryError(
+        `The pinned ROP resource has conflicting ROP1 parents for ${entry.rop3.code}.`,
+        409,
+      );
+    }
+    rop1ByRop3.set(entry.rop3.code, parent);
+  }
+  const authority = await getAxIdentityAuthorityStatus();
   const revisionRows = (await getDb().execute(sql<{
         id: string;
         content_checksum: string;
@@ -411,10 +567,10 @@ export async function buildAxIdentityCandidate(input: {
       409,
     );
   }
-  assertLegacyRegistryCutover({
-    cutoverRevisionNumber: cutoverRows[0]?.revision_number ?? null,
+  assertFreshIdentityAuthority({
+    initialized: authority.initialized,
+    authorityRevisionId: authority.registryRevisionId,
     baseRevisionId: input.baseRevisionId,
-    baseRevisionNumber: revisionRows[0]?.revision_number ?? null,
   });
   if (
     input.baseRevisionChecksum &&
@@ -494,6 +650,54 @@ export async function buildAxIdentityCandidate(input: {
     publicationTargetKey,
   );
   const expectedCurrentPublicationId = currentTargetPublication?.id ?? null;
+  const reviewedDecisions = input.reviewRunId
+    ? (await getDb().execute(sql<{
+        id: string;
+        source_row_index: number;
+        stable_row_key: string;
+        current_binding_id: string;
+        current_evidence: Record<string, unknown>;
+        proposed_evidence: Record<string, unknown>;
+        allowed_actions: AxIdentityChangeAction[];
+        selected_action: AxIdentityChangeAction | null;
+      }>`
+        select decision.id, decision.source_row_index, decision.stable_row_key,
+          decision.current_binding_id, decision.current_evidence,
+          decision.proposed_evidence, decision.allowed_actions,
+          decision.selected_action
+        from private.ax_identity_change_decisions as decision
+        join private.ax_identity_runs as review_run
+          on review_run.id = decision.identity_run_id
+        where review_run.id = ${input.reviewRunId}::uuid
+          and review_run.source_publication_id = ${publication.id}::uuid
+          and review_run.source_profile_key = ${sourceProfileKey}
+        order by decision.source_row_index, decision.id
+      `)) as unknown as Array<{
+        id: string;
+        source_row_index: number;
+        stable_row_key: string;
+        current_binding_id: string;
+        current_evidence: Record<string, unknown>;
+        proposed_evidence: Record<string, unknown>;
+        allowed_actions: AxIdentityChangeAction[];
+        selected_action: AxIdentityChangeAction | null;
+      }>
+    : [];
+  if (input.reviewRunId && reviewedDecisions.length === 0) {
+    throw new AxIdentityRegistryError(
+      "The reviewed identity run has no applicable current-source decisions.",
+      409,
+    );
+  }
+  if (reviewedDecisions.some((decision) => decision.selected_action === null)) {
+    throw new AxIdentityRegistryError(
+      "Every identity-component change must be reviewed before rebuilding.",
+      409,
+    );
+  }
+  const reviewedDecisionByStableKey = new Map(
+    reviewedDecisions.map((decision) => [decision.stable_row_key, decision]),
+  );
   const resourceBindings = {
     countryVersionId: countryResource.version.id,
     countryChecksum: countryResource.version.contentChecksum!,
@@ -513,9 +717,17 @@ export async function buildAxIdentityCandidate(input: {
     publicationChecksum: publication.outputChecksum,
     baseRevisionId,
     rulesChecksum: AX_IDENTITY_RULES_CHECKSUM,
+    formatterChecksum: AX_IDENTITY_FORMATTER_CHECKSUM,
     resourceBindings,
     publicationTargetKey,
     expectedCurrentPublicationId,
+    reviewedDecisions: reviewedDecisions.map((decision) => ({
+      id: decision.id,
+      stableRowKey: decision.stable_row_key,
+      currentBindingId: decision.current_binding_id,
+      proposedEvidence: decision.proposed_evidence,
+      selectedAction: decision.selected_action,
+    })),
   });
   const existingRows = (await getDb().execute(sql<{ id: string }>`
     select id from private.ax_identity_runs
@@ -603,36 +815,11 @@ export async function buildAxIdentityCandidate(input: {
           bindingId: null,
           pgacCode: null,
           pgicCode: null,
-          enrichedRow: source.data,
+          enrichedRow: stripSourceSuppliedAxCodes(source.data),
         });
         continue;
       }
       stableKeys.add(stableRowKey);
-
-      const existing = await currentBinding(
-        tx,
-        sourceProfileKey,
-        stableRowKey,
-        runId,
-        baseRevisionId,
-      );
-      if (existing) {
-        rows.push({
-          sourceRowIndex: source.row_index,
-          stableRowKey,
-          assignmentStatus: "reused",
-          bindingId: existing.binding_id,
-          pgacCode: existing.pgac_code,
-          pgicCode: existing.pgic_code,
-          enrichedRow: enrichedRow(source.data, {
-            runId,
-            bindingId: existing.binding_id,
-            pgacCode: existing.pgac_code,
-            pgicCode: existing.pgic_code,
-          }),
-        });
-        continue;
-      }
 
       try {
         const sourceName = textField(source.data, ["Data_Source", "data_source"]) ?? sourceProfileKey;
@@ -640,21 +827,155 @@ export async function buildAxIdentityCandidate(input: {
           sourceName,
           sourceAliasBinding,
         );
-        const rop1 = normalizeRop1(textField(source.data, ["PG_ROP1", "ROP1", "rop1"]));
+        const sourceRop1 = normalizeRop1(
+          textField(source.data, ["PG_ROP1", "ROP1", "rop1"]),
+        );
         const rop3 = normalizeRop3(
           textField(source.data, ["PG_ROP3", "ROP3", "rop3"]),
           allowedRop3,
         );
-        const iso3 = normalizeIso3(
+        let rop1 = sourceRop1;
+        if (rop3) {
+          const resourceParent = rop1ByRop3.get(rop3) ?? null;
+          if (!resourceParent) {
+            throw new AxIdentityRuleError(
+              "The current ROP3 has no valid ROP1 parent in the pinned ROP resource.",
+              "missing-rop3-parent",
+            );
+          }
+          if (sourceRop1 && sourceRop1 !== resourceParent) {
+            throw new AxIdentityRuleError(
+              "The formed ROP1 conflicts with the current ROP3 parent. Re-form the source with the pinned resource.",
+              "formed-rop-parent-mismatch",
+            );
+          }
+          rop1 = resourceParent;
+        } else if (!rop1) {
+          findings.push(
+            warningFinding({
+              ruleCode: "missing-rop1-and-rop3",
+              sourceRowIndex: source.row_index,
+              stableRowKey,
+              message:
+                "ROP1 and ROP3 are unavailable; the established 00 ROP1 component will remain visible in the new AX code.",
+            }),
+          );
+        }
+        const normalizedIso3 = normalizeOptionalIso3(
           textField(source.data, ["Geo_ISO3", "ISO3", "iso3"]),
           allowedIso3,
         );
-        const sourcePgac = textField(source.data, ["AX_PGAC", "PGAC", "PG_AC"]);
-        const sourcePgic = textField(source.data, ["AX_PGIC", "PGIC", "PG_IC"]);
+        if (sourceClassification === "PGIC" && !normalizedIso3) {
+          throw new AxIdentityRuleError(
+            "PGIC identity assignment requires canonical ISO3 after country normalization.",
+            "missing-canonical-iso3",
+          );
+        }
+        const iso3 = sourceClassification === "PGIC" ? normalizedIso3 : null;
+        const identityEvidence: CanonicalIdentityEvidence = {
+          classification: sourceClassification,
+          rop1,
+          sourceInitials,
+          rop3,
+          iso3,
+          countryVersionId: countryResource.version.id,
+          countryChecksum: countryResource.version.contentChecksum!,
+          ropVersionId: ropResource.version.id,
+          ropChecksum: ropResource.version.contentChecksum!,
+        };
+        const evidenceChecksum = identityEvidenceChecksum(identityEvidence);
+        const existing = await currentBinding(
+          tx,
+          sourceProfileKey,
+          stableRowKey,
+          runId,
+          baseRevisionId,
+        );
+        let approvedChange: (typeof reviewedDecisions)[number] | null = null;
+        let supersedesBindingId: string | null = null;
+        if (existing) {
+          if (existing.evidence_checksum === evidenceChecksum) {
+            rows.push({
+              sourceRowIndex: source.row_index,
+              stableRowKey,
+              assignmentStatus: "reused",
+              bindingId: existing.binding_id,
+              pgacCode: existing.pgac_code,
+              pgicCode: existing.pgic_code,
+              enrichedRow: enrichedRow(source.data, {
+                runId,
+                bindingId: existing.binding_id,
+                pgacCode: existing.pgac_code,
+                pgicCode: existing.pgic_code,
+              }),
+            });
+            continue;
+          }
+          const reviewed = reviewedDecisionByStableKey.get(stableRowKey) ?? null;
+          if (reviewed) {
+            if (
+              reviewed.current_binding_id !== existing.binding_id ||
+              identityEvidenceChecksum(
+                reviewed.current_evidence as CanonicalIdentityEvidence,
+              ) !== identityEvidenceChecksum(
+                existing.identity_evidence as CanonicalIdentityEvidence,
+              ) ||
+              identityEvidenceChecksum(
+                reviewed.proposed_evidence as CanonicalIdentityEvidence,
+              ) !== evidenceChecksum ||
+              !reviewed.selected_action
+            ) {
+              throw new AxIdentityRuleError(
+                "The approved identity decision no longer matches the current binding and normalized evidence.",
+                "stale-identity-decision",
+              );
+            }
+            approvedChange = reviewed;
+            supersedesBindingId = existing.binding_id;
+          } else {
+          const decisionRows = (await tx.execute(sql<{ id: string }>`
+            insert into private.ax_identity_change_decisions (
+              identity_run_id, source_row_index, source_profile_key,
+              stable_row_key, current_binding_id, current_evidence,
+              proposed_evidence, allowed_actions
+            ) values (
+              ${runId}::uuid, ${source.row_index}, ${sourceProfileKey},
+              ${stableRowKey}, ${existing.binding_id}::uuid,
+              ${JSON.stringify(existing.identity_evidence)}::jsonb,
+              ${JSON.stringify(identityEvidence)}::jsonb,
+              array['rebind', 'new-identity', 'canonical-supersession']::text[]
+            ) returning id
+          `)) as unknown as Array<{ id: string }>;
+          findings.push(
+            errorFinding({
+              ruleCode: "identity-component-change",
+              sourceRowIndex: source.row_index,
+              stableRowKey,
+              message:
+                "Current normalized identity evidence differs from the active binding and requires an explicit administrator decision.",
+              details: {
+                decisionId: decisionRows[0]!.id,
+                currentEvidence: existing.identity_evidence,
+                proposedEvidence: identityEvidence,
+              },
+            }),
+          );
+          rows.push({
+            sourceRowIndex: source.row_index,
+            stableRowKey,
+            assignmentStatus: "review-required",
+            bindingId: null,
+            pgacCode: null,
+            pgicCode: null,
+            enrichedRow: stripSourceSuppliedAxCodes(source.data),
+          });
+          continue;
+          }
+        }
+
         let pgacCode: string;
-        let pgicCode: string;
-        let aliases: readonly string[] = [];
-        let assignmentStatus: "retained" | "reserved" = "reserved";
+        let pgicCode: string | null;
+        let assignmentStatus: "reserved" | "pgac-only";
         let bindingId: string;
 
         if (rop3) {
@@ -667,80 +988,53 @@ export async function buildAxIdentityCandidate(input: {
             iso3,
             allowedRop3,
             allowedIso3,
+            allowPgacOnly: sourceClassification === "PGAC",
           });
           const decision = reconcileAxIdentity({
             existing: null,
             generatedPgac: generated.pgac,
             generatedPgic: generated.pgic,
-            sourcePgac,
-            sourcePgic,
-            occupiedCodes: await occupiedCodeOwners(
-              tx,
-              [sourcePgac, sourcePgic].filter((value): value is string => Boolean(value)),
-            ),
           });
-          if (decision.status === "conflict" || !decision.pgacCode || !decision.pgicCode) {
-            findings.push(
-              errorFinding({
-                ruleCode: "source-code-conflict",
-                sourceRowIndex: source.row_index,
-                stableRowKey,
-                message: decision.reason,
-              }),
-            );
-            rows.push({
-              sourceRowIndex: source.row_index,
-              stableRowKey,
-              assignmentStatus: "conflict",
-              bindingId: null,
-              pgacCode: null,
-              pgicCode: null,
-              enrichedRow: source.data,
-            });
-            continue;
-          }
-          pgacCode = decision.pgacCode;
-          pgicCode = decision.pgicCode;
-          aliases = decision.aliases;
-          assignmentStatus = decision.status === "retained" ? "retained" : "reserved";
-          bindingId = await reserveExplicitIdentity(tx, {
+          const reservation = await reserveRop3Identity(tx, {
             runId,
             sourceProfileKey,
             stableRowKey,
-            pgacCode,
-            pgicCode,
-            aliases,
-            rop3Component: pgacCode === generated.pgac ? rop3 : null,
-            allocatedValue: null,
+            pgacCode: decision.pgacCode!,
+            pgicCode: decision.pgicCode,
+            rop3,
+            iso3,
+            ropVersionId: ropResource.version.id,
+            ropChecksum: ropResource.version.contentChecksum!,
+            identityEvidence,
             reservedUntil,
+            supersedesBindingId,
+            requireExistingOwner: approvedChange?.selected_action === "rebind",
+            forbidExistingOwner: approvedChange?.selected_action === "new-identity",
+            allowedExistingOwnerId:
+              approvedChange?.selected_action === "canonical-supersession"
+                ? existing?.pgac_identity_id ?? null
+                : undefined,
           });
-        } else if (sourcePgac || sourcePgic) {
           if (
-            !sourcePgac || !sourcePgic ||
-            !isStructurallyValidAxCode(sourcePgac, "pgac") ||
-            !isStructurallyValidAxCode(sourcePgic, "pgic") ||
-            !sourcePgic.startsWith(`${sourcePgac}-`) || sourcePgic.slice(-3) !== iso3
+            approvedChange?.selected_action === "canonical-supersession" &&
+            reservation.identityId === existing?.identity_id
           ) {
             throw new AxIdentityRuleError(
-              "The retained source AX code pair is malformed or does not match ISO3.",
-              "invalid-source-code",
+              "The proposed canonical identity is unchanged; select rebind to retain the identity with reviewed evidence.",
+              "canonical-supersession-unchanged",
             );
           }
-          pgacCode = sourcePgac;
-          pgicCode = sourcePgic;
-          assignmentStatus = "retained";
-          bindingId = await reserveExplicitIdentity(tx, {
-            runId,
-            sourceProfileKey,
-            stableRowKey,
-            pgacCode,
-            pgicCode,
-            aliases: [],
-            rop3Component: null,
-            allocatedValue: Number(pgacCode.split("-").at(-1)),
-            reservedUntil,
-          });
+          bindingId = reservation.bindingId;
+          pgacCode = reservation.pgacCode;
+          pgicCode = reservation.pgicCode;
+          assignmentStatus = pgicCode ? "reserved" : "pgac-only";
         } else {
+          if (approvedChange?.selected_action === "rebind") {
+            throw new AxIdentityRuleError(
+              "Rebinding requires an exact current ROP3 identity owner.",
+              "rebind-requires-rop3",
+            );
+          }
           const counterRows = (await tx.execute(sql<{ next_value: number; maximum_value: number }>`
             select next_value, maximum_value from private.ax_identity_counters
             where namespace = ${AX_IDENTITY_NAMESPACE}
@@ -761,7 +1055,7 @@ export async function buildAxIdentityCandidate(input: {
               bindingId: null,
               pgacCode: null,
               pgicCode: null,
-              enrichedRow: source.data,
+              enrichedRow: stripSourceSuppliedAxCodes(source.data),
             });
             continue;
           }
@@ -770,25 +1064,47 @@ export async function buildAxIdentityCandidate(input: {
             identity_id: string;
             allocated_value: number;
             pgac_code: string;
-            pgic_code: string;
+            pgic_code: string | null;
             reused: boolean;
           }>`
             select * from private.allocate_ax_identity_value(
               ${AX_IDENTITY_NAMESPACE}, ${sourceProfileKey}, ${stableRowKey},
-              ${runId}::uuid, ${rop1}, ${sourceInitials}, ${iso3}, ${reservedUntil}
+              ${runId}::uuid, ${rop1}, ${sourceInitials}, ${iso3}, ${reservedUntil},
+              ${JSON.stringify(identityEvidence)}::jsonb, ${evidenceChecksum},
+              ${supersedesBindingId}::uuid
             )
           `)) as unknown as Array<{
             binding_id: string;
             identity_id: string;
             allocated_value: number;
             pgac_code: string;
-            pgic_code: string;
+            pgic_code: string | null;
             reused: boolean;
           }>;
           const allocation = allocationRows[0]!;
           bindingId = allocation.binding_id;
           pgacCode = allocation.pgac_code;
           pgicCode = allocation.pgic_code;
+          assignmentStatus = pgicCode ? "reserved" : "pgac-only";
+        }
+
+        if (approvedChange && existing) {
+          await tx.execute(sql`
+            insert into private.ax_identity_change_decisions (
+              identity_run_id, source_row_index, source_profile_key,
+              stable_row_key, current_binding_id, current_evidence,
+              proposed_evidence, allowed_actions, selected_action,
+              selected_by_owner_id, selected_by_email, selected_at
+            ) values (
+              ${runId}::uuid, ${source.row_index}, ${sourceProfileKey},
+              ${stableRowKey}, ${existing.binding_id}::uuid,
+              ${JSON.stringify(existing.identity_evidence)}::jsonb,
+              ${JSON.stringify(identityEvidence)}::jsonb,
+              ${approvedChange.allowed_actions}::text[],
+              ${approvedChange.selected_action}, ${input.identity.ownerId},
+              ${input.identity.email}, now()
+            )
+          `);
         }
 
         rows.push({
@@ -817,7 +1133,7 @@ export async function buildAxIdentityCandidate(input: {
           bindingId: null,
           pgacCode: null,
           pgicCode: null,
-          enrichedRow: source.data,
+          enrichedRow: stripSourceSuppliedAxCodes(source.data),
         });
       }
     }
@@ -860,15 +1176,18 @@ export async function buildAxIdentityCandidate(input: {
     });
     const counts = {
       reused: rows.filter((row) => row.assignmentStatus === "reused").length,
-      retained: rows.filter((row) => row.assignmentStatus === "retained").length,
-      reserved: rows.filter((row) => row.assignmentStatus === "reserved").length,
-      conflict: rows.filter((row) => row.assignmentStatus === "conflict").length,
+      reserved: rows.filter((row) =>
+        row.assignmentStatus === "reserved" || row.assignmentStatus === "pgac-only"
+      ).length,
+      conflict: rows.filter((row) =>
+        row.assignmentStatus === "conflict" || row.assignmentStatus === "review-required"
+      ).length,
       unassignable: rows.filter((row) => row.assignmentStatus === "unassignable").length,
     };
     await tx.execute(sql`
       update private.ax_identity_runs set
         output_row_count = ${rows.length}, reused_count = ${counts.reused},
-        retained_count = ${counts.retained}, reserved_count = ${counts.reserved},
+        retained_count = 0, reserved_count = ${counts.reserved},
         conflict_count = ${counts.conflict}, unassignable_count = ${counts.unassignable},
         warning_count = ${findings.filter((entry) => entry.severity === "warning").length},
         error_count = ${findings.filter((entry) => entry.severity === "error").length},
@@ -971,6 +1290,64 @@ export async function rejectAxIdentityCandidate(input: {
       update private.ax_identity_runs set status = 'rejected', rejection_reason = ${reason},
         rejected_by_owner_id = ${input.identity.ownerId}, rejected_at = now(), completed_at = coalesce(completed_at, now())
       where id = ${input.runId}::uuid
+    `);
+  });
+  return getAxIdentityRun(input.runId);
+}
+
+export async function reviewAxIdentityChangeDecision(input: {
+  runId: string;
+  decisionId: string;
+  action: AxIdentityChangeAction;
+  identity: CurrentIdentity;
+}) {
+  await getDb().transaction(async (tx) => {
+    const rows = (await tx.execute(sql<{
+      selected_action: AxIdentityChangeAction | null;
+      allowed_actions: AxIdentityChangeAction[];
+      status: string;
+    }>`
+      select decision.selected_action, decision.allowed_actions, run.status
+      from private.ax_identity_change_decisions as decision
+      join private.ax_identity_runs as run on run.id = decision.identity_run_id
+      where decision.id = ${input.decisionId}::uuid
+        and decision.identity_run_id = ${input.runId}::uuid
+      for update of decision
+    `)) as unknown as Array<{
+      selected_action: AxIdentityChangeAction | null;
+      allowed_actions: AxIdentityChangeAction[];
+      status: string;
+    }>;
+    const decision = rows[0];
+    if (!decision) {
+      throw new AxIdentityRegistryError("Identity change decision not found.", 404);
+    }
+    if (decision.status !== "invalid") {
+      throw new AxIdentityRegistryError(
+        "Only an invalid reviewed candidate can accept identity change decisions.",
+        409,
+      );
+    }
+    if (decision.selected_action) {
+      throw new AxIdentityRegistryError(
+        "This identity change decision is already immutable.",
+        409,
+      );
+    }
+    if (!decision.allowed_actions.includes(input.action)) {
+      throw new AxIdentityRegistryError(
+        "The selected identity change action is not allowed.",
+        409,
+      );
+    }
+    await tx.execute(sql`
+      update private.ax_identity_change_decisions
+      set selected_action = ${input.action},
+        selected_by_owner_id = ${input.identity.ownerId},
+        selected_by_email = ${input.identity.email}, selected_at = now()
+      where id = ${input.decisionId}::uuid
+        and identity_run_id = ${input.runId}::uuid
+        and selected_action is null
     `);
   });
   return getAxIdentityRun(input.runId);
@@ -1097,6 +1474,21 @@ export async function publishAxIdentityCandidate(input: {
   const currentPublication = await getCurrentIdentityPublication(
     evidence.run.publicationTargetKey,
   );
+  const sourcePublication = await getPipelinePublication(
+    evidence.run.sourcePublicationId,
+  );
+  const sourceDataset = sourcePublication
+    ? await getDataset(sourcePublication.datasetId, { includeDisabled: true })
+    : null;
+  const sourceClassification = sourceDataset
+    ? getDatasetClassification(sourceDataset.tags)
+    : null;
+  if (!sourceDataset || !sourceClassification) {
+    throw new AxIdentityRegistryError(
+      "The source dataset classification is unavailable for identity publication.",
+      409,
+    );
+  }
   assertExpectedIdentityPublication({
     expectedCurrentPublicationId: evidence.run.expectedCurrentPublicationId,
     currentPublicationId: currentPublication?.id ?? null,
@@ -1159,7 +1551,7 @@ export async function publishAxIdentityCandidate(input: {
       sizeBytes: Buffer.byteLength(evidence.csv, "utf8"),
       columns: [...evidence.columns],
       rows: evidence.run.rows.map((row) => ({ ...row.enrichedRow })),
-      classification: "PGIC",
+      classification: sourceClassification,
       isWorkspaceVisible: false,
       finalize: async ({ executor, datasetId, created }) => {
         const rows = (await executor.execute(sql<{
@@ -1241,165 +1633,11 @@ export async function expireStaleAxIdentityReservations(now = new Date()) {
 }
 
 export async function getAxIdentityRegistryOverview() {
-  const [bindings, revisions, runs] = await Promise.all([
+  const [authority, bindings, revisions, runs] = await Promise.all([
+    getAxIdentityAuthorityStatus(),
     listActiveIdentityBindings(),
     listIdentityRegistryRevisions(),
     listAxIdentityRuns(),
   ]);
-  return { bindings, revisions, runs };
-}
-
-export async function importLegacyIdentitySnapshots(input: {
-  snapshots: readonly LegacyIdentitySnapshot[];
-  commit?: boolean;
-  reason?: string;
-  identity: CurrentIdentity;
-}) {
-  if (input.commit) {
-    throw new AxIdentityRegistryError(
-      "Legacy AX identity commits require the pinned identity graph importer.",
-      409,
-    );
-  }
-  const existing = await listActiveIdentityBindings();
-  const result = inspectLegacyIdentitySnapshots({
-    snapshots: input.snapshots,
-    existingCodes: new Map(
-      existing.flatMap((binding) => [
-        [binding.pgacCode, `${binding.sourceProfileKey}:${binding.stableRowKey}`] as const,
-        [binding.pgicCode, `${binding.sourceProfileKey}:${binding.stableRowKey}`] as const,
-      ]),
-    ),
-  });
-  const reason = input.reason?.trim() ?? "Legacy AX identity snapshot review";
-  const existingImports = (await getDb().execute(sql<{ id: string; status: string }>`
-    select id, status from private.ax_identity_legacy_imports
-    where input_fingerprint = ${result.inputFingerprint}
-    limit 1
-  `)) as unknown as { id: string; status: string }[];
-  if (existingImports[0]?.status === "committed" || !input.commit) {
-    if (!existingImports[0]) {
-      await getDb().execute(sql`
-        insert into private.ax_identity_legacy_imports (
-          input_fingerprint, snapshot_manifest, status, finding_count,
-          actor_owner_id, actor_email, reason
-        ) values (
-          ${result.inputFingerprint},
-          ${JSON.stringify(input.snapshots.map((snapshot) => ({ path: snapshot.path, checksum: snapshot.expectedChecksum })))}::jsonb,
-          ${result.blocking ? "blocked" : "dry-run"}, ${result.findings.length},
-          ${input.identity.ownerId}, ${input.identity.email}, ${reason}
-        )
-      `);
-    }
-    return { ...result, committedImportId: existingImports[0]?.status === "committed" ? existingImports[0].id : null };
-  }
-
-  const importId = existingImports[0]?.id ?? (
-    (await getDb().execute(sql<{ id: string }>`
-      insert into private.ax_identity_legacy_imports (
-        input_fingerprint, snapshot_manifest, status, finding_count,
-        actor_owner_id, actor_email, reason
-      ) values (
-        ${result.inputFingerprint},
-        ${JSON.stringify(input.snapshots.map((snapshot) => ({ path: snapshot.path, checksum: snapshot.expectedChecksum })))}::jsonb,
-        'dry-run', 0, ${input.identity.ownerId}, ${input.identity.email}, ${reason}
-      ) returning id
-    `)) as unknown as { id: string }[]
-  )[0]!.id;
-
-  await getDb().transaction(async (tx) => {
-    await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended('ax-identity-publication', 11))`);
-    const maximumImportedValue = result.rows.reduce(
-      (maximum, row) => Math.max(maximum, row.uuid ? Number(row.uuid) : 0),
-      0,
-    );
-    if (maximumImportedValue > 0) {
-      await tx.execute(sql`
-        update private.ax_identity_counters
-        set next_value = greatest(next_value, ${maximumImportedValue + 1}), updated_at = now()
-        where namespace = ${AX_IDENTITY_NAMESPACE}
-      `);
-    }
-    for (const row of result.rows) {
-      const iso3 = row.pgicCode.slice(-3);
-      const parentRows = (await tx.execute(sql<{ id: string }>`
-        insert into private.ax_identities (
-          namespace, identity_kind, allocated_value, lifecycle_state,
-          created_by_import_id, activated_at
-        ) values (
-          ${AX_IDENTITY_NAMESPACE}, 'pgac', ${row.uuid ? Number(row.uuid) : null},
-          'active', ${importId}::uuid, now()
-        )
-        returning id
-      `)) as unknown as { id: string }[];
-      const parentId = parentRows[0]!.id;
-      const childRows = (await tx.execute(sql<{ id: string }>`
-        insert into private.ax_identities (
-          namespace, identity_kind, parent_identity_id, normalized_iso3,
-          lifecycle_state, created_by_import_id, activated_at
-        ) values (${AX_IDENTITY_NAMESPACE}, 'pgic', ${parentId}::uuid, ${iso3}, 'active', ${importId}::uuid, now())
-        returning id
-      `)) as unknown as { id: string }[];
-      const childId = childRows[0]!.id;
-      await tx.execute(sql`
-        insert into private.ax_identity_codes (
-          identity_id, code, code_kind, lifecycle_state, created_by_import_id
-        ) values
-          (${parentId}::uuid, ${row.pgacCode}, 'canonical', 'active', ${importId}::uuid),
-          (${childId}::uuid, ${row.pgicCode}, 'canonical', 'active', ${importId}::uuid)
-      `);
-      for (const alias of row.aliases) {
-        await tx.execute(sql`
-          insert into private.ax_identity_codes (
-            identity_id, code, code_kind, lifecycle_state, created_by_import_id
-          ) values (
-            ${alias.endsWith(`-${iso3}`) ? childId : parentId}::uuid,
-            ${alias}, 'alias', 'active', ${importId}::uuid
-          )
-        `);
-      }
-      await tx.execute(sql`
-        insert into private.ax_identity_source_bindings (
-          source_profile_key, stable_row_key, identity_id, legacy_import_id,
-          binding_state, activated_at
-        ) values (
-          ${row.sourceProfileKey}, ${row.stableRowKey}, ${childId}::uuid,
-          ${importId}::uuid, 'active', now()
-        )
-      `);
-    }
-    const bindingRows = (await tx.execute(sql<{ count: number; checksum: string }>`
-      select count(*)::integer as count,
-        encode(extensions.digest(coalesce(string_agg(
-          source_profile_key || ':' || stable_row_key || ':' || identity_id::text,
-          '|' order by source_profile_key, stable_row_key, identity_id
-        ), ''), 'sha256'), 'hex') as checksum
-      from private.ax_identity_source_bindings where binding_state = 'active'
-    `)) as unknown as { count: number; checksum: string }[];
-    const revisionRows = (await tx.execute(sql<{ id: string }>`
-      insert into private.ax_registry_revisions (
-        previous_revision_id, content_checksum, binding_count,
-        actor_owner_id, actor_email, reason
-      ) values (
-        (select id from private.ax_registry_revisions order by revision_number desc limit 1),
-        ${bindingRows[0]!.checksum}, ${bindingRows[0]!.count},
-        ${input.identity.ownerId}, ${input.identity.email}, ${reason}
-      ) returning id
-    `)) as unknown as { id: string }[];
-    const revisionId = revisionRows[0]!.id;
-    await tx.execute(sql`
-      update private.ax_identity_source_bindings set activated_revision_id = ${revisionId}::uuid
-      where legacy_import_id = ${importId}::uuid;
-      update private.ax_identities set activated_revision_id = ${revisionId}::uuid
-      where created_by_import_id = ${importId}::uuid;
-      update private.ax_identity_codes set activated_revision_id = ${revisionId}::uuid
-      where created_by_import_id = ${importId}::uuid;
-      insert into private.ax_registry_revision_bindings (revision_id, binding_id)
-      select ${revisionId}::uuid, id from private.ax_identity_source_bindings where binding_state = 'active';
-      update private.ax_identity_legacy_imports set status = 'committed',
-        registry_revision_id = ${revisionId}::uuid, committed_at = now(), reason = ${reason}
-      where id = ${importId}::uuid;
-    `);
-  });
-  return { ...result, committedImportId: importId };
+  return { authority, bindings, revisions, runs };
 }
