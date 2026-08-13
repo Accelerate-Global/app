@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 
 import { PipelineOperationsClient } from "@/components/pipeline-operations/pipeline-operations-client";
 import { DashboardPageShell } from "@/components/layout/dashboard-page-shell";
+import { SiteHeader } from "@/components/layout/site-header";
 import { buttonVariants } from "@/components/ui/button";
 import { getCurrentIdentity } from "@/lib/auth";
 import {
@@ -27,10 +28,12 @@ export default async function PipelineOperationsPage() {
   ]);
 
   return (
-    <div
+    <main
+      className="min-h-svh bg-background"
       data-smoke-page="pipeline-operations"
       data-smoke-page-ready="pipeline-operations"
     >
+      <SiteHeader identity={identity} />
       <DashboardPageShell>
         <section className="space-y-2">
           <Link
@@ -49,7 +52,7 @@ export default async function PipelineOperationsPage() {
             </span>
             <div className="space-y-2">
               <h1 className="text-4xl font-semibold tracking-[-0.04em] sm:text-[3.1rem]">
-                Pipeline Operations
+                Pipelines
               </h1>
               <p className="max-w-3xl text-base leading-7 text-muted-foreground sm:text-lg">
                 Run, review, recover, and inspect the durable data workflows that
@@ -65,6 +68,6 @@ export default async function PipelineOperationsPage() {
           availableEffectKeys={Object.keys(registeredPipelineStageHandlers)}
         />
       </DashboardPageShell>
-    </div>
+    </main>
   );
 }

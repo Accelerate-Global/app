@@ -15,8 +15,24 @@ vi.mock("next/navigation", () => ({
   redirect: vi.fn((target: string) => {
     throw new Error(`NEXT_REDIRECT:${target}`);
   }),
+  useRouter: () => ({
+    push: vi.fn(),
+    refresh: vi.fn(),
+    prefetch: vi.fn(),
+  }),
 }));
 vi.mock("@/lib/auth", () => ({ getCurrentIdentity: vi.fn() }));
+vi.mock("@/components/theme/theme-toggle", () => ({
+  applyDocumentThemePreference: vi.fn((preference: string) => ({
+    preference,
+    resolvedTheme: "light",
+  })),
+  getDocumentThemeState: vi.fn(() => ({
+    preference: "system",
+    resolvedTheme: "light",
+  })),
+  subscribeToSystemThemeChanges: vi.fn(() => () => undefined),
+}));
 vi.mock("@/lib/pipeline-operations", async () => {
   const actual = await vi.importActual<typeof import("@/lib/pipeline-operations")>(
     "@/lib/pipeline-operations",
@@ -60,10 +76,13 @@ describe("/admin/pipeline-operations", () => {
     );
   });
 
-  it("renders the admin operations page and literal smoke marker", async () => {
+  it("renders the Pipelines page with authenticated navigation and literal smoke marker", async () => {
     vi.mocked(getCurrentIdentity).mockResolvedValue(admin);
     render(await PipelineOperationsPage());
-    expect(screen.getByRole("heading", { name: "Pipeline Operations" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Pipelines" })).toBeTruthy();
+    expect(
+      document.querySelector('[data-smoke-trigger="account-menu"]'),
+    ).toBeTruthy();
     expect(
       document.querySelector('[data-smoke-page="pipeline-operations"]'),
     ).toBeTruthy();
