@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { listApiConnectionRuns } from "@/lib/api-connections";
+import { reconcileStaleApiConnectionRuns } from "@/lib/api-connections/durable-joshua";
 import { getCurrentIdentity } from "@/lib/auth";
 import { GET } from "./route";
 
@@ -13,8 +14,15 @@ vi.mock("@/lib/api-connections", () => ({
   listApiConnectionRuns: vi.fn(),
 }));
 
+vi.mock("@/lib/api-connections/durable-joshua", () => ({
+  reconcileStaleApiConnectionRuns: vi.fn(),
+}));
+
 const getCurrentIdentityMock = vi.mocked(getCurrentIdentity);
 const listApiConnectionRunsMock = vi.mocked(listApiConnectionRuns);
+const reconcileStaleApiConnectionRunsMock = vi.mocked(
+  reconcileStaleApiConnectionRuns,
+);
 
 const identity = {
   ownerId: "admin-1",
@@ -79,12 +87,14 @@ describe("/api/admin/api-connections/[connectionId]/runs", () => {
   });
 
   it("lists runs for admins", async () => {
+    reconcileStaleApiConnectionRunsMock.mockResolvedValue(0);
     listApiConnectionRunsMock.mockResolvedValue([run]);
 
     const response = await GET(new Request("http://localhost"), context);
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({ runs: [run] });
+    expect(reconcileStaleApiConnectionRunsMock).toHaveBeenCalledOnce();
     expect(listApiConnectionRunsMock).toHaveBeenCalledWith(run.connectionId);
   });
 });

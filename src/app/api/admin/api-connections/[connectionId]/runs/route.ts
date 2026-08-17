@@ -1,4 +1,5 @@
 import { listApiConnectionRuns } from "@/lib/api-connections";
+import { reconcileStaleApiConnectionRuns } from "@/lib/api-connections/durable-joshua";
 import { logError } from "@/lib/error-logging";
 import { jsonError } from "@/lib/http";
 import { withRoute } from "@/lib/route-guard";
@@ -15,6 +16,7 @@ export const GET = withRoute(
     const { connectionId } = await context.params;
 
     try {
+      await reconcileStaleApiConnectionRuns();
       return Response.json({ runs: await listApiConnectionRuns(connectionId) });
     } catch (error) {
       logError("Failed to list API connection runs", error);
