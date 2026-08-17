@@ -3,13 +3,13 @@
 import {
   AlertCircleIcon,
   CheckCircle2Icon,
-  Loader2Icon,
   UploadIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { useRef, useState, type DragEvent } from "react";
 import Papa from "papaparse";
 
+import { OperationProgress } from "@/components/dashboard/operation-progress";
 import type {
   CsvColumn,
   DatasetClassification,
@@ -34,7 +34,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Progress } from "@/components/ui/progress";
 import {
   Select,
   SelectContent,
@@ -601,27 +600,20 @@ export function DatasetUploadClient({
             </Button>
           </div>
 
-          {upload ? (
-            <div className="mt-4 space-y-3 rounded-lg border bg-background p-4">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div>
-                  <p className="text-sm font-medium">{upload.fileName}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {upload.message}
-                    {upload.rowsParsed > 0
-                      ? ` · ${upload.rowsParsed.toLocaleString()} rows`
-                      : ""}
-                  </p>
-                </div>
-                {upload.phase === "ready" ? (
-                  <CheckCircle2Icon className="size-5 text-emerald-600" />
-                ) : upload.phase === "failed" ? (
-                  <AlertCircleIcon className="size-5 text-destructive" />
-                ) : (
-                  <Loader2Icon className="size-5 animate-spin text-muted-foreground" />
-                )}
-              </div>
-              <Progress value={upload.progress} />
+          {upload && isBusy ? (
+            <div className="mt-4" data-smoke-dataset-ingestion-progress>
+              <OperationProgress
+                title={`${upload.fileName} ingestion`}
+                phase={upload.message}
+                detail={
+                  upload.rowsParsed > 0
+                    ? `${upload.rowsParsed.toLocaleString()} rows processed`
+                    : isReplacing
+                      ? "Preparing the reviewed dataset replacement"
+                      : "Preparing the reviewed dataset"
+                }
+                value={upload.progress}
+              />
             </div>
           ) : null}
         </CardContent>

@@ -26,6 +26,7 @@ import {
 } from "react";
 
 import { GoogleSheetsHeaderSelection } from "@/components/dashboard/google-sheets-header-selection";
+import { OperationProgress } from "@/components/dashboard/operation-progress";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -35,7 +36,6 @@ import {
   CardDescription,
   CardHeader,
 } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
 import {
   DATASET_PRIVATE_TAG,
   getDatasetTagStyle,
@@ -76,6 +76,15 @@ type ImportResult = {
   datasetId: string | null;
   status: "connecting" | "queued" | "importing" | "ready" | "failed";
   error: string | null;
+  startedAt: string | null;
+  lastCheckedAt: number | null;
+  consecutivePollFailures: number;
+};
+
+type CsvProgressState = {
+  value: number;
+  rowsParsed: number;
+  message: string;
 };
 
 const TRACKING_ID_SOURCE_OPTIONS = [
@@ -108,16 +117,6 @@ async function errorMessage(response: Response, fallback: string) {
   }
 }
 
-function importProgress(status: ImportResult["status"]) {
-  return {
-    connecting: 10,
-    queued: 30,
-    importing: 65,
-    ready: 100,
-    failed: 100,
-  }[status];
-}
-
 function sourceLabel(source: OnboardingSource | null) {
   return source === "google-sheets" ? "Google Sheet" : "CSV file";
 }
@@ -137,7 +136,11 @@ export function DatasetOnboardingClient({
   const [headerBusyIds, setHeaderBusyIds] = useState<number[]>([]);
   const [expandedHeaderIds, setExpandedHeaderIds] = useState<number[]>([]);
   const [importResults, setImportResults] = useState<ImportResult[]>([]);
-  const [csvProgress, setCsvProgress] = useState(0);
+  const [csvProgress, setCsvProgress] = useState<CsvProgressState>({
+    value: 0,
+    rowsParsed: 0,
+    message: "Preparing CSV",
+  });
   const headingRef = useRef<HTMLHeadingElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const accessRequestKey = useRef(0);
@@ -397,18 +400,29 @@ export function DatasetOnboardingClient({
 
   async function pollRun(resultKey: string, connectionId: string, run: ApiConnectionRun) {
     let currentRun = run;
+    let consecutivePollFailures = 0;
     while (currentRun.status === "queued" || currentRun.status === "running") {
       updateResult(resultKey, {
         status: currentRun.status === "queued" ? "queued" : "importing",
       });
       await new Promise((resolve) => setTimeout(resolve, 750));
-      const response = await fetch(
-        `/api/admin/api-connections/${connectionId}/runs/${currentRun.id}`,
-      );
-      if (!response.ok) {
-        throw new Error(await errorMessage(response, "Import progress could not be loaded."));
+      try {
+        const response = await fetch(
+          `/api/admin/api-connections/${connectionId}/runs/${currentRun.id}`,
+        );
+        if (!response.ok) {
+          throw new Error("Import progress could not be loaded.");
+        }
+        currentRun = ((await response.json()) as ApiConnectionRunDetailResponse).run;
+        consecutivePollFailures = 0;
+        updateResult(resultKey, {
+          lastCheckedAt: Date.now(),
+          consecutivePollFailures: 0,
+        });
+      } catch {
+        consecutivePollFailures += 1;
+        updateResult(resultKey, { consecutivePollFailures });
       }
-      currentRun = ((await response.json()) as ApiConnectionRunDetailResponse).run;
     }
     if (currentRun.status === "success" && currentRun.datasetId) {
       updateResult(resultKey, {
@@ -424,7 +438,14 @@ export function DatasetOnboardingClient({
 
   async function startImport(result: ImportResult) {
     if (!result.connectionId) return false;
-    updateResult(result.key, { status: "queued", error: null });
+    updateResult(result.key, {
+      status: "queued",
+      error: null,
+      runId: null,
+      startedAt: new Date().toISOString(),
+      lastCheckedAt: null,
+      consecutivePollFailures: 0,
+    });
     try {
       const response = await fetch(
         `/api/admin/api-connections/${result.connectionId}/run`,
@@ -438,7 +459,13 @@ export function DatasetOnboardingClient({
         throw new Error(await errorMessage(response, "The import could not be started."));
       }
       const payload = (await response.json()) as ApiConnectionRunResponse;
-      updateResult(result.key, { runId: payload.run.id, status: "queued" });
+      updateResult(result.key, {
+        runId: payload.run.id,
+        status: payload.run.status === "running" ? "importing" : "queued",
+        startedAt: payload.run.startedAt ?? payload.run.createdAt,
+        lastCheckedAt: Date.now(),
+        consecutivePollFailures: 0,
+      });
       await pollRun(result.key, result.connectionId, payload.run);
       return true;
     } catch (caught) {
@@ -488,6 +515,9 @@ export function DatasetOnboardingClient({
         datasetId: connection.targetDatasetId,
         status: "queued",
         error: null,
+        startedAt: new Date().toISOString(),
+        lastCheckedAt: null,
+        consecutivePollFailures: 0,
       }));
       setImportResults(nextResults);
       dispatch({ type: "lock-import" });
@@ -515,8 +545,12 @@ export function DatasetOnboardingClient({
         datasetId: null,
         status: "importing",
         error: null,
+        startedAt: new Date().toISOString(),
+        lastCheckedAt: null,
+        consecutivePollFailures: 0,
       },
     ]);
+    setCsvProgress({ value: 0, rowsParsed: 0, message: "Preparing CSV" });
     try {
       const dataset = await uploadNewDatasetCsv({
         file: state.csvFile,
@@ -524,7 +558,8 @@ export function DatasetOnboardingClient({
         columns: state.csvColumns,
         classification: state.classification,
         isWorkspaceVisible: state.isWorkspaceVisible,
-        onProgress: (progress) => setCsvProgress(progress),
+        onProgress: (value, rowsParsed, message) =>
+          setCsvProgress({ value, rowsParsed, message }),
       });
       updateResult(key, { status: "ready", datasetId: dataset.id });
     } catch (caught) {
@@ -1178,20 +1213,64 @@ export function DatasetOnboardingClient({
 
   function renderImport() {
     return (
-      <div className="space-y-4" aria-live="polite">
-        {importResults.map((result) => (
+      <div className="space-y-4">
+        {importResults.map((result) => {
+          const isActive =
+            result.status === "connecting" ||
+            result.status === "queued" ||
+            result.status === "importing";
+          const isCsvImport = state.source === "csv";
+          const phase = isCsvImport
+            ? csvProgress.message
+            : result.status === "connecting"
+              ? "Connecting source"
+              : result.status === "queued"
+                ? "Waiting to ingest"
+                : "Ingesting source data";
+          const detail = isCsvImport
+            ? csvProgress.rowsParsed > 0
+              ? `${csvProgress.rowsParsed.toLocaleString()} rows processed`
+              : "Uploading and preparing the reviewed dataset"
+            : "The source is refreshing automatically until this dataset is ready.";
+
+          return (
           <div key={result.key} className="space-y-3 rounded-xl border p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <div><p className="font-medium">{result.name}</p><p className={cn("text-sm capitalize", result.status === "failed" ? "text-destructive" : "text-muted-foreground")}>{result.status === "ready" ? "Ready" : result.status === "failed" ? result.error : result.status}</p></div>
+              <div>
+                <p className="font-medium">{result.name}</p>
+                {!isActive ? (
+                  <p
+                    role={result.status === "failed" ? "alert" : "status"}
+                    className={cn("text-sm", result.status === "failed" ? "text-destructive" : "text-muted-foreground")}
+                  >
+                    {result.status === "ready" ? "Ready" : result.error}
+                  </p>
+                ) : null}
+              </div>
               <div className="flex gap-2">
                 {result.status === "ready" && result.datasetId ? <Link href={`/dashboard/datasets/${result.datasetId}`} className={buttonVariants({ variant: "outline", size: "sm" })}>Open dataset</Link> : null}
                 {result.status === "failed" && result.connectionId ? <Button type="button" variant="outline" size="sm" onClick={() => void startImport(result)}><RefreshCcwIcon /> Retry import</Button> : null}
                 {result.connectionId ? <Link href={`/dashboard/api-connections/${result.connectionId}`} className={buttonVariants({ variant: "ghost", size: "sm" })}>Open connection</Link> : null}
               </div>
             </div>
-            <Progress value={state.source === "csv" && result.status === "importing" ? csvProgress : importProgress(result.status)} />
+            {isActive ? (
+              <div data-smoke-dataset-ingestion-progress>
+                <OperationProgress
+                  title={`${result.name} ingestion`}
+                  phase={phase}
+                  detail={detail}
+                  value={isCsvImport ? csvProgress.value : undefined}
+                  startedAt={result.startedAt}
+                  lastCheckedAt={isCsvImport ? null : result.lastCheckedAt}
+                  freshnessUnavailable={
+                    !isCsvImport && result.consecutivePollFailures >= 2
+                  }
+                />
+              </div>
+            ) : null}
           </div>
-        ))}
+          );
+        })}
         {state.stage === "complete" ? (
           <div className="flex flex-wrap justify-between gap-3 pt-2">
             <Link href="/dashboard" className={buttonVariants({ variant: "outline" })}>Back to dashboard</Link>

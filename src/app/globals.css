@@ -174,3 +174,19 @@
     font-family: var(--font-heading);
   }
 }
+
+@keyframes operation-progress-slide {
+  0% {
+    transform: translateX(-110%);
+  }
+  50% {
+    transform: translateX(110%);
+  }
+  100% {
+    transform: translateX(310%);
+  }
+}
+
+.operation-progress-indicator {
+  animation: operation-progress-slide 1.4s ease-in-out infinite;
+}

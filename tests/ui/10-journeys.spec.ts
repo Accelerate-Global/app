@@ -811,8 +811,37 @@ test(
               body: JSON.stringify({
                 run: {
                   id: "22222222-2222-4222-8222-222222222222",
-                  status: "success",
-                  datasetId: "33333333-3333-4333-8333-333333333333",
+                  status: "queued",
+                  mode: "import",
+                  datasetId: null,
+                  startedAt: null,
+                  createdAt: "2026-08-17T18:00:00.000Z",
+                },
+              }),
+            });
+          },
+        );
+        let onboardingPollCount = 0;
+        await page.route(
+          "**/api/admin/api-connections/11111111-1111-4111-8111-111111111111/runs/22222222-2222-4222-8222-222222222222",
+          async (route) => {
+            onboardingPollCount += 1;
+            const completed = onboardingPollCount > 1;
+            await route.fulfill({
+              contentType: "application/json",
+              body: JSON.stringify({
+                run: {
+                  id: "22222222-2222-4222-8222-222222222222",
+                  connectionId: "11111111-1111-4111-8111-111111111111",
+                  status: completed ? "success" : "queued",
+                  mode: "import",
+                  datasetId: completed
+                    ? "33333333-3333-4333-8333-333333333333"
+                    : null,
+                  errorMessage: null,
+                  startedAt: completed ? "2026-08-17T18:00:00.000Z" : null,
+                  completedAt: completed ? "2026-08-17T18:00:01.500Z" : null,
+                  createdAt: "2026-08-17T18:00:00.000Z",
                 },
               }),
             });
@@ -846,9 +875,22 @@ test(
         await page
           .getByRole("button", { name: "Connect and import datasets" })
           .click();
+        const ingestionProgress = page.locator(
+          "[data-smoke-dataset-ingestion-progress]",
+        );
+        await expect(ingestionProgress).toBeVisible();
+        await expect(
+          ingestionProgress.getByRole("progressbar", {
+            name: "Smoke Sheet - People ingestion",
+          }),
+        ).not.toHaveAttribute("aria-valuenow");
+        await expect(
+          ingestionProgress.getByText("Waiting to ingest", { exact: true }),
+        ).toBeVisible();
         await expect(
           page.getByRole("heading", { name: "Import complete" }),
         ).toBeVisible();
+        await expect(ingestionProgress).toHaveCount(0);
         await expect(page.getByRole("link", { name: "Open dataset" })).toHaveAttribute(
           "href",
           "/dashboard/datasets/33333333-3333-4333-8333-333333333333",
@@ -929,40 +971,66 @@ test(
                 sourceProfileChecksum: "b".repeat(64),
                 actorOwnerId: "smoke-admin",
                 actorEmail: "smoke-runner@example.com",
-                mode: "import",
-                status: "success",
-                httpStatus: 200,
-                durationMs: 125,
-                rowCount: 1,
+                mode: "test",
+                status: "queued",
+                httpStatus: null,
+                durationMs: 0,
+                rowCount: null,
                 datasetId: null,
                 errorMessage: null,
-                responsePreview: '[{"name":"Smoke"}]',
-                startedAt: "2026-07-20T16:00:00.000Z",
-                completedAt: "2026-07-20T16:00:00.125Z",
+                responsePreview: "",
+                startedAt: null,
+                completedAt: null,
                 createdAt: "2026-07-20T16:00:00.000Z",
-                logs: [
-                  {
-                    id: "88888888-8888-4888-8888-888888888888",
-                    runId,
-                    connectionId,
-                    level: "info",
-                    message: "Smoke run completed.",
-                    createdAt: "2026-07-20T16:00:00.125Z",
-                  },
-                ],
+                logs: [],
                 output: null,
               },
             }),
           });
         },
       );
+      let connectionPollCount = 0;
       await page.route(
-        `**/api/admin/api-connections/${connectionId}/runs/${runId}/forming-candidates`,
+        `**/api/admin/api-connections/${connectionId}/runs/${runId}`,
         async (route) => {
+          connectionPollCount += 1;
+          const completed = connectionPollCount > 1;
           await route.fulfill({
-            status: 200,
             contentType: "application/json",
-            body: JSON.stringify({ formingRuns: [] }),
+            body: JSON.stringify({
+              run: {
+                id: runId,
+                connectionId,
+                sourceProfileSnapshot: null,
+                sourceProfileChecksum: null,
+                actorOwnerId: "smoke-admin",
+                actorEmail: "smoke-runner@example.com",
+                mode: "test",
+                status: completed ? "success" : "queued",
+                httpStatus: completed ? 200 : null,
+                durationMs: completed ? 1625 : 0,
+                rowCount: completed ? 1 : null,
+                datasetId: null,
+                errorMessage: null,
+                responsePreview: completed ? '[{"name":"Smoke"}]' : "",
+                startedAt: completed ? "2026-07-20T16:00:00.000Z" : null,
+                completedAt: completed ? "2026-07-20T16:00:01.625Z" : null,
+                createdAt: "2026-07-20T16:00:00.000Z",
+                logs: completed
+                  ? [
+                      {
+                        id: "88888888-8888-4888-8888-888888888888",
+                        runId,
+                        connectionId,
+                        level: "info",
+                        message: "Smoke run completed.",
+                        createdAt: "2026-07-20T16:00:01.625Z",
+                      },
+                    ]
+                  : [],
+                output: null,
+              },
+            }),
           });
         },
       );
@@ -973,6 +1041,18 @@ test(
       ).toBeVisible();
       await expect(page.getByText("Run history", { exact: true })).toBeVisible();
       await page.locator("[data-smoke-api-connection-test]").click();
+
+      const testProgress = page.locator("[data-smoke-api-connection-progress]");
+      await expect(testProgress).toBeVisible();
+      await expect(
+        testProgress.getByText("Waiting to test", { exact: true }),
+      ).toBeVisible();
+      await expect(
+        testProgress.getByRole("progressbar", {
+          name: "Connection test in progress",
+        }),
+      ).not.toHaveAttribute("aria-valuenow");
+      await expect(testProgress).toHaveCount(0);
 
       const runTrigger = page.locator(
         '[data-smoke-trigger="api-connection-run-detail-sheet"]',
@@ -990,14 +1070,6 @@ test(
       ).toBeVisible();
       await expect(detailSheet.getByText("Smoke run completed.")).toBeVisible();
       await expect(detailSheet.getByText('[{"name":"Smoke"}]')).toBeVisible();
-      await expect(
-        detailSheet.locator(
-          '[data-smoke-surface="imb-forming-candidate-review"][data-smoke-ready="imb-forming-candidate-review"]',
-        ),
-      ).toBeVisible();
-      await expect(
-        detailSheet.getByRole("button", { name: "Build formed candidate" }),
-      ).toBeVisible();
     });
   },
 );

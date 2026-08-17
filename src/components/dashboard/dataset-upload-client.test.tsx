@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { DatasetUploadClient } from "./dataset-upload-client";
@@ -115,7 +115,8 @@ describe("DatasetUploadClient", () => {
     expect(await screen.findByText("Dataset update failed")).toBeTruthy();
     expect(
       await screen.findAllByText("Choose PGAC or PGIC before uploading a dataset."),
-    ).toHaveLength(2);
+    ).toHaveLength(1);
+    expect(document.querySelector("[data-smoke-dataset-ingestion-progress]")).toBeNull();
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
@@ -151,7 +152,8 @@ describe("DatasetUploadClient", () => {
     expect(await screen.findByText("Dataset update failed")).toBeTruthy();
     expect(
       await screen.findAllByText("Choose PGAC or PGIC before uploading a dataset."),
-    ).toHaveLength(2);
+    ).toHaveLength(1);
+    expect(document.querySelector("[data-smoke-dataset-ingestion-progress]")).toBeNull();
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
@@ -200,6 +202,13 @@ describe("DatasetUploadClient", () => {
       throw new Error(`Unexpected fetch: ${String(input)} ${init?.method ?? "GET"}`);
     });
 
+    let resolveUpload!: (result: { data: object; error: null }) => void;
+    uploadToSignedUrlMock.mockReturnValue(
+      new Promise((resolve) => {
+        resolveUpload = resolve;
+      }),
+    );
+
     render(<DatasetUploadClient targetDataset={targetDataset} />);
 
     const input = document.querySelector(
@@ -216,10 +225,22 @@ describe("DatasetUploadClient", () => {
       },
     });
 
+    expect(await screen.findByText("Uploading replacement for Global.csv")).toBeTruthy();
+    const activeProgress = screen.getByRole("progressbar", {
+      name: "Global.csv ingestion",
+    });
+    expect(activeProgress.getAttribute("aria-valuenow")).toBe("35");
+    expect(document.querySelector("[data-smoke-dataset-ingestion-progress]")).toBeTruthy();
+
+    await act(async () => {
+      resolveUpload({ data: {}, error: null });
+    });
+
     const dashboardLink = await screen.findByRole("link", { name: "Dashboard" });
 
     expect(dashboardLink.getAttribute("href")).toBe("/dashboard#datasets");
     expect(screen.queryByRole("link", { name: "Back to data" })).toBeNull();
+    expect(document.querySelector("[data-smoke-dataset-ingestion-progress]")).toBeNull();
 
     await waitFor(() => {
       const replaceCall = fetchMock.mock.calls.find(
