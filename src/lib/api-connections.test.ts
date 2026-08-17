@@ -84,6 +84,7 @@ describe("listCodeManagedApiConnections", () => {
       "https://services2.arcgis.com/S4ydGgujXcif36k3/arcgis/rest/services/pIMBPeople/FeatureServer/0/query",
     );
     expect(connections[2]?.url).not.toContain("api_key=");
+    expect(new URL(connections[2]!.url).searchParams.get("limit")).toBe("100");
   });
 });
 

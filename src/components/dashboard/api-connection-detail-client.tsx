@@ -52,10 +52,12 @@ import {
 } from "@/components/ui/card";
 import {
   Sheet,
+  SheetClose,
   SheetContent,
   SheetDescription,
   SheetHeader,
   SheetTitle,
+  SheetTrigger,
 } from "@/components/ui/sheet";
 import type {
   ApiConnection,
@@ -1859,315 +1861,254 @@ export function ApiConnectionDetailClient({
       ) : null}
 
       {googleSheetsConfig ? (
-        <Card data-smoke-google-sheets-source>
-          <CardHeader className="gap-3">
-            <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
-              <div className="min-w-0">
-                <CardTitle className="flex items-center gap-2 text-2xl">
-                  <FileSpreadsheetIcon className="size-5 text-muted-foreground" />
-                  Google Sheets source
-                </CardTitle>
-                <CardDescription>
-                  Private Google Sheet tab connected through the app service
-                  account.
-                </CardDescription>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <a
-                  href={googleSheetsConfig.spreadsheetUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className={buttonVariants({ variant: "outline", size: "sm" })}
-                >
-                  <ExternalLinkIcon className="size-3.5" />
-                  Open Google Sheet
-                </a>
-                {connection.targetDatasetId ? (
+        <Sheet>
+          <div className="flex justify-end">
+            <SheetTrigger
+              render={
+                <Button
+                  type="button"
+                  variant="outline"
+                  data-smoke-trigger="google-sheets-source"
+                />
+              }
+            >
+              <FileSpreadsheetIcon className="size-4" />
+              Google Sheets source
+            </SheetTrigger>
+          </div>
+          <SheetContent
+            side="right"
+            className="w-full gap-0 sm:max-w-2xl"
+            data-smoke-surface="google-sheets-source"
+            data-smoke-ready="google-sheets-source"
+          >
+            <SheetHeader className="border-b border-border pr-16">
+              <SheetTitle className="flex items-center gap-2 text-xl">
+                <FileSpreadsheetIcon className="size-5 text-muted-foreground" />
+                Google Sheets source
+              </SheetTitle>
+              <SheetDescription>
+                Private Google Sheet tab connected through the app service
+                account.
+              </SheetDescription>
+            </SheetHeader>
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+              <div className="space-y-4">
+                <div className="flex flex-wrap gap-2">
                   <a
-                    href={`/dashboard/datasets/${connection.targetDatasetId}`}
+                    href={googleSheetsConfig.spreadsheetUrl}
+                    target="_blank"
+                    rel="noreferrer"
                     className={buttonVariants({ variant: "outline", size: "sm" })}
                   >
-                    <DatabaseIcon className="size-3.5" />
-                    Open dataset
+                    <ExternalLinkIcon className="size-3.5" />
+                    Open Google Sheet
                   </a>
-                ) : null}
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-3 md:grid-cols-2">
-              <div className="rounded-lg border border-border bg-muted/20 p-3">
-                <div className="text-xs font-semibold uppercase text-muted-foreground">
-                  Spreadsheet
-                </div>
-                <div className="mt-1 truncate font-medium text-foreground">
-                  {googleSheetsConfig.spreadsheetTitle}
-                </div>
-              </div>
-              <div className="rounded-lg border border-border bg-muted/20 p-3">
-                <div className="text-xs font-semibold uppercase text-muted-foreground">
-                  Sheet tab
-                </div>
-                <div className="mt-1 truncate font-medium text-foreground">
-                  {googleSheetsConfig.sheetTitle}
-                </div>
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-2 rounded-lg border border-border bg-muted/20 p-3 sm:flex-row sm:items-center">
-              <div className="min-w-0 flex-1">
-                <div className="text-xs font-semibold uppercase text-muted-foreground">
-                  App service account
-                </div>
-                <code className="mt-1 block overflow-hidden text-ellipsis font-mono text-xs text-foreground">
-                  {serviceAccountEmail ?? "Not configured"}
-                </code>
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={!serviceAccountEmail}
-                aria-label="Copy app email"
-                onClick={() => void copySourceServiceAccountEmail()}
-              >
-                {sourceEmailCopied ? (
-                  <CheckCircle2Icon className="size-3.5" />
-                ) : (
-                  <CopyIcon className="size-3.5" />
-                )}
-                Copy app email
-              </Button>
-            </div>
-
-            {!serviceAccountEmail ? (
-              <Alert variant="destructive">
-                <XCircleIcon className="size-4" />
-                <AlertTitle>
-                  Google Sheets service-account access is not configured
-                </AlertTitle>
-                <AlertDescription>
-                  Configure the server-side Google Sheets service-account email
-                  and private key before checking or refreshing this source.
-                </AlertDescription>
-              </Alert>
-            ) : null}
-
-            <div
-              className="space-y-3 rounded-lg border border-border bg-muted/20 p-3"
-            >
-              <div className="flex items-start gap-2">
-                <GitBranchIcon className="mt-0.5 size-4 shrink-0" />
-                <div>
-                  <div className="text-xs font-semibold uppercase text-muted-foreground">
-                    Data workflow
-                  </div>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Link this exact Sheet tab to its forming workflow. Saving the
-                    link does not start ingestion, forming, publication,
-                    scheduling, or identity work.
-                  </p>
-                </div>
-              </div>
-
-              {hasActiveWorkflow ? (
-                <div className="rounded-lg border border-border bg-background p-3">
-                  <div className="text-sm font-medium">Active workflow</div>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {workflowSummary(workflowAssignment)}
-                  </p>
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    This assignment is read-only to preserve forming and identity
-                    lineage.
-                  </p>
-                </div>
-              ) : reviewedHeaders.length === 0 ? (
-                <Alert>
-                  <AlertTitle>Review headers first</AlertTitle>
-                  <AlertDescription>
-                    Save the current Sheet header selection before linking a data
-                    workflow.
-                  </AlertDescription>
-                </Alert>
-              ) : (
-                <div className="space-y-4">
-                  <label className="block space-y-1.5 text-sm">
-                    <span className="font-medium">Workflow</span>
-                    <select
-                      aria-label="Data workflow"
-                      className="h-10 w-full rounded-md border border-input bg-background px-3"
-                      value={workflowSelectValue(workflowAssignment)}
-                      onChange={(event) => setWorkflowKind(event.target.value)}
+                  {connection.targetDatasetId ? (
+                    <a
+                      href={`/dashboard/datasets/${connection.targetDatasetId}`}
+                      className={buttonVariants({ variant: "outline", size: "sm" })}
                     >
-                      <option value="none">No workflow link</option>
-                      <option value="tier1-accelerate">
-                        Tier 1 — Accelerate-owned people groups
-                      </option>
-                      <option value="tier1-wcd">
-                        Tier 1 — World Christian Database
-                      </option>
-                      <option value="tier2">
-                        Tier 2 — Engagement dataset
-                      </option>
-                    </select>
-                  </label>
-
-                  {workflowAssignment.kind === "tier1" ? (
-                    <label className="block space-y-1.5 text-sm">
-                      <span className="font-medium">
-                        Permanent source-row ID column
-                      </span>
-                      <select
-                        aria-label="Permanent source-row ID column"
-                        className="h-10 w-full rounded-md border border-input bg-background px-3"
-                        value={workflowAssignment.stableKeyColumn}
-                        onChange={(event) =>
-                          setWorkflowAssignment({
-                            ...workflowAssignment,
-                            stableKeyColumn: event.target.value,
-                          })
-                        }
-                      >
-                        <option value="">Choose a reviewed column</option>
-                        {reviewedHeaders.map((header) => (
-                          <option key={header} value={header}>
-                            {header}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
+                      <DatabaseIcon className="size-3.5" />
+                      Open dataset
+                    </a>
                   ) : null}
+                </div>
 
-                  {workflowAssignment.kind === "tier2" ? (
-                    <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div className="rounded-lg border border-border bg-muted/20 p-3">
+                    <div className="text-xs font-semibold uppercase text-muted-foreground">
+                      Spreadsheet
+                    </div>
+                    <div className="mt-1 truncate font-medium text-foreground">
+                      {googleSheetsConfig.spreadsheetTitle}
+                    </div>
+                  </div>
+                  <div className="rounded-lg border border-border bg-muted/20 p-3">
+                    <div className="text-xs font-semibold uppercase text-muted-foreground">
+                      Sheet tab
+                    </div>
+                    <div className="mt-1 truncate font-medium text-foreground">
+                      {googleSheetsConfig.sheetTitle}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-2 rounded-lg border border-border bg-muted/20 p-3 sm:flex-row sm:items-center">
+                  <div className="min-w-0 flex-1">
+                    <div className="text-xs font-semibold uppercase text-muted-foreground">
+                      App service account
+                    </div>
+                    <code className="mt-1 block overflow-hidden text-ellipsis font-mono text-xs text-foreground">
+                      {serviceAccountEmail ?? "Not configured"}
+                    </code>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={!serviceAccountEmail}
+                    aria-label="Copy app email"
+                    onClick={() => void copySourceServiceAccountEmail()}
+                  >
+                    {sourceEmailCopied ? (
+                      <CheckCircle2Icon className="size-3.5" />
+                    ) : (
+                      <CopyIcon className="size-3.5" />
+                    )}
+                    Copy app email
+                  </Button>
+                </div>
+
+                {!serviceAccountEmail ? (
+                  <Alert variant="destructive">
+                    <XCircleIcon className="size-4" />
+                    <AlertTitle>
+                      Google Sheets service-account access is not configured
+                    </AlertTitle>
+                    <AlertDescription>
+                      Configure the server-side Google Sheets service-account email
+                      and private key before checking or refreshing this source.
+                    </AlertDescription>
+                  </Alert>
+                ) : null}
+
+                <div
+                  className="space-y-3 rounded-lg border border-border bg-muted/20 p-3"
+                >
+                  <div className="flex items-start gap-2">
+                    <GitBranchIcon className="mt-0.5 size-4 shrink-0" />
+                    <div>
+                      <div className="text-xs font-semibold uppercase text-muted-foreground">
+                        Data workflow
+                      </div>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        Link this exact Sheet tab to its forming workflow. Saving the
+                        link does not start ingestion, forming, publication,
+                        scheduling, or identity work.
+                      </p>
+                    </div>
+                  </div>
+
+                  {hasActiveWorkflow ? (
+                    <div className="rounded-lg border border-border bg-background p-3">
+                      <div className="text-sm font-medium">Active workflow</div>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        {workflowSummary(workflowAssignment)}
+                      </p>
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        This assignment is read-only to preserve forming and identity
+                        lineage.
+                      </p>
+                    </div>
+                  ) : reviewedHeaders.length === 0 ? (
+                    <Alert>
+                      <AlertTitle>Review headers first</AlertTitle>
+                      <AlertDescription>
+                        Save the current Sheet header selection before linking a data
+                        workflow.
+                      </AlertDescription>
+                    </Alert>
+                  ) : (
+                    <div className="space-y-4">
                       <label className="block space-y-1.5 text-sm">
-                        <span className="font-medium">Dataset owner</span>
+                        <span className="font-medium">Workflow</span>
                         <select
-                          aria-label="Dataset owner"
+                          aria-label="Data workflow"
                           className="h-10 w-full rounded-md border border-input bg-background px-3"
-                          value={workflowAssignment.ownerKey}
-                          onChange={(event) =>
-                            updateTier2Workflow({ ownerKey: event.target.value })
-                          }
+                          value={workflowSelectValue(workflowAssignment)}
+                          onChange={(event) => setWorkflowKind(event.target.value)}
                         >
-                          <option value="">Choose an owner</option>
-                          {tier2OwnerOptions.map((owner) => (
-                            <option key={owner.key} value={owner.key}>
-                              {owner.label}
-                            </option>
-                          ))}
-                        </select>
-                        {tier2OwnerOptions.length === 0 ? (
-                          <span className="block text-xs text-destructive">
-                            No active dataset owners are available in the source
-                            registry.
-                          </span>
-                        ) : null}
-                      </label>
-                      <label className="block space-y-1.5 text-sm">
-                        <span className="font-medium">Engagement feed name</span>
-                        <input
-                          aria-label="Engagement feed name"
-                          className="h-10 w-full rounded-md border border-input bg-background px-3"
-                          value={workflowAssignment.feedName}
-                          onChange={(event) =>
-                            updateTier2Workflow({
-                              feedName: event.target.value,
-                              feedKey: normalizeWorkflowKey(event.target.value),
-                            })
-                          }
-                        />
-                      </label>
-                      <label className="block space-y-1.5 text-sm">
-                        <span className="font-medium">
-                          Permanent source-row ID column
-                        </span>
-                        <select
-                          aria-label="Permanent Tier 2 row ID"
-                          className="h-10 w-full rounded-md border border-input bg-background px-3"
-                          value={workflowAssignment.stableRowKeyColumn}
-                          onChange={(event) =>
-                            updateTier2Workflow({
-                              stableRowKeyColumn: event.target.value,
-                            })
-                          }
-                        >
-                          <option value="">Choose a reviewed column</option>
-                          {reviewedHeaders.map((header) => (
-                            <option key={header} value={header}>
-                              {header}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                      <label className="block space-y-1.5 text-sm">
-                        <span className="font-medium">Tracking ID type</span>
-                        <select
-                          aria-label="Tracking ID type"
-                          className="h-10 w-full rounded-md border border-input bg-background px-3"
-                          value={
-                            workflowAssignment.trackingIdSourceColumn
-                              ? "per-row"
-                              : workflowAssignment.trackingIdSource ?? ""
-                          }
-                          onChange={(event) => {
-                            if (event.target.value === "per-row") {
-                              updateTier2Workflow({
-                                trackingIdSource: null,
-                                trackingIdSourceColumn: "",
-                                trackingIdSourceMappings: [
-                                  {
-                                    sourceValue: "",
-                                    trackingIdSource: "peopleid3",
-                                  },
-                                ],
-                              });
-                              return;
-                            }
-                            const trackingIdSource = event.target
-                              .value as NonNullable<
-                              Extract<
-                                GoogleSheetsWorkflowAssignment,
-                                { kind: "tier2" }
-                              >["trackingIdSource"]
-                            >;
-                            updateTier2Workflow({
-                              trackingIdSource,
-                              trackingIdSourceColumn: null,
-                              trackingIdSourceMappings: [],
-                              ...(trackingIdSource === "rop3"
-                                ? {
-                                    sourceRop3Column:
-                                      workflowAssignment.trackingIdColumn ||
-                                      null,
-                                  }
-                                : {}),
-                            });
-                          }}
-                        >
-                          {TRACKING_ID_SOURCE_OPTIONS.map((option) => (
-                            <option key={option.value} value={option.value}>
-                              {option.label}
-                            </option>
-                          ))}
-                          <option value="per-row">
-                            Read the tracking type from each row
+                          <option value="none">No workflow link</option>
+                          <option value="tier1-accelerate">
+                            Tier 1 — Accelerate-owned people groups
+                          </option>
+                          <option value="tier1-wcd">
+                            Tier 1 — World Christian Database
+                          </option>
+                          <option value="tier2">
+                            Tier 2 — Engagement dataset
                           </option>
                         </select>
                       </label>
-                      {workflowAssignment.trackingIdSourceColumn !== null ? (
-                        <div className="space-y-3 sm:col-span-2">
+
+                      {workflowAssignment.kind === "tier1" ? (
+                        <label className="block space-y-1.5 text-sm">
+                          <span className="font-medium">
+                            Permanent source-row ID column
+                          </span>
+                          <select
+                            aria-label="Permanent source-row ID column"
+                            className="h-10 w-full rounded-md border border-input bg-background px-3"
+                            value={workflowAssignment.stableKeyColumn}
+                            onChange={(event) =>
+                              setWorkflowAssignment({
+                                ...workflowAssignment,
+                                stableKeyColumn: event.target.value,
+                              })
+                            }
+                          >
+                            <option value="">Choose a reviewed column</option>
+                            {reviewedHeaders.map((header) => (
+                              <option key={header} value={header}>
+                                {header}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      ) : null}
+
+                      {workflowAssignment.kind === "tier2" ? (
+                        <div className="grid gap-4 sm:grid-cols-2">
                           <label className="block space-y-1.5 text-sm">
-                            <span className="font-medium">
-                              Tracking-type column
-                            </span>
+                            <span className="font-medium">Dataset owner</span>
                             <select
-                              aria-label="Tracking-type column"
+                              aria-label="Dataset owner"
                               className="h-10 w-full rounded-md border border-input bg-background px-3"
-                              value={workflowAssignment.trackingIdSourceColumn}
+                              value={workflowAssignment.ownerKey}
+                              onChange={(event) =>
+                                updateTier2Workflow({ ownerKey: event.target.value })
+                              }
+                            >
+                              <option value="">Choose an owner</option>
+                              {tier2OwnerOptions.map((owner) => (
+                                <option key={owner.key} value={owner.key}>
+                                  {owner.label}
+                                </option>
+                              ))}
+                            </select>
+                            {tier2OwnerOptions.length === 0 ? (
+                              <span className="block text-xs text-destructive">
+                                No active dataset owners are available in the source
+                                registry.
+                              </span>
+                            ) : null}
+                          </label>
+                          <label className="block space-y-1.5 text-sm">
+                            <span className="font-medium">Engagement feed name</span>
+                            <input
+                              aria-label="Engagement feed name"
+                              className="h-10 w-full rounded-md border border-input bg-background px-3"
+                              value={workflowAssignment.feedName}
                               onChange={(event) =>
                                 updateTier2Workflow({
-                                  trackingIdSourceColumn: event.target.value,
+                                  feedName: event.target.value,
+                                  feedKey: normalizeWorkflowKey(event.target.value),
+                                })
+                              }
+                            />
+                          </label>
+                          <label className="block space-y-1.5 text-sm">
+                            <span className="font-medium">
+                              Permanent source-row ID column
+                            </span>
+                            <select
+                              aria-label="Permanent Tier 2 row ID"
+                              className="h-10 w-full rounded-md border border-input bg-background px-3"
+                              value={workflowAssignment.stableRowKeyColumn}
+                              onChange={(event) =>
+                                updateTier2Workflow({
+                                  stableRowKeyColumn: event.target.value,
                                 })
                               }
                             >
@@ -2179,318 +2120,411 @@ export function ApiConnectionDetailClient({
                               ))}
                             </select>
                           </label>
-                          <div className="space-y-2 rounded-md border border-border p-3">
-                            <p className="text-sm font-medium">
-                              Reviewed source-value mapping
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              Blank or unknown values will block that row; no
-                              fallback type is used.
-                            </p>
-                            {workflowAssignment.trackingIdSourceMappings.map(
-                              (mapping, index) => (
-                                <div
-                                  key={`${index}-${mapping.trackingIdSource}`}
-                                  className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]"
-                                >
-                                  <input
-                                    aria-label={`Tracking source value ${index + 1}`}
-                                    className="h-10 rounded-md border border-input bg-background px-3"
-                                    placeholder="Exact source value"
-                                    value={mapping.sourceValue}
-                                    onChange={(event) =>
-                                      updateTier2Workflow({
-                                        trackingIdSourceMappings:
-                                          workflowAssignment.trackingIdSourceMappings.map(
-                                            (entry, entryIndex) =>
-                                              entryIndex === index
-                                                ? {
-                                                    ...entry,
-                                                    sourceValue:
-                                                      event.target.value,
-                                                  }
-                                                : entry,
-                                          ),
-                                      })
-                                    }
-                                  />
-                                  <select
-                                    aria-label={`Tracking source type ${index + 1}`}
-                                    className="h-10 rounded-md border border-input bg-background px-3"
-                                    value={mapping.trackingIdSource}
-                                    onChange={(event) =>
-                                      updateTier2Workflow({
-                                        trackingIdSourceMappings:
-                                          workflowAssignment.trackingIdSourceMappings.map(
-                                            (entry, entryIndex) =>
-                                              entryIndex === index
-                                                ? {
-                                                    ...entry,
-                                                    trackingIdSource: event
-                                                      .target
-                                                      .value as typeof entry.trackingIdSource,
-                                                  }
-                                                : entry,
-                                          ),
-                                      })
-                                    }
-                                  >
-                                    {TRACKING_ID_SOURCE_OPTIONS.map((option) => (
-                                      <option
-                                        key={option.value}
-                                        value={option.value}
-                                      >
-                                        {option.label}
-                                      </option>
-                                    ))}
-                                  </select>
-                                  <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="icon"
-                                    aria-label={`Remove tracking source mapping ${index + 1}`}
-                                    disabled={
-                                      workflowAssignment
-                                        .trackingIdSourceMappings.length === 1
-                                    }
-                                    onClick={() =>
-                                      updateTier2Workflow({
-                                        trackingIdSourceMappings:
-                                          workflowAssignment.trackingIdSourceMappings.filter(
-                                            (_, entryIndex) =>
-                                              entryIndex !== index,
-                                          ),
-                                      })
-                                    }
-                                  >
-                                    <Trash2Icon className="size-4" />
-                                  </Button>
-                                </div>
-                              ),
-                            )}
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() =>
+                          <label className="block space-y-1.5 text-sm">
+                            <span className="font-medium">Tracking ID type</span>
+                            <select
+                              aria-label="Tracking ID type"
+                              className="h-10 w-full rounded-md border border-input bg-background px-3"
+                              value={
+                                workflowAssignment.trackingIdSourceColumn
+                                  ? "per-row"
+                                  : workflowAssignment.trackingIdSource ?? ""
+                              }
+                              onChange={(event) => {
+                                if (event.target.value === "per-row") {
+                                  updateTier2Workflow({
+                                    trackingIdSource: null,
+                                    trackingIdSourceColumn: "",
+                                    trackingIdSourceMappings: [
+                                      {
+                                        sourceValue: "",
+                                        trackingIdSource: "peopleid3",
+                                      },
+                                    ],
+                                  });
+                                  return;
+                                }
+                                const trackingIdSource = event.target
+                                  .value as NonNullable<
+                                  Extract<
+                                    GoogleSheetsWorkflowAssignment,
+                                    { kind: "tier2" }
+                                  >["trackingIdSource"]
+                                >;
                                 updateTier2Workflow({
-                                  trackingIdSourceMappings: [
-                                    ...workflowAssignment.trackingIdSourceMappings,
-                                    {
-                                      sourceValue: "",
-                                      trackingIdSource: "peopleid3",
-                                    },
-                                  ],
+                                  trackingIdSource,
+                                  trackingIdSourceColumn: null,
+                                  trackingIdSourceMappings: [],
+                                  ...(trackingIdSource === "rop3"
+                                    ? {
+                                        sourceRop3Column:
+                                          workflowAssignment.trackingIdColumn ||
+                                          null,
+                                      }
+                                    : {}),
+                                });
+                              }}
+                            >
+                              {TRACKING_ID_SOURCE_OPTIONS.map((option) => (
+                                <option key={option.value} value={option.value}>
+                                  {option.label}
+                                </option>
+                              ))}
+                              <option value="per-row">
+                                Read the tracking type from each row
+                              </option>
+                            </select>
+                          </label>
+                          {workflowAssignment.trackingIdSourceColumn !== null ? (
+                            <div className="space-y-3 sm:col-span-2">
+                              <label className="block space-y-1.5 text-sm">
+                                <span className="font-medium">
+                                  Tracking-type column
+                                </span>
+                                <select
+                                  aria-label="Tracking-type column"
+                                  className="h-10 w-full rounded-md border border-input bg-background px-3"
+                                  value={workflowAssignment.trackingIdSourceColumn}
+                                  onChange={(event) =>
+                                    updateTier2Workflow({
+                                      trackingIdSourceColumn: event.target.value,
+                                    })
+                                  }
+                                >
+                                  <option value="">Choose a reviewed column</option>
+                                  {reviewedHeaders.map((header) => (
+                                    <option key={header} value={header}>
+                                      {header}
+                                    </option>
+                                  ))}
+                                </select>
+                              </label>
+                              <div className="space-y-2 rounded-md border border-border p-3">
+                                <p className="text-sm font-medium">
+                                  Reviewed source-value mapping
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  Blank or unknown values will block that row; no
+                                  fallback type is used.
+                                </p>
+                                {workflowAssignment.trackingIdSourceMappings.map(
+                                  (mapping, index) => (
+                                    <div
+                                      key={`${index}-${mapping.trackingIdSource}`}
+                                      className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]"
+                                    >
+                                      <input
+                                        aria-label={`Tracking source value ${index + 1}`}
+                                        className="h-10 rounded-md border border-input bg-background px-3"
+                                        placeholder="Exact source value"
+                                        value={mapping.sourceValue}
+                                        onChange={(event) =>
+                                          updateTier2Workflow({
+                                            trackingIdSourceMappings:
+                                              workflowAssignment.trackingIdSourceMappings.map(
+                                                (entry, entryIndex) =>
+                                                  entryIndex === index
+                                                    ? {
+                                                        ...entry,
+                                                        sourceValue:
+                                                          event.target.value,
+                                                      }
+                                                    : entry,
+                                              ),
+                                          })
+                                        }
+                                      />
+                                      <select
+                                        aria-label={`Tracking source type ${index + 1}`}
+                                        className="h-10 rounded-md border border-input bg-background px-3"
+                                        value={mapping.trackingIdSource}
+                                        onChange={(event) =>
+                                          updateTier2Workflow({
+                                            trackingIdSourceMappings:
+                                              workflowAssignment.trackingIdSourceMappings.map(
+                                                (entry, entryIndex) =>
+                                                  entryIndex === index
+                                                    ? {
+                                                        ...entry,
+                                                        trackingIdSource: event
+                                                          .target
+                                                          .value as typeof entry.trackingIdSource,
+                                                      }
+                                                    : entry,
+                                              ),
+                                          })
+                                        }
+                                      >
+                                        {TRACKING_ID_SOURCE_OPTIONS.map((option) => (
+                                          <option
+                                            key={option.value}
+                                            value={option.value}
+                                          >
+                                            {option.label}
+                                          </option>
+                                        ))}
+                                      </select>
+                                      <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="icon"
+                                        aria-label={`Remove tracking source mapping ${index + 1}`}
+                                        disabled={
+                                          workflowAssignment
+                                            .trackingIdSourceMappings.length === 1
+                                        }
+                                        onClick={() =>
+                                          updateTier2Workflow({
+                                            trackingIdSourceMappings:
+                                              workflowAssignment.trackingIdSourceMappings.filter(
+                                                (_, entryIndex) =>
+                                                  entryIndex !== index,
+                                              ),
+                                          })
+                                        }
+                                      >
+                                        <Trash2Icon className="size-4" />
+                                      </Button>
+                                    </div>
+                                  ),
+                                )}
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() =>
+                                    updateTier2Workflow({
+                                      trackingIdSourceMappings: [
+                                        ...workflowAssignment.trackingIdSourceMappings,
+                                        {
+                                          sourceValue: "",
+                                          trackingIdSource: "peopleid3",
+                                        },
+                                      ],
+                                    })
+                                  }
+                                >
+                                  Add source value
+                                </Button>
+                              </div>
+                            </div>
+                          ) : null}
+                          <label className="block space-y-1.5 text-sm sm:col-span-2">
+                            <span className="font-medium">Tracking ID column</span>
+                            <select
+                              aria-label="Tracking ID column"
+                              className="h-10 w-full rounded-md border border-input bg-background px-3"
+                              value={workflowAssignment.trackingIdColumn}
+                              onChange={(event) =>
+                                updateTier2Workflow({
+                                  trackingIdColumn: event.target.value,
+                                  ...(workflowAssignment.trackingIdSource === "rop3"
+                                    ? {
+                                        sourceRop3Column:
+                                          event.target.value || null,
+                                      }
+                                    : {}),
                                 })
                               }
                             >
-                              Add source value
-                            </Button>
-                          </div>
+                              <option value="">Choose a reviewed column</option>
+                              {reviewedHeaders.map((header) => (
+                                <option key={header} value={header}>
+                                  {header}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                          {(
+                            [
+                              ["ROP3 evidence column", "sourceRop3Column"],
+                              ["Country evidence column", "sourceCountryColumn"],
+                              ["ISO3 evidence column", "sourceIso3Column"],
+                            ] as const
+                          ).map(([label, field]) => (
+                            <label
+                              key={field}
+                              className="block space-y-1.5 text-sm"
+                            >
+                              <span className="font-medium">
+                                {label}{" "}
+                                <span className="font-normal text-muted-foreground">
+                                  (optional)
+                                </span>
+                              </span>
+                              <select
+                                aria-label={label}
+                                className="h-10 w-full rounded-md border border-input bg-background px-3"
+                                value={workflowAssignment[field] ?? ""}
+                                disabled={
+                                  field === "sourceRop3Column" &&
+                                  workflowAssignment.trackingIdSource === "rop3" &&
+                                  workflowAssignment.trackingIdSourceColumn === null
+                                }
+                                onChange={(event) =>
+                                  updateTier2Workflow({
+                                    [field]: event.target.value || null,
+                                  })
+                                }
+                              >
+                                <option value="">Not provided</option>
+                                {reviewedHeaders.map((header) => (
+                                  <option key={header} value={header}>
+                                    {header}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+                          ))}
                         </div>
                       ) : null}
-                      <label className="block space-y-1.5 text-sm sm:col-span-2">
-                        <span className="font-medium">Tracking ID column</span>
-                        <select
-                          aria-label="Tracking ID column"
-                          className="h-10 w-full rounded-md border border-input bg-background px-3"
-                          value={workflowAssignment.trackingIdColumn}
-                          onChange={(event) =>
-                            updateTier2Workflow({
-                              trackingIdColumn: event.target.value,
-                              ...(workflowAssignment.trackingIdSource === "rop3"
-                                ? {
-                                    sourceRop3Column:
-                                      event.target.value || null,
-                                  }
-                                : {}),
-                            })
-                          }
-                        >
-                          <option value="">Choose a reviewed column</option>
-                          {reviewedHeaders.map((header) => (
-                            <option key={header} value={header}>
-                              {header}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                      {(
-                        [
-                          ["ROP3 evidence column", "sourceRop3Column"],
-                          ["Country evidence column", "sourceCountryColumn"],
-                          ["ISO3 evidence column", "sourceIso3Column"],
-                        ] as const
-                      ).map(([label, field]) => (
-                        <label
-                          key={field}
-                          className="block space-y-1.5 text-sm"
-                        >
-                          <span className="font-medium">
-                            {label}{" "}
-                            <span className="font-normal text-muted-foreground">
-                              (optional)
-                            </span>
-                          </span>
-                          <select
-                            aria-label={label}
-                            className="h-10 w-full rounded-md border border-input bg-background px-3"
-                            value={workflowAssignment[field] ?? ""}
-                            disabled={
-                              field === "sourceRop3Column" &&
-                              workflowAssignment.trackingIdSource === "rop3" &&
-                              workflowAssignment.trackingIdSourceColumn === null
-                            }
-                            onChange={(event) =>
-                              updateTier2Workflow({
-                                [field]: event.target.value || null,
-                              })
-                            }
-                          >
-                            <option value="">Not provided</option>
-                            {reviewedHeaders.map((header) => (
-                              <option key={header} value={header}>
-                                {header}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-                      ))}
-                    </div>
-                  ) : null}
 
-                  {workflowAssignment.kind !== "none" ? (
-                    <div className="flex justify-end">
+                      {workflowAssignment.kind !== "none" ? (
+                        <div className="flex justify-end">
+                          <Button
+                            type="button"
+                            size="sm"
+                            disabled={
+                              !workflowAssignmentIsComplete() ||
+                              sourceBusyAction !== null
+                            }
+                            onClick={() => void saveWorkflowAssignment()}
+                            data-smoke-write="unsafe"
+                          >
+                            {sourceBusyAction === "workflow-save" ? (
+                              <Loader2Icon className="size-3.5 animate-spin" />
+                            ) : null}
+                            Link workflow
+                          </Button>
+                        </div>
+                      ) : null}
+                    </div>
+                  )}
+                </div>
+
+                {isHeaderEditorOpen ? (
+                  <div className="space-y-3">
+                    <GoogleSheetsHeaderSelection
+                      preview={headerPreview}
+                      selection={headerSelection}
+                      isLoading={sourceBusyAction === "header-preview"}
+                      disabled={sourceBusyAction !== null}
+                      onChange={(selection) => {
+                        setHeaderSelection(selection);
+                        void loadGoogleSheetsHeaderPreview(selection);
+                      }}
+                    />
+                    <div className="flex flex-wrap justify-end gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={sourceBusyAction !== null}
+                        onClick={() => setIsHeaderEditorOpen(false)}
+                        data-smoke-close="google-sheets-header-selection"
+                      >
+                        Cancel
+                      </Button>
                       <Button
                         type="button"
                         size="sm"
-                        disabled={
-                          !workflowAssignmentIsComplete() ||
-                          sourceBusyAction !== null
-                        }
-                        onClick={() => void saveWorkflowAssignment()}
-                        data-smoke-write="unsafe"
+                        disabled={!headerSelection || sourceBusyAction !== null}
+                        onClick={() => void saveGoogleSheetsHeaderSelection()}
                       >
-                        {sourceBusyAction === "workflow-save" ? (
+                        {sourceBusyAction === "header-save" ? (
                           <Loader2Icon className="size-3.5 animate-spin" />
                         ) : null}
-                        Link workflow
+                        Save header selection
                       </Button>
                     </div>
-                  ) : null}
-                </div>
-              )}
-            </div>
+                  </div>
+                ) : null}
 
-            {isHeaderEditorOpen ? (
-              <div className="space-y-3">
-                <GoogleSheetsHeaderSelection
-                  preview={headerPreview}
-                  selection={headerSelection}
-                  isLoading={sourceBusyAction === "header-preview"}
-                  disabled={sourceBusyAction !== null}
-                  onChange={(selection) => {
-                    setHeaderSelection(selection);
-                    void loadGoogleSheetsHeaderPreview(selection);
-                  }}
-                />
-                <div className="flex flex-wrap justify-end gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
-                    disabled={sourceBusyAction !== null}
-                    onClick={() => setIsHeaderEditorOpen(false)}
-                    data-smoke-close="google-sheets-header-selection"
+                    disabled={!serviceAccountEmail || sourceBusyAction !== null}
+                    onClick={() => void loadGoogleSheetsHeaderPreview()}
+                    data-smoke-trigger="google-sheets-header-selection"
                   >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    disabled={!headerSelection || sourceBusyAction !== null}
-                    onClick={() => void saveGoogleSheetsHeaderSelection()}
-                  >
-                    {sourceBusyAction === "header-save" ? (
-                      <Loader2Icon className="size-3.5 animate-spin" />
-                    ) : null}
-                    Save header selection
-                  </Button>
-                </div>
-              </div>
-            ) : null}
-
-            <div className="flex flex-wrap items-center gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={!serviceAccountEmail || sourceBusyAction !== null}
-                onClick={() => void loadGoogleSheetsHeaderPreview()}
-                data-smoke-trigger="google-sheets-header-selection"
-              >
-                {sourceBusyAction === "header-preview" ? (
-                  <Loader2Icon className="size-3.5 animate-spin" />
-                ) : (
-                  <Settings2Icon className="size-3.5" />
-                )}
-                Review headers
-              </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                disabled={!serviceAccountEmail || sourceBusyAction !== null}
-                onClick={handleCheckGoogleSheetsAccess}
-              >
-                {sourceBusyAction === "check-access" ? (
-                  <Loader2Icon className="size-3.5 animate-spin" />
-                ) : (
-                  <CheckCircle2Icon className="size-3.5" />
-                )}
-                Check access
-              </Button>
-              {!confirmDisconnect ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled={sourceBusyAction !== null}
-                  onClick={() => setConfirmDisconnect(true)}
-                >
-                  <Trash2Icon className="size-3.5" />
-                  Disconnect
-                </Button>
-              ) : (
-                <>
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    size="sm"
-                    disabled={sourceBusyAction !== null}
-                    onClick={handleDisconnectGoogleSheets}
-                  >
-                    {sourceBusyAction === "disconnect" ? (
+                    {sourceBusyAction === "header-preview" ? (
                       <Loader2Icon className="size-3.5 animate-spin" />
                     ) : (
-                      <Trash2Icon className="size-3.5" />
+                      <Settings2Icon className="size-3.5" />
                     )}
-                    Confirm disconnect
+                    Review headers
                   </Button>
                   <Button
                     type="button"
-                    variant="outline"
+                    variant="secondary"
                     size="sm"
-                    disabled={sourceBusyAction !== null}
-                    onClick={() => setConfirmDisconnect(false)}
+                    disabled={!serviceAccountEmail || sourceBusyAction !== null}
+                    onClick={handleCheckGoogleSheetsAccess}
                   >
-                    Cancel
+                    {sourceBusyAction === "check-access" ? (
+                      <Loader2Icon className="size-3.5 animate-spin" />
+                    ) : (
+                      <CheckCircle2Icon className="size-3.5" />
+                    )}
+                    Check access
                   </Button>
-                </>
-              )}
+                  {!confirmDisconnect ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={sourceBusyAction !== null}
+                      onClick={() => setConfirmDisconnect(true)}
+                    >
+                      <Trash2Icon className="size-3.5" />
+                      Disconnect
+                    </Button>
+                  ) : (
+                    <>
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        disabled={sourceBusyAction !== null}
+                        onClick={handleDisconnectGoogleSheets}
+                      >
+                        {sourceBusyAction === "disconnect" ? (
+                          <Loader2Icon className="size-3.5 animate-spin" />
+                        ) : (
+                          <Trash2Icon className="size-3.5" />
+                        )}
+                        Confirm disconnect
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={sourceBusyAction !== null}
+                        onClick={() => setConfirmDisconnect(false)}
+                      >
+                        Cancel
+                      </Button>
+                    </>
+                  )}
+                  <SheetClose
+                    render={
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        data-smoke-close="google-sheets-source"
+                      />
+                    }
+                  >
+                    Close
+                  </SheetClose>
+                </div>
+              </div>
             </div>
-          </CardContent>
-        </Card>
+          </SheetContent>
+        </Sheet>
       ) : null}
 
       <Card>
