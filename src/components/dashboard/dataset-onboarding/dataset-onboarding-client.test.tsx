@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { DatasetOnboardingClient } from "./dataset-onboarding-client";
@@ -63,8 +63,10 @@ function installGoogleFetch(options: {
   expectedWorkflowAssignments?: unknown[];
   expectedDatasetClassification?: "PGIC" | "PGAC";
   expectedDatasetName?: string;
+  queueRuns?: boolean;
 } = {}) {
   const runAttempts = new Map<string, number>();
+  const queuedRuns = new Map<string, { connectionId: string; attempt: number }>();
   const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input);
     if (url.endsWith("/google-sheets/check-access")) {
@@ -150,30 +152,63 @@ function installGoogleFetch(options: {
       ) {
         return response({ error: "Temporary import failure." }, 500);
       }
+      const runId = `run-${matchedConnection.id}-${attempt}`;
+      if (options.queueRuns) {
+        queuedRuns.set(runId, { connectionId: matchedConnection.id, attempt });
+      }
       return response(
         {
           connection: matchedConnection,
           run: {
-            id: `run-${matchedConnection.id}-${attempt}`,
+            id: runId,
             connectionId: matchedConnection.id,
             actorOwnerId: "admin-1",
             actorEmail: "admin@example.com",
             mode: "import",
-            status: "success",
-            httpStatus: 200,
-            durationMs: 20,
-            rowCount: 1,
-            datasetId:
-              matchedConnection.id === connection.id ? "dataset-1" : "dataset-2",
+            status: options.queueRuns ? "queued" : "success",
+            httpStatus: options.queueRuns ? null : 200,
+            durationMs: options.queueRuns ? 0 : 20,
+            rowCount: options.queueRuns ? null : 1,
+            datasetId: options.queueRuns
+              ? null
+              : matchedConnection.id === connection.id
+                ? "dataset-1"
+                : "dataset-2",
             errorMessage: null,
             responsePreview: "",
-            startedAt: "2026-07-16T00:00:00.000Z",
-            completedAt: "2026-07-16T00:00:01.000Z",
+            startedAt: options.queueRuns ? null : "2026-07-16T00:00:00.000Z",
+            completedAt: options.queueRuns ? null : "2026-07-16T00:00:01.000Z",
             createdAt: "2026-07-16T00:00:00.000Z",
           },
         },
         202,
       );
+    }
+    const queuedRun = [...queuedRuns.entries()].find(([runId]) =>
+      url.endsWith(`/runs/${runId}`),
+    );
+    if (queuedRun) {
+      const [runId, queued] = queuedRun;
+      queuedRuns.delete(runId);
+      return response({
+        run: {
+          id: runId,
+          connectionId: queued.connectionId,
+          actorOwnerId: "admin-1",
+          actorEmail: "admin@example.com",
+          mode: "import",
+          status: "success",
+          httpStatus: 200,
+          durationMs: 800,
+          rowCount: 1,
+          datasetId: queued.connectionId === connection.id ? "dataset-1" : "dataset-2",
+          errorMessage: null,
+          responsePreview: "",
+          startedAt: "2026-07-16T00:00:00.000Z",
+          completedAt: "2026-07-16T00:00:00.800Z",
+          createdAt: "2026-07-16T00:00:00.000Z",
+        },
+      });
     }
     throw new Error(`Unexpected fetch ${url} ${init?.method ?? "GET"}`);
   });
@@ -261,6 +296,27 @@ describe("DatasetOnboardingClient", () => {
     expect(screen.getByRole("heading", { name: "Import complete" })).toBeTruthy();
   });
 
+  it("shows indeterminate Sheet ingestion progress until polling completes", async () => {
+    installGoogleFetch({ queueRuns: true });
+    render(<DatasetOnboardingClient serviceAccountEmail={serviceAccountEmail} />);
+    await reachGoogleReview();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Connect and import datasets" }),
+    );
+
+    expect(await screen.findByText("Waiting to ingest")).toBeTruthy();
+    const progress = screen.getByRole("progressbar", {
+      name: "Reviewed-People ingestion",
+    });
+    expect(progress.getAttribute("aria-valuenow")).toBeNull();
+    expect(document.querySelector("[data-smoke-dataset-ingestion-progress]")).toBeTruthy();
+    expect(screen.queryByText(/30%|65%/)).toBeNull();
+
+    expect(await screen.findByRole("link", { name: "Open dataset" })).toBeTruthy();
+    expect(screen.queryByText("Waiting to ingest")).toBeNull();
+    expect(document.querySelector("[data-smoke-dataset-ingestion-progress]")).toBeNull();
+  });
+
   it("links an Accelerate-managed engagement dataset to the Tier 2 workflow", async () => {
     installGoogleFetch({
       expectedDatasetClassification: "PGAC",
@@ -330,7 +386,7 @@ describe("DatasetOnboardingClient", () => {
   });
 
   it("retries a failed import without reconnecting", async () => {
-    const fetchMock = installGoogleFetch({ failFirstRun: true });
+    const fetchMock = installGoogleFetch({ failFirstRun: true, queueRuns: true });
     render(<DatasetOnboardingClient serviceAccountEmail={serviceAccountEmail} />);
     await reachGoogleReview();
     fireEvent.click(
@@ -338,6 +394,10 @@ describe("DatasetOnboardingClient", () => {
     );
     expect(await screen.findByText("Temporary import failure.")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Retry import" }));
+    expect(await screen.findByText("Waiting to ingest")).toBeTruthy();
+    expect(
+      screen.getByRole("progressbar", { name: "Reviewed-People ingestion" }),
+    ).toBeTruthy();
     expect(await screen.findByRole("link", { name: "Open dataset" })).toBeTruthy();
     expect(
       fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/google-sheets/connect")),
@@ -434,6 +494,12 @@ describe("DatasetOnboardingClient", () => {
       throw new Error(`Unexpected fetch ${url}`);
     });
     vi.stubGlobal("fetch", fetchMock);
+    let resolveUpload!: (result: { data: object; error: null }) => void;
+    uploadToSignedUrlMock.mockReturnValue(
+      new Promise((resolve) => {
+        resolveUpload = resolve;
+      }),
+    );
 
     render(
       <DatasetOnboardingClient
@@ -458,6 +524,18 @@ describe("DatasetOnboardingClient", () => {
     fireEvent.click(screen.getByRole("button", { name: "Review import" }));
     fireEvent.click(screen.getByRole("button", { name: "Upload dataset" }));
     await waitFor(() => expect(uploadToSignedUrlMock).toHaveBeenCalled());
+    expect(screen.getByText("Uploading CSV")).toBeTruthy();
+    expect(
+      screen
+        .getByRole("progressbar", { name: "Reviewed CSV ingestion" })
+        .getAttribute("aria-valuenow"),
+    ).toBe("30");
+    expect(document.querySelector("[data-smoke-dataset-ingestion-progress]")).toBeTruthy();
+
+    await act(async () => {
+      resolveUpload({ data: {}, error: null });
+    });
     expect(await screen.findByRole("link", { name: "Open dataset" })).toBeTruthy();
+    expect(document.querySelector("[data-smoke-dataset-ingestion-progress]")).toBeNull();
   });
 });

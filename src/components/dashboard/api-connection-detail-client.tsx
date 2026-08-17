@@ -35,6 +35,7 @@ import {
 } from "react";
 
 import { GoogleSheetsHeaderSelection } from "@/components/dashboard/google-sheets-header-selection";
+import { OperationProgress } from "@/components/dashboard/operation-progress";
 import { DataGrid, DataGridContainer } from "@/components/reui/data-grid/data-grid";
 import { DataGridColumnHeader } from "@/components/reui/data-grid/data-grid-column-header";
 import { DataGridScrollArea } from "@/components/reui/data-grid/data-grid-scroll-area";
@@ -95,8 +96,15 @@ type DetailMessage = {
   tone: "success" | "error";
 };
 
+type RunPollFeedback = {
+  runId: string | null;
+  lastCheckedAt: number | null;
+  consecutiveFailures: number;
+};
+
 const RUN_HISTORY_VISIBLE_ROW_LIMIT = 5;
 const RUN_HISTORY_SCROLL_AREA_HEIGHT = "h-[268px]";
+const RUN_POLL_FAILURE_WARNING_THRESHOLD = 2;
 const TRACKING_ID_SOURCE_OPTIONS = [
   { value: "peopleid3", label: "Joshua Project PeopleID3" },
   { value: "peid", label: "PEID" },
@@ -174,6 +182,34 @@ function statusBadgeClass(status: ApiConnectionRunStatus) {
 
 function isRunActive(run: ApiConnectionRun) {
   return run.status === "queued" || run.status === "running";
+}
+
+function getActiveRunProgressCopy(run: ApiConnectionRun) {
+  if (run.mode === "test") {
+    return run.status === "queued"
+      ? {
+          title: "Connection test in progress",
+          phase: "Waiting to test",
+          detail: "The test is queued and will start as soon as a worker is available.",
+        }
+      : {
+          title: "Connection test in progress",
+          phase: "Testing source",
+          detail: "The source is being fetched and checked without importing a dataset.",
+        };
+  }
+
+  return run.status === "queued"
+    ? {
+        title: "Dataset ingestion in progress",
+        phase: "Waiting to ingest",
+        detail: "The source ingestion is queued and will start as soon as a worker is available.",
+      }
+    : {
+        title: "Dataset ingestion in progress",
+        phase: "Ingesting source data",
+        detail: "Source rows are being fetched and processed. Curated data changes only after the configured workflow completes.",
+      };
 }
 
 function sortRuns(runs: ApiConnectionRun[]) {
@@ -983,6 +1019,7 @@ export function ApiConnectionDetailClient({
   tier2OwnerOptions = [],
 }: ApiConnectionDetailClientProps) {
   const router = useRouter();
+  const refreshPage = router.refresh;
   const googleSheetsConfig = getGoogleSheetsProviderConfig(connection);
   const isGoogleSheetsConnection = googleSheetsConfig !== null;
   const importActionLabel = connection.sourceProfile
@@ -1009,6 +1046,11 @@ export function ApiConnectionDetailClient({
     null,
   );
   const [message, setMessage] = useState<DetailMessage | null>(null);
+  const [runPollFeedback, setRunPollFeedback] = useState<RunPollFeedback>({
+    runId: null,
+    lastCheckedAt: null,
+    consecutiveFailures: 0,
+  });
   const [sourceEmailCopied, setSourceEmailCopied] = useState(false);
   const [confirmDisconnect, setConfirmDisconnect] = useState(false);
   const [sourceBusyAction, setSourceBusyAction] = useState<
@@ -1041,7 +1083,14 @@ export function ApiConnectionDetailClient({
     [runs, selectedRunId],
   );
   const latestRun = runs[0] ?? null;
-  const hasActiveRun = runs.some(isRunActive);
+  const activeRun = runs.find(isRunActive) ?? null;
+  const activeRunId = activeRun?.id ?? null;
+  const hasActiveRun = activeRun !== null;
+  const activeRunProgress = activeRun ? getActiveRunProgressCopy(activeRun) : null;
+  const activeRunPollFeedback =
+    activeRun && runPollFeedback.runId === activeRun.id
+      ? runPollFeedback
+      : null;
 
   const selectRun = useCallback((run: ApiConnectionRun) => {
     setSelectedRunId(run.id);
@@ -1080,48 +1129,75 @@ export function ApiConnectionDetailClient({
   }, [connection.id]);
 
   useEffect(() => {
-    if (!selectedRun || !isRunActive(selectedRun)) {
+    if (!activeRunId) {
       return;
     }
 
     let cancelled = false;
-    const activeRunId = selectedRun.id;
+    setRunPollFeedback((current) =>
+      current.runId === activeRunId
+        ? current
+        : {
+            runId: activeRunId,
+            lastCheckedAt: null,
+            consecutiveFailures: 0,
+          },
+    );
 
     async function refreshRun() {
-      const response = await fetch(
-        `/api/admin/api-connections/${connection.id}/runs/${activeRunId}`,
-      );
+      try {
+        const response = await fetch(
+          `/api/admin/api-connections/${connection.id}/runs/${activeRunId}`,
+        );
 
-      if (!response.ok) {
-        return;
-      }
+        if (!response.ok) {
+          throw new Error("Run status refresh failed.");
+        }
 
-      const payload = (await response.json()) as ApiConnectionRunDetailResponse;
+        const payload = (await response.json()) as ApiConnectionRunDetailResponse;
 
-      if (cancelled) {
-        return;
-      }
+        if (cancelled) {
+          return;
+        }
 
-      setRuns((current) => mergeRun(current, payload.run));
-
-      if (!isRunActive(payload.run)) {
-        void loadRuns().catch(() => undefined);
-        setMessage({
-          title: getRunLabel(payload.run),
-          detail:
-            payload.run.status === "success"
-              ? formatDuration(payload.run)
-              : (payload.run.errorMessage ?? "The run failed."),
-          tone: payload.run.status === "failed" ? "error" : "success",
+        setRunPollFeedback({
+          runId: activeRunId,
+          lastCheckedAt: Date.now(),
+          consecutiveFailures: 0,
         });
-        if (
-          payload.run.mode === "import" &&
-          payload.run.status === "success" &&
-          payload.run.datasetId &&
-          !refreshedImportRunIds.current.has(payload.run.id)
-        ) {
-          refreshedImportRunIds.current.add(payload.run.id);
-          router.refresh();
+        setRuns((current) => mergeRun(current, payload.run));
+
+        if (!isRunActive(payload.run)) {
+          void loadRuns().catch(() => undefined);
+          setMessage({
+            title: getRunLabel(payload.run),
+            detail:
+              payload.run.status === "success"
+                ? formatDuration(payload.run)
+                : (payload.run.errorMessage ?? "The run failed."),
+            tone: payload.run.status === "failed" ? "error" : "success",
+          });
+          if (
+            payload.run.mode === "import" &&
+            payload.run.status === "success" &&
+            payload.run.datasetId &&
+            !refreshedImportRunIds.current.has(payload.run.id)
+          ) {
+            refreshedImportRunIds.current.add(payload.run.id);
+            refreshPage();
+          }
+        }
+      } catch {
+        if (!cancelled) {
+          setRunPollFeedback((current) => ({
+            runId: activeRunId,
+            lastCheckedAt:
+              current.runId === activeRunId ? current.lastCheckedAt : null,
+            consecutiveFailures:
+              current.runId === activeRunId
+                ? current.consecutiveFailures + 1
+                : 1,
+          }));
         }
       }
     }
@@ -1135,7 +1211,7 @@ export function ApiConnectionDetailClient({
       cancelled = true;
       window.clearInterval(interval);
     };
-  }, [connection.id, loadRuns, router, selectedRun]);
+  }, [activeRunId, connection.id, loadRuns, refreshPage]);
 
   async function handleRun(importEnabled: boolean) {
     setBusyAction(importEnabled ? "import" : "test");
@@ -2501,6 +2577,21 @@ export function ApiConnectionDetailClient({
               </div>
             </div>
           </div>
+          {activeRun && activeRunProgress ? (
+            <div className="mt-4" data-smoke-api-connection-progress>
+              <OperationProgress
+                title={activeRunProgress.title}
+                phase={activeRunProgress.phase}
+                detail={activeRunProgress.detail}
+                startedAt={activeRun.startedAt ?? activeRun.createdAt}
+                lastCheckedAt={activeRunPollFeedback?.lastCheckedAt}
+                freshnessUnavailable={
+                  (activeRunPollFeedback?.consecutiveFailures ?? 0) >=
+                  RUN_POLL_FAILURE_WARNING_THRESHOLD
+                }
+              />
+            </div>
+          ) : null}
           {latestRun ? (
             <div className="mt-4 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
               <Badge

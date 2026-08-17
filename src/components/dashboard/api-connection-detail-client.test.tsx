@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import type { ReactNode } from "react";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { Table as ReactTable } from "@tanstack/react-table";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -297,6 +297,121 @@ describe("ApiConnectionDetailClient", () => {
     expect(screen.queryByText("Run detail")).toBeNull();
     expect(screen.getByText("Run history")).toBeTruthy();
     expect(screen.getByText("admin@example.com")).toBeTruthy();
+  });
+
+  it("restores queued test activity and replaces it with the terminal result", async () => {
+    const queuedRun: ApiConnectionRun = {
+      ...successfulRun,
+      id: "active-test-run",
+      mode: "test",
+      status: "queued",
+      httpStatus: null,
+      durationMs: 0,
+      rowCount: null,
+      datasetId: null,
+      startedAt: null,
+      completedAt: null,
+      logs: [],
+      output: null,
+    };
+    const completedRun: ApiConnectionRun = {
+      ...queuedRun,
+      status: "success",
+      durationMs: 2400,
+      startedAt: queuedRun.createdAt,
+      completedAt: "2026-04-24T12:00:02.400Z",
+    };
+    let resolveRunStatus!: (response: Response) => void;
+    const runStatusResponse = new Promise<Response>((resolve) => {
+      resolveRunStatus = resolve;
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.endsWith(`/runs/${queuedRun.id}`)) return runStatusResponse;
+        if (url.endsWith("/runs")) return Response.json({ runs: [completedRun] });
+        throw new Error(`Unexpected fetch: ${url}`);
+      }),
+    );
+
+    render(
+      <ApiConnectionDetailClient
+        connection={connection}
+        initialRuns={[queuedRun]}
+        serviceAccountEmail={serviceAccountEmail}
+      />,
+    );
+
+    expect(screen.getByText("Waiting to test")).toBeTruthy();
+    expect(
+      screen.getByRole("progressbar", { name: "Connection test in progress" }),
+    ).toBeTruthy();
+    expect(document.querySelector("[data-smoke-api-connection-progress]")).toBeTruthy();
+    expect(screen.queryByText(/%/)).toBeNull();
+
+    await act(async () => {
+      resolveRunStatus(Response.json({ run: completedRun }));
+      await runStatusResponse;
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByText("Waiting to test")).toBeNull();
+      expect(screen.getAllByText("Test passed").length).toBeGreaterThan(0);
+    });
+  });
+
+  it("shows provider-independent ingestion activity and recovers poll freshness", async () => {
+    const runningRun: ApiConnectionRun = {
+      ...successfulRun,
+      id: "active-ingestion-run",
+      connectionId: googleSheetsConnection.id,
+      mode: "import",
+      status: "running",
+      completedAt: null,
+    };
+    let attempts = 0;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.endsWith(`/runs/${runningRun.id}`)) {
+          attempts += 1;
+          return attempts <= 2
+            ? Response.json({ error: "Unavailable" }, { status: 503 })
+            : Response.json({ run: runningRun });
+        }
+        throw new Error(`Unexpected fetch: ${url}`);
+      }),
+    );
+
+    render(
+      <ApiConnectionDetailClient
+        connection={googleSheetsConnection}
+        initialRuns={[runningRun]}
+        serviceAccountEmail={serviceAccountEmail}
+      />,
+    );
+
+    expect(screen.getByText("Ingesting source data")).toBeTruthy();
+    expect(screen.getByText(/Curated data changes only after/)).toBeTruthy();
+    expect(
+      screen.getByRole("progressbar", { name: "Dataset ingestion in progress" }),
+    ).toBeTruthy();
+
+    await waitFor(
+      () => {
+        expect(
+          screen.getAllByText(/Current status cannot be confirmed/).length,
+        ).toBeGreaterThan(0);
+      },
+      { timeout: 2500 },
+    );
+    await waitFor(
+      () => expect(screen.getByText("Status checked just now.")).toBeTruthy(),
+      { timeout: 2500 },
+    );
+    expect(screen.getByText("Ingesting source data")).toBeTruthy();
   });
 
   it("offers a formed candidate build for a successful IMB ingestion", async () => {
