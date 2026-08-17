@@ -683,6 +683,24 @@ describe("apiConnections schema", () => {
     );
   });
 
+  it("adds durable API connection run lifecycle metadata", async () => {
+    const migrationPath = path.join(
+      process.cwd(),
+      "supabase/migrations/20260817210952_make_api_runs_durable.sql",
+    );
+
+    const migration = await readFile(migrationPath, "utf8");
+
+    expect(migration).toContain(
+      "check (status in ('queued', 'running', 'success', 'failed', 'cancelled'))",
+    );
+    expect(migration).toContain("add column if not exists workflow_run_id text");
+    expect(migration).toContain("add column if not exists heartbeat_at timestamptz");
+    expect(migration).toContain("add column if not exists cancel_requested_at timestamptz");
+    expect(migration).toContain("api_connection_runs_cancelled_state_check");
+    expect(migration).toContain("api_connection_runs_active_heartbeat_idx");
+  });
+
   it("creates the API connection resources migration", async () => {
     const migrationPath = path.join(
       process.cwd(),

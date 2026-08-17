@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   checksumApiConnectionArtifact,
   parseApiConnectionRowsArtifact,
+  parseApiConnectionRawChunkManifest,
+  parseApiConnectionRowsChunkManifest,
   serializeApiConnectionRawResponseArtifact,
   serializeApiConnectionRowsArtifact,
   serializeApiConnectionRowsToCsv,
@@ -71,5 +73,36 @@ describe("API connection output helpers", () => {
       runId: "run-1",
       rawResponse: "{\"secret\":\"[redacted]\"}",
     });
+  });
+
+  it("accepts only versioned durable chunk manifests", () => {
+    expect(
+      parseApiConnectionRowsChunkManifest(
+        JSON.stringify({
+          schemaVersion: 1,
+          kind: "api-connection-rows-chunks",
+          columns,
+          rowCount: 3,
+          chunks: [],
+        }),
+      ),
+    ).toMatchObject({ rowCount: 3, chunks: [] });
+    expect(
+      parseApiConnectionRawChunkManifest(
+        JSON.stringify({
+          schemaVersion: 1,
+          kind: "api-connection-raw-chunks",
+          runId: "run-1",
+          connectionId: "connection-1",
+          mode: "test",
+          responseFormat: "json",
+          responseDataPath: "",
+          httpStatus: 200,
+          rowCount: 3,
+          chunks: [],
+        }),
+      ),
+    ).toMatchObject({ runId: "run-1", chunks: [] });
+    expect(parseApiConnectionRowsChunkManifest("{}")).toBeNull();
   });
 });

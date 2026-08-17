@@ -22,7 +22,9 @@ import {
 } from "@/db/schema";
 import {
   checksumApiConnectionArtifact,
+  parseApiConnectionRawChunkManifest,
   parseApiConnectionRowsArtifact,
+  parseApiConnectionRowsChunkManifest,
   serializeApiConnectionRawResponseArtifact,
   serializeApiConnectionRowsArtifact,
   serializeApiConnectionRowsToCsv,
@@ -89,6 +91,12 @@ import type {
   GoogleSheetsHeaderSelectionInput,
   GoogleSheetsWorkflowAssignment,
 } from "@/lib/api-types";
+import {
+  createRawChunkDownloadStream,
+  createRowsChunkCsvDownloadStream,
+  downloadApiConnectionArtifactText,
+  uploadApiConnectionRunChunkManifests,
+} from "./chunked-output";
 
 import {
   OnboardingWorkflowError,
@@ -191,6 +199,8 @@ export type ApiConnectionInput = {
 };
 
 const CODE_MANAGED_CONNECTION_TIMESTAMP = "2026-04-30T00:00:00.000Z";
+export const JOSHUA_PROJECT_API_CONNECTION_ID =
+  "6f9f6ef2-1188-4f71-9c24-ef01debf7a03";
 
 export { IMB_API_CONNECTION_ID } from "./providers/imb";
 
@@ -228,7 +238,7 @@ const CODE_MANAGED_API_CONNECTIONS: CodeManagedApiConnectionDefinition[] = [
     datasetClassification: "PGIC",
   },
   {
-    id: "6f9f6ef2-1188-4f71-9c24-ef01debf7a03",
+    id: JOSHUA_PROJECT_API_CONNECTION_ID,
     name: "Joshua Project (PGIC)",
     description:
       "Joshua Project people groups with profile text and resources. Requires the api_key secret.",
@@ -448,6 +458,15 @@ function toApiConnectionRun(row: ApiConnectionRunRecord): ApiConnectionRun {
     actorEmail: row.actorEmail,
     mode: row.mode,
     status: row.status,
+    workflowRunId: row.workflowRunId,
+    stage: row.stage,
+    heartbeatAt: row.heartbeatAt?.toISOString() ?? null,
+    deadlineAt: row.deadlineAt?.toISOString() ?? null,
+    pagesCompleted: row.pagesCompleted,
+    recordsCompleted: row.recordsCompleted,
+    bytesProcessed: row.bytesProcessed,
+    cancelRequestedAt: row.cancelRequestedAt?.toISOString() ?? null,
+    cancelledAt: row.cancelledAt?.toISOString() ?? null,
     httpStatus: row.httpStatus,
     durationMs: row.durationMs,
     rowCount: row.rowCount,
@@ -1909,6 +1928,175 @@ export async function publishApiConnectionResources(input: {
   return resources.length;
 }
 
+export async function completeDurableJoshuaRun(input: {
+  runId: string;
+  columns: CsvColumn[];
+  rawChunks: import("@/lib/api-connection-output").ApiConnectionArtifactChunk[];
+  rowsChunks: import("@/lib/api-connection-output").ApiConnectionArtifactChunk[];
+  httpStatus: number | null;
+  responsePreview: string;
+}) {
+  const [record] = await getDb()
+    .select({ run: apiConnectionRuns, connection: apiConnections })
+    .from(apiConnectionRuns)
+    .innerJoin(
+      apiConnections,
+      eq(apiConnections.id, apiConnectionRuns.connectionId),
+    )
+    .where(eq(apiConnectionRuns.id, input.runId))
+    .limit(1);
+
+  if (!record) {
+    throw new ApiConnectionError("API connection run was not found.", 404);
+  }
+  if (record.run.status === "success") {
+    return record.run;
+  }
+  if (
+    record.run.status !== "running" ||
+    record.run.cancelRequestedAt !== null
+  ) {
+    throw new ApiConnectionError("API connection run is no longer active.", 409);
+  }
+  if (
+    record.run.deadlineAt &&
+    record.run.deadlineAt.getTime() <= Date.now()
+  ) {
+    throw new ApiConnectionError(
+      "Joshua Project run exceeded its deadline before finalization.",
+      504,
+    );
+  }
+
+  const manifests = await uploadApiConnectionRunChunkManifests({
+    runId: record.run.id,
+    connectionId: record.connection.id,
+    mode: record.run.mode,
+    responseFormat: record.connection.responseFormat,
+    responseDataPath: record.connection.responseDataPath,
+    httpStatus: input.httpStatus,
+    rowCount: record.run.recordsCompleted,
+    columns: input.columns,
+    rawChunks: input.rawChunks,
+    rowsChunks: input.rowsChunks,
+  });
+  const [insertedOutput] = await getDb()
+    .insert(apiConnectionRunOutputs)
+    .values({
+      runId: record.run.id,
+      connectionId: record.connection.id,
+      rowCount: record.run.recordsCompleted,
+      columns: input.columns,
+      rowsStoragePath: manifests.rows.path,
+      rawStoragePath: manifests.raw.path,
+      rowsSizeBytes: manifests.rows.sizeBytes,
+      rawSizeBytes: manifests.raw.sizeBytes,
+      rowsChecksum: manifests.rows.checksum,
+      rawChecksum: manifests.raw.checksum,
+    })
+    .onConflictDoNothing({ target: apiConnectionRunOutputs.runId })
+    .returning();
+  const output =
+    insertedOutput ??
+    (
+      await getDb()
+        .select()
+        .from(apiConnectionRunOutputs)
+        .where(eq(apiConnectionRunOutputs.runId, record.run.id))
+        .limit(1)
+    )[0];
+
+  if (
+    !output ||
+    output.rowsChecksum !== manifests.rows.checksum ||
+    output.rawChecksum !== manifests.raw.checksum
+  ) {
+    throw new ApiConnectionError(
+      "The retained durable output does not match this recovery attempt.",
+      409,
+    );
+  }
+
+  const importRows: Record<string, string>[] = [];
+  let resourceCount = 0;
+  for (const chunk of [...input.rowsChunks].sort((a, b) => a.page - b.page)) {
+    const content = await downloadApiConnectionArtifactText(chunk.path);
+    if (checksumApiConnectionArtifact(content) !== chunk.checksum) {
+      throw new ApiConnectionError(
+        `Durable rows chunk ${chunk.page} failed checksum verification.`,
+        502,
+      );
+    }
+    const artifact = parseApiConnectionRowsArtifact(content);
+    resourceCount += await publishApiConnectionResources({
+      connectionId: record.connection.id,
+      runId: record.run.id,
+      rows: artifact.rows,
+    });
+    if (record.run.mode === "import" && !record.run.sourceProfileSnapshot) {
+      importRows.push(...artifact.rows);
+    }
+  }
+
+  let datasetId: string | null = null;
+  if (record.run.mode === "import" && !record.run.sourceProfileSnapshot) {
+    const dataset = await persistImportedRows({
+      identity: identityFromRun(record.run),
+      connection: applyCodeManagedDefinitionForExecution(record.connection),
+      rows: importRows,
+      columns: input.columns,
+    });
+    datasetId = dataset?.id ?? null;
+  }
+
+  const now = new Date();
+  const [completed] = await getDb()
+    .update(apiConnectionRuns)
+    .set({
+      status: "success",
+      stage: "completed",
+      heartbeatAt: now,
+      httpStatus: input.httpStatus,
+      rowCount: record.run.recordsCompleted,
+      datasetId,
+      errorMessage: null,
+      responsePreview: input.responsePreview,
+      durationMs: record.run.startedAt
+        ? now.getTime() - record.run.startedAt.getTime()
+        : 0,
+      completedAt: now,
+    })
+    .where(
+      and(
+        eq(apiConnectionRuns.id, record.run.id),
+        eq(apiConnectionRuns.status, "running"),
+        isNull(apiConnectionRuns.cancelRequestedAt),
+      ),
+    )
+    .returning();
+
+  if (!completed) {
+    throw new ApiConnectionError(
+      "API connection run stopped before finalization completed.",
+      409,
+    );
+  }
+
+  await getDb()
+    .update(apiConnections)
+    .set({ updatedAt: now, updatedByOwnerId: record.run.actorOwnerId })
+    .where(eq(apiConnections.id, record.connection.id));
+  await insertRunLog({
+    runId: record.run.id,
+    connectionId: record.connection.id,
+    message: `Run completed from ${input.rawChunks.length} durable pages${
+      resourceCount > 0 ? ` and published ${resourceCount} resources` : ""
+    }.`,
+  });
+
+  return completed;
+}
+
 export async function startApiConnectionRun(input: {
   connectionId: string;
   identity: CurrentIdentity;
@@ -2369,19 +2557,23 @@ export async function getApiConnectionRunOutputDownload(input: {
   }
 
   if (input.format === "json") {
+    const rawText = await downloadStorageText(output.rawStoragePath);
+    const manifest = parseApiConnectionRawChunkManifest(rawText);
     return {
-      body: await downloadStorageText(output.rawStoragePath),
+      body: manifest ? createRawChunkDownloadStream(manifest) : rawText,
       contentType: "application/json; charset=utf-8",
       fileName: getOutputFileName({ runId: input.runId, format: "json" }),
     };
   }
 
-  const rowsArtifact = parseApiConnectionRowsArtifact(
-    await downloadStorageText(output.rowsStoragePath),
-  );
+  const rowsText = await downloadStorageText(output.rowsStoragePath);
+  const manifest = parseApiConnectionRowsChunkManifest(rowsText);
+  const rowsArtifact = manifest ? null : parseApiConnectionRowsArtifact(rowsText);
 
   return {
-    body: serializeApiConnectionRowsToCsv(rowsArtifact),
+    body: manifest
+      ? createRowsChunkCsvDownloadStream(manifest)
+      : serializeApiConnectionRowsToCsv(rowsArtifact!),
     contentType: "text/csv; charset=utf-8",
     fileName: getOutputFileName({ runId: input.runId, format: "csv" }),
   };

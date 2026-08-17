@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { getApiConnectionRunOutputDownload } from "@/lib/api-connections";
 
 const { getDbMock, storageFromMock } = vi.hoisted(() => ({
   getDbMock: vi.fn(),
@@ -52,10 +53,6 @@ describe("API connection output artifact downloads", () => {
         bucket === "api-connection-artifacts" ? artifactDownload : legacyDownload,
     }));
 
-    const { getApiConnectionRunOutputDownload } = await import(
-      "@/lib/api-connections"
-    );
-
     const download = await getApiConnectionRunOutputDownload({
       connectionId: "connection-1",
       runId: "run-1",
@@ -83,10 +80,6 @@ describe("API connection output artifact downloads", () => {
       download:
         bucket === "api-connection-artifacts" ? artifactDownload : legacyDownload,
     }));
-
-    const { getApiConnectionRunOutputDownload } = await import(
-      "@/lib/api-connections"
-    );
 
     const download = await getApiConnectionRunOutputDownload({
       connectionId: "connection-1",

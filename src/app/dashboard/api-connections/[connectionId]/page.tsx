@@ -32,6 +32,7 @@ const HEADER_STATUS_LABELS: Record<HeaderStatus, string> = {
   running: "Running",
   success: "Up to date",
   failed: "Failed",
+  cancelled: "Cancelled",
 };
 
 function headerStatusClass(status: HeaderStatus) {

@@ -908,6 +908,17 @@ export const apiConnectionRuns = privateSchema.table(
     actorEmail: text("actor_email"),
     mode: text("mode").$type<ApiConnectionRunMode>().notNull(),
     status: text("status").$type<ApiConnectionRunStatus>().notNull(),
+    workflowRunId: text("workflow_run_id"),
+    stage: text("stage"),
+    heartbeatAt: timestamp("heartbeat_at", { withTimezone: true }),
+    deadlineAt: timestamp("deadline_at", { withTimezone: true }),
+    pagesCompleted: integer("pages_completed").notNull().default(0),
+    recordsCompleted: integer("records_completed").notNull().default(0),
+    bytesProcessed: bigint("bytes_processed", { mode: "number" })
+      .notNull()
+      .default(0),
+    cancelRequestedAt: timestamp("cancel_requested_at", { withTimezone: true }),
+    cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
     httpStatus: integer("http_status"),
     durationMs: integer("duration_ms").notNull(),
     rowCount: integer("row_count"),
@@ -931,6 +942,12 @@ export const apiConnectionRuns = privateSchema.table(
     uniqueIndex("api_connection_runs_operation_key_idx")
       .on(table.operationKey)
       .where(sql`${table.operationKey} is not null`),
+    uniqueIndex("api_connection_runs_workflow_run_id_idx")
+      .on(table.workflowRunId)
+      .where(sql`${table.workflowRunId} is not null`),
+    index("api_connection_runs_active_heartbeat_idx")
+      .on(table.heartbeatAt)
+      .where(sql`${table.status} in ('queued', 'running')`),
   ],
 );
 

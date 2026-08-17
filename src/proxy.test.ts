@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { updateSession } from "@/lib/supabase/proxy";
 
-import { proxy } from "./proxy";
+import { config, proxy } from "./proxy";
 
 vi.mock("@/lib/supabase/proxy", () => ({
   updateSession: vi.fn(),
@@ -15,6 +15,10 @@ describe("proxy", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     updateSessionMock.mockResolvedValue(NextResponse.next());
+  });
+
+  it("leaves the Workflow runtime endpoint outside session middleware", () => {
+    expect(config.matcher[0]).toContain("\\.well-known/workflow/");
   });
 
   it("allows same-origin api mutations through to the session updater", async () => {
