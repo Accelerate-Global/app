@@ -15,6 +15,8 @@ type ApiConnectionRunContext = {
   }>;
 };
 
+export const maxDuration = 300;
+
 export const POST = withRoute(
   { access: "admin", action: "run API connections" },
   async (identity, request: Request, context: ApiConnectionRunContext) => {

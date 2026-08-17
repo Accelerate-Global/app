@@ -111,6 +111,7 @@ import {
   IMB_API_CONNECTION_ID,
   IMB_ARCGIS_QUERY_URL,
 } from "./providers/imb";
+import { JOSHUA_PROJECT_PAGE_SIZE } from "./providers/joshua-project";
 import {
   createVaultSecret,
   deleteVaultSecret,
@@ -232,7 +233,7 @@ const CODE_MANAGED_API_CONNECTIONS: CodeManagedApiConnectionDefinition[] = [
     description:
       "Joshua Project people groups with profile text and resources. Requires the api_key secret.",
     method: "GET",
-    url: "https://api.joshuaproject.net/v1/people_groups.json?include_profile_text=Y&include_resources=Y&page=1&limit=100000",
+    url: `https://api.joshuaproject.net/v1/people_groups.json?include_profile_text=Y&include_resources=Y&page=1&limit=${JOSHUA_PROJECT_PAGE_SIZE}`,
     requestHeaders: [],
     secretHeaderNames: [JOSHUA_PROJECT_API_KEY_NAME],
     bodyTemplate: "",

@@ -6,7 +6,7 @@ import {
   startApiConnectionRun,
 } from "@/lib/api-connections";
 import { getCurrentIdentity } from "@/lib/auth";
-import { POST } from "./route";
+import { maxDuration, POST } from "./route";
 
 const { afterMock } = vi.hoisted(() => ({
   afterMock: vi.fn((callback: () => void | Promise<void>) => {
@@ -88,6 +88,10 @@ describe("/api/admin/api-connections/[connectionId]/run", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     getCurrentIdentityMock.mockResolvedValue(identity);
+  });
+
+  it("declares a bounded duration for asynchronous execution", () => {
+    expect(maxDuration).toBe(300);
   });
 
   it("rejects unauthenticated runs", async () => {

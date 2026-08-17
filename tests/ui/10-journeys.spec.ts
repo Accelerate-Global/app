@@ -421,6 +421,7 @@ async function runSourceCandidateLifecycle(
     engineKey: string;
     engineLabel: string;
     actorEmail: string;
+    googleSheetsSource?: boolean;
   },
 ) {
   const sourceRun = createSourceSmokeRun(input);
@@ -486,6 +487,18 @@ async function runSourceCandidateLifecycle(
   await expect(
     page.locator('[data-smoke-page="api-connection-detail"]'),
   ).toBeVisible();
+  if (input.googleSheetsSource) {
+    await page
+      .locator('[data-smoke-trigger="google-sheets-source"]')
+      .click();
+    const sourceSheet = page.locator(
+      '[data-smoke-surface="google-sheets-source"][data-smoke-ready="google-sheets-source"]',
+    );
+    await expect(sourceSheet).toBeVisible();
+    await expect(sourceSheet.getByText("Google Sheets source")).toBeVisible();
+    await sourceSheet.locator('[data-smoke-close="google-sheets-source"]').click();
+    await expect(sourceSheet).toBeHidden();
+  }
   await page.locator("[data-smoke-api-connection-import]").click();
   const runTrigger = page.locator(
     '[data-smoke-trigger="api-connection-run-detail-sheet"]',
@@ -1115,6 +1128,7 @@ test(
           engineKey: "wcd",
           engineLabel: "World Christian Database forming",
           actorEmail: "smoke-configurable-sheet@example.com",
+          googleSheetsSource: true,
         });
       },
     );
@@ -1145,6 +1159,14 @@ test(
           },
         );
         await page.goto(`/dashboard/api-connections/${connectionId}`);
+        await page
+          .locator('[data-smoke-trigger="google-sheets-source"]')
+          .click();
+        await expect(
+          page.locator(
+            '[data-smoke-surface="google-sheets-source"][data-smoke-ready="google-sheets-source"]',
+          ),
+        ).toBeVisible();
         await expect(page.getByLabel("Data workflow")).toBeVisible();
         await page.getByLabel("Data workflow").selectOption("tier1-accelerate");
         await page

@@ -140,6 +140,12 @@ const googleSheetsConnection: ApiConnection = {
   targetDatasetId: "dataset-1",
 };
 
+function openGoogleSheetsSource() {
+  fireEvent.click(
+    screen.getByRole("button", { name: "Google Sheets source" }),
+  );
+}
+
 const successfulRun: ApiConnectionRun = {
   id: "22222222-2222-4222-8222-222222222222",
   connectionId: connection.id,
@@ -867,6 +873,7 @@ describe("ApiConnectionDetailClient", () => {
         serviceAccountEmail={serviceAccountEmail}
       />,
     );
+    openGoogleSheetsSource();
     fireEvent.change(screen.getByLabelText("Data workflow"), {
       target: { value: "tier1-wcd" },
     });
@@ -898,6 +905,7 @@ describe("ApiConnectionDetailClient", () => {
         tier2OwnerOptions={[{ key: "accelerate", label: "Accelerate" }]}
       />,
     );
+    openGoogleSheetsSource();
     fireEvent.change(screen.getByLabelText("Data workflow"), {
       target: { value: "tier2" },
     });
@@ -955,6 +963,7 @@ describe("ApiConnectionDetailClient", () => {
         tier2OwnerOptions={[{ key: "accelerate", label: "Accelerate" }]}
       />,
     );
+    openGoogleSheetsSource();
     fireEvent.change(screen.getByLabelText("Data workflow"), {
       target: { value: "tier2" },
     });
@@ -1028,6 +1037,7 @@ describe("ApiConnectionDetailClient", () => {
         tier2OwnerOptions={[{ key: "accelerate", label: "Accelerate" }]}
       />,
     );
+    openGoogleSheetsSource();
     expect(screen.getByText("Active workflow")).toBeTruthy();
     expect(screen.getByText(/This assignment is read-only/)).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Link workflow" })).toBeNull();
@@ -1153,7 +1163,7 @@ describe("ApiConnectionDetailClient", () => {
     ).toBeTruthy();
   });
 
-  it("shows Google Sheets source actions and labels first imports clearly", () => {
+  it("opens Google Sheets source settings in a smokeable sheet and labels first imports clearly", async () => {
     const firstImportConnection: ApiConnection = {
       ...googleSheetsConnection,
       targetDatasetId: null,
@@ -1167,12 +1177,26 @@ describe("ApiConnectionDetailClient", () => {
       />,
     );
 
-    expect(screen.getByText("Google Sheets source")).toBeTruthy();
-    expect(screen.getByText("Mission Sheet")).toBeTruthy();
-    expect(screen.getByText("Alpha")).toBeTruthy();
-    expect(screen.getByText(serviceAccountEmail)).toBeTruthy();
+    const sourceTrigger = screen.getByRole("button", {
+      name: "Google Sheets source",
+    });
+    expect(sourceTrigger.getAttribute("data-smoke-trigger")).toBe(
+      "google-sheets-source",
+    );
     expect(screen.getByRole("button", { name: "Import sheet" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Start ingestion" })).toBeNull();
+    expect(screen.queryByText("Mission Sheet")).toBeNull();
+    fireEvent.click(sourceTrigger);
+    const sourceSheet = document.querySelector(
+      '[data-smoke-surface="google-sheets-source"][data-smoke-ready="google-sheets-source"]',
+    );
+    expect(sourceSheet).toBeTruthy();
+    expect(
+      sourceSheet?.querySelector('[data-smoke-close="google-sheets-source"]'),
+    ).toBeTruthy();
+    expect(screen.getByText("Mission Sheet")).toBeTruthy();
+    expect(await screen.findByText("Alpha")).toBeTruthy();
+    expect(screen.getByText(serviceAccountEmail)).toBeTruthy();
     expect(
       screen.getByRole("link", { name: "Open Google Sheet" }).getAttribute("href"),
     ).toBe("https://docs.google.com/spreadsheets/d/sheet_123/edit");
@@ -1217,9 +1241,10 @@ describe("ApiConnectionDetailClient", () => {
         serviceAccountEmail={serviceAccountEmail}
       />,
     );
+    openGoogleSheetsSource();
 
     expect(
-      screen.getByRole("link", { name: "Open dataset" }).getAttribute("href"),
+      (await screen.findByRole("link", { name: "Open dataset" })).getAttribute("href"),
     ).toBe("/dashboard/datasets/dataset-1");
 
     fireEvent.click(screen.getByRole("button", { name: "Copy app email" }));
@@ -1315,6 +1340,7 @@ describe("ApiConnectionDetailClient", () => {
         serviceAccountEmail={serviceAccountEmail}
       />,
     );
+    openGoogleSheetsSource();
 
     fireEvent.click(screen.getByRole("button", { name: "Review headers" }));
     expect(await screen.findByLabelText("Header row for Alpha")).toBeTruthy();
@@ -1419,6 +1445,7 @@ describe("ApiConnectionDetailClient", () => {
         serviceAccountEmail={serviceAccountEmail}
       />,
     );
+    openGoogleSheetsSource();
 
     expect(
       screen.getByRole("link", { name: "Open dataset" }).getAttribute("href"),

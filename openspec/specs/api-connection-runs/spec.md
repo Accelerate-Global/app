@@ -166,15 +166,37 @@ The system SHALL apply the discovered ArcGIS object identifier as the ordering f
 - **THEN** the run fails with a normalized error instead of archiving potentially duplicated or skipped rows
 
 ### Requirement: Joshua Project PGIC runs send the stored key as an upstream query parameter
-The system SHALL translate the stored `api_key` secret into the Joshua Project upstream query parameter for Joshua Project people-groups runs while preserving existing API connection safety controls and secret redaction.
+The system SHALL translate the stored `api_key` secret into the Joshua Project upstream query parameter for every paginated Joshua Project people-groups request while preserving existing API connection safety controls and secret redaction.
 
 #### Scenario: Stored key is appended at run time
 - **WHEN** a saved Joshua Project PGIC connection with a stored `api_key` secret runs
-- **THEN** the upstream request includes `api_key` as a query parameter and does not send that secret as a normal request header
+- **THEN** every upstream page request includes `api_key` as a query parameter and does not send that secret as a normal request header
 
 #### Scenario: Secret remains redacted
 - **WHEN** a Joshua Project PGIC run completes or fails
 - **THEN** run logs, response previews, raw output artifacts, and saved connection URLs do not expose the stored API key
+
+### Requirement: Joshua Project PGIC runs retrieve complete output through bounded pagination
+The system SHALL retrieve Joshua Project people-group records through ordered, bounded upstream pages while preserving the existing complete output, resource flattening, secret handling, and all-or-nothing run lifecycle.
+
+#### Scenario: Complete paginated run succeeds
+- **WHEN** a dataset administrator starts a Joshua Project PGIC test or import run and the upstream service returns one or more valid pages followed by a short terminal page
+- **THEN** the system requests pages in ascending page order with bounded page sizes
+- **AND** completes the run with every returned record in upstream page order
+- **AND** preserves profile text, resource fields, normalized rows, and downloadable raw output
+
+#### Scenario: Page progress is observable
+- **WHEN** a Joshua Project PGIC run retrieves an upstream page
+- **THEN** the persisted run log records that page's row count and the cumulative row count without exposing the stored API key
+
+#### Scenario: Upstream page fails
+- **WHEN** any Joshua Project page times out, returns a non-success status, returns an invalid response shape, repeats a non-empty prior page, or exceeds a configured page, byte, or aggregate bound
+- **THEN** the run fails with a normalized error
+- **AND** does not publish partial output, resources, formed candidates, or dataset changes
+
+#### Scenario: Other HTTP providers retain existing limits
+- **WHEN** a non-Joshua generic HTTP, ArcGIS, or Etnopedia connection runs
+- **THEN** the system preserves that provider's existing request, response-size, parsing, and pagination behavior
 
 ### Requirement: Joshua Project PGIC output matches script-compatible resource flattening
 The system SHALL parse Joshua Project people-group JSON responses into import rows that preserve top-level fields and flatten `Resources` into indexed resource columns while retaining the raw resource payload.
@@ -292,7 +314,10 @@ The system SHALL provide an admin-only detail page for each API connection that
 leads with source identity, target dataset, the latest run's user-facing state,
 and supported run actions, followed by one `Run history` diagnostic card. The
 latest persisted `success` run state SHALL be presented as `Up to date` without
-changing the persisted run status.
+changing the persisted run status. For Google Sheets connections, the system
+SHALL keep provider-specific source configuration and maintenance controls in a
+right-side sheet opened from a clearly labeled page-level button so that the
+always-visible content begins with source status and then run history.
 
 #### Scenario: Admin views a connection detail page
 - **WHEN** a dataset admin opens `/dashboard/api-connections/{connectionId}` for
@@ -304,6 +329,14 @@ changing the persisted run status.
 - **AND** queued, running, failed, and idle states retain their distinct labels
 - **AND** the page does not show separate Run Detail or Ingestion History cards
 - **AND** the page does not show disabled future pipeline-stage controls
+
+#### Scenario: Admin opens Google Sheets source settings
+- **WHEN** a dataset admin opens a Google Sheets connection detail page
+- **THEN** the always-visible content begins with Source status followed by Run history
+- **AND** the page shows a `Google Sheets source` button instead of an always-visible Google Sheets source card
+- **WHEN** the admin activates the `Google Sheets source` button
+- **THEN** a right-side sheet shows the spreadsheet and tab identity, service-account details, data-workflow assignment, header review, access check, Google Sheet and dataset links when available, and disconnect controls
+- **AND** closing the sheet preserves the connection and its persisted configuration
 
 #### Scenario: Unknown connection detail page
 - **WHEN** a dataset admin opens `/dashboard/api-connections/{connectionId}` for

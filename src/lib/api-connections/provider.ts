@@ -5,6 +5,7 @@ import { arcgisProvider } from "./providers/arcgis";
 import { etnopediaProvider } from "./providers/etnopedia";
 import { genericHttpProvider } from "./providers/generic-http";
 import { googleSheetsProvider } from "./providers/google-sheets";
+import { joshuaProjectProvider } from "./providers/joshua-project";
 
 export type ApiConnectionRecord = typeof apiConnections.$inferSelect;
 
@@ -38,7 +39,12 @@ export type ConnectionProviderFetchResult = {
  * last.
  */
 export type ConnectionProvider = {
-  name: "google_sheets" | "etnopedia" | "arcgis" | "http_api";
+  name:
+    | "google_sheets"
+    | "etnopedia"
+    | "arcgis"
+    | "joshua_project"
+    | "http_api";
   matches(input: {
     connection: ApiConnectionRecord;
     requestUrl: string;
@@ -56,6 +62,7 @@ const CONNECTION_PROVIDERS: readonly ConnectionProvider[] = [
   googleSheetsProvider,
   etnopediaProvider,
   arcgisProvider,
+  joshuaProjectProvider,
   genericHttpProvider,
 ];
 
