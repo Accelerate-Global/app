@@ -202,6 +202,25 @@ describe("/dashboard/api-connections/[connectionId]", () => {
     expect(listApiConnectionRunsMock).toHaveBeenCalledWith(connection.id);
   });
 
+  it("renders a cancelled run as a terminal cancelled state", async () => {
+    getCurrentIdentityMock.mockResolvedValue({
+      ownerId: "admin-1",
+      email: "admin@example.com",
+      fullName: "Admin",
+      workspaceRole: "admin",
+      isDatasetAdmin: true,
+      mode: "supabase",
+    });
+    getApiConnectionMock.mockResolvedValue(connection);
+    listApiConnectionRunsMock.mockResolvedValue([
+      { ...run, status: "cancelled" as const },
+    ]);
+
+    render(await renderPage());
+
+    expect(screen.getByText("Cancelled")).toBeTruthy();
+  });
+
   it("loads the existing workflow and active Tier 2 owners for a Sheet", async () => {
     getCurrentIdentityMock.mockResolvedValue({
       ownerId: "admin-1",

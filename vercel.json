@@ -8,6 +8,10 @@
     {
       "path": "/api/internal/pipeline-operations/run",
       "schedule": "0 17 * * *"
+    },
+    {
+      "path": "/api/internal/api-connection-runs/reconcile",
+      "schedule": "*/5 * * * *"
     }
   ]
 }

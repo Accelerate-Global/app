@@ -420,6 +420,91 @@ describe("ApiConnectionDetailClient", () => {
     expect(screen.getByText("Ingesting source data")).toBeTruthy();
   });
 
+  it("stops an active durable run and renders its checkpoint progress", async () => {
+    const runningRun: ApiConnectionRun = {
+      ...successfulRun,
+      id: "durable-run",
+      status: "running",
+      completedAt: null,
+      workflowRunId: "wrun_test",
+      stage: "fetching",
+      heartbeatAt: new Date().toISOString(),
+      pagesCompleted: 12,
+      recordsCompleted: 1200,
+      bytesProcessed: 1024,
+    };
+    const cancelledRun: ApiConnectionRun = {
+      ...runningRun,
+      status: "cancelled",
+      completedAt: new Date().toISOString(),
+      cancelledAt: new Date().toISOString(),
+      cancelRequestedAt: new Date().toISOString(),
+      errorMessage: "Run cancelled by an administrator.",
+    };
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith(`/runs/${runningRun.id}/cancel`) && init?.method === "POST") {
+        return Response.json({ run: cancelledRun });
+      }
+      if (url.endsWith(`/runs/${runningRun.id}`)) {
+        return Response.json({ run: runningRun });
+      }
+      if (url.endsWith("/runs")) return Response.json({ runs: [cancelledRun] });
+      throw new Error(`Unexpected fetch: ${url}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(
+      <ApiConnectionDetailClient
+        connection={connection}
+        initialRuns={[runningRun]}
+        serviceAccountEmail={serviceAccountEmail}
+      />,
+    );
+
+    expect(screen.getByText(/12 pages and 1,200 records/)).toBeTruthy();
+    const stopButton = screen.getByRole("button", { name: "Stop run" });
+    expect(stopButton.getAttribute("data-smoke-api-connection-stop")).not.toBeNull();
+    fireEvent.click(stopButton);
+
+    await waitFor(() => {
+      expect(screen.getAllByText("Test cancelled").length).toBeGreaterThan(0);
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining(`/runs/${runningRun.id}/cancel`),
+      { method: "POST" },
+    );
+  });
+
+  it("labels a durable run with an old heartbeat as stalled", () => {
+    const stalledRun: ApiConnectionRun = {
+      ...successfulRun,
+      id: "stalled-durable-run",
+      status: "running",
+      completedAt: null,
+      stage: "fetching",
+      heartbeatAt: "2026-08-17T01:00:00.000Z",
+      pagesCompleted: 5,
+      recordsCompleted: 500,
+      bytesProcessed: 2048,
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Promise<Response>(() => undefined)),
+    );
+
+    render(
+      <ApiConnectionDetailClient
+        connection={connection}
+        initialRuns={[stalledRun]}
+        serviceAccountEmail={serviceAccountEmail}
+      />,
+    );
+
+    expect(screen.getByText("Waiting for recovery")).toBeTruthy();
+    expect(screen.getByText(/app will close the run automatically/)).toBeTruthy();
+  });
+
   it("offers a formed candidate build for a successful IMB ingestion", async () => {
     const imbConnection = {
       ...connection,

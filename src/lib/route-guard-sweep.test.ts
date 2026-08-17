@@ -11,6 +11,8 @@ const ROUTE_METHODS = ["GET", "POST", "PATCH", "PUT", "DELETE"] as const;
 const EXEMPT_ROUTES = new Set([
   // Vercel Cron pipeline coordinator: authenticated by a bearer secret, not user identity.
   "internal/pipeline-operations/run/route.ts",
+  // Vercel Cron durable-run watchdog: authenticated by CRON_SECRET, not user identity.
+  "internal/api-connection-runs/reconcile/route.ts",
   // Vercel Cron endpoint: authenticated by CRON_SECRET bearer token, not user identity.
   "ops/supabase-heartbeat/route.ts",
 ]);

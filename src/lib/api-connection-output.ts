@@ -26,6 +26,35 @@ export type ApiConnectionRawResponseArtifact = {
   rawResponse: string;
 };
 
+export type ApiConnectionArtifactChunk = {
+  page: number;
+  path: string;
+  sizeBytes: number;
+  checksum: string;
+  rowCount: number;
+};
+
+export type ApiConnectionRowsChunkManifest = {
+  schemaVersion: 1;
+  kind: "api-connection-rows-chunks";
+  columns: CsvColumn[];
+  rowCount: number;
+  chunks: ApiConnectionArtifactChunk[];
+};
+
+export type ApiConnectionRawChunkManifest = {
+  schemaVersion: 1;
+  kind: "api-connection-raw-chunks";
+  runId: string;
+  connectionId: string;
+  mode: ApiConnectionRunMode;
+  responseFormat: "json" | "csv";
+  responseDataPath: string;
+  httpStatus: number | null;
+  rowCount: number;
+  chunks: ApiConnectionArtifactChunk[];
+};
+
 export function checksumApiConnectionArtifact(value: string) {
   return createHash("sha256").update(value).digest("hex");
 }
@@ -63,4 +92,25 @@ export function parseApiConnectionRowsArtifact(value: string) {
     rows: Array.isArray(parsed.rows) ? parsed.rows : [],
     ...(parsed.sourceAdapter ? { sourceAdapter: parsed.sourceAdapter } : {}),
   };
+}
+
+export function parseApiConnectionRowsChunkManifest(value: string) {
+  const parsed = JSON.parse(value) as Partial<ApiConnectionRowsChunkManifest>;
+
+  return parsed.schemaVersion === 1 &&
+    parsed.kind === "api-connection-rows-chunks" &&
+    Array.isArray(parsed.columns) &&
+    Array.isArray(parsed.chunks)
+    ? (parsed as ApiConnectionRowsChunkManifest)
+    : null;
+}
+
+export function parseApiConnectionRawChunkManifest(value: string) {
+  const parsed = JSON.parse(value) as Partial<ApiConnectionRawChunkManifest>;
+
+  return parsed.schemaVersion === 1 &&
+    parsed.kind === "api-connection-raw-chunks" &&
+    Array.isArray(parsed.chunks)
+    ? (parsed as ApiConnectionRawChunkManifest)
+    : null;
 }

@@ -187,7 +187,12 @@ export type ApiConnectionResponseFormat = "json" | "csv";
 export type ApiConnectionImportMode = "create" | "replace";
 export type ApiConnectionProvider = "http_api" | "google_sheets";
 export type ApiConnectionRunMode = "test" | "import";
-export type ApiConnectionRunStatus = "queued" | "running" | "success" | "failed";
+export type ApiConnectionRunStatus =
+  | "queued"
+  | "running"
+  | "success"
+  | "failed"
+  | "cancelled";
 export type ApiConnectionRunLogLevel = "info" | "error";
 
 export type ApiConnectionSourceProfileSnapshot = {
@@ -415,6 +420,15 @@ export type ApiConnectionRun = {
   actorEmail: string | null;
   mode: ApiConnectionRunMode;
   status: ApiConnectionRunStatus;
+  workflowRunId?: string | null;
+  stage?: string | null;
+  heartbeatAt?: string | null;
+  deadlineAt?: string | null;
+  pagesCompleted?: number;
+  recordsCompleted?: number;
+  bytesProcessed?: number;
+  cancelRequestedAt?: string | null;
+  cancelledAt?: string | null;
   httpStatus: number | null;
   durationMs: number;
   rowCount: number | null;

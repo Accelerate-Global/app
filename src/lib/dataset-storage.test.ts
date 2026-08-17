@@ -3,6 +3,8 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   API_CONNECTION_RUN_ARTIFACT_CONTENT_TYPE,
   createImbFormingArtifactStoragePath,
+  createApiConnectionRunChunkStoragePath,
+  createApiConnectionRunManifestStoragePath,
   createPartnerExportRunOutputStoragePath,
   createReferenceResourceArtifactStoragePath,
   getApiConnectionRunArtifactReadBuckets,
@@ -91,6 +93,22 @@ describe("partner export artifact storage", () => {
 });
 
 describe("API connection run artifact storage", () => {
+  it("uses deterministic ordered paths for durable chunks and manifests", () => {
+    expect(
+      createApiConnectionRunChunkStoragePath({
+        runId: "run-1",
+        kind: "rows",
+        page: 12,
+      }),
+    ).toBe("api-connection-runs/run-1/chunks/rows-000012.json");
+    expect(
+      createApiConnectionRunManifestStoragePath({
+        runId: "run-1",
+        kind: "raw",
+      }),
+    ).toBe("api-connection-runs/run-1/raw-manifest.json");
+  });
+
   it("uses deterministic run-scoped paths for immutable IMB forming artifacts", () => {
     expect(
       createImbFormingArtifactStoragePath({

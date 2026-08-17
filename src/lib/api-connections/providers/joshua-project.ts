@@ -12,9 +12,9 @@ import {
 import type { ConnectionProvider } from "../provider";
 
 export const JOSHUA_PROJECT_PAGE_SIZE = 100;
-const MAX_JOSHUA_PROJECT_PAGE_BYTES = 4 * 1024 * 1024;
-const MAX_JOSHUA_PROJECT_RESPONSE_BYTES = 192 * 1024 * 1024;
-const MAX_JOSHUA_PROJECT_PAGES = 1_000;
+export const MAX_JOSHUA_PROJECT_PAGE_BYTES = 4 * 1024 * 1024;
+export const MAX_JOSHUA_PROJECT_RESPONSE_BYTES = 192 * 1024 * 1024;
+export const MAX_JOSHUA_PROJECT_PAGES = 1_000;
 
 function getJoshuaProjectPageUrl(input: {
   url: string;
@@ -62,6 +62,79 @@ function parseJoshuaProjectPage(body: string, page: number) {
   return records as Record<string, unknown>[];
 }
 
+export async function fetchJoshuaProjectPeopleGroupPage(input: {
+  url: string;
+  headers: Headers;
+  page: number;
+  pageSize?: number;
+  maxPageBytes?: number;
+  onHttpStatus?: (status: number) => void;
+  fetchSafe?: typeof fetchWithSafeRedirects;
+}) {
+  const pageSize = input.pageSize ?? JOSHUA_PROJECT_PAGE_SIZE;
+  const maxPageBytes = input.maxPageBytes ?? MAX_JOSHUA_PROJECT_PAGE_BYTES;
+
+  if (input.page <= 0 || pageSize <= 0) {
+    throw new ApiConnectionError(
+      "Joshua Project page and page size must be greater than zero.",
+    );
+  }
+
+  if (maxPageBytes <= 0) {
+    throw new ApiConnectionError(
+      "Joshua Project page byte limit must be greater than zero.",
+    );
+  }
+
+  const pageUrl = getJoshuaProjectPageUrl({
+    url: input.url,
+    page: input.page,
+    pageSize,
+  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  let response: Response;
+
+  try {
+    response = await (input.fetchSafe ?? fetchWithSafeRedirects)({
+      url: pageUrl,
+      init: {
+        method: "GET",
+        headers: input.headers,
+        signal: controller.signal,
+      },
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
+
+  input.onHttpStatus?.(response.status);
+  const upstreamBody = await readLimitedResponse(response, maxPageBytes);
+
+  if (!response.ok) {
+    throw new ApiConnectionError(
+      `Joshua Project API request failed with HTTP ${response.status} on page ${input.page}.`,
+      502,
+    );
+  }
+
+  const records = parseJoshuaProjectPage(upstreamBody, input.page);
+  const body = JSON.stringify(records);
+
+  return {
+    body,
+    records,
+    recordCount: records.length,
+    terminal: records.length < pageSize,
+    httpStatus: response.status,
+    byteLength: Buffer.byteLength(upstreamBody),
+    fingerprint:
+      records.length === 0
+        ? null
+        : createHash("sha256").update(body).digest("hex"),
+  };
+}
+
 export async function fetchJoshuaProjectPeopleGroupPages(input: {
   url: string;
   headers: Headers;
@@ -105,41 +178,17 @@ export async function fetchJoshuaProjectPeopleGroupPages(input: {
       );
     }
 
-    const pageUrl = getJoshuaProjectPageUrl({
+    const result = await fetchJoshuaProjectPeopleGroupPage({
       url: input.url,
+      headers: input.headers,
       page,
       pageSize,
+      maxPageBytes,
+      onHttpStatus: input.onHttpStatus,
+      fetchSafe: input.fetchSafe,
     });
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-    let response: Response;
-
-    try {
-      response = await (input.fetchSafe ?? fetchWithSafeRedirects)({
-        url: pageUrl,
-        init: {
-          method: "GET",
-          headers: input.headers,
-          signal: controller.signal,
-        },
-      });
-    } finally {
-      clearTimeout(timeout);
-    }
-
-    httpStatus = response.status;
-    input.onHttpStatus?.(response.status);
-
-    const body = await readLimitedResponse(response, maxPageBytes);
-
-    if (!response.ok) {
-      throw new ApiConnectionError(
-        `Joshua Project API request failed with HTTP ${response.status} on page ${page}.`,
-        502,
-      );
-    }
-
-    totalBytes += Buffer.byteLength(body);
+    httpStatus = result.httpStatus;
+    totalBytes += result.byteLength;
 
     if (totalBytes > maxTotalBytes) {
       throw new ApiConnectionError(
@@ -148,31 +197,25 @@ export async function fetchJoshuaProjectPeopleGroupPages(input: {
       );
     }
 
-    const pageRecords = parseJoshuaProjectPage(body, page);
-
-    if (pageRecords.length > 0) {
-      const fingerprint = createHash("sha256")
-        .update(JSON.stringify(pageRecords))
-        .digest("hex");
-
-      if (pageFingerprints.has(fingerprint)) {
+    if (result.fingerprint) {
+      if (pageFingerprints.has(result.fingerprint)) {
         throw new ApiConnectionError(
           `Joshua Project API repeated page ${page}.`,
           502,
         );
       }
 
-      pageFingerprints.add(fingerprint);
+      pageFingerprints.add(result.fingerprint);
     }
 
-    records.push(...pageRecords);
+    records.push(...result.records);
     await input.log?.(
-      `Fetched Joshua Project page ${page}: ${pageRecords.length} ${
-        pageRecords.length === 1 ? "record" : "records"
+      `Fetched Joshua Project page ${page}: ${result.recordCount} ${
+        result.recordCount === 1 ? "record" : "records"
       } (${records.length} total).`,
     );
 
-    if (pageRecords.length < pageSize) {
+    if (result.terminal) {
       break;
     }
 

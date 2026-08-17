@@ -12,6 +12,7 @@ import {
   PlayIcon,
   RefreshCcwIcon,
   Settings2Icon,
+  SquareIcon,
   Trash2Icon,
   UploadCloudIcon,
   XCircleIcon,
@@ -159,6 +160,10 @@ function getRunLabel(run: ApiConnectionRun) {
     return `${mode} running`;
   }
 
+  if (run.status === "cancelled") {
+    return `${mode} cancelled`;
+  }
+
   return `${mode} ${run.status === "success" ? "passed" : "failed"}`;
 }
 
@@ -179,6 +184,10 @@ function statusBadgeClass(status: ApiConnectionRunStatus) {
     return "border-sky-500/30 bg-sky-500/10 text-sky-700 dark:text-sky-300";
   }
 
+  if (status === "cancelled") {
+    return "border-slate-500/30 bg-slate-500/10 text-slate-700 dark:text-slate-300";
+  }
+
   return "border-destructive/30 bg-destructive/10 text-destructive";
 }
 
@@ -187,6 +196,23 @@ function isRunActive(run: ApiConnectionRun) {
 }
 
 function getActiveRunProgressCopy(run: ApiConnectionRun) {
+  const progress =
+    run.pagesCompleted && run.recordsCompleted
+      ? ` ${run.pagesCompleted} pages and ${run.recordsCompleted.toLocaleString()} records are safely checkpointed.`
+      : "";
+  const isStalled =
+    run.heartbeatAt !== undefined &&
+    run.heartbeatAt !== null &&
+    Date.now() - new Date(run.heartbeatAt).getTime() > 2 * 60 * 1_000;
+
+  if (isStalled) {
+    return {
+      title: "Run progress is stale",
+      phase: "Waiting for recovery",
+      detail: `No new checkpoint has arrived recently.${progress} The app will close the run automatically if it cannot resume.`,
+    };
+  }
+
   if (run.mode === "test") {
     return run.status === "queued"
       ? {
@@ -196,8 +222,8 @@ function getActiveRunProgressCopy(run: ApiConnectionRun) {
         }
       : {
           title: "Connection test in progress",
-          phase: "Testing source",
-          detail: "The source is being fetched and checked without importing a dataset.",
+          phase: run.stage === "finalizing" ? "Finalizing output" : "Testing source",
+          detail: `The source is being fetched and checked without importing a dataset.${progress}`,
         };
   }
 
@@ -209,8 +235,8 @@ function getActiveRunProgressCopy(run: ApiConnectionRun) {
       }
     : {
         title: "Dataset ingestion in progress",
-        phase: "Ingesting source data",
-        detail: "Source rows are being fetched and processed. Curated data changes only after the configured workflow completes.",
+        phase: run.stage === "finalizing" ? "Finalizing output" : "Ingesting source data",
+        detail: `Source rows are being fetched and processed.${progress} Curated data changes only after the configured workflow completes.`,
       };
 }
 
@@ -1044,9 +1070,9 @@ export function ApiConnectionDetailClient({
       desc: true,
     },
   ]);
-  const [busyAction, setBusyAction] = useState<"test" | "import" | "refresh" | null>(
-    null,
-  );
+  const [busyAction, setBusyAction] = useState<
+    "test" | "import" | "refresh" | "stop" | null
+  >(null);
   const [message, setMessage] = useState<DetailMessage | null>(null);
   const [runPollFeedback, setRunPollFeedback] = useState<RunPollFeedback>({
     runId: null,
@@ -1176,7 +1202,9 @@ export function ApiConnectionDetailClient({
             detail:
               payload.run.status === "success"
                 ? formatDuration(payload.run)
-                : (payload.run.errorMessage ?? "The run failed."),
+                : payload.run.status === "cancelled"
+                  ? (payload.run.errorMessage ?? "The run was stopped safely.")
+                  : (payload.run.errorMessage ?? "The run failed."),
             tone: payload.run.status === "failed" ? "error" : "success",
           });
           if (
@@ -1272,6 +1300,41 @@ export function ApiConnectionDetailClient({
           error instanceof Error
             ? error.message
             : "API connection runs could not be loaded.",
+        tone: "error",
+      });
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
+  async function handleStop() {
+    if (!activeRun) return;
+    setBusyAction("stop");
+    setMessage({
+      title: "Stopping run",
+      detail: "The current durable step will stop and no further pages will begin.",
+      tone: "success",
+    });
+
+    try {
+      const response = await fetch(
+        `/api/admin/api-connections/${connection.id}/runs/${activeRun.id}/cancel`,
+        { method: "POST" },
+      );
+      if (!response.ok) {
+        throw new Error(await getErrorMessage(response, "The run could not be stopped."));
+      }
+      const payload = (await response.json()) as ApiConnectionRunDetailResponse;
+      upsertRun(payload.run);
+      setMessage({
+        title: getRunLabel(payload.run),
+        detail: payload.run.errorMessage ?? "The run was stopped safely.",
+        tone: "success",
+      });
+    } catch (error) {
+      setMessage({
+        title: "Stop failed",
+        detail: error instanceof Error ? error.message : "The run could not be stopped.",
         tone: "error",
       });
     } finally {
@@ -2581,6 +2644,22 @@ export function ApiConnectionDetailClient({
                 )}
                 Refresh history
               </Button>
+              {activeRun ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={busyAction !== null}
+                  onClick={handleStop}
+                  data-smoke-api-connection-stop
+                >
+                  {busyAction === "stop" ? (
+                    <Loader2Icon className="size-4 animate-spin" />
+                  ) : (
+                    <SquareIcon className="size-4" />
+                  )}
+                  {busyAction === "stop" ? "Stopping" : "Stop run"}
+                </Button>
+              ) : null}
             </div>
           </div>
         </CardHeader>

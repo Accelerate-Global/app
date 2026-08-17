@@ -57,6 +57,23 @@ export function createApiConnectionRunOutputStoragePath(
   return `${API_CONNECTION_RUN_OUTPUT_PATH_PREFIX}${runId}/${randomUUID()}-${sanitizeFileName(fileName)}`;
 }
 
+export type ApiConnectionRunChunkKind = "raw" | "rows";
+
+export function createApiConnectionRunChunkStoragePath(input: {
+  runId: string;
+  kind: ApiConnectionRunChunkKind;
+  page: number;
+}) {
+  return `${API_CONNECTION_RUN_OUTPUT_PATH_PREFIX}${input.runId}/chunks/${input.kind}-${String(input.page).padStart(6, "0")}.json`;
+}
+
+export function createApiConnectionRunManifestStoragePath(input: {
+  runId: string;
+  kind: ApiConnectionRunChunkKind;
+}) {
+  return `${API_CONNECTION_RUN_OUTPUT_PATH_PREFIX}${input.runId}/${input.kind}-manifest.json`;
+}
+
 export type ImbFormingArtifactKind = "rows" | "findings" | "manifest" | "csv";
 
 export function createImbFormingArtifactStoragePath(input: {

@@ -1,13 +1,20 @@
 import { after } from "next/server";
+import { start } from "workflow/api";
 
 import {
+  JOSHUA_PROJECT_API_CONNECTION_ID,
   executeApiConnectionRun,
   startApiConnectionRun,
 } from "@/lib/api-connections";
+import {
+  attachDurableJoshuaWorkflow,
+  failDurableJoshuaRun,
+} from "@/lib/api-connections/durable-joshua";
 import { logError } from "@/lib/error-logging";
 import { jsonError } from "@/lib/http";
 import { withRoute } from "@/lib/route-guard";
 import { apiConnectionRunSchema } from "@/lib/validation";
+import { joshuaProjectRunWorkflow } from "@/workflows/joshua-project-run";
 
 type ApiConnectionRunContext = {
   params: Promise<{
@@ -39,9 +46,27 @@ export const POST = withRoute(
         return jsonError("API connection not found.", 404);
       }
 
-      after(async () => {
-        await executeApiConnectionRun({ runId: result.run.id });
-      });
+      if (result.connection.id === JOSHUA_PROJECT_API_CONNECTION_ID) {
+        try {
+          const workflowRun = await start(joshuaProjectRunWorkflow, [
+            result.run.id,
+          ]);
+          await attachDurableJoshuaWorkflow({
+            runId: result.run.id,
+            workflowRunId: workflowRun.runId,
+          });
+        } catch (error) {
+          await failDurableJoshuaRun({
+            runId: result.run.id,
+            message: "The durable run could not be started.",
+          });
+          throw error;
+        }
+      } else {
+        after(async () => {
+          await executeApiConnectionRun({ runId: result.run.id });
+        });
+      }
 
       return Response.json(result, { status: 202 });
     } catch (error) {

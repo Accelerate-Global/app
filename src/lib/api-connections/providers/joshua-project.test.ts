@@ -4,6 +4,7 @@ import { ApiConnectionError } from "../core";
 import { resolveConnectionProvider } from "../provider";
 import {
   JOSHUA_PROJECT_PAGE_SIZE,
+  fetchJoshuaProjectPeopleGroupPage,
   fetchJoshuaProjectPeopleGroupPages,
 } from "./joshua-project";
 
@@ -18,6 +19,24 @@ function jsonResponse(value: unknown, status = 200) {
 }
 
 describe("fetchJoshuaProjectPeopleGroupPages", () => {
+  it("fetches one normalized, bounded page for durable execution", async () => {
+    const result = await fetchJoshuaProjectPeopleGroupPage({
+      url: baseUrl,
+      headers: new Headers(),
+      page: 3,
+      pageSize: 2,
+      fetchSafe: vi.fn(async ({ url }: { url: string }) => {
+        expect(new URL(url).searchParams.get("page")).toBe("3");
+        return jsonResponse({ data: [{ PeopleID3: 7 }] });
+      }),
+    });
+
+    expect(result.recordCount).toBe(1);
+    expect(result.terminal).toBe(true);
+    expect(JSON.parse(result.body)).toEqual([{ PeopleID3: 7 }]);
+    expect(result.fingerprint).toMatch(/^[a-f0-9]{64}$/u);
+  });
+
   it("fetches bounded pages in order, preserves the key, and logs progress", async () => {
     const requestedUrls: URL[] = [];
     const log = vi.fn(async () => undefined);

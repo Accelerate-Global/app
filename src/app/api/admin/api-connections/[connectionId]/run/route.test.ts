@@ -2,20 +2,28 @@ import { readFile } from "node:fs/promises";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  JOSHUA_PROJECT_API_CONNECTION_ID,
   executeApiConnectionRun,
   startApiConnectionRun,
 } from "@/lib/api-connections";
+import { attachDurableJoshuaWorkflow } from "@/lib/api-connections/durable-joshua";
 import { getCurrentIdentity } from "@/lib/auth";
 import { maxDuration, POST } from "./route";
 
-const { afterMock } = vi.hoisted(() => ({
+const { afterMock, startWorkflowMock } = vi.hoisted(() => ({
   afterMock: vi.fn((callback: () => void | Promise<void>) => {
     void callback();
   }),
+  startWorkflowMock: vi.fn(),
 }));
 
 vi.mock("next/server", () => ({
   after: afterMock,
+}));
+
+vi.mock("workflow/api", () => ({ start: startWorkflowMock }));
+vi.mock("@/workflows/joshua-project-run", () => ({
+  joshuaProjectRunWorkflow: vi.fn(),
 }));
 
 vi.mock("@/lib/auth", () => ({
@@ -23,13 +31,20 @@ vi.mock("@/lib/auth", () => ({
 }));
 
 vi.mock("@/lib/api-connections", () => ({
+  JOSHUA_PROJECT_API_CONNECTION_ID:
+    "6f9f6ef2-1188-4f71-9c24-ef01debf7a03",
   executeApiConnectionRun: vi.fn(),
   startApiConnectionRun: vi.fn(),
+}));
+vi.mock("@/lib/api-connections/durable-joshua", () => ({
+  attachDurableJoshuaWorkflow: vi.fn(),
+  failDurableJoshuaRun: vi.fn(),
 }));
 
 const getCurrentIdentityMock = vi.mocked(getCurrentIdentity);
 const executeApiConnectionRunMock = vi.mocked(executeApiConnectionRun);
 const startApiConnectionRunMock = vi.mocked(startApiConnectionRun);
+const attachDurableJoshuaWorkflowMock = vi.mocked(attachDurableJoshuaWorkflow);
 
 const identity = {
   ownerId: "admin-1",
@@ -156,6 +171,39 @@ describe("/api/admin/api-connections/[connectionId]/run", () => {
     });
     expect(afterMock).toHaveBeenCalled();
     expect(executeApiConnectionRunMock).toHaveBeenCalledWith({ runId: run.id });
+  });
+
+  it("dispatches Joshua Project through the durable workflow", async () => {
+    const joshuaConnection = {
+      ...connection,
+      id: JOSHUA_PROJECT_API_CONNECTION_ID,
+    };
+    const joshuaRun = {
+      ...run,
+      connectionId: JOSHUA_PROJECT_API_CONNECTION_ID,
+    };
+    startApiConnectionRunMock.mockResolvedValue({
+      connection: joshuaConnection,
+      run: joshuaRun,
+    });
+    startWorkflowMock.mockResolvedValue({ runId: "wrun_test" });
+
+    const response = await POST(
+      new Request(`http://localhost/api/admin/api-connections/${joshuaConnection.id}/run`, {
+        method: "POST",
+        body: JSON.stringify({ importEnabled: false }),
+      }),
+      { params: Promise.resolve({ connectionId: joshuaConnection.id }) },
+    );
+
+    expect(response.status).toBe(202);
+    expect(startWorkflowMock).toHaveBeenCalledOnce();
+    expect(attachDurableJoshuaWorkflowMock).toHaveBeenCalledWith({
+      runId: joshuaRun.id,
+      workflowRunId: "wrun_test",
+    });
+    expect(afterMock).not.toHaveBeenCalled();
+    expect(executeApiConnectionRunMock).not.toHaveBeenCalled();
   });
 
   it("returns not found for missing connections", async () => {

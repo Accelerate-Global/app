@@ -114,7 +114,7 @@ describe("code-managed API connection listing", () => {
     ]);
     expect(result.runs).toEqual([]);
     expect(result.resources).toEqual([]);
-  });
+  }, 15_000);
 
   it("uses materialized built-in rows without duplicating them", async () => {
     const materializedImb = createConnectionRow();

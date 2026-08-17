@@ -768,6 +768,7 @@ describe("Google Sheets provider runs", () => {
     );
     const persistIndex = orchestratorSource.indexOf(
       "await persistImportedRows",
+      parseIndex,
     );
     const catchIndex = orchestratorSource.indexOf(
       "} catch (error) {",
