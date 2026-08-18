@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getCurrentIdentity } from "@/lib/auth";
+import { captureOperationalEvent } from "@/lib/operational-alert-capture";
 import {
   insertDatasetRowBatch,
   PipelineManagedDatasetMutationError,
@@ -10,6 +11,13 @@ import { POST } from "./route";
 
 vi.mock("@/lib/auth", () => ({
   getCurrentIdentity: vi.fn(),
+}));
+vi.mock("node:crypto", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("node:crypto")>()),
+  randomUUID: () => "11111111-1111-4111-8111-111111111111",
+}));
+vi.mock("@/lib/operational-alert-capture", () => ({
+  captureOperationalEvent: vi.fn(),
 }));
 
 vi.mock("@/lib/datasets", () => ({
@@ -38,6 +46,7 @@ vi.mock("@/lib/datasets", () => ({
 
 const getCurrentIdentityMock = vi.mocked(getCurrentIdentity);
 const insertDatasetRowBatchMock = vi.mocked(insertDatasetRowBatch);
+const captureOperationalEventMock = vi.mocked(captureOperationalEvent);
 
 const identity = {
   ownerId: "supabase-user",
@@ -80,6 +89,7 @@ describe("/api/datasets/[datasetId]/rows/batch", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     getCurrentIdentityMock.mockResolvedValue(identity);
+    captureOperationalEventMock.mockResolvedValue({ queued: true });
   });
 
   it("rejects unauthenticated row batch requests", async () => {
@@ -181,6 +191,34 @@ describe("/api/datasets/[datasetId]/rows/batch", () => {
     );
 
     expect(response.status).toBe(404);
+  });
+
+  it("captures unexpected row persistence failures before returning 500", async () => {
+    insertDatasetRowBatchMock.mockRejectedValue(new Error("database unavailable"));
+
+    const response = await POST(
+      new Request(
+        "http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001/rows/batch",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            startIndex: 0,
+            rows: [{ email: "ada@example.com" }],
+            isFinalBatch: true,
+            totalRows: 1,
+          }),
+        },
+      ),
+      context,
+    );
+
+    expect(response.status).toBe(500);
+    expect(captureOperationalEventMock).toHaveBeenCalledWith({
+      kind: "dataset-upload-failed",
+      operationId: "11111111-1111-4111-8111-111111111111",
+      stage: "row-persistence",
+      datasetId: dataset.id,
+    });
   });
 
   it("rejects row writes for derived dataset views", async () => {

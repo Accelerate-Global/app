@@ -21,6 +21,11 @@ import {
 } from "@/lib/watchlist-engagement-phase";
 import { WORKSPACE_ROLES } from "@/lib/workspace-role";
 
+export const passwordSignInSchema = z.object({
+  email: z.string().trim().email().max(320),
+  password: z.string().min(1).max(4096),
+});
+
 export const csvColumnSchema = z.object({
   key: z.string().min(1).max(128),
   label: z.string().min(1).max(256),

@@ -1,9 +1,12 @@
+import { randomUUID } from "node:crypto";
+
 import {
   DerivedDatasetMutationError,
   insertDatasetRowBatch,
   PipelineManagedDatasetMutationError,
 } from "@/lib/datasets";
 import { jsonError } from "@/lib/http";
+import { captureOperationalEvent } from "@/lib/operational-alert-capture";
 import { withRoute } from "@/lib/route-guard";
 import { rowBatchSchema } from "@/lib/validation";
 
@@ -38,6 +41,12 @@ export const POST = withRoute(
         return jsonError(error.message, error.status);
       }
 
+      await captureOperationalEvent({
+        kind: "dataset-upload-failed",
+        operationId: randomUUID(),
+        stage: "row-persistence",
+        datasetId,
+      });
       throw error;
     }
 

@@ -8,10 +8,32 @@ import {
   datasetAssignDerivedViewSchema,
   datasetMetadataPatchSchema,
   isoCountryCodeAlternativeNamesPatchSchema,
+  passwordSignInSchema,
   replaceDatasetSchema,
   workspaceUserInviteSchema,
   workspaceUserPatchSchema,
 } from "@/lib/validation";
+
+describe("passwordSignInSchema", () => {
+  it("accepts and normalizes a bounded email and password", () => {
+    expect(
+      passwordSignInSchema.parse({
+        email: " viewer@example.com ",
+        password: "SmokePass123!",
+      }),
+    ).toEqual({
+      email: "viewer@example.com",
+      password: "SmokePass123!",
+    });
+  });
+
+  it("rejects invalid email and empty password input", () => {
+    expect(
+      passwordSignInSchema.safeParse({ email: "not-an-email", password: "" })
+        .success,
+    ).toBe(false);
+  });
+});
 
 describe("datasetMetadataPatchSchema", () => {
   it("does not expose the removed filter region editor schema", () => {

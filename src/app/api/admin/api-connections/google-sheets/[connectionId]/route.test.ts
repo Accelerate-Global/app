@@ -8,11 +8,19 @@ import {
   previewExistingGoogleSheetsConnectionHeader,
   updateGoogleSheetsConnectionHeaderSelection,
 } from "@/lib/api-connections";
+import { captureFailedApiConnectionAccess } from "@/lib/api-connections/failure-alerts";
 import { getCurrentIdentity } from "@/lib/auth";
 import { DELETE, GET, PATCH, POST } from "./route";
 
 vi.mock("@/lib/auth", () => ({
   getCurrentIdentity: vi.fn(),
+}));
+vi.mock("node:crypto", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("node:crypto")>()),
+  randomUUID: () => "22222222-2222-4222-8222-222222222222",
+}));
+vi.mock("@/lib/api-connections/failure-alerts", () => ({
+  captureFailedApiConnectionAccess: vi.fn(),
 }));
 
 vi.mock("@/lib/api-connections", async () => {
@@ -30,6 +38,9 @@ vi.mock("@/lib/api-connections", async () => {
 });
 
 const getCurrentIdentityMock = vi.mocked(getCurrentIdentity);
+const captureFailedApiConnectionAccessMock = vi.mocked(
+  captureFailedApiConnectionAccess,
+);
 const checkGoogleSheetsConnectionAccessMock = vi.mocked(
   checkGoogleSheetsConnectionAccess,
 );
@@ -120,6 +131,7 @@ describe("/api/admin/api-connections/google-sheets/[connectionId]", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     getCurrentIdentityMock.mockResolvedValue(identity);
+    captureFailedApiConnectionAccessMock.mockResolvedValue({ queued: true });
   });
 
   it("rejects unauthenticated disconnect requests", async () => {
@@ -166,6 +178,11 @@ describe("/api/admin/api-connections/google-sheets/[connectionId]", () => {
     await expect(response.json()).resolves.toEqual({
       error:
         "Share this Sheet with sheets@app-project.iam.gserviceaccount.com as Viewer, then check again.",
+    });
+    expect(captureFailedApiConnectionAccessMock).toHaveBeenCalledWith({
+      connectionId: connection.id,
+      occurrenceId: "22222222-2222-4222-8222-222222222222",
+      reasonCode: "api-connection",
     });
   });
 

@@ -9,6 +9,9 @@ const ROUTE_METHODS = ["GET", "POST", "PATCH", "PUT", "DELETE"] as const;
 // Routes that intentionally manage their own identity handling.
 // Each entry must document why it is exempt from the route guard.
 const EXEMPT_ROUTES = new Set([
+  // Anonymous password sign-in: protected by the centralized same-origin proxy,
+  // then establishes user identity through the Supabase SSR server client.
+  "auth/sign-in/route.ts",
   // Vercel Cron pipeline coordinator: authenticated by a bearer secret, not user identity.
   "internal/pipeline-operations/run/route.ts",
   // Vercel Cron durable-run watchdog: authenticated by CRON_SECRET, not user identity.

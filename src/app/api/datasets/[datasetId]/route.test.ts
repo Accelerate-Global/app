@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getCurrentIdentity } from "@/lib/auth";
 import { logError } from "@/lib/error-logging";
+import { captureOperationalEvent } from "@/lib/operational-alert-capture";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import {
   deleteDataset,
@@ -13,6 +14,13 @@ import { DELETE, GET, PATCH } from "./route";
 
 vi.mock("@/lib/auth", () => ({
   getCurrentIdentity: vi.fn(),
+}));
+vi.mock("node:crypto", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("node:crypto")>()),
+  randomUUID: () => "11111111-1111-4111-8111-111111111111",
+}));
+vi.mock("@/lib/operational-alert-capture", () => ({
+  captureOperationalEvent: vi.fn(),
 }));
 
 const { removeMock, fromMock } = vi.hoisted(() => {
@@ -88,6 +96,7 @@ const getDatasetMock = vi.mocked(getDataset);
 const logErrorMock = vi.mocked(logError);
 const updateDatasetDetailsMock = vi.mocked(updateDatasetDetails);
 const updateDatasetStatusMock = vi.mocked(updateDatasetStatus);
+const captureOperationalEventMock = vi.mocked(captureOperationalEvent);
 
 const identity = {
   ownerId: "supabase-user",
@@ -139,6 +148,7 @@ describe("/api/datasets/[datasetId]", () => {
     removeMock.mockResolvedValue({ data: [], error: null });
     fromMock.mockReturnValue({ remove: removeMock });
     getCurrentIdentityMock.mockResolvedValue(identity);
+    captureOperationalEventMock.mockResolvedValue({ queued: true });
   });
 
   it("rejects unauthenticated dataset requests", async () => {
@@ -187,6 +197,12 @@ describe("/api/datasets/[datasetId]", () => {
       datasetId: dataset.id,
       status: "failed",
       error: "bad csv",
+    });
+    expect(captureOperationalEventMock).toHaveBeenCalledWith({
+      kind: "dataset-upload-failed",
+      operationId: "11111111-1111-4111-8111-111111111111",
+      stage: "terminal-import",
+      datasetId: dataset.id,
     });
   });
 

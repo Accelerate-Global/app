@@ -48,6 +48,7 @@ import {
   hasExactDatasetClassificationTag,
 } from "@/lib/dataset-tags";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import type { UploadFailureStage } from "@/lib/operational-alert-capture";
 import { cn } from "@/lib/utils";
 
 type DatasetUploadClientProps = {
@@ -198,6 +199,22 @@ async function markDatasetFailed(datasetId: string, error: string) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ status: "failed", error }),
   });
+}
+
+async function reportUploadFailure(input: {
+  operationId: string;
+  stage: UploadFailureStage;
+  datasetId?: string | null;
+}) {
+  try {
+    await fetch("/api/admin/operational-alerts/upload", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    });
+  } catch {
+    // Operational reporting is fail-open for the upload experience.
+  }
 }
 
 async function parseAndPersistRows(input: {
@@ -369,6 +386,8 @@ export function DatasetUploadClient({
 
   async function handleFile(file: File) {
     let datasetId: string | null = null;
+    let operationId: string | null = null;
+    let relayFailureStage: "storage-transfer" | "parsing" | null = null;
     const uploadFileName = isReplacing ? targetDataset.fileName : file.name;
 
     try {
@@ -404,7 +423,9 @@ export function DatasetUploadClient({
       });
 
       const columns = await parseHeader(file);
+      operationId = crypto.randomUUID();
       const uploadAuthorization = await authorizeUpload(file);
+      relayFailureStage = "storage-transfer";
 
       setUpload((current) =>
         current
@@ -435,6 +456,8 @@ export function DatasetUploadClient({
         throw uploadResult.error;
       }
 
+      relayFailureStage = null;
+
       const nextDataset = isReplacing
         ? await replaceDatasetRecord({
             datasetId: targetDataset.id,
@@ -451,6 +474,7 @@ export function DatasetUploadClient({
           });
 
       datasetId = nextDataset.id;
+      relayFailureStage = "parsing";
 
       setUpload({
         fileName: nextDataset.fileName,
@@ -482,6 +506,8 @@ export function DatasetUploadClient({
         },
       });
 
+      relayFailureStage = null;
+
       setCompletedDataset(finalDataset);
       setUpload({
         fileName: finalDataset.fileName,
@@ -500,6 +526,14 @@ export function DatasetUploadClient({
 
       if (datasetId) {
         await markDatasetFailed(datasetId, message);
+      }
+
+      if (operationId && relayFailureStage) {
+        await reportUploadFailure({
+          operationId,
+          stage: relayFailureStage,
+          datasetId,
+        });
       }
 
       setCompletedDataset(null);

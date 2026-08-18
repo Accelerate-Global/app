@@ -15,8 +15,6 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
-
 type AuthFormProps = {
   message?: string;
 };
@@ -34,11 +32,21 @@ export function AuthForm({ message }: AuthFormProps) {
     const password = String(formData.get("password") ?? "");
 
     try {
-      const supabase = createSupabaseBrowserClient();
-      const result = await supabase.auth.signInWithPassword({ email, password });
+      const response = await fetch("/api/auth/sign-in", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
 
-      if (result.error) {
-        setError(result.error.message);
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as {
+          error?: unknown;
+        } | null;
+        setError(
+          typeof payload?.error === "string"
+            ? payload.error
+            : "Authentication failed.",
+        );
         return;
       }
 

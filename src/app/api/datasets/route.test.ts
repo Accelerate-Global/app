@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getCurrentIdentity } from "@/lib/auth";
+import { captureOperationalEvent } from "@/lib/operational-alert-capture";
 import {
   DatasetStoragePathConflictError,
   createDataset,
@@ -11,6 +12,13 @@ import { GET, POST } from "./route";
 
 vi.mock("@/lib/auth", () => ({
   getCurrentIdentity: vi.fn(),
+}));
+vi.mock("node:crypto", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("node:crypto")>()),
+  randomUUID: () => "11111111-1111-4111-8111-111111111111",
+}));
+vi.mock("@/lib/operational-alert-capture", () => ({
+  captureOperationalEvent: vi.fn(),
 }));
 
 vi.mock("@/lib/datasets", () => ({
@@ -31,6 +39,7 @@ vi.mock("@/lib/datasets", () => ({
 const getCurrentIdentityMock = vi.mocked(getCurrentIdentity);
 const createDatasetMock = vi.mocked(createDataset);
 const listDatasetsMock = vi.mocked(listDatasets);
+const captureOperationalEventMock = vi.mocked(captureOperationalEvent);
 
 const identity = {
   ownerId: "supabase-user",
@@ -72,6 +81,7 @@ const dataset = {
 describe("/api/datasets", () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    captureOperationalEventMock.mockResolvedValue({ queued: true });
   });
 
   it("rejects unauthenticated list requests", async () => {
@@ -173,6 +183,31 @@ describe("/api/datasets", () => {
     expect(response.status).toBe(409);
     await expect(response.json()).resolves.toEqual({
       error: "That uploaded file is already owned by another dataset.",
+    });
+  });
+
+  it("captures unexpected dataset creation failures before returning 500", async () => {
+    getCurrentIdentityMock.mockResolvedValue(identity);
+    createDatasetMock.mockRejectedValue(new Error("database unavailable"));
+
+    const response = await POST(
+      new Request("http://localhost/api/datasets", {
+        method: "POST",
+        body: JSON.stringify({
+          fileName: "customers.csv",
+          blobPath: "datasets/csv/customers.csv",
+          sizeBytes: 100,
+          columns: [{ key: "email", label: "Email", sourceIndex: 0 }],
+          classification: "PGAC",
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(500);
+    expect(captureOperationalEventMock).toHaveBeenCalledWith({
+      kind: "dataset-upload-failed",
+      operationId: "11111111-1111-4111-8111-111111111111",
+      stage: "dataset-create",
     });
   });
 

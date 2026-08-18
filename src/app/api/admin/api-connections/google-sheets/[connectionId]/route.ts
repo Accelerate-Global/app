@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import { z } from "zod";
 
 import {
@@ -11,6 +13,7 @@ import { logError } from "@/lib/error-logging";
 import { GoogleSheetsError } from "@/lib/google-sheets";
 import { jsonError } from "@/lib/http";
 import { withRoute } from "@/lib/route-guard";
+import { captureFailedApiConnectionAccess } from "@/lib/api-connections/failure-alerts";
 
 type GoogleSheetsConnectionContext = {
   params: Promise<{
@@ -53,14 +56,29 @@ export const GET = withRoute(
       return Response.json(result);
     } catch (error) {
       if (error instanceof ApiConnectionError) {
+        await captureFailedApiConnectionAccess({
+          connectionId,
+          occurrenceId: randomUUID(),
+          reasonCode: "api-connection",
+        });
         return jsonError(error.message, error.status);
       }
 
       if (error instanceof GoogleSheetsError) {
+        await captureFailedApiConnectionAccess({
+          connectionId,
+          occurrenceId: randomUUID(),
+          reasonCode: "google-sheets",
+        });
         return jsonError(error.message, error.status);
       }
 
       logError("Failed to check Google Sheets connection access", error);
+      await captureFailedApiConnectionAccess({
+        connectionId,
+        occurrenceId: randomUUID(),
+        reasonCode: "unexpected",
+      });
       return jsonError("Could not check Google Sheets connection access.", 500);
     }
   },

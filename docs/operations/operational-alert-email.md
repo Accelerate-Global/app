@@ -35,6 +35,31 @@ These limits reserve most of Resend's Free-plan allowance for existing Auth
 email. Multiple recipients would each count against Resend quota, so adding
 recipients requires revisiting the budget.
 
+## Application Capture Boundaries
+
+The application submits only fixed high or critical events from four bounded
+failure domains:
+
+1. API connection tests, access checks, imports, source pulls, and stale durable
+   runs after the failed state is persisted.
+2. Dataset pipeline attempts only when retry handling makes the overall run
+   terminally failed.
+3. Password sign-in system failures immediately, or repeated invalid
+   credentials when the same privacy-safe subject reaches five failures within
+   15 minutes.
+4. Confirmed CSV upload authorization, signed Storage transfer, parser,
+   dataset-create/replacement, row-persistence, and terminal-import failures.
+
+Expected administrator cancellations, review rejections, retryable pipeline
+attempts, one invalid password, and local CSV type, size, classification, or
+header validation do not submit email alerts.
+
+Connection and pipeline events are emitted after the existing durable failure
+transition. The upload relay accepts only a random operation UUID, an enumerated
+stage, and an optional dataset UUID; it rejects filenames, row content, and
+arbitrary messages. Capture failure remains fail-open and does not change the
+originating operation's response, cleanup, retry, or stored state.
+
 ## Safe Content
 
 Operational email may contain only severity, source, sanitized title and
@@ -114,12 +139,19 @@ RESEND_OPERATIONAL_API_KEY
 OPERATIONAL_ALERT_FROM
 OPERATIONAL_ALERT_RECIPIENT
 OPERATIONAL_ALERT_DETAILS_URL
+AUTH_FAILURE_HASH_SECRET
 ```
 
 The Vercel value can use the same dedicated operational Resend API key, though
 a separate fallback key provides more granular revocation. None may use a
 `NEXT_PUBLIC_` prefix. Keep `CRON_SECRET` configured as described in the
 heartbeat runbook.
+
+`AUTH_FAILURE_HASH_SECRET` must contain at least 32 random characters. It is
+used only as the HMAC key for normalized sign-in subjects. The private
+authentication-failure table stores the resulting 64-character digest, count,
+and timestamps—not email addresses, passwords, or raw IP addresses. Active
+windows are pruned after 24 hours and capped at 10,000 keyed subjects.
 
 ## Verification
 
@@ -159,6 +191,17 @@ Verify the Vercel fallback in a non-production environment by mocking or
 temporarily pointing the heartbeat Supabase client at an unavailable test
 project. Do not intentionally disable or corrupt production Supabase.
 
+Verify capture producers with fixed synthetic failures in tests or a preview
+deployment. Do not intentionally break a production provider. Confirm that:
+
+- a failed connection run and a terminal pipeline failure create outbox rows;
+- the fifth invalid sign-in for one test subject creates one outbox row while
+  the first four do not;
+- a fixed upload relay stage creates one outbox row without filename or error
+  text; and
+- repeated fingerprints inside one hour are suppressed by the existing
+  cooldown.
+
 ## Rotation and Recovery
 
 1. Create a replacement Resend key.
@@ -178,6 +221,11 @@ Disable the `retry-operational-alert-delivery` Cron job and the
 `operational_alert_notifications_dispatch` trigger before removing or rolling
 back the Edge Function. The heartbeat fallback can be reverted independently.
 Existing Supabase Auth SMTP remains unchanged.
+
+To rollback only application capture, revert the producer call sites and the
+server sign-in route first. The private keyed authentication-failure table may
+remain inert until a later migration. Do not disable the delivery outbox or
+heartbeat unless operational email itself is also being rolled back.
 
 GitHub workflows, issues, checks, and notification settings are explicitly not
 part of this delivery system.

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getDb } from "@/db";
+import { captureFailedApiConnectionRun } from "./failure-alerts";
 import { downloadApiConnectionArtifactText } from "./chunked-output";
 import {
   cancelApiConnectionRun,
@@ -10,6 +11,9 @@ import {
 import { fetchJoshuaProjectPeopleGroupPage } from "./providers/joshua-project";
 
 vi.mock("@/db", () => ({ getDb: vi.fn() }));
+vi.mock("./failure-alerts", () => ({
+  captureFailedApiConnectionRun: vi.fn(),
+}));
 vi.mock("./index", () => ({
   JOSHUA_PROJECT_API_CONNECTION_ID:
     "6f9f6ef2-1188-4f71-9c24-ef01debf7a03",
@@ -27,6 +31,9 @@ vi.mock("./providers/joshua-project", () => ({
 }));
 
 const getDbMock = vi.mocked(getDb);
+const captureFailedApiConnectionRunMock = vi.mocked(
+  captureFailedApiConnectionRun,
+);
 const run = {
   id: "run-1",
   connectionId: "6f9f6ef2-1188-4f71-9c24-ef01debf7a03",
@@ -48,7 +55,10 @@ function mockMutation(returningValue: unknown[]) {
 }
 
 describe("durable Joshua run state", () => {
-  beforeEach(() => vi.resetAllMocks());
+  beforeEach(() => {
+    vi.resetAllMocks();
+    captureFailedApiConnectionRunMock.mockResolvedValue({ queued: true });
+  });
 
   it("atomically records terminal cancellation and a run log", async () => {
     const mocks = mockMutation([run]);
@@ -68,6 +78,7 @@ describe("durable Joshua run state", () => {
     expect(mocks.values).toHaveBeenCalledWith(
       expect.objectContaining({ runId: run.id, message: expect.stringContaining("cancelled") }),
     );
+    expect(captureFailedApiConnectionRunMock).not.toHaveBeenCalled();
   });
 
   it("does not create a cancellation log when no active run was claimed", async () => {
@@ -91,6 +102,12 @@ describe("durable Joshua run state", () => {
     expect(mocks.values).toHaveBeenCalledWith(
       expect.objectContaining({ message: run.errorMessage }),
     );
+    expect(captureFailedApiConnectionRunMock).toHaveBeenCalledWith({
+      connectionId: run.connectionId,
+      runId: run.id,
+      mode: "import",
+      reasonCode: "stale-run",
+    });
   });
 
   it("replays an accepted page from immutable chunks without refetching upstream", async () => {

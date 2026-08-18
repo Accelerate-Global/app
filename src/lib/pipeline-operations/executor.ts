@@ -1,4 +1,5 @@
 import { logError, normalizeErrorForLogging } from "@/lib/error-logging";
+import { captureOperationalEvent } from "@/lib/operational-alert-capture";
 
 import {
   claimPipelineStage,
@@ -164,6 +165,16 @@ export async function executeOnePipelineStage(input: {
           : "The pipeline stage could not be completed. Protected logs contain the diagnostic details.",
       retryable: executionError.retryable,
     });
+    if (status === "failed") {
+      await captureOperationalEvent({
+        kind: "pipeline-run-failed",
+        runId: claim.flowRunId,
+        flowKey: claim.definitionKey,
+        stageKey: claim.stageKey,
+        effectKey: claim.effectKey,
+        errorCode: executionError.code,
+      });
+    }
     return { claim, status, result: null };
   }
 }

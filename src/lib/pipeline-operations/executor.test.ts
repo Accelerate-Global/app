@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
+import { captureOperationalEvent } from "@/lib/operational-alert-capture";
+
 import {
   executePipelineContinuation,
   executeOnePipelineStage,
@@ -7,6 +9,12 @@ import {
   type PipelineExecutorDependencies,
 } from "./executor";
 import type { PipelineRunDetail, PipelineStageClaim } from "./types";
+
+vi.mock("@/lib/operational-alert-capture", () => ({
+  captureOperationalEvent: vi.fn().mockResolvedValue({ queued: true }),
+}));
+
+const captureOperationalEventMock = vi.mocked(captureOperationalEvent);
 
 const claim: PipelineStageClaim = {
   stageId: "stage-1",
@@ -75,6 +83,7 @@ describe("bounded pipeline executor", () => {
   });
 
   it("fails closed when a stage adapter is unavailable", async () => {
+    captureOperationalEventMock.mockClear();
     const deps = dependencies({ fail: vi.fn().mockResolvedValue("failed") });
     const result = await executeOnePipelineStage({
       runId: "run-1",
@@ -85,9 +94,18 @@ describe("bounded pipeline executor", () => {
       expect.objectContaining({ errorCode: "stage-adapter-missing", retryable: false }),
     );
     expect(result.status).toBe("failed");
+    expect(captureOperationalEventMock).toHaveBeenCalledWith({
+      kind: "pipeline-run-failed",
+      runId: "run-1",
+      flowKey: "source-imb-people-groups",
+      stageKey: "imb-ingest",
+      effectKey: "source-ingestion",
+      errorCode: "stage-adapter-missing",
+    });
   });
 
   it("retains retryability declared by a handler error", async () => {
+    captureOperationalEventMock.mockClear();
     const deps = dependencies();
     await executeOnePipelineStage({
       runId: "run-1",
@@ -104,6 +122,7 @@ describe("bounded pipeline executor", () => {
     expect(deps.fail).toHaveBeenCalledWith(
       expect.objectContaining({ errorCode: "provider-unavailable", retryable: true }),
     );
+    expect(captureOperationalEventMock).not.toHaveBeenCalled();
   });
 
   it("does nothing when a duplicate continuation cannot claim work", async () => {

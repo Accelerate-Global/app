@@ -2,11 +2,19 @@ import { readFile } from "node:fs/promises";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getCurrentIdentity } from "@/lib/auth";
+import { captureOperationalEvent } from "@/lib/operational-alert-capture";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { POST } from "./route";
 
 vi.mock("@/lib/auth", () => ({
   getCurrentIdentity: vi.fn(),
+}));
+vi.mock("node:crypto", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("node:crypto")>()),
+  randomUUID: () => "11111111-1111-4111-8111-111111111111",
+}));
+vi.mock("@/lib/operational-alert-capture", () => ({
+  captureOperationalEvent: vi.fn(),
 }));
 
 const { createSignedUploadUrlMock, createBucketMock, getBucketMock, fromMock } =
@@ -38,6 +46,7 @@ vi.mock("@/lib/supabase/admin", () => ({
 
 const getCurrentIdentityMock = vi.mocked(getCurrentIdentity);
 const createSupabaseAdminClientMock = vi.mocked(createSupabaseAdminClient);
+const captureOperationalEventMock = vi.mocked(captureOperationalEvent);
 
 const identity = {
   ownerId: "supabase-user",
@@ -64,6 +73,7 @@ describe("/api/blob/upload-token", () => {
       },
       error: null,
     });
+    captureOperationalEventMock.mockResolvedValue({ queued: true });
   });
 
   it("rejects unauthenticated upload authorization requests", async () => {
@@ -153,6 +163,11 @@ describe("/api/blob/upload-token", () => {
     expect(response.status).toBe(502);
     await expect(response.json()).resolves.toEqual({
       error: "The upload could not be authorized by Supabase Storage.",
+    });
+    expect(captureOperationalEventMock).toHaveBeenCalledWith({
+      kind: "dataset-upload-failed",
+      operationId: "11111111-1111-4111-8111-111111111111",
+      stage: "authorization",
     });
   });
 });

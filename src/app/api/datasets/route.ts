@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import {
   DatasetStoragePathConflictError,
   createDataset,
@@ -5,6 +7,7 @@ import {
 } from "@/lib/datasets";
 import { isDatasetStoragePath } from "@/lib/dataset-storage";
 import { jsonError } from "@/lib/http";
+import { captureOperationalEvent } from "@/lib/operational-alert-capture";
 import { withRoute } from "@/lib/route-guard";
 import { createDatasetSchema } from "@/lib/validation";
 
@@ -41,6 +44,11 @@ export const POST = withRoute(
         return jsonError(error.message, error.status);
       }
 
+      await captureOperationalEvent({
+        kind: "dataset-upload-failed",
+        operationId: randomUUID(),
+        stage: "dataset-create",
+      });
       throw error;
     }
 
