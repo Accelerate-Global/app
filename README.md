@@ -25,6 +25,7 @@ Canonical source repository: `Accelerate-Global/app`. The former
 - [Open questions](docs/open-questions.md)
 - [Release runbook](docs/release.md)
 - [Supabase heartbeat cron](docs/operations/supabase-heartbeat.md)
+- [Operational alert email](docs/operations/operational-alert-email.md)
 
 ## Local Setup
 
@@ -50,6 +51,10 @@ Fill in:
 - `GOOGLE_SHEETS_SERVICE_ACCOUNT_PRIVATE_KEY`
 - `DATABASE_URL`
 - `CRON_SECRET`
+- `RESEND_OPERATIONAL_API_KEY`
+- `OPERATIONAL_ALERT_FROM`
+- `OPERATIONAL_ALERT_RECIPIENT`
+- `OPERATIONAL_ALERT_DETAILS_URL` (optional HTTPS incident-console URL)
 
 Raw CSV files are stored in Supabase Storage. Uploads require a server-side
 `SUPABASE_SERVICE_ROLE_KEY`, and runtime admin access is derived from
@@ -109,6 +114,12 @@ The app starts unauthenticated users at `/` and sends authenticated users to `/d
 Set `CRON_SECRET` in Vercel before deploying the tracked cron configuration.
 Vercel uses it to authorize the daily Supabase heartbeat documented in
 `docs/operations/supabase-heartbeat.md`.
+
+Operational incident notifications use a Supabase Edge Function and Resend as
+the primary path. The heartbeat calls Resend directly if Supabase is
+unavailable. Configure the server-only variables and Supabase secrets in
+`docs/operations/operational-alert-email.md`; GitHub is not part of alert
+delivery.
 
 For branded Supabase auth emails and password reset links, use the runbook in
 `docs/auth-email-branding.md`.

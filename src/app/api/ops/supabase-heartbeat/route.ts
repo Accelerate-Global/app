@@ -1,4 +1,5 @@
 import { logError } from "@/lib/error-logging";
+import { sendOperationalAlertEmail } from "@/lib/operational-alert-email";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
@@ -8,6 +9,10 @@ const HEARTBEAT_QUERY_COUNT = 3;
 const NO_STORE_HEADERS = {
   "Cache-Control": "no-store",
 };
+
+function getUtcDateKey(date: Date) {
+  return date.toISOString().slice(0, 10);
+}
 
 function getCronSecret() {
   return process.env.CRON_SECRET?.trim();
@@ -47,6 +52,23 @@ export async function GET(request: Request) {
 
     if (error) {
       logError("Supabase heartbeat failed", error);
+
+      const detectedAt = new Date();
+
+      try {
+        await sendOperationalAlertEmail({
+          idempotencyKey: `supabase-heartbeat-${getUtcDateKey(detectedAt)}`,
+          severity: "critical",
+          source: "supabase.heartbeat",
+          title: "Supabase heartbeat failed",
+          summary:
+            "Vercel could not complete the bounded read-only Supabase health checks.",
+          occurredAt: detectedAt.toISOString(),
+        });
+      } catch (alertError) {
+        logError("Supabase heartbeat alert delivery failed", alertError);
+      }
+
       return jsonResponse(
         { ok: false, error: "Supabase heartbeat failed." },
         { status: 503 },
