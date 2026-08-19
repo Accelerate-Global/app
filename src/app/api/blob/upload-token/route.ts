@@ -1,9 +1,12 @@
+import { randomUUID } from "node:crypto";
+
 import {
   createDatasetStoragePath,
   getDatasetStorageBucket,
 } from "@/lib/dataset-storage";
 import { MAX_CSV_BYTES, sanitizeFileName } from "@/lib/csv";
 import { logError } from "@/lib/error-logging";
+import { captureOperationalEvent } from "@/lib/operational-alert-capture";
 import { jsonError } from "@/lib/http";
 import { withRoute } from "@/lib/route-guard";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -67,6 +70,11 @@ export const POST = withRoute(
       });
     } catch (error) {
       logError("Failed to create Supabase Storage upload authorization", error);
+      await captureOperationalEvent({
+        kind: "dataset-upload-failed",
+        operationId: randomUUID(),
+        stage: "authorization",
+      });
       return jsonError(
         "The upload could not be authorized by Supabase Storage.",
         502,

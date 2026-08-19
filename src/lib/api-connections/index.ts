@@ -114,6 +114,7 @@ import {
   serializeRowsToCsv,
 } from "./core";
 import { resolveConnectionProvider } from "./provider";
+import { captureFailedApiConnectionRun } from "./failure-alerts";
 import {
   getImbSourceAdapterMetadata,
   IMB_API_CONNECTION_ID,
@@ -2231,6 +2232,12 @@ export async function executeApiConnectionRun(input: { runId: string }) {
       errorMessage: "API connection not found.",
       completedAt: new Date(),
     });
+    await captureFailedApiConnectionRun({
+      connectionId: run.connectionId,
+      runId: run.id,
+      mode: run.mode,
+      reasonCode: "missing-connection",
+    });
     return null;
   }
 
@@ -2247,6 +2254,12 @@ export async function executeApiConnectionRun(input: { runId: string }) {
       connectionId: connection.id,
       level: "error",
       message: "API connection was disconnected before execution.",
+    });
+    await captureFailedApiConnectionRun({
+      connectionId: connection.id,
+      runId: run.id,
+      mode: run.mode,
+      reasonCode: "connection-disconnected",
     });
     return {
       connection: toApiConnection(connection),
@@ -2470,6 +2483,21 @@ export async function executeApiConnectionRun(input: { runId: string }) {
       connectionId: connection.id,
       level: "error",
       message: redactSecrets(message, secrets),
+    });
+    await captureFailedApiConnectionRun({
+      connectionId: connection.id,
+      runId: run.id,
+      mode: run.mode,
+      reasonCode:
+        error instanceof ApiConnectionError
+          ? "api-connection"
+          : error instanceof GoogleSheetsError
+            ? "google-sheets"
+            : error instanceof DatasetFormingError
+              ? "dataset-forming"
+              : error instanceof Error && error.name === "AbortError"
+                ? "timeout"
+                : "unexpected",
     });
 
     return {

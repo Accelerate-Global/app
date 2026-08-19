@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getCurrentIdentity } from "@/lib/auth";
+import { captureOperationalEvent } from "@/lib/operational-alert-capture";
 import {
   DatasetStoragePathConflictError,
   PipelineManagedDatasetMutationError,
@@ -11,6 +12,13 @@ import { POST } from "./route";
 
 vi.mock("@/lib/auth", () => ({
   getCurrentIdentity: vi.fn(),
+}));
+vi.mock("node:crypto", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("node:crypto")>()),
+  randomUUID: () => "11111111-1111-4111-8111-111111111111",
+}));
+vi.mock("@/lib/operational-alert-capture", () => ({
+  captureOperationalEvent: vi.fn(),
 }));
 
 vi.mock("@/lib/datasets", () => ({
@@ -39,6 +47,7 @@ vi.mock("@/lib/datasets", () => ({
 
 const getCurrentIdentityMock = vi.mocked(getCurrentIdentity);
 const replaceDatasetContentsMock = vi.mocked(replaceDatasetContents);
+const captureOperationalEventMock = vi.mocked(captureOperationalEvent);
 
 const identity = {
   ownerId: "supabase-user",
@@ -87,6 +96,7 @@ describe("/api/datasets/[datasetId]/replace", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     getCurrentIdentityMock.mockResolvedValue(identity);
+    captureOperationalEventMock.mockResolvedValue({ queued: true });
   });
 
   it("rejects unauthenticated replacements", async () => {
@@ -193,6 +203,34 @@ describe("/api/datasets/[datasetId]/replace", () => {
     );
 
     expect(response.status).toBe(404);
+  });
+
+  it("captures unexpected replacement failures before returning 500", async () => {
+    replaceDatasetContentsMock.mockRejectedValue(new Error("database unavailable"));
+
+    const response = await POST(
+      new Request(
+        "http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001/replace",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            blobPath: "datasets/csv/customers-v2.csv",
+            sizeBytes: 100,
+            columns: [{ key: "email", label: "Email", sourceIndex: 0 }],
+            classification: "PGAC",
+          }),
+        },
+      ),
+      context,
+    );
+
+    expect(response.status).toBe(500);
+    expect(captureOperationalEventMock).toHaveBeenCalledWith({
+      kind: "dataset-upload-failed",
+      operationId: "11111111-1111-4111-8111-111111111111",
+      stage: "dataset-replace",
+      datasetId: dataset.id,
+    });
   });
 
   it("rejects replacements for pipeline-managed datasets", async () => {

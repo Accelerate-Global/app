@@ -16,6 +16,7 @@ import {
 } from "@/lib/api-connection-output";
 import type { CsvColumn } from "@/lib/api-types";
 import { createApiConnectionRunChunkStoragePath } from "@/lib/dataset-storage";
+import { captureFailedApiConnectionRun } from "./failure-alerts";
 
 import {
   downloadApiConnectionArtifactText,
@@ -382,6 +383,12 @@ export async function failDurableJoshuaRun(input: {
       level: "error",
       message: input.message,
     });
+    await captureFailedApiConnectionRun({
+      connectionId: run.connectionId,
+      runId: run.id,
+      mode: run.mode === "test" ? "test" : "import",
+      reasonCode: "durable-source-failed",
+    });
   }
   return run ?? null;
 }
@@ -464,6 +471,12 @@ export async function reconcileStaleApiConnectionRuns(input?: {
       connectionId: run.connectionId,
       level: "error",
       message: run.errorMessage!,
+    });
+    await captureFailedApiConnectionRun({
+      connectionId: run.connectionId,
+      runId: run.id,
+      mode: run.mode === "test" ? "test" : "import",
+      reasonCode: "stale-run",
     });
   }
 

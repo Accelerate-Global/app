@@ -1,11 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { logError } from "@/lib/error-logging";
+import { sendOperationalAlertEmail } from "@/lib/operational-alert-email";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { GET } from "./route";
 
 vi.mock("@/lib/error-logging", () => ({
   logError: vi.fn(),
+}));
+
+vi.mock("@/lib/operational-alert-email", () => ({
+  sendOperationalAlertEmail: vi.fn(),
 }));
 
 vi.mock("@/lib/supabase/admin", () => ({
@@ -14,6 +19,7 @@ vi.mock("@/lib/supabase/admin", () => ({
 
 const createSupabaseAdminClientMock = vi.mocked(createSupabaseAdminClient);
 const logErrorMock = vi.mocked(logError);
+const sendOperationalAlertEmailMock = vi.mocked(sendOperationalAlertEmail);
 
 function createRequest(authorization?: string) {
   return new Request("http://localhost/api/ops/supabase-heartbeat", {
@@ -38,6 +44,7 @@ describe("/api/ops/supabase-heartbeat", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     process.env.CRON_SECRET = "test-cron-secret";
+    sendOperationalAlertEmailMock.mockResolvedValue({ id: "resend-message-id" });
   });
 
   afterEach(() => {
@@ -101,9 +108,10 @@ describe("/api/ops/supabase-heartbeat", () => {
     expect(query.limit).toHaveBeenNthCalledWith(2, 1);
     expect(query.limit).toHaveBeenNthCalledWith(3, 1);
     expect(logErrorMock).not.toHaveBeenCalled();
+    expect(sendOperationalAlertEmailMock).not.toHaveBeenCalled();
   });
 
-  it("returns a service error, logs normalized details, and stops later reads when Supabase fails", async () => {
+  it("returns a service error, sends an outage alert, and stops later reads when Supabase fails", async () => {
     const error = new Error("relation not found");
     const query = mockSupabaseReads([
       { error: null },
@@ -119,8 +127,41 @@ describe("/api/ops/supabase-heartbeat", () => {
       error: "Supabase heartbeat failed.",
     });
     expect(logErrorMock).toHaveBeenCalledWith("Supabase heartbeat failed", error);
+    expect(sendOperationalAlertEmailMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        idempotencyKey: expect.stringMatching(/^supabase-heartbeat-\d{4}-\d{2}-\d{2}$/),
+        severity: "critical",
+        source: "supabase.heartbeat",
+        title: "Supabase heartbeat failed",
+      }),
+    );
     expect(query.from).toHaveBeenCalledTimes(2);
     expect(query.select).toHaveBeenCalledTimes(2);
     expect(query.limit).toHaveBeenCalledTimes(2);
+  });
+
+  it("preserves the Supabase failure response when fallback email delivery fails", async () => {
+    const supabaseError = new Error("database unavailable");
+    const emailError = new Error("email unavailable");
+    mockSupabaseReads([{ error: supabaseError }]);
+    sendOperationalAlertEmailMock.mockRejectedValue(emailError);
+
+    const response = await GET(createRequest("Bearer test-cron-secret"));
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toEqual({
+      ok: false,
+      error: "Supabase heartbeat failed.",
+    });
+    expect(logErrorMock).toHaveBeenNthCalledWith(
+      1,
+      "Supabase heartbeat failed",
+      supabaseError,
+    );
+    expect(logErrorMock).toHaveBeenNthCalledWith(
+      2,
+      "Supabase heartbeat alert delivery failed",
+      emailError,
+    );
   });
 });

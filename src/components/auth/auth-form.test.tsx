@@ -3,8 +3,6 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
-
 import { AuthForm } from "./auth-form";
 
 const pushMock = vi.fn();
@@ -16,12 +14,6 @@ vi.mock("next/navigation", () => ({
   }),
 }));
 
-vi.mock("@/lib/supabase/client", () => ({
-  createSupabaseBrowserClient: vi.fn(),
-}));
-
-const createSupabaseBrowserClientMock = vi.mocked(createSupabaseBrowserClient);
-
 describe("AuthForm", () => {
   beforeEach(() => {
     vi.resetAllMocks();
@@ -31,15 +23,13 @@ describe("AuthForm", () => {
     cleanup();
   });
 
-  it("signs in with Supabase password auth", async () => {
-    const signInWithPassword = vi.fn().mockResolvedValue({
-      data: { session: { access_token: "token" } },
-      error: null,
-    });
-
-    createSupabaseBrowserClientMock.mockReturnValue({
-      auth: { signInWithPassword },
-    } as never);
+  it("signs in through the same-origin server boundary", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ ok: true }), { status: 200 }),
+      ),
+    );
 
     render(<AuthForm />);
 
@@ -52,9 +42,13 @@ describe("AuthForm", () => {
     fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
 
     await waitFor(() => {
-      expect(signInWithPassword).toHaveBeenCalledWith({
-        email: "viewer@example.com",
-        password: "SmokePass123!",
+      expect(fetch).toHaveBeenCalledWith("/api/auth/sign-in", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: "viewer@example.com",
+          password: "SmokePass123!",
+        }),
       });
     });
     expect(pushMock).toHaveBeenCalledWith("/dashboard");
@@ -62,10 +56,6 @@ describe("AuthForm", () => {
   });
 
   it("explains that account access comes from an administrator invitation", () => {
-    createSupabaseBrowserClientMock.mockReturnValue({
-      auth: { signInWithPassword: vi.fn() },
-    } as never);
-
     render(<AuthForm />);
 
     expect(
@@ -74,5 +64,28 @@ describe("AuthForm", () => {
       ),
     ).toBeTruthy();
     expect(screen.queryByRole("link", { name: "Sign up" })).toBeNull();
+  });
+
+  it("shows the server's generic authentication error", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ error: "Invalid email or password." }), {
+          status: 401,
+        }),
+      ),
+    );
+    render(<AuthForm />);
+
+    fireEvent.change(screen.getByLabelText("Email"), {
+      target: { value: "viewer@example.com" },
+    });
+    fireEvent.change(screen.getByLabelText("Password"), {
+      target: { value: "wrong-password" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    expect(await screen.findByText("Invalid email or password.")).toBeTruthy();
+    expect(pushMock).not.toHaveBeenCalled();
   });
 });

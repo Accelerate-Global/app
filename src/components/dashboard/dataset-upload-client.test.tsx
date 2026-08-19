@@ -30,6 +30,7 @@ type ParseOptions = {
   preview?: number;
   complete?: (result: { data: string[][] }) => void;
   chunk?: (result: { data: string[][] }) => void;
+  error?: (error: Error) => void;
 };
 
 function buildJsonResponse(payload: unknown, status = 200) {
@@ -78,6 +79,9 @@ describe("DatasetUploadClient", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     vi.stubGlobal("fetch", fetchMock);
+    vi.stubGlobal("crypto", {
+      randomUUID: () => "11111111-1111-4111-8111-111111111111",
+    });
     uploadToSignedUrlMock.mockResolvedValue({ data: {}, error: null });
     parseMock.mockImplementation((_file: File, options: ParseOptions) => {
       if (options.preview === 1) {
@@ -155,6 +159,131 @@ describe("DatasetUploadClient", () => {
     ).toHaveLength(1);
     expect(document.querySelector("[data-smoke-dataset-ingestion-progress]")).toBeNull();
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("relays only a fixed stage when the signed storage transfer fails", async () => {
+    fetchMock.mockImplementation(async (input, init) => {
+      if (input === "/api/blob/upload-token" && init?.method === "POST") {
+        return buildJsonResponse({
+          bucket: "datasets",
+          path: "datasets/csv/upload.csv",
+          token: "signed-upload-token",
+        });
+      }
+
+      if (
+        input === "/api/admin/operational-alerts/upload" &&
+        init?.method === "POST"
+      ) {
+        return buildJsonResponse({ accepted: true }, 202);
+      }
+
+      throw new Error(`Unexpected fetch: ${String(input)} ${init?.method ?? "GET"}`);
+    });
+    uploadToSignedUrlMock.mockResolvedValue({
+      data: null,
+      error: new Error("raw storage provider detail"),
+    });
+    render(<DatasetUploadClient preferredClassification="PGAC" />);
+
+    const input = document.querySelector(
+      '[data-smoke-upload-input="dataset-upload"]',
+    ) as HTMLInputElement;
+    fireEvent.change(input, {
+      target: {
+        files: [
+          new File(["Email\nada@example.com"], "upload.csv", {
+            type: "text/csv",
+          }),
+        ],
+      },
+    });
+
+    expect(await screen.findByText("Dataset update failed")).toBeTruthy();
+    await waitFor(() => {
+      const relayCall = fetchMock.mock.calls.find(
+        ([url]) => url === "/api/admin/operational-alerts/upload",
+      );
+      expect(relayCall).toBeTruthy();
+      expect(JSON.parse(String(relayCall?.[1]?.body))).toEqual({
+        operationId: "11111111-1111-4111-8111-111111111111",
+        stage: "storage-transfer",
+        datasetId: null,
+      });
+      expect(String(relayCall?.[1]?.body)).not.toContain(
+        "raw storage provider detail",
+      );
+    });
+  });
+
+  it("relays a fixed parser stage after a confirmed dataset upload", async () => {
+    const processingDataset = {
+      ...createTargetDataset(),
+      id: "f0000000-0000-4000-8000-000000000001",
+      status: "processing" as const,
+      rowCount: 0,
+    };
+    fetchMock.mockImplementation(async (input, init) => {
+      if (input === "/api/blob/upload-token" && init?.method === "POST") {
+        return buildJsonResponse({
+          bucket: "datasets",
+          path: "datasets/csv/upload.csv",
+          token: "signed-upload-token",
+        });
+      }
+      if (input === "/api/datasets" && init?.method === "POST") {
+        return buildJsonResponse({ dataset: processingDataset }, 201);
+      }
+      if (
+        input === `/api/datasets/${processingDataset.id}` &&
+        init?.method === "PATCH"
+      ) {
+        return buildJsonResponse({
+          dataset: { ...processingDataset, status: "failed" },
+        });
+      }
+      if (
+        input === "/api/admin/operational-alerts/upload" &&
+        init?.method === "POST"
+      ) {
+        return buildJsonResponse({ accepted: true }, 202);
+      }
+      throw new Error(`Unexpected fetch: ${String(input)} ${init?.method ?? "GET"}`);
+    });
+    parseMock.mockImplementation((_file: File, options: ParseOptions) => {
+      if (options.preview === 1) {
+        options.complete?.({ data: [["Email"]] });
+        return;
+      }
+      options.error?.(new Error("raw parser row content"));
+    });
+    render(<DatasetUploadClient preferredClassification="PGAC" />);
+
+    const input = document.querySelector(
+      '[data-smoke-upload-input="dataset-upload"]',
+    ) as HTMLInputElement;
+    fireEvent.change(input, {
+      target: {
+        files: [
+          new File(["Email\nada@example.com"], "upload.csv", {
+            type: "text/csv",
+          }),
+        ],
+      },
+    });
+
+    expect(await screen.findByText("Dataset update failed")).toBeTruthy();
+    await waitFor(() => {
+      const relayCall = fetchMock.mock.calls.find(
+        ([url]) => url === "/api/admin/operational-alerts/upload",
+      );
+      expect(JSON.parse(String(relayCall?.[1]?.body))).toEqual({
+        operationId: "11111111-1111-4111-8111-111111111111",
+        stage: "parsing",
+        datasetId: processingDataset.id,
+      });
+      expect(String(relayCall?.[1]?.body)).not.toContain("raw parser row content");
+    });
   });
 
   it("shows the Dashboard completion CTA after a successful replacement", async () => {

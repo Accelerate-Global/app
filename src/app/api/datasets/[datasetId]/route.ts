@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import {
   DatasetClassificationError,
   DatasetDeleteConflictError,
@@ -9,6 +11,7 @@ import {
   updateDatasetStatus,
 } from "@/lib/datasets";
 import { jsonError } from "@/lib/http";
+import { captureOperationalEvent } from "@/lib/operational-alert-capture";
 import { withRoute } from "@/lib/route-guard";
 import { getDatasetStorageBucket } from "@/lib/dataset-storage";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -80,6 +83,15 @@ export const PATCH = withRoute(
 
     if (!dataset) {
       return jsonError("Dataset not found.", 404);
+    }
+
+    if ("status" in parsed.data && parsed.data.status === "failed") {
+      await captureOperationalEvent({
+        kind: "dataset-upload-failed",
+        operationId: randomUUID(),
+        stage: "terminal-import",
+        datasetId,
+      });
     }
 
     return Response.json({ dataset });
