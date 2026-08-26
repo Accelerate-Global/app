@@ -169,12 +169,17 @@ describe("ui-smoke-selection", () => {
       "dataset-detail-admin",
     ]);
     expect(selection.journeyTitles).toEqual([
+      "authenticated user can explore the filtered dataset map",
+      "pro validates the production-shaped dataset map before release",
+      "workspace roles can inspect the production-shaped map without permission leakage",
+      "mobile pro can use the production-shaped map in dark appearance",
       "basic user can filter and download without saving",
     ]);
     expect(selection.projectNames).toEqual([
       "desktop-pro",
       "desktop-basic",
       "desktop-admin",
+      "mobile-pro",
     ]);
     expect(selection.bootstrapScope).toBe("datasets");
   });

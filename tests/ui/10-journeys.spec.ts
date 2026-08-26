@@ -49,6 +49,85 @@ function skipUnlessDesktopBasic(projectName: string) {
   return project.role !== "basic" || project.viewport !== "desktop";
 }
 
+function skipUnlessDesktopAuthenticated(projectName: string) {
+  const project = getSmokeProjectContext(projectName);
+  return project.role === "anonymous" || project.viewport !== "desktop";
+}
+
+function skipUnlessMobilePro(projectName: string) {
+  const project = getSmokeProjectContext(projectName);
+  return project.role !== "pro" || project.viewport !== "mobile";
+}
+
+function parseVisibleCount(value: string | null) {
+  const numericValue = value?.replace(/[^0-9]/gu, "") ?? "";
+
+  if (!numericValue) {
+    throw new Error(`Could not parse a visible record count from ${value ?? "null"}.`);
+  }
+
+  return Number.parseInt(numericValue, 10);
+}
+
+async function getDatasetFilteredCount(page: Page) {
+  return parseVisibleCount(
+    await page.locator("[data-smoke-filtered-table-count]").textContent(),
+  );
+}
+
+async function expectDatasetMapParity(page: Page) {
+  await expect.poll(async () => {
+    const filtered = await getDatasetFilteredCount(page);
+    const mapped = parseVisibleCount(
+      await page.locator("[data-smoke-map-mapped-count]").textContent(),
+    );
+    const unmapped = parseVisibleCount(
+      await page.locator("[data-smoke-map-unmapped-count]").textContent(),
+    );
+
+    return mapped + unmapped === filtered;
+  }).toBe(true);
+
+  const filtered = await getDatasetFilteredCount(page);
+  const mapped = parseVisibleCount(
+    await page.locator("[data-smoke-map-mapped-count]").textContent(),
+  );
+  const unmapped = parseVisibleCount(
+    await page.locator("[data-smoke-map-unmapped-count]").textContent(),
+  );
+
+  expect(mapped + unmapped).toBe(filtered);
+  return { filtered, mapped, unmapped };
+}
+
+async function openMapPreproductionDataset(page: Page) {
+  const bootstrap = await readUiSmokeBootstrap();
+
+  await page.goto(
+    `/dashboard/datasets/${bootstrap.datasets.mapPreproduction.id}`,
+  );
+  await expect(page.locator('[data-smoke-page="dataset-detail"]')).toBeVisible();
+  await expect(page.locator("[data-smoke-filtered-table-count]")).toHaveText(
+    bootstrap.datasets.mapPreproduction.defaultFilteredRowCount.toLocaleString(),
+  );
+
+  return bootstrap;
+}
+
+async function openLargeDatasetMap(page: Page) {
+  const bootstrap = await openMapPreproductionDataset(page);
+  const startedAt = Date.now();
+
+  await page.locator('[data-smoke-trigger="dataset-map"]').click();
+  await expect(
+    page.locator(
+      '[data-smoke-surface="dataset-map"] [data-smoke-ready="dataset-map"]',
+    ),
+  ).toBeVisible({ timeout: 30_000 });
+
+  return { bootstrap, readyInMs: Date.now() - startedAt };
+}
+
 async function signInWithPassword(page: Page, input: {
   email: string;
   password: string;
@@ -1488,6 +1567,261 @@ test("authenticated user can save a filtered table", async ({ page }, testInfo) 
     ).toBeHidden();
   });
 });
+
+test("authenticated user can explore the filtered dataset map", async ({ page }, testInfo) => {
+  test.skip(skipUnlessDesktopPro(testInfo.project.name));
+
+  await runSmokeJourney(
+    "authenticated user can explore the filtered dataset map",
+    async () => {
+      const bootstrap = await readUiSmokeBootstrap();
+      const externalMapRequests: string[] = [];
+      const boundaryRequests: string[] = [];
+      let appOrigin = "";
+      let captureMapRequests = false;
+
+      page.on("request", (request) => {
+        if (!captureMapRequests) {
+          return;
+        }
+
+        const requestUrl = new URL(request.url());
+        if (requestUrl.pathname === "/map-data/natural-earth-countries-110m.geojson") {
+          boundaryRequests.push(request.url());
+        }
+        if (requestUrl.origin !== appOrigin) {
+          externalMapRequests.push(request.url());
+        }
+      });
+
+      await page.goto(`/dashboard/datasets/${bootstrap.datasets.primary.id}`);
+      await expect(page.locator('[data-smoke-page="dataset-detail"]')).toBeVisible();
+      appOrigin = new URL(page.url()).origin;
+      captureMapRequests = true;
+
+      await page.locator('[data-smoke-trigger="dataset-map"]').click();
+      const mapSurface = page.locator(
+        '[data-smoke-surface="dataset-map"] [data-smoke-ready="dataset-map"]',
+      );
+      await expect(mapSurface).toBeVisible();
+      await expect(page.locator("[data-smoke-map-mapped-count]")).toContainText(
+        "3 mapped",
+      );
+
+      await page.getByRole("button", { name: "Watchlist filters" }).click();
+      await page.getByRole("switch", { name: /^Toggle Watchlist$/ }).click();
+      await expect(page.locator("[data-smoke-map-mapped-count]")).toContainText(
+        "0 mapped",
+      );
+
+      await page.getByRole("button", { name: "Table" }).click();
+      await expect(
+        page.locator('[data-smoke-surface="dataset-map"]'),
+      ).toBeHidden();
+      await expect(page.getByText("No people groups found.")).toBeVisible();
+
+      expect(boundaryRequests).toHaveLength(1);
+      expect(externalMapRequests).toEqual([]);
+    },
+  );
+});
+
+test(
+  "pro validates the production-shaped dataset map before release",
+  async ({ page }, testInfo) => {
+    test.skip(skipUnlessDesktopPro(testInfo.project.name));
+    testInfo.setTimeout(120_000);
+
+    await runSmokeJourney(
+      "pro validates the production-shaped dataset map before release",
+      async () => {
+        const externalMapRequests: string[] = [];
+        const boundaryRequests: string[] = [];
+        let appOrigin = "";
+        let captureMapRequests = false;
+
+        page.on("request", (request) => {
+          if (!captureMapRequests) {
+            return;
+          }
+
+          const requestUrl = new URL(request.url());
+          if (
+            requestUrl.pathname ===
+            "/map-data/natural-earth-countries-110m.geojson"
+          ) {
+            boundaryRequests.push(request.url());
+          }
+          if (requestUrl.origin !== appOrigin) {
+            externalMapRequests.push(request.url());
+          }
+        });
+
+        const bootstrap = await openMapPreproductionDataset(page);
+        appOrigin = new URL(page.url()).origin;
+        captureMapRequests = true;
+
+        const startedAt = Date.now();
+        await page.locator('[data-smoke-trigger="dataset-map"]').click();
+        await expect(
+          page.locator(
+            '[data-smoke-surface="dataset-map"] [data-smoke-ready="dataset-map"]',
+          ),
+        ).toBeVisible({ timeout: 30_000 });
+        expect(Date.now() - startedAt).toBeLessThan(30_000);
+
+        const baseline = await expectDatasetMapParity(page);
+        expect(baseline.filtered).toBe(
+          bootstrap.datasets.mapPreproduction.defaultFilteredRowCount,
+        );
+        expect(baseline.mapped).toBeGreaterThan(0);
+        expect(baseline.unmapped).toBeGreaterThan(0);
+        expect(boundaryRequests).toHaveLength(1);
+        expect(externalMapRequests).toEqual([]);
+
+        const mapSearch = page.getByLabel("Search this result");
+        await mapSearch.fill("Tanzania");
+        const countryResult = page.getByRole("button", {
+          name: /Tanzania.*Country/u,
+        });
+        await countryResult.focus();
+        await page.keyboard.press("Enter");
+        await expect(page.getByText("Selected country")).toBeVisible();
+        await expect(
+          page.getByRole("heading", { name: /Tanzania/u }),
+        ).toBeVisible();
+
+        await mapSearch.fill(
+          bootstrap.datasets.mapPreproduction.focusedPeopleName,
+        );
+        const peopleResult = page.getByRole("button", {
+          name: new RegExp(
+            `${bootstrap.datasets.mapPreproduction.focusedPeopleName}.*India`,
+            "u",
+          ),
+        });
+        await peopleResult.focus();
+        await page.keyboard.press("Enter");
+        await expect(
+          page.getByText(
+            `Focused match: ${bootstrap.datasets.mapPreproduction.focusedPeopleName}`,
+          ),
+        ).toBeVisible();
+
+        const assertFreshFilter = async (
+          applyFilter: () => Promise<void>,
+        ) => {
+          await openLargeDatasetMap(page);
+          await applyFilter();
+          await expect.poll(() => getDatasetFilteredCount(page)).toBeLessThan(
+            bootstrap.datasets.mapPreproduction.defaultFilteredRowCount,
+          );
+          const counts = await expectDatasetMapParity(page);
+          expect(counts.filtered).toBeGreaterThan(0);
+        };
+
+        await assertFreshFilter(async () => {
+          await page.getByRole("button", { name: "Region filters" }).click();
+          await page
+            .getByRole("switch", {
+              name: "Toggle Asia, South",
+              exact: true,
+            })
+            .click();
+        });
+
+        await assertFreshFilter(async () => {
+          await page.getByRole("button", { name: "Country filters" }).click();
+          await page.getByRole("button", { name: "Deselect all" }).click();
+          await page.getByLabel("Search countries").fill("Brazil");
+          await page.getByRole("checkbox", { name: "Include Brazil" }).click();
+        });
+
+        await assertFreshFilter(async () => {
+          await page.getByRole("switch", { name: "Toggle Watchlist" }).click();
+        });
+
+        await assertFreshFilter(async () => {
+          await page.getByRole("switch", { name: "Toggle UUPG" }).click();
+        });
+
+        await assertFreshFilter(async () => {
+          await page.getByRole("switch", { name: "Toggle Hotspots" }).click();
+        });
+
+        await openLargeDatasetMap(page);
+        await page.getByRole("button", { name: "Country filters" }).click();
+        await page.getByRole("button", { name: "Deselect all" }).click();
+        await page.getByLabel("Search countries").fill("Canada");
+        await page.getByRole("checkbox", { name: "Include Canada" }).click();
+        await expect.poll(() => getDatasetFilteredCount(page)).toBeGreaterThan(0);
+        await page.getByRole("switch", { name: "Toggle Watchlist" }).click();
+        await expect(page.locator("[data-smoke-filtered-table-count]")).toHaveText(
+          "0",
+        );
+        await expect(page.getByText(/No records match the current filters/u)).toBeVisible();
+        await expectDatasetMapParity(page);
+        await page.getByRole("button", { name: "Table" }).click();
+        await expect(page.getByText("No people groups found.")).toBeVisible();
+      },
+    );
+  },
+);
+
+test(
+  "workspace roles can inspect the production-shaped map without permission leakage",
+  async ({ page }, testInfo) => {
+    test.skip(skipUnlessDesktopAuthenticated(testInfo.project.name));
+
+    await runSmokeJourney(
+      "workspace roles can inspect the production-shaped map without permission leakage",
+      async () => {
+        const project = getSmokeProjectContext(testInfo.project.name);
+
+        await openLargeDatasetMap(page);
+        await expectDatasetMapParity(page);
+        if (project.role === "basic") {
+          await expect(page.locator("[data-smoke-save-filtered-table]")).toBeHidden();
+        } else {
+          await expect(page.locator("[data-smoke-save-filtered-table]")).toBeVisible();
+        }
+      },
+    );
+  },
+);
+
+test(
+  "mobile pro can use the production-shaped map in dark appearance",
+  async ({ page }, testInfo) => {
+    test.skip(skipUnlessMobilePro(testInfo.project.name));
+
+    await runSmokeJourney(
+      "mobile pro can use the production-shaped map in dark appearance",
+      async () => {
+        await page.emulateMedia({ colorScheme: "dark" });
+        await openLargeDatasetMap(page);
+        await expect(page.locator("html")).toHaveClass(/dark/u);
+        await expectDatasetMapParity(page);
+
+        const singaporePoint = page.locator('[aria-label="Select Singapore"]');
+        await expect(singaporePoint).toBeVisible();
+        await singaporePoint.focus();
+        await page.keyboard.press("Enter");
+        await expect(
+          page.getByRole("heading", { name: "Singapore" }),
+        ).toBeVisible();
+
+        expect(
+          await page.evaluate(
+            () =>
+              document.documentElement.scrollWidth <=
+              document.documentElement.clientWidth + 1,
+          ),
+        ).toBe(true);
+      },
+    );
+  },
+);
 
 test("basic user can filter and download without saving", async ({ page }, testInfo) => {
   test.skip(skipUnlessDesktopBasic(testInfo.project.name));

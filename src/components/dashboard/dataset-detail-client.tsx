@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 
 import { DatasetAssignDerivedViewSheet } from "@/components/dashboard/dataset-assign-derived-view-sheet";
 import { DatasetTableActionBar } from "@/components/dashboard/dataset-table-action-bar";
 import { DatasetTable } from "@/components/dashboard/dataset-table";
 import { DatasetViewSwitchGrid } from "@/components/dashboard/dataset-view-switch-grid";
+import { Button } from "@/components/ui/button";
 import {
   Sheet,
   SheetContent,
@@ -63,6 +64,7 @@ import {
   isWatchlistJpOnlyEvangelicalRuleDefault,
   normalizeWatchlistJpOnlyEvangelicalRule,
 } from "@/lib/watchlist-jp-only-evangelical";
+import { MapPinnedIcon, TablePropertiesIcon } from "lucide-react";
 
 type DatasetDetailClientProps = {
   dataset: DatasetSummary;
@@ -77,6 +79,14 @@ type DatasetDetailClientProps = {
   assignableDatasets?: DatasetSummary[];
   workspaceRole?: WorkspaceRole;
 };
+
+type DatasetDetailViewMode = "table" | "map";
+
+const LazyDatasetMapView = lazy(() =>
+  import("@/components/dashboard/dataset-map-view").then((module) => ({
+    default: module.DatasetMapView,
+  })),
+);
 
 const UUPG_FRONTIER_LOOKUP_KEYS = getFieldDefinitionCanonicalKeyLookupKeys(
   WATCHLIST_FRONTIER_GROUP_DATASET_COLUMN_KEY,
@@ -316,6 +326,7 @@ export function DatasetDetailClient({
   const [isFiltersSheetOpen, setIsFiltersSheetOpen] = useState(false);
   const [isAssignDerivedViewSheetOpen, setIsAssignDerivedViewSheetOpen] =
     useState(false);
+  const [viewMode, setViewMode] = useState<DatasetDetailViewMode>("table");
   const canSaveFilteredTable = workspaceRole !== "basic";
   const sourceDatasetId = dataset.backingDatasetId ?? dataset.id;
 
@@ -877,6 +888,36 @@ export function DatasetDetailClient({
           </div>
         </aside>
         <div className="min-w-0 space-y-4">
+          <div className="flex justify-end">
+            <div
+              className="inline-flex rounded-lg border border-border bg-background p-1"
+              role="group"
+              aria-label="Dataset view"
+            >
+              <Button
+                type="button"
+                size="sm"
+                variant={viewMode === "table" ? "secondary" : "ghost"}
+                aria-pressed={viewMode === "table"}
+                onClick={() => setViewMode("table")}
+                data-smoke-close="dataset-map"
+              >
+                <TablePropertiesIcon aria-hidden="true" className="size-4" />
+                Table
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={viewMode === "map" ? "secondary" : "ghost"}
+                aria-pressed={viewMode === "map"}
+                onClick={() => setViewMode("map")}
+                data-smoke-trigger="dataset-map"
+              >
+                <MapPinnedIcon aria-hidden="true" className="size-4" />
+                Map
+              </Button>
+            </div>
+          </div>
           <DatasetTableActionBar
             dataset={dataset}
             filters={savedFilters}
@@ -894,13 +935,29 @@ export function DatasetDetailClient({
                 : undefined
             }
           />
-          <DatasetTable
-            table={datasetTable.table}
-            recordCount={datasetTable.recordCount}
-            isLoading={datasetTable.isLoading}
-            datasetError={dataset.error}
-            error={datasetTable.error}
-          />
+          {viewMode === "table" ? (
+            <DatasetTable
+              table={datasetTable.table}
+              recordCount={datasetTable.recordCount}
+              isLoading={datasetTable.isLoading}
+              datasetError={dataset.error}
+              error={datasetTable.error}
+            />
+          ) : (
+            <Suspense
+              fallback={
+                <div className="flex min-h-[34rem] items-center justify-center rounded-xl border border-border bg-card text-sm text-muted-foreground">
+                  Loading map view…
+                </div>
+              }
+            >
+              <LazyDatasetMapView
+                rows={datasetTable.filteredRows}
+                isLoading={datasetTable.isLoading}
+                error={dataset.error ?? datasetTable.error}
+              />
+            </Suspense>
+          )}
         </div>
       </div>
       {assignableDatasets.length > 0 ? (

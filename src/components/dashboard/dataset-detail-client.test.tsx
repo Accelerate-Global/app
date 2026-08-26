@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { act, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type {
@@ -19,6 +19,7 @@ type DatasetTableStateInput = {
 
 const actionBarSpy = vi.fn();
 const assignDerivedViewSheetSpy = vi.fn();
+const datasetMapSpy = vi.fn();
 const datasetTableSpy = vi.fn();
 const useDatasetTableStateMock = vi.fn();
 const viewSwitchGridSpy = vi.fn();
@@ -33,6 +34,13 @@ vi.mock("@/components/dashboard/dataset-table", () => ({
   DatasetTable: (props: unknown) => {
     datasetTableSpy(props);
     return <div data-testid="dataset-table" />;
+  },
+}));
+
+vi.mock("@/components/dashboard/dataset-map-view", () => ({
+  DatasetMapView: (props: unknown) => {
+    datasetMapSpy(props);
+    return <div data-testid="dataset-map" />;
   },
 }));
 
@@ -184,6 +192,7 @@ function mockCountrySyncTableState(
     table: {} as never,
     sorting: props.initialSorting ?? [],
     visibleColumns: [],
+    filteredRows: [],
     datasetCountryNames,
     availableCountryNames,
     getSortedRows: () => [],
@@ -197,6 +206,7 @@ describe("DatasetDetailClient", () => {
   beforeEach(() => {
     actionBarSpy.mockReset();
     assignDerivedViewSheetSpy.mockReset();
+    datasetMapSpy.mockReset();
     datasetTableSpy.mockReset();
     useDatasetTableStateMock.mockReset();
     viewSwitchGridSpy.mockReset();
@@ -204,6 +214,7 @@ describe("DatasetDetailClient", () => {
       table: {} as never,
       sorting: [],
       visibleColumns: [],
+      filteredRows: [],
       datasetCountryNames: [],
       availableCountryNames: [],
       getSortedRows: () => [],
@@ -251,6 +262,84 @@ describe("DatasetDetailClient", () => {
     expect(actionBarProps.onOpenFilters).toEqual(expect.any(Function));
     expect(actionBarProps.onOpenAssignDerivedView).toBeUndefined();
     expect(assignDerivedViewSheetSpy).not.toHaveBeenCalled();
+  });
+
+  it("switches between Table and Map while preserving canonical rows and dataset actions", async () => {
+    const filteredRows = [
+      {
+        id: "row-india",
+        rowIndex: 0,
+        data: { geo_country_name: "India", people_name: "Rana Tharu" },
+      },
+    ];
+    useDatasetTableStateMock.mockReturnValue({
+      table: {} as never,
+      sorting: [{ id: "people_name", desc: false }],
+      visibleColumns: [],
+      filteredRows,
+      datasetCountryNames: ["India"],
+      availableCountryNames: ["India"],
+      getSortedRows: () => filteredRows,
+      recordCount: 1,
+      isLoading: false,
+      error: null,
+    });
+
+    render(
+      <DatasetDetailClient
+        dataset={{
+          ...datasetBase,
+          backingDatasetId: "source-dataset",
+          columns: [
+            { key: "geo_country_name", label: "Geo_Country_Name", sourceIndex: 0 },
+            { key: "people_name", label: "People Name", sourceIndex: 1 },
+          ],
+        }}
+        regions={[]}
+        initialFilters={createInitialFilters({
+          country: {
+            enabled: true,
+            selectedCountryNames: ["India"],
+            includeAlternateCountries: false,
+          },
+        })}
+        initialSorting={[{ id: "people_name", desc: false }]}
+        fieldDefinitionPresentationByColumnKey={{}}
+      />,
+    );
+
+    expect(screen.getByTestId("dataset-table")).toBeTruthy();
+    expect(screen.queryByTestId("dataset-map")).toBeNull();
+    expect(screen.getByTestId("dataset-table-action-bar")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Map" }));
+
+    expect(screen.queryByTestId("dataset-table")).toBeNull();
+    expect(await screen.findByTestId("dataset-map")).toBeTruthy();
+    expect(screen.getByTestId("dataset-table-action-bar")).toBeTruthy();
+    expect(datasetMapSpy.mock.lastCall?.[0]).toEqual(
+      expect.objectContaining({ rows: filteredRows, isLoading: false, error: null }),
+    );
+
+    const tableStateProps = useDatasetTableStateMock.mock.lastCall?.[0] as {
+      filterSections: { country?: { enabled?: boolean; selectedCountryNames?: string[] } };
+      dataset: { backingDatasetId: string | null };
+    };
+    const actionBarProps = actionBarSpy.mock.lastCall?.[0] as {
+      filters: Record<string, unknown>;
+      getSortedRows: () => typeof filteredRows;
+    };
+
+    expect(tableStateProps.dataset.backingDatasetId).toBe("source-dataset");
+    expect(tableStateProps.filterSections.country).toEqual(
+      expect.objectContaining({ enabled: true, selectedCountryNames: ["India"] }),
+    );
+    expect(actionBarProps.filters).not.toHaveProperty("viewMode");
+    expect(actionBarProps.getSortedRows()).toEqual(filteredRows);
+
+    fireEvent.click(screen.getByRole("button", { name: "Table" }));
+    expect(screen.getByTestId("dataset-table")).toBeTruthy();
+    expect(screen.queryByTestId("dataset-map")).toBeNull();
   });
 
   it("passes the source row count into shared table state", () => {
@@ -319,6 +408,7 @@ describe("DatasetDetailClient", () => {
     const baseTableState = {
       table: {} as never,
       visibleColumns: [],
+      filteredRows: [],
       datasetCountryNames: [] as string[],
       availableCountryNames: [] as string[],
       getSortedRows: () => [],

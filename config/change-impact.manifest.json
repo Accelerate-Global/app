@@ -287,7 +287,9 @@
       "label": "Dataset detail tables and presets",
       "patterns": [
         "src/app/dashboard/datasets/[datasetId]/page.tsx",
+        "src/components/dashboard/dataset-country-map.tsx",
         "src/components/dashboard/dataset-detail-client.tsx",
+        "src/components/dashboard/dataset-map-view.tsx",
         "src/components/dashboard/dataset-open-preset-sheet.tsx",
         "src/components/dashboard/dataset-table-action-bar.tsx",
         "src/components/dashboard/dataset-table.tsx",
@@ -297,8 +299,14 @@
         "src/lib/saved-dataset-tables.ts"
       ],
       "routeIds": ["dataset-detail-pro", "dataset-detail-basic", "dataset-detail-admin"],
-      "journeyTitles": ["basic user can filter and download without saving"],
-      "projectNames": ["desktop-pro", "desktop-basic", "desktop-admin"],
+      "journeyTitles": [
+        "authenticated user can explore the filtered dataset map",
+        "pro validates the production-shaped dataset map before release",
+        "workspace roles can inspect the production-shaped map without permission leakage",
+        "mobile pro can use the production-shaped map in dark appearance",
+        "basic user can filter and download without saving"
+      ],
+      "projectNames": ["desktop-pro", "desktop-basic", "desktop-admin", "mobile-pro"],
       "bootstrapScope": "datasets"
     },
     {
