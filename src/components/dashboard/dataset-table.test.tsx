@@ -69,10 +69,12 @@ function DatasetTableHarness({
   rows,
   datasetError = null,
   error = null,
+  onRowClick,
 }: {
   rows: DatasetRow[];
   datasetError?: string | null;
   error?: string | null;
+  onRowClick?: (row: DatasetRow) => void;
 }) {
   const columns: ColumnDef<DatasetRow>[] = [
     {
@@ -100,6 +102,7 @@ function DatasetTableHarness({
       isLoading={false}
       datasetError={datasetError}
       error={error}
+      onRowClick={onRowClick}
     />
   );
 }
@@ -157,5 +160,19 @@ describe("DatasetTable", () => {
       headerSticky: "sticky top-0 z-10 bg-muted/90 backdrop-blur-xs",
       bodyRow: "[&>td]:h-10 [&>td]:py-0",
     });
+  });
+
+  it("passes the record-profile row action into the shared data grid", () => {
+    const onRowClick = vi.fn();
+    const rows = createRows();
+
+    render(<DatasetTableHarness rows={rows} onRowClick={onRowClick} />);
+
+    const dataGridProps = dataGridSpy.mock.lastCall?.[0] as {
+      onRowClick?: (row: DatasetRow) => void;
+    };
+    dataGridProps.onRowClick?.(rows[0]!);
+
+    expect(onRowClick).toHaveBeenCalledWith(rows[0]);
   });
 });

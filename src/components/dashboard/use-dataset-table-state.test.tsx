@@ -102,6 +102,7 @@ function DatasetTableStateProbe({
   hotspotsFilter,
   uupgFilter,
   watchlistFilter,
+  temporaryRowIds,
 }: {
   dataset: ReturnType<typeof createDataset>;
   regionFilter?: DatasetRegionFilterState;
@@ -109,6 +110,7 @@ function DatasetTableStateProbe({
   hotspotsFilter?: DatasetHotspotsFilterState;
   uupgFilter?: DatasetUupgFilterState;
   watchlistFilter?: DatasetWatchlistFilterState;
+  temporaryRowIds?: readonly string[] | null;
 }) {
   const filterSections = useMemo(
     () => ({
@@ -123,6 +125,7 @@ function DatasetTableStateProbe({
   const state = useDatasetTableState({
     dataset,
     filterSections,
+    temporaryRowIds,
   });
 
   return (
@@ -279,6 +282,58 @@ describe("useDatasetTableState", () => {
     await waitFor(() => {
       expect(screen.getByTestId("record-count").textContent).toBe("1");
     });
+  });
+
+  it("scopes table rows temporarily while preserving canonical filtered rows", async () => {
+    fetchMock.mockImplementation(async (input) => {
+      if (input === "/api/datasets/dataset-1/rows?all=true") {
+        return buildJsonResponse({
+          sourceDatasetId: "dataset-1",
+          rows: [
+            {
+              id: "row-1",
+              rowIndex: 0,
+              data: { people_group_id: "PG-1", country: "Egypt" },
+            },
+            {
+              id: "row-2",
+              rowIndex: 1,
+              data: { people_group_id: "PG-2", country: "India" },
+            },
+          ],
+          page: 1,
+          pageSize: 1000,
+          totalRows: 2,
+          pageCount: 1,
+        });
+      }
+
+      throw new Error(`Unexpected fetch: ${String(input)}`);
+    });
+
+    const { rerender } = render(
+      <DatasetTableStateProbe
+        dataset={createDataset()}
+        temporaryRowIds={["row-2"]}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("record-count").textContent).toBe("1");
+    });
+    expect(screen.getByTestId("sorted-row-ids").textContent).toBe("row-2");
+    expect(screen.getByTestId("canonical-filtered-row-ids").textContent).toBe(
+      "row-1,row-2",
+    );
+
+    rerender(
+      <DatasetTableStateProbe dataset={createDataset()} temporaryRowIds={null} />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("record-count").textContent).toBe("2");
+    });
+    expect(screen.getByTestId("sorted-row-ids").textContent).toBe("row-1,row-2");
   });
 
   it("retries after a cancelled row request without tracking a failure event", async () => {

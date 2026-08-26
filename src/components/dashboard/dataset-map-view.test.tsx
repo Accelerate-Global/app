@@ -163,8 +163,8 @@ describe("DatasetMapView", () => {
 
     expect(screen.getByText("Focused match: Rana Tharu")).toBeTruthy();
     expect(
-      screen.getByRole("list", { name: "People groups in selected country" }),
-    ).toHaveProperty("textContent", "Rana Tharu");
+      screen.getByRole("list", { name: "Records in India" }).textContent,
+    ).toContain("Rana Tharu");
 
     fireEvent.change(search, { target: { value: "India" } });
     fireEvent.click(screen.getByRole("button", { name: /India.*Country/ }));
@@ -229,5 +229,82 @@ describe("DatasetMapView", () => {
       "The map could not be displayed.",
     );
     expect(screen.getByText(/Renderer failed/)).toBeTruthy();
+  });
+
+  it("selects country records and hands all or selected row ids to the table", async () => {
+    const onViewRowsInTable = vi.fn();
+    const onOpenRecord = vi.fn();
+
+    render(
+      <DatasetMapView
+        rows={[
+          createRow(
+            "india-1",
+            { Geo_Country_Name: "India", PG_Name_Main: "Rana Tharu" },
+            3,
+          ),
+          createRow(
+            "india-2",
+            { Geo_Country_Name: "India", PG_Name_Main: "Sahisia" },
+            8,
+          ),
+        ]}
+        isLoading={false}
+        error={null}
+        onViewRowsInTable={onViewRowsInTable}
+        onOpenRecord={onOpenRecord}
+      />,
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: "Select India" }));
+
+    const selectedAction = screen.getByRole("button", {
+      name: "View selected (0) in Table",
+    });
+    expect(selectedAction).toHaveProperty("disabled", true);
+
+    fireEvent.click(screen.getByRole("checkbox", { name: "Select Rana Tharu" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "View selected (1) in Table" }),
+    );
+    expect(onViewRowsInTable).toHaveBeenLastCalledWith({
+      label: "India · 1 selected",
+      rowIds: ["india-1"],
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "View all in Table" }));
+    expect(onViewRowsInTable).toHaveBeenLastCalledWith({
+      label: "India",
+      rowIds: ["india-1", "india-2"],
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Rana Tharu/ }));
+    expect(onOpenRecord).toHaveBeenCalledWith("india-1");
+  });
+
+  it("bounds long country record lists and progressively reveals more", async () => {
+    render(
+      <DatasetMapView
+        rows={Array.from({ length: 25 }, (_, index) =>
+          createRow(
+            `india-${index + 1}`,
+            {
+              Geo_Country_Name: "India",
+              PG_Name_Main: `People ${String(index + 1).padStart(2, "0")}`,
+            },
+            index,
+          ),
+        )}
+        isLoading={false}
+        error={null}
+      />,
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: "Select India" }));
+    const recordList = screen.getByRole("list", { name: "Records in India" });
+    expect(recordList.querySelectorAll("li")).toHaveLength(24);
+
+    fireEvent.click(screen.getByRole("button", { name: "Show more records" }));
+    expect(recordList.querySelectorAll("li")).toHaveLength(25);
   });
 });

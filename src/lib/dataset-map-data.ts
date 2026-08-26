@@ -49,11 +49,18 @@ export type DatasetMapPeopleGroup = {
   name: string;
 };
 
+export type DatasetMapRecordSummary = {
+  rowId: string;
+  name: string;
+  sourceRowNumber: number;
+};
+
 export type DatasetMapCountryAggregate = {
   iso3: string;
   name: string;
   matchingRecordCount: number;
   peopleGroups: DatasetMapPeopleGroup[];
+  records: DatasetMapRecordSummary[];
   sourceCountryNames: string[];
 };
 
@@ -94,6 +101,7 @@ type MutableCountryAggregate = {
   name: string;
   matchingRecordCount: number;
   peopleGroups: DatasetMapPeopleGroup[];
+  records: DatasetMapRecordSummary[];
   sourceCountryNames: Set<string>;
 };
 
@@ -296,10 +304,16 @@ export function aggregateDatasetMapRows(
       name,
       matchingRecordCount: 0,
       peopleGroups: [],
+      records: [],
       sourceCountryNames: new Set<string>(),
     };
 
     current.matchingRecordCount += 1;
+    current.records.push({
+      rowId: row.id,
+      name: facets.peopleGroupName || `Record ${row.rowIndex + 1}`,
+      sourceRowNumber: row.rowIndex + 1,
+    });
     if (facets.countryName) {
       current.sourceCountryNames.add(facets.countryName);
     }
@@ -321,6 +335,9 @@ export function aggregateDatasetMapRows(
           matchingRecordCount: country.matchingRecordCount,
           peopleGroups: [...country.peopleGroups].sort((left, right) =>
             left.name.localeCompare(right.name),
+          ),
+          records: [...country.records].sort((left, right) =>
+            left.name.localeCompare(right.name, undefined, { numeric: true }),
           ),
           sourceCountryNames: [...country.sourceCountryNames].sort((left, right) =>
             left.localeCompare(right),

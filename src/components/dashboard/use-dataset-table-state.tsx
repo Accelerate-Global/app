@@ -52,6 +52,7 @@ export function useDatasetTableState(input: {
   sourceRowCount?: number | null;
   initialSorting?: SavedDatasetSort[] | null;
   filterSections?: DatasetFilterSections;
+  temporaryRowIds?: readonly string[] | null;
   fieldDefinitionPresentationByColumnKey?: Record<
     string,
     FieldDefinitionPresentation
@@ -84,6 +85,18 @@ export function useDatasetTableState(input: {
     [filterSections, rows],
   );
   const filteredRows = filterEvaluation.rows;
+  const temporaryRowIdSet = useMemo(
+    () =>
+      input.temporaryRowIds ? new Set(input.temporaryRowIds) : null,
+    [input.temporaryRowIds],
+  );
+  const tableRows = useMemo(
+    () =>
+      temporaryRowIdSet
+        ? filteredRows.filter((row) => temporaryRowIdSet.has(row.id))
+        : filteredRows,
+    [filteredRows, temporaryRowIdSet],
+  );
   const availableCountryNames = filterEvaluation.availableCountryNames;
   const datasetCountryNames = useMemo(
     () =>
@@ -152,14 +165,14 @@ export function useDatasetTableState(input: {
         }
 
         nextSortModes[sortEntry.id] = getDatasetColumnSortMode(
-          filteredRows,
+          tableRows,
           sortEntry.id,
         );
       }
 
       return nextSortModes;
     },
-    [filteredRows, visibleColumnKeys],
+    [tableRows, visibleColumnKeys],
   );
 
   if (sorting.length > 0 && Object.keys(sortModesByColumnIdRef.current).length === 0) {
@@ -258,7 +271,7 @@ export function useDatasetTableState(input: {
 
   // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
-    data: filteredRows,
+    data: tableRows,
     columns,
     getRowId: (row) => row.id,
     state: {
@@ -317,11 +330,13 @@ export function useDatasetTableState(input: {
     table,
     sorting,
     filteredRows,
+    tableRows,
     visibleColumns,
     datasetCountryNames,
     availableCountryNames,
     getSortedRows,
-    recordCount: filteredRows.length,
+    recordCount: tableRows.length,
+    canonicalRecordCount: filteredRows.length,
     isLoading,
     error,
   };

@@ -31,6 +31,7 @@ type DatasetTableProps = {
   isLoading: boolean;
   datasetError?: string | null;
   error?: string | null;
+  onRowClick?: (row: DatasetRow) => void;
 };
 
 export function DatasetTable({
@@ -39,6 +40,7 @@ export function DatasetTable({
   isLoading,
   datasetError,
   error,
+  onRowClick,
 }: DatasetTableProps) {
   useDatasetPerfRenderTrace("DatasetTable");
   const loadMessage = "Loading people groups...";
@@ -64,6 +66,7 @@ export function DatasetTable({
         recordCount={recordCount}
         isLoading={isLoading}
         loadingMessage={loadMessage}
+        onRowClick={onRowClick}
         emptyMessage={
           isLoading
             ? loadMessage

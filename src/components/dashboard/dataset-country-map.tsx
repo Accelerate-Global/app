@@ -39,17 +39,17 @@ function getCountryFillColor(count: number, maximumCount: number) {
   return "#99f6e4";
 }
 
-function getCountryFeatureStyle(input: {
+export function getCountryFeatureStyle(input: {
   count: number;
   maximumCount: number;
   selected: boolean;
 }) {
   return {
-    color: input.selected ? "#0f172a" : "#ffffff",
+    color: input.selected ? "#0f766e" : "#f8fafc",
     fillColor: getCountryFillColor(input.count, input.maximumCount),
     fillOpacity: input.count > 0 ? 0.86 : 0.42,
     opacity: 1,
-    weight: input.selected ? 2.5 : 0.8,
+    weight: input.selected ? 1.4 : 0.65,
   };
 }
 
@@ -148,7 +148,7 @@ export function DatasetCountryMap({
 
         return leaflet.circleMarker(latlng, {
           ...getCountryFeatureStyle({ count, maximumCount, selected }),
-          radius: selected ? 7 : count > 0 ? 5 : 3.5,
+          radius: selected ? 6.5 : count > 0 ? 5 : 3.5,
         });
       },
       onEachFeature: (feature, layer) => {
@@ -159,7 +159,22 @@ export function DatasetCountryMap({
           return;
         }
 
-        layer.on("click", () => onSelectCountryRef.current(iso3));
+        const handleSelect = () => {
+          const count = countryByIso3.get(iso3)?.matchingRecordCount ?? 0;
+          if (layer instanceof leaflet.Path) {
+            layer.setStyle(
+              getCountryFeatureStyle({
+                count,
+                maximumCount,
+                selected: true,
+              }),
+            );
+            layer.bringToFront();
+          }
+          onSelectCountryRef.current(iso3);
+        };
+
+        layer.on("click", handleSelect);
         layer.once("add", () => {
           if (!(layer instanceof leaflet.Path)) {
             return;
@@ -169,6 +184,21 @@ export function DatasetCountryMap({
           element?.setAttribute("role", "button");
           element?.setAttribute("tabindex", "0");
           element?.setAttribute("aria-label", `Select ${countryName}`);
+          element?.addEventListener("click", handleSelect);
+          if (element instanceof HTMLElement || element instanceof SVGElement) {
+            element.style.outline = "none";
+          }
+          element?.addEventListener("focus", () => {
+            if (element instanceof HTMLElement || element instanceof SVGElement) {
+              element.style.filter = "drop-shadow(0 0 2px rgb(15 118 110 / 0.7))";
+            }
+            layer.bringToFront();
+          });
+          element?.addEventListener("blur", () => {
+            if (element instanceof HTMLElement || element instanceof SVGElement) {
+              element.style.filter = "";
+            }
+          });
           element?.addEventListener("keydown", (event) => {
             if (
               event instanceof KeyboardEvent &&
@@ -202,6 +232,7 @@ export function DatasetCountryMap({
         }
 
         if (layer instanceof leaflet.Polygon) {
+          layer.bringToFront();
           map.fitBounds(layer.getBounds(), {
             maxZoom: 4,
             padding: [32, 32],
@@ -210,6 +241,7 @@ export function DatasetCountryMap({
         }
 
         if (layer instanceof leaflet.CircleMarker) {
+          layer.bringToFront();
           map.setView(layer.getLatLng(), 4);
           break;
         }
@@ -226,7 +258,7 @@ export function DatasetCountryMap({
   return (
     <div
       ref={containerRef}
-      className="h-[28rem] w-full overflow-hidden rounded-xl bg-slate-100 sm:h-[34rem]"
+      className="h-[30rem] w-full overflow-hidden rounded-xl bg-slate-100 sm:h-[36rem] lg:h-[40rem]"
       aria-label="Matching records by country"
     />
   );
