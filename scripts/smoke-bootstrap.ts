@@ -23,10 +23,18 @@ import {
 } from "../src/lib/canonical-filter-regions";
 import { getPostgresConnectionConfig } from "../src/lib/postgres-connection";
 import { runBootstrapReferenceResources } from "./bootstrap-reference-resources";
+import {
+  MAP_PREPRODUCTION_DEFAULT_FILTERED_ROW_COUNT,
+  MAP_PREPRODUCTION_FOCUSED_PEOPLE_NAME,
+  MAP_PREPRODUCTION_ROW_COUNT,
+  buildMapPreproductionRows,
+} from "./lib/dataset-map-preproduction-fixture";
 
 const PRIMARY_DATASET_ID = "11111111-1111-4111-8111-111111111111";
 const SECONDARY_DATASET_ID = "22222222-2222-4222-8222-222222222222";
 const DERIVED_DATASET_ID = "99999999-9999-4999-8999-999999999999";
+const MAP_PREPRODUCTION_DATASET_ID =
+  "12121212-1212-4212-8212-121212121212";
 const JOSHUA_PROJECT_SOURCE_TYPE_ID = "55555555-5555-4555-8555-555555555555";
 const ACCELERATE_SOURCE_TYPE_ID = "66666666-6666-4666-8666-666666666666";
 const CODE_MANAGED_SOURCE_CONNECTION_ID =
@@ -252,7 +260,8 @@ async function resetSmokeData(sql: postgres.Sql) {
     where dataset_id in (
       ${PRIMARY_DATASET_ID}::uuid,
       ${SECONDARY_DATASET_ID}::uuid,
-      ${DERIVED_DATASET_ID}::uuid
+      ${DERIVED_DATASET_ID}::uuid,
+      ${MAP_PREPRODUCTION_DATASET_ID}::uuid
     )
   `;
   await sql`
@@ -260,7 +269,8 @@ async function resetSmokeData(sql: postgres.Sql) {
     where storage_path in (
       'datasets/csv/smoke-primary-dataset.csv',
       'datasets/csv/smoke-secondary-dataset.csv',
-      'datasets/csv/smoke-derived-dataset.csv'
+      'datasets/csv/smoke-derived-dataset.csv',
+      'datasets/csv/smoke-map-preproduction-dataset.csv'
     )
   `;
   await sql`
@@ -268,7 +278,8 @@ async function resetSmokeData(sql: postgres.Sql) {
     where dataset_id in (
       ${PRIMARY_DATASET_ID}::uuid,
       ${SECONDARY_DATASET_ID}::uuid,
-      ${DERIVED_DATASET_ID}::uuid
+      ${DERIVED_DATASET_ID}::uuid,
+      ${MAP_PREPRODUCTION_DATASET_ID}::uuid
     )
   `;
   await sql`delete from public.filter_region_countries`;
@@ -430,6 +441,16 @@ async function insertDatasets(input: {
       engage_global_engagement_anywhere: "false",
     },
   ];
+  const mapPreproductionColumns: SmokeColumn[] = [
+    ...primaryColumns.slice(0, 3),
+    { key: "geo_iso3", label: "Geo_ISO3", sourceIndex: 3 },
+    ...primaryColumns.slice(3).map((column) => ({
+      ...column,
+      sourceIndex: column.sourceIndex + 1,
+    })),
+    { key: "pg_peid", label: "PG_PEID", sourceIndex: 10 },
+  ];
+  const mapPreproductionRows = buildMapPreproductionRows();
   const secondaryColumns: SmokeColumn[] = [
     { key: "pg_peopleid1", label: "PG_PeopleID1", sourceIndex: 0 },
     { key: "people_name", label: "People Name", sourceIndex: 1 },
@@ -457,6 +478,8 @@ async function insertDatasets(input: {
   const primaryBlobPath = "datasets/csv/smoke-primary-dataset.csv";
   const derivedBlobPath = "datasets/csv/smoke-derived-dataset.csv";
   const secondaryBlobPath = "datasets/csv/smoke-secondary-dataset.csv";
+  const mapPreproductionBlobPath =
+    "datasets/csv/smoke-map-preproduction-dataset.csv";
 
   await input.sql`
     insert into public.datasets ${input.sql(
@@ -586,6 +609,42 @@ async function insertDatasets(input: {
           ],
           error: null,
         },
+        {
+          id: MAP_PREPRODUCTION_DATASET_ID,
+          backing_dataset_id: null,
+          owner_id: input.ownerId,
+          file_name: "Map Pre-production Dataset",
+          sort_order: 3,
+          blob_url: buildBlobUrl(
+            input.supabaseUrl,
+            input.bucket,
+            mapPreproductionBlobPath,
+          ),
+          blob_path: mapPreproductionBlobPath,
+          current_version_action: "upload",
+          current_version_actor_owner_id: input.ownerId,
+          current_version_actor_email: input.actorEmail,
+          current_version_created_at: new Date("2026-08-25T23:00:00.000Z"),
+          is_primary: false,
+          status: "ready",
+          row_count: mapPreproductionRows.length,
+          size_bytes: mapPreproductionRows.length * 256,
+          columns: mapPreproductionColumns,
+          hidden_column_keys: ["christianity_frontier_group"],
+          tags: [
+            {
+              id: "dataset-classification-pgac",
+              label: "PGAC",
+              color: "#fcab2a",
+            },
+            {
+              id: "tag-map-preproduction",
+              label: "Pre-production",
+              color: "#0f766e",
+            },
+          ],
+          error: null,
+        },
       ],
       "id",
       "backing_dataset_id",
@@ -654,6 +713,22 @@ async function insertDatasets(input: {
       "data",
     )}
   `;
+  await input.sql`
+    insert into public.dataset_rows ${input.sql(
+      mapPreproductionRows.map((row, index) => ({
+        dataset_id: MAP_PREPRODUCTION_DATASET_ID,
+        row_index: index,
+        data: row,
+      })),
+      "dataset_id",
+      "row_index",
+      "data",
+    )}
+  `;
+
+  if (mapPreproductionRows.length !== MAP_PREPRODUCTION_ROW_COUNT) {
+    throw new Error("Map pre-production fixture row count drifted during bootstrap.");
+  }
 }
 
 async function insertFieldDefinitions(sql: postgres.Sql) {
@@ -1054,6 +1129,7 @@ async function main() {
         primaryDatasetId: PRIMARY_DATASET_ID,
         secondaryDatasetId: SECONDARY_DATASET_ID,
         derivedDatasetId: DERIVED_DATASET_ID,
+        mapPreproductionDatasetId: MAP_PREPRODUCTION_DATASET_ID,
         editableFieldDefinitionId: FIELD_DEFINITION_IDS.pgPeopleId1,
         editableFieldSourceTypeId: JOSHUA_PROJECT_SOURCE_TYPE_ID,
         codeManagedSourceConnectionId: CODE_MANAGED_SOURCE_CONNECTION_ID,
@@ -1092,6 +1168,15 @@ async function main() {
           id: SECONDARY_DATASET_ID,
           fileName: "Smoke Secondary Dataset",
           classification: "PGIC",
+        },
+        mapPreproduction: {
+          id: MAP_PREPRODUCTION_DATASET_ID,
+          fileName: "Map Pre-production Dataset",
+          classification: "PGAC",
+          rowCount: MAP_PREPRODUCTION_ROW_COUNT,
+          defaultFilteredRowCount:
+            MAP_PREPRODUCTION_DEFAULT_FILTERED_ROW_COUNT,
+          focusedPeopleName: MAP_PREPRODUCTION_FOCUSED_PEOPLE_NAME,
         },
       },
       fieldDefinitions: {

@@ -162,6 +162,7 @@ describe("run-ui-smoke", () => {
       "desktop-pro",
       "desktop-basic",
       "desktop-admin",
+      "mobile-pro",
     ]);
   });
 

@@ -11,6 +11,8 @@ import type {
   DatasetCountryFilterState,
   DatasetHotspotsFilterState,
   DatasetRegionFilterState,
+  DatasetUupgFilterState,
+  DatasetWatchlistFilterState,
 } from "@/lib/dataset-filtering";
 import { DashboardClient } from "./dashboard-client";
 import { useDatasetTableState } from "./use-dataset-table-state";
@@ -98,19 +100,25 @@ function DatasetTableStateProbe({
   regionFilter,
   countryFilter,
   hotspotsFilter,
+  uupgFilter,
+  watchlistFilter,
 }: {
   dataset: ReturnType<typeof createDataset>;
   regionFilter?: DatasetRegionFilterState;
   countryFilter?: DatasetCountryFilterState;
   hotspotsFilter?: DatasetHotspotsFilterState;
+  uupgFilter?: DatasetUupgFilterState;
+  watchlistFilter?: DatasetWatchlistFilterState;
 }) {
   const filterSections = useMemo(
     () => ({
       region: regionFilter,
       country: countryFilter,
       hotspots: hotspotsFilter,
+      uupg: uupgFilter,
+      watchlist: watchlistFilter,
     }),
-    [countryFilter, hotspotsFilter, regionFilter],
+    [countryFilter, hotspotsFilter, regionFilter, uupgFilter, watchlistFilter],
   );
   const state = useDatasetTableState({
     dataset,
@@ -125,6 +133,9 @@ function DatasetTableStateProbe({
         {state.getSortedRows()
           .map((row) => row.id)
           .join(",")}
+      </div>
+      <div data-testid="canonical-filtered-row-ids">
+        {state.filteredRows.map((row) => row.id).join(",")}
       </div>
       <div data-testid="available-countries">
         {state.availableCountryNames.join(",")}
@@ -765,6 +776,130 @@ describe("useDatasetTableState", () => {
 
     expect(screen.getByTestId("sorted-row-ids").textContent).toBe("row-1,row-2");
     expect(screen.getByTestId("available-countries").textContent).toBe("India");
+  });
+
+  it("exposes the same canonical rows after combined region, watchlist, hotspots, UUPG, and country filtering", async () => {
+    fetchMock.mockImplementation(async (input) => {
+      if (input === "/api/datasets/dataset-1/rows?all=true") {
+        return buildJsonResponse({
+          sourceDatasetId: "dataset-1",
+          rows: [
+            {
+              id: "row-india-match",
+              rowIndex: 0,
+              data: {
+                geo_country_name: "India",
+                christianity_gsec: "1",
+                engage_global_engagement_anywhere: "FALSE",
+                pg_peid: "PG-1",
+              },
+            },
+            {
+              id: "row-india-watchlist-miss",
+              rowIndex: 1,
+              data: {
+                geo_country_name: "India",
+                christianity_gsec: "3",
+                engage_global_engagement_anywhere: "FALSE",
+                pg_peid: "PG-2",
+              },
+            },
+            {
+              id: "row-nepal-tie",
+              rowIndex: 2,
+              data: {
+                geo_country_name: "Nepal",
+                christianity_gsec: "1",
+                engage_global_engagement_anywhere: "FALSE",
+                pg_peid: "PG-3",
+              },
+            },
+            {
+              id: "row-nepal-uupg-miss",
+              rowIndex: 3,
+              data: {
+                geo_country_name: "Nepal",
+                christianity_gsec: "1",
+                engage_global_engagement_anywhere: "TRUE",
+                pg_peid: "PG-4",
+              },
+            },
+          ],
+          page: 1,
+          pageSize: 1000,
+          totalRows: 4,
+          pageCount: 1,
+        });
+      }
+
+      throw new Error(`Unexpected fetch: ${String(input)}`);
+    });
+
+    render(
+      <DatasetTableStateProbe
+        dataset={createDataset({
+          columns: [
+            { key: "geo_country_name", label: "Geo_Country_Name", sourceIndex: 0 },
+            { key: "christianity_gsec", label: "Christianity_GSEC", sourceIndex: 1 },
+            {
+              key: "engage_global_engagement_anywhere",
+              label: "Engage_Global_Engagement_Anywhere",
+              sourceIndex: 2,
+            },
+            { key: "pg_peid", label: "PG_PEID", sourceIndex: 3 },
+          ],
+          rowCount: 4,
+        })}
+        regionFilter={{
+          enabled: true,
+          isSupported: true,
+          hasConfiguredRegions: true,
+          enabledCountryNames: ["India", "Nepal"],
+        }}
+        watchlistFilter={{
+          enabled: true,
+          isSupported: true,
+          thresholdEnabled: true,
+          threshold: 2,
+          engagementPhaseEnabled: false,
+          engagementPhaseThreshold: 6,
+          jpOnlyEvangelicalCriteriaEnabled: false,
+          evangelicalPopulationBelieversRuleEnabled: false,
+          evangelicalBelieversEnabled: false,
+          evangelicalPercentEnabled: false,
+        }}
+        uupgFilter={{
+          enabled: true,
+          isSupported: true,
+          globalEngagementAnywhereEnabled: true,
+          frontierGroupEnabled: false,
+          frontierGroupSupported: true,
+        }}
+        hotspotsFilter={{
+          enabled: true,
+          isSupported: true,
+          metric: "unique_uupgs",
+          countryCount: 1,
+        }}
+        countryFilter={{
+          enabled: true,
+          isSupported: true,
+          selectedCountryNames: ["India"],
+          includeAlternateCountries: false,
+        }}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("record-count").textContent).toBe("1");
+    });
+
+    expect(screen.getByTestId("canonical-filtered-row-ids").textContent).toBe(
+      "row-india-match",
+    );
+    expect(screen.getByTestId("sorted-row-ids").textContent).toBe(
+      "row-india-match",
+    );
   });
 
   it("keeps the record count stable when sorting changes", async () => {

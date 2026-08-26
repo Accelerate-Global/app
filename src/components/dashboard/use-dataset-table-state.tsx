@@ -316,6 +316,7 @@ export function useDatasetTableState(input: {
   return {
     table,
     sorting,
+    filteredRows,
     visibleColumns,
     datasetCountryNames,
     availableCountryNames,

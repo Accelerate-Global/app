@@ -77,6 +77,7 @@ export type UiSmokeBootstrap = {
     primaryDatasetId: string;
     secondaryDatasetId: string;
     derivedDatasetId: string;
+    mapPreproductionDatasetId: string;
     editableFieldDefinitionId: string;
     editableFieldSourceTypeId: string;
     codeManagedSourceConnectionId: string;
@@ -145,6 +146,14 @@ export type UiSmokeBootstrap = {
       id: string;
       fileName: string;
       classification: "PGAC" | "PGIC";
+    };
+    mapPreproduction: {
+      id: string;
+      fileName: string;
+      classification: "PGAC" | "PGIC";
+      rowCount: number;
+      defaultFilteredRowCount: number;
+      focusedPeopleName: string;
     };
   };
   fieldDefinitions: {

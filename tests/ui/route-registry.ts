@@ -91,7 +91,13 @@ export const smokeRouteSpecs: SmokeRouteSpec[] = [
     pageFile: "src/app/dashboard/datasets/[datasetId]/page.tsx",
     path: "/dashboard/datasets/{{primaryDatasetId}}",
     pageId: "dataset-detail",
-    journeys: ["authenticated user can save a filtered table"],
+    journeys: [
+      "authenticated user can save a filtered table",
+      "authenticated user can explore the filtered dataset map",
+      "pro validates the production-shaped dataset map before release",
+      "workspace roles can inspect the production-shaped map without permission leakage",
+      "mobile pro can use the production-shaped map in dark appearance",
+    ],
   },
   {
     id: "dataset-detail-basic",
@@ -99,7 +105,10 @@ export const smokeRouteSpecs: SmokeRouteSpec[] = [
     pageFile: "src/app/dashboard/datasets/[datasetId]/page.tsx",
     path: "/dashboard/datasets/{{primaryDatasetId}}",
     pageId: "dataset-detail",
-    journeys: ["basic user can filter and download without saving"],
+    journeys: [
+      "basic user can filter and download without saving",
+      "workspace roles can inspect the production-shaped map without permission leakage",
+    ],
   },
   {
     id: "dataset-detail-admin",
@@ -107,7 +116,10 @@ export const smokeRouteSpecs: SmokeRouteSpec[] = [
     pageFile: "src/app/dashboard/datasets/[datasetId]/page.tsx",
     path: "/dashboard/datasets/{{primaryDatasetId}}",
     pageId: "dataset-detail",
-    journeys: ["admin can review partner export mapping"],
+    journeys: [
+      "admin can review partner export mapping",
+      "workspace roles can inspect the production-shaped map without permission leakage",
+    ],
   },
   {
     id: "dataset-edit-pro-redirect",
