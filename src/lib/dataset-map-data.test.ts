@@ -171,6 +171,26 @@ describe("aggregateDatasetMapRows", () => {
     expect(rows).toEqual(originalRows);
   });
 
+  it("retains one selectable record summary for every mapped row", () => {
+    const aggregation = aggregateDatasetMapRows(
+      [
+        createRow(
+          "named",
+          { Geo_Country_Name: "India", PG_Name_Main: "Rana Tharu" },
+          4,
+        ),
+        createRow("unnamed", { Geo_Country_Name: "India" }, 8),
+      ],
+      standardBoundaries,
+    );
+
+    expect(aggregation.countryByIso3.get("IND")?.records).toEqual([
+      { rowId: "named", name: "Rana Tharu", sourceRowNumber: 5 },
+      { rowId: "unnamed", name: "Record 9", sourceRowNumber: 9 },
+    ]);
+    expect(aggregation.countryByIso3.get("IND")?.matchingRecordCount).toBe(2);
+  });
+
   it("is provider-free pure logic and names the measure matching records", () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);

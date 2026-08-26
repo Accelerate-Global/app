@@ -20,6 +20,7 @@ type DatasetTableStateInput = {
 const actionBarSpy = vi.fn();
 const assignDerivedViewSheetSpy = vi.fn();
 const datasetMapSpy = vi.fn();
+const datasetRecordProfileSheetSpy = vi.fn();
 const datasetTableSpy = vi.fn();
 const useDatasetTableStateMock = vi.fn();
 const viewSwitchGridSpy = vi.fn();
@@ -41,6 +42,13 @@ vi.mock("@/components/dashboard/dataset-map-view", () => ({
   DatasetMapView: (props: unknown) => {
     datasetMapSpy(props);
     return <div data-testid="dataset-map" />;
+  },
+}));
+
+vi.mock("@/components/dashboard/dataset-record-profile-sheet", () => ({
+  DatasetRecordProfileSheet: (props: unknown) => {
+    datasetRecordProfileSheetSpy(props);
+    return <div data-testid="dataset-record-profile-sheet" />;
   },
 }));
 
@@ -207,6 +215,7 @@ describe("DatasetDetailClient", () => {
     actionBarSpy.mockReset();
     assignDerivedViewSheetSpy.mockReset();
     datasetMapSpy.mockReset();
+    datasetRecordProfileSheetSpy.mockReset();
     datasetTableSpy.mockReset();
     useDatasetTableStateMock.mockReset();
     viewSwitchGridSpy.mockReset();
@@ -336,6 +345,45 @@ describe("DatasetDetailClient", () => {
     );
     expect(actionBarProps.filters).not.toHaveProperty("viewMode");
     expect(actionBarProps.getSortedRows()).toEqual(filteredRows);
+
+    const mapProps = datasetMapSpy.mock.lastCall?.[0] as {
+      onOpenRecord: (rowId: string) => void;
+      onViewRowsInTable: (scope: { label: string; rowIds: string[] }) => void;
+    };
+    act(() => mapProps.onOpenRecord("row-india"));
+    expect(datasetRecordProfileSheetSpy.mock.lastCall?.[0]).toEqual(
+      expect.objectContaining({ open: true, row: filteredRows[0] }),
+    );
+
+    act(() =>
+      mapProps.onViewRowsInTable({ label: "India", rowIds: ["row-india"] }),
+    );
+    expect(screen.getByTestId("dataset-table")).toBeTruthy();
+    expect(screen.getByLabelText("Temporary map table scope").textContent).toContain(
+      "Map selection: India",
+    );
+    expect(useDatasetTableStateMock.mock.lastCall?.[0]).toEqual(
+      expect.objectContaining({ temporaryRowIds: ["row-india"] }),
+    );
+    expect(actionBarSpy.mock.lastCall?.[0]).toEqual(
+      expect.objectContaining({
+        canSaveFilteredTable: false,
+        onOpenAssignDerivedView: undefined,
+      }),
+    );
+
+    const scopedTableProps = datasetTableSpy.mock.lastCall?.[0] as {
+      onRowClick: (row: (typeof filteredRows)[number]) => void;
+    };
+    act(() => scopedTableProps.onRowClick(filteredRows[0]!));
+    expect(datasetRecordProfileSheetSpy.mock.lastCall?.[0]).toEqual(
+      expect.objectContaining({ open: true, row: filteredRows[0] }),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Clear map selection" }));
+    expect(useDatasetTableStateMock.mock.lastCall?.[0]).toEqual(
+      expect.objectContaining({ temporaryRowIds: null }),
+    );
 
     fireEvent.click(screen.getByRole("button", { name: "Table" }));
     expect(screen.getByTestId("dataset-table")).toBeTruthy();

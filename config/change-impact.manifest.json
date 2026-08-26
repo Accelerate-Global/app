@@ -290,6 +290,7 @@
         "src/components/dashboard/dataset-country-map.tsx",
         "src/components/dashboard/dataset-detail-client.tsx",
         "src/components/dashboard/dataset-map-view.tsx",
+        "src/components/dashboard/dataset-record-profile-sheet.tsx",
         "src/components/dashboard/dataset-open-preset-sheet.tsx",
         "src/components/dashboard/dataset-table-action-bar.tsx",
         "src/components/dashboard/dataset-table.tsx",

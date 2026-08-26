@@ -1670,6 +1670,18 @@ test(
         ).toBeVisible({ timeout: 30_000 });
         expect(Date.now() - startedAt).toBeLessThan(30_000);
 
+        const mapWidthRatio = await page.evaluate(() => {
+          const card = document.querySelector<HTMLElement>(
+            '[data-smoke-surface="dataset-map"]',
+          );
+          const map = document.querySelector<HTMLElement>(
+            '[data-smoke-surface="dataset-map"] .leaflet-container',
+          );
+          if (!card || !map) return 0;
+          return map.getBoundingClientRect().width / card.getBoundingClientRect().width;
+        });
+        expect(mapWidthRatio).toBeGreaterThan(0.9);
+
         const baseline = await expectDatasetMapParity(page);
         expect(baseline.filtered).toBe(
           bootstrap.datasets.mapPreproduction.defaultFilteredRowCount,
@@ -1680,6 +1692,16 @@ test(
         expect(externalMapRequests).toEqual([]);
 
         const mapSearch = page.getByLabel("Search this result");
+        await mapSearch.fill("Afghanistan");
+        await page
+          .getByRole("button", { name: /Afghanistan.*Country/u })
+          .click();
+        const afghanistan = page.locator('[aria-label="Select Afghanistan"]');
+        await expect(afghanistan).toHaveAttribute("stroke", "#0f766e");
+        expect(
+          Number.parseFloat((await afghanistan.getAttribute("stroke-width")) ?? "99"),
+        ).toBeLessThanOrEqual(1.5);
+
         await mapSearch.fill("Tanzania");
         const countryResult = page.getByRole("button", {
           name: /Tanzania.*Country/u,
@@ -1707,6 +1729,45 @@ test(
             `Focused match: ${bootstrap.datasets.mapPreproduction.focusedPeopleName}`,
           ),
         ).toBeVisible();
+
+        await page
+          .getByRole("checkbox", {
+            name: `Select ${bootstrap.datasets.mapPreproduction.focusedPeopleName}`,
+          })
+          .click();
+        await page.locator("[data-smoke-map-view-selected-table]").click();
+        await expect(page.locator("[data-smoke-map-table-scope]")).toContainText(
+          "1 temporary records",
+        );
+        await expect(page.locator("[data-smoke-filtered-table-count]")).toHaveText(
+          "1",
+        );
+
+        await page
+          .getByText(bootstrap.datasets.mapPreproduction.focusedPeopleName, {
+            exact: true,
+          })
+          .last()
+          .click();
+        await expect(
+          page.locator(
+            '[data-smoke-surface="dataset-record-profile-sheet"][data-smoke-ready="dataset-record-profile-sheet"]',
+          ),
+        ).toBeVisible();
+        await expect(
+          page.getByRole("heading", {
+            name: bootstrap.datasets.mapPreproduction.focusedPeopleName,
+          }),
+        ).toBeVisible();
+        await page.keyboard.press("Escape");
+        await expect(
+          page.locator('[data-smoke-surface="dataset-record-profile-sheet"]'),
+        ).toBeHidden();
+
+        await page.locator("[data-smoke-clear-map-table-scope]").click();
+        await expect(page.locator("[data-smoke-filtered-table-count]")).toHaveText(
+          bootstrap.datasets.mapPreproduction.defaultFilteredRowCount.toLocaleString(),
+        );
 
         const assertFreshFilter = async (
           applyFilter: () => Promise<void>,

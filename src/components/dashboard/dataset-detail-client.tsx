@@ -3,6 +3,8 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 
 import { DatasetAssignDerivedViewSheet } from "@/components/dashboard/dataset-assign-derived-view-sheet";
+import type { DatasetMapTableScopeRequest } from "@/components/dashboard/dataset-map-view";
+import { DatasetRecordProfileSheet } from "@/components/dashboard/dataset-record-profile-sheet";
 import { DatasetTableActionBar } from "@/components/dashboard/dataset-table-action-bar";
 import { DatasetTable } from "@/components/dashboard/dataset-table";
 import { DatasetViewSwitchGrid } from "@/components/dashboard/dataset-view-switch-grid";
@@ -22,6 +24,7 @@ import type {
   FilterRegion,
   DatasetHotspotsMetric,
   SavedDatasetSort,
+  DatasetRowsResponse,
   WatchlistEngagementPhaseRule,
   WatchlistJpOnlyEvangelicalRule,
 } from "@/lib/api-types";
@@ -64,7 +67,12 @@ import {
   isWatchlistJpOnlyEvangelicalRuleDefault,
   normalizeWatchlistJpOnlyEvangelicalRule,
 } from "@/lib/watchlist-jp-only-evangelical";
-import { MapPinnedIcon, TablePropertiesIcon } from "lucide-react";
+import {
+  ListFilterIcon,
+  MapPinnedIcon,
+  TablePropertiesIcon,
+  XIcon,
+} from "lucide-react";
 
 type DatasetDetailClientProps = {
   dataset: DatasetSummary;
@@ -81,6 +89,7 @@ type DatasetDetailClientProps = {
 };
 
 type DatasetDetailViewMode = "table" | "map";
+type DatasetRow = DatasetRowsResponse["rows"][number];
 
 const LazyDatasetMapView = lazy(() =>
   import("@/components/dashboard/dataset-map-view").then((module) => ({
@@ -327,6 +336,9 @@ export function DatasetDetailClient({
   const [isAssignDerivedViewSheetOpen, setIsAssignDerivedViewSheetOpen] =
     useState(false);
   const [viewMode, setViewMode] = useState<DatasetDetailViewMode>("table");
+  const [temporaryTableScope, setTemporaryTableScope] =
+    useState<DatasetMapTableScopeRequest | null>(null);
+  const [profileRow, setProfileRow] = useState<DatasetRow | null>(null);
   const canSaveFilteredTable = workspaceRole !== "basic";
   const sourceDatasetId = dataset.backingDatasetId ?? dataset.id;
 
@@ -476,7 +488,24 @@ export function DatasetDetailClient({
     initialSorting: initialState.sorting,
     fieldDefinitionPresentationByColumnKey,
     filterSections,
+    temporaryRowIds: temporaryTableScope?.rowIds ?? null,
   });
+  const handleViewRowsInTable = useCallback(
+    (scope: DatasetMapTableScopeRequest) => {
+      setTemporaryTableScope(scope);
+      setViewMode("table");
+    },
+    [],
+  );
+  const handleOpenRecord = useCallback(
+    (rowId: string) => {
+      const row = datasetTable.filteredRows.find((candidate) => candidate.id === rowId);
+      if (row) {
+        setProfileRow(row);
+      }
+    },
+    [datasetTable.filteredRows],
+  );
   const effectiveCountrySelection = useMemo(
     () =>
       getEffectiveCountrySelection({
@@ -927,22 +956,57 @@ export function DatasetDetailClient({
             isLoading={datasetTable.isLoading}
             hasError={Boolean(dataset.error || datasetTable.error)}
             fieldDefinitionPresentationByColumnKey={fieldDefinitionPresentationByColumnKey}
-            canSaveFilteredTable={canSaveFilteredTable}
+            canSaveFilteredTable={canSaveFilteredTable && !temporaryTableScope}
             onOpenFilters={handleOpenFilters}
             onOpenAssignDerivedView={
-              assignableDatasets.length > 0
+              assignableDatasets.length > 0 && !temporaryTableScope
                 ? handleOpenAssignDerivedView
                 : undefined
             }
           />
           {viewMode === "table" ? (
-            <DatasetTable
-              table={datasetTable.table}
-              recordCount={datasetTable.recordCount}
-              isLoading={datasetTable.isLoading}
-              datasetError={dataset.error}
-              error={datasetTable.error}
-            />
+            <>
+              {temporaryTableScope ? (
+                <section
+                  className="flex flex-col gap-3 rounded-xl border border-teal-700/20 bg-teal-50/70 px-4 py-3 text-sm dark:bg-teal-950/30 sm:flex-row sm:items-center sm:justify-between"
+                  aria-label="Temporary map table scope"
+                  data-smoke-map-table-scope
+                >
+                  <div className="flex min-w-0 items-start gap-3">
+                    <ListFilterIcon
+                      aria-hidden="true"
+                      className="mt-0.5 size-4 shrink-0 text-teal-700 dark:text-teal-300"
+                    />
+                    <div className="min-w-0">
+                      <p className="font-medium text-foreground">
+                        Map selection: {temporaryTableScope.label}
+                      </p>
+                      <p className="text-muted-foreground">
+                        {datasetTable.recordCount.toLocaleString()} temporary records. Saved filters and source data are unchanged.
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setTemporaryTableScope(null)}
+                    data-smoke-clear-map-table-scope
+                  >
+                    <XIcon />
+                    Clear map selection
+                  </Button>
+                </section>
+              ) : null}
+              <DatasetTable
+                table={datasetTable.table}
+                recordCount={datasetTable.recordCount}
+                isLoading={datasetTable.isLoading}
+                datasetError={dataset.error}
+                error={datasetTable.error}
+                onRowClick={(row) => setProfileRow(row)}
+              />
+            </>
           ) : (
             <Suspense
               fallback={
@@ -955,6 +1019,8 @@ export function DatasetDetailClient({
                 rows={datasetTable.filteredRows}
                 isLoading={datasetTable.isLoading}
                 error={dataset.error ?? datasetTable.error}
+                onViewRowsInTable={handleViewRowsInTable}
+                onOpenRecord={handleOpenRecord}
               />
             </Suspense>
           )}
@@ -971,6 +1037,19 @@ export function DatasetDetailClient({
           assignableDatasets={assignableDatasets}
         />
       ) : null}
+      <DatasetRecordProfileSheet
+        open={Boolean(profileRow)}
+        row={profileRow}
+        visibleColumns={datasetTable.visibleColumns}
+        fieldDefinitionPresentationByColumnKey={
+          fieldDefinitionPresentationByColumnKey
+        }
+        onOpenChange={(open) => {
+          if (!open) {
+            setProfileRow(null);
+          }
+        }}
+      />
       <Sheet open={isFiltersSheetOpen} onOpenChange={setIsFiltersSheetOpen}>
         <SheetContent
           side="left"
