@@ -10,7 +10,10 @@ import {
   TablePropertiesIcon,
 } from "lucide-react";
 
-import { DatasetCountryMap } from "@/components/dashboard/dataset-country-map";
+import {
+  DATASET_MAP_COUNT_FILL_COLORS,
+  DatasetCountryMap,
+} from "@/components/dashboard/dataset-country-map";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -212,7 +215,10 @@ export function DatasetMapView({
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <h2 id="dataset-map-heading" className="flex items-center gap-2 font-semibold">
-              <MapPinnedIcon aria-hidden="true" className="size-5 text-teal-700" />
+              <MapPinnedIcon
+                aria-hidden="true"
+                className="size-5 text-accent-foreground"
+              />
               Matching records by country
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
@@ -330,12 +336,13 @@ export function DatasetMapView({
                 aria-label="Matching records legend"
               >
                 <span>Fewer</span>
-                {["#99f6e4", "#2dd4bf", "#0d9488", "#0f766e"].map(
+                {DATASET_MAP_COUNT_FILL_COLORS.map(
                   (color) => (
                     <span
                       key={color}
                       className="size-3 rounded-sm border border-black/5"
                       style={{ backgroundColor: color }}
+                      data-smoke-map-legend-swatch
                     />
                   ),
                 )}
@@ -374,7 +381,7 @@ export function DatasetMapView({
             </div>
 
             {activeFocusedSearchResult ? (
-              <p className="mt-3 rounded-md bg-teal-50 px-3 py-2 text-sm text-teal-950 dark:bg-teal-950/40 dark:text-teal-100">
+              <p className="mt-3 rounded-md border border-border bg-accent/60 px-3 py-2 text-sm text-accent-foreground">
                 Focused match: {activeFocusedSearchResult.label}
               </p>
             ) : null}
@@ -416,7 +423,7 @@ export function DatasetMapView({
                     key={record.rowId}
                     className={
                       record.rowId === activeFocusedSearchResult?.rowId
-                        ? "bg-teal-50/70 dark:bg-teal-950/30"
+                        ? "bg-accent/50"
                         : ""
                     }
                   >

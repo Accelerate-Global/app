@@ -100,6 +100,31 @@ async function expectDatasetMapParity(page: Page) {
   return { filtered, mapped, unmapped };
 }
 
+async function getDatasetMapVisualPalette(page: Page) {
+  return page.evaluate(() => {
+    const map = document.querySelector<HTMLElement>(
+      '[data-smoke-surface="dataset-map"] .leaflet-container',
+    );
+    const selectedCountry = document.querySelector<SVGElement>(
+      '[aria-label^="Select "][stroke="var(--dataset-map-selected)"]',
+    );
+    const swatches = Array.from(
+      document.querySelectorAll<HTMLElement>(
+        "[data-smoke-map-legend-swatch]",
+      ),
+      (swatch) => getComputedStyle(swatch).backgroundColor,
+    );
+
+    return {
+      canvas: map ? getComputedStyle(map).backgroundColor : "",
+      selectedStroke: selectedCountry
+        ? getComputedStyle(selectedCountry).stroke
+        : "",
+      swatches,
+    };
+  });
+}
+
 async function openMapPreproductionDataset(page: Page) {
   const bootstrap = await readUiSmokeBootstrap();
 
@@ -1506,35 +1531,55 @@ test(
   },
 );
 
-test("admin can review partner export mapping", async ({ page }, testInfo) => {
+test("admin can begin partner export from management sheet", async ({ page }, testInfo) => {
   test.skip(skipUnlessDesktopAdmin(testInfo.project.name));
 
-  await runSmokeJourney("admin can review partner export mapping", async () => {
-    const bootstrap = await readUiSmokeBootstrap();
+  await runSmokeJourney(
+    "admin can begin partner export from management sheet",
+    async () => {
+      const bootstrap = await readUiSmokeBootstrap();
 
-    await page.goto(`/dashboard/datasets/${bootstrap.datasets.primary.id}`);
-    await expect(page.locator('[data-smoke-page="dataset-detail"]')).toBeVisible();
-    const mappingTrigger = page.locator(
-      '[data-smoke-trigger="partner-export-profile-sheet"]',
-    );
-    await expect(mappingTrigger).toBeVisible();
-    await mappingTrigger.click();
-    await expect(
-      page.locator(
-        '[data-smoke-surface="partner-export-profile-sheet"][data-smoke-ready="partner-export-profile-sheet"]',
-      ),
-    ).toBeVisible();
-    await expect(page.locator('input[value="PG_PeopleID3"]')).toBeVisible();
-    await expect(
-      page.locator('input[value="PG_AX_unique_PG_ID_PGIC"]'),
-    ).toBeVisible();
-    await expect(page.getByLabel("Source for PG_ROP3")).toBeVisible();
+      await page.goto(`/dashboard/datasets/${bootstrap.datasets.primary.id}`);
+      await expect(
+        page.locator('[data-smoke-page="dataset-detail"]'),
+      ).toBeVisible();
+      const managerTrigger = page.locator(
+        '[data-smoke-trigger="partner-exports-sheet"]',
+      );
+      await expect(managerTrigger).toBeVisible();
+      await managerTrigger.click();
+      const managerSheet = page.locator(
+        '[data-smoke-surface="partner-exports-sheet"][data-smoke-ready="partner-exports-sheet"]',
+      );
+      await expect(managerSheet).toBeVisible();
 
-    await page.keyboard.press("Escape");
-    await expect(
-      page.locator('[data-smoke-surface="partner-export-profile-sheet"]'),
-    ).toBeHidden();
-  });
+      const mappingTrigger = managerSheet.locator(
+        '[data-smoke-trigger="partner-export-profile-sheet"]',
+      );
+      await expect(mappingTrigger).toBeVisible();
+      await mappingTrigger.click();
+      await expect(managerSheet).toBeHidden();
+      await expect(
+        page.locator(
+          '[data-smoke-surface="partner-export-profile-sheet"][data-smoke-ready="partner-export-profile-sheet"]',
+        ),
+      ).toBeVisible();
+      await expect(page.locator('input[value="PG_PeopleID3"]')).toBeVisible();
+      await expect(
+        page.locator('input[value="PG_AX_unique_PG_ID_PGIC"]'),
+      ).toBeVisible();
+      await expect(page.getByLabel("Source for PG_ROP3")).toBeVisible();
+
+      await page.keyboard.press("Escape");
+      await expect(
+        page.locator('[data-smoke-surface="partner-export-profile-sheet"]'),
+      ).toBeHidden();
+      await expect(managerSheet).toBeVisible();
+
+      await page.keyboard.press("Escape");
+      await expect(managerSheet).toBeHidden();
+    },
+  );
 });
 
 test("authenticated user can save a filtered table", async ({ page }, testInfo) => {
@@ -1697,10 +1742,32 @@ test(
           .getByRole("button", { name: /Afghanistan.*Country/u })
           .click();
         const afghanistan = page.locator('[aria-label="Select Afghanistan"]');
-        await expect(afghanistan).toHaveAttribute("stroke", "#0f766e");
+        await expect(afghanistan).toHaveAttribute(
+          "stroke",
+          "var(--dataset-map-selected)",
+        );
         expect(
           Number.parseFloat((await afghanistan.getAttribute("stroke-width")) ?? "99"),
         ).toBeLessThanOrEqual(1.5);
+
+        const filteredBeforeAppearanceChange = await getDatasetFilteredCount(page);
+        const lightPalette = await getDatasetMapVisualPalette(page);
+        expect(new Set(lightPalette.swatches).size).toBe(4);
+        expect(lightPalette.canvas).not.toBe("");
+        expect(lightPalette.selectedStroke).not.toBe("");
+
+        await page.evaluate(() => document.documentElement.classList.add("dark"));
+        await expect
+          .poll(async () => JSON.stringify(await getDatasetMapVisualPalette(page)))
+          .not.toBe(JSON.stringify(lightPalette));
+        const darkPalette = await getDatasetMapVisualPalette(page);
+        expect(new Set(darkPalette.swatches).size).toBe(4);
+        expect(await getDatasetFilteredCount(page)).toBe(
+          filteredBeforeAppearanceChange,
+        );
+        await expect(page.getByRole("heading", { name: "Afghanistan" })).toBeVisible();
+
+        await page.evaluate(() => document.documentElement.classList.remove("dark"));
 
         await mapSearch.fill("Tanzania");
         const countryResult = page.getByRole("button", {
@@ -1868,9 +1935,17 @@ test(
         await expect(singaporePoint).toBeVisible();
         await singaporePoint.focus();
         await page.keyboard.press("Enter");
+        await expect(singaporePoint).toHaveAttribute(
+          "stroke",
+          "var(--dataset-map-selected)",
+        );
         await expect(
           page.getByRole("heading", { name: "Singapore" }),
         ).toBeVisible();
+        const darkPalette = await getDatasetMapVisualPalette(page);
+        expect(new Set(darkPalette.swatches).size).toBe(4);
+        expect(darkPalette.canvas).not.toBe("");
+        expect(darkPalette.selectedStroke).not.toBe("");
 
         expect(
           await page.evaluate(

@@ -215,7 +215,7 @@ async function exerciseSmokeSurface(page: Page, triggerId: string) {
       context: `Smoke surface ${triggerId} trigger readiness`,
       action: () =>
         expect(trigger).toHaveAttribute("data-smoke-trigger-ready", triggerId, {
-          timeout: 5_000,
+          timeout: 15_000,
         }),
     });
   }

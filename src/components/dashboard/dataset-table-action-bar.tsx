@@ -139,31 +139,35 @@ export function DatasetTableActionBar({
   }
 
   return (
-    <section className="rounded-2xl border border-border bg-card px-4 py-3">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-        <div className="min-w-0 space-y-1">
+    <section className="rounded-2xl border border-border bg-card px-4 py-4">
+      <div className="space-y-4">
+        <div className="min-w-0 space-y-1.5">
           <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
             Current filtered table
           </p>
           <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
             <p
-              className="text-3xl font-semibold tracking-[-0.04em] text-foreground"
+              className="text-2xl font-semibold tracking-[-0.04em] text-foreground"
               data-smoke-filtered-table-count
             >
               {isLoading ? "..." : recordCount.toLocaleString()}
             </p>
-            <p className="text-3xl font-semibold tracking-[-0.04em] text-foreground">
+            <p className="text-2xl font-semibold tracking-[-0.04em] text-foreground">
               People Groups
             </p>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+        <div
+          className="grid grid-cols-1 gap-2 sm:grid-cols-2"
+          data-smoke-filtered-table-actions
+        >
           {onOpenFilters ? (
             <Button
               type="button"
+              size="sm"
               variant="outline"
-              className="xl:hidden"
+              className="w-full text-xs xl:hidden"
               data-smoke-trigger="dataset-filters-sheet"
               data-smoke-write="safe"
               onClick={onOpenFilters}
@@ -174,7 +178,9 @@ export function DatasetTableActionBar({
           ) : null}
           <Button
             type="button"
+            size="sm"
             variant="outline"
+            className="w-full text-xs"
             disabled={isDisabled}
             data-smoke-filtered-table-download
             onClick={handleDownload}
@@ -185,6 +191,8 @@ export function DatasetTableActionBar({
           {canSaveFilteredTable ? (
             <Button
               type="button"
+              size="sm"
+              className="w-full text-xs"
               disabled={isDisabled}
               data-smoke-save-filtered-table
               onClick={() => {
@@ -198,7 +206,9 @@ export function DatasetTableActionBar({
           {onOpenAssignDerivedView ? (
             <Button
               type="button"
+              size="sm"
               variant="outline"
+              className="col-span-full w-full text-xs"
               data-smoke-trigger="dataset-assign-derived-view-sheet"
               data-smoke-write="safe"
               onClick={onOpenAssignDerivedView}

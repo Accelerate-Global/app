@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   AlertTriangleIcon,
   CheckCircle2Icon,
@@ -15,13 +15,6 @@ import {
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import {
   Sheet,
   SheetContent,
@@ -132,8 +125,10 @@ export function DatasetPartnerExports({
 }: DatasetPartnerExportsProps) {
   const [profiles, setProfiles] = useState<PartnerExportProfile[]>([]);
   const [runs, setRuns] = useState<PartnerExportRun[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+  const [hasLoadedExports, setHasLoadedExports] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isManagerOpen, setIsManagerOpen] = useState(false);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [editingProfileId, setEditingProfileId] = useState<string | null>(null);
   const [draft, setDraft] = useState<PartnerExportProfileInput>(() =>
@@ -158,28 +153,6 @@ export function DatasetPartnerExports({
     setRuns(payload.runs);
   }, [datasetId]);
 
-  useEffect(() => {
-    let active = true;
-    void loadExports()
-      .catch((loadError) => {
-        if (active) {
-          setError(
-            loadError instanceof Error
-              ? loadError.message
-              : "Could not load partner exports.",
-          );
-        }
-      })
-      .finally(() => {
-        if (active) {
-          setIsLoading(false);
-        }
-      });
-    return () => {
-      active = false;
-    };
-  }, [loadExports]);
-
   const runsByProfile = useMemo(() => {
     const grouped = new Map<string, PartnerExportRun[]>();
     for (const run of runs) {
@@ -188,10 +161,32 @@ export function DatasetPartnerExports({
     return grouped;
   }, [runs]);
 
+  function openManager() {
+    setIsManagerOpen(true);
+
+    if (hasLoadedExports || isLoading) {
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+    void loadExports()
+      .then(() => setHasLoadedExports(true))
+      .catch((loadError) => {
+        setError(
+          loadError instanceof Error
+            ? loadError.message
+            : "Could not load partner exports.",
+        );
+      })
+      .finally(() => setIsLoading(false));
+  }
+
   function openNewProfile() {
     setEditingProfileId(null);
     setDraft(createDraft(sourceColumns));
     setError(null);
+    setIsManagerOpen(false);
     setIsSheetOpen(true);
   }
 
@@ -199,7 +194,13 @@ export function DatasetPartnerExports({
     setEditingProfileId(profile.id);
     setDraft(createDraft(sourceColumns, profile));
     setError(null);
+    setIsManagerOpen(false);
     setIsSheetOpen(true);
+  }
+
+  function closeProfileEditor() {
+    setIsSheetOpen(false);
+    setIsManagerOpen(true);
   }
 
   function setTemplate(partnerKey: PartnerExportProfileInput["partnerKey"]) {
@@ -262,6 +263,7 @@ export function DatasetPartnerExports({
       }
       await loadExports();
       setIsSheetOpen(false);
+      setIsManagerOpen(true);
       setPreview(null);
       setPreviewProfileId(null);
     } catch (saveError) {
@@ -374,29 +376,46 @@ export function DatasetPartnerExports({
   }
 
   return (
-    <Card>
-      <CardHeader className="gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-1.5">
-          <CardTitle className="flex items-center gap-2 text-xl">
-            <FileOutputIcon className="size-5 text-muted-foreground" />
-            Partner exports
-          </CardTitle>
-          <CardDescription>
-            Map this source dataset into a reviewed partner contract, then generate
-            a private local download.
-          </CardDescription>
-        </div>
-        <Button
-          type="button"
-          size="sm"
-          onClick={openNewProfile}
-          data-smoke-trigger="partner-export-profile-sheet"
+    <>
+      <Button
+        type="button"
+        variant="outline"
+        className="w-fit"
+        onClick={openManager}
+        data-smoke-trigger="partner-exports-sheet"
+      >
+        <FileOutputIcon className="size-4" />
+        Partner exports
+      </Button>
+
+      <Sheet open={isManagerOpen} onOpenChange={setIsManagerOpen}>
+        <SheetContent
+          className="data-[side=right]:w-full! data-[side=right]:sm:max-w-2xl!"
+          data-smoke-surface="partner-exports-sheet"
+          data-smoke-ready="partner-exports-sheet"
         >
-          <PlusIcon className="size-4" />
-          New export profile
-        </Button>
-      </CardHeader>
-      <CardContent className="space-y-4">
+          <SheetHeader className="border-b pr-14">
+            <SheetTitle className="flex items-center gap-2">
+              <FileOutputIcon className="size-5 text-muted-foreground" />
+              Partner exports
+            </SheetTitle>
+            <SheetDescription>
+              Map this source dataset into a reviewed partner contract, then
+              generate a private local download.
+            </SheetDescription>
+          </SheetHeader>
+          <div className="flex-1 space-y-4 overflow-y-auto px-4 pb-6">
+            <div className="flex justify-end">
+              <Button
+                type="button"
+                size="sm"
+                onClick={openNewProfile}
+                data-smoke-trigger="partner-export-profile-sheet"
+              >
+                <PlusIcon className="size-4" />
+                New export profile
+              </Button>
+            </div>
         {error ? (
           <Alert variant="destructive">
             <AlertTriangleIcon />
@@ -538,9 +557,20 @@ export function DatasetPartnerExports({
             })}
           </div>
         )}
-      </CardContent>
+          </div>
+        </SheetContent>
+      </Sheet>
 
-      <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+      <Sheet
+        open={isSheetOpen}
+        onOpenChange={(open) => {
+          if (open) {
+            setIsSheetOpen(true);
+          } else {
+            closeProfileEditor();
+          }
+        }}
+      >
         <SheetContent
           className="data-[side=right]:w-full! data-[side=right]:sm:w-2/3! data-[side=right]:sm:max-w-none!"
           data-smoke-surface="partner-export-profile-sheet"
@@ -675,7 +705,7 @@ export function DatasetPartnerExports({
             </div>
           </div>
           <SheetFooter className="border-t sm:flex-row sm:justify-end">
-            <Button type="button" variant="outline" onClick={() => setIsSheetOpen(false)}>Cancel</Button>
+            <Button type="button" variant="outline" onClick={closeProfileEditor}>Cancel</Button>
             <Button type="button" disabled={isSaving} onClick={() => void saveProfile()}>
               {isSaving ? <Loader2Icon className="size-4 animate-spin" /> : null}
               Save profile
@@ -683,6 +713,6 @@ export function DatasetPartnerExports({
           </SheetFooter>
         </SheetContent>
       </Sheet>
-    </Card>
+    </>
   );
 }

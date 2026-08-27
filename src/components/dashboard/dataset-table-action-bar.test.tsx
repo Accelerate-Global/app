@@ -82,6 +82,17 @@ describe("DatasetTableActionBar", () => {
     expect(screen.getByText("12,507")).toBeTruthy();
     expect(screen.getByText("People Groups")).toBeTruthy();
     expect(screen.queryByText("people groups in the current list")).toBeNull();
+    const actions = document.querySelector(
+      "[data-smoke-filtered-table-actions]",
+    );
+    expect(actions?.className).toContain("grid-cols-1");
+    expect(actions?.className).toContain("sm:grid-cols-2");
+    expect(screen.getByRole("button", { name: "Download" }).className).toContain(
+      "w-full",
+    );
+    expect(
+      screen.getByRole("button", { name: "Save to dashboard" }).className,
+    ).toContain("w-full");
   });
 
   it("renders a mobile filters trigger when an opener is supplied", () => {
@@ -136,6 +147,7 @@ describe("DatasetTableActionBar", () => {
     expect(assignButton.getAttribute("data-smoke-trigger")).toBe(
       "dataset-assign-derived-view-sheet",
     );
+    expect(assignButton.className).toContain("col-span-full");
 
     fireEvent.click(assignButton);
 
