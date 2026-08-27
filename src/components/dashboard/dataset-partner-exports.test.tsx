@@ -72,11 +72,12 @@ describe("DatasetPartnerExports", () => {
   });
 
   it("opens a smoke-covered Joshua Project mapping sheet with exact-header suggestions", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      Response.json({ profiles: [], runs: [] }),
+    );
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue(
-        Response.json({ profiles: [], runs: [] }),
-      ),
+      fetchMock,
     );
 
     render(
@@ -86,6 +87,20 @@ describe("DatasetPartnerExports", () => {
       />,
     );
 
+    expect(fetchMock).not.toHaveBeenCalled();
+    const managerTrigger = screen.getByRole("button", {
+      name: "Partner exports",
+    });
+    expect(managerTrigger.getAttribute("data-smoke-trigger")).toBe(
+      "partner-exports-sheet",
+    );
+    fireEvent.click(managerTrigger);
+
+    expect(
+      document.querySelector(
+        '[data-smoke-surface="partner-exports-sheet"][data-smoke-ready="partner-exports-sheet"]',
+      ),
+    ).toBeTruthy();
     expect(await screen.findByText(/No export profiles yet/)).toBeTruthy();
     const trigger = screen.getByRole("button", { name: "New export profile" });
     expect(trigger.getAttribute("data-smoke-trigger")).toBe(
@@ -93,6 +108,9 @@ describe("DatasetPartnerExports", () => {
     );
     fireEvent.click(trigger);
 
+    expect(
+      document.querySelector('[data-smoke-surface="partner-exports-sheet"]'),
+    ).toBeNull();
     expect(
       await screen.findByRole("heading", { name: "New export profile" }),
     ).toBeTruthy();
@@ -124,6 +142,13 @@ describe("DatasetPartnerExports", () => {
       "value",
       "",
     );
+
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(
+      document.querySelector(
+        '[data-smoke-surface="partner-exports-sheet"][data-smoke-ready="partner-exports-sheet"]',
+      ),
+    ).toBeTruthy();
   });
 
   it("previews, generates, polls, and exposes private artifact download links", async () => {
@@ -167,6 +192,7 @@ describe("DatasetPartnerExports", () => {
         sourceColumns={sourceColumns}
       />,
     );
+    fireEvent.click(screen.getByRole("button", { name: "Partner exports" }));
     expect(await screen.findByText("Joshua Project export")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Preview" }));
     expect(await screen.findByText("00123")).toBeTruthy();

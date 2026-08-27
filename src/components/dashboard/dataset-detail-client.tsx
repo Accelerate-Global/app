@@ -911,12 +911,31 @@ export function DatasetDetailClient({
   return (
     <>
       <div className="grid gap-4 xl:grid-cols-[22rem_minmax(0,1fr)] xl:items-start">
-        <aside className="hidden xl:block xl:self-start">
+        <div className="xl:col-start-1 xl:row-start-1">
+          <DatasetTableActionBar
+            dataset={dataset}
+            filters={savedFilters}
+            recordCount={datasetTable.recordCount}
+            getSortedRows={datasetTable.getSortedRows}
+            visibleColumns={datasetTable.visibleColumns}
+            isLoading={datasetTable.isLoading}
+            hasError={Boolean(dataset.error || datasetTable.error)}
+            fieldDefinitionPresentationByColumnKey={fieldDefinitionPresentationByColumnKey}
+            canSaveFilteredTable={canSaveFilteredTable && !temporaryTableScope}
+            onOpenFilters={handleOpenFilters}
+            onOpenAssignDerivedView={
+              assignableDatasets.length > 0 && !temporaryTableScope
+                ? handleOpenAssignDerivedView
+                : undefined
+            }
+          />
+        </div>
+        <aside className="hidden xl:col-start-1 xl:row-start-2 xl:block xl:self-start">
           <div className="sticky top-24">
             <DatasetViewSwitchGrid {...filterPanelProps} />
           </div>
         </aside>
-        <div className="min-w-0 space-y-4">
+        <div className="min-w-0 space-y-4 xl:col-start-2 xl:row-span-2 xl:row-start-1">
           <div className="flex justify-end">
             <div
               className="inline-flex rounded-lg border border-border bg-background p-1"
@@ -947,35 +966,18 @@ export function DatasetDetailClient({
               </Button>
             </div>
           </div>
-          <DatasetTableActionBar
-            dataset={dataset}
-            filters={savedFilters}
-            recordCount={datasetTable.recordCount}
-            getSortedRows={datasetTable.getSortedRows}
-            visibleColumns={datasetTable.visibleColumns}
-            isLoading={datasetTable.isLoading}
-            hasError={Boolean(dataset.error || datasetTable.error)}
-            fieldDefinitionPresentationByColumnKey={fieldDefinitionPresentationByColumnKey}
-            canSaveFilteredTable={canSaveFilteredTable && !temporaryTableScope}
-            onOpenFilters={handleOpenFilters}
-            onOpenAssignDerivedView={
-              assignableDatasets.length > 0 && !temporaryTableScope
-                ? handleOpenAssignDerivedView
-                : undefined
-            }
-          />
           {viewMode === "table" ? (
             <>
               {temporaryTableScope ? (
                 <section
-                  className="flex flex-col gap-3 rounded-xl border border-teal-700/20 bg-teal-50/70 px-4 py-3 text-sm dark:bg-teal-950/30 sm:flex-row sm:items-center sm:justify-between"
+                  className="flex flex-col gap-3 rounded-xl border border-border bg-accent/50 px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between"
                   aria-label="Temporary map table scope"
                   data-smoke-map-table-scope
                 >
                   <div className="flex min-w-0 items-start gap-3">
                     <ListFilterIcon
                       aria-hidden="true"
-                      className="mt-0.5 size-4 shrink-0 text-teal-700 dark:text-teal-300"
+                      className="mt-0.5 size-4 shrink-0 text-accent-foreground"
                     />
                     <div className="min-w-0">
                       <p className="font-medium text-foreground">

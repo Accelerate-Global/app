@@ -13,6 +13,12 @@ vi.mock("./dataset-country-map", async () => {
   const { useEffect } = await import("react");
 
   return {
+    DATASET_MAP_COUNT_FILL_COLORS: [
+      "var(--dataset-map-count-low)",
+      "var(--dataset-map-count-medium)",
+      "var(--dataset-map-count-high)",
+      "var(--dataset-map-count-maximum)",
+    ],
     DatasetCountryMap: (props: {
       countries: Array<{ iso3: string; name: string }>;
       onSelectCountry: (iso3: string) => void;
@@ -135,6 +141,17 @@ describe("DatasetMapView", () => {
     });
     expect(screen.getByLabelText("Matching records legend")).toBeTruthy();
     expect(
+      Array.from(
+        document.querySelectorAll("[data-smoke-map-legend-swatch]"),
+        (swatch) => swatch.getAttribute("style"),
+      ),
+    ).toEqual([
+      "background-color: var(--dataset-map-count-low);",
+      "background-color: var(--dataset-map-count-medium);",
+      "background-color: var(--dataset-map-count-high);",
+      "background-color: var(--dataset-map-count-maximum);",
+    ]);
+    expect(
       screen.queryByRole("link", { name: "Made with Natural Earth" }),
     ).toBeNull();
     expect(screen.queryByText(/Natural Earth/i)).toBeNull();
@@ -161,7 +178,9 @@ describe("DatasetMapView", () => {
     expect(result.tagName).toBe("BUTTON");
     fireEvent.click(result);
 
-    expect(screen.getByText("Focused match: Rana Tharu")).toBeTruthy();
+    const focusedMatch = screen.getByText("Focused match: Rana Tharu");
+    expect(focusedMatch.className).toContain("bg-accent/60");
+    expect(focusedMatch.className).not.toContain("teal");
     expect(
       screen.getByRole("list", { name: "Records in India" }).textContent,
     ).toContain("Rana Tharu");
@@ -306,5 +325,25 @@ describe("DatasetMapView", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Show more records" }));
     expect(recordList.querySelectorAll("li")).toHaveLength(25);
+  });
+
+  it("keeps map selection mounted while effective appearance changes", async () => {
+    render(
+      <DatasetMapView
+        rows={[createRow("india", { Geo_Country_Name: "India" })]}
+        isLoading={false}
+        error={null}
+      />,
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: "Select India" }));
+    expect(screen.getByText("Selected country")).toBeTruthy();
+
+    document.documentElement.classList.add("dark");
+
+    expect(screen.getByText("Selected country")).toBeTruthy();
+    expect(document.querySelectorAll("[data-smoke-map-legend-swatch]")).toHaveLength(4);
+
+    document.documentElement.classList.remove("dark");
   });
 });

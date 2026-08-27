@@ -117,7 +117,7 @@ export const smokeRouteSpecs: SmokeRouteSpec[] = [
     path: "/dashboard/datasets/{{primaryDatasetId}}",
     pageId: "dataset-detail",
     journeys: [
-      "admin can review partner export mapping",
+      "admin can begin partner export from management sheet",
       "workspace roles can inspect the production-shaped map without permission leakage",
     ],
   },

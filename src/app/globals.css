@@ -82,6 +82,15 @@
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
+  --dataset-map-canvas: color-mix(in oklab, var(--muted) 72%, var(--background));
+  --dataset-map-empty: color-mix(in oklab, var(--muted) 82%, var(--background));
+  --dataset-map-count-low: color-mix(in oklab, var(--accent) 34%, var(--background));
+  --dataset-map-count-medium: color-mix(in oklab, var(--accent) 58%, var(--background));
+  --dataset-map-count-high: var(--accent);
+  --dataset-map-count-maximum: color-mix(in oklab, var(--accent) 72%, var(--foreground));
+  --dataset-map-boundary: var(--background);
+  --dataset-map-selected: var(--foreground);
+  --dataset-map-focus: var(--ring);
   --radius: 0.35rem;
   --sidebar: #f7f6ef;
   --sidebar-foreground: #262531;

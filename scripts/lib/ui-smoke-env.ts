@@ -11,6 +11,8 @@ export type UiSmokeEnv = {
 
 const UI_SMOKE_GOOGLE_SHEETS_SERVICE_ACCOUNT_EMAIL =
   "ui-smoke@app-project.iam.gserviceaccount.com";
+const UI_SMOKE_AUTH_FAILURE_HASH_SECRET =
+  "ui-smoke-auth-failure-hash-secret-at-least-32-characters";
 
 function requireValue(
   environment: NodeJS.ProcessEnv,
@@ -86,6 +88,7 @@ export function buildUiSmokeCommandEnv(statusEnv: Record<string, string>) {
     ...(secretKey ? { SUPABASE_SECRET_KEY: secretKey } : {}),
     ...(serviceRoleKey ? { SUPABASE_SERVICE_ROLE_KEY: serviceRoleKey } : {}),
     DATABASE_URL: databaseUrl,
+    AUTH_FAILURE_HASH_SECRET: UI_SMOKE_AUTH_FAILURE_HASH_SECRET,
     SUPABASE_STORAGE_BUCKET: "datasets",
   };
 }

@@ -43,6 +43,7 @@ DB_URL="postgresql://postgres:postgres@127.0.0.1:54322/postgres"
     expect(env.GOOGLE_SHEETS_SERVICE_ACCOUNT_EMAIL).toBe(
       "ui-smoke@app-project.iam.gserviceaccount.com",
     );
+    expect(env.AUTH_FAILURE_HASH_SECRET?.length).toBeGreaterThanOrEqual(32);
     expect("GOOGLE_SHEETS_SERVICE_ACCOUNT_PRIVATE_KEY" in env).toBe(false);
   });
 

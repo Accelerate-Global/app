@@ -233,7 +233,7 @@ describe("DatasetDetailClient", () => {
     });
   });
 
-  it("renders a sticky desktop filter rail and a main content column above the table", () => {
+  it("places one filtered-table summary above the sticky desktop filters", () => {
     render(
       <DatasetDetailClient
         dataset={{
@@ -256,7 +256,8 @@ describe("DatasetDetailClient", () => {
     const stickyRail = filterGrid.parentElement;
     const desktopRail = stickyRail?.parentElement;
     const layout = desktopRail?.parentElement;
-    const mainColumn = actionBar.parentElement;
+    const actionBarColumn = actionBar.parentElement;
+    const mainColumn = screen.getByTestId("dataset-table").parentElement;
     const actionBarProps = actionBarSpy.mock.calls[0]?.[0] as {
       onOpenFilters?: () => void;
       onOpenAssignDerivedView?: () => void;
@@ -267,7 +268,15 @@ describe("DatasetDetailClient", () => {
     expect(desktopRail?.className).toContain("hidden");
     expect(desktopRail?.className).toContain("xl:block");
     expect(stickyRail?.className).toContain("sticky");
-    expect(mainColumn).toBe(screen.getByTestId("dataset-table").parentElement);
+    expect(screen.getAllByTestId("dataset-table-action-bar")).toHaveLength(1);
+    expect(actionBarColumn?.className).toContain("xl:row-start-1");
+    expect(desktopRail?.className).toContain("xl:row-start-2");
+    expect(mainColumn?.className).toContain("xl:col-start-2");
+    expect(mainColumn?.className).toContain("xl:row-span-2");
+    expect(
+      actionBar.compareDocumentPosition(filterGrid) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
     expect(actionBarProps.onOpenFilters).toEqual(expect.any(Function));
     expect(actionBarProps.onOpenAssignDerivedView).toBeUndefined();
     expect(assignDerivedViewSheetSpy).not.toHaveBeenCalled();
@@ -359,9 +368,10 @@ describe("DatasetDetailClient", () => {
       mapProps.onViewRowsInTable({ label: "India", rowIds: ["row-india"] }),
     );
     expect(screen.getByTestId("dataset-table")).toBeTruthy();
-    expect(screen.getByLabelText("Temporary map table scope").textContent).toContain(
-      "Map selection: India",
-    );
+    const temporaryScope = screen.getByLabelText("Temporary map table scope");
+    expect(temporaryScope.textContent).toContain("Map selection: India");
+    expect(temporaryScope.className).toContain("bg-accent/50");
+    expect(temporaryScope.className).not.toContain("teal");
     expect(useDatasetTableStateMock.mock.lastCall?.[0]).toEqual(
       expect.objectContaining({ temporaryRowIds: ["row-india"] }),
     );

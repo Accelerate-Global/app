@@ -26,17 +26,24 @@ type RendererState = {
   map: LeafletMap;
 };
 
+export const DATASET_MAP_COUNT_FILL_COLORS = [
+  "var(--dataset-map-count-low)",
+  "var(--dataset-map-count-medium)",
+  "var(--dataset-map-count-high)",
+  "var(--dataset-map-count-maximum)",
+] as const;
+
 function getCountryFillColor(count: number, maximumCount: number) {
   if (count <= 0) {
-    return "#e2e8f0";
+    return "var(--dataset-map-empty)";
   }
 
   const ratio = maximumCount > 0 ? count / maximumCount : 0;
 
-  if (ratio >= 0.75) return "#0f766e";
-  if (ratio >= 0.5) return "#0d9488";
-  if (ratio >= 0.25) return "#2dd4bf";
-  return "#99f6e4";
+  if (ratio >= 0.75) return DATASET_MAP_COUNT_FILL_COLORS[3];
+  if (ratio >= 0.5) return DATASET_MAP_COUNT_FILL_COLORS[2];
+  if (ratio >= 0.25) return DATASET_MAP_COUNT_FILL_COLORS[1];
+  return DATASET_MAP_COUNT_FILL_COLORS[0];
 }
 
 export function getCountryFeatureStyle(input: {
@@ -45,7 +52,9 @@ export function getCountryFeatureStyle(input: {
   selected: boolean;
 }) {
   return {
-    color: input.selected ? "#0f766e" : "#f8fafc",
+    color: input.selected
+      ? "var(--dataset-map-selected)"
+      : "var(--dataset-map-boundary)",
     fillColor: getCountryFillColor(input.count, input.maximumCount),
     fillOpacity: input.count > 0 ? 0.86 : 0.42,
     opacity: 1,
@@ -190,7 +199,8 @@ export function DatasetCountryMap({
           }
           element?.addEventListener("focus", () => {
             if (element instanceof HTMLElement || element instanceof SVGElement) {
-              element.style.filter = "drop-shadow(0 0 2px rgb(15 118 110 / 0.7))";
+              element.style.filter =
+                "drop-shadow(0 0 2px var(--dataset-map-focus))";
             }
             layer.bringToFront();
           });
@@ -258,7 +268,7 @@ export function DatasetCountryMap({
   return (
     <div
       ref={containerRef}
-      className="h-[30rem] w-full overflow-hidden rounded-xl bg-slate-100 sm:h-[36rem] lg:h-[40rem]"
+      className="h-[30rem] w-full overflow-hidden rounded-xl bg-[var(--dataset-map-canvas)] sm:h-[36rem] lg:h-[40rem]"
       aria-label="Matching records by country"
     />
   );
