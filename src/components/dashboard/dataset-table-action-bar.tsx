@@ -20,6 +20,7 @@ import {
   getFilteredDatasetDownloadFileName,
   serializeDatasetRowsToCsv,
 } from "@/lib/dataset-download";
+import { cn } from "@/lib/utils";
 
 type DatasetRow = DatasetRowsResponse["rows"][number];
 
@@ -38,6 +39,7 @@ type DatasetTableActionBarProps = {
   canSaveFilteredTable?: boolean;
   onOpenFilters?: () => void;
   onOpenAssignDerivedView?: () => void;
+  variant?: "standalone" | "embedded";
 };
 
 function downloadCsvFile(input: {
@@ -70,6 +72,7 @@ export function DatasetTableActionBar({
   canSaveFilteredTable = true,
   onOpenFilters,
   onOpenAssignDerivedView,
+  variant = "standalone",
 }: DatasetTableActionBarProps) {
   const [isSavingSavedTable, setIsSavingSavedTable] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -139,7 +142,14 @@ export function DatasetTableActionBar({
   }
 
   return (
-    <section className="rounded-2xl border border-border bg-card px-4 py-4">
+    <section
+      className={cn(
+        "px-4 py-4",
+        variant === "standalone" &&
+          "rounded-2xl border border-border bg-card",
+      )}
+      data-smoke-filtered-table-summary
+    >
       <div className="space-y-4">
         <div className="min-w-0 space-y-1.5">
           <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">

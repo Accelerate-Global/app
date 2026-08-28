@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { render, screen } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { notFound, redirect } from "next/navigation";
@@ -57,9 +58,9 @@ vi.mock("@/lib/saved-dataset-tables", () => ({
 
 
 vi.mock("@/components/dashboard/dataset-detail-client", () => ({
-  DatasetDetailClient: (props: unknown) => {
+  DatasetDetailClient: (props: { toolbarAction?: ReactNode }) => {
     datasetDetailClientSpy(props);
-    return null;
+    return props.toolbarAction ?? null;
   },
 }));
 
@@ -219,6 +220,7 @@ describe("/dashboard/datasets/[datasetId]", () => {
       workspaceRole: string;
       datasetSource: string;
       sourceRowCount: number;
+      toolbarAction?: ReactNode;
     };
 
     expect(getSavedDatasetTableMock).toHaveBeenCalledWith({
@@ -265,6 +267,7 @@ describe("/dashboard/datasets/[datasetId]", () => {
     expect(props.assignableDatasets).toEqual([]);
     expect(props.workspaceRole).toBe("admin");
     expect(props.sourceRowCount).toBe(10);
+    expect(props.toolbarAction).toBeTruthy();
     expect(datasetPartnerExportsSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         datasetId: "dataset-1",
@@ -294,6 +297,7 @@ describe("/dashboard/datasets/[datasetId]", () => {
       initialFilters: unknown;
       assignableDatasets?: Array<{ id: string }>;
       workspaceRole: string;
+      toolbarAction?: ReactNode;
     };
 
     expect(datasetPartnerExportsSpy).not.toHaveBeenCalled();
@@ -301,6 +305,7 @@ describe("/dashboard/datasets/[datasetId]", () => {
     expect(props.initialFilters).toBeNull();
     expect(props.assignableDatasets).toEqual([]);
     expect(props.workspaceRole).toBe("pro");
+    expect(props.toolbarAction).toBeNull();
     expect(getDatasetMock).toHaveBeenCalledWith("dataset-1", {
       includeDisabled: false,
     });

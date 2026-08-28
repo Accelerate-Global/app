@@ -125,6 +125,36 @@ async function getDatasetMapVisualPalette(page: Page) {
   });
 }
 
+async function expectDatasetWorkspaceAlignment(page: Page) {
+  const filterWorkspace = page.locator(
+    '[data-smoke-filter-workspace="combined"]',
+  );
+  const tableViewport = page.locator(
+    "[data-smoke-dataset-table-viewport]",
+  );
+  const [filterBox, tableBox] = await Promise.all([
+    filterWorkspace.boundingBox(),
+    tableViewport.boundingBox(),
+  ]);
+
+  expect(filterBox).not.toBeNull();
+  expect(tableBox).not.toBeNull();
+  expect(
+    Math.abs((filterBox?.height ?? 0) - (tableBox?.height ?? 0)),
+  ).toBeLessThanOrEqual(4);
+
+  const [filterBackground, tableBackground] = await Promise.all([
+    filterWorkspace.evaluate(
+      (element) => getComputedStyle(element).backgroundColor,
+    ),
+    tableViewport.evaluate(
+      (element) => getComputedStyle(element).backgroundColor,
+    ),
+  ]);
+
+  expect(tableBackground).toBe(filterBackground);
+}
+
 async function openMapPreproductionDataset(page: Page) {
   const bootstrap = await readUiSmokeBootstrap();
 
@@ -1546,7 +1576,17 @@ test("admin can begin partner export from management sheet", async ({ page }, te
       const managerTrigger = page.locator(
         '[data-smoke-trigger="partner-exports-sheet"]',
       );
+      const datasetToolbar = page.locator("[data-smoke-dataset-toolbar]");
+      const viewSwitch = datasetToolbar.getByRole("group", {
+        name: "Dataset view",
+      });
       await expect(managerTrigger).toBeVisible();
+      await expect(datasetToolbar).toBeVisible();
+      await expect(viewSwitch).toBeVisible();
+      expect(await datasetToolbar.locator(":scope > *").count()).toBe(2);
+
+      await expectDatasetWorkspaceAlignment(page);
+
       await managerTrigger.click();
       const managerSheet = page.locator(
         '[data-smoke-surface="partner-exports-sheet"][data-smoke-ready="partner-exports-sheet"]',
@@ -1641,6 +1681,7 @@ test("authenticated user can explore the filtered dataset map", async ({ page },
 
       await page.goto(`/dashboard/datasets/${bootstrap.datasets.primary.id}`);
       await expect(page.locator('[data-smoke-page="dataset-detail"]')).toBeVisible();
+      await expectDatasetWorkspaceAlignment(page);
       appOrigin = new URL(page.url()).origin;
       captureMapRequests = true;
 
