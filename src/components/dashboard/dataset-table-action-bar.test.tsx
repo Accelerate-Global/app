@@ -123,6 +123,30 @@ describe("DatasetTableActionBar", () => {
     expect(onOpenFilters).toHaveBeenCalledTimes(1);
   });
 
+  it("supports an embedded surface inside the combined filters card", () => {
+    render(
+      <DatasetTableActionBar
+        dataset={dataset}
+        filters={filters}
+        recordCount={12507}
+        getSortedRows={() => []}
+        visibleColumns={[]}
+        isLoading={false}
+        hasError={false}
+        fieldDefinitionPresentationByColumnKey={{}}
+        variant="embedded"
+      />,
+    );
+
+    const summary = document.querySelector(
+      "[data-smoke-filtered-table-summary]",
+    );
+
+    expect(summary?.className).toContain("px-4");
+    expect(summary?.className).not.toContain("rounded-2xl");
+    expect(summary?.className).not.toContain("bg-card");
+  });
+
   it("renders an admin-only assign trigger in the action row", () => {
     const onOpenAssignDerivedView = vi.fn();
 
