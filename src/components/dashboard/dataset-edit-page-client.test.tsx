@@ -173,6 +173,38 @@ describe("DatasetEditPageClient", () => {
     });
   });
 
+  it("shows a cold dataset version and disables revert until operator rehydration", () => {
+    render(
+      <DatasetEditPageClient
+        initialDataset={createDataset()}
+        availableTags={[]}
+        initialVersions={[
+          createVersion(),
+          createVersion({
+            id: "dataset-version-cold",
+            isCurrent: false,
+            fileName: "Cold-history.csv",
+            archivedAt: "2026-07-01T00:00:00.000Z",
+            archive: {
+              state: "cold",
+              packageKey: `dataset-version/cold/${"a".repeat(64)}`,
+              sourceChecksum: "a".repeat(64),
+              rowCount: 100,
+              objectCount: 1,
+              sizeBytes: 2048,
+              integrityVerifiedAt: "2026-08-27T09:00:00.000Z",
+              restoreVerifiedAt: "2026-08-27T10:00:00.000Z",
+              rehydratedAt: null,
+            },
+          }),
+        ]}
+      />,
+    );
+    expect(screen.getByText("cold")).toBeTruthy();
+    expect(screen.getByText(/Operator rehydration is required/)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Revert" }).hasAttribute("disabled")).toBe(true);
+  });
+
   it("routes to dataset replacement from the edit page", () => {
     render(
       <DatasetEditPageClient

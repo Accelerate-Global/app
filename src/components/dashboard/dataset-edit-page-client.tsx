@@ -1054,7 +1054,10 @@ function DatasetEditForm({
               {versions.map((version) => {
                 const actorLabel = version.actorEmail ?? version.actorOwnerId;
                 const isRevertDisabled =
-                  isWorking || version.isCurrent || version.status !== "ready";
+                  isWorking ||
+                  version.isCurrent ||
+                  version.status !== "ready" ||
+                  Boolean(version.archive && version.archive.state !== "hot");
 
                 return (
                   <div
@@ -1071,11 +1074,27 @@ function DatasetEditForm({
                               ? "Current"
                               : formatVersionActionLabel(version.action)}
                           </span>
+                          {version.archive ? (
+                            <span
+                              className="rounded-full border border-border px-2 py-0.5 text-[0.7rem] font-medium uppercase tracking-[0.08em] text-muted-foreground"
+                              data-archive-state={version.archive.state}
+                            >
+                              {version.archive.state}
+                            </span>
+                          ) : null}
                         </div>
                         <p className="text-sm text-muted-foreground">
                           {version.rowCount.toLocaleString()} rows ·{" "}
                           {version.columnCount.toLocaleString()} columns
                         </p>
+                        {version.archive && version.archive.state !== "hot" ? (
+                          <p className="text-sm text-muted-foreground" data-archive-state={version.archive.state}>
+                            Operator rehydration is required before this version can be reverted or downloaded.
+                            <span className="mt-1 block break-all font-mono text-xs">
+                              Archive checksum {version.archive.sourceChecksum}
+                            </span>
+                          </p>
+                        ) : null}
                       </div>
 
                       {!version.isCurrent && !isPipelineManaged ? (

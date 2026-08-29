@@ -8,6 +8,7 @@ import {
   revertDatasetVersion,
 } from "@/lib/datasets";
 import { POST } from "./route";
+import { DataArchiveRehydrationRequiredError } from "@/lib/data-archive/archive-state";
 
 vi.mock("@/lib/auth", () => ({
   getCurrentIdentity: vi.fn(),
@@ -186,6 +187,23 @@ describe("/api/datasets/[datasetId]/versions/[versionId]/revert", () => {
     expect(response.status).toBe(409);
     await expect(response.json()).resolves.toEqual({
       error: "Only ready dataset versions can be reverted.",
+    });
+  });
+
+  it("returns a stable conflict when a version requires operator rehydration", async () => {
+    revertDatasetVersionMock.mockRejectedValue(
+      new DataArchiveRehydrationRequiredError(),
+    );
+    const response = await POST(
+      new Request(
+        "http://localhost/api/datasets/dataset-1/versions/version-1/revert",
+        { method: "POST" },
+      ),
+      context,
+    );
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toMatchObject({
+      error: expect.stringContaining("operator rehydration"),
     });
   });
 

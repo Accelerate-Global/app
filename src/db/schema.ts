@@ -25,6 +25,7 @@ import {
   index,
   integer,
   jsonb,
+  numeric,
   pgSchema,
   pgTable,
   text,
@@ -1420,5 +1421,238 @@ export const isoCountryCodeEntryOverrides = privateSchema.table(
   },
   (table) => [
     index("iso_country_code_entry_overrides_updated_idx").on(table.updatedAt),
+  ],
+);
+
+export const dataArchiveBackupRuns = privateSchema.table(
+  "data_archive_backup_runs",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    runKey: text("run_key").notNull(),
+    status: text("status").$type<"running" | "verified" | "failed">().notNull(),
+    sourceProjectRef: text("source_project_ref").notNull(),
+    sourceDatabaseVersion: text("source_database_version").notNull(),
+    migrationChecksum: text("migration_checksum").notNull(),
+    manifestChecksum: text("manifest_checksum"),
+    resticSnapshotId: text("restic_snapshot_id"),
+    databaseBytes: bigint("database_bytes", { mode: "number" }).notNull().default(0),
+    storageBytes: bigint("storage_bytes", { mode: "number" }).notNull().default(0),
+    storageObjectCount: integer("storage_object_count").notNull().default(0),
+    databaseUsageBytes: bigint("database_usage_bytes", { mode: "number" }),
+    storageUsageBytes: bigint("storage_usage_bytes", { mode: "number" }),
+    archiveAllocatedBytes: bigint("archive_allocated_bytes", { mode: "number" }),
+    uniqueBytesAdded: bigint("unique_bytes_added", { mode: "number" }),
+    compressionRatio: numeric("compression_ratio", { mode: "number" }),
+    deduplicationRatio: numeric("deduplication_ratio", { mode: "number" }),
+    failureCode: text("failure_code"),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull(),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    integrityVerifiedAt: timestamp("integrity_verified_at", { withTimezone: true }),
+    receiptReceivedAt: timestamp("receipt_received_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("data_archive_backup_runs_run_key_idx").on(table.runKey),
+    index("data_archive_backup_runs_started_idx").on(table.startedAt, table.id),
+    index("data_archive_backup_runs_status_idx").on(table.status, table.startedAt),
+  ],
+);
+
+export const dataArchiveReceipts = privateSchema.table(
+  "data_archive_receipts",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    backupRunId: uuid("backup_run_id")
+      .notNull()
+      .references(() => dataArchiveBackupRuns.id, { onDelete: "restrict" }),
+    receiptKey: text("receipt_key").notNull(),
+    nonce: text("nonce").notNull(),
+    issuedAt: timestamp("issued_at", { withTimezone: true }).notNull(),
+    signatureDigest: text("signature_digest").notNull(),
+    payloadChecksum: text("payload_checksum").notNull(),
+    receivedAt: timestamp("received_at", { withTimezone: true }).defaultNow().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("data_archive_receipts_receipt_key_idx").on(table.receiptKey),
+    uniqueIndex("data_archive_receipts_nonce_idx").on(table.nonce),
+    index("data_archive_receipts_run_idx").on(table.backupRunId, table.receivedAt),
+  ],
+);
+
+export const dataArchivePackages = privateSchema.table(
+  "data_archive_packages",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    backupRunId: uuid("backup_run_id")
+      .notNull()
+      .references(() => dataArchiveBackupRuns.id, { onDelete: "restrict" }),
+    packageKey: text("package_key").notNull(),
+    packageKind: text("package_kind")
+      .$type<
+        | "api-run"
+        | "dataset-version"
+        | "tier1-publication"
+        | "tier2-publication"
+        | "project-snapshot"
+      >()
+      .notNull(),
+    sourceIdentifier: text("source_identifier").notNull(),
+    sourceChecksum: text("source_checksum").notNull(),
+    manifestChecksum: text("manifest_checksum").notNull(),
+    status: text("status")
+      .$type<"verified" | "cold" | "rehydrating" | "rehydrated" | "failed">()
+      .notNull(),
+    rowCount: bigint("row_count", { mode: "number" }).notNull().default(0),
+    objectCount: integer("object_count").notNull().default(0),
+    sizeBytes: bigint("size_bytes", { mode: "number" }).notNull().default(0),
+    archiveSnapshotId: text("archive_snapshot_id").notNull(),
+    sourceCreatedAt: timestamp("source_created_at", { withTimezone: true }).notNull(),
+    integrityVerifiedAt: timestamp("integrity_verified_at", { withTimezone: true })
+      .notNull(),
+    restoreVerifiedAt: timestamp("restore_verified_at", { withTimezone: true }),
+    prunedAt: timestamp("pruned_at", { withTimezone: true }),
+    rehydratedAt: timestamp("rehydrated_at", { withTimezone: true }),
+    failureCode: text("failure_code"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("data_archive_packages_package_key_idx").on(table.packageKey),
+    index("data_archive_packages_kind_source_idx").on(
+      table.packageKind,
+      table.sourceIdentifier,
+      table.sourceCreatedAt,
+    ),
+    index("data_archive_packages_status_idx").on(table.status, table.sourceCreatedAt),
+    index("data_archive_packages_run_idx").on(table.backupRunId, table.packageKind),
+  ],
+);
+
+export const dataArchivePackageMembers = privateSchema.table(
+  "data_archive_package_members",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    packageId: uuid("package_id")
+      .notNull()
+      .references(() => dataArchivePackages.id, { onDelete: "restrict" }),
+    memberKind: text("member_kind").notNull(),
+    sourceTable: text("source_table"),
+    sourceIdentifier: text("source_identifier"),
+    storageBucket: text("storage_bucket"),
+    storageObjectName: text("storage_object_name"),
+    contentType: text("content_type"),
+    contentChecksum: text("content_checksum").notNull(),
+    sizeBytes: bigint("size_bytes", { mode: "number" }).notNull(),
+    hotState: text("hot_state")
+      .$type<"hot" | "deleting" | "cold" | "rehydrated" | "failed">()
+      .notNull(),
+    rehydratedStorageObjectName: text("rehydrated_storage_object_name"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("data_archive_package_members_identity_idx").on(
+      table.packageId,
+      table.memberKind,
+      sql`coalesce(${table.sourceIdentifier}, '')`,
+      sql`coalesce(${table.storageBucket}, '')`,
+      sql`coalesce(${table.storageObjectName}, '')`,
+    ),
+    index("data_archive_package_members_package_idx").on(
+      table.packageId,
+      table.hotState,
+      table.id,
+    ),
+  ],
+);
+
+export const dataArchivePrunePlans = privateSchema.table(
+  "data_archive_prune_plans",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    planKey: text("plan_key").notNull(),
+    planChecksum: text("plan_checksum").notNull(),
+    sourceStateChecksum: text("source_state_checksum").notNull(),
+    status: text("status")
+      .$type<"draft" | "approved" | "executing" | "completed" | "failed" | "stale">()
+      .notNull(),
+    itemCount: integer("item_count").notNull().default(0),
+    totalBytes: bigint("total_bytes", { mode: "number" }).notNull().default(0),
+    approvedByOwnerId: text("approved_by_owner_id"),
+    approvedAt: timestamp("approved_at", { withTimezone: true }),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    failureCode: text("failure_code"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("data_archive_prune_plans_plan_key_idx").on(table.planKey),
+    uniqueIndex("data_archive_prune_plans_checksum_idx").on(table.planChecksum),
+    index("data_archive_prune_plans_status_idx").on(table.status, table.createdAt),
+  ],
+);
+
+export const dataArchivePruneItems = privateSchema.table(
+  "data_archive_prune_items",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    planId: uuid("plan_id")
+      .notNull()
+      .references(() => dataArchivePrunePlans.id, { onDelete: "cascade" }),
+    packageId: uuid("package_id")
+      .notNull()
+      .references(() => dataArchivePackages.id, { onDelete: "restrict" }),
+    packageMemberId: uuid("package_member_id").references(
+      () => dataArchivePackageMembers.id,
+      { onDelete: "restrict" },
+    ),
+    itemKind: text("item_kind").$type<"database-row-set" | "storage-object">().notNull(),
+    itemIdentifier: text("item_identifier").notNull(),
+    sizeBytes: bigint("size_bytes", { mode: "number" }).notNull().default(0),
+    status: text("status")
+      .$type<"planned" | "deleting" | "deleted" | "failed" | "stale">()
+      .notNull(),
+    failureCode: text("failure_code"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("data_archive_prune_items_plan_identity_idx").on(
+      table.planId,
+      table.itemKind,
+      table.itemIdentifier,
+    ),
+    index("data_archive_prune_items_plan_status_idx").on(
+      table.planId,
+      table.status,
+      table.id,
+    ),
+  ],
+);
+
+export const dataArchiveRehydrations = privateSchema.table(
+  "data_archive_rehydrations",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    requestKey: text("request_key").notNull(),
+    packageId: uuid("package_id")
+      .notNull()
+      .references(() => dataArchivePackages.id, { onDelete: "restrict" }),
+    status: text("status").$type<"restoring" | "verified" | "failed">().notNull(),
+    targetIdentifier: text("target_identifier").notNull(),
+    manifestChecksum: text("manifest_checksum").notNull(),
+    requestedByOwnerId: text("requested_by_owner_id").notNull(),
+    startedAt: timestamp("started_at", { withTimezone: true }).defaultNow().notNull(),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    failureCode: text("failure_code"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("data_archive_rehydrations_request_key_idx").on(table.requestKey),
+    index("data_archive_rehydrations_package_idx").on(table.packageId, table.startedAt),
   ],
 );

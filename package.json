@@ -61,6 +61,12 @@
     "field-sources:seed:local": "DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres pnpm run field-sources:seed",
     "field-sources:seed:remote": "dotenv -e .env.local -- pnpm run field-sources:seed",
     "release:health": "node --import tsx scripts/release-health.ts",
+    "data-archive:run": "node --import tsx scripts/samson-data-archive.ts run",
+    "data-archive:check-missed": "node --import tsx scripts/samson-data-archive.ts check-missed",
+    "data-archive:prune:plan": "dotenv -e .env.local -- node --import tsx scripts/data-archive-prune.ts dry-run",
+    "data-archive:prune:apply": "dotenv -e .env.local -- node --import tsx scripts/data-archive-prune.ts apply",
+    "data-archive:rehydrate": "dotenv -e .env.local -- node --import tsx scripts/data-archive-rehydrate.ts",
+    "data-archive:restore-drill": "node --import tsx scripts/data-archive-restore-drill.ts",
     "ship": "node --import tsx scripts/ship.ts"
   },
   "dependencies": {

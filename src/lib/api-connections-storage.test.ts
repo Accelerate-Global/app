@@ -18,6 +18,16 @@ vi.mock("@/lib/supabase/admin", () => ({
   })),
 }));
 
+vi.mock("@/lib/data-archive/archive-state", async () => {
+  const actual = await vi.importActual<
+    typeof import("@/lib/data-archive/archive-state")
+  >("@/lib/data-archive/archive-state");
+  return {
+    ...actual,
+    assertArchiveSourceUsable: vi.fn(async () => undefined),
+  };
+});
+
 const outputRow = {
   runId: "run-1",
   connectionId: "connection-1",

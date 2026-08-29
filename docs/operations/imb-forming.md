@@ -46,6 +46,12 @@ exist, the admin must explicitly acknowledge them. The first publication creates
 and binds the IMB workspace dataset; later publications use the dataset's normal
 version archive and replace behavior.
 
+Historical API-run artifacts may be cataloged as cold after archive, restore,
+dependency, latest-three, and operator approval checks. Cold artifacts remain
+visible in run history but cannot be downloaded or used to start new forming
+work. An operator must rehydrate and verify the exact package first; Vercel does
+not contact Samson during the request.
+
 A valid or invalid undecided candidate can be rejected with a reason. Invalid or
 failed builds can be rebuilt against the then-current reference set; the prior
 attempt remains in history. A failed publication returns the immutable candidate

@@ -2,6 +2,9 @@ import type { NextRequest } from "next/server";
 
 const PROTECTED_MUTATION_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 const PROTECTED_MUTATION_ROUTE_KEYS = new Set(["POST /auth/sign-out"]);
+const SIGNED_MACHINE_MUTATION_ROUTE_KEYS = new Set([
+  "POST /api/internal/archive-receipts",
+]);
 
 type OriginValidationFailureReason =
   | "missing-origin"
@@ -40,6 +43,7 @@ export function isProtectedMutationRequest(request: Pick<NextRequest, "method" |
 
   return (
     PROTECTED_MUTATION_METHODS.has(method) &&
+    !SIGNED_MACHINE_MUTATION_ROUTE_KEYS.has(`${method} ${pathname}`) &&
     ((pathname === "/api" || pathname.startsWith("/api/")) ||
       PROTECTED_MUTATION_ROUTE_KEYS.has(`${method} ${pathname}`))
   );

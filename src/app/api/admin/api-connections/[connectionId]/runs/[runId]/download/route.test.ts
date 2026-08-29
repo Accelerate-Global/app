@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getApiConnectionRunOutputDownload } from "@/lib/api-connections";
 import { getCurrentIdentity } from "@/lib/auth";
 import { GET } from "./route";
+import { DataArchiveRehydrationRequiredError } from "@/lib/data-archive/archive-state";
 
 vi.mock("@/lib/auth", () => ({
   getCurrentIdentity: vi.fn(),
@@ -97,6 +98,20 @@ describe("/api/admin/api-connections/[connectionId]/runs/[runId]/download", () =
     );
 
     expect(response.status).toBe(404);
+  });
+
+  it("returns a stable rehydration-required outcome for cold output", async () => {
+    getApiConnectionRunOutputDownloadMock.mockRejectedValue(
+      new DataArchiveRehydrationRequiredError(),
+    );
+    const response = await GET(
+      new Request("http://localhost?format=json"),
+      context,
+    );
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toMatchObject({
+      error: expect.stringContaining("operator rehydration"),
+    });
   });
 });
 

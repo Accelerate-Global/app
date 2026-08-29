@@ -51,6 +51,10 @@ import {
 } from "@/lib/dataset-storage";
 import { logError } from "@/lib/error-logging";
 import {
+  assertArchiveSourceUsable,
+  getArchiveSummaries,
+} from "@/lib/data-archive/archive-state";
+import {
   GOOGLE_SHEETS_PROVIDER,
   GOOGLE_SHEETS_HEADER_PREVIEW_ROW_LIMIT,
   GoogleSheetsError,
@@ -1210,13 +1214,15 @@ export async function updateGoogleSheetsConnectionHeaderSelection(input: {
   };
 }
 
-async function hydrateRunDetails(runRows: ApiConnectionRunRecord[]) {
+async function hydrateRunDetails(
+  runRows: ApiConnectionRunRecord[],
+): Promise<ApiConnectionRun[]> {
   if (runRows.length === 0) {
     return [];
   }
 
   const runIds = runRows.map((run) => run.id);
-  const [logRows, outputRows] = await Promise.all([
+  const [logRows, outputRows, archiveByRunId] = await Promise.all([
     getDb()
       .select()
       .from(apiConnectionRunLogs)
@@ -1226,6 +1232,7 @@ async function hydrateRunDetails(runRows: ApiConnectionRunRecord[]) {
       .select()
       .from(apiConnectionRunOutputs)
       .where(inArray(apiConnectionRunOutputs.runId, runIds)),
+    getArchiveSummaries({ packageKind: "api-run", sourceIdentifiers: runIds }),
   ]);
   const logsByRunId = new Map<string, ApiConnectionRunLog[]>();
   const outputByRunId = new Map<string, ApiConnectionRunOutput>();
@@ -1242,6 +1249,7 @@ async function hydrateRunDetails(runRows: ApiConnectionRunRecord[]) {
     ...toApiConnectionRun(row),
     logs: logsByRunId.get(row.id) ?? [],
     output: outputByRunId.get(row.id) ?? null,
+    archive: archiveByRunId.get(row.id) ?? null,
   }));
 }
 
@@ -2569,6 +2577,10 @@ export async function getApiConnectionRunOutputDownload(input: {
   runId: string;
   format: "json" | "csv";
 }) {
+  await assertArchiveSourceUsable({
+    packageKind: "api-run",
+    sourceIdentifier: input.runId,
+  });
   const [output] = await getDb()
     .select()
     .from(apiConnectionRunOutputs)

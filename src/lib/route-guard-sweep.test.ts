@@ -16,6 +16,9 @@ const EXEMPT_ROUTES = new Set([
   "internal/pipeline-operations/run/route.ts",
   // Vercel Cron durable-run watchdog: authenticated by CRON_SECRET, not user identity.
   "internal/api-connection-runs/reconcile/route.ts",
+  // Outbound-only Samson worker: authenticated by a bounded timestamped HMAC
+  // receipt with replay protection, not browser or workspace identity.
+  "internal/archive-receipts/route.ts",
   // Vercel Cron endpoint: authenticated by CRON_SECRET bearer token, not user identity.
   "ops/supabase-heartbeat/route.ts",
 ]);

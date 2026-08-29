@@ -6,6 +6,7 @@ import {
 } from "@/lib/datasets";
 import { jsonError } from "@/lib/http";
 import { withRoute } from "@/lib/route-guard";
+import { DataArchiveRehydrationRequiredError } from "@/lib/data-archive/archive-state";
 
 type DatasetVersionRevertContext = {
   params: Promise<{
@@ -31,7 +32,8 @@ export const POST = withRoute(
       if (
         error instanceof DatasetVersionRevertConflictError ||
         error instanceof DerivedDatasetMutationError ||
-        error instanceof PipelineManagedDatasetMutationError
+        error instanceof PipelineManagedDatasetMutationError ||
+        error instanceof DataArchiveRehydrationRequiredError
       ) {
         return jsonError(error.message, error.status);
       }
