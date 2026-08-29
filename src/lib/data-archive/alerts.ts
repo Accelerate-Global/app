@@ -5,6 +5,7 @@ import {
   sendOperationalAlertEmail,
   type OperationalAlertEmailInput,
 } from "@/lib/operational-alert-email";
+import { archiveFetch, type ArchiveFetch } from "./http-client";
 
 const DIRECT_ALERT_COOLDOWN_MS = 60 * 60 * 1000;
 const DIRECT_ALERT_DAILY_BUDGET = 6;
@@ -118,6 +119,7 @@ export async function sendArchiveDirectAlert(input: {
   statePath: string;
   occurredAt?: Date;
   send?: typeof sendOperationalAlertEmail;
+  fetchImpl?: ArchiveFetch;
   credentialFiles?: ArchiveDirectAlertCredentialFiles;
 }): Promise<{ sent: boolean; reason?: "cooldown" | "daily-budget" }> {
   const now = input.occurredAt ?? new Date();
@@ -160,6 +162,7 @@ export async function sendArchiveDirectAlert(input: {
           OPERATIONAL_ALERT_RECIPIENT: recipient.trim(),
           OPERATIONAL_ALERT_DETAILS_URL: input.credentialFiles.detailsUrl,
         },
+        fetchImpl: (input.fetchImpl ?? archiveFetch) as unknown as typeof fetch,
       });
     } else {
       await sendOperationalAlertEmail(alert);

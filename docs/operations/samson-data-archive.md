@@ -93,6 +93,8 @@ full-access Supabase S3 key on Samson is not authorized by this change.
 Provisioning assets live in `infra/samson-data-archive`. Tool versions and
 package provenance are recorded inside the guest at
 `/opt/ax-data-archive/toolchain.lock` and held from unattended version changes.
+The worker reads the pinned Supabase CLI provenance from this lock rather than
+executing the provider CLI, which is not otherwise needed for backup operation.
 
 ## Daily operation
 
@@ -101,6 +103,18 @@ boots, and adds up to 15 minutes of randomized delay. The worker prevents
 overlap with an exclusive lock. Rclone retries bounded transient object-copy
 failures. `ax-data-archive-missed.timer` checks at 9:00 AM Pacific and alerts if
 no verified run completed after the scheduled recovery point.
+
+The Node entry points run with `--jitless` so they remain compatible with the
+backup service's `MemoryDenyWriteExecute=true` protection. Do not remove the
+memory protection to restore default JIT behavior; this I/O-heavy nightly worker
+accepts the small runtime trade-off to preserve the stronger service boundary.
+Its outbound storage-auth, receipt, and direct-alert calls use the pinned
+pure-JavaScript HTTP client because JIT-less Node disables the WebAssembly parser
+used by the built-in fetch implementation.
+
+The S3 region must be the hosted project's actual region (`us-east-1` for this
+project), not Supabase's `local` development value; Signature V4 includes the
+region and rejects a mismatched setting before RLS is evaluated.
 
 Each successful cycle:
 
@@ -192,8 +206,17 @@ Initial non-production measurements on 2026-08-26:
   twice without adding another logical copy, stored only new content for a
   changed file, restored the first and changed snapshots independently, and
   passed a complete repository read check;
-- production recovery point, runtime, compression, deduplication, and object
-  throughput remain intentionally unreported until the first production run.
+- the first production recovery point on 2026-08-28 completed in about 9 minutes
+  33 seconds and protected 222,370,232 database bytes plus 1,149,585,042 Storage
+  bytes across 435 objects; Restic reported 20.6696x compression and the Samson
+  dataset used about 66 MiB;
+- the immediately repeated recovery point completed in about 9 minutes 40
+  seconds, protected the same 435 objects and 1.15 GB Storage payload, and added
+  only 3,870,642 unique logical bytes with a 372.4068x deduplication ratio; the
+  underlying Samson dataset grew by about 0.63 MiB;
+- a complete Restic read check passed, and an isolated restore reconstructed and
+  verified 1.278 GiB plus all 435 manifest-listed Storage objects before the
+  temporary plaintext restore was deleted.
 
 ## Credential rotation and emergency disablement
 

@@ -2,7 +2,6 @@
 
 ## Purpose
 Define AX Online's single-site Samson recovery system: complete nightly Supabase snapshots, encrypted deduplicated retention, compact receipt cataloging, fail-closed API-artifact archiving, recovery verification, capacity protection, and explicit safeguards against unapproved production pruning.
-
 ## Requirements
 ### Requirement: Samson creates complete nightly recovery snapshots
 The system SHALL run an outbound-only backup from an isolated Samson guest at 2:00 AM in `America/Los_Angeles` and SHALL include the production database schema, data, Auth and account records, migration history, every Supabase Storage bucket, object metadata, and a canonical recovery manifest.
@@ -165,3 +164,16 @@ The system MUST describe the Samson archive as single-site recovery until a phys
 - **WHEN** a nightly or monthly snapshot succeeds only on Samson
 - **THEN** the snapshot is reported as locally protected and off-site unprotected
 - **AND** the local backup still satisfies the approved current scope
+
+### Requirement: Samson Node workers remain compatible with service memory hardening
+The scheduled backup and missed-run workers MUST start under the configured prohibition on writable-executable memory and SHALL retain that protection in production.
+
+#### Scenario: Hardened backup worker starts
+- **WHEN** systemd starts the Node-based backup worker with writable-executable memory prohibited
+- **THEN** the worker runtime starts without a V8 executable-memory failure
+- **AND** the memory protection remains enabled
+
+#### Scenario: Hardened missed-run worker starts
+- **WHEN** systemd starts the Node-based missed-run checker with writable-executable memory prohibited
+- **THEN** the checker completes its configured evaluation without a runtime executable-memory failure
+- **AND** it preserves the same sanitized alert behavior

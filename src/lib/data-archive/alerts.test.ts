@@ -83,7 +83,6 @@ describe("Samson direct archive alerts", () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(JSON.stringify({ id: "email-id" }), { status: 200 }),
     );
-    vi.stubGlobal("fetch", fetchMock);
     await expect(sendArchiveDirectAlert({
       kind: "backup-failed",
       runKey: "backup:protected-files",
@@ -94,8 +93,8 @@ describe("Samson direct archive alerts", () => {
         recipient: join(root, "recipient"),
         detailsUrl: "https://data.accelerateglobal.org",
       },
+      fetchImpl: fetchMock as typeof fetch,
     })).resolves.toEqual({ sent: true });
     expect(fetchMock).toHaveBeenCalledOnce();
-    vi.unstubAllGlobals();
   });
 });
