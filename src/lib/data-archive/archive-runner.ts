@@ -227,7 +227,11 @@ function parseResticBackup(stdout: string): ResticBackupSummary {
   return { snapshotId, dataAdded, totalBytesProcessed };
 }
 
-const apiRunPackageCandidatesSql = `copy (
+export function apiRunPackageCandidatesSql(minimumAgeDays: number): string {
+  if (!Number.isInteger(minimumAgeDays) || minimumAgeDays < 7 || minimumAgeDays > 30) {
+    throw new Error("archive_api_minimum_age_days_invalid");
+  }
+  return `copy (
   select jsonb_build_object(
     'runId', run.id,
     'connectionId', run.connection_id,
@@ -241,7 +245,7 @@ const apiRunPackageCandidatesSql = `copy (
   from private.api_connection_runs as run
   join private.api_connection_run_outputs as output on output.run_id = run.id
   where run.status = 'success'
-    and run.created_at < now() - interval '30 days'
+    and run.created_at < now() - make_interval(days => ${minimumAgeDays})
     and not exists (
       select 1 from private.data_archive_packages as package
       where package.package_kind = 'api-run'
@@ -249,6 +253,7 @@ const apiRunPackageCandidatesSql = `copy (
     )
   order by run.created_at, run.id
 ) to stdout`;
+}
 
 const datasetVersionPackageCandidatesSql = `copy (
   select jsonb_build_object(
@@ -659,7 +664,7 @@ async function collectApiRunPackages(input: {
       "--set",
       "ON_ERROR_STOP=1",
       "--command",
-      apiRunPackageCandidatesSql,
+      apiRunPackageCandidatesSql(input.config.apiRetentionPolicy.minimumAgeDays),
     ]),
   );
   const packages: ArchivePackage[] = [];

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   assertPostgres17Tooling,
+  apiRunPackageCandidatesSql,
   buildDatasetVersionPackageContent,
   buildPipelinePublicationPackageContent,
   extractProviderStorageInventory,
@@ -104,6 +105,21 @@ describe("Samson archive runner", () => {
       serverVersion: "17.6.1.104",
       clientVersion: "pg_dump (PostgreSQL) 16.9",
     })).toThrow("archive_postgres_17_client_required");
+  });
+
+  it("packages API runs using only the bounded configured age policy", () => {
+    expect(apiRunPackageCandidatesSql(30)).toContain(
+      "make_interval(days => 30)",
+    );
+    expect(apiRunPackageCandidatesSql(7)).toContain(
+      "make_interval(days => 7)",
+    );
+    expect(() => apiRunPackageCandidatesSql(6)).toThrow(
+      "archive_api_minimum_age_days_invalid",
+    );
+    expect(() => apiRunPackageCandidatesSql(31)).toThrow(
+      "archive_api_minimum_age_days_invalid",
+    );
   });
 
   it("builds stable content-addressed dataset and pipeline packages", () => {

@@ -9,6 +9,10 @@ describe("data archive prune CLI safety", () => {
     expect(source).toContain('flag("--owner")');
     expect(source).toContain('DATA_ARCHIVE_PRODUCTION_PRUNE_ENABLED === "true"');
     expect(source).toContain("productionDeletionEnabled: false");
+    expect(source).toContain("projectedStorageBytes");
+    expect(source).toContain("reachesWarningTarget");
+    expect(source).toContain("retentionPolicy");
+    expect(source).toContain("verificationRequiredPackageCount");
     expect(source).not.toMatch(/remove\(\[?["'`]*\*/);
   });
 });

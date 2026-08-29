@@ -21,6 +21,7 @@ export type ArchiveDirectAlertKind =
   | "receipt-unavailable"
   | "integrity-failed"
   | "missed-run"
+  | "verification-failed"
   | "rehydration-failed"
   | "prune-failed";
 
@@ -58,6 +59,12 @@ const ALERT_COPY: Record<
     title: "Samson scheduled backup was missed",
     summary:
       "No verified recovery point completed after the scheduled 2:00 AM Pacific run. Review the protected Samson service and timer.",
+  },
+  "verification-failed": {
+    severity: "critical",
+    title: "Samson package restore verification failed",
+    summary:
+      "A selected archive package could not be restored and verified in private staging. Production pruning for that package remains unavailable.",
   },
   "rehydration-failed": {
     severity: "critical",

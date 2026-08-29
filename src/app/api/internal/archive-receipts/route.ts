@@ -1,10 +1,12 @@
 import { logError } from "@/lib/error-logging";
 import { enqueueOperationalAlert } from "@/lib/operational-alerts";
 import {
+  authenticatePackageVerificationReceipt,
   authenticateBackupReceipt,
   buildBackupReceiptAlerts,
   DataArchiveReceiptError,
   persistBackupReceipt,
+  persistPackageVerificationReceipt,
 } from "@/lib/data-archive/receipt";
 
 export const dynamic = "force-dynamic";
@@ -39,6 +41,19 @@ export async function POST(request: Request) {
   }
 
   try {
+    if (
+      value !== null &&
+      typeof value === "object" &&
+      "payload" in value &&
+      value.payload !== null &&
+      typeof value.payload === "object" &&
+      "receiptKind" in value.payload &&
+      value.payload.receiptKind === "package-restore-verification"
+    ) {
+      const receipt = authenticatePackageVerificationReceipt({ value, signingKey });
+      const result = await persistPackageVerificationReceipt(receipt);
+      return response({ ok: true, replayed: result.replayed });
+    }
     const receipt = authenticateBackupReceipt({ value, signingKey });
     const result = await persistBackupReceipt(receipt);
     if (!result.replayed) {

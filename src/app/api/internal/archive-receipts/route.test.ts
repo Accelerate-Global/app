@@ -1,15 +1,27 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { signBackupReceipt, type BackupReceiptPayload } from "@/lib/data-archive/canonical";
+import {
+  signBackupReceipt,
+  signPackageVerificationReceipt,
+  type BackupReceiptPayload,
+  type PackageVerificationReceiptPayload,
+} from "@/lib/data-archive/canonical";
 import { enqueueOperationalAlert } from "@/lib/operational-alerts";
-import { persistBackupReceipt } from "@/lib/data-archive/receipt";
+import {
+  persistBackupReceipt,
+  persistPackageVerificationReceipt,
+} from "@/lib/data-archive/receipt";
 
 import { POST } from "./route";
 
 vi.mock("@/lib/operational-alerts", () => ({ enqueueOperationalAlert: vi.fn() }));
 vi.mock("@/lib/data-archive/receipt", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/data-archive/receipt")>();
-  return { ...actual, persistBackupReceipt: vi.fn() };
+  return {
+    ...actual,
+    persistBackupReceipt: vi.fn(),
+    persistPackageVerificationReceipt: vi.fn(),
+  };
 });
 
 const key = "receipt-key-with-at-least-thirty-two-characters";
@@ -52,6 +64,10 @@ beforeEach(() => {
     backupRunId: "run-id",
     replayed: false,
   });
+  vi.mocked(persistPackageVerificationReceipt).mockResolvedValue({
+    packageId: "package-id",
+    replayed: false,
+  });
   vi.mocked(enqueueOperationalAlert).mockResolvedValue({ queued: true });
 });
 
@@ -66,6 +82,38 @@ describe("POST /api/internal/archive-receipts", () => {
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ ok: true, replayed: false });
     expect(response.headers.get("cache-control")).toContain("no-store");
+  });
+
+  it("accepts signed package restore verification evidence on the protected boundary", async () => {
+    const now = new Date().toISOString();
+    const payload: PackageVerificationReceiptPayload = {
+      schemaVersion: 1,
+      receiptKind: "package-restore-verification",
+      requestKey: "verify:api-package:001",
+      nonce: "verify-nonce-2026082900000001",
+      issuedAt: now,
+      completedAt: now,
+      status: "verified",
+      projectRef: "uuyntfbqksnclyvlpecx",
+      packageKey: `api-run/run-one/${checksum("d")}`,
+      manifestSha256: checksum("a"),
+      resticSnapshotId: checksum("b"),
+      memberCount: 2,
+      totalBytes: 200,
+      requestedByOwnerId: "owner-one",
+      failureCode: null,
+    };
+    const response = await POST(new Request(
+      "https://data.accelerateglobal.org/api/internal/archive-receipts",
+      {
+        method: "POST",
+        body: JSON.stringify(signPackageVerificationReceipt(payload, key)),
+      },
+    ));
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ ok: true, replayed: false });
+    expect(persistPackageVerificationReceipt).toHaveBeenCalledOnce();
+    expect(persistBackupReceipt).not.toHaveBeenCalled();
   });
 
   it("rejects invalid and oversized receipts", async () => {

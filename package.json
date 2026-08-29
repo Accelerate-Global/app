@@ -70,6 +70,7 @@
     "data-archive:prune:plan": "dotenv -e .env.local -- node --import tsx scripts/data-archive-prune.ts dry-run",
     "data-archive:prune:apply": "dotenv -e .env.local -- node --import tsx scripts/data-archive-prune.ts apply",
     "data-archive:rehydrate": "dotenv -e .env.local -- node --import tsx scripts/data-archive-rehydrate.ts",
+    "data-archive:verify-package": "node --import tsx scripts/data-archive-verify-package.ts",
     "data-archive:restore-drill": "node --import tsx scripts/data-archive-restore-drill.ts",
     "ship": "node --import tsx scripts/ship.ts"
   },

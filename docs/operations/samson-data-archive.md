@@ -2,12 +2,12 @@
 
 ## Status
 
-The archive worker and guest are provisioned under OpenSpec change
-`add-samson-data-archive`. Production scheduling remains disabled until the
-tracked migration and receipt route are released, the remaining service-only
-credentials are installed, and the first isolated restore drill passes. No
-production pruning is enabled. Samson is a single-site recovery location;
-its mirrored disks do not provide protection from loss of the server or site.
+The archive worker and guest are live. Nightly and missed-run timers are enabled,
+multiple verified production recovery points exist, a complete Restic read check
+has passed, and an isolated full snapshot restore matched the protected manifest.
+Production pruning remains disabled except for one explicitly reviewed plan.
+Samson is a single-site recovery location; its mirrored disks do not provide
+protection from loss of the server or site.
 
 ## Approved architecture
 
@@ -158,12 +158,40 @@ the missed-run timer is independent of receipt delivery.
 
 ## Retention, pruning, and rehydration
 
+API artifact hot retention defaults to 30 days and the latest three successful
+runs per connection. The only supported capacity profile is bounded no lower
+than 7 days and the latest one; configure it explicitly with
+`DATA_ARCHIVE_API_MIN_AGE_DAYS` and `DATA_ARCHIVE_API_HOT_VERSIONS` on both the
+Samson backup and operator plan environments. An alert never changes retention.
+
 `pnpm data-archive:prune:plan -- --output <protected-file>` is read-only. It
-evaluates age, latest-three-valid retention, active targets, unfinished work,
+evaluates the selected age and hot-version floors, active targets, unfinished work,
 candidates, publications, releases, resource sets, registry revisions, shared
 Storage ownership, downstream lineage, signed receipt, integrity, and restore
-evidence. Stdout contains only safe counts, bytes, reason totals, and a canonical
-plan checksum.
+evidence. Stdout contains only safe counts, current/removal/projected bytes,
+thresholds, the selected policy, reason totals, and a canonical plan checksum.
+The protected plan binds those fields, and apply rejects any policy, inventory,
+dependency, or capacity change after review.
+Packages that pass every gate except restore proof appear only in the protected
+plan's `verificationRequiredPackageKeys`; stdout reports their count without
+printing identities. Restore-verify those exact keys, then regenerate the plan.
+
+Before any package can appear in a prune plan, run the Samson-only proof:
+
+```text
+DATA_ARCHIVE_PACKAGE_VERIFICATION_ENABLED=true \
+  /usr/local/bin/node --jitless --import tsx scripts/data-archive-verify-package.ts \
+  --package-key <exact-catalog-key> \
+  --request-key <stable-operator-request> \
+  --owner <operator-owner-id> \
+  --approve
+```
+
+The command uses only the read-only database login plus the existing signed
+receipt boundary. It restores the exact package into restricted staging,
+reconciles catalog identity, canonical manifest, members, sizes, and SHA-256
+checksums, removes plaintext staging, and records immutable verification evidence
+in Supabase. A failure records no restore proof and emits a sanitized alert.
 
 Automatic deletion is disabled. Applying a plan requires the exact protected
 file, checksum, operator identity, `--approve`, and the separate
@@ -188,9 +216,24 @@ Before production pruning:
 3. restore roles where supported, schema, data, Auth/accounts, migrations,
    buckets, object counts, and representative checksums into an isolated
    Supabase target;
-4. pass application health checks and one API package rehydration;
+4. pass application health checks and exact package restore verification for
+   every package selected by the protected plan;
 5. remove temporary services and plaintext staging;
-6. observe scheduled backups and alerts for an owner-reviewed period.
+6. confirm the plan projects Storage below the owner-approved target and observe
+   scheduled backups and alerts for an owner-reviewed period.
+
+For the current capacity incident, the reviewed sequence is:
+
+1. deploy the package-verification migration and worker code with pruning off;
+2. set Samson and the plan environment to the 7-day/latest-one profile;
+3. run a complete backup so every potential cold run has a content-addressed package;
+4. restore-verify each package selected by a fresh read-only plan;
+5. regenerate the plan and proceed only when projected Storage is below the
+   750 MiB warning line;
+6. enable deletion for that exact checksum and invocation, apply through the
+   Supabase Storage API, immediately disable the gate, and run a fresh backup;
+7. verify cold metadata plus one exact rehydration without advancing a dataset
+   or publication target.
 
 Quarterly drills record measured recovery point, recovery time, compressed and
 unique bytes, deduplication ratio, object throughput, and manual provider setup.

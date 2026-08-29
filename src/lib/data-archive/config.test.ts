@@ -2,7 +2,10 @@ import { readFile } from "node:fs/promises";
 
 import { describe, expect, it } from "vitest";
 
-import { readArchiveWorkerConfig } from "./config";
+import {
+  readArchiveApiRetentionPolicy,
+  readArchiveWorkerConfig,
+} from "./config";
 
 function environment(
   overrides: Record<string, string | undefined> = {},
@@ -107,8 +110,46 @@ describe("Samson archive worker configuration", () => {
       RESTIC_REPOSITORY: "/srv/ax-data-archive/restic",
       RESTIC_PASSWORD_FILE: "/etc/ax-data-archive/restic-password",
     });
+    expect(config.apiRetentionPolicy).toEqual({
+      minimumAgeDays: 30,
+      hotVersionsPerConnection: 3,
+    });
     expect(Object.values(config.directAlertCredentialFiles)).not.toContain(
       "resend-secret",
+    );
+  });
+
+  it("accepts only the bounded operator-reviewed API retention profile", () => {
+    expect(readArchiveApiRetentionPolicy({
+      DATA_ARCHIVE_API_MIN_AGE_DAYS: "7",
+      DATA_ARCHIVE_API_HOT_VERSIONS: "1",
+    })).toEqual({
+      minimumAgeDays: 7,
+      hotVersionsPerConnection: 1,
+    });
+    expect(() => readArchiveApiRetentionPolicy({
+      DATA_ARCHIVE_API_MIN_AGE_DAYS: "6",
+    })).toThrow();
+    expect(() => readArchiveApiRetentionPolicy({
+      DATA_ARCHIVE_API_HOT_VERSIONS: "0",
+    })).toThrow();
+    expect(() => readArchiveApiRetentionPolicy({
+      DATA_ARCHIVE_API_MIN_AGE_DAYS: "31",
+    })).toThrow();
+    expect(() => readArchiveApiRetentionPolicy({
+      DATA_ARCHIVE_API_HOT_VERSIONS: "4",
+    })).toThrow();
+  });
+
+  it("documents safe Samson defaults and keeps package verification disabled", async () => {
+    const workerEnvironment = await readFile(
+      "infra/samson-data-archive/worker.env.example",
+      "utf8",
+    );
+    expect(workerEnvironment).toContain("DATA_ARCHIVE_API_MIN_AGE_DAYS=30");
+    expect(workerEnvironment).toContain("DATA_ARCHIVE_API_HOT_VERSIONS=3");
+    expect(workerEnvironment).toContain(
+      "DATA_ARCHIVE_PACKAGE_VERIFICATION_ENABLED=false",
     );
   });
 

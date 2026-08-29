@@ -7,6 +7,14 @@ const safeKeySchema = z.string().min(8).max(240).regex(/^[a-zA-Z0-9._:/-]+$/);
 const safeIdentifierSchema = z.string().min(1).max(1024);
 const nonNegativeIntegerSchema = z.number().int().nonnegative().safe();
 
+export const archiveStorageWarningBytes = 750 * 1024 ** 2;
+export const archiveStorageCriticalBytes = 900 * 1024 ** 2;
+
+export const archiveApiRetentionPolicySchema = z.object({
+  minimumAgeDays: z.number().int().min(7).max(30),
+  hotVersionsPerConnection: z.number().int().min(1).max(3),
+});
+
 export const dataArchiveSchemaVersion = 1 as const;
 
 export const databaseExportSchema = z.object({
@@ -136,6 +144,40 @@ export const signedBackupReceiptSchema = z.object({
   signature: checksumSchema,
 });
 
+export const packageVerificationReceiptPayloadSchema = z.object({
+  schemaVersion: z.literal(dataArchiveSchemaVersion),
+  receiptKind: z.literal("package-restore-verification"),
+  requestKey: z.string().min(8).max(160).regex(/^[a-zA-Z0-9._:-]+$/),
+  nonce: z.string().min(16).max(128).regex(/^[a-zA-Z0-9._:-]+$/),
+  issuedAt: z.string().datetime({ offset: true }),
+  completedAt: z.string().datetime({ offset: true }),
+  status: z.enum(["verified", "failed"]),
+  projectRef: z.string().min(8).max(80).regex(/^[a-z0-9]+$/),
+  packageKey: safeKeySchema,
+  manifestSha256: checksumSchema,
+  resticSnapshotId: z.string().regex(/^[0-9a-f]{8,64}$/),
+  memberCount: z.number().int().positive().safe(),
+  totalBytes: nonNegativeIntegerSchema,
+  requestedByOwnerId: z.string().trim().min(1).max(255),
+  failureCode: z.string().min(2).max(128).regex(/^[a-z0-9._-]+$/).nullable(),
+}).superRefine((value, context) => {
+  if (new Date(value.completedAt).getTime() < new Date(value.issuedAt).getTime()) {
+    context.addIssue({ code: "custom", message: "completion cannot precede issuance" });
+  }
+  if (value.status === "verified" && value.failureCode !== null) {
+    context.addIssue({ code: "custom", message: "verified receipt cannot have a failure code" });
+  }
+  if (value.status === "failed" && value.failureCode === null) {
+    context.addIssue({ code: "custom", message: "failed receipt requires a failure code" });
+  }
+});
+
+export const signedPackageVerificationReceiptSchema = z.object({
+  payload: packageVerificationReceiptPayloadSchema,
+  payloadSha256: checksumSchema,
+  signature: checksumSchema,
+});
+
 export const prunePlanItemSchema = z.object({
   packageKey: safeKeySchema,
   itemKind: z.enum(["database-row-set", "storage-object"]),
@@ -149,10 +191,44 @@ export const prunePlanSchema = z.object({
   planKey: safeKeySchema,
   generatedAt: z.string().datetime({ offset: true }),
   sourceStateSha256: checksumSchema,
+  retentionPolicy: archiveApiRetentionPolicySchema,
+  currentStorageBytes: nonNegativeIntegerSchema,
+  plannedRemovalBytes: nonNegativeIntegerSchema,
+  projectedStorageBytes: nonNegativeIntegerSchema,
+  storageWarningBytes: z.literal(archiveStorageWarningBytes),
+  storageCriticalBytes: z.literal(archiveStorageCriticalBytes),
+  verificationRequiredPackageKeys: z.array(safeKeySchema),
   productionDeletionEnabled: z.literal(false),
   items: z.array(prunePlanItemSchema),
   itemCount: nonNegativeIntegerSchema,
   totalBytes: nonNegativeIntegerSchema,
+}).superRefine((value, context) => {
+  const itemBytes = value.items.reduce((total, item) => total + item.sizeBytes, 0);
+  if (
+    value.itemCount !== value.items.length ||
+    value.totalBytes !== itemBytes ||
+    value.plannedRemovalBytes !== itemBytes
+  ) {
+    context.addIssue({ code: "custom", message: "prune plan totals are inconsistent" });
+  }
+  if (
+    value.projectedStorageBytes !==
+      Math.max(0, value.currentStorageBytes - value.plannedRemovalBytes)
+  ) {
+    context.addIssue({ code: "custom", message: "prune plan projection is inconsistent" });
+  }
+  if (
+    new Set(value.verificationRequiredPackageKeys).size !==
+      value.verificationRequiredPackageKeys.length ||
+    [...value.verificationRequiredPackageKeys].sort().some(
+      (key, index) => key !== value.verificationRequiredPackageKeys[index],
+    )
+  ) {
+    context.addIssue({
+      code: "custom",
+      message: "verification-required package keys must be sorted and unique",
+    });
+  }
 });
 
 export type StorageObject = z.infer<typeof storageObjectSchema>;
@@ -163,7 +239,16 @@ export type CapacitySummary = z.infer<typeof capacitySummarySchema>;
 export type ProjectSnapshotManifest = z.infer<typeof projectSnapshotManifestSchema>;
 export type BackupReceiptPayload = z.infer<typeof backupReceiptPayloadSchema>;
 export type SignedBackupReceipt = z.infer<typeof signedBackupReceiptSchema>;
+export type PackageVerificationReceiptPayload = z.infer<
+  typeof packageVerificationReceiptPayloadSchema
+>;
+export type SignedPackageVerificationReceipt = z.infer<
+  typeof signedPackageVerificationReceiptSchema
+>;
 export type PrunePlan = z.infer<typeof prunePlanSchema>;
+export type ArchiveApiRetentionPlanPolicy = z.infer<
+  typeof archiveApiRetentionPolicySchema
+>;
 
 function canonicalValue(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(canonicalValue);
@@ -312,7 +397,11 @@ export function buildCapacitySummary(input: {
   return capacitySummarySchema.parse({
     ...input,
     databaseStatus: status(input.databaseBytes, 350 * 1024 ** 2, 425 * 1024 ** 2),
-    storageStatus: status(input.storageBytes, 750 * 1024 ** 2, 900 * 1024 ** 2),
+    storageStatus: status(
+      input.storageBytes,
+      archiveStorageWarningBytes,
+      archiveStorageCriticalBytes,
+    ),
     archiveStatus: status(
       input.archiveAllocatedBytes,
       40 * 1024 ** 3,
@@ -350,6 +439,41 @@ export function verifyBackupReceipt(
     !timingSafeEqual(actualSignature, expectedSignature)
   ) {
     throw new Error("archive_receipt_signature_invalid");
+  }
+  return parsed.payload;
+}
+
+export function signPackageVerificationReceipt(
+  payload: PackageVerificationReceiptPayload,
+  signingKey: string,
+): SignedPackageVerificationReceipt {
+  if (signingKey.length < 32) throw new Error("archive_signing_key_too_short");
+  const parsed = packageVerificationReceiptPayloadSchema.parse(payload);
+  const serialized = canonicalJson(parsed);
+  const payloadSha256 = sha256Hex(serialized);
+  const signature = createHmac("sha256", signingKey).update(serialized).digest("hex");
+  return signedPackageVerificationReceiptSchema.parse({
+    payload: parsed,
+    payloadSha256,
+    signature,
+  });
+}
+
+export function verifyPackageVerificationReceipt(
+  receipt: SignedPackageVerificationReceipt,
+  signingKey: string,
+): PackageVerificationReceiptPayload {
+  const parsed = signedPackageVerificationReceiptSchema.parse(receipt);
+  const serialized = canonicalJson(parsed.payload);
+  const expectedPayloadSha256 = sha256Hex(serialized);
+  const expectedSignature = createHmac("sha256", signingKey).update(serialized).digest();
+  const actualSignature = Buffer.from(parsed.signature, "hex");
+  if (
+    parsed.payloadSha256 !== expectedPayloadSha256 ||
+    actualSignature.length !== expectedSignature.length ||
+    !timingSafeEqual(actualSignature, expectedSignature)
+  ) {
+    throw new Error("archive_verification_receipt_signature_invalid");
   }
   return parsed.payload;
 }

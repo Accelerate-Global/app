@@ -9,8 +9,11 @@ import {
   normalizeStorageInventory,
   reconcileStorageInventories,
   signBackupReceipt,
+  signPackageVerificationReceipt,
   verifyBackupReceipt,
+  verifyPackageVerificationReceipt,
   type BackupReceiptPayload,
+  type PackageVerificationReceiptPayload,
   type StorageObject,
 } from "./canonical";
 
@@ -163,5 +166,37 @@ describe("canonical data archive records", () => {
         key,
       ),
     ).toThrow("archive_receipt_signature_invalid");
+  });
+
+  it("signs package restore verification evidence and rejects status ambiguity", () => {
+    const payload: PackageVerificationReceiptPayload = {
+      schemaVersion: 1,
+      receiptKind: "package-restore-verification",
+      requestKey: "verify:api-package:001",
+      nonce: "verify-nonce-2026082900000001",
+      issuedAt: "2026-08-29T09:00:00.000Z",
+      completedAt: "2026-08-29T09:01:00.000Z",
+      status: "verified",
+      projectRef: "uuyntfbqksnclyvlpecx",
+      packageKey: `api-run/run-one/${checksum("d")}`,
+      manifestSha256: checksum("a"),
+      resticSnapshotId: checksum("b"),
+      memberCount: 2,
+      totalBytes: 200,
+      requestedByOwnerId: "owner-one",
+      failureCode: null,
+    };
+    const key = "receipt-key-with-at-least-thirty-two-characters";
+    const receipt = signPackageVerificationReceipt(payload, key);
+    expect(verifyPackageVerificationReceipt(receipt, key)).toEqual(payload);
+    expect(() => signPackageVerificationReceipt({
+      ...payload,
+      status: "failed",
+      failureCode: null,
+    }, key)).toThrow();
+    expect(() => verifyPackageVerificationReceipt({
+      ...receipt,
+      payload: { ...payload, totalBytes: 201 },
+    }, key)).toThrow("archive_verification_receipt_signature_invalid");
   });
 });

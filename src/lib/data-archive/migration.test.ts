@@ -11,6 +11,14 @@ const migration = readFileSync(
   "utf8",
 );
 
+const packageVerificationMigration = readFileSync(
+  resolve(
+    process.cwd(),
+    "supabase/migrations/20260829190619_add_data_archive_package_verifications.sql",
+  ),
+  "utf8",
+);
+
 describe("Samson data archive migration", () => {
   it("creates the compact catalog and keeps it outside browser access", () => {
     for (const table of [
@@ -79,6 +87,30 @@ describe("Samson data archive migration", () => {
 
   it("does not add unsafe catalog fields", () => {
     expect(migration).not.toMatch(
+      /\b(?:payload_body|local_path|credential|recipient_address|recovery_key|restic_password)\b/i,
+    );
+  });
+
+  it("adds immutable package restore verification evidence outside browser access", () => {
+    expect(packageVerificationMigration).toContain(
+      "create table private.data_archive_package_verifications",
+    );
+    expect(packageVerificationMigration).toContain(
+      "data_archive_package_verifications_state_check",
+    );
+    expect(packageVerificationMigration).toContain(
+      "data_archive_package_verifications_immutable",
+    );
+    expect(packageVerificationMigration).toContain(
+      "data_archive_packages_require_restore_verification_evidence",
+    );
+    expect(packageVerificationMigration).toContain(
+      "alter table private.data_archive_package_verifications enable row level security",
+    );
+    expect(packageVerificationMigration).toContain(
+      "revoke all on private.data_archive_package_verifications from public, anon, authenticated",
+    );
+    expect(packageVerificationMigration).not.toMatch(
       /\b(?:payload_body|local_path|credential|recipient_address|recovery_key|restic_password)\b/i,
     );
   });

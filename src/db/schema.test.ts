@@ -17,6 +17,7 @@ import {
   datasetFormingRuns,
   dataArchiveBackupRuns,
   dataArchivePackages,
+  dataArchivePackageVerifications,
   dataArchivePrunePlans,
   dataArchiveRehydrations,
   fieldDefinitions,
@@ -50,6 +51,10 @@ describe("datasets schema", () => {
     );
     expect(dataArchiveRehydrations.manifestChecksum.name).toBe(
       "manifest_checksum",
+    );
+    expect(dataArchivePackageVerifications.requestKey.name).toBe("request_key");
+    expect(dataArchivePackageVerifications.signatureDigest.name).toBe(
+      "signature_digest",
     );
     expect(dataArchivePackages).not.toHaveProperty("payloadBody");
     expect(dataArchivePackages).not.toHaveProperty("localPath");

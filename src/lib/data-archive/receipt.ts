@@ -3,6 +3,7 @@ import { eq, or } from "drizzle-orm";
 import { getDb } from "@/db";
 import {
   dataArchiveBackupRuns,
+  dataArchivePackageVerifications,
   dataArchivePackageMembers,
   dataArchivePackages,
   dataArchiveReceipts,
@@ -11,9 +12,13 @@ import type { OperationalAlertInput } from "@/lib/operational-alerts";
 
 import {
   canonicalSha256,
+  signedPackageVerificationReceiptSchema,
   signedBackupReceiptSchema,
+  verifyPackageVerificationReceipt,
   verifyBackupReceipt,
   type BackupReceiptPayload,
+  type PackageVerificationReceiptPayload,
+  type SignedPackageVerificationReceipt,
   type SignedBackupReceipt,
 } from "./canonical";
 
@@ -59,6 +64,39 @@ export function authenticateBackupReceipt(input: {
     throw new DataArchiveReceiptError(
       "archive_receipt_stale",
       "Backup receipt is outside the accepted time window.",
+      401,
+    );
+  }
+  return receipt;
+}
+
+export function authenticatePackageVerificationReceipt(input: {
+  value: unknown;
+  signingKey: string;
+  now?: Date;
+}): SignedPackageVerificationReceipt {
+  let receipt: SignedPackageVerificationReceipt;
+  try {
+    receipt = signedPackageVerificationReceiptSchema.parse(input.value);
+    verifyPackageVerificationReceipt(receipt, input.signingKey);
+  } catch {
+    throw new DataArchiveReceiptError(
+      "archive_verification_receipt_authentication_failed",
+      "Package verification receipt authentication failed.",
+      401,
+    );
+  }
+
+  const now = (input.now ?? new Date()).getTime();
+  const issuedAt = new Date(receipt.payload.issuedAt).getTime();
+  if (
+    !Number.isFinite(issuedAt) ||
+    now - issuedAt > MAX_RECEIPT_AGE_MS ||
+    issuedAt - now > MAX_RECEIPT_FUTURE_MS
+  ) {
+    throw new DataArchiveReceiptError(
+      "archive_verification_receipt_stale",
+      "Package verification receipt is outside the accepted time window.",
       401,
     );
   }
@@ -290,5 +328,123 @@ export async function persistBackupReceipt(
       .returning();
     if (!storedReceipt) throw new Error("archive_receipt_not_persisted");
     return { backupRunId: run.id, replayed: false };
+  });
+}
+
+function assertSamePackageVerification(
+  existing: typeof dataArchivePackageVerifications.$inferSelect,
+  receipt: SignedPackageVerificationReceipt,
+) {
+  const payload = receipt.payload;
+  if (
+    existing.requestKey !== payload.requestKey ||
+    existing.nonce !== payload.nonce ||
+    existing.status !== payload.status ||
+    existing.manifestChecksum !== payload.manifestSha256 ||
+    existing.memberCount !== payload.memberCount ||
+    existing.totalBytes !== payload.totalBytes ||
+    existing.requestedByOwnerId !== payload.requestedByOwnerId ||
+    existing.failureCode !== payload.failureCode ||
+    existing.payloadChecksum !== receipt.payloadSha256 ||
+    existing.signatureDigest !== receipt.signature
+  ) {
+    throw new DataArchiveReceiptError(
+      "archive_verification_receipt_replay_conflict",
+      "Package verification receipt replay conflicts with retained evidence.",
+      409,
+    );
+  }
+}
+
+export async function persistPackageVerificationReceipt(
+  receipt: SignedPackageVerificationReceipt,
+): Promise<{ packageId: string; replayed: boolean }> {
+  const payload: PackageVerificationReceiptPayload = receipt.payload;
+  const db = getDb();
+  return db.transaction(async (tx) => {
+    const [archivePackage] = await tx
+      .select()
+      .from(dataArchivePackages)
+      .where(eq(dataArchivePackages.packageKey, payload.packageKey))
+      .limit(1);
+    if (
+      !archivePackage ||
+      archivePackage.packageKind !== "api-run" ||
+      archivePackage.manifestChecksum !== payload.manifestSha256 ||
+      archivePackage.archiveSnapshotId !== payload.resticSnapshotId
+    ) {
+      throw new DataArchiveReceiptError(
+        "archive_verification_package_conflict",
+        "Package verification receipt conflicts with the protected catalog.",
+        409,
+      );
+    }
+
+    const [existing] = await tx
+      .select()
+      .from(dataArchivePackageVerifications)
+      .where(or(
+        eq(dataArchivePackageVerifications.requestKey, payload.requestKey),
+        eq(dataArchivePackageVerifications.nonce, payload.nonce),
+      ))
+      .limit(1);
+    if (existing) {
+      if (existing.packageId !== archivePackage.id) {
+        throw new DataArchiveReceiptError(
+          "archive_verification_receipt_replay_conflict",
+          "Package verification receipt replay conflicts with retained evidence.",
+          409,
+        );
+      }
+      assertSamePackageVerification(existing, receipt);
+      return { packageId: archivePackage.id, replayed: true };
+    }
+
+    const members = await tx
+      .select()
+      .from(dataArchivePackageMembers)
+      .where(eq(dataArchivePackageMembers.packageId, archivePackage.id));
+    const memberBytes = members.reduce((total, member) => total + member.sizeBytes, 0);
+    if (
+      members.length !== payload.memberCount ||
+      memberBytes !== payload.totalBytes ||
+      archivePackage.sizeBytes !== payload.totalBytes
+    ) {
+      throw new DataArchiveReceiptError(
+        "archive_verification_member_conflict",
+        "Package verification receipt does not match protected package members.",
+        409,
+      );
+    }
+
+    const completedAt = new Date(payload.completedAt);
+    const [inserted] = await tx
+      .insert(dataArchivePackageVerifications)
+      .values({
+        requestKey: payload.requestKey,
+        nonce: payload.nonce,
+        packageId: archivePackage.id,
+        status: payload.status,
+        manifestChecksum: payload.manifestSha256,
+        memberCount: payload.memberCount,
+        totalBytes: payload.totalBytes,
+        requestedByOwnerId: payload.requestedByOwnerId,
+        issuedAt: new Date(payload.issuedAt),
+        completedAt,
+        verifiedAt: payload.status === "verified" ? completedAt : null,
+        failureCode: payload.failureCode,
+        signatureDigest: receipt.signature,
+        payloadChecksum: receipt.payloadSha256,
+      })
+      .returning();
+    if (!inserted) throw new Error("archive_verification_receipt_not_persisted");
+
+    if (payload.status === "verified" && archivePackage.restoreVerifiedAt === null) {
+      await tx
+        .update(dataArchivePackages)
+        .set({ restoreVerifiedAt: completedAt, updatedAt: new Date() })
+        .where(eq(dataArchivePackages.id, archivePackage.id));
+    }
+    return { packageId: archivePackage.id, replayed: false };
   });
 }

@@ -1,8 +1,12 @@
 import {
+  archiveApiRetentionPolicySchema,
+  archiveStorageCriticalBytes,
+  archiveStorageWarningBytes,
   canonicalSha256,
   dataArchiveSchemaVersion,
   prunePlanSchema,
   type PrunePlan,
+  type ArchiveApiRetentionPlanPolicy,
 } from "./canonical";
 
 export const archiveDependencyKinds = [
@@ -62,11 +66,20 @@ function ageInDays(createdAt: string, now: Date): number {
 export function evaluateArchiveEligibility(
   candidate: ArchiveEligibilityCandidate,
   now: Date,
+  retentionPolicy: ArchiveApiRetentionPlanPolicy = {
+    minimumAgeDays: 30,
+    hotVersionsPerConnection: 3,
+  },
 ): ArchiveEligibilityDecision {
+  const policy = archiveApiRetentionPolicySchema.parse(retentionPolicy);
   const reasons: string[] = [];
   const age = ageInDays(candidate.sourceCreatedAt, now);
-  if (!Number.isFinite(age) || age < 30) reasons.push("younger-than-30-days");
-  if (candidate.validRank <= 3) reasons.push("latest-three-valid");
+  if (!Number.isFinite(age) || age < policy.minimumAgeDays) {
+    reasons.push(`younger-than-${policy.minimumAgeDays}-days`);
+  }
+  if (candidate.validRank <= policy.hotVersionsPerConnection) {
+    reasons.push(`inside-latest-${policy.hotVersionsPerConnection}-valid`);
+  }
   if (candidate.packageStatus !== "verified") reasons.push("archive-not-verified");
   if (!candidate.receiptVerified) reasons.push("signed-receipt-missing");
   if (!candidate.integrityVerified) reasons.push("integrity-proof-missing");
@@ -114,6 +127,8 @@ export function buildArchivePrunePlan(input: {
   planKey: string;
   generatedAt: Date;
   candidates: ArchiveEligibilityCandidate[];
+  retentionPolicy: ArchiveApiRetentionPlanPolicy;
+  currentStorageBytes: number;
 }): {
   plan: PrunePlan;
   planSha256: string;
@@ -122,11 +137,18 @@ export function buildArchivePrunePlan(input: {
   const candidates = [...input.candidates].sort((left, right) =>
     left.packageKey.localeCompare(right.packageKey),
   );
+  const retentionPolicy = archiveApiRetentionPolicySchema.parse(input.retentionPolicy);
+  if (!Number.isSafeInteger(input.currentStorageBytes) || input.currentStorageBytes < 0) {
+    throw new Error("archive_current_storage_bytes_invalid");
+  }
   const decisions = candidates.map((candidate) =>
-    evaluateArchiveEligibility(candidate, input.generatedAt),
+    evaluateArchiveEligibility(candidate, input.generatedAt, retentionPolicy),
   );
   const sourceStateSha256 = canonicalSha256(
-    candidates.map(archiveDependencyState),
+    {
+      retentionPolicy,
+      candidates: candidates.map(archiveDependencyState),
+    },
   );
   const items = decisions
     .filter((decision) => decision.eligible)
@@ -137,8 +159,8 @@ export function buildArchivePrunePlan(input: {
         itemIdentifier: `${object.bucket}:${object.path}`,
         sizeBytes: object.sizeBytes,
         reasons: [
-          "older-than-30-days",
-          "outside-latest-three-valid",
+          `older-than-${retentionPolicy.minimumAgeDays}-days`,
+          `outside-latest-${retentionPolicy.hotVersionsPerConnection}-valid`,
           "verified-archive-and-restore",
           "dependencies-clear",
         ],
@@ -149,15 +171,30 @@ export function buildArchivePrunePlan(input: {
         `${right.packageKey}\u0000${right.itemIdentifier}`,
       ),
     );
+  const verificationRequiredPackageKeys = decisions
+    .filter((decision) =>
+      decision.reasons.length === 1 &&
+      decision.reasons[0] === "restore-proof-missing"
+    )
+    .map((decision) => decision.candidate.packageKey)
+    .sort();
+  const totalBytes = items.reduce((total, item) => total + item.sizeBytes, 0);
   const plan = prunePlanSchema.parse({
     schemaVersion: dataArchiveSchemaVersion,
     planKey: input.planKey,
     generatedAt: input.generatedAt.toISOString(),
     sourceStateSha256,
+    retentionPolicy,
+    currentStorageBytes: input.currentStorageBytes,
+    plannedRemovalBytes: totalBytes,
+    projectedStorageBytes: Math.max(0, input.currentStorageBytes - totalBytes),
+    storageWarningBytes: archiveStorageWarningBytes,
+    storageCriticalBytes: archiveStorageCriticalBytes,
+    verificationRequiredPackageKeys,
     productionDeletionEnabled: false,
     items,
     itemCount: items.length,
-    totalBytes: items.reduce((total, item) => total + item.sizeBytes, 0),
+    totalBytes,
   });
   return { plan, planSha256: canonicalSha256(plan), decisions };
 }

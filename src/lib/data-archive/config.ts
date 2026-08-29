@@ -4,6 +4,31 @@ import { z } from "zod";
 
 type ArchiveEnvironment = Record<string, string | undefined>;
 
+export const defaultArchiveApiRetentionPolicy = {
+  minimumAgeDays: 30,
+  hotVersionsPerConnection: 3,
+} as const;
+
+export type ArchiveApiRetentionPolicy = {
+  minimumAgeDays: number;
+  hotVersionsPerConnection: number;
+};
+
+const apiRetentionEnvironmentSchema = z.object({
+  DATA_ARCHIVE_API_MIN_AGE_DAYS: z.coerce
+    .number()
+    .int()
+    .min(7)
+    .max(30)
+    .default(defaultArchiveApiRetentionPolicy.minimumAgeDays),
+  DATA_ARCHIVE_API_HOT_VERSIONS: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(3)
+    .default(defaultArchiveApiRetentionPolicy.hotVersionsPerConnection),
+});
+
 const absolutePath = z.string().min(2).refine((value) => value.startsWith("/"), {
   message: "must be an absolute path",
 });
@@ -72,15 +97,27 @@ export type ArchiveWorkerConfig = {
   archiveWarningBytes: number;
   archiveCriticalBytes: number;
   checkSubset: string;
+  apiRetentionPolicy: ArchiveApiRetentionPolicy;
   databaseEnvironment: ArchiveEnvironment;
   storageEnvironment: ArchiveEnvironment;
   resticEnvironment: ArchiveEnvironment;
 };
 
+export function readArchiveApiRetentionPolicy(
+  environment: ArchiveEnvironment = process.env,
+): ArchiveApiRetentionPolicy {
+  const value = apiRetentionEnvironmentSchema.parse(environment);
+  return {
+    minimumAgeDays: value.DATA_ARCHIVE_API_MIN_AGE_DAYS,
+    hotVersionsPerConnection: value.DATA_ARCHIVE_API_HOT_VERSIONS,
+  };
+}
+
 export function readArchiveWorkerConfig(
   environment: ArchiveEnvironment = process.env,
 ): ArchiveWorkerConfig {
   const value = workerEnvironmentSchema.parse(environment);
+  const apiRetentionPolicy = readArchiveApiRetentionPolicy(environment);
   const archivePaths = [
     value.DATA_ARCHIVE_STATE_DIR,
     value.DATA_ARCHIVE_STAGING_DIR,
@@ -122,6 +159,7 @@ export function readArchiveWorkerConfig(
     archiveWarningBytes: value.DATA_ARCHIVE_ARCHIVE_WARNING_BYTES,
     archiveCriticalBytes: value.DATA_ARCHIVE_ARCHIVE_CRITICAL_BYTES,
     checkSubset: value.DATA_ARCHIVE_CHECK_SUBSET,
+    apiRetentionPolicy,
     databaseEnvironment: {
       PGPASSFILE: value.PGPASSFILE,
       PGHOST: value.PGHOST,
