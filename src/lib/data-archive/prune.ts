@@ -11,6 +11,10 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 import { canonicalSha256, prunePlanSchema } from "./canonical";
 import {
+  readArchiveApiRetentionPolicy,
+  type ArchiveApiRetentionPolicy,
+} from "./config";
+import {
   archiveDependencyKinds,
   buildArchivePrunePlan,
   type ArchiveDependencyKind,
@@ -27,6 +31,7 @@ type CandidateRow = {
   package_status: ArchiveEligibilityCandidate["packageStatus"];
   integrity_verified_at: Date | string | null;
   restore_verified_at: Date | string | null;
+  restore_audit_verified: boolean;
   receipt_verified: boolean;
   active_target_ids: string[];
   open_work_ids: string[];
@@ -76,6 +81,14 @@ export async function loadApiArtifactEligibilityCandidates(): Promise<
       archive_package.status as package_status,
       archive_package.integrity_verified_at,
       archive_package.restore_verified_at,
+      coalesce(exists (
+        select 1
+        from private.data_archive_package_verifications as verification
+        where verification.package_id = archive_package.id
+          and verification.status = 'verified'
+          and verification.manifest_checksum = archive_package.manifest_checksum
+          and verification.verified_at = archive_package.restore_verified_at
+      ), false) as restore_audit_verified,
       coalesce(exists (
         select 1
         from private.data_archive_receipts as receipt
@@ -158,13 +171,25 @@ export async function loadApiArtifactEligibilityCandidates(): Promise<
           member.storage_bucket, member.storage_object_name,
           member.size_bytes, member.content_checksum, member.hot_state,
           (
-            select count(*)::integer
-            from private.api_connection_run_outputs as other_output
-            where other_output.rows_storage_path = member.storage_object_name
-               or other_output.raw_storage_path = member.storage_object_name
+            select count(distinct owner.owner_id)::integer
+            from (
+              select other_output.run_id::text as owner_id
+              from private.api_connection_run_outputs as other_output
+              where other_output.rows_storage_path = member.storage_object_name
+                 or other_output.raw_storage_path = member.storage_object_name
+              union
+              select owner_package.source_identifier as owner_id
+              from private.data_archive_package_members as other_member
+              join private.data_archive_packages as owner_package
+                on owner_package.id = other_member.package_id
+              where other_member.storage_bucket = member.storage_bucket
+                and other_member.storage_object_name = member.storage_object_name
+            ) as owner
           ) as shared_reference_count
         from private.data_archive_package_members as member
-        where member.package_id = any(${packageIds}::uuid[])
+        join private.data_archive_packages as selected_package
+          on selected_package.id = member.package_id
+        where selected_package.package_kind = 'api-run'
           and member.storage_bucket is not null
           and member.storage_object_name is not null
         order by member.package_id, member.storage_bucket, member.storage_object_name
@@ -210,7 +235,9 @@ export async function loadApiArtifactEligibilityCandidates(): Promise<
       packageStatus: row.package_status,
       receiptVerified: row.receipt_verified,
       integrityVerified: Boolean(row.integrity_verified_at),
-      restoreVerified: Boolean(row.restore_verified_at),
+      restoreVerified: Boolean(
+        row.restore_verified_at && row.restore_audit_verified,
+      ),
       checksComplete: true,
       dependencies,
       objects,
@@ -218,14 +245,32 @@ export async function loadApiArtifactEligibilityCandidates(): Promise<
   });
 }
 
+async function readLiveStorageBytes(): Promise<number> {
+  const rows = (await getDb().execute(sql<{ storage_bytes: number }>`
+    select coalesce(sum(coalesce(nullif(metadata->>'size', '')::bigint, 0)), 0)::bigint
+      as storage_bytes
+    from storage.objects
+  `)) as unknown as Array<{ storage_bytes: number }>;
+  const bytes = Number(rows[0]?.storage_bytes ?? 0);
+  if (!Number.isSafeInteger(bytes) || bytes < 0) {
+    throw new Error("archive_current_storage_bytes_invalid");
+  }
+  return bytes;
+}
+
 export async function generateApiArtifactPrunePlan(input: {
   now: Date;
   planKey: string;
+  retentionPolicy?: ArchiveApiRetentionPolicy;
+  currentStorageBytes?: number;
 }) {
+  const retentionPolicy = input.retentionPolicy ?? readArchiveApiRetentionPolicy();
   return buildArchivePrunePlan({
     planKey: input.planKey,
     generatedAt: input.now,
     candidates: await loadApiArtifactEligibilityCandidates(),
+    retentionPolicy,
+    currentStorageBytes: input.currentStorageBytes ?? await readLiveStorageBytes(),
   });
 }
 
@@ -244,7 +289,9 @@ function parseItemIdentity(value: string): { bucket: string; path: string } {
 
 async function assertLockedApiRunStillEligible(input: {
   sourceIdentifier: string;
+  objectBucket: string;
   objectPath: string;
+  retentionPolicy: ArchiveApiRetentionPolicy;
   executor: Parameters<Parameters<ReturnType<typeof getDb>["transaction"]>[0]>[0];
 }) {
   const rows = (await input.executor.execute(sql<{
@@ -252,33 +299,52 @@ async function assertLockedApiRunStillEligible(input: {
     dataset_id: string | null;
     dependency_count: number;
     shared_reference_count: number;
+    old_enough: boolean;
+    path_scoped_to_run: boolean;
   }>`
-    with ranked as (
-      select id, dataset_id,
-        row_number() over (
-          partition by connection_id order by created_at desc, id desc
-        )::integer as valid_rank
-      from private.api_connection_runs
-      where status = 'success'
-    )
-    select ranked.valid_rank, ranked.dataset_id,
-      (select count(*)::integer from private.dataset_forming_runs where source_run_id = ranked.id) as dependency_count,
-      (select count(*)::integer from private.api_connection_run_outputs
-        where rows_storage_path = ${input.objectPath}
-           or raw_storage_path = ${input.objectPath}) as shared_reference_count
-    from ranked
-    where ranked.id = ${input.sourceIdentifier}::uuid
-    for update
+    select (
+        select count(*)::integer + 1
+        from private.api_connection_runs as newer
+        where newer.connection_id = run.connection_id
+          and newer.status = 'success'
+          and (newer.created_at, newer.id) > (run.created_at, run.id)
+      ) as valid_rank,
+      run.dataset_id,
+      run.created_at < now() - make_interval(days => ${input.retentionPolicy.minimumAgeDays})
+        as old_enough,
+      ${input.objectPath} like ('api-connection-runs/' || run.id::text || '/%')
+        as path_scoped_to_run,
+      (select count(*)::integer from private.dataset_forming_runs where source_run_id = run.id) as dependency_count,
+      (select count(distinct owner.owner_id)::integer from (
+        select output.run_id::text as owner_id
+        from private.api_connection_run_outputs as output
+        where output.rows_storage_path = ${input.objectPath}
+           or output.raw_storage_path = ${input.objectPath}
+        union
+        select package.source_identifier as owner_id
+        from private.data_archive_package_members as member
+        join private.data_archive_packages as package on package.id = member.package_id
+        where member.storage_bucket = ${input.objectBucket}
+          and member.storage_object_name = ${input.objectPath}
+      ) as owner) as shared_reference_count
+    from private.api_connection_runs as run
+    where run.id = ${input.sourceIdentifier}::uuid
+      and run.status = 'success'
+    for update of run
   `)) as unknown as Array<{
     valid_rank: number;
     dataset_id: string | null;
     dependency_count: number;
     shared_reference_count: number;
+    old_enough: boolean;
+    path_scoped_to_run: boolean;
   }>;
   const row = rows[0];
   if (
     !row ||
-    row.valid_rank <= 3 ||
+    row.valid_rank <= input.retentionPolicy.hotVersionsPerConnection ||
+    !row.old_enough ||
+    !row.path_scoped_to_run ||
     row.dataset_id !== null ||
     row.dependency_count !== 0 ||
     row.shared_reference_count !== 1
@@ -301,13 +367,16 @@ export async function applyApiArtifactPrunePlan(input: {
   if (planChecksum !== input.confirmedChecksum) {
     throw new Error("archive_prune_checksum_mismatch");
   }
+  const retentionPolicy = readArchiveApiRetentionPolicy();
   const candidates = await loadApiArtifactEligibilityCandidates();
   const regenerated = buildArchivePrunePlan({
     planKey: plan.planKey,
     generatedAt: new Date(plan.generatedAt),
     candidates,
+    retentionPolicy,
+    currentStorageBytes: await readLiveStorageBytes(),
   });
-  if (regenerated.plan.sourceStateSha256 !== plan.sourceStateSha256) {
+  if (regenerated.planSha256 !== planChecksum) {
     throw new Error("archive_prune_plan_stale");
   }
   const candidateByPackageKey = new Map(
@@ -401,7 +470,9 @@ export async function applyApiArtifactPrunePlan(input: {
       if (storedItem.status === "deleted") return { ok: true as const };
       await assertLockedApiRunStillEligible({
         sourceIdentifier: candidate.sourceIdentifier,
+        objectBucket: identity.bucket,
         objectPath: identity.path,
+        retentionPolicy: plan.retentionPolicy,
         executor: tx,
       });
       await tx

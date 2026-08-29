@@ -28,6 +28,17 @@ describe("Samson direct archive alerts", () => {
     expect(alert.summary).not.toMatch(/credential|password|recovery key/i);
   });
 
+  it("keeps package verification failure details fixed and sanitized", () => {
+    const alert = buildArchiveDirectAlert({
+      kind: "verification-failed",
+      runKey: "verify:api-package:001",
+      occurredAt: new Date("2026-08-29T10:00:00.000Z"),
+    });
+    expect(alert.severity).toBe("critical");
+    expect(alert.title).toContain("restore verification failed");
+    expect(JSON.stringify(alert)).not.toMatch(/snapshot|checksum|\/srv\//i);
+  });
+
   it("enforces a one-hour cooldown with deterministic local state", async () => {
     const root = join(tmpdir(), `archive-alert-${crypto.randomUUID()}`);
     roots.push(root);

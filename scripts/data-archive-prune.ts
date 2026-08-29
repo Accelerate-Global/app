@@ -37,6 +37,15 @@ async function dryRun() {
     eligiblePackageCount: result.decisions.filter((decision) => decision.eligible).length,
     itemCount: result.plan.itemCount,
     totalBytes: result.plan.totalBytes,
+    currentStorageBytes: result.plan.currentStorageBytes,
+    projectedStorageBytes: result.plan.projectedStorageBytes,
+    storageWarningBytes: result.plan.storageWarningBytes,
+    storageCriticalBytes: result.plan.storageCriticalBytes,
+    retentionPolicy: result.plan.retentionPolicy,
+    verificationRequiredPackageCount:
+      result.plan.verificationRequiredPackageKeys.length,
+    reachesWarningTarget:
+      result.plan.projectedStorageBytes < result.plan.storageWarningBytes,
     ineligibleReasonCounts: Object.fromEntries([...reasonCounts].sort()),
     productionDeletionEnabled: false,
   })}\n`);

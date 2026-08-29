@@ -6,6 +6,7 @@ import {
   evaluateArchiveEligibility,
   type ArchiveEligibilityCandidate,
 } from "./eligibility";
+import { prunePlanSchema } from "./canonical";
 
 const dependencies = () => Object.fromEntries(
   archiveDependencyKinds.map((kind) => [kind, []]),
@@ -48,7 +49,7 @@ describe("archive eligibility", () => {
   it("allows only old, dependency-free, fully verified evidence outside the latest three", () => {
     expect(evaluateArchiveEligibility(candidate(), now)).toMatchObject({ eligible: true });
     expect(evaluateArchiveEligibility(candidate({ validRank: 3 }), now).reasons)
-      .toContain("latest-three-valid");
+      .toContain("inside-latest-3-valid");
     expect(evaluateArchiveEligibility(candidate({ sourceCreatedAt: "2026-08-10T00:00:00.000Z" }), now).reasons)
       .toContain("younger-than-30-days");
     expect(evaluateArchiveEligibility(candidate({ restoreVerified: false }), now).reasons)
@@ -79,18 +80,62 @@ describe("archive eligibility", () => {
       planKey: "api-artifacts:20260827",
       generatedAt,
       candidates: [candidate({ packageKey: `api-run/z/${"c".repeat(64)}` }), candidate()],
+      retentionPolicy: { minimumAgeDays: 30, hotVersionsPerConnection: 3 },
+      currentStorageBytes: 1_000,
     });
     const second = buildArchivePrunePlan({
       planKey: "api-artifacts:20260827",
       generatedAt,
       candidates: [candidate(), candidate({ packageKey: `api-run/z/${"c".repeat(64)}` })],
+      retentionPolicy: { minimumAgeDays: 30, hotVersionsPerConnection: 3 },
+      currentStorageBytes: 1_000,
     });
     expect(first.plan).toEqual(second.plan);
     expect(first.planSha256).toBe(second.planSha256);
     expect(first.plan.productionDeletionEnabled).toBe(false);
     expect(first.plan.itemCount).toBe(2);
+    expect(first.plan.plannedRemovalBytes).toBe(200);
+    expect(first.plan.projectedStorageBytes).toBe(800);
+    expect(first.plan.retentionPolicy).toEqual({
+      minimumAgeDays: 30,
+      hotVersionsPerConnection: 3,
+    });
     expect(first.plan.items[0]?.itemIdentifier).toBe(
       "api-connection-artifacts:run-one/rows.json",
     );
+    expect(() => prunePlanSchema.parse({
+      ...first.plan,
+      projectedStorageBytes: first.plan.projectedStorageBytes + 1,
+    })).toThrow("prune plan projection is inconsistent");
+  });
+
+  it("uses the bounded capacity profile without weakening dependency checks", () => {
+    const recent = candidate({
+      sourceCreatedAt: "2026-08-15T00:00:00.000Z",
+      validRank: 2,
+    });
+    expect(evaluateArchiveEligibility(recent, now).eligible).toBe(false);
+    expect(evaluateArchiveEligibility(recent, now, {
+      minimumAgeDays: 7,
+      hotVersionsPerConnection: 1,
+    })).toMatchObject({ eligible: true });
+    expect(() => evaluateArchiveEligibility(recent, now, {
+      minimumAgeDays: 6,
+      hotVersionsPerConnection: 1,
+    })).toThrow();
+  });
+
+  it("lists otherwise eligible packages that need restore proof only in the protected plan", () => {
+    const result = buildArchivePrunePlan({
+      planKey: "api-artifacts:20260827",
+      generatedAt: now,
+      candidates: [candidate({ restoreVerified: false })],
+      retentionPolicy: { minimumAgeDays: 30, hotVersionsPerConnection: 3 },
+      currentStorageBytes: 1_000,
+    });
+    expect(result.plan.items).toEqual([]);
+    expect(result.plan.verificationRequiredPackageKeys).toEqual([
+      candidate().packageKey,
+    ]);
   });
 });

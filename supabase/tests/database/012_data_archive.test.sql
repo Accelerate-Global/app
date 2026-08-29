@@ -2,12 +2,13 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(42);
+select plan(46);
 
 select has_table('private', 'data_archive_backup_runs', 'archive backup runs table exists');
 select has_table('private', 'data_archive_receipts', 'archive receipts table exists');
 select has_table('private', 'data_archive_packages', 'archive packages table exists');
 select has_table('private', 'data_archive_package_members', 'archive package members table exists');
+select has_table('private', 'data_archive_package_verifications', 'archive package verifications table exists');
 select has_table('private', 'data_archive_prune_plans', 'archive prune plans table exists');
 select has_table('private', 'data_archive_prune_items', 'archive prune items table exists');
 select has_table('private', 'data_archive_rehydrations', 'archive rehydrations table exists');
@@ -102,7 +103,7 @@ select is(
       and pg_class.relkind = 'r'
       and pg_class.relrowsecurity
   ),
-  7::bigint,
+  8::bigint,
   'all archive catalog tables have RLS enabled'
 );
 
@@ -281,6 +282,53 @@ select throws_ok(
   'P0001',
   'Data archive package member identity and evidence are immutable.',
   'member evidence cannot be rewritten'
+);
+
+select throws_ok(
+  $$
+    update private.data_archive_packages
+    set restore_verified_at = '2026-08-27T09:10:00Z', updated_at = now()
+    where id = 'da000003-0000-4000-8000-000000000003'
+  $$,
+  'P0001',
+  'Package restore evidence requires a matching verified audit record.',
+  'a package cannot gain restore evidence without a matching verification record'
+);
+
+select lives_ok(
+  $$
+    insert into private.data_archive_package_verifications (
+      id, request_key, nonce, package_id, status, manifest_checksum,
+      member_count, total_bytes, requested_by_owner_id, issued_at,
+      completed_at, verified_at, signature_digest, payload_checksum
+    ) values (
+      'da000007-0000-4000-8000-000000000007',
+      'verify:2026-08-27:001',
+      'verify-nonce-2026-08-27-000000000001',
+      'da000003-0000-4000-8000-000000000003',
+      'verified',
+      repeat('3', 64),
+      1,
+      2048,
+      'test-operator',
+      '2026-08-27T09:09:00Z',
+      '2026-08-27T09:10:00Z',
+      '2026-08-27T09:10:00Z',
+      repeat('6', 64),
+      repeat('7', 64)
+    )
+  $$,
+  'signed package restore verification evidence can be recorded'
+);
+
+select throws_ok(
+  $$
+    delete from private.data_archive_package_verifications
+    where id = 'da000007-0000-4000-8000-000000000007'
+  $$,
+  'P0001',
+  'Data archive package verification evidence is immutable.',
+  'package verification evidence cannot be deleted'
 );
 
 select lives_ok(

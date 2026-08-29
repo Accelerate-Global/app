@@ -1568,6 +1568,41 @@ export const dataArchivePackageMembers = privateSchema.table(
   ],
 );
 
+export const dataArchivePackageVerifications = privateSchema.table(
+  "data_archive_package_verifications",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    requestKey: text("request_key").notNull(),
+    nonce: text("nonce").notNull(),
+    packageId: uuid("package_id")
+      .notNull()
+      .references(() => dataArchivePackages.id, { onDelete: "restrict" }),
+    status: text("status").$type<"verified" | "failed">().notNull(),
+    manifestChecksum: text("manifest_checksum").notNull(),
+    memberCount: integer("member_count").notNull(),
+    totalBytes: bigint("total_bytes", { mode: "number" }).notNull(),
+    requestedByOwnerId: text("requested_by_owner_id").notNull(),
+    issuedAt: timestamp("issued_at", { withTimezone: true }).notNull(),
+    completedAt: timestamp("completed_at", { withTimezone: true }).notNull(),
+    verifiedAt: timestamp("verified_at", { withTimezone: true }),
+    failureCode: text("failure_code"),
+    signatureDigest: text("signature_digest").notNull(),
+    payloadChecksum: text("payload_checksum").notNull(),
+    receivedAt: timestamp("received_at", { withTimezone: true }).defaultNow().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("data_archive_package_verifications_request_key_idx").on(
+      table.requestKey,
+    ),
+    uniqueIndex("data_archive_package_verifications_nonce_idx").on(table.nonce),
+    index("data_archive_package_verifications_package_idx").on(
+      table.packageId,
+      table.completedAt,
+    ),
+  ],
+);
+
 export const dataArchivePrunePlans = privateSchema.table(
   "data_archive_prune_plans",
   {

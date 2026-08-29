@@ -2,10 +2,13 @@ import { describe, expect, it } from "vitest";
 
 import {
   signBackupReceipt,
+  signPackageVerificationReceipt,
   type BackupReceiptPayload,
+  type PackageVerificationReceiptPayload,
 } from "./canonical";
 import {
   authenticateBackupReceipt,
+  authenticatePackageVerificationReceipt,
   buildBackupReceiptAlerts,
 } from "./receipt";
 
@@ -38,6 +41,29 @@ function payload(overrides: Partial<BackupReceiptPayload> = {}): BackupReceiptPa
     completedAt: now.toISOString(),
     failureCode: null,
     packages: [],
+    ...overrides,
+  };
+}
+
+function verificationPayload(
+  overrides: Partial<PackageVerificationReceiptPayload> = {},
+): PackageVerificationReceiptPayload {
+  return {
+    schemaVersion: 1,
+    receiptKind: "package-restore-verification",
+    requestKey: "verify:api-package:001",
+    nonce: "verify-nonce-2026082900000001",
+    issuedAt: now.toISOString(),
+    completedAt: now.toISOString(),
+    status: "verified",
+    projectRef: "uuyntfbqksnclyvlpecx",
+    packageKey: `api-run/run-one/${checksum("d")}`,
+    manifestSha256: checksum("a"),
+    resticSnapshotId: checksum("b"),
+    memberCount: 2,
+    totalBytes: 200,
+    requestedByOwnerId: "owner-one",
+    failureCode: null,
     ...overrides,
   };
 }
@@ -87,5 +113,30 @@ describe("signed backup receipts", () => {
 
   it("does not consume failure capacity for a healthy backup", () => {
     expect(buildBackupReceiptAlerts(payload())).toEqual([]);
+  });
+});
+
+describe("signed package verification receipts", () => {
+  it("accepts fresh evidence and rejects stale or incorrectly signed evidence", () => {
+    const receipt = signPackageVerificationReceipt(verificationPayload(), key);
+    expect(authenticatePackageVerificationReceipt({
+      value: receipt,
+      signingKey: key,
+      now,
+    })).toEqual(receipt);
+    const stale = signPackageVerificationReceipt(
+      verificationPayload({ issuedAt: "2026-08-27T08:54:59.000Z" }),
+      key,
+    );
+    expect(() => authenticatePackageVerificationReceipt({
+      value: stale,
+      signingKey: key,
+      now,
+    })).toThrow("outside the accepted time window");
+    expect(() => authenticatePackageVerificationReceipt({
+      value: receipt,
+      signingKey: `${key}x`,
+      now,
+    })).toThrow("authentication failed");
   });
 });
