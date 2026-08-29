@@ -1,5 +1,6 @@
 import type { CurrentIdentity } from "@/lib/auth";
 import { executePrivateDataChatQuery } from "@/lib/private-data-chat/broker";
+import { getPrivateDataChatAnswerSemanticContext } from "@/lib/private-data-chat/catalog";
 import {
   compilePrivateDataChatQuery,
   PrivateDataChatQueryPolicyError,
@@ -15,10 +16,12 @@ import {
   type PrivateQwenGateway,
 } from "@/lib/private-data-chat/qwen-gateway";
 import type { PrivateDataChatQueryResult } from "@/lib/private-data-chat/schemas";
+import { resolvePrivateDataChatQueryValues } from "@/lib/private-data-chat/value-resolver";
 
 export type PrivateDataChatOrchestratorDependencies = {
   gateway: PrivateQwenGateway;
   executeQuery: typeof executePrivateDataChatQuery;
+  resolveValues: typeof resolvePrivateDataChatQueryValues;
 };
 
 const PRIVATE_DATA_CHAT_REPAIR_MESSAGE =
@@ -49,11 +52,13 @@ export async function orchestratePrivateDataChatTurn(input: {
   messages: PrivateQwenConversationMessage[];
   signal?: AbortSignal;
   onStage?: (stage: PrivateDataChatStage) => void;
-  dependencies?: PrivateDataChatOrchestratorDependencies;
+  dependencies?: Partial<PrivateDataChatOrchestratorDependencies>;
 }): Promise<PrivateDataChatTurnMessage> {
-  const dependencies = input.dependencies ?? {
+  const dependencies: PrivateDataChatOrchestratorDependencies = {
     gateway: getPrivateQwenGateway(),
     executeQuery: executePrivateDataChatQuery,
+    resolveValues: resolvePrivateDataChatQueryValues,
+    ...input.dependencies,
   };
   const question = [...input.messages]
     .reverse()
@@ -80,7 +85,17 @@ export async function orchestratePrivateDataChatTurn(input: {
   input.onStage?.("validating");
   let compiled: ReturnType<typeof compilePrivateDataChatQuery>;
   try {
-    compiled = compilePrivateDataChatQuery(plan.query);
+    const resolution = await dependencies.resolveValues(plan.query);
+    if (resolution.status === "clarify") {
+      return {
+        content: resolution.question,
+        facts: [],
+        provenance: null,
+      };
+    }
+    compiled = compilePrivateDataChatQuery(resolution.query, {
+      valueBindings: resolution.valueBindings,
+    });
   } catch (error) {
     if (!(error instanceof PrivateDataChatQueryPolicyError)) {
       throw error;
@@ -103,7 +118,17 @@ export async function orchestratePrivateDataChatTurn(input: {
       return { content: plan.answer, facts: [], provenance: null };
     }
 
-    compiled = compilePrivateDataChatQuery(plan.query);
+    const resolution = await dependencies.resolveValues(plan.query);
+    if (resolution.status === "clarify") {
+      return {
+        content: resolution.question,
+        facts: [],
+        provenance: null,
+      };
+    }
+    compiled = compilePrivateDataChatQuery(resolution.query, {
+      valueBindings: resolution.valueBindings,
+    });
   }
   input.onStage?.("querying");
   const result = await dependencies.executeQuery({
@@ -116,6 +141,9 @@ export async function orchestratePrivateDataChatTurn(input: {
     const answer = await dependencies.gateway.answer({
       question,
       result,
+      semanticContext: getPrivateDataChatAnswerSemanticContext(
+        compiled.selectedKeys,
+      ),
       signal: input.signal,
     });
     return {

@@ -5,9 +5,11 @@ import type { CurrentIdentity } from "@/lib/auth";
 import { closeDb, resetDbForTests } from "@/db";
 import { closePrivateDataChatAnalyticsSql } from "@/lib/private-data-chat/analytics-db";
 import { executePrivateDataChatQuery } from "@/lib/private-data-chat/broker";
+import { PRIVATE_DATA_CHAT_CATALOG_VERSION } from "@/lib/private-data-chat/catalog";
 import { compilePrivateDataChatQuery } from "@/lib/private-data-chat/compiler";
 import { FakePrivateQwenGateway } from "@/lib/private-data-chat/fake-qwen-gateway";
 import { orchestratePrivateDataChatTurn } from "@/lib/private-data-chat/orchestrator";
+import type { PrivateDataChatQuery } from "@/lib/private-data-chat/schemas";
 
 const runDatabaseTests = process.env.PRIVATE_DATA_CHAT_DATABASE_TESTS === "1";
 const describeDatabase = runDatabaseTests ? describe : describe.skip;
@@ -34,7 +36,7 @@ describeDatabase("private data chat broker database integration", () => {
     await admin.unsafe(
       "alter role analytics_chat_login password 'local-chat-test'",
     );
-    await admin`delete from private.analytics_chat_audit where catalog_version = 'primary-people-groups-v1'`;
+    await admin`delete from private.analytics_chat_audit where catalog_version = ${PRIVATE_DATA_CHAT_CATALOG_VERSION}`;
     await admin`delete from public.dataset_rows where dataset_id = ${datasetId}::uuid`;
     await admin`delete from public.datasets where id = ${datasetId}::uuid`;
     await admin`
@@ -122,7 +124,7 @@ describeDatabase("private data chat broker database integration", () => {
     await closePrivateDataChatAnalyticsSql();
     await closeDb();
     resetDbForTests();
-    await admin`delete from private.analytics_chat_audit where catalog_version = 'primary-people-groups-v1'`;
+    await admin`delete from private.analytics_chat_audit where catalog_version = ${PRIVATE_DATA_CHAT_CATALOG_VERSION}`;
     await admin`delete from public.dataset_rows where dataset_id = ${datasetId}::uuid`;
     await admin`delete from public.datasets where id = ${datasetId}::uuid`;
     await admin`
@@ -147,6 +149,7 @@ describeDatabase("private data chat broker database integration", () => {
 
   it("executes the compiled query as the verified admin and writes redacted audit evidence", async () => {
     const compiled = compilePrivateDataChatQuery({
+      catalogVersion: PRIVATE_DATA_CHAT_CATALOG_VERSION,
       dataset: "primary_people_groups",
       mode: "aggregate",
       metrics: ["total_population"],
@@ -206,6 +209,7 @@ describeDatabase("private data chat broker database integration", () => {
 
   it("returns no underlying rows for a non-pilot identity", async () => {
     const compiled = compilePrivateDataChatQuery({
+      catalogVersion: PRIVATE_DATA_CHAT_CATALOG_VERSION,
       dataset: "primary_people_groups",
       mode: "records",
       fields: ["people_id"],
@@ -235,6 +239,11 @@ describeDatabase("private data chat broker database integration", () => {
     const gateway = new FakePrivateQwenGateway();
     const executeQuery: typeof executePrivateDataChatQuery = (input) =>
       executePrivateDataChatQuery(input);
+    const resolveValues = async (query: PrivateDataChatQuery) => ({
+      status: "resolved" as const,
+      query,
+      valueBindings: [],
+    });
 
     const count = await orchestratePrivateDataChatTurn({
       identity: adminIdentity,
@@ -244,7 +253,7 @@ describeDatabase("private data chat broker database integration", () => {
           content: "How many people groups are in the current primary dataset?",
         },
       ],
-      dependencies: { gateway, executeQuery },
+      dependencies: { gateway, executeQuery, resolveValues },
     });
     expect(count.content).toContain("1 result row");
     expect(count.facts).toEqual(["people_group_count: 2"]);
@@ -258,7 +267,7 @@ describeDatabase("private data chat broker database integration", () => {
           content: "List people IDs and names for people groups in Antarctica.",
         },
       ],
-      dependencies: { gateway, executeQuery },
+      dependencies: { gateway, executeQuery, resolveValues },
     });
     expect(empty.content).toBe(
       "No matching records were found in the approved current dataset.",

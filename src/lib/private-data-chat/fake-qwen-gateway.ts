@@ -1,4 +1,5 @@
 import { PRIVATE_DATA_CHAT_EVALUATION_CASES } from "@/lib/private-data-chat/evaluation-cases";
+import type { PrivateDataChatAnswerSemanticContext } from "@/lib/private-data-chat/catalog";
 import type {
   PrivateQwenConversationMessage,
   PrivateQwenGateway,
@@ -11,6 +12,20 @@ import type {
 function lastUserQuestion(messages: PrivateQwenConversationMessage[]) {
   return [...messages].reverse().find((message) => message.role === "user")
     ?.content;
+}
+
+function sameConversation(
+  left: PrivateQwenConversationMessage[],
+  right: PrivateQwenConversationMessage[],
+) {
+  return (
+    left.length === right.length &&
+    left.every(
+      (message, index) =>
+        message.role === right[index]?.role &&
+        message.content === right[index]?.content,
+    )
+  );
 }
 
 function deterministicAnswer(result: PrivateDataChatQueryResult): PrivateDataChatAnswer {
@@ -39,7 +54,10 @@ export class FakePrivateQwenGateway implements PrivateQwenGateway {
   async plan(input: { messages: PrivateQwenConversationMessage[] }) {
     const question = lastUserQuestion(input.messages);
     const matching = PRIVATE_DATA_CHAT_EVALUATION_CASES.find(
-      (testCase) => testCase.question === question,
+      (testCase) =>
+        (testCase.conversation &&
+          sameConversation(testCase.conversation, input.messages)) ||
+        (!testCase.conversation && testCase.question === question),
     );
 
     return (
@@ -55,6 +73,7 @@ export class FakePrivateQwenGateway implements PrivateQwenGateway {
   async answer(input: {
     question: string;
     result: PrivateDataChatQueryResult;
+    semanticContext: PrivateDataChatAnswerSemanticContext;
     signal?: AbortSignal;
   }) {
     return deterministicAnswer(input.result);

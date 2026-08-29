@@ -1,19 +1,24 @@
 import { runCommand } from "./lib/command";
 
-function readChangeName() {
-  return process.argv.slice(2).find((argument) => !argument.startsWith("-"));
+function readArguments() {
+  return process.argv.slice(2).filter((argument) => argument !== "--");
+}
+
+function readChangeName(arguments_: string[]) {
+  return arguments_.find((argument) => !argument.startsWith("-"));
 }
 
 async function main() {
-  const changeName = readChangeName();
+  const arguments_ = readArguments();
+  const changeName = readChangeName(arguments_);
 
   if (!changeName) {
     throw new Error("Usage: pnpm run spec:archive -- <change-id> [--skip-specs]");
   }
 
-  const passthroughFlags = process.argv
-    .slice(2)
-    .filter((argument) => argument !== changeName);
+  const passthroughFlags = arguments_.filter(
+    (argument) => argument !== changeName,
+  );
 
   await runCommand("openspec", [
     "archive",

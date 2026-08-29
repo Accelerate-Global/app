@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { CurrentIdentity } from "@/lib/auth";
 import { orchestratePrivateDataChatTurn } from "@/lib/private-data-chat/orchestrator";
 import { PrivateDataChatBrokerError } from "@/lib/private-data-chat/broker";
+import { PRIVATE_DATA_CHAT_CATALOG_VERSION } from "@/lib/private-data-chat/catalog";
 import { PrivateQwenGatewayError } from "@/lib/private-data-chat/qwen-gateway";
 
 const identity: CurrentIdentity = {
@@ -16,7 +17,7 @@ const identity: CurrentIdentity = {
 
 const provenance = {
   queryId: "8a000001-1337-403d-8eb5-b7c44a1be131",
-  catalogVersion: "primary-people-groups-v1",
+  catalogVersion: PRIVATE_DATA_CHAT_CATALOG_VERSION,
   dataset: "primary_people_groups" as const,
   datasetId: "7a000001-1337-403d-8eb5-b7c44a1be131",
   datasetVersionCreatedAt: "2026-08-26T00:00:00.000Z",
@@ -53,6 +54,10 @@ describe("private data chat orchestrator", () => {
 
   it("emits stages and grounds the final answer in broker results", async () => {
     const stages: string[] = [];
+    const answer = vi.fn().mockResolvedValue({
+      answer: "There are 3 people groups.",
+      facts: ["people_group_count: 3"],
+    });
     const result = await orchestratePrivateDataChatTurn({
       identity,
       messages: [
@@ -68,6 +73,7 @@ describe("private data chat orchestrator", () => {
             decision: "query",
             reason: "Count records.",
             query: {
+              catalogVersion: PRIVATE_DATA_CHAT_CATALOG_VERSION,
               dataset: "primary_people_groups",
               mode: "aggregate",
               metrics: ["people_group_count"],
@@ -77,10 +83,7 @@ describe("private data chat orchestrator", () => {
               limit: 1,
             },
           }),
-          answer: vi.fn().mockResolvedValue({
-            answer: "There are 3 people groups.",
-            facts: ["people_group_count: 3"],
-          }),
+          answer,
         },
         executeQuery: vi.fn().mockResolvedValue({
           rows: [{ people_group_count: "3" }],
@@ -100,6 +103,57 @@ describe("private data chat orchestrator", () => {
       facts: ["people_group_count: 3"],
       provenance,
     });
+    expect(answer).toHaveBeenCalledWith(
+      expect.objectContaining({
+        semanticContext: expect.objectContaining({
+          catalogVersion: PRIVATE_DATA_CHAT_CATALOG_VERSION,
+          concepts: [
+            expect.objectContaining({
+              key: "people_group_count",
+              unit: "people groups",
+            }),
+          ],
+        }),
+      }),
+    );
+  });
+
+  it("returns deterministic value ambiguity without querying or asking Qwen again", async () => {
+    const plan = vi.fn().mockResolvedValue({
+      decision: "query",
+      reason: "Filter by country.",
+      query: {
+        catalogVersion: PRIVATE_DATA_CHAT_CATALOG_VERSION,
+        dataset: "primary_people_groups",
+        mode: "records",
+        fields: ["people_id"],
+        filters: [{ field: "country", operator: "eq", value: "Congo" }],
+        sort: [],
+        limit: 25,
+      },
+    });
+    const executeQuery = vi.fn();
+    const result = await orchestratePrivateDataChatTurn({
+      identity,
+      messages: [{ role: "user", content: "List groups in Congo." }],
+      dependencies: {
+        gateway: { plan, answer: vi.fn() },
+        executeQuery,
+        resolveValues: vi.fn().mockResolvedValue({
+          status: "clarify",
+          question: "Which approved country named Congo did you mean?",
+          reason: "Country alias is ambiguous.",
+        }),
+      },
+    });
+
+    expect(result).toEqual({
+      content: "Which approved country named Congo did you mean?",
+      facts: [],
+      provenance: null,
+    });
+    expect(plan).toHaveBeenCalledOnce();
+    expect(executeQuery).not.toHaveBeenCalled();
   });
 
   it("keeps a verified result when explanation inference fails", async () => {
@@ -112,6 +166,7 @@ describe("private data chat orchestrator", () => {
             decision: "query",
             reason: "Count records.",
             query: {
+              catalogVersion: PRIVATE_DATA_CHAT_CATALOG_VERSION,
               dataset: "primary_people_groups",
               mode: "aggregate",
               metrics: ["people_group_count"],
@@ -150,6 +205,7 @@ describe("private data chat orchestrator", () => {
               decision: "query",
               reason: "Count records.",
               query: {
+                catalogVersion: PRIVATE_DATA_CHAT_CATALOG_VERSION,
                 dataset: "primary_people_groups",
                 mode: "aggregate",
                 metrics: ["people_group_count"],
@@ -181,6 +237,7 @@ describe("private data chat orchestrator", () => {
         decision: "query",
         reason: "Invalid selected sort.",
         query: {
+          catalogVersion: PRIVATE_DATA_CHAT_CATALOG_VERSION,
           dataset: "primary_people_groups",
           mode: "records",
           fields: ["people_id"],
@@ -193,6 +250,7 @@ describe("private data chat orchestrator", () => {
         decision: "query",
         reason: "Use only a selected stable sort.",
         query: {
+          catalogVersion: PRIVATE_DATA_CHAT_CATALOG_VERSION,
           dataset: "primary_people_groups",
           mode: "records",
           fields: ["people_id"],

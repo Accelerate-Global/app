@@ -1,6 +1,7 @@
 import { createHash, createHmac, randomUUID } from "node:crypto";
 
 import { getPrivateDataChatConfiguration } from "@/lib/private-data-chat/config";
+import type { PrivateDataChatAnswerSemanticContext } from "@/lib/private-data-chat/catalog";
 import {
   PRIVATE_DATA_CHAT_ANSWER_SYSTEM_PROMPT,
   PRIVATE_DATA_CHAT_PLANNER_SYSTEM_PROMPT,
@@ -31,6 +32,7 @@ export interface PrivateQwenGateway {
   answer(input: {
     question: string;
     result: PrivateDataChatQueryResult;
+    semanticContext: PrivateDataChatAnswerSemanticContext;
     signal?: AbortSignal;
   }): Promise<PrivateDataChatAnswer>;
 }
@@ -275,6 +277,7 @@ export class HttpPrivateQwenGateway implements PrivateQwenGateway {
   async answer(input: {
     question: string;
     result: PrivateDataChatQueryResult;
+    semanticContext: PrivateDataChatAnswerSemanticContext;
     signal?: AbortSignal;
   }) {
     const data = await this.request({
@@ -283,6 +286,7 @@ export class HttpPrivateQwenGateway implements PrivateQwenGateway {
       body: {
         systemPrompt: PRIVATE_DATA_CHAT_ANSWER_SYSTEM_PROMPT,
         question: input.question,
+        semanticContext: input.semanticContext,
         result: input.result,
         responseSchema: PRIVATE_DATA_CHAT_ANSWER_JSON_SCHEMA,
         temperature: 0,

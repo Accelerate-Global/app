@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { PRIVATE_DATA_CHAT_CATALOG_VERSION } from "@/lib/private-data-chat/catalog";
 import {
   PrivateDataChatQueryPolicyError,
   compilePrivateDataChatQuery,
@@ -8,6 +9,7 @@ import {
 describe("compilePrivateDataChatQuery", () => {
   it("compiles grouped metrics using only positional parameters", () => {
     const compiled = compilePrivateDataChatQuery({
+      catalogVersion: PRIVATE_DATA_CHAT_CATALOG_VERSION,
       dataset: "primary_people_groups",
       mode: "aggregate",
       metrics: ["total_population"],
@@ -34,6 +36,7 @@ describe("compilePrivateDataChatQuery", () => {
   it("keeps adversarial values entirely outside SQL text", () => {
     const attack = "Thailand'; DROP TABLE datasets; --";
     const compiled = compilePrivateDataChatQuery({
+      catalogVersion: PRIVATE_DATA_CHAT_CATALOG_VERSION,
       dataset: "primary_people_groups",
       mode: "records",
       fields: ["people_id", "people_name"],
@@ -49,6 +52,7 @@ describe("compilePrivateDataChatQuery", () => {
 
   it("compiles empty-result filters instead of refusing them", () => {
     const compiled = compilePrivateDataChatQuery({
+      catalogVersion: PRIVATE_DATA_CHAT_CATALOG_VERSION,
       dataset: "primary_people_groups",
       mode: "records",
       fields: ["people_id"],
@@ -63,6 +67,7 @@ describe("compilePrivateDataChatQuery", () => {
 
   it("uses typed arrays for in filters", () => {
     const compiled = compilePrivateDataChatQuery({
+      catalogVersion: PRIVATE_DATA_CHAT_CATALOG_VERSION,
       dataset: "primary_people_groups",
       mode: "aggregate",
       metrics: ["people_group_count"],
@@ -81,12 +86,28 @@ describe("compilePrivateDataChatQuery", () => {
   it("rejects sorting by an unselected semantic key", () => {
     expect(() =>
       compilePrivateDataChatQuery({
+        catalogVersion: PRIVATE_DATA_CHAT_CATALOG_VERSION,
         dataset: "primary_people_groups",
         mode: "records",
         fields: ["people_id"],
         filters: [],
         sort: [{ field: "country", direction: "desc" }],
         limit: 10,
+      }),
+    ).toThrow(PrivateDataChatQueryPolicyError);
+  });
+
+  it("fails closed on a stale catalog revision", () => {
+    expect(() =>
+      compilePrivateDataChatQuery({
+        catalogVersion: "primary-people-groups-v1",
+        dataset: "primary_people_groups",
+        mode: "aggregate",
+        metrics: ["people_group_count"],
+        dimensions: [],
+        filters: [],
+        sort: [],
+        limit: 1,
       }),
     ).toThrow(PrivateDataChatQueryPolicyError);
   });

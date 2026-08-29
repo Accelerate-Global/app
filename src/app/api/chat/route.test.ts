@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getCurrentIdentity } from "@/lib/auth";
 import { orchestratePrivateDataChatTurn } from "@/lib/private-data-chat/orchestrator";
+import { PrivateDataChatValueResolutionError } from "@/lib/private-data-chat/value-resolver";
 import { POST } from "./route";
 
 vi.mock("@/lib/auth", () => ({ getCurrentIdentity: vi.fn() }));
@@ -133,5 +134,21 @@ describe("/api/chat", () => {
     expect(body).toContain('"stage":"querying"');
     expect(body).toContain("There are 3 people groups.");
     expect(body).toContain("event: done");
+  });
+
+  it("streams a retryable bounded error when semantic values are unavailable", async () => {
+    configureFeature();
+    getCurrentIdentityMock.mockResolvedValue(adminIdentity);
+    orchestrateMock.mockRejectedValue(new PrivateDataChatValueResolutionError());
+
+    const response = await POST(
+      request({ messages: [{ role: "user", content: "List groups in US." }] }),
+    );
+    const body = await response.text();
+
+    expect(response.status).toBe(200);
+    expect(body).toContain('"code":"semantic_resource_unavailable"');
+    expect(body).toContain('"retryable":true');
+    expect(body).not.toContain("provider details");
   });
 });

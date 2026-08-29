@@ -9,6 +9,7 @@ import { orchestratePrivateDataChatTurn } from "@/lib/private-data-chat/orchestr
 import { PrivateDataChatBrokerError } from "@/lib/private-data-chat/broker";
 import { PrivateQwenGatewayError } from "@/lib/private-data-chat/qwen-gateway";
 import { privateDataChatRequestSchema } from "@/lib/private-data-chat/schemas";
+import { PrivateDataChatValueResolutionError } from "@/lib/private-data-chat/value-resolver";
 import { withRoute } from "@/lib/route-guard";
 
 const PRIVATE_DATA_CHAT_MAX_REQUEST_BYTES = 30_000;
@@ -29,6 +30,15 @@ function streamError(error: unknown): Extract<PrivateDataChatStreamEvent, { type
       code: error.code,
       message: "The approved data query could not be completed.",
       retryable: error.code === "query_failed",
+    };
+  }
+
+  if (error instanceof PrivateDataChatValueResolutionError) {
+    return {
+      type: "error",
+      code: error.code,
+      message: "The approved semantic value resource is temporarily unavailable.",
+      retryable: error.retryable,
     };
   }
 

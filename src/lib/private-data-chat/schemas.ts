@@ -1,10 +1,12 @@
 import { z } from "zod";
 
 import {
+  PRIVATE_DATA_CHAT_CATALOG_VERSION,
   PRIVATE_DATA_CHAT_DATASET_KEY,
   PRIVATE_DATA_CHAT_DIMENSION_KEYS,
   PRIVATE_DATA_CHAT_FILTER_KEYS,
   PRIVATE_DATA_CHAT_METRIC_KEYS,
+  PRIVATE_DATA_CHAT_RECORD_FIELD_KEYS,
 } from "@/lib/private-data-chat/catalog";
 
 export const PRIVATE_DATA_CHAT_MAX_TURNS = 12;
@@ -22,6 +24,9 @@ export const privateDataChatDimensionSchema = z.enum(
 );
 export const privateDataChatMetricSchema = z.enum(
   PRIVATE_DATA_CHAT_METRIC_KEYS,
+);
+export const privateDataChatRecordFieldSchema = z.enum(
+  PRIVATE_DATA_CHAT_RECORD_FIELD_KEYS,
 );
 export const privateDataChatFilterFieldSchema = z.enum(
   PRIVATE_DATA_CHAT_FILTER_KEYS,
@@ -95,7 +100,7 @@ export const privateDataChatFilterSchema = z
 export const privateDataChatSortSchema = z
   .object({
     field: z.enum([
-      ...PRIVATE_DATA_CHAT_DIMENSION_KEYS,
+      ...PRIVATE_DATA_CHAT_RECORD_FIELD_KEYS,
       ...PRIVATE_DATA_CHAT_METRIC_KEYS,
     ]),
     direction: z.enum(["asc", "desc"]),
@@ -104,6 +109,7 @@ export const privateDataChatSortSchema = z
 
 const privateDataChatQueryBaseSchema = z
   .object({
+    catalogVersion: z.literal(PRIVATE_DATA_CHAT_CATALOG_VERSION),
     dataset: z.literal(PRIVATE_DATA_CHAT_DATASET_KEY),
     filters: z
       .array(privateDataChatFilterSchema)
@@ -131,7 +137,7 @@ export const privateDataChatRecordsQuerySchema =
   privateDataChatQueryBaseSchema.extend({
     mode: z.literal("records"),
     fields: z
-      .array(privateDataChatDimensionSchema)
+      .array(privateDataChatRecordFieldSchema)
       .min(1)
       .max(PRIVATE_DATA_CHAT_MAX_FIELDS),
   });
@@ -316,7 +322,7 @@ const privateDataChatSortJsonSchema = {
     field: {
       type: "string",
       enum: [
-        ...PRIVATE_DATA_CHAT_DIMENSION_KEYS,
+        ...PRIVATE_DATA_CHAT_RECORD_FIELD_KEYS,
         ...PRIVATE_DATA_CHAT_METRIC_KEYS,
       ],
     },
@@ -325,6 +331,10 @@ const privateDataChatSortJsonSchema = {
 } as const;
 
 const privateDataChatQueryCommonJsonProperties = {
+  catalogVersion: {
+    type: "string",
+    enum: [PRIVATE_DATA_CHAT_CATALOG_VERSION],
+  },
   dataset: { type: "string", enum: [PRIVATE_DATA_CHAT_DATASET_KEY] },
   filters: { $ref: "#/$defs/filters" },
   sort: { $ref: "#/$defs/sorts" },
@@ -349,6 +359,7 @@ export const PRIVATE_DATA_CHAT_PLAN_JSON_SCHEMA = {
               type: "object",
               additionalProperties: false,
               required: [
+                "catalogVersion",
                 "dataset",
                 "mode",
                 "metrics",
@@ -383,6 +394,7 @@ export const PRIVATE_DATA_CHAT_PLAN_JSON_SCHEMA = {
               type: "object",
               additionalProperties: false,
               required: [
+                "catalogVersion",
                 "dataset",
                 "mode",
                 "fields",
@@ -399,7 +411,7 @@ export const PRIVATE_DATA_CHAT_PLAN_JSON_SCHEMA = {
                   maxItems: PRIVATE_DATA_CHAT_MAX_FIELDS,
                   items: {
                     type: "string",
-                    enum: PRIVATE_DATA_CHAT_DIMENSION_KEYS,
+                    enum: PRIVATE_DATA_CHAT_RECORD_FIELD_KEYS,
                   },
                 },
               },
