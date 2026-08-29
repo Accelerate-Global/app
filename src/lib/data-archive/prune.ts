@@ -48,11 +48,29 @@ type MemberRow = {
   member_id: string;
   storage_bucket: string;
   storage_object_name: string;
-  size_bytes: number;
+  size_bytes: number | bigint | string;
   content_checksum: string;
   hot_state: ArchiveEligibilityCandidate["objects"][number]["hotState"];
   shared_reference_count: number;
 };
+
+const maximumSafeByteValue = BigInt(Number.MAX_SAFE_INTEGER);
+
+export function normalizeDatabaseByteValue(value: unknown): number {
+  if (typeof value === "number") {
+    if (Number.isSafeInteger(value) && value >= 0) return value;
+    throw new Error("archive_database_byte_value_invalid");
+  }
+  if (typeof value === "bigint") {
+    if (value >= BigInt(0) && value <= maximumSafeByteValue) return Number(value);
+    throw new Error("archive_database_byte_value_invalid");
+  }
+  if (typeof value === "string" && /^\d+$/.test(value)) {
+    const parsed = BigInt(value);
+    if (parsed <= maximumSafeByteValue) return Number(parsed);
+  }
+  throw new Error("archive_database_byte_value_invalid");
+}
 
 function emptyDependencies(): Record<ArchiveDependencyKind, string[]> {
   return Object.fromEntries(
@@ -216,7 +234,7 @@ export async function loadApiArtifactEligibilityCandidates(): Promise<
           memberId: member.member_id,
           bucket: member.storage_bucket,
           path: member.storage_object_name,
-          sizeBytes: member.size_bytes,
+          sizeBytes: normalizeDatabaseByteValue(member.size_bytes),
           contentChecksum: member.content_checksum,
           hotState: member.hot_state,
           sharedReferenceCount: member.shared_reference_count,
@@ -246,16 +264,12 @@ export async function loadApiArtifactEligibilityCandidates(): Promise<
 }
 
 async function readLiveStorageBytes(): Promise<number> {
-  const rows = (await getDb().execute(sql<{ storage_bytes: number }>`
+  const rows = (await getDb().execute(sql<{ storage_bytes: number | bigint | string }>`
     select coalesce(sum(coalesce(nullif(metadata->>'size', '')::bigint, 0)), 0)::bigint
       as storage_bytes
     from storage.objects
-  `)) as unknown as Array<{ storage_bytes: number }>;
-  const bytes = Number(rows[0]?.storage_bytes ?? 0);
-  if (!Number.isSafeInteger(bytes) || bytes < 0) {
-    throw new Error("archive_current_storage_bytes_invalid");
-  }
-  return bytes;
+  `)) as unknown as Array<{ storage_bytes: number | bigint | string }>;
+  return normalizeDatabaseByteValue(rows[0]?.storage_bytes ?? 0);
 }
 
 export async function generateApiArtifactPrunePlan(input: {
