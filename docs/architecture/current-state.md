@@ -97,8 +97,9 @@ configuration, not intended future architecture.
 - Exact production provider settings are outside the tracked repo unless reflected in docs or scripts.
 - Private Qwen remains loopback-only on Samson VM 200. The production analytics
   migration was applied to the linked `online` Supabase project on 2026-08-26;
-  the feature remains disabled. The selected personal Cloudflare account now runs
-  the Access-protected Worker
+  on 2026-08-28 the feature was enabled only for the exact provider-side
+  production canary after live acceptance passed. The selected personal
+  Cloudflare account runs the Access-protected Worker
   `accelerate-qwen-edge-gateway.blake-062.workers.dev`, VPC Service
   `accelerate-qwen-gateway` (`01a04934-2091-7de1-9f7c-6c686698cbd8`), and
   outbound-only Tunnel `accelerate-qwen-samson`
@@ -106,8 +107,10 @@ configuration, not intended future architecture.
   signed HTTPS gateway at `10.77.0.30:8443`; no custom DNS zone or public
   tunnel hostname exists. Cloudflare Access admits only the dedicated Vercel
   service token, whose values are stored as sensitive Production variables in
-  the linked Vercel project. The disabled production artifact was redeployed
-  with this configuration on 2026-08-28.
+  the linked Vercel project. The merged, canary-enabled production artifact was
+  deployed on 2026-08-28, and acceptance verified the complete Vercel-to-Samson
+  path with a grounded, provenance-bearing answer. Everyone outside the exact
+  provider-side canary continues to fail closed.
 
 ## Verification Architecture
 

@@ -121,9 +121,11 @@ reviewed follow-up migration is required.
   accepted until the Samson origin can use `verify_full`; encryption and the
   independent application HMAC remain required.
 - The Vercel Production environment contains the Worker URL and replacement
-  Access service-token values as sensitive variables. The feature remains
-  disabled and the exact canary is stored only in that provider-side sensitive
-  configuration.
+  Access service-token values as sensitive variables. The feature is enabled
+  only for the exact canary stored in provider-side sensitive configuration.
+  Production acceptance on 2026-08-28 verified the complete Vercel, Cloudflare
+  Access, Worker, VPC Service, Samson Qwen, and read-only analytics path with a
+  grounded answer and provenance; all other users continue to fail closed.
 - Exact production primary dataset/catalog revision approved for the pilot.
 - Acceptable queue depth, p95 latency, availability target, and support owner
   for the single-slot Samson service.
