@@ -1596,20 +1596,35 @@ test("admin can begin partner export from management sheet", async ({ page }, te
       await expect(
         page.locator('[data-smoke-page="dataset-detail"]'),
       ).toBeVisible();
-      const managerTrigger = page.locator(
-        '[data-smoke-trigger="partner-exports-sheet"]',
-      );
       const datasetToolbar = page.locator("[data-smoke-dataset-toolbar]");
       const viewSwitch = datasetToolbar.getByRole("group", {
         name: "Dataset view",
       });
-      await expect(managerTrigger).toBeVisible();
+      const datasetActionsTrigger = datasetToolbar.locator(
+        '[data-smoke-trigger="dataset-actions-menu"]',
+      );
+      await expect(datasetActionsTrigger).toBeVisible();
       await expect(datasetToolbar).toBeVisible();
       await expect(viewSwitch).toBeVisible();
       expect(await datasetToolbar.locator(":scope > *").count()).toBe(2);
 
       await expectDatasetWorkspaceAlignment(page);
 
+      await datasetActionsTrigger.click();
+      const datasetActionsMenu = page.locator(
+        '[data-smoke-surface="dataset-actions-menu"][data-smoke-ready="dataset-actions-menu"]',
+      );
+      await expect(datasetActionsMenu).toBeVisible();
+      await expect(
+        datasetActionsMenu.getByRole("menuitem", { name: "Edit dataset" }),
+      ).toHaveAttribute(
+        "href",
+        `/dashboard/datasets/${bootstrap.datasets.primary.id}/edit`,
+      );
+      const managerTrigger = datasetActionsMenu.locator(
+        '[data-smoke-trigger="partner-exports-sheet"]',
+      );
+      await expect(managerTrigger).toBeVisible();
       await managerTrigger.click();
       const managerSheet = page.locator(
         '[data-smoke-surface="partner-exports-sheet"][data-smoke-ready="partner-exports-sheet"]',
@@ -2227,7 +2242,7 @@ test("admin can assign a filtered dataset view to an admin dataset", async ({ pa
       await expect(page.getByText("Tamang")).toBeVisible();
       await expect(page.getByText("Ribeirinho")).toHaveCount(0);
       await expect(
-        page.getByRole("button", { name: "Assign to dataset" }),
+        page.getByRole("button", { name: "Create dataset from current view" }),
       ).toBeVisible();
     },
   );

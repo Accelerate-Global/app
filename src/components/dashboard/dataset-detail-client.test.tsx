@@ -292,20 +292,20 @@ describe("DatasetDetailClient", () => {
         }}
         regions={[]}
         fieldDefinitionPresentationByColumnKey={{}}
-        toolbarAction={<button type="button">Partner exports</button>}
+        toolbarAction={<button type="button">Dataset actions</button>}
       />,
     );
 
-    const partnerExports = screen.getByRole("button", {
-      name: "Partner exports",
+    const datasetActions = screen.getByRole("button", {
+      name: "Dataset actions",
     });
     const viewSwitch = screen.getByRole("group", { name: "Dataset view" });
-    const toolbar = partnerExports.closest("[data-smoke-dataset-toolbar]");
+    const toolbar = datasetActions.closest("[data-smoke-dataset-toolbar]");
 
     expect(toolbar).toBeTruthy();
     expect(toolbar?.contains(viewSwitch)).toBe(true);
     expect(
-      partnerExports.compareDocumentPosition(viewSwitch) &
+      datasetActions.compareDocumentPosition(viewSwitch) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
     expect(

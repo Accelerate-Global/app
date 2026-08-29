@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangleIcon,
   CheckCircle2Icon,
@@ -47,6 +47,9 @@ import { cn } from "@/lib/utils";
 type DatasetPartnerExportsProps = {
   datasetId: string;
   sourceColumns: CsvColumn[];
+  managerOpen?: boolean;
+  onManagerOpenChange?: (open: boolean) => void;
+  showTrigger?: boolean;
 };
 
 const inputClassName =
@@ -122,13 +125,16 @@ function formatRunDate(value: string) {
 export function DatasetPartnerExports({
   datasetId,
   sourceColumns,
+  managerOpen,
+  onManagerOpenChange,
+  showTrigger = true,
 }: DatasetPartnerExportsProps) {
   const [profiles, setProfiles] = useState<PartnerExportProfile[]>([]);
   const [runs, setRuns] = useState<PartnerExportRun[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [hasLoadedExports, setHasLoadedExports] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isManagerOpen, setIsManagerOpen] = useState(false);
+  const [isInternalManagerOpen, setIsInternalManagerOpen] = useState(false);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [editingProfileId, setEditingProfileId] = useState<string | null>(null);
   const [draft, setDraft] = useState<PartnerExportProfileInput>(() =>
@@ -139,6 +145,7 @@ export function DatasetPartnerExports({
   const [previewProfileId, setPreviewProfileId] = useState<string | null>(null);
   const [preview, setPreview] = useState<PartnerExportPreview | null>(null);
   const [warningsAcknowledged, setWarningsAcknowledged] = useState(false);
+  const hasRequestedExportsRef = useRef(false);
 
   const loadExports = useCallback(async () => {
     const response = await fetch(
@@ -161,13 +168,31 @@ export function DatasetPartnerExports({
     return grouped;
   }, [runs]);
 
-  function openManager() {
-    setIsManagerOpen(true);
+  const isManagerOpen = managerOpen ?? isInternalManagerOpen;
 
-    if (hasLoadedExports || isLoading) {
+  const setManagerOpen = useCallback(
+    (open: boolean) => {
+      if (managerOpen === undefined) {
+        setIsInternalManagerOpen(open);
+      }
+      onManagerOpenChange?.(open);
+    },
+    [managerOpen, onManagerOpenChange],
+  );
+
+  useEffect(() => {
+    if (!isManagerOpen) {
+      if (!hasLoadedExports) {
+        hasRequestedExportsRef.current = false;
+      }
       return;
     }
 
+    if (hasLoadedExports || hasRequestedExportsRef.current) {
+      return;
+    }
+
+    hasRequestedExportsRef.current = true;
     setIsLoading(true);
     setError(null);
     void loadExports()
@@ -180,13 +205,17 @@ export function DatasetPartnerExports({
         );
       })
       .finally(() => setIsLoading(false));
+  }, [hasLoadedExports, isManagerOpen, loadExports]);
+
+  function openManager() {
+    setManagerOpen(true);
   }
 
   function openNewProfile() {
     setEditingProfileId(null);
     setDraft(createDraft(sourceColumns));
     setError(null);
-    setIsManagerOpen(false);
+    setManagerOpen(false);
     setIsSheetOpen(true);
   }
 
@@ -194,13 +223,13 @@ export function DatasetPartnerExports({
     setEditingProfileId(profile.id);
     setDraft(createDraft(sourceColumns, profile));
     setError(null);
-    setIsManagerOpen(false);
+    setManagerOpen(false);
     setIsSheetOpen(true);
   }
 
   function closeProfileEditor() {
     setIsSheetOpen(false);
-    setIsManagerOpen(true);
+    setManagerOpen(true);
   }
 
   function setTemplate(partnerKey: PartnerExportProfileInput["partnerKey"]) {
@@ -263,7 +292,7 @@ export function DatasetPartnerExports({
       }
       await loadExports();
       setIsSheetOpen(false);
-      setIsManagerOpen(true);
+      setManagerOpen(true);
       setPreview(null);
       setPreviewProfileId(null);
     } catch (saveError) {
@@ -377,18 +406,20 @@ export function DatasetPartnerExports({
 
   return (
     <>
-      <Button
-        type="button"
-        variant="outline"
-        className="w-fit"
-        onClick={openManager}
-        data-smoke-trigger="partner-exports-sheet"
-      >
-        <FileOutputIcon className="size-4" />
-        Partner exports
-      </Button>
+      {showTrigger ? (
+        <Button
+          type="button"
+          variant="outline"
+          className="w-fit"
+          onClick={openManager}
+          data-smoke-trigger="partner-exports-sheet"
+        >
+          <FileOutputIcon className="size-4" />
+          Partner exports
+        </Button>
+      ) : null}
 
-      <Sheet open={isManagerOpen} onOpenChange={setIsManagerOpen}>
+      <Sheet open={isManagerOpen} onOpenChange={setManagerOpen}>
         <SheetContent
           className="data-[side=right]:w-full! data-[side=right]:sm:max-w-2xl!"
           data-smoke-surface="partner-exports-sheet"
