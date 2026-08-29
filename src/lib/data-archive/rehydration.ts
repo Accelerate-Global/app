@@ -13,7 +13,6 @@ import {
   parseApiConnectionRawChunkManifest,
   parseApiConnectionRowsChunkManifest,
 } from "@/lib/api-connection-output";
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 import {
   archivePackageContentSchema,
@@ -29,6 +28,7 @@ import {
   sha256File,
   withExclusiveArchiveWorkspace,
 } from "./backup-engine";
+import { archiveFetch, type ArchiveFetch } from "./http-client";
 
 export type RehydratedUpload = {
   memberKind: string;
@@ -39,6 +39,106 @@ export type RehydratedUpload = {
   body: Uint8Array;
   sha256: string;
 };
+
+type RehydrationStorageEnvironment = Partial<Pick<
+  NodeJS.ProcessEnv,
+  | "NEXT_PUBLIC_SUPABASE_URL"
+  | "SUPABASE_URL"
+  | "SUPABASE_SECRET_KEY"
+  | "SUPABASE_SERVICE_ROLE_KEY"
+>>;
+
+export type RehydrationStorageDependencies = {
+  fetchImpl: ArchiveFetch;
+  environment: RehydrationStorageEnvironment;
+};
+
+const defaultRehydrationStorageDependencies: RehydrationStorageDependencies = {
+  fetchImpl: archiveFetch,
+  environment: process.env as RehydrationStorageEnvironment,
+};
+
+function encodeStoragePath(value: string): string {
+  return value.split("/").map(encodeURIComponent).join("/");
+}
+
+function storageAdminConfiguration(environment: RehydrationStorageEnvironment) {
+  const rawUrl = environment.NEXT_PUBLIC_SUPABASE_URL ?? environment.SUPABASE_URL;
+  const serviceKey = environment.SUPABASE_SECRET_KEY ?? environment.SUPABASE_SERVICE_ROLE_KEY;
+  if (!rawUrl || !serviceKey) {
+    throw new Error("archive_rehydration_storage_admin_configuration_missing");
+  }
+  const url = new URL(rawUrl);
+  if (url.protocol !== "https:" || url.username || url.password) {
+    throw new Error("archive_rehydration_storage_admin_url_invalid");
+  }
+  return {
+    baseUrl: `${url.origin}/storage/v1`,
+    headers: {
+      apikey: serviceKey,
+      authorization: `Bearer ${serviceKey}`,
+    },
+  };
+}
+
+function storageObjectUrl(baseUrl: string, bucket: string, path?: string) {
+  const suffix = path ? `/${encodeStoragePath(path)}` : "";
+  return `${baseUrl}/object/${encodeURIComponent(bucket)}${suffix}`;
+}
+
+export async function uploadRehydratedStorageObject(
+  input: RehydratedUpload,
+  dependencies: RehydrationStorageDependencies = defaultRehydrationStorageDependencies,
+) {
+  const config = storageAdminConfiguration(dependencies.environment);
+  const url = storageObjectUrl(config.baseUrl, input.bucket, input.targetPath);
+  const uploaded = await dependencies.fetchImpl(url, {
+    method: "POST",
+    headers: {
+      ...config.headers,
+      "content-length": String(input.body.byteLength),
+      "content-type": input.contentType,
+      "x-upsert": "false",
+    },
+    body: input.body,
+  });
+  if (uploaded.ok) return;
+  const retained = await dependencies.fetchImpl(url, {
+    method: "GET",
+    headers: config.headers,
+    maxResponseBytes: input.body.byteLength,
+  });
+  if (!retained.ok) {
+    throw new Error(`archive_rehydration_storage_upload_http_${uploaded.status}`);
+  }
+  const body = new Uint8Array(await retained.arrayBuffer());
+  if (sha256Hex(body) !== input.sha256) {
+    throw new Error("archive_rehydration_target_conflict");
+  }
+}
+
+export async function removeRehydratedStorageObject(
+  input: Pick<RehydratedUpload, "bucket" | "targetPath">,
+  dependencies: RehydrationStorageDependencies = defaultRehydrationStorageDependencies,
+) {
+  const config = storageAdminConfiguration(dependencies.environment);
+  const body = JSON.stringify({ prefixes: [input.targetPath] });
+  const removed = await dependencies.fetchImpl(
+    storageObjectUrl(config.baseUrl, input.bucket),
+    {
+      method: "DELETE",
+      headers: {
+        ...config.headers,
+        "content-length": String(Buffer.byteLength(body)),
+        "content-type": "application/json",
+      },
+      body,
+    },
+  );
+  if (!removed.ok) {
+    throw new Error(`archive_rehydration_storage_delete_http_${removed.status}`);
+  }
+}
 
 export function buildApiRunRehydratedUploads(input: {
   packageContent: ArchivePackageContent;
@@ -124,24 +224,12 @@ async function findRestoredPackageDirectory(root: string, packageKey: string) {
   return matches[0]!;
 }
 
-async function uploadImmutable(input: RehydratedUpload) {
-  const bucket = createSupabaseAdminClient().storage.from(input.bucket);
-  const result = await bucket.upload(input.targetPath, input.body, {
-    contentType: input.contentType,
-    upsert: false,
-  });
-  if (!result.error) return;
-  const retained = await bucket.download(input.targetPath);
-  if (retained.error) throw result.error;
-  const body = new Uint8Array(await retained.data.arrayBuffer());
-  if (sha256Hex(body) !== input.sha256) throw new Error("archive_rehydration_target_conflict");
-}
-
 export async function rehydrateApiRunPackage(input: {
   config: ArchiveWorkerConfig;
   packageKey: string;
   requestKey: string;
   requestedByOwnerId: string;
+  storageDependencies?: RehydrationStorageDependencies;
 }) {
   if (!/^[a-zA-Z0-9._:-]{8,160}$/.test(input.requestKey)) {
     throw new Error("archive_rehydration_request_key_invalid");
@@ -247,7 +335,10 @@ export async function rehydrateApiRunPackage(input: {
           requestKey: input.requestKey,
         });
         for (const upload of prepared.uploads) {
-          await uploadImmutable(upload);
+          await uploadRehydratedStorageObject(
+            upload,
+            input.storageDependencies,
+          );
           uploaded.push(upload);
         }
         await db.transaction(async (tx) => {
@@ -306,9 +397,10 @@ export async function rehydrateApiRunPackage(input: {
         return { packageId: archivePackage.id, replayed: false };
       } catch (error) {
         for (const upload of uploaded.reverse()) {
-          await createSupabaseAdminClient().storage
-            .from(upload.bucket)
-            .remove([upload.targetPath])
+          await removeRehydratedStorageObject(
+            upload,
+            input.storageDependencies,
+          )
             .catch(() => undefined);
         }
         await db

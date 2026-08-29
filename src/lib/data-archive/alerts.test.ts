@@ -9,6 +9,7 @@ import {
   isArchiveRunMissed,
   sendArchiveDirectAlert,
 } from "./alerts";
+import type { ArchiveFetch } from "./http-client";
 
 const roots: string[] = [];
 
@@ -104,7 +105,7 @@ describe("Samson direct archive alerts", () => {
         recipient: join(root, "recipient"),
         detailsUrl: "https://data.accelerateglobal.org",
       },
-      fetchImpl: fetchMock as typeof fetch,
+      fetchImpl: fetchMock as unknown as ArchiveFetch,
     })).resolves.toEqual({ sent: true });
     expect(fetchMock).toHaveBeenCalledOnce();
   });
