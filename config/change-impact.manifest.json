@@ -240,6 +240,32 @@
       "bootstrapScope": "full"
     },
     {
+      "id": "private-data-chat",
+      "label": "Private Qwen data chat",
+      "patterns": [
+        "src/app/dashboard/chat/**",
+        "src/app/api/chat/**",
+        "src/components/chat/**",
+        "src/lib/private-data-chat/**",
+        "supabase/migrations/*private_data_chat*",
+        "supabase/tests/database/*private_data_chat*"
+      ],
+      "routeIds": [
+        "private-data-chat-pro-redirect",
+        "private-data-chat-basic-redirect",
+        "private-data-chat-admin"
+      ],
+      "journeyTitles": [
+        "admin can ask private data chat synthetic question"
+      ],
+      "projectNames": [
+        "desktop-pro",
+        "desktop-basic",
+        "desktop-admin"
+      ],
+      "bootstrapScope": "datasets"
+    },
+    {
       "id": "datasets-index",
       "label": "Datasets index and dashboard landing",
       "patterns": [

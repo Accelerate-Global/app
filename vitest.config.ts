@@ -12,6 +12,8 @@ export default defineConfig({
     include: [
       "config/**/*.test.ts",
       "config/**/*.test.tsx",
+      "infra/**/*.test.ts",
+      "infra/**/*.test.tsx",
       "scripts/**/*.test.ts",
       "scripts/**/*.test.tsx",
       "src/**/*.test.ts",

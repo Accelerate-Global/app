@@ -1,0 +1,21 @@
+{
+  "$schema": "../../../node_modules/wrangler/config-schema.json",
+  "name": "accelerate-qwen-edge-gateway",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-28",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "preview_urls": false,
+  "send_metrics": false,
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  },
+  "vpc_services": [
+    {
+      "binding": "PRIVATE_QWEN",
+      "service_id": "01a04934-2091-7de1-9f7c-6c686698cbd8",
+      "remote": true
+    }
+  ]
+}

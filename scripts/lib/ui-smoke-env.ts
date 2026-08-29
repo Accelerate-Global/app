@@ -75,6 +75,10 @@ export function buildUiSmokeCommandEnv(statusEnv: Record<string, string>) {
     );
   }
 
+  const analyticsDatabaseUrl = new URL(databaseUrl);
+  analyticsDatabaseUrl.username = "analytics_chat_login";
+  analyticsDatabaseUrl.password = "ui-smoke-private-data-chat";
+
   return {
     ...process.env,
     UI_SMOKE_ENABLED: "1",
@@ -89,6 +93,12 @@ export function buildUiSmokeCommandEnv(statusEnv: Record<string, string>) {
     ...(serviceRoleKey ? { SUPABASE_SERVICE_ROLE_KEY: serviceRoleKey } : {}),
     DATABASE_URL: databaseUrl,
     AUTH_FAILURE_HASH_SECRET: UI_SMOKE_AUTH_FAILURE_HASH_SECRET,
+    ANALYTICS_DATABASE_URL: analyticsDatabaseUrl.toString(),
+    PRIVATE_DATA_CHAT_ENABLED: "true",
+    PRIVATE_DATA_CHAT_CANARY_EMAILS: "smoke-admin@accelerate-global.test",
+    PRIVATE_DATA_CHAT_AUDIT_HMAC_KEY:
+      "ui-smoke-private-data-chat-audit-key",
+    PRIVATE_QWEN_FAKE: "true",
     SUPABASE_STORAGE_BUCKET: "datasets",
   };
 }

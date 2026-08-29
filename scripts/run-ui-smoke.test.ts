@@ -1,8 +1,13 @@
+import { mkdtemp, rm } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+
 import { describe, expect, it } from "vitest";
 
 import { hasUsableSupabaseStatusOutput } from "./lib/ui-smoke-env";
 import {
   buildUiSmokeRunPlan,
+  acquireUiSmokeRunLock,
   CI_UI_SMOKE_SUPABASE_START_TIMEOUT_MS,
   DEFAULT_SUPABASE_PORT_RELEASE_WAIT,
   DEFAULT_SUPABASE_STATUS_OUTPUT_RETRY,
@@ -14,13 +19,67 @@ import {
   isSupabaseDbResetRetryableError,
   isSupabaseStartRetryableError,
   isUiSmokeEnvironmentFailure,
+  isUiSmokeProcessOwnedByWorkspace,
   parseRunUiSmokeArgs,
   resolveUiSmokeChangedFiles,
   shouldRefreshUiSmokeBootstrapBeforeSuite,
+  truncateCapturedCommandOutput,
   UI_SMOKE_DB_RESET_ARGS,
 } from "./run-ui-smoke";
 
 describe("run-ui-smoke", () => {
+  it("bounds captured command output while retaining the beginning and end", () => {
+    const output = `${"a".repeat(120)}${"z".repeat(120)}`;
+    const truncated = truncateCapturedCommandOutput(output, 100);
+
+    expect(truncated.length).toBeLessThanOrEqual(100);
+    expect(truncated).toContain("captured output truncated");
+    expect(truncated.startsWith("a")).toBe(true);
+    expect(truncated.endsWith("z")).toBe(true);
+  });
+
+  it("serializes UI smoke runs with a process-owned lock", async () => {
+    const directory = await mkdtemp(
+      path.join(os.tmpdir(), "online-ui-smoke-lock-test-"),
+    );
+    const lockPath = path.join(directory, "run.lock");
+
+    try {
+      const release = await acquireUiSmokeRunLock(lockPath);
+
+      try {
+        await expect(acquireUiSmokeRunLock(lockPath)).rejects.toThrow(
+          "Another UI smoke run is already active",
+        );
+      } finally {
+        await release();
+      }
+
+      const releaseAgain = await acquireUiSmokeRunLock(lockPath);
+      await releaseAgain();
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  it("only treats app servers from the current workspace as disposable", () => {
+    expect(
+      isUiSmokeProcessOwnedByWorkspace(
+        "/workspace/online",
+        "/workspace/online",
+      ),
+    ).toBe(true);
+    expect(
+      isUiSmokeProcessOwnedByWorkspace(
+        "/private/tmp/online-other-worktree",
+        "/workspace/online",
+      ),
+    ).toBe(false);
+    expect(isUiSmokeProcessOwnedByWorkspace(null, "/workspace/online")).toBe(
+      false,
+    );
+  });
+
   it("builds a targeted-only run plan when requested", () => {
     const plan = buildUiSmokeRunPlan({
       changedFiles: ["src/components/dashboard/dataset-edit-page-client.tsx"],

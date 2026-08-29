@@ -50,9 +50,10 @@
     "db:lint:remote": "supabase db lint --linked --level error",
     "db:test": "supabase test db",
     "db:test:remote": "dotenv -e .env.local -- node scripts/run-remote-db-tests.mjs",
-    "db:security:started": "pnpm db:check-rls:local && pnpm db:lint && pnpm db:test && pnpm run db:test:identity-concurrency && pnpm run db:test:dataset-integrity",
+    "db:security:started": "pnpm db:check-rls:local && pnpm db:lint && pnpm db:test && pnpm run db:test:identity-concurrency && pnpm run db:test:dataset-integrity && pnpm run db:test:private-data-chat",
     "db:test:identity-concurrency": "IDENTITY_REGISTRY_DB_TESTS=1 DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres vitest run src/lib/identity-registry/concurrency.integration.test.ts",
     "db:test:dataset-integrity": "DATASET_INTEGRITY_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres vitest run src/lib/dataset-integrity-db.integration.test.ts",
+    "db:test:private-data-chat": "PRIVATE_DATA_CHAT_DATABASE_TESTS=1 DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres ANALYTICS_DATABASE_URL=postgresql://analytics_chat_login:local-chat-test@127.0.0.1:54322/postgres PRIVATE_DATA_CHAT_AUDIT_HMAC_KEY=local-private-data-chat-audit-test-key vitest run src/lib/private-data-chat/broker.integration.test.ts",
     "db:security": "node --import tsx scripts/run-db-security.ts",
     "db:security:remote": "pnpm db:check-rls && pnpm db:lint:remote && pnpm db:test:remote",
     "db:check-migration-drift": "node --import tsx scripts/check-linked-migration-drift.ts",
@@ -61,6 +62,9 @@
     "field-sources:seed:local": "DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres pnpm run field-sources:seed",
     "field-sources:seed:remote": "dotenv -e .env.local -- pnpm run field-sources:seed",
     "release:health": "node --import tsx scripts/release-health.ts",
+    "cloudflare:qwen:types": "wrangler types infra/cloudflare/qwen-edge-gateway/worker-configuration.d.ts --config infra/cloudflare/qwen-edge-gateway/wrangler.jsonc --env-interface QwenEdgeEnv --include-runtime false",
+    "cloudflare:qwen:test": "vitest run infra/cloudflare/qwen-edge-gateway/src/index.test.ts",
+    "cloudflare:qwen:dry-run": "wrangler deploy --dry-run --config infra/cloudflare/qwen-edge-gateway/wrangler.jsonc",
     "ship": "node --import tsx scripts/ship.ts"
   },
   "dependencies": {
@@ -95,6 +99,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260828.1",
     "@fission-ai/openspec": "1.3.1",
     "@playwright/test": "^1.59.1",
     "@tailwindcss/postcss": "^4",
@@ -116,7 +121,8 @@
     "tailwindcss": "^4",
     "tsx": "^4.21.0",
     "typescript": "^5",
-    "vitest": "^4.1.4"
+    "vitest": "^4.1.4",
+    "wrangler": "^4.127.0"
   },
   "pnpm": {
     "overrides": {
