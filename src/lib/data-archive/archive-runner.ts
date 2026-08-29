@@ -38,6 +38,7 @@ import {
   type ArchiveRunWorkspace,
   type CommandResult,
 } from "./backup-engine";
+import { archiveFetch, type ArchiveFetch } from "./http-client";
 
 type ManagedExportRow = {
   source_table: string;
@@ -98,18 +99,20 @@ type PipelinePublicationPackageCandidate = {
 
 export type ArchiveRunnerDependencies = {
   runCommand: (command: ArchiveCommand) => Promise<CommandResult>;
-  fetchImpl: typeof fetch;
+  fetchImpl: ArchiveFetch;
   now: () => Date;
 };
 
 const defaultDependencies: ArchiveRunnerDependencies = {
   runCommand: runArchiveCommand,
-  fetchImpl: fetch,
+  fetchImpl: archiveFetch,
   now: () => new Date(),
 };
 
-const managedExportSql = (schema: "auth" | "storage") =>
-  `copy (select jsonb_build_object('source_table', source_table, 'source_ordinal', source_ordinal, 'row_data', row_data)::text from private.data_archive_export_managed_rows('${schema}')) to stdout`;
+const TOOLCHAIN_LOCK_PATH = "/opt/ax-data-archive/toolchain.lock";
+
+export const managedExportSql = (schema: "auth" | "storage") =>
+  `select jsonb_build_object('source_table', source_table, 'source_ordinal', source_ordinal, 'row_data', row_data)::text from private.data_archive_export_managed_rows('${schema}') order by source_table, source_ordinal`;
 
 function databaseCommand(
   config: ArchiveWorkerConfig,
@@ -776,7 +779,17 @@ async function exportManagedRows(input: {
     databaseCommand(
       input.config,
       "psql",
-      ["-X", "--no-psqlrc", "--set", "ON_ERROR_STOP=1", "--command", managedExportSql(input.schema)],
+      [
+        "-X",
+        "--no-psqlrc",
+        "--set",
+        "ON_ERROR_STOP=1",
+        "--tuples-only",
+        "--no-align",
+        "--quiet",
+        "--command",
+        managedExportSql(input.schema),
+      ],
       input.path,
     ),
   );
@@ -884,6 +897,21 @@ async function readVersion(
 ): Promise<string> {
   const result = await dependencies.runCommand({ command, args });
   return result.stdout.trim().replace(/\s+/g, " ").slice(0, 80) || "unknown";
+}
+
+export function parsePinnedToolVersion(contents: string, tool: string): string {
+  const version = contents
+    .split("\n")
+    .map((line) => line.trim().split(/\s+/))
+    .find(([name]) => name === tool)?.[1];
+  if (!version || !/^[A-Za-z0-9.+~-]{1,80}$/.test(version)) {
+    throw new Error(`archive_toolchain_version_missing_${tool}`);
+  }
+  return version;
+}
+
+async function readPinnedToolVersion(tool: string): Promise<string> {
+  return parsePinnedToolVersion(await readFile(TOOLCHAIN_LOCK_PATH, "utf8"), tool);
 }
 
 export function assertPostgres17Tooling(input: {
@@ -1144,7 +1172,7 @@ export async function executeArchiveBackup(
         await Promise.all([
           readDatabaseVersion(config, dependencies),
           readVersion(dependencies, "pg_dump", ["--version"]),
-          readVersion(dependencies, "supabase", ["--version"]),
+          readPinnedToolVersion("supabase"),
           readVersion(dependencies, "restic", ["version"]),
           readDatabaseUsage(config, dependencies),
         ]);

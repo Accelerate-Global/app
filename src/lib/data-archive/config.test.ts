@@ -35,7 +35,7 @@ function environment(
     PGSSLROOTCERT: "/etc/ssl/certs/ca-certificates.crt",
     AWS_ACCESS_KEY_ID: "storage-reader",
     AWS_ENDPOINT_URL_S3: "https://example.supabase.co/storage/v1/s3",
-    AWS_DEFAULT_REGION: "local",
+    AWS_DEFAULT_REGION: "us-east-1",
     RESTIC_PASSWORD_FILE: "/etc/ax-data-archive/restic-password",
     TZ: "America/Los_Angeles",
     ...overrides,
@@ -66,8 +66,23 @@ describe("Samson archive worker configuration", () => {
     expect(provisioning).toContain(
       "node_sha256=d60acfe00a2932254bb0ad20e01b0d74397a0875595de719654b214f4b03f307",
     );
-    expect(service).toContain("ExecStart=/usr/local/bin/node");
-    expect(missedService).toContain("ExecStart=/usr/local/bin/node");
+    expect(service).toContain("ExecStart=/usr/local/bin/node --jitless");
+    expect(service).toContain("MemoryDenyWriteExecute=true");
+    expect(missedService).toContain("ExecStart=/usr/local/bin/node --jitless");
+    expect(missedService).toContain("MemoryDenyWriteExecute=true");
+  });
+
+  it("avoids the WebAssembly-backed built-in fetch in the JIT-less worker", async () => {
+    const [runner, alerts, client] = await Promise.all([
+      readFile("src/lib/data-archive/archive-runner.ts", "utf8"),
+      readFile("src/lib/data-archive/alerts.ts", "utf8"),
+      readFile("src/lib/data-archive/http-client.ts", "utf8"),
+    ]);
+    expect(runner).toContain("fetchImpl: archiveFetch");
+    expect(runner).toContain('readPinnedToolVersion("supabase")');
+    expect(alerts).toContain("input.fetchImpl ?? archiveFetch");
+    expect(client).toContain('from "node:https"');
+    expect(client).not.toContain("WebAssembly");
   });
 
   it("separates database, Storage, and Restic secrets into inherited environments", () => {

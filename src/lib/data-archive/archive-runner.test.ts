@@ -5,11 +5,27 @@ import {
   buildDatasetVersionPackageContent,
   buildPipelinePublicationPackageContent,
   extractProviderStorageInventory,
+  managedExportSql,
   parseManagedExport,
+  parsePinnedToolVersion,
 } from "./archive-runner";
 import { sha256Hex, type StorageInventory } from "./canonical";
 
 describe("Samson archive runner", () => {
+  it("exports managed rows as raw NDJSON without PostgreSQL COPY escaping", () => {
+    const sql = managedExportSql("storage");
+    expect(sql).toMatch(/^select jsonb_build_object/);
+    expect(sql).not.toContain("copy (");
+    expect(sql).toContain("order by source_table, source_ordinal");
+  });
+
+  it("reads pinned provider tool provenance without executing the provider CLI", () => {
+    expect(parsePinnedToolVersion("restic\t0.16.4\nsupabase\t2.109.1\n", "supabase"))
+      .toBe("2.109.1");
+    expect(() => parsePinnedToolVersion("restic\t0.16.4\n", "supabase"))
+      .toThrow("archive_toolchain_version_missing_supabase");
+  });
+
   it("parses managed Storage metadata into stable bucket and object identities", () => {
     const rows = parseManagedExport(
       [
