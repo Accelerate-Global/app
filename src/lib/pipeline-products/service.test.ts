@@ -1,4 +1,5 @@
 import { Buffer } from "node:buffer";
+import { readFile } from "node:fs/promises";
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -39,6 +40,13 @@ import { checksumProductValue } from "@/lib/tier1-products";
 import type { PipelineArtifactKind, PipelineArtifactManifest } from "./types";
 
 describe("pipeline publication artifact validation", () => {
+  it("binds rollback evidence to hot or verified rehydrated archive state", async () => {
+    const source = await readFile("src/lib/pipeline-products/service.ts", "utf8");
+    expect(source).toContain("archive_package.status as archive_status");
+    expect(source).toContain("archive_rehydration_verified");
+    expect(source).toContain("assertArchiveRecordUsable");
+  });
+
   const rows = [{ PGIC: "000001", Name: "One" }];
   const definition = getPipelineDefinition("aggregate1-south-asia");
   const inputs = [{

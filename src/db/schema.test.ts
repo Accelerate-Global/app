@@ -15,6 +15,10 @@ import {
   datasetFormingFindings,
   datasetFormingResourceBindings,
   datasetFormingRuns,
+  dataArchiveBackupRuns,
+  dataArchivePackages,
+  dataArchivePrunePlans,
+  dataArchiveRehydrations,
   fieldDefinitions,
   isoCountryCodeEntryOverrides,
   referenceResources,
@@ -35,6 +39,23 @@ import {
 } from "./schema";
 
 describe("datasets schema", () => {
+  it("declares the compact Samson archive catalog without payload fields", () => {
+    expect(dataArchiveBackupRuns.runKey.name).toBe("run_key");
+    expect(dataArchiveBackupRuns.archiveAllocatedBytes.name).toBe(
+      "archive_allocated_bytes",
+    );
+    expect(dataArchivePackages.archiveSnapshotId.name).toBe("archive_snapshot_id");
+    expect(dataArchivePrunePlans.sourceStateChecksum.name).toBe(
+      "source_state_checksum",
+    );
+    expect(dataArchiveRehydrations.manifestChecksum.name).toBe(
+      "manifest_checksum",
+    );
+    expect(dataArchivePackages).not.toHaveProperty("payloadBody");
+    expect(dataArchivePackages).not.toHaveProperty("localPath");
+    expect(dataArchivePackages).not.toHaveProperty("recoveryKey");
+  });
+
   it("creates the fresh AX Online identity authority without legacy import paths", async () => {
     const migration = await readFile(
       path.join(

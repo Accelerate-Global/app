@@ -56,6 +56,23 @@ describe("request-security", () => {
     ).toBe(false);
   });
 
+  it("leaves the exact signed Samson receipt endpoint to HMAC authentication", () => {
+    expect(
+      isProtectedMutationRequest(
+        new NextRequest("https://data.accelerateglobal.org/api/internal/archive-receipts", {
+          method: "POST",
+        }),
+      ),
+    ).toBe(false);
+    expect(
+      isProtectedMutationRequest(
+        new NextRequest("https://data.accelerateglobal.org/api/internal/other", {
+          method: "POST",
+        }),
+      ),
+    ).toBe(true);
+  });
+
   it("accepts same-origin api mutations", () => {
     const request = new NextRequest("https://data.accelerateglobal.org/api/admin/users", {
       method: "POST",

@@ -83,6 +83,16 @@ async function importApiConnectionsWithDb(db: unknown) {
   vi.doMock("@/db", () => ({
     getDb: () => db,
   }));
+  vi.doMock("@/lib/data-archive/archive-state", async () => {
+    const actual = await vi.importActual<
+      typeof import("@/lib/data-archive/archive-state")
+    >("@/lib/data-archive/archive-state");
+    return {
+      ...actual,
+      getArchiveSummaries: vi.fn(async () => new Map()),
+      assertArchiveSourceUsable: vi.fn(async () => undefined),
+    };
+  });
 
   return import("@/lib/api-connections");
 }
@@ -90,6 +100,7 @@ async function importApiConnectionsWithDb(db: unknown) {
 afterEach(() => {
   vi.resetModules();
   vi.doUnmock("@/db");
+  vi.doUnmock("@/lib/data-archive/archive-state");
 });
 
 describe("code-managed API connection listing", () => {

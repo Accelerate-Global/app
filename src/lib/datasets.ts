@@ -16,11 +16,14 @@ import {
   datasetVersionRows,
   datasetVersions,
   datasets,
+  dataArchivePackages,
+  dataArchiveRehydrations,
   filterRegionCountries,
   filterRegions,
 } from "@/db/schema";
 import type {
   CsvColumn,
+  DataArchiveSummary,
   DatasetClassification,
   DatasetStatus,
   FilterRegion,
@@ -43,6 +46,10 @@ import {
 } from "@/lib/dataset-tags";
 import { syncFieldDefinitionsForColumns } from "@/lib/field-definitions";
 import { normalizeSavedDatasetFilterState } from "@/lib/saved-dataset-filters";
+import {
+  assertArchiveRecordUsable,
+  getArchiveSummaries,
+} from "@/lib/data-archive/archive-state";
 
 type DbExecutor = Parameters<Parameters<ReturnType<typeof getDb>["transaction"]>[0]>[0];
 export type PreparedDatasetPublicationTransaction = Pick<
@@ -101,10 +108,14 @@ function toCurrentDatasetVersionSummary(row: DatasetRecord): DatasetVersionSumma
     columnCount: row.columns.length,
     versionCreatedAt: row.currentVersionCreatedAt.toISOString(),
     archivedAt: null,
+    archive: null,
   };
 }
 
-function toDatasetVersionSummary(row: DatasetVersionRecord): DatasetVersionSummary {
+function toDatasetVersionSummary(
+  row: DatasetVersionRecord,
+  archive: DataArchiveSummary | null = null,
+): DatasetVersionSummary {
   return {
     id: row.id,
     datasetId: row.datasetId,
@@ -119,6 +130,7 @@ function toDatasetVersionSummary(row: DatasetVersionRecord): DatasetVersionSumma
     columnCount: row.columns.length,
     versionCreatedAt: row.versionCreatedAt.toISOString(),
     archivedAt: row.archivedAt.toISOString(),
+    archive,
   };
 }
 
@@ -674,10 +686,16 @@ export async function listDatasetVersions(datasetId: string) {
     .from(datasetVersions)
     .where(eq(datasetVersions.datasetId, datasetId))
     .orderBy(desc(datasetVersions.versionCreatedAt), desc(datasetVersions.archivedAt));
+  const archiveByVersionId = await getArchiveSummaries({
+    packageKind: "dataset-version",
+    sourceIdentifiers: versions.map((version) => version.id),
+  });
 
   return [
     toCurrentDatasetVersionSummary(dataset),
-    ...versions.map(toDatasetVersionSummary),
+    ...versions.map((version) =>
+      toDatasetVersionSummary(version, archiveByVersionId.get(version.id) ?? null),
+    ),
   ];
 }
 
@@ -1296,6 +1314,37 @@ export async function revertDatasetVersion(input: {
     if (version.status !== "ready") {
       throw new DatasetVersionRevertConflictError();
     }
+
+    const [archivePackage] = await tx
+      .select()
+      .from(dataArchivePackages)
+      .where(
+        and(
+          eq(dataArchivePackages.packageKind, "dataset-version"),
+          eq(dataArchivePackages.sourceIdentifier, input.versionId),
+        ),
+      )
+      .orderBy(desc(dataArchivePackages.sourceCreatedAt), desc(dataArchivePackages.createdAt))
+      .limit(1);
+    let verifiedRehydration = false;
+    if (archivePackage?.status === "rehydrated") {
+      const [rehydration] = await tx
+        .select({ id: dataArchiveRehydrations.id })
+        .from(dataArchiveRehydrations)
+        .where(
+          and(
+            eq(dataArchiveRehydrations.packageId, archivePackage.id),
+            eq(dataArchiveRehydrations.status, "verified"),
+            eq(dataArchiveRehydrations.manifestChecksum, archivePackage.manifestChecksum),
+          ),
+        )
+        .limit(1);
+      verifiedRehydration = Boolean(rehydration);
+    }
+    assertArchiveRecordUsable({
+      status: archivePackage?.status ?? null,
+      verifiedRehydration,
+    });
 
     await archiveDatasetVersion(tx, existing);
     await tx.delete(datasetRows).where(eq(datasetRows.datasetId, input.datasetId));

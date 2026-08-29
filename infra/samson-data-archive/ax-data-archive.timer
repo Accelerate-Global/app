@@ -1,0 +1,12 @@
+[Unit]
+Description=Run AX Online recovery archive at 2 AM Pacific
+
+[Timer]
+OnCalendar=*-*-* 02:00:00 America/Los_Angeles
+Persistent=true
+RandomizedDelaySec=15m
+AccuracySec=1m
+Unit=ax-data-archive.service
+
+[Install]
+WantedBy=timers.target

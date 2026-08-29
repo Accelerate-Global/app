@@ -276,6 +276,18 @@ function RunDownloadLinks({
     return null;
   }
 
+  if (run.archive && run.archive.state !== "hot") {
+    return (
+      <span className="text-xs text-muted-foreground" data-archive-state={run.archive.state}>
+        {run.archive.state === "cold"
+          ? "Cold archive — operator rehydration required"
+          : run.archive.state === "rehydrating"
+            ? "Rehydration in progress"
+            : "Archive recovery needs attention"}
+      </span>
+    );
+  }
+
   const className =
     size === "xs"
       ? cn(buttonVariants({ variant: "outline", size: "sm" }), "h-7 px-2 text-xs")
@@ -302,7 +314,12 @@ function ArtifactCell({ run }: { run: ApiConnectionRun }) {
 
   return (
     <div className="flex flex-wrap gap-2" onClick={(event) => event.stopPropagation()}>
-      {run.output ? (
+      {run.archive ? (
+        <Badge variant="outline" className="h-7 capitalize" data-archive-state={run.archive.state}>
+          {run.archive.state}
+        </Badge>
+      ) : null}
+      {run.output && (!run.archive || run.archive.state === "hot") ? (
         <>
           <a
             href={getRunDownloadUrl(run, "json")}
@@ -978,6 +995,19 @@ function RunDetailSheet({
                   ) : null}
                 </div>
               </div>
+
+              {run.archive && run.archive.state !== "hot" ? (
+                <Alert data-archive-state={run.archive.state}>
+                  <DatabaseIcon className="size-4" />
+                  <AlertTitle>Historical output is {run.archive.state}</AlertTitle>
+                  <AlertDescription>
+                    An operator must restore and verify this archived package before download or rollback. The application does not connect to Samson during this request.
+                    <span className="mt-1 block break-all font-mono text-xs">
+                      Archive checksum {run.archive.sourceChecksum}
+                    </span>
+                  </AlertDescription>
+                </Alert>
+              ) : null}
 
               {run.errorMessage ? (
                 <Alert variant="destructive">

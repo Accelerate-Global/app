@@ -69,6 +69,10 @@ explicit error; there is no generated-file runtime fallback.
 Rollback is the same guarded activation transaction pointed at an earlier valid
 version. It requires a reason, creates an append-only activation event, and
 creates a new immutable resource-set snapshot. It never edits old packages.
+If historical package evidence is cold on Samson, ordinary rollback stops with
+a stable operator-rehydration requirement. After verified collision-free
+rehydration, the same expected-current, checksum, resource-set, and advisory
+lock checks run; the cold package remains immutable.
 
 Country alias edits are derive-and-activate operations: the active package is
 copied, aliases are normalized and validated, a new version is created, and it

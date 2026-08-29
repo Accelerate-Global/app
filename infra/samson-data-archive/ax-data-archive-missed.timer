@@ -1,0 +1,11 @@
+[Unit]
+Description=Check for a missed AX Online recovery point
+
+[Timer]
+OnCalendar=*-*-* 09:00:00 America/Los_Angeles
+Persistent=true
+AccuracySec=5m
+Unit=ax-data-archive-missed.service
+
+[Install]
+WantedBy=timers.target

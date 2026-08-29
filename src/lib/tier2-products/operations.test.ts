@@ -467,7 +467,7 @@ describe("Tier 2 rollback restoration", () => {
     })).toThrow("immutable rows and checksum");
   });
 
-  it("restores the selected rows through prepared dataset versioning before advancing the target", async () => {
+  it("restores a verified rehydrated publication before advancing the target", async () => {
     const execute = vi.fn()
       .mockResolvedValueOnce([{
         publication_target_key: "tier2-pgic",
@@ -479,6 +479,8 @@ describe("Tier 2 rollback restoration", () => {
         output_checksum: checksum,
         row_count: 1,
         validation_summary: { columns },
+        archive_status: "rehydrated",
+        archive_rehydration_verified: true,
       }])
       .mockResolvedValueOnce(rows.map((data) => ({ data })));
     vi.mocked(getDb).mockReturnValue({ execute } as never);
@@ -533,6 +535,35 @@ describe("Tier 2 rollback restoration", () => {
       actorEmail: "admin@example.test",
       reason: "Restore last verified release",
     })).rejects.toThrow("changed since rollback review");
+    expect(uploadPipelineDatasetBlob).not.toHaveBeenCalled();
+    expect(publishPreparedDataset).not.toHaveBeenCalled();
+  });
+
+  it("rejects a cold publication before reading or replacing consumer data", async () => {
+    const execute = vi.fn()
+      .mockResolvedValueOnce([{
+        publication_target_key: "tier2-pgic",
+        current_publication_id: "incident-publication",
+        dataset_id: "stable-dataset",
+        is_workspace_visible: true,
+      }])
+      .mockResolvedValueOnce([{
+        output_checksum: checksum,
+        row_count: 1,
+        validation_summary: { columns },
+        archive_status: "cold",
+        archive_rehydration_verified: false,
+      }]);
+    vi.mocked(getDb).mockReturnValue({ execute } as never);
+
+    await expect(rollbackTier2ProductTarget({
+      productKind: "tier2",
+      publicationId: "prior-publication",
+      expectedCurrentPublicationId: "incident-publication",
+      actorOwnerId: "admin",
+      actorEmail: "admin@example.test",
+      reason: "Restore last verified release",
+    })).rejects.toMatchObject({ code: "archive-rehydration-required" });
     expect(uploadPipelineDatasetBlob).not.toHaveBeenCalled();
     expect(publishPreparedDataset).not.toHaveBeenCalled();
   });
