@@ -65,6 +65,28 @@ export const smokeRouteSpecs: SmokeRouteSpec[] = [
     journeys: ["admin can edit dataset details"],
   },
   {
+    id: "private-data-chat-pro-redirect",
+    role: "pro",
+    pageFile: "src/app/dashboard/chat/page.tsx",
+    path: "/dashboard/chat",
+    redirectTo: "/dashboard",
+  },
+  {
+    id: "private-data-chat-basic-redirect",
+    role: "basic",
+    pageFile: "src/app/dashboard/chat/page.tsx",
+    path: "/dashboard/chat",
+    redirectTo: "/dashboard",
+  },
+  {
+    id: "private-data-chat-admin",
+    role: "admin",
+    pageFile: "src/app/dashboard/chat/page.tsx",
+    path: "/dashboard/chat",
+    pageId: "private-data-chat",
+    journeys: ["admin can ask private data chat synthetic question"],
+  },
+  {
     id: "datasets-index-pro",
     role: "pro",
     pageFile: "src/app/dashboard/datasets/page.tsx",

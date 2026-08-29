@@ -1,6 +1,7 @@
-import { mkdir } from "node:fs/promises";
+import { mkdir, open, readFile, unlink } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import net from "node:net";
+import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -24,6 +25,8 @@ import {
 import {
   type UiSmokeBootstrapScope,
 } from "../config/change-impact";
+
+const UI_SMOKE_APP_PORT = Number(new URL(UI_SMOKE_BASE_URL).port || "3100");
 
 function runCommand(
   command: string,
@@ -89,7 +92,9 @@ function runCommand(
         return;
       }
 
-      const capturedOutput = [stderr, stdout].filter(Boolean).join("\n");
+      const capturedOutput = truncateCapturedCommandOutput(
+        [stderr, stdout].filter(Boolean).join("\n"),
+      );
       reject(
         new Error(
           `${command} ${args.join(" ")} exited with code ${code ?? "unknown"}${
@@ -109,6 +114,155 @@ function runCommand(
       reject(error);
     });
   });
+}
+
+export const MAX_CAPTURED_COMMAND_OUTPUT_CHARS = 24_000;
+
+export function truncateCapturedCommandOutput(
+  output: string,
+  maxCharacters = MAX_CAPTURED_COMMAND_OUTPUT_CHARS,
+) {
+  const outputLimit = Math.max(0, maxCharacters);
+
+  if (output.length <= outputLimit) {
+    return output;
+  }
+
+  const omissionMarker = "\n... captured output truncated ...\n";
+
+  if (outputLimit <= omissionMarker.length) {
+    return omissionMarker.slice(0, outputLimit);
+  }
+
+  const retainedCharacters = outputLimit - omissionMarker.length;
+  const headCharacters = Math.ceil(retainedCharacters / 2);
+  const tailCharacters = retainedCharacters - headCharacters;
+
+  return `${output.slice(0, headCharacters)}${omissionMarker}${
+    tailCharacters > 0 ? output.slice(-tailCharacters) : ""
+  }`;
+}
+
+export const UI_SMOKE_RUN_LOCK_PATH = path.join(
+  os.tmpdir(),
+  `codex-ui-smoke-${UI_SMOKE_APP_PORT}.lock`,
+);
+
+type UiSmokeRunLockMetadata = {
+  pid: number;
+  cwd: string;
+  startedAt: string;
+};
+
+function isProcessRunning(processId: number) {
+  try {
+    process.kill(processId, 0);
+    return true;
+  } catch (error) {
+    return !(
+      error instanceof Error &&
+      "code" in error &&
+      error.code === "ESRCH"
+    );
+  }
+}
+
+async function readUiSmokeRunLock(lockPath: string) {
+  try {
+    const metadata = JSON.parse(
+      await readFile(lockPath, "utf8"),
+    ) as Partial<UiSmokeRunLockMetadata>;
+
+    if (
+      typeof metadata.pid === "number" &&
+      typeof metadata.cwd === "string" &&
+      typeof metadata.startedAt === "string"
+    ) {
+      return metadata as UiSmokeRunLockMetadata;
+    }
+  } catch {
+    // A malformed or concurrently removed file is handled as a stale lock.
+  }
+
+  return null;
+}
+
+export async function acquireUiSmokeRunLock(
+  lockPath = UI_SMOKE_RUN_LOCK_PATH,
+) {
+  const metadata: UiSmokeRunLockMetadata = {
+    pid: process.pid,
+    cwd: process.cwd(),
+    startedAt: new Date().toISOString(),
+  };
+
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      const lockHandle = await open(lockPath, "wx", 0o600);
+      let lockWritten = false;
+
+      try {
+        await lockHandle.writeFile(`${JSON.stringify(metadata)}\n`);
+        lockWritten = true;
+      } finally {
+        await lockHandle.close();
+
+        if (!lockWritten) {
+          await unlink(lockPath).catch(() => undefined);
+        }
+      }
+
+      let released = false;
+
+      return async () => {
+        if (released) {
+          return;
+        }
+
+        released = true;
+        const currentLock = await readUiSmokeRunLock(lockPath);
+
+        if (currentLock?.pid !== process.pid) {
+          return;
+        }
+
+        await unlink(lockPath).catch((error: NodeJS.ErrnoException) => {
+          if (error.code !== "ENOENT") {
+            throw error;
+          }
+        });
+      };
+    } catch (error) {
+      if (
+        !(error instanceof Error) ||
+        !("code" in error) ||
+        error.code !== "EEXIST"
+      ) {
+        throw error;
+      }
+
+      let currentLock = await readUiSmokeRunLock(lockPath);
+
+      if (!currentLock) {
+        await sleep(50);
+        currentLock = await readUiSmokeRunLock(lockPath);
+      }
+
+      if (currentLock && isProcessRunning(currentLock.pid)) {
+        throw new Error(
+          `Another UI smoke run is already active (pid ${currentLock.pid}, workspace ${currentLock.cwd}, started ${currentLock.startedAt}). Wait for it to finish before retrying.`,
+        );
+      }
+
+      await unlink(lockPath).catch((unlinkError: NodeJS.ErrnoException) => {
+        if (unlinkError.code !== "ENOENT") {
+          throw unlinkError;
+        }
+      });
+    }
+  }
+
+  throw new Error("Could not acquire the UI smoke run lock after clearing stale state.");
 }
 
 export function parseRunUiSmokeArgs(
@@ -182,7 +336,6 @@ export const DEFAULT_UI_SMOKE_PROJECT_GROUP_RETRY = {
 } as const;
 export const DEFAULT_UI_SMOKE_SUPABASE_START_TIMEOUT_MS = 120_000;
 export const CI_UI_SMOKE_SUPABASE_START_TIMEOUT_MS = 300_000;
-const UI_SMOKE_APP_PORT = Number(new URL(UI_SMOKE_BASE_URL).port || "3100");
 export const UI_SMOKE_DB_RESET_ARGS = [
   "db",
   "reset",
@@ -332,6 +485,43 @@ async function listListeningProcessIds(port: number) {
   }
 }
 
+async function getProcessWorkingDirectory(processId: string) {
+  try {
+    const output = await runCommand(
+      "lsof",
+      ["-a", "-p", processId, "-d", "cwd", "-Fn"],
+      {
+        captureOutput: true,
+        timeoutMs: 30_000,
+      },
+    );
+
+    return output
+      .split("\n")
+      .find((line) => line.startsWith("n"))
+      ?.slice(1) || null;
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      error.message.includes("exited with code 1")
+    ) {
+      return null;
+    }
+
+    throw error;
+  }
+}
+
+export function isUiSmokeProcessOwnedByWorkspace(
+  processWorkingDirectory: string | null,
+  workspaceDirectory = process.cwd(),
+) {
+  return (
+    processWorkingDirectory !== null &&
+    path.resolve(processWorkingDirectory) === path.resolve(workspaceDirectory)
+  );
+}
+
 async function ensureUiSmokeAppPortAvailable() {
   if (await canListenOnPort(UI_SMOKE_APP_PORT)) {
     return;
@@ -342,6 +532,28 @@ async function ensureUiSmokeAppPortAvailable() {
   if (processIds.length === 0) {
     await waitForPortAvailable(UI_SMOKE_APP_PORT);
     return;
+  }
+
+  const processOwners = await Promise.all(
+    processIds.map(async (processId) => ({
+      processId,
+      workingDirectory: await getProcessWorkingDirectory(processId),
+    })),
+  );
+  const foreignProcesses = processOwners.filter(
+    ({ workingDirectory }) =>
+      !isUiSmokeProcessOwnedByWorkspace(workingDirectory),
+  );
+
+  if (foreignProcesses.length > 0) {
+    throw new Error(
+      `Port ${UI_SMOKE_APP_PORT} is owned by another workspace or an unknown process: ${foreignProcesses
+        .map(
+          ({ processId, workingDirectory }) =>
+            `${processId} (${workingDirectory ?? "working directory unavailable"})`,
+        )
+        .join(", ")}. Wait for it to finish instead of terminating it.`,
+    );
   }
 
   console.warn(
@@ -1067,113 +1279,121 @@ async function main() {
     });
   }
 
-  await mkdir(UI_SMOKE_TMP_DIR, { recursive: true });
+  const releaseRunLock = await acquireUiSmokeRunLock();
+
   try {
-    await waitForSupabasePortsAvailable();
-  } catch (error) {
-    throw createPipelineError(
-      "bootstrap",
-      "Local Supabase ports are unavailable.",
-      error,
-    );
-  }
-  await sleep(3_000);
-  await startLocalSupabaseStack();
-  await runStageWithRetry({
-    classification: "bootstrap",
-    message: "supabase db reset failed.",
-    command: "supabase",
-    args: [...UI_SMOKE_DB_RESET_ARGS],
-    captureOutput: true,
-    attempts: 3,
-    retryDelayMs: 2_000,
-    timeoutMs: 120_000,
-    shouldRetry: isSupabaseDbResetRetryableError,
-    beforeRetry: async () => {
-      await resetSupabaseAfterStartupFailure();
-      await startLocalSupabaseStack();
-    },
-  });
-  const statusOutput = await getLocalSupabaseStatusOutput();
-  const playwrightTmpDir = path.join(UI_SMOKE_TMP_DIR, "playwright-tmp");
-
-  await mkdir(playwrightTmpDir, { recursive: true });
-  let smokeEnv: NodeJS.ProcessEnv = {
-    ...buildUiSmokeCommandEnv(parseSupabaseEnvOutput(statusOutput)),
-    TMPDIR: playwrightTmpDir,
-  };
-
-  await runStageWithRetry({
-    classification: "bootstrap",
-    message: "UI smoke preflight failed.",
-    command: "pnpm",
-    args: ["run", "smoke:preflight"],
-    env: smokeEnv,
-    attempts: 5,
-    retryDelayMs: 2_000,
-    shouldRetry: isLocalStackNotReadyError,
-  });
-  await runStageWithRetry({
-    classification: "bootstrap",
-    message: "UI smoke bootstrap failed.",
-    command: "pnpm",
-    args: [...getSmokeBootstrapArgs(runPlan.bootstrapScope)],
-    env: smokeEnv,
-    attempts: 5,
-    retryDelayMs: 2_000,
-    shouldRetry: isLocalStackNotReadyError,
-  });
-  await runStage(
-    "contract",
-    "UI smoke contract validation failed.",
-    "pnpm",
-    ["run", "smoke:check"],
-    { env: smokeEnv },
-  );
-
-  if (skipBuild) {
-    console.log("Skipping Next build before browser smoke because verify:app already passed on this tracked tree.");
-  } else {
+    await mkdir(UI_SMOKE_TMP_DIR, { recursive: true });
+    try {
+      await waitForSupabasePortsAvailable();
+    } catch (error) {
+      throw createPipelineError(
+        "bootstrap",
+        "Local Supabase ports are unavailable.",
+        error,
+      );
+    }
+    await sleep(3_000);
+    await startLocalSupabaseStack();
     await runStageWithRetry({
-      classification: "product",
-      message: "Next build failed before browser smoke.",
+      classification: "bootstrap",
+      message: "supabase db reset failed.",
+      command: "supabase",
+      args: [...UI_SMOKE_DB_RESET_ARGS],
+      captureOutput: true,
+      attempts: 3,
+      retryDelayMs: 2_000,
+      timeoutMs: 120_000,
+      shouldRetry: isSupabaseDbResetRetryableError,
+      beforeRetry: async () => {
+        await resetSupabaseAfterStartupFailure();
+        await startLocalSupabaseStack();
+      },
+    });
+    const statusOutput = await getLocalSupabaseStatusOutput();
+    const playwrightTmpDir = path.join(UI_SMOKE_TMP_DIR, "playwright-tmp");
+
+    await mkdir(playwrightTmpDir, { recursive: true });
+    let smokeEnv: NodeJS.ProcessEnv = {
+      ...buildUiSmokeCommandEnv(parseSupabaseEnvOutput(statusOutput)),
+      TMPDIR: playwrightTmpDir,
+    };
+
+    await runStageWithRetry({
+      classification: "bootstrap",
+      message: "UI smoke preflight failed.",
       command: "pnpm",
-      args: ["build"],
+      args: ["run", "smoke:preflight"],
       env: smokeEnv,
       attempts: 5,
       retryDelayMs: 2_000,
-      shouldRetry: isNextBuildAlreadyRunningError,
+      shouldRetry: isLocalStackNotReadyError,
     });
-  }
+    await runStageWithRetry({
+      classification: "bootstrap",
+      message: "UI smoke bootstrap failed.",
+      command: "pnpm",
+      args: [...getSmokeBootstrapArgs(runPlan.bootstrapScope)],
+      env: smokeEnv,
+      attempts: 5,
+      retryDelayMs: 2_000,
+      shouldRetry: isLocalStackNotReadyError,
+    });
+    await runStage(
+      "contract",
+      "UI smoke contract validation failed.",
+      "pnpm",
+      ["run", "smoke:check"],
+      { env: smokeEnv },
+    );
 
-  for (const [suiteIndex, suite] of runPlan.suites.entries()) {
-    if (
-      shouldRefreshUiSmokeBootstrapBeforeSuite({
-        suites: runPlan.suites,
-        suiteIndex,
-      })
-    ) {
+    if (skipBuild) {
+      console.log(
+        "Skipping Next build before browser smoke because verify:app already passed on this tracked tree.",
+      );
+    } else {
       await runStageWithRetry({
-        classification: "bootstrap",
-        message: "UI smoke bootstrap failed before full suite.",
+        classification: "product",
+        message: "Next build failed before browser smoke.",
         command: "pnpm",
-        args: [...getSmokeBootstrapArgs(runPlan.bootstrapScope)],
+        args: ["build"],
         env: smokeEnv,
         attempts: 5,
         retryDelayMs: 2_000,
-        shouldRetry: isLocalStackNotReadyError,
+        shouldRetry: isNextBuildAlreadyRunningError,
       });
     }
 
-    for (const projectGroup of expandUiSmokeSuiteProjects(suite)) {
-      smokeEnv = await runPlaywrightSuiteWithRecovery({
-        suite,
-        projectGroup,
-        smokeEnv,
-        headed,
-        bootstrapScope: runPlan.bootstrapScope,
-      });
+    for (const [suiteIndex, suite] of runPlan.suites.entries()) {
+      if (
+        shouldRefreshUiSmokeBootstrapBeforeSuite({
+          suites: runPlan.suites,
+          suiteIndex,
+        })
+      ) {
+        await runStageWithRetry({
+          classification: "bootstrap",
+          message: "UI smoke bootstrap failed before full suite.",
+          command: "pnpm",
+          args: [...getSmokeBootstrapArgs(runPlan.bootstrapScope)],
+          env: smokeEnv,
+          attempts: 5,
+          retryDelayMs: 2_000,
+          shouldRetry: isLocalStackNotReadyError,
+        });
+      }
+
+      for (const projectGroup of expandUiSmokeSuiteProjects(suite)) {
+        smokeEnv = await runPlaywrightSuiteWithRecovery({
+          suite,
+          projectGroup,
+          smokeEnv,
+          headed,
+          bootstrapScope: runPlan.bootstrapScope,
+        });
+      }
     }
+  } finally {
+    await releaseRunLock();
   }
 }
 
