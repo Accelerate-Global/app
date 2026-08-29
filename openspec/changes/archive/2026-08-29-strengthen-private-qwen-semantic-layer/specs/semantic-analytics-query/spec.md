@@ -1,11 +1,4 @@
-# semantic-analytics-query Specification
-
-## Purpose
-Define the approved semantic catalog, typed model-plan contract, deterministic
-SQL compiler, authorization-preserving analytics role, resource limits, and
-privacy-preserving audit evidence for private data chat.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Analytics uses a versioned approved semantic catalog
 The system SHALL define each queryable dataset, dataset grain, metric, dimension, record field, filter, operator, join capability, sort, alias, value type, unit, null meaning, value-domain policy, relationship, sensitivity, provenance, and freshness rule in a versioned server-owned catalog. The catalog revision SHALL be checksum-bound, and model plans, compilation, provenance, deterministic fixtures, and release evidence MUST agree on that exact revision. The pilot MUST query only the approved current primary people-groups projection and MUST NOT expose arbitrary uploaded columns or automatically expose a field merely because it exists in mutable field-definition metadata.
@@ -60,6 +53,8 @@ The system SHALL compile validated, catalog-version-bound plans using only trust
 - **WHEN** a plan exceeds approved dimensions, filters, joins, sorts, or result limits
 - **THEN** compilation fails before database access
 
+## ADDED Requirements
+
 ### Requirement: Semantic metadata reuses trusted Accelerate Global vocabulary without widening access
 The system SHALL associate approved catalog entries with existing canonical field-definition keys, source-contract fields and versions, or versioned reference-resource keys where applicable. A reviewed catalog overlay SHALL remain authoritative for queryability, metric formulas, units, null semantics, sensitivity, and allowed operations. Runtime mutable metadata MUST NOT directly alter prompts, schemas, compiler mappings, or authorization.
 
@@ -81,36 +76,3 @@ The system SHALL maintain sanitized golden cases covering supported, ambiguous, 
 #### Scenario: AI contract changes
 - **WHEN** a release changes any pinned semantic planning or answer contract
 - **THEN** the exact candidate is evaluated repeatedly against the pinned local Qwen model and release is blocked without a passing hash-verified receipt
-
-### Requirement: Query execution preserves authorization and least privilege
-The system SHALL execute admitted queries through a dedicated non-bypass read-only role over an approved security-invoker analytical view while propagating the server-verified user identity and trusted workspace role transaction-locally. The view SHALL use a locked-search-path, no-argument projection entrypoint that independently verifies `auth.uid()` and the trusted pilot role. The analytics role MUST NOT receive direct public/auth table privileges, and the resulting dataset-access outcome MUST remain at least as restrictive as the existing pilot authorization rules.
-
-#### Scenario: User may access the source dataset
-- **WHEN** the verified identity is authorized by existing dataset visibility and RLS rules
-- **THEN** the broker may return only rows visible to that identity
-
-#### Scenario: User may not access the source dataset
-- **WHEN** the source dataset is restricted from the verified identity
-- **THEN** the database returns no unauthorized rows and the broker cannot bypass the restriction
-
-#### Scenario: Broker role attempts a write or unauthorized relation
-- **WHEN** the analytics credential attempts DML, DDL, an unsafe function, or a non-approved relation
-- **THEN** PostgreSQL rejects the operation through grants, read-only transaction settings, or admission policy
-
-### Requirement: Query execution is resource-bounded
-The system SHALL enforce statement, lock, idle-transaction, work-memory, estimated-cost, row-count, response-byte, connection, and concurrency limits. All parse, policy, timeout, and limit errors MUST fail closed.
-
-#### Scenario: Query exceeds cost or time budget
-- **WHEN** an admitted template has excessive estimated cost or exceeds the execution deadline
-- **THEN** the broker cancels or rejects it and returns no partial rows as a complete result
-
-#### Scenario: Result exceeds row or byte limit
-- **WHEN** execution produces more than the permitted rows or serialized bytes
-- **THEN** the broker rejects the result or reports it as truncated only through an explicit bounded contract
-
-### Requirement: Analytics audit evidence excludes sensitive content
-The system SHALL record query identifier, pseudonymous identity/session reference, policy/catalog/model/runtime hashes, decision, stable reason, referenced view, parameterized redacted template, timing, row count, and byte count. It MUST NOT store raw prompts, parameter values, result rows, provider credentials, or raw provider errors.
-
-#### Scenario: Query completes or fails
-- **WHEN** the broker reaches an admission or execution decision
-- **THEN** it appends a redacted audit event sufficient to reproduce policy and performance without retaining sensitive content

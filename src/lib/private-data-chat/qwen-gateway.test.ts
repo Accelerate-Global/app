@@ -3,6 +3,10 @@ import { createHash, createHmac } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  PRIVATE_DATA_CHAT_CATALOG_VERSION,
+  getPrivateDataChatAnswerSemanticContext,
+} from "@/lib/private-data-chat/catalog";
+import {
   HttpPrivateQwenGateway,
   PrivateQwenGatewayError,
   signPrivateQwenGatewayRequest,
@@ -63,6 +67,54 @@ describe("private Qwen gateway", () => {
     expect(headers.get("CF-Access-Client-Secret")).toBe("client-secret");
     expect(headers.get("X-AG-Signature")).toMatch(/^v1=[0-9a-f]{64}$/);
     expect(String(request.body)).not.toContain("auth.users");
+    const body = JSON.parse(String(request.body)) as Record<string, unknown>;
+    expect(String(body.systemPrompt)).toContain(PRIVATE_DATA_CHAT_CATALOG_VERSION);
+    expect(String(body.systemPrompt)).toContain("One row per current primary");
+    expect(String(body.systemPrompt)).not.toContain(
+      "analytics_ro.primary_people_groups",
+    );
+    expect(String(body.systemPrompt)).not.toContain("count(*)");
+  });
+
+  it("sends only selected safe semantic definitions with grounded results", async () => {
+    const fetcher = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          answer: "India has a total population of 4,000 people.",
+          facts: ["country: India", "total_population: 4000"],
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    const gateway = new HttpPrivateQwenGateway(fetcher);
+    await gateway.answer({
+      question: "What is India's total population?",
+      semanticContext: getPrivateDataChatAnswerSemanticContext([
+        "country",
+        "total_population",
+      ]),
+      result: {
+        rows: [{ country: "India", total_population: "4000" }],
+        provenance: {
+          queryId: "8a000001-1337-403d-8eb5-b7c44a1be131",
+          catalogVersion: PRIVATE_DATA_CHAT_CATALOG_VERSION,
+          dataset: "primary_people_groups",
+          datasetId: null,
+          datasetVersionCreatedAt: null,
+          rowCount: 1,
+          filters: [],
+        },
+      },
+    });
+
+    const [, request] = fetcher.mock.calls[0] as [URL, RequestInit];
+    const body = JSON.parse(String(request.body)) as Record<string, unknown>;
+    const serialized = JSON.stringify(body.semanticContext);
+    expect(serialized).toContain("total_population");
+    expect(serialized).toContain("people");
+    expect(serialized).not.toContain("average_percent_evangelical");
+    expect(serialized).not.toContain("analytics_ro");
+    expect(serialized).not.toContain("sum(p.population)");
   });
 
   it("normalizes busy and invalid response failures", async () => {

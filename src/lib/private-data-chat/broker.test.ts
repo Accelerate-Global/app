@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import type { CurrentIdentity } from "@/lib/auth";
+import { PRIVATE_DATA_CHAT_CATALOG_VERSION } from "@/lib/private-data-chat/catalog";
 import { executePrivateDataChatQuery } from "@/lib/private-data-chat/broker";
 import { compilePrivateDataChatQuery } from "@/lib/private-data-chat/compiler";
 
@@ -14,6 +15,7 @@ const identity: CurrentIdentity = {
 };
 
 const compiled = compilePrivateDataChatQuery({
+  catalogVersion: PRIVATE_DATA_CHAT_CATALOG_VERSION,
   dataset: "primary_people_groups",
   mode: "aggregate",
   metrics: ["people_group_count"],

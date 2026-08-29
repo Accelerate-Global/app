@@ -1,4 +1,5 @@
 import {
+  PRIVATE_DATA_CHAT_CATALOG_CHECKSUM,
   PRIVATE_DATA_CHAT_CATALOG_VERSION,
   PRIVATE_DATA_CHAT_FIELDS,
   PRIVATE_DATA_CHAT_METRICS,
@@ -13,8 +14,9 @@ import {
   type PrivateDataChatFilter,
   type PrivateDataChatQuery,
 } from "@/lib/private-data-chat/schemas";
+import type { PrivateDataChatValueBinding } from "@/lib/private-data-chat/value-resolver";
 
-export const PRIVATE_DATA_CHAT_POLICY_VERSION = "query-policy-v1" as const;
+export const PRIVATE_DATA_CHAT_POLICY_VERSION = "query-policy-v2" as const;
 
 export class PrivateDataChatQueryPolicyError extends Error {
   constructor(message: string) {
@@ -35,9 +37,11 @@ export type CompiledPrivateDataChatQuery = {
   parameters: PrivateDataChatSqlParameter[];
   selectedKeys: string[];
   catalogVersion: typeof PRIVATE_DATA_CHAT_CATALOG_VERSION;
+  catalogChecksum: typeof PRIVATE_DATA_CHAT_CATALOG_CHECKSUM;
   policyVersion: typeof PRIVATE_DATA_CHAT_POLICY_VERSION;
   maxResultBytes: typeof PRIVATE_DATA_CHAT_MAX_RESULT_BYTES;
   query: PrivateDataChatQuery;
+  valueBindings: readonly PrivateDataChatValueBinding[];
 };
 
 function quoteIdentifier(value: string) {
@@ -162,8 +166,15 @@ function compileOrderBy(query: PrivateDataChatQuery, selectedKeys: string[]) {
 
 export function compilePrivateDataChatQuery(
   input: unknown,
+  options: { valueBindings?: readonly PrivateDataChatValueBinding[] } = {},
 ): CompiledPrivateDataChatQuery {
-  const query = privateDataChatQuerySchema.parse(input);
+  const parsed = privateDataChatQuerySchema.safeParse(input);
+  if (!parsed.success) {
+    throw new PrivateDataChatQueryPolicyError(
+      "The semantic query does not match the active catalog contract.",
+    );
+  }
+  const query = parsed.data;
   const parameters: PrivateDataChatSqlParameter[] = [];
   const where = query.filters.map((filter) => compileFilter(filter, parameters));
   let selectedKeys: string[];
@@ -171,6 +182,16 @@ export function compilePrivateDataChatQuery(
   let groupBy = "";
 
   if (query.mode === "aggregate") {
+    for (const metricKey of query.metrics) {
+      const metric = PRIVATE_DATA_CHAT_METRICS[metricKey];
+      for (const dimension of query.dimensions) {
+        if (!metric.compatibleDimensions.includes(dimension)) {
+          throw new PrivateDataChatQueryPolicyError(
+            `Metric ${metricKey} is not compatible with dimension ${dimension}.`,
+          );
+        }
+      }
+    }
     selectedKeys = selectedAggregateKeys(query);
     select = [
       ...query.dimensions.map(
@@ -191,7 +212,7 @@ export function compilePrivateDataChatQuery(
     selectedKeys = [...query.fields];
     select = query.fields
       .map(
-        (field) => `${dimensionExpression(field)} AS ${quoteIdentifier(field)}`,
+        (field) => `${fieldExpression(field)} AS ${quoteIdentifier(field)}`,
       )
       .join(",\n  ");
   }
@@ -206,8 +227,10 @@ export function compilePrivateDataChatQuery(
     parameters,
     selectedKeys,
     catalogVersion: PRIVATE_DATA_CHAT_CATALOG_VERSION,
+    catalogChecksum: PRIVATE_DATA_CHAT_CATALOG_CHECKSUM,
     policyVersion: PRIVATE_DATA_CHAT_POLICY_VERSION,
     maxResultBytes: PRIVATE_DATA_CHAT_MAX_RESULT_BYTES,
     query,
+    valueBindings: [...(options.valueBindings ?? [])],
   };
 }

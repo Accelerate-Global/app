@@ -15,6 +15,55 @@ size. It does not store prompts, filter values, result rows, or assistant text.
 Conversation history is browser-held and bounded to 12 messages/20,000
 characters per request; it is not persisted by this feature.
 
+## Semantic layer
+
+The component between Qwen and the dataset is the repo-owned semantic catalog in
+`src/lib/private-data-chat/catalog.ts`. It is intentionally a small typed layer,
+not a second data platform:
+
+- Qwen receives the approved dataset grain plus reviewed field and metric
+  meanings, aliases, types, units, null behavior, allowed operations, value-domain
+  policy, metric formulas, and compatibility rules.
+- Compiler-only view names, columns, SQL expressions, credentials, mutable field
+  definition text, and raw database values are excluded from model context.
+- Every query plan must echo the exact checksum-bound catalog revision. A stale
+  plan is rejected before compilation or database access.
+- The catalog records canonical field-definition keys, IMB source-contract
+  fields/version, and versioned reference-resource keys as provenance. Those
+  existing sources seed and reconcile the reviewed overlay, but their mere
+  presence never makes a field queryable.
+- The current nine-field catalog is sent in full. Do not add vector retrieval or
+  another semantic service until measured catalog growth makes deterministic
+  selection necessary.
+- The single-dataset pilot has no approved joins. Adding a relationship requires
+  a named server-owned capability, a trusted projection, tests, and a new catalog
+  revision; Qwen never supplies join predicates.
+
+Country filter names, aliases, alpha codes, FIPS values, and ROG3 values are
+resolved by application code against the active `country-territory-codes`
+resource after planning. One exact normalized match becomes the canonical display
+name, multiple matches ask a clarification, and no match remains an inert
+parameter that may return zero rows. The country resource itself is never sent to
+Qwen, and the application does not discover unrestricted values with database
+`DISTINCT` queries.
+
+Final narration receives only the semantic definitions selected by the compiled
+query, the bounded rows, and provenance. In particular, null values keep their
+catalog meaning and are not silently treated as zero or false.
+
+### Catalog promotion checklist
+
+1. Update the reviewed catalog metadata and compiler mapping together.
+2. Recompute the SHA-256 catalog checksum and revision suffix; the catalog unit
+   test fails until they agree.
+3. Reconcile cited canonical field/source contracts and confirm no mutable field
+   definition or uploaded column became queryable implicitly.
+4. Add or update sanitized golden decisions, compiled selected keys, positional
+   parameters, ambiguity cases, and adversarial cases.
+5. Run deterministic repository verification, then generate a new three-run
+   temperature-zero Samson receipt for the exact model/runtime/prompt/schema/
+   catalog/compiler/fixture hashes before release.
+
 ## Configuration
 
 Keep `PRIVATE_DATA_CHAT_ENABLED=false` until every gate below passes. Configure
@@ -69,16 +118,23 @@ test password.
 
 ## Routine verification
 
+- `pnpm vitest run src/lib/private-data-chat src/app/api/chat/route.test.ts`
 - `pnpm run verify:fast`
 - `pnpm run smoke:check`
 - `pnpm run db:security`
 - `pnpm run verify:change:run`
 - `pnpm run verify:ship:local` before a release request
 
-Regenerate the real-Qwen receipt whenever the model artifact, llama.cpp
-runtime, planner prompt, response schema, semantic catalog, compiler, or
-sanitized fixtures change. Live model inference is a release receipt, not a
-public CI dependency.
+The deterministic semantic suite covers supported aggregates and records,
+aliases, ambiguous and unsupported requests, multi-turn resolution, null and
+zero boundaries, empty results, mutations, prompt exfiltration, and SQL-looking
+filter values. Regenerate the real-Qwen receipt whenever the model artifact,
+llama.cpp runtime, planner or answer prompt, response schema, semantic catalog,
+compiler policy, or sanitized fixtures change. Live model inference is a release
+receipt, not a public CI dependency.
+
+The current candidate receipt and exact pinned hashes are recorded in
+`docs/operations/private-data-chat-evaluation-v3.md`.
 
 ## Failure behavior
 
