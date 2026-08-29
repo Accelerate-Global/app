@@ -112,6 +112,31 @@
       "contractRequirements": []
     },
     {
+      "id": "samson-data-archive",
+      "label": "Samson backup and cold archive",
+      "patterns": [
+        "openspec/changes/add-samson-data-archive/**",
+        "src/lib/data-archive/**",
+        "src/app/api/internal/archive-receipts/**",
+        "scripts/*archive*.ts",
+        "scripts/*backup*.ts",
+        "infra/samson-data-archive/**",
+        "docs/operations/samson-data-archive.md",
+        "supabase/migrations/*data_archive*",
+        "supabase/tests/database/*data_archive*"
+      ],
+      "requiredCommands": [
+        "typecheck",
+        "verify:test-delta",
+        "verify:app",
+        "smoke:check",
+        "db:security"
+      ],
+      "recommendedCommands": [],
+      "manualSteps": [],
+      "contractRequirements": []
+    },
+    {
       "id": "database-security",
       "label": "Database access and security",
       "patterns": [

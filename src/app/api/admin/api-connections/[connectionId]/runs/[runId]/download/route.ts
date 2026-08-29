@@ -2,6 +2,7 @@ import { getApiConnectionRunOutputDownload } from "@/lib/api-connections";
 import { logError } from "@/lib/error-logging";
 import { jsonError } from "@/lib/http";
 import { withRoute } from "@/lib/route-guard";
+import { DataArchiveRehydrationRequiredError } from "@/lib/data-archive/archive-state";
 
 type ApiConnectionRunDownloadContext = {
   params: Promise<{
@@ -50,6 +51,9 @@ export const GET = withRoute(
         },
       });
     } catch (error) {
+      if (error instanceof DataArchiveRehydrationRequiredError) {
+        return jsonError(error.message, error.status);
+      }
       logError("Failed to download API connection run output", error);
       return jsonError(
         "Could not download the API connection run output.",

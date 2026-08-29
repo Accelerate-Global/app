@@ -3,6 +3,20 @@ import type { WorkspaceRole } from "@/lib/workspace-role";
 export type DatasetStatus = "processing" | "ready" | "failed";
 export type DatasetVersionAction = "upload" | "replace" | "revert";
 
+export type DataArchiveState = "hot" | "cold" | "rehydrating" | "failed";
+
+export type DataArchiveSummary = {
+  state: DataArchiveState;
+  packageKey: string;
+  sourceChecksum: string;
+  rowCount: number;
+  objectCount: number;
+  sizeBytes: number;
+  integrityVerifiedAt: string;
+  restoreVerifiedAt: string | null;
+  rehydratedAt: string | null;
+};
+
 export type CsvColumn = {
   key: string;
   label: string;
@@ -63,6 +77,7 @@ export type DatasetVersionSummary = {
   columnCount: number;
   versionCreatedAt: string;
   archivedAt: string | null;
+  archive?: DataArchiveSummary | null;
 };
 
 export type DatasetVersionsResponse = {
@@ -440,6 +455,7 @@ export type ApiConnectionRun = {
   createdAt: string;
   logs?: ApiConnectionRunLog[];
   output?: ApiConnectionRunOutput | null;
+  archive?: DataArchiveSummary | null;
 };
 
 export type ApiConnectionRunLog = {

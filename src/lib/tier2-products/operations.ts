@@ -15,6 +15,10 @@ import {
 } from "@/lib/pipeline-products/storage";
 import { inferTier1ReleaseInputKey } from "@/lib/pipeline-products/release-sets";
 import { checksumSourceFormingValue } from "@/lib/source-forming/canonical";
+import {
+  assertArchiveRecordUsable,
+  DataArchiveRehydrationRequiredError,
+} from "@/lib/data-archive/archive-state";
 
 import { listTier2PartnerProfiles, listTier2StableTargets } from "./admin";
 import {
@@ -1326,12 +1330,29 @@ export async function rollbackTier2ProductTarget(input: {
     output_checksum: string;
     row_count: number;
     validation_summary: Record<string, unknown>;
+    archive_status: "verified" | "cold" | "rehydrating" | "rehydrated" | "failed" | null;
+    archive_rehydration_verified: boolean;
   }>`
     select publication.output_checksum, publication.row_count,
-      run.validation_summary
+      run.validation_summary,
+      archive_package.status as archive_status,
+      coalesce(exists (
+        select 1 from private.data_archive_rehydrations as rehydration
+        where rehydration.package_id = archive_package.id
+          and rehydration.status = 'verified'
+          and rehydration.manifest_checksum = archive_package.manifest_checksum
+      ), false) as archive_rehydration_verified
     from private.pipeline_publications as publication
     join private.pipeline_runs as run
       on run.id = publication.producer_run_id
+    left join lateral (
+      select package.id, package.status, package.manifest_checksum
+      from private.data_archive_packages as package
+      where package.package_kind = 'tier2-publication'
+        and package.source_identifier = publication.id::text
+      order by package.source_created_at desc, package.created_at desc
+      limit 1
+    ) as archive_package on true
     where publication.id = ${input.publicationId}::uuid
       and publication.publication_target_key = ${target.publication_target_key}
       and publication.dataset_id = ${target.dataset_id}::uuid
@@ -1340,6 +1361,8 @@ export async function rollbackTier2ProductTarget(input: {
     output_checksum: string;
     row_count: number;
     validation_summary: Record<string, unknown>;
+    archive_status: "verified" | "cold" | "rehydrating" | "rehydrated" | "failed" | null;
+    archive_rehydration_verified: boolean;
   }>;
   const publication = publications[0];
   const columns = publication?.validation_summary.columns;
@@ -1349,6 +1372,17 @@ export async function rollbackTier2ProductTarget(input: {
       409,
       "rollback-publication-evidence-missing",
     );
+  }
+  try {
+    assertArchiveRecordUsable({
+      status: publication.archive_status ?? null,
+      verifiedRehydration: Boolean(publication.archive_rehydration_verified),
+    });
+  } catch (error) {
+    if (error instanceof DataArchiveRehydrationRequiredError) {
+      throw new Tier2ProductError(error.message, error.status, error.code);
+    }
+    throw error;
   }
   const archivedRows = (await getDb().execute(sql<{
     data: Record<string, string>;

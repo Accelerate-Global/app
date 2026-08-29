@@ -1,0 +1,35 @@
+[Unit]
+Description=AX Online encrypted single-site recovery archive
+After=network-online.target nftables.service
+Wants=network-online.target
+ConditionPathExists=/etc/ax-data-archive/worker.env
+
+[Service]
+Type=oneshot
+User=axarchive
+Group=axarchive
+WorkingDirectory=/opt/ax-data-archive
+EnvironmentFile=/etc/ax-data-archive/worker.env
+ExecStart=/usr/local/bin/node --import tsx scripts/samson-data-archive.ts run
+UMask=0077
+NoNewPrivileges=true
+PrivateDevices=true
+PrivateTmp=true
+ProtectClock=true
+ProtectControlGroups=true
+ProtectHome=true
+ProtectHostname=true
+ProtectKernelLogs=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/ax-data-archive /var/cache/ax-data-archive /srv/ax-data-archive
+RestrictNamespaces=true
+RestrictRealtime=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+SystemCallArchitectures=native
+TimeoutStartSec=6h
+
+[Install]
+WantedBy=multi-user.target

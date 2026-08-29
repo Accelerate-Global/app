@@ -65,6 +65,12 @@
     "cloudflare:qwen:types": "wrangler types infra/cloudflare/qwen-edge-gateway/worker-configuration.d.ts --config infra/cloudflare/qwen-edge-gateway/wrangler.jsonc --env-interface QwenEdgeEnv --include-runtime false",
     "cloudflare:qwen:test": "vitest run infra/cloudflare/qwen-edge-gateway/src/index.test.ts",
     "cloudflare:qwen:dry-run": "wrangler deploy --dry-run --config infra/cloudflare/qwen-edge-gateway/wrangler.jsonc",
+    "data-archive:run": "node --import tsx scripts/samson-data-archive.ts run",
+    "data-archive:check-missed": "node --import tsx scripts/samson-data-archive.ts check-missed",
+    "data-archive:prune:plan": "dotenv -e .env.local -- node --import tsx scripts/data-archive-prune.ts dry-run",
+    "data-archive:prune:apply": "dotenv -e .env.local -- node --import tsx scripts/data-archive-prune.ts apply",
+    "data-archive:rehydrate": "dotenv -e .env.local -- node --import tsx scripts/data-archive-rehydrate.ts",
+    "data-archive:restore-drill": "node --import tsx scripts/data-archive-restore-drill.ts",
     "ship": "node --import tsx scripts/ship.ts"
   },
   "dependencies": {

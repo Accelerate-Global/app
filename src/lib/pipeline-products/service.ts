@@ -8,6 +8,10 @@ import { parseApiConnectionRowsArtifact } from "@/lib/api-connection-output";
 import { publishPreparedDataset } from "@/lib/datasets";
 import { createDatasetStoragePath } from "@/lib/dataset-storage";
 import { checksumProductValue, type Tier1PriorityRule } from "@/lib/tier1-products";
+import {
+  assertArchiveRecordUsable,
+  DataArchiveRehydrationRequiredError,
+} from "@/lib/data-archive/archive-state";
 
 import {
   getPipelineOutputColumns,
@@ -1232,17 +1236,38 @@ export async function rollbackPipelineProductTarget(input: {
 
   const retainedPublications = (await getDb().execute(sql<PublicationRow & {
     definition_key: string;
+    archive_status: "verified" | "cold" | "rehydrating" | "rehydrated" | "failed" | null;
+    archive_rehydration_verified: boolean;
   }>`
-    select publication.*, run.definition_key
+    select publication.*, run.definition_key,
+      archive_package.status as archive_status,
+      coalesce(exists (
+        select 1 from private.data_archive_rehydrations as rehydration
+        where rehydration.package_id = archive_package.id
+          and rehydration.status = 'verified'
+          and rehydration.manifest_checksum = archive_package.manifest_checksum
+      ), false) as archive_rehydration_verified
     from private.pipeline_publications as publication
     join private.pipeline_runs as run on run.id = publication.producer_run_id
+    left join lateral (
+      select package.id, package.status, package.manifest_checksum
+      from private.data_archive_packages as package
+      where package.package_kind = 'tier1-publication'
+        and package.source_identifier = publication.id::text
+      order by package.source_created_at desc, package.created_at desc
+      limit 1
+    ) as archive_package on true
     where publication.id = ${input.publicationId}::uuid
       and publication.publication_target_key = ${definition.publicationTargetKey}
       and publication.dataset_id = ${currentTarget.dataset_id}::uuid
       and publication.producer_definition_key = ${definition.key}
       and run.definition_key = ${definition.key}
     limit 1
-  `)) as unknown as Array<PublicationRow & { definition_key: string }>;
+  `)) as unknown as Array<PublicationRow & {
+    definition_key: string;
+    archive_status: "verified" | "cold" | "rehydrating" | "rehydrated" | "failed" | null;
+    archive_rehydration_verified: boolean;
+  }>;
   const retainedPublication = retainedPublications[0];
   if (!retainedPublication) {
     throw new PipelineProductError(
@@ -1250,6 +1275,17 @@ export async function rollbackPipelineProductTarget(input: {
       409,
       "rollback-publication-incompatible",
     );
+  }
+  try {
+    assertArchiveRecordUsable({
+      status: retainedPublication.archive_status ?? null,
+      verifiedRehydration: Boolean(retainedPublication.archive_rehydration_verified),
+    });
+  } catch (error) {
+    if (error instanceof DataArchiveRehydrationRequiredError) {
+      throw new PipelineProductError(error.message, error.status, error.code);
+    }
+    throw error;
   }
   const retainedRun = await getPipelineRun(retainedPublication.producer_run_id);
   if (

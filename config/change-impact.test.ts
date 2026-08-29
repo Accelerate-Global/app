@@ -102,6 +102,29 @@ describe("change-impact", () => {
     });
   });
 
+  it("keeps Samson archive changes on the full app, smoke-contract, and database lanes", () => {
+    const impact = resolveChangeImpact([
+      "src/lib/data-archive/manifest.ts",
+      "supabase/migrations/20260827000000_add_data_archive.sql",
+    ]);
+
+    expect(impact.domains.map((domain) => domain.id)).toContain(
+      "samson-data-archive",
+    );
+    expect(impact.requiredCommands).toEqual(
+      expect.arrayContaining([
+        "spec:validate",
+        "typecheck",
+        "verify:test-delta",
+        "verify:app",
+        "smoke:check",
+        "db:security",
+        "db:check-migration-drift",
+      ]),
+    );
+    expect(impact.manualSteps).toContain("db:push:remote");
+  });
+
   it("returns no required commands for a clean worktree", () => {
     const impact = resolveChangeImpact([]);
 

@@ -3,8 +3,14 @@
 - [ ] What exact provider procedure creates or restores the first admin in each environment?
   Evidence: README and AGENTS state first-admin bootstrap is manual/provider-owned, but no tracked runbook defines the steps.
 
-- [ ] What are the production Supabase backup, restore, retention, and incident response expectations?
-  Evidence: Supabase config, migrations, and DB tests are tracked; production operational policy is not.
+- [x] What are the production Supabase backup, restore, retention, and incident response expectations?
+  Evidence: `docs/operations/samson-data-archive.md`, the archive OpenSpec, the
+  local backup/prune/rehydration engines, the signed receipt route, and the
+  provisioned Samson guest define the policy and implementation.
+
+- [ ] What physically separate destination will become the off-site Restic copy?
+  Evidence: Samson is intentionally reported as single-site and the owner has
+  confirmed that no off-site destination is currently available.
 
 - [ ] Are GitHub branch protection rules enforcing the release checks listed in `docs/release.md`?
   Evidence: Release docs call this out as manual follow-up; repository settings are not represented in tracked files.

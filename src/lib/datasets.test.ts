@@ -1,3 +1,5 @@
+import { readFile } from "node:fs/promises";
+
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getDb } from "@/db";
@@ -799,6 +801,12 @@ describe("pipeline-managed dataset mutation guard", () => {
 });
 
 describe("dataset storage deletion safety", () => {
+  it("requires verified hot or rehydrated evidence before version revert", async () => {
+    const source = await readFile("src/lib/datasets.ts", "utf8");
+    expect(source).toContain('packageKind: "dataset-version"');
+    expect(source).toContain("assertArchiveRecordUsable");
+  });
+
   beforeEach(() => {
     vi.resetAllMocks();
   });

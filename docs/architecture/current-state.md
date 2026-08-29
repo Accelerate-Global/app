@@ -49,6 +49,11 @@ configuration, not intended future architecture.
 - Country/ROG and ROP reference data is registered in a private persistent catalog with immutable versions, typed projections, validation findings, activation audit events, and resource-set snapshots. Active reads fail explicitly when a healthy active version is missing; checked-in generated JSON is only a bootstrap/recovery input.
 - Reference-resource raw, normalized, CSV, validation, and diff artifacts live in the private `reference-resource-artifacts` bucket. Browser roles have no direct table or bucket privileges; guarded server routes own catalog, paging, download, refresh, activation, rejection, and rollback access.
 - The `/api/blob/upload-token` route name is historical; the implementation returns Supabase Storage signed upload data.
+- Supabase remains the live data plane. Compact archive-control tables in the
+  private schema record signed Samson receipts, verified packages, exact prune
+  plans, and rehydrations; browser roles have no direct privileges. Historical
+  API outputs and dataset or publication evidence can be presented as hot,
+  cold, rehydrating, or failed without a Vercel-to-Samson request path.
 
 ## API And Security Boundaries
 
@@ -83,6 +88,10 @@ configuration, not intended future architecture.
 - Release Health polls the current GitHub repository's deployment records rather
   than a hardcoded historical repository name.
 - Supabase is the database, auth, and storage provider for deployed environments.
+- Samson guest 104 is the provisioned single-site recovery worker. Its dedicated
+  50 GiB ZFS dataset holds an encrypted Restic repository and compact current
+  package pointers. The 2:00 AM Pacific timer remains disabled until production
+  migration, credentials, receipt deployment, and restore gates pass.
 - Vercel environment variables can be pulled locally with `vercel env pull .env.local`.
 - Release and production-health behavior is documented in `docs/release.md`.
 - Exact production provider settings are outside the tracked repo unless reflected in docs or scripts.

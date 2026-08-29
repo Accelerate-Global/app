@@ -305,6 +305,36 @@ describe("ApiConnectionDetailClient", () => {
     expect(screen.getByText("admin@example.com")).toBeTruthy();
   });
 
+  it("shows cold history without ordinary download actions", () => {
+    const coldRun: ApiConnectionRun = {
+      ...successfulRun,
+      archive: {
+        state: "cold",
+        packageKey: `api-run/${successfulRun.id}/${"a".repeat(64)}`,
+        sourceChecksum: "a".repeat(64),
+        rowCount: 2,
+        objectCount: 2,
+        sizeBytes: 44,
+        integrityVerifiedAt: "2026-08-27T09:00:00.000Z",
+        restoreVerifiedAt: "2026-08-27T10:00:00.000Z",
+        rehydratedAt: null,
+      },
+    };
+    render(
+      <ApiConnectionDetailClient
+        connection={connection}
+        initialRuns={[coldRun]}
+        serviceAccountEmail={serviceAccountEmail}
+      />,
+    );
+    expect(screen.getByText("cold")).toBeTruthy();
+    expect(screen.queryByRole("link", { name: "JSON" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "CSV" })).toBeNull();
+    fireEvent.click(screen.getByText("admin@example.com").closest("tr")!);
+    expect(screen.getByText("Historical output is cold")).toBeTruthy();
+    expect(screen.getAllByText(/operator rehydration required/i).length).toBeGreaterThan(0);
+  });
+
   it("restores queued test activity and replaces it with the terminal result", async () => {
     const queuedRun: ApiConnectionRun = {
       ...successfulRun,

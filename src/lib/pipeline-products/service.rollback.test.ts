@@ -128,6 +128,8 @@ function arrangePreflight(options?: {
   currentAtPreflight?: string;
   currentAtCommit?: string;
   tamperPublicationManifest?: boolean;
+  archiveStatus?: "verified" | "cold" | "rehydrating" | "rehydrated" | "failed" | null;
+  archiveRehydrationVerified?: boolean;
 }) {
   const evidence = retainedEvidence();
   const execute = vi.fn()
@@ -137,11 +139,15 @@ function arrangePreflight(options?: {
       is_workspace_visible: true,
       dataset_status: "ready",
     }])
-    .mockResolvedValueOnce([retainedPublication(
-      options?.tamperPublicationManifest
-        ? { schemaVersion: 1, artifacts: [] }
-        : evidence.manifest,
-    )])
+    .mockResolvedValueOnce([{
+      ...retainedPublication(
+        options?.tamperPublicationManifest
+          ? { schemaVersion: 1, artifacts: [] }
+          : evidence.manifest,
+      ),
+      archive_status: options?.archiveStatus ?? null,
+      archive_rehydration_verified: options?.archiveRehydrationVerified ?? false,
+    }])
     .mockResolvedValueOnce([retainedRun(evidence.manifest)])
     .mockResolvedValueOnce([])
     .mockResolvedValueOnce([])
@@ -271,5 +277,33 @@ describe("pipeline publication target rollback", () => {
     })).rejects.toMatchObject({ code: "rollback-publication-evidence-missing" });
     expect(uploadPipelineDatasetBlobMock).not.toHaveBeenCalled();
     expect(publishPreparedDatasetMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects cold evidence and accepts only a fully verified rehydration", async () => {
+    arrangePreflight({ archiveStatus: "cold" });
+    await expect(rollbackPipelineProductTarget({
+      publicationTargetKey: "aggregate1-south-asia",
+      publicationId: retainedPublicationId,
+      expectedCurrentPublicationId: currentPublicationId,
+      actorOwnerId: "admin-1",
+      actorEmail: "admin@example.com",
+      reason: "Restore the archived publication",
+    })).rejects.toMatchObject({ code: "archive-rehydration-required" });
+    expect(uploadPipelineDatasetBlobMock).not.toHaveBeenCalled();
+
+    vi.resetAllMocks();
+    deletePipelineDatasetBlobMock.mockResolvedValue(undefined);
+    arrangePreflight({
+      archiveStatus: "rehydrated",
+      archiveRehydrationVerified: true,
+    });
+    await expect(rollbackPipelineProductTarget({
+      publicationTargetKey: "aggregate1-south-asia",
+      publicationId: retainedPublicationId,
+      expectedCurrentPublicationId: currentPublicationId,
+      actorOwnerId: "admin-1",
+      actorEmail: "admin@example.com",
+      reason: "Restore the archived publication",
+    })).resolves.toMatchObject({ restoredFromPublicationId: retainedPublicationId });
   });
 });
