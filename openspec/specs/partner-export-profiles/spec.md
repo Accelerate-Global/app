@@ -171,13 +171,14 @@ and extension.
 
 ### Requirement: Partner export management begins from a compact dataset action
 
-The system SHALL render one administrator-only Partner exports action on the dataset page instead of an expanded export-management card. Activating the action SHALL open a slide-out that explains the workflow and exposes the current dataset's profile, preview, run, download, and new-profile entry behavior before the administrator enters the existing profile editor.
+The system SHALL expose Partner exports inside one administrator-only Dataset actions menu on the dataset page instead of rendering a standalone export button or expanded export-management card. Selecting Partner exports SHALL open a slide-out that explains the workflow and exposes the current dataset's profile, preview, run, download, and new-profile entry behavior before the administrator enters the existing profile editor.
 
 #### Scenario: Administrator opens partner export management
 
-- **WHEN** a dataset administrator opens a source dataset
-- **THEN** the page displays one Partner exports button without expanded profile details
-- **AND** activating the button opens an accessible export-management slide-out for that dataset
+- **WHEN** a dataset administrator opens a source dataset and opens Dataset actions
+- **THEN** the menu displays Partner exports
+- **AND** selecting it opens an accessible export-management slide-out for that dataset
+- **AND** no standalone Partner exports button or expanded profile details appear on the page
 
 #### Scenario: Administrator begins a new profile
 
@@ -194,5 +195,5 @@ The system SHALL render one administrator-only Partner exports action on the dat
 #### Scenario: Non-admin opens a dataset
 
 - **WHEN** an authenticated non-admin opens a dataset they may read
-- **THEN** the Partner exports action and its management details are not rendered
+- **THEN** Dataset actions, Partner exports, and export-management details are not rendered
 - **AND** existing server authorization continues to deny partner-export access

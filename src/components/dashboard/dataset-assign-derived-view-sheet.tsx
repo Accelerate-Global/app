@@ -186,7 +186,7 @@ export function DatasetAssignDerivedViewSheet({
       >
         <div className="flex h-full flex-col">
           <SheetHeader className="border-b border-border px-6 py-5">
-            <SheetTitle>Assign filtered view</SheetTitle>
+            <SheetTitle>Create dataset from current view</SheetTitle>
             <SheetDescription>
               Save the current filtered result from{" "}
               <span className="font-medium text-foreground">
@@ -300,7 +300,7 @@ export function DatasetAssignDerivedViewSheet({
                 void handleAssign();
               }}
             >
-              {isAssigning ? "Assigning..." : "Assign to dataset"}
+              {isAssigning ? "Creating..." : "Create dataset from current view"}
             </Button>
             <SheetClose
               render={

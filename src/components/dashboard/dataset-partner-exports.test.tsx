@@ -151,6 +151,33 @@ describe("DatasetPartnerExports", () => {
     ).toBeTruthy();
   });
 
+  it("supports a controlled manager without rendering its standalone trigger", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(Response.json({ profiles: [], runs: [] }));
+    vi.stubGlobal("fetch", fetchMock);
+    const onManagerOpenChange = vi.fn();
+
+    render(
+      <DatasetPartnerExports
+        datasetId="dataset-1"
+        sourceColumns={sourceColumns}
+        managerOpen
+        onManagerOpenChange={onManagerOpenChange}
+        showTrigger={false}
+      />,
+    );
+
+    expect(screen.queryByRole("button", { name: "Partner exports" })).toBeNull();
+    expect(
+      await screen.findByRole("heading", { name: "Partner exports" }),
+    ).toBeTruthy();
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/admin/datasets/dataset-1/partner-exports",
+      { cache: "no-store" },
+    );
+  });
+
   it("previews, generates, polls, and exposes private artifact download links", async () => {
     const profile = createProfile();
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {

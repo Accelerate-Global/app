@@ -224,7 +224,7 @@ export function DatasetTableActionBar({
               onClick={onOpenAssignDerivedView}
             >
               <PanelRightOpenIcon />
-              Assign to dataset
+              Create dataset from current view
             </Button>
           ) : null}
         </div>

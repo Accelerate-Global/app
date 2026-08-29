@@ -165,7 +165,7 @@ describe("DatasetTableActionBar", () => {
     );
 
     const assignButton = screen.getByRole("button", {
-      name: "Assign to dataset",
+      name: "Create dataset from current view",
     });
 
     expect(assignButton.getAttribute("data-smoke-trigger")).toBe(

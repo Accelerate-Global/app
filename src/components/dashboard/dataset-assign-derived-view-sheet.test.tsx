@@ -141,7 +141,9 @@ describe("DatasetAssignDerivedViewSheet", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Assign to dataset" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Create dataset from current view" }),
+    );
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
@@ -189,7 +191,9 @@ describe("DatasetAssignDerivedViewSheet", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Assign to dataset" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Create dataset from current view" }),
+    );
 
     expect(await screen.findByText("Assignment failed.")).toBeTruthy();
   });

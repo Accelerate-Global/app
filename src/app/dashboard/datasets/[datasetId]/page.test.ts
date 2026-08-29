@@ -19,7 +19,7 @@ import { getSavedDatasetTable } from "@/lib/saved-dataset-tables";
 import DatasetPage from "./page";
 
 const datasetDetailClientSpy = vi.fn();
-const datasetPartnerExportsSpy = vi.fn();
+const datasetAdminActionsSpy = vi.fn();
 
 vi.mock("next/navigation", () => ({
   notFound: vi.fn(() => {
@@ -64,9 +64,9 @@ vi.mock("@/components/dashboard/dataset-detail-client", () => ({
   },
 }));
 
-vi.mock("@/components/dashboard/dataset-partner-exports", () => ({
-  DatasetPartnerExports: (props: unknown) => {
-    datasetPartnerExportsSpy(props);
+vi.mock("@/components/dashboard/dataset-admin-actions", () => ({
+  DatasetAdminActions: (props: unknown) => {
+    datasetAdminActionsSpy(props);
     return null;
   },
 }));
@@ -125,7 +125,7 @@ describe("/dashboard/datasets/[datasetId]", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     datasetDetailClientSpy.mockReset();
-    datasetPartnerExportsSpy.mockReset();
+    datasetAdminActionsSpy.mockReset();
     getCurrentIdentityMock.mockResolvedValue({
       ownerId: "owner-1",
       email: "admin@example.com",
@@ -268,9 +268,10 @@ describe("/dashboard/datasets/[datasetId]", () => {
     expect(props.workspaceRole).toBe("admin");
     expect(props.sourceRowCount).toBe(10);
     expect(props.toolbarAction).toBeTruthy();
-    expect(datasetPartnerExportsSpy).toHaveBeenCalledWith(
+    expect(datasetAdminActionsSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         datasetId: "dataset-1",
+        partnerExportDatasetId: "dataset-1",
         sourceColumns: createDataset().columns,
       }),
     );
@@ -300,7 +301,7 @@ describe("/dashboard/datasets/[datasetId]", () => {
       toolbarAction?: ReactNode;
     };
 
-    expect(datasetPartnerExportsSpy).not.toHaveBeenCalled();
+    expect(datasetAdminActionsSpy).not.toHaveBeenCalled();
 
     expect(props.initialFilters).toBeNull();
     expect(props.assignableDatasets).toEqual([]);

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { DatasetDetailClient } from "@/components/dashboard/dataset-detail-client";
-import { DatasetPartnerExports } from "@/components/dashboard/dataset-partner-exports";
+import { DatasetAdminActions } from "@/components/dashboard/dataset-admin-actions";
 import { DashboardPageShell } from "@/components/layout/dashboard-page-shell";
 import { buttonVariants } from "@/components/ui/button";
 import { getCurrentIdentity } from "@/lib/auth";
@@ -151,8 +151,9 @@ export default async function DatasetPage({
           workspaceRole={identity.workspaceRole}
           toolbarAction={
             identity.isDatasetAdmin ? (
-              <DatasetPartnerExports
-                datasetId={(sourceDataset ?? dataset).id}
+              <DatasetAdminActions
+                datasetId={dataset.id}
+                partnerExportDatasetId={(sourceDataset ?? dataset).id}
                 sourceColumns={(sourceDataset ?? dataset).columns}
               />
             ) : null
