@@ -1,6 +1,14 @@
 "use client";
 
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 
 import { DatasetAssignDerivedViewSheet } from "@/components/dashboard/dataset-assign-derived-view-sheet";
 import type { DatasetMapTableScopeRequest } from "@/components/dashboard/dataset-map-view";
@@ -86,6 +94,7 @@ type DatasetDetailClientProps = {
   initialSorting?: SavedDatasetSort[] | null;
   assignableDatasets?: DatasetSummary[];
   workspaceRole?: WorkspaceRole;
+  toolbarAction?: ReactNode;
 };
 
 type DatasetDetailViewMode = "table" | "map";
@@ -222,6 +231,7 @@ export function DatasetDetailClient({
   initialSorting = null,
   assignableDatasets = [],
   workspaceRole = "pro",
+  toolbarAction = null,
 }: DatasetDetailClientProps) {
   useDatasetPerfRenderTrace("DatasetDetailClient");
   const watchlistThresholdDefinition =
@@ -910,122 +920,141 @@ export function DatasetDetailClient({
 
   return (
     <>
-      <div className="grid gap-4 xl:grid-cols-[22rem_minmax(0,1fr)] xl:items-start">
-        <div className="xl:col-start-1 xl:row-start-1">
-          <DatasetTableActionBar
-            dataset={dataset}
-            filters={savedFilters}
-            recordCount={datasetTable.recordCount}
-            getSortedRows={datasetTable.getSortedRows}
-            visibleColumns={datasetTable.visibleColumns}
-            isLoading={datasetTable.isLoading}
-            hasError={Boolean(dataset.error || datasetTable.error)}
-            fieldDefinitionPresentationByColumnKey={fieldDefinitionPresentationByColumnKey}
-            canSaveFilteredTable={canSaveFilteredTable && !temporaryTableScope}
-            onOpenFilters={handleOpenFilters}
-            onOpenAssignDerivedView={
-              assignableDatasets.length > 0 && !temporaryTableScope
-                ? handleOpenAssignDerivedView
-                : undefined
-            }
-          />
+      <div className="space-y-4">
+        <div
+          className="flex flex-wrap items-center gap-2"
+          data-smoke-dataset-toolbar
+        >
+          {toolbarAction}
+          <div
+            className="inline-flex rounded-lg border border-border bg-card/95 p-1"
+            role="group"
+            aria-label="Dataset view"
+          >
+            <Button
+              type="button"
+              size="sm"
+              variant={viewMode === "table" ? "secondary" : "ghost"}
+              aria-pressed={viewMode === "table"}
+              onClick={() => setViewMode("table")}
+              data-smoke-close="dataset-map"
+            >
+              <TablePropertiesIcon aria-hidden="true" className="size-4" />
+              Table
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={viewMode === "map" ? "secondary" : "ghost"}
+              aria-pressed={viewMode === "map"}
+              onClick={() => setViewMode("map")}
+              data-smoke-trigger="dataset-map"
+            >
+              <MapPinnedIcon aria-hidden="true" className="size-4" />
+              Map
+            </Button>
+          </div>
         </div>
-        <aside className="hidden xl:col-start-1 xl:row-start-2 xl:block xl:self-start">
-          <div className="sticky top-24">
-            <DatasetViewSwitchGrid {...filterPanelProps} />
-          </div>
-        </aside>
-        <div className="min-w-0 space-y-4 xl:col-start-2 xl:row-span-2 xl:row-start-1">
-          <div className="flex justify-end">
-            <div
-              className="inline-flex rounded-lg border border-border bg-background p-1"
-              role="group"
-              aria-label="Dataset view"
-            >
-              <Button
-                type="button"
-                size="sm"
-                variant={viewMode === "table" ? "secondary" : "ghost"}
-                aria-pressed={viewMode === "table"}
-                onClick={() => setViewMode("table")}
-                data-smoke-close="dataset-map"
+        <div className="grid gap-4 xl:grid-cols-[22rem_minmax(0,1fr)] xl:items-start">
+          <aside className="xl:col-start-1 xl:row-start-1 xl:self-start">
+            <div className="xl:sticky xl:top-24">
+              <div
+                className="rounded-[1.25rem] border border-border/80 bg-card/95 shadow-sm xl:min-h-[760px]"
+                data-smoke-filter-workspace="combined"
               >
-                <TablePropertiesIcon aria-hidden="true" className="size-4" />
-                Table
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant={viewMode === "map" ? "secondary" : "ghost"}
-                aria-pressed={viewMode === "map"}
-                onClick={() => setViewMode("map")}
-                data-smoke-trigger="dataset-map"
-              >
-                <MapPinnedIcon aria-hidden="true" className="size-4" />
-                Map
-              </Button>
-            </div>
-          </div>
-          {viewMode === "table" ? (
-            <>
-              {temporaryTableScope ? (
-                <section
-                  className="flex flex-col gap-3 rounded-xl border border-border bg-accent/50 px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between"
-                  aria-label="Temporary map table scope"
-                  data-smoke-map-table-scope
-                >
-                  <div className="flex min-w-0 items-start gap-3">
-                    <ListFilterIcon
-                      aria-hidden="true"
-                      className="mt-0.5 size-4 shrink-0 text-accent-foreground"
-                    />
-                    <div className="min-w-0">
-                      <p className="font-medium text-foreground">
-                        Map selection: {temporaryTableScope.label}
-                      </p>
-                      <p className="text-muted-foreground">
-                        {datasetTable.recordCount.toLocaleString()} temporary records. Saved filters and source data are unchanged.
-                      </p>
-                    </div>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setTemporaryTableScope(null)}
-                    data-smoke-clear-map-table-scope
-                  >
-                    <XIcon />
-                    Clear map selection
-                  </Button>
-                </section>
-              ) : null}
-              <DatasetTable
-                table={datasetTable.table}
-                recordCount={datasetTable.recordCount}
-                isLoading={datasetTable.isLoading}
-                datasetError={dataset.error}
-                error={datasetTable.error}
-                onRowClick={(row) => setProfileRow(row)}
-              />
-            </>
-          ) : (
-            <Suspense
-              fallback={
-                <div className="flex min-h-[34rem] items-center justify-center rounded-xl border border-border bg-card text-sm text-muted-foreground">
-                  Loading map view…
+                <DatasetTableActionBar
+                  dataset={dataset}
+                  filters={savedFilters}
+                  recordCount={datasetTable.recordCount}
+                  getSortedRows={datasetTable.getSortedRows}
+                  visibleColumns={datasetTable.visibleColumns}
+                  isLoading={datasetTable.isLoading}
+                  hasError={Boolean(dataset.error || datasetTable.error)}
+                  fieldDefinitionPresentationByColumnKey={
+                    fieldDefinitionPresentationByColumnKey
+                  }
+                  canSaveFilteredTable={
+                    canSaveFilteredTable && !temporaryTableScope
+                  }
+                  onOpenFilters={handleOpenFilters}
+                  onOpenAssignDerivedView={
+                    assignableDatasets.length > 0 && !temporaryTableScope
+                      ? handleOpenAssignDerivedView
+                      : undefined
+                  }
+                  variant="embedded"
+                />
+                <div className="hidden border-t border-border/70 xl:block">
+                  <DatasetViewSwitchGrid
+                    {...filterPanelProps}
+                    className="rounded-none border-0 bg-transparent shadow-none"
+                  />
                 </div>
-              }
-            >
-              <LazyDatasetMapView
-                rows={datasetTable.filteredRows}
-                isLoading={datasetTable.isLoading}
-                error={dataset.error ?? datasetTable.error}
-                onViewRowsInTable={handleViewRowsInTable}
-                onOpenRecord={handleOpenRecord}
-              />
-            </Suspense>
-          )}
+              </div>
+            </div>
+          </aside>
+          <div className="min-w-0 space-y-4 xl:col-start-2 xl:row-start-1">
+            {viewMode === "table" ? (
+              <>
+                {temporaryTableScope ? (
+                  <section
+                    className="flex flex-col gap-3 rounded-xl border border-border bg-accent/50 px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between"
+                    aria-label="Temporary map table scope"
+                    data-smoke-map-table-scope
+                  >
+                    <div className="flex min-w-0 items-start gap-3">
+                      <ListFilterIcon
+                        aria-hidden="true"
+                        className="mt-0.5 size-4 shrink-0 text-accent-foreground"
+                      />
+                      <div className="min-w-0">
+                        <p className="font-medium text-foreground">
+                          Map selection: {temporaryTableScope.label}
+                        </p>
+                        <p className="text-muted-foreground">
+                          {datasetTable.recordCount.toLocaleString()} temporary records. Saved filters and source data are unchanged.
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setTemporaryTableScope(null)}
+                      data-smoke-clear-map-table-scope
+                    >
+                      <XIcon />
+                      Clear map selection
+                    </Button>
+                  </section>
+                ) : null}
+                <DatasetTable
+                  table={datasetTable.table}
+                  recordCount={datasetTable.recordCount}
+                  isLoading={datasetTable.isLoading}
+                  datasetError={dataset.error}
+                  error={datasetTable.error}
+                  onRowClick={(row) => setProfileRow(row)}
+                />
+              </>
+            ) : (
+              <Suspense
+                fallback={
+                  <div className="flex min-h-[34rem] items-center justify-center rounded-xl border border-border bg-card text-sm text-muted-foreground">
+                    Loading map view…
+                  </div>
+                }
+              >
+                <LazyDatasetMapView
+                  rows={datasetTable.filteredRows}
+                  isLoading={datasetTable.isLoading}
+                  error={dataset.error ?? datasetTable.error}
+                  onViewRowsInTable={handleViewRowsInTable}
+                  onOpenRecord={handleOpenRecord}
+                />
+              </Suspense>
+            )}
+          </div>
         </div>
       </div>
       {assignableDatasets.length > 0 ? (

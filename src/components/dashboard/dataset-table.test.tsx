@@ -19,8 +19,16 @@ vi.mock("@/components/reui/data-grid/data-grid", () => ({
     dataGridSpy(props);
     return <div data-testid="data-grid">{props.children}</div>;
   },
-  DataGridContainer: ({ children }: { children?: ReactNode }) => (
-    <div data-testid="data-grid-container">{children}</div>
+  DataGridContainer: ({
+    children,
+    className,
+  }: {
+    children?: ReactNode;
+    className?: string;
+  }) => (
+    <div data-testid="data-grid-container" className={className}>
+      {children}
+    </div>
   ),
 }));
 
@@ -157,9 +165,20 @@ describe("DatasetTable", () => {
       headerSticky: true,
     });
     expect(dataGridProps.tableClassNames).toEqual({
-      headerSticky: "sticky top-0 z-10 bg-muted/90 backdrop-blur-xs",
-      bodyRow: "[&>td]:h-10 [&>td]:py-0",
+      base: "bg-card/95",
+      headerSticky: "sticky top-0 z-10 bg-card/95 backdrop-blur-xs",
+      headerRow: "bg-muted/30 [&>th[data-pinned]]:bg-card/95",
+      body: "bg-card/95",
+      bodyRow:
+        "bg-card/95 [&>td]:h-10 [&>td]:py-0 [&>td[data-pinned]]:bg-card/95 [&:hover>td[data-pinned]]:bg-muted/40",
     });
+    expect(screen.getByTestId("data-grid-container").className).toContain(
+      "bg-card/95",
+    );
+    const scrollArea = screen.getByTestId("data-grid-scroll-area");
+    expect(scrollArea.className).toContain("h-[560px]");
+    expect(scrollArea.className).toContain("xl:h-[760px]");
+    expect(scrollArea.className).toContain("bg-card/95");
   });
 
   it("passes the record-profile row action into the shared data grid", () => {

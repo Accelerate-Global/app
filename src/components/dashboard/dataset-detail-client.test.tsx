@@ -233,7 +233,7 @@ describe("DatasetDetailClient", () => {
     });
   });
 
-  it("places one filtered-table summary above the sticky desktop filters", () => {
+  it("combines one filtered-table summary with the sticky desktop filters", () => {
     render(
       <DatasetDetailClient
         dataset={{
@@ -253,33 +253,64 @@ describe("DatasetDetailClient", () => {
 
     const filterGrid = screen.getByTestId("dataset-view-switch-grid");
     const actionBar = screen.getByTestId("dataset-table-action-bar");
-    const stickyRail = filterGrid.parentElement;
+    const filterContent = filterGrid.parentElement;
+    const workspace = actionBar.closest('[data-smoke-filter-workspace="combined"]');
+    const stickyRail = workspace?.parentElement;
     const desktopRail = stickyRail?.parentElement;
     const layout = desktopRail?.parentElement;
-    const actionBarColumn = actionBar.parentElement;
     const mainColumn = screen.getByTestId("dataset-table").parentElement;
     const actionBarProps = actionBarSpy.mock.calls[0]?.[0] as {
       onOpenFilters?: () => void;
       onOpenAssignDerivedView?: () => void;
+      variant?: string;
     };
 
     expect(layout).toBeTruthy();
     expect(layout?.className).toContain("xl:grid-cols-[22rem_minmax(0,1fr)]");
-    expect(desktopRail?.className).toContain("hidden");
-    expect(desktopRail?.className).toContain("xl:block");
     expect(stickyRail?.className).toContain("sticky");
     expect(screen.getAllByTestId("dataset-table-action-bar")).toHaveLength(1);
-    expect(actionBarColumn?.className).toContain("xl:row-start-1");
-    expect(desktopRail?.className).toContain("xl:row-start-2");
+    expect(workspace?.contains(actionBar)).toBe(true);
+    expect(workspace?.contains(filterGrid)).toBe(true);
+    expect(workspace?.className).toContain("xl:min-h-[760px]");
+    expect(filterContent?.className).toContain("hidden");
+    expect(filterContent?.className).toContain("xl:block");
+    expect(desktopRail?.className).toContain("xl:row-start-1");
     expect(mainColumn?.className).toContain("xl:col-start-2");
-    expect(mainColumn?.className).toContain("xl:row-span-2");
-    expect(
-      actionBar.compareDocumentPosition(filterGrid) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
+    expect(mainColumn?.className).toContain("xl:row-start-1");
     expect(actionBarProps.onOpenFilters).toEqual(expect.any(Function));
     expect(actionBarProps.onOpenAssignDerivedView).toBeUndefined();
+    expect(actionBarProps.variant).toBe("embedded");
     expect(assignDerivedViewSheetSpy).not.toHaveBeenCalled();
+  });
+
+  it("places the view switch beside the supplied dataset toolbar action", () => {
+    render(
+      <DatasetDetailClient
+        dataset={{
+          ...datasetBase,
+          columns: [],
+        }}
+        regions={[]}
+        fieldDefinitionPresentationByColumnKey={{}}
+        toolbarAction={<button type="button">Partner exports</button>}
+      />,
+    );
+
+    const partnerExports = screen.getByRole("button", {
+      name: "Partner exports",
+    });
+    const viewSwitch = screen.getByRole("group", { name: "Dataset view" });
+    const toolbar = partnerExports.closest("[data-smoke-dataset-toolbar]");
+
+    expect(toolbar).toBeTruthy();
+    expect(toolbar?.contains(viewSwitch)).toBe(true);
+    expect(
+      partnerExports.compareDocumentPosition(viewSwitch) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "Table" }).getAttribute("aria-pressed"),
+    ).toBe("true");
   });
 
   it("switches between Table and Map while preserving canonical rows and dataset actions", async () => {

@@ -139,12 +139,6 @@ export default async function DatasetPage({
             </p>
           ) : null}
         </section>
-        {identity.isDatasetAdmin ? (
-          <DatasetPartnerExports
-            datasetId={(sourceDataset ?? dataset).id}
-            sourceColumns={(sourceDataset ?? dataset).columns}
-          />
-        ) : null}
         <DatasetDetailClient
           key={detailKey}
           dataset={dataset}
@@ -155,6 +149,14 @@ export default async function DatasetPage({
           initialSorting={initialSorting}
           assignableDatasets={assignableDatasets}
           workspaceRole={identity.workspaceRole}
+          toolbarAction={
+            identity.isDatasetAdmin ? (
+              <DatasetPartnerExports
+                datasetId={(sourceDataset ?? dataset).id}
+                sourceColumns={(sourceDataset ?? dataset).columns}
+              />
+            ) : null
+          }
         />
       </DashboardPageShell>
     </div>

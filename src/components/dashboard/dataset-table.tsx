@@ -19,8 +19,12 @@ const DATA_GRID_LAYOUT = {
   headerSticky: true,
 } as const;
 const DATA_GRID_CLASS_NAMES = {
-  headerSticky: "sticky top-0 z-10 bg-muted/90 backdrop-blur-xs",
-  bodyRow: "[&>td]:h-10 [&>td]:py-0",
+  base: "bg-card/95",
+  headerSticky: "sticky top-0 z-10 bg-card/95 backdrop-blur-xs",
+  headerRow: "bg-muted/30 [&>th[data-pinned]]:bg-card/95",
+  body: "bg-card/95",
+  bodyRow:
+    "bg-card/95 [&>td]:h-10 [&>td]:py-0 [&>td[data-pinned]]:bg-card/95 [&:hover>td[data-pinned]]:bg-muted/40",
 } as const;
 
 type DatasetRow = DatasetRowsResponse["rows"][number];
@@ -75,8 +79,11 @@ export function DatasetTable({
         tableLayout={DATA_GRID_LAYOUT}
         tableClassNames={DATA_GRID_CLASS_NAMES}
       >
-        <DataGridContainer>
-          <DataGridScrollArea className="h-[560px]">
+        <DataGridContainer className="bg-card/95">
+          <DataGridScrollArea
+            className="h-[560px] bg-card/95 xl:h-[760px]"
+            data-smoke-dataset-table-viewport
+          >
             <DataGridTableVirtual
               estimateSize={ROW_HEIGHT_ESTIMATE}
               overscan={ROW_OVERSCAN}
