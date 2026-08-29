@@ -865,6 +865,29 @@ test("admin can edit dataset details", async ({ page }, testInfo) => {
   });
 });
 
+test("admin can ask private data chat synthetic question", async ({
+  page,
+}, testInfo) => {
+  test.skip(skipUnlessDesktopAdmin(testInfo.project.name));
+
+  await runSmokeJourney(
+    "admin can ask private data chat synthetic question",
+    async () => {
+      await page.goto("/dashboard/chat");
+      await expect(
+        page.locator('[data-smoke-page="private-data-chat"]'),
+      ).toBeVisible();
+      await page
+        .getByRole("button", {
+          name: "How many people groups are in the current primary dataset?",
+        })
+        .click();
+      await expect(page.getByText("people_group_count: 3")).toBeVisible();
+      await expect(page.getByText("Data provenance")).toBeVisible();
+    },
+  );
+});
+
 test(
   "admin can onboard a private Google Sheets dataset",
   async ({ page }, testInfo) => {

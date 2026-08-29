@@ -989,6 +989,9 @@ async function main() {
   });
   try {
     await mkdir(UI_SMOKE_TMP_DIR, { recursive: true });
+    await sql.unsafe(
+      "alter role analytics_chat_login password 'ui-smoke-private-data-chat'",
+    );
     await ensureBucket(storageAdmin, smokeEnv.storageBucket);
     await resetSmokeData(sql);
     await insertAllowlist(sql);

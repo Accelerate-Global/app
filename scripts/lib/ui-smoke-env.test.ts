@@ -40,6 +40,14 @@ DB_URL="postgresql://postgres:postgres@127.0.0.1:54322/postgres"
     expect(env.DATABASE_URL).toBe(
       "postgresql://postgres:postgres@127.0.0.1:54322/postgres",
     );
+    expect(env.ANALYTICS_DATABASE_URL).toBe(
+      "postgresql://analytics_chat_login:ui-smoke-private-data-chat@127.0.0.1:54322/postgres",
+    );
+    expect(env.PRIVATE_DATA_CHAT_ENABLED).toBe("true");
+    expect(env.PRIVATE_DATA_CHAT_CANARY_EMAILS).toBe(
+      "smoke-admin@accelerate-global.test",
+    );
+    expect(env.PRIVATE_QWEN_FAKE).toBe("true");
     expect(env.GOOGLE_SHEETS_SERVICE_ACCOUNT_EMAIL).toBe(
       "ui-smoke@app-project.iam.gserviceaccount.com",
     );

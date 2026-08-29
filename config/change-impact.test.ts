@@ -5,6 +5,7 @@ import {
   selectCiAppQualityTasks,
   selectCiPreinstallValidation,
   shouldRunAppQualityOnCi,
+  uiSmokeTargetRules,
   verificationCommandCatalog,
 } from "./change-impact";
 
@@ -82,6 +83,23 @@ describe("change-impact", () => {
       ]),
     );
     expect(impact.manualSteps).toContain("db:push:remote");
+  });
+
+  it("targets private data chat changes at the pilot roles and chat journey", () => {
+    const rule = uiSmokeTargetRules.find(
+      (candidate) => candidate.id === "private-data-chat",
+    );
+
+    expect(rule).toMatchObject({
+      routeIds: [
+        "private-data-chat-pro-redirect",
+        "private-data-chat-basic-redirect",
+        "private-data-chat-admin",
+      ],
+      journeyTitles: ["admin can ask private data chat synthetic question"],
+      projectNames: ["desktop-pro", "desktop-basic", "desktop-admin"],
+      bootstrapScope: "datasets",
+    });
   });
 
   it("keeps Samson archive changes on the full app, smoke-contract, and database lanes", () => {
