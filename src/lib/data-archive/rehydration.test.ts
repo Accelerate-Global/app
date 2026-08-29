@@ -1,7 +1,52 @@
-import { describe, expect, it } from "vitest";
+import { readFile } from "node:fs/promises";
+
+import { describe, expect, it, vi } from "vitest";
 
 import { sha256Hex, type ArchivePackageContent } from "./canonical";
-import { buildApiRunRehydratedUploads } from "./rehydration";
+import type { ArchiveFetch, ArchiveFetchResponse } from "./http-client";
+import {
+  buildApiRunRehydratedUploads,
+  removeRehydratedStorageObject,
+  uploadRehydratedStorageObject,
+  type RehydratedUpload,
+} from "./rehydration";
+
+function response(input: {
+  ok: boolean;
+  status: number;
+  body?: Uint8Array;
+}): ArchiveFetchResponse {
+  const body = Buffer.from(input.body ?? []);
+  return {
+    ok: input.ok,
+    status: input.status,
+    statusText: input.ok ? "OK" : "Conflict",
+    arrayBuffer: async () => body.buffer.slice(
+      body.byteOffset,
+      body.byteOffset + body.byteLength,
+    ),
+    json: async () => JSON.parse(body.toString("utf8")),
+    text: async () => body.toString("utf8"),
+  };
+}
+
+function upload(): RehydratedUpload {
+  const body = Buffer.from("restored");
+  return {
+    memberKind: "rows-chunk",
+    bucket: "api-connection-artifacts",
+    originalPath: "runs/one/rows.json",
+    targetPath: "rehydrated/drill one/rows?.json",
+    contentType: "application/json",
+    body,
+    sha256: sha256Hex(body),
+  };
+}
+
+const storageEnvironment = {
+  NEXT_PUBLIC_SUPABASE_URL: "https://project.supabase.co",
+  SUPABASE_SERVICE_ROLE_KEY: "service-key",
+};
 
 function packageContent(): { content: ArchivePackageContent; bodies: Map<string, Uint8Array> } {
   const chunkBody = Buffer.from('{"schemaVersion":1,"columns":[],"rows":[]}');
@@ -100,5 +145,90 @@ describe("archive package rehydration", () => {
       bodies: fixture.bodies,
       requestKey: "rehydrate:run-one:001",
     })).toThrow("archive_rehydration_member_checksum_mismatch");
+  });
+
+  it("uploads one immutable encoded object through the hardened HTTPS client", async () => {
+    const fetchImpl = vi.fn(async () => response({ ok: true, status: 200 })) as ArchiveFetch;
+    const restored = upload();
+
+    await uploadRehydratedStorageObject(restored, {
+      fetchImpl,
+      environment: storageEnvironment,
+    });
+
+    expect(fetchImpl).toHaveBeenCalledWith(
+      "https://project.supabase.co/storage/v1/object/api-connection-artifacts/rehydrated/drill%20one/rows%3F.json",
+      expect.objectContaining({
+        method: "POST",
+        body: restored.body,
+        headers: expect.objectContaining({
+          apikey: "service-key",
+          authorization: "Bearer service-key",
+          "content-type": "application/json",
+          "x-upsert": "false",
+        }),
+      }),
+    );
+  });
+
+  it("accepts an immutable upload conflict only when the retained bytes match", async () => {
+    const restored = upload();
+    const fetchImpl = vi.fn()
+      .mockResolvedValueOnce(response({ ok: false, status: 409 }))
+      .mockResolvedValueOnce(response({ ok: true, status: 200, body: restored.body })) as ArchiveFetch;
+
+    await expect(uploadRehydratedStorageObject(restored, {
+      fetchImpl,
+      environment: storageEnvironment,
+    })).resolves.toBeUndefined();
+    expect(fetchImpl).toHaveBeenLastCalledWith(
+      expect.stringContaining("/storage/v1/object/api-connection-artifacts/"),
+      expect.objectContaining({
+        method: "GET",
+        maxResponseBytes: restored.body.byteLength,
+      }),
+    );
+  });
+
+  it("rejects an immutable upload conflict when the retained bytes differ", async () => {
+    const restored = upload();
+    const fetchImpl = vi.fn()
+      .mockResolvedValueOnce(response({ ok: false, status: 409 }))
+      .mockResolvedValueOnce(response({
+        ok: true,
+        status: 200,
+        body: Buffer.from("different"),
+      })) as ArchiveFetch;
+
+    await expect(uploadRehydratedStorageObject(restored, {
+      fetchImpl,
+      environment: storageEnvironment,
+    })).rejects.toThrow("archive_rehydration_target_conflict");
+  });
+
+  it("removes only the exact rehydrated path during failure cleanup", async () => {
+    const fetchImpl = vi.fn(async () => response({ ok: true, status: 200 })) as ArchiveFetch;
+    const restored = upload();
+
+    await removeRehydratedStorageObject(restored, {
+      fetchImpl,
+      environment: storageEnvironment,
+    });
+
+    expect(fetchImpl).toHaveBeenCalledWith(
+      "https://project.supabase.co/storage/v1/object/api-connection-artifacts",
+      expect.objectContaining({
+        method: "DELETE",
+        body: JSON.stringify({ prefixes: [restored.targetPath] }),
+      }),
+    );
+  });
+
+  it("does not import the Supabase or built-in fetch clients", async () => {
+    const source = await readFile("src/lib/data-archive/rehydration.ts", "utf8");
+    expect(source).toContain("archiveFetch");
+    expect(source).not.toContain("createSupabaseAdminClient");
+    expect(source).not.toContain("@/lib/supabase/admin");
+    expect(source).not.toMatch(/\bfetch\s*\(/);
   });
 });

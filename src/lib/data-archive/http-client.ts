@@ -3,13 +3,14 @@ import { request as httpsRequest, type RequestOptions } from "node:https";
 
 export type ArchiveFetchResponse = Pick<
   Response,
-  "ok" | "status" | "statusText" | "json" | "text"
+  "ok" | "status" | "statusText" | "arrayBuffer" | "json" | "text"
 >;
 
 export type ArchiveFetchInit = {
   method?: string;
   headers?: Record<string, string>;
-  body?: string;
+  body?: string | Uint8Array;
+  maxResponseBytes?: number;
   signal?: AbortSignal | null;
 };
 
@@ -22,19 +23,22 @@ type RequestImplementation = typeof httpsRequest;
 
 const MAX_RESPONSE_BYTES = 1024 * 1024;
 
-async function readResponseBody(response: IncomingMessage): Promise<string> {
+async function readResponseBody(
+  response: IncomingMessage,
+  maxResponseBytes: number,
+): Promise<Buffer> {
   const chunks: Buffer[] = [];
   let size = 0;
   for await (const chunk of response) {
     const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
     size += buffer.length;
-    if (size > MAX_RESPONSE_BYTES) {
+    if (size > maxResponseBytes) {
       response.destroy(new Error("archive_http_response_too_large"));
       throw new Error("archive_http_response_too_large");
     }
     chunks.push(buffer);
   }
-  return Buffer.concat(chunks).toString("utf8");
+  return Buffer.concat(chunks);
 }
 
 export function createArchiveFetch(
@@ -48,6 +52,10 @@ export function createArchiveFetch(
     if (init.signal?.aborted) {
       throw init.signal.reason ?? new Error("archive_http_aborted");
     }
+    const maxResponseBytes = init.maxResponseBytes ?? MAX_RESPONSE_BYTES;
+    if (!Number.isSafeInteger(maxResponseBytes) || maxResponseBytes < 0) {
+      throw new Error("archive_http_response_limit_invalid");
+    }
 
     return new Promise<ArchiveFetchResponse>((resolve, reject) => {
       const options: RequestOptions = {
@@ -55,14 +63,18 @@ export function createArchiveFetch(
         headers: init.headers,
       };
       const request = requestImpl(url, options, (response) => {
-        void readResponseBody(response).then((body) => {
+        void readResponseBody(response, maxResponseBytes).then((body) => {
           const status = response.statusCode ?? 0;
           resolve({
             ok: status >= 200 && status < 300,
             status,
             statusText: response.statusMessage ?? "",
-            text: async () => body,
-            json: async () => JSON.parse(body) as unknown,
+            arrayBuffer: async () => body.buffer.slice(
+              body.byteOffset,
+              body.byteOffset + body.byteLength,
+            ) as ArrayBuffer,
+            text: async () => body.toString("utf8"),
+            json: async () => JSON.parse(body.toString("utf8")) as unknown,
           });
         }, reject);
       });
