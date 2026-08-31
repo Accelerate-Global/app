@@ -877,13 +877,17 @@ test("admin can ask private data chat synthetic question", async ({
       await expect(
         page.locator('[data-smoke-page="private-data-chat"]'),
       ).toBeVisible();
+      await expect(
+        page.getByRole("textbox", { name: "Question for Qwen" }),
+      ).toBeVisible();
+      await expect(page.getByText("Ask about approved data")).toHaveCount(0);
       await page
         .getByRole("button", {
           name: "How many people groups are in the current primary dataset?",
         })
         .click();
       await expect(page.getByText("people_group_count: 3")).toBeVisible();
-      await expect(page.getByText("Data provenance")).toBeVisible();
+      await expect(page.getByText("Data provenance")).toHaveCount(0);
     },
   );
 });

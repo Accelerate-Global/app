@@ -38,10 +38,12 @@ describe("PrivateDataChatClient", () => {
     expect(
       screen.getByText("Private data chat is not configured"),
     ).toBeTruthy();
-    expect(screen.queryByLabelText("Ask about approved data")).toBeNull();
+    expect(
+      screen.queryByRole("textbox", { name: "Question for Qwen" }),
+    ).toBeNull();
   });
 
-  it("streams progress and displays a grounded answer with provenance", async () => {
+  it("streams progress and displays a grounded answer without provenance chrome", async () => {
     fetchMock.mockResolvedValue(
       sseResponse([
         { type: "status", stage: "interpreting" },
@@ -66,7 +68,8 @@ describe("PrivateDataChatClient", () => {
       ]),
     );
     render(<PrivateDataChatClient available />);
-    fireEvent.change(screen.getByLabelText("Ask about approved data"), {
+    expect(screen.queryByText("Ask about approved data")).toBeNull();
+    fireEvent.change(screen.getByRole("textbox", { name: "Question for Qwen" }), {
       target: {
         value: "How many people groups are in the current primary dataset?",
       },
@@ -77,7 +80,11 @@ describe("PrivateDataChatClient", () => {
       expect(screen.getByText("There are 3 people groups.")).toBeTruthy();
     });
     expect(screen.getByText("people_group_count: 3")).toBeTruthy();
-    expect(screen.getByText("Data provenance")).toBeTruthy();
+    expect(screen.queryByText("Data provenance")).toBeNull();
+    expect(screen.queryByText("primary-people-groups-v1")).toBeNull();
+    expect(
+      screen.queryByText("8a000001-1337-403d-8eb5-b7c44a1be131"),
+    ).toBeNull();
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/chat",
       expect.objectContaining({
@@ -103,7 +110,7 @@ describe("PrivateDataChatClient", () => {
       }),
     );
     render(<PrivateDataChatClient available />);
-    fireEvent.change(screen.getByLabelText("Ask about approved data"), {
+    fireEvent.change(screen.getByRole("textbox", { name: "Question for Qwen" }), {
       target: { value: "Count all." },
     });
     fireEvent.click(screen.getByRole("button", { name: "Ask Qwen" }));
@@ -126,7 +133,7 @@ describe("PrivateDataChatClient", () => {
       ]),
     );
     render(<PrivateDataChatClient available />);
-    fireEvent.change(screen.getByLabelText("Ask about approved data"), {
+    fireEvent.change(screen.getByRole("textbox", { name: "Question for Qwen" }), {
       target: { value: "Count all." },
     });
     fireEvent.click(screen.getByRole("button", { name: "Ask Qwen" }));
@@ -147,7 +154,7 @@ describe("PrivateDataChatClient", () => {
       }),
     );
     render(<PrivateDataChatClient available />);
-    fireEvent.change(screen.getByLabelText("Ask about approved data"), {
+    fireEvent.change(screen.getByRole("textbox", { name: "Question for Qwen" }), {
       target: { value: "Count all." },
     });
     fireEvent.click(screen.getByRole("button", { name: "Ask Qwen" }));
