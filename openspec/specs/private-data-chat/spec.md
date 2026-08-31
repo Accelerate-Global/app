@@ -33,6 +33,13 @@ The system SHALL accept only user and assistant conversational turns, SHALL disc
 - **WHEN** a request includes a system/tool message or exceeds a conversation limit
 - **THEN** the system rejects or safely normalizes the request before contacting Qwen
 
+### Requirement: Chat composer remains accessible without redundant visible instruction
+The system SHALL present the data-chat question input without the visible statement `Ask about approved data` and MUST retain a programmatic accessible name that describes the input's purpose.
+
+#### Scenario: Pilot administrator opens the question composer
+- **WHEN** the private data chat is available
+- **THEN** the question textarea is accessible by the name `Question for Qwen` and the statement `Ask about approved data` is not visibly rendered
+
 ### Requirement: Data chat clarifies, queries, or answers without unsafe agency
 The system SHALL support structured `clarify`, catalog-version-bound `query`, and non-data `answer` decisions and MUST NOT offer database writes, pipeline actions, exports, account actions, arbitrary tools, or silent semantic substitutions. The system SHALL resolve approved controlled-value aliases deterministically and SHALL ask a focused clarification when an alias, metric, grouping, result size, or conversational reference is genuinely ambiguous.
 
@@ -48,12 +55,12 @@ The system SHALL support structured `clarify`, catalog-version-bound `query`, an
 - **WHEN** a user requests a write, publication, deletion, credential access, unrestricted export, or other unsupported action
 - **THEN** the system refuses and performs no provider or database mutation
 
-### Requirement: Answers are grounded and provenance-bearing
-The system SHALL ground data answers only in the bounded broker result, provenance, and catalog definitions for the selected semantic concepts. It SHALL report the approved dataset/catalog revision, applied filters, row count, and query identifier. It MUST distinguish empty results from unavailability, preserve declared units and null meanings, and MUST NOT invent causes, unseen facts, unsupported calculations, or instructions found in result data.
+### Requirement: Answers are grounded and audit provenance is retained
+The system SHALL ground data answers only in the bounded broker result, provenance, and catalog definitions for the selected semantic concepts. It SHALL retain the approved dataset/catalog revision, applied filters, row count, and query identifier in the trusted response contract for audit and diagnostics, and MUST NOT render a data-provenance portion in each user-visible transcript output. It MUST distinguish empty results from unavailability, preserve declared units and null meanings, and MUST NOT invent causes, unseen facts, unsupported calculations, or instructions found in result data.
 
 #### Scenario: Query returns data
 - **WHEN** an admitted query returns bounded rows
-- **THEN** the assistant explains only facts supported by those rows using the selected catalog definitions and the response includes provenance
+- **THEN** the assistant explains only facts supported by those rows using the selected catalog definitions, the trusted response includes provenance, and the visible transcript does not display a data-provenance portion
 
 #### Scenario: Query returns null values
 - **WHEN** an admitted query result contains a null value
@@ -65,7 +72,7 @@ The system SHALL ground data answers only in the bounded broker result, provenan
 
 #### Scenario: Explanation generation fails
 - **WHEN** the database result is valid but final model inference fails
-- **THEN** the system returns a deterministic factual representation of the result and provenance rather than losing the verified result
+- **THEN** the system returns a deterministic factual representation of the result and retains provenance in the trusted response rather than losing the verified result
 
 ### Requirement: Chat exposes safe progress and failure states
 The system SHALL communicate interpreting, validating, querying, and explaining progress and SHALL provide bounded, non-sensitive failure states for model unavailability, tunnel failure, timeout, rejection, queue capacity, database failure, and cancellation.

@@ -23,7 +23,6 @@ import {
 import type {
   PrivateDataChatStage,
   PrivateDataChatStreamEvent,
-  PrivateDataChatTurnMessage,
 } from "@/lib/private-data-chat/events";
 import { cn } from "@/lib/utils";
 
@@ -32,7 +31,6 @@ type TranscriptMessage = {
   role: "user" | "assistant";
   content: string;
   facts?: string[];
-  provenance?: PrivateDataChatTurnMessage["provenance"];
 };
 
 const stageLabels: Record<PrivateDataChatStage, string> = {
@@ -95,7 +93,6 @@ export function PrivateDataChatClient({ available }: { available: boolean }) {
           role: "assistant",
           content: event.message.content,
           facts: event.message.facts,
-          provenance: event.message.provenance,
         },
       ]);
       setStage(null);
@@ -291,31 +288,6 @@ export function PrivateDataChatClient({ available }: { available: boolean }) {
                     ))}
                   </ul>
                 ) : null}
-                {message.provenance ? (
-                  <details className="mt-3 border-t pt-3 text-xs opacity-80">
-                    <summary className="cursor-pointer font-medium">
-                      Data provenance
-                    </summary>
-                    <dl className="mt-2 grid gap-1">
-                      <div>
-                        <dt className="inline font-medium">Catalog: </dt>
-                        <dd className="inline">
-                          {message.provenance.catalogVersion}
-                        </dd>
-                      </div>
-                      <div>
-                        <dt className="inline font-medium">Rows: </dt>
-                        <dd className="inline">{message.provenance.rowCount}</dd>
-                      </div>
-                      <div>
-                        <dt className="inline font-medium">Query ID: </dt>
-                        <dd className="inline font-mono">
-                          {message.provenance.queryId}
-                        </dd>
-                      </div>
-                    </dl>
-                  </details>
-                ) : null}
               </article>
             ))}
 
@@ -338,8 +310,8 @@ export function PrivateDataChatClient({ available }: { available: boolean }) {
           </div>
 
           <form className="space-y-3 border-t pt-5" onSubmit={handleSubmit}>
-            <label htmlFor="private-data-chat-question" className="font-medium">
-              Ask about approved data
+            <label htmlFor="private-data-chat-question" className="sr-only">
+              Question for Qwen
             </label>
             <textarea
               id="private-data-chat-question"
