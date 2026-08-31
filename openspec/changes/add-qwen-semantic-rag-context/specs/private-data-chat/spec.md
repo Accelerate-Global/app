@@ -35,7 +35,7 @@ When valid current-view context is active, chat SHALL display concise server-gen
 
 #### Scenario: Sudan and UUPG context is active
 - **WHEN** a user enters chat from a view filtered to Sudan with UUPG enabled
-- **THEN** the page visibly identifies `Sudan` and `UUPG` and context-aware questions refer to that view without requiring the user to restate the filters
+- **THEN** the page visibly identifies `Sudan` and `UUPG`, the verified concept/filter keys are pinned into retrieval context, and context-aware questions refer to that view without requiring the user to restate the filters
 
 #### Scenario: One UUPG criterion is disabled
 - **WHEN** the handed-off view uses only one UUPG criterion
@@ -85,6 +85,10 @@ The pilot SHALL keep raw messages, filter values, result rows, retrieved payload
 #### Scenario: Operator diagnoses a count/list disagreement
 - **WHEN** redacted audit evidence is inspected
 - **THEN** it identifies query mode, limit, returned/matching counts, named-filter keys, and relevant version hashes without exposing private values
+
+#### Scenario: User receives a grounded response
+- **WHEN** chat renders a data or definition answer
+- **THEN** it does not add a visible “Data provenance” section, while internal signed lineage remains available for authorized audit and reproducibility
 
 ### Requirement: Context-aware chat remains pilot-gated and failure-safe
 Current-view handoff, semantic retrieval, and signed turn state SHALL remain behind server configuration and the existing exact administrator canary. Missing configuration, unhealthy semantic snapshots, retrieval timeouts, invalid tokens, or count/completeness failures MUST produce bounded non-sensitive states and MUST NOT fall back to broader credentials, arbitrary model knowledge, or unsafe queries.

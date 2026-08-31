@@ -61,7 +61,7 @@ The system SHALL issue bounded signed turn-state evidence for completed plans/re
 - **THEN** the server ignores the untrusted claim or rejects the token and performs no query based on it
 
 ### Requirement: Retrieved semantics never widen deterministic query authority
-The planner MAY receive relevant reviewed semantic entries and named-filter descriptions, but the typed schema, active query catalog, named-filter registry, controlled-value resolvers, and compiler SHALL remain the only sources of executable query authority.
+The planner MAY receive relevant reviewed semantic cards, named-filter descriptions, deterministic resolver outputs, typed dependencies, and up to two reviewed semantic-plan examples, but the typed schema, active query catalog, named-filter registry, controlled-value resolvers, and compiler SHALL remain the only sources of executable query authority. Retrieved examples MUST NOT contain SQL or compiler mappings.
 
 #### Scenario: Retrieval explains an unavailable concept
 - **WHEN** an explanatory-only entry is relevant but absent from the query catalog
@@ -70,6 +70,10 @@ The planner MAY receive relevant reviewed semantic entries and named-filter desc
 #### Scenario: Retrieval suggests a physical field or relationship
 - **WHEN** retrieved metadata contains a source column, mapping, or relationship not approved for chat
 - **THEN** the plan and compiler reject it before database access
+
+#### Scenario: Retrieved example is stale or over-broad
+- **WHEN** an example cites a stale catalog/filter version or a concept/operator unavailable to the current query catalog
+- **THEN** it is excluded before planning and cannot authorize that plan shape
 
 ### Requirement: Incident regressions are release-blocking
 The semantic evaluation suite SHALL cover the exact country-count, frontier-count, capped-record-list, count-challenge, and UUPG-view sequence that produced the 100/103/104 disagreement. It SHALL also cover every explicit/blank UUPG input combination and require table/SQL parity, completeness wording, and deterministic evidence fallback.
