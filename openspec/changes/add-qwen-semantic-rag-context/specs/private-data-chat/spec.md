@@ -1,0 +1,98 @@
+## ADDED Requirements
+
+### Requirement: Approved dataset views can be handed to chat as trusted context
+The approved primary dataset page SHALL offer an **Ask Qwen about this view** action that sends the current serializable dataset version, active filter state, named-filter options, and sort to a same-origin server endpoint. The server MUST validate the pilot identity, session, dataset/version, query/filter allowlists, named-filter registry checksum, payload bounds, and expiry before issuing context.
+
+#### Scenario: Pilot administrator hands off an approved current view
+- **WHEN** the administrator opens chat from the current primary dataset with supported filters
+- **THEN** chat receives a short-lived signed context and shows the server-generated dataset/filter summary
+
+#### Scenario: View belongs to an unapproved dataset or user
+- **WHEN** the handoff references a non-primary dataset, unauthorized identity, unsupported field/filter, or another user's context
+- **THEN** the endpoint rejects it and chat receives no trusted context
+
+#### Scenario: Client supplies its own count
+- **WHEN** current-view state includes or implies a client-calculated row count
+- **THEN** the server does not treat that count as authoritative and uses deterministic execution for any factual answer
+
+### Requirement: View context is ephemeral, signed, and version-bound
+Current-view context SHALL be signed with a dedicated server secret, bound to the verified user/session, dataset identity/version, query catalog, named-filter registry, issued time, and an expiry no greater than 30 minutes. The browser SHALL keep it only in same-origin session storage and MUST NOT place it in URLs or persist it as conversation history.
+
+#### Scenario: Context is valid and current
+- **WHEN** a chat request presents a valid unexpired token whose versions still match
+- **THEN** the server supplies its trusted typed filter summary to planning and narration
+
+#### Scenario: Context is expired, tampered, cross-user, or stale
+- **WHEN** signature, identity/session, expiry, dataset version, catalog version, or filter-registry checksum validation fails
+- **THEN** no query uses the context and the user is prompted to refresh or clear it
+
+#### Scenario: User clears or resets chat
+- **WHEN** the user clears current-view context, starts a new chat, signs out, or closes the session
+- **THEN** the client removes the context and subsequent requests contain no inherited filter authority
+
+### Requirement: Chat presents current filters as quick references
+When valid current-view context is active, chat SHALL display concise server-generated chips for the dataset and active filters, SHALL expose safe context-aware example questions, and SHALL provide controls to clear the context or return to the dataset view. The displayed UUPG description MUST reflect the exact enabled criteria and blank-value matching used by the authoritative filter.
+
+#### Scenario: Sudan and UUPG context is active
+- **WHEN** a user enters chat from a view filtered to Sudan with UUPG enabled
+- **THEN** the page visibly identifies `Sudan` and `UUPG` and context-aware questions refer to that view without requiring the user to restate the filters
+
+#### Scenario: One UUPG criterion is disabled
+- **WHEN** the handed-off view uses only one UUPG criterion
+- **THEN** the quick-reference description names only that active criterion and Qwen receives the same option state
+
+#### Scenario: No context is active
+- **WHEN** chat is opened directly or context is cleared
+- **THEN** the existing bounded-data conversation remains available without implying any active table filters
+
+### Requirement: Metadata questions are grounded in reviewed Accelerate Global context
+Chat SHALL answer definition, field-meaning, filter-meaning, unit, null-semantics, source-lineage, and approved resource-purpose questions only from active reviewed semantic entries and the core catalog. It MUST distinguish queryable data from explanatory-only and resolver-only material and MUST refuse unrelated general-knowledge requests.
+
+#### Scenario: User asks what UUPG means
+- **WHEN** the active snapshot contains the reviewed UUPG named-filter definition
+- **THEN** Qwen explains the exact current filter criteria and blank handling without substituting a different pipeline definition
+
+#### Scenario: User asks about a known resource purpose
+- **WHEN** a reviewed resource summary is retrieved
+- **THEN** Qwen may explain its Accelerate Global purpose and active version scope without exposing or traversing the unrestricted payload
+
+#### Scenario: User asks an off-topic or unsupported question
+- **WHEN** no reviewed Accelerate Global semantic evidence supports the request
+- **THEN** Qwen declines or redirects to supported data/definition questions rather than answering from world knowledge
+
+### Requirement: Chat distinguishes totals from returned pages
+The user-visible response SHALL distinguish matching totals, returned rows, limits, and `hasMore` state. A record page MUST NOT be described as a complete total unless the validated completeness contract proves all matching rows were returned.
+
+#### Scenario: Page is capped at 100 of 103 matches
+- **WHEN** a record query returns 100 rows with `matchedCount=103` and `hasMore=true`
+- **THEN** chat says that 103 match and 100 are shown and does not repeat 100 as the total in either prose or facts
+
+#### Scenario: User asks only for the total
+- **WHEN** the question requests a count rather than records
+- **THEN** the planner uses the approved aggregate metric and chat reports the aggregate value rather than counting a record page
+
+#### Scenario: Model narration contradicts evidence
+- **WHEN** Qwen returns an unsupported numeric value, unit, or total/page scope
+- **THEN** chat uses the deterministic evidence-rendered fallback and does not display the contradictory narrative
+
+### Requirement: Trusted view and turn state do not broaden persistence
+The pilot SHALL keep raw messages, filter values, result rows, retrieved payloads, and signed context/turn tokens ephemeral. Redacted operational evidence MAY retain stable hashes, versions, semantic keys, counts, modes, bounds, and timing sufficient for safety and regression diagnosis.
+
+#### Scenario: Context-aware conversation completes
+- **WHEN** a user executes one or more context-aware turns
+- **THEN** no raw conversation, filter value, resource payload, or result row is added to persistent audit storage
+
+#### Scenario: Operator diagnoses a count/list disagreement
+- **WHEN** redacted audit evidence is inspected
+- **THEN** it identifies query mode, limit, returned/matching counts, named-filter keys, and relevant version hashes without exposing private values
+
+### Requirement: Context-aware chat remains pilot-gated and failure-safe
+Current-view handoff, semantic retrieval, and signed turn state SHALL remain behind server configuration and the existing exact administrator canary. Missing configuration, unhealthy semantic snapshots, retrieval timeouts, invalid tokens, or count/completeness failures MUST produce bounded non-sensitive states and MUST NOT fall back to broader credentials, arbitrary model knowledge, or unsafe queries.
+
+#### Scenario: Semantic-context feature is disabled
+- **WHEN** the retrieval/current-view flag is off
+- **THEN** the current core-catalog chat path continues without the new context features
+
+#### Scenario: Retrieval or context validation fails
+- **WHEN** required semantic context cannot be safely obtained
+- **THEN** the request fails or asks for refresh without exposing internal hosts, secrets, raw metadata, or provider errors
