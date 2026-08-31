@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 
-import type { IsoCountryCodeEntry } from "@/lib/iso-country-codes";
+import {
+  getGeneratedIsoCountryCodeResource,
+  type IsoCountryCodeEntry,
+} from "@/lib/iso-country-codes";
 import { PRIVATE_DATA_CHAT_CATALOG_VERSION } from "@/lib/private-data-chat/catalog";
 import {
   PrivateDataChatValueResolutionError,
@@ -131,6 +134,24 @@ describe("private data chat controlled value resolution", () => {
       question:
         "That country value matches more than one approved country (Democratic Republic of the Congo, Republic of the Congo). Which country did you mean?",
       reason: "The approved country reference has more than one exact normalized match.",
+    });
+  });
+
+  it("resolves the generated catalog's exact Congo display name without inventing ambiguity", async () => {
+    const generated = getGeneratedIsoCountryCodeResource();
+    const resolution = await resolvePrivateDataChatQueryValues(
+      recordsQuery("Congo"),
+      {
+        loadCountryValues: async () => ({
+          entries: generated.entries,
+          version,
+        }),
+      },
+    );
+
+    expect(resolution).toMatchObject({
+      status: "resolved",
+      query: { filters: [{ value: "Congo" }] },
     });
   });
 
