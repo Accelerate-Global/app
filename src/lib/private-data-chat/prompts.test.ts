@@ -14,7 +14,7 @@ import {
 describe("private data chat prompts", () => {
   it("supplies the reviewed semantic catalog and exact revision to planning", () => {
     expect(PRIVATE_DATA_CHAT_PLANNER_PROMPT_VERSION).toBe(
-      "people-groups-planner-v3",
+      "people-groups-planner-v4",
     );
     expect(PRIVATE_DATA_CHAT_PLANNER_SYSTEM_PROMPT).toContain(
       PRIVATE_DATA_CHAT_CATALOG_VERSION,
@@ -27,6 +27,12 @@ describe("private data chat prompts", () => {
     );
     expect(PRIVATE_DATA_CHAT_PLANNER_SYSTEM_PROMPT).toContain(
       "Approved joins: none",
+    );
+    expect(PRIVATE_DATA_CHAT_PLANNER_SYSTEM_PROMPT).toContain(
+      "Minimal-plan rules are strict",
+    );
+    expect(PRIVATE_DATA_CHAT_PLANNER_SYSTEM_PROMPT).toContain(
+      "including people_id and people_name",
     );
   });
 
@@ -45,12 +51,24 @@ describe("private data chat prompts", () => {
   });
 
   it("requires answer narration to preserve selected units and null meaning", () => {
-    expect(PRIVATE_DATA_CHAT_ANSWER_PROMPT_VERSION).toBe("grounded-answer-v2");
+    expect(PRIVATE_DATA_CHAT_ANSWER_PROMPT_VERSION).toBe("grounded-answer-v3");
     expect(PRIVATE_DATA_CHAT_ANSWER_SYSTEM_PROMPT).toContain(
       "selected semantic context",
     );
     expect(PRIVATE_DATA_CHAT_ANSWER_SYSTEM_PROMPT).toContain(
       "Never treat null as zero or false",
+    );
+    expect(PRIVATE_DATA_CHAT_ANSWER_SYSTEM_PROMPT).toContain(
+      "Never invent a cause for zero",
+    );
+    expect(PRIVATE_DATA_CHAT_ANSWER_SYSTEM_PROMPT).toContain(
+      "must not be a bare number",
+    );
+    expect(PRIVATE_DATA_CHAT_ANSWER_SYSTEM_PROMPT).toContain(
+      "never reorder rows",
+    );
+    expect(PRIVATE_DATA_CHAT_ANSWER_SYSTEM_PROMPT).toContain(
+      "never add numeric 0 or 1",
     );
   });
 });
