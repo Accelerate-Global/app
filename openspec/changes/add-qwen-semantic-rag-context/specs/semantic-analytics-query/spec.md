@@ -23,6 +23,60 @@ The system SHALL maintain each approved named filter as a versioned typed expres
 - **WHEN** a plan or view context cites an unknown named-filter key, invalid option, or stale registry checksum
 - **THEN** validation fails before database access
 
+### Requirement: Reviewed ROP classification fields are typed analytics concepts
+The approved primary people-group analytics projection SHALL expose a normalized six-digit `rop3_code` and the query catalog SHALL expose reviewed semantic concepts for ROP1, ROP2, ROP25, and ROP3 code/name plus ROP3 status, place, language, source, and join/match status. Approved hierarchy code/name concepts MAY be selected, filtered, grouped, and sorted through the typed plan. User-supplied ROP names/codes MUST be deterministically resolved to canonical values before parameterized compilation. ROP descriptions SHALL remain explanatory/resource-detail evidence unless separately promoted as typed query concepts.
+
+#### Scenario: User filters by a ROP hierarchy term
+- **WHEN** a user asks for people groups in an approved ROP1, ROP2, ROP25, or ROP3 classification using a canonical code or unambiguous name
+- **THEN** deterministic resolution supplies the canonical code and the compiler emits only the registered parameterized predicate
+
+#### Scenario: User groups by a reviewed ROP level
+- **WHEN** a typed plan selects an approved ROP hierarchy code/name as its grouping dimension
+- **THEN** execution preserves the primary people-group grain before grouping and returns the reviewed label/code with typed completeness and evidence metadata
+
+#### Scenario: ROP name is ambiguous
+- **WHEN** deterministic resolution finds multiple permitted canonical terms for the supplied name
+- **THEN** no analytics query executes until the user selects from a bounded ambiguity response
+
+#### Scenario: Plan cites an unreviewed ROP attribute
+- **WHEN** a plan requests a source column, description, or attribute absent from the query catalog
+- **THEN** validation rejects it before compilation even when a retrieved resource entry contains that attribute
+
+### Requirement: ROP relationships are registered, version-bound, grain-safe, and null-preserving
+Combining primary people-group data with ROP SHALL use only the server-owned `people_group_to_bound_rop3` relationship. The relationship registry MUST own its physical projection, normalized key mapping, selected columns, many-to-one cardinality, and deterministic left-relationship compilation. Execution MUST resolve the exact immutable `rop-codes` version bound to the dataset producer/forming run through its reference-resource set and MUST fail closed if that binding cannot be proven. Qwen MUST NOT emit physical tables, join keys, join types, or `ON` expressions.
+
+#### Scenario: Dataset has an immutable ROP resource binding
+- **WHEN** an approved ROP concept is selected for a primary dataset whose production lineage resolves one exact ROP version
+- **THEN** the compiler uses `people_group_to_bound_rop3` with that version and does not consult the current active ROP pointer
+
+#### Scenario: Active ROP version has advanced
+- **WHEN** standalone browsing uses a newer active ROP version than the version bound to the dataset
+- **THEN** standalone results label the active version while dataset filters/relationships continue to use the immutable bound version
+
+#### Scenario: Dataset ROP binding is absent or ambiguous
+- **WHEN** producer/forming-run lineage cannot prove one exact ROP resource version
+- **THEN** ROP analytics fails closed with a bounded explanation and no relationship or fallback-to-active-version query executes
+
+#### Scenario: Dataset ROP3 is blank, malformed, inactive, or unmatched
+- **WHEN** an unfiltered result uses the registered ROP relationship
+- **THEN** the base people-group row remains present, its classification values remain null as appropriate, and typed match/join status explains the condition without Qwen inventing a replacement
+
+#### Scenario: User explicitly filters on a ROP classification
+- **WHEN** an approved ROP predicate is applied
+- **THEN** nonmatching or null-classification rows are excluded only according to that stated predicate and the answer identifies the resulting filter scope
+
+#### Scenario: User filters primary data by ROP geography
+- **WHEN** an approved geography predicate is requested
+- **THEN** the compiler uses a registered `EXISTS`-style predicate against the bound ROP version so the people-group grain and counts are not multiplied
+
+#### Scenario: User requests ROP geography rows
+- **WHEN** the request requires listing one-to-many ROP3 geography records
+- **THEN** execution returns the dedicated `rop_geography` result grain rather than flattening geography rows into a people-group aggregate
+
+#### Scenario: Model proposes a join expression or unregistered relationship
+- **WHEN** model output includes physical keys, an `ON` condition, direct geography flattening, or a relationship key absent from the active registry
+- **THEN** schema validation or compilation rejects it before database access
+
 ### Requirement: Record query results declare completeness and matching scope
 Every executed record query SHALL return its query mode, requested limit, returned count, matching count, `hasMore` status, selected concepts, applied named-filter keys, dataset/version identity, and bounded rows. Internal matching-count fields MUST be removed before rows are exposed to Qwen or the browser.
 

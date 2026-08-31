@@ -31,7 +31,7 @@ The system SHALL represent runtime semantic resources and human guiding document
 - **THEN** activation is blocked and Blake selects or writes the reconciled meaning without either side silently overwriting the other
 
 ### Requirement: Every semantic entry declares authority and audience
-Each semantic card SHALL declare a stable concept key, kind, dataset/grain, label, approved definition, aliases, type/unit/null metadata where applicable, allowed-value or resolver policy, metric/filter formula, typed dependency/relationship edges, any separately approved safe-join capability key, examples/counterexamples, exact source/version/freshness lineage, deterministic contextual search text, sensitivity, retrieval tags, permitted planner/answer audiences, and one authority classification of `queryable`, `explanatory-only`, `resolver-only`, or `excluded`.
+Each semantic card SHALL declare a stable concept key, kind, dataset/grain, label, approved definition, aliases, type/unit/null metadata where applicable, allowed-value or resolver policy, metric/filter formula, typed dependency/relationship edges, any separately approved safe-join/resource-operation capability keys, examples/counterexamples, exact source/version/freshness lineage, deterministic contextual search text, sensitivity, retrieval tags, permitted planner/answer audiences, and one authority classification of `queryable`, `explanatory-only`, `resolver-only`, or `excluded`. `queryable` MUST correspond to an independently active query-catalog, resource-operation-allowlist, or relationship-registry entry and MUST NOT be created by retrieval activation itself.
 
 #### Scenario: Retrieved entry is explanatory-only
 - **WHEN** an explanatory definition is relevant to a question
@@ -125,8 +125,8 @@ The system SHALL serialize retrieved context only through a strict data schema a
 - **WHEN** a reviewed-source candidate includes hidden Unicode, instruction-like strings, oversized text, or poisoning-shaped broad similarity
 - **THEN** validation/quarantine and adversarial tests prevent it from influencing Qwen as instructions or authority
 
-### Requirement: Large resources remain behind deterministic resolvers
-The system SHALL provide Qwen only with reviewed summaries, value-domain policy, and supported-operation metadata for large country, ROP, PEID, PeopleID3, source-alias, merge-priority, and engagement-mapping resources. Exact entries MUST remain behind typed server-side resolvers with active-version lineage, SHOULD be resolved before planning when an approved domain is relevant, and MUST NOT be bulk-injected into retriever indexes or prompts.
+### Requirement: Large resources use typed retrieval without prompt bulk-injection
+The semantic snapshot SHALL provide Qwen only with reviewed summaries, value-domain policy, relationship metadata, and supported-operation metadata for large country, ROP, PEID, PeopleID3, source-alias, merge-priority, and engagement-mapping resources. Exact entries and result pages MUST remain behind typed server-side resolvers/resource-query services with explicit version lineage, SHOULD be resolved before planning when an approved domain is relevant, and MUST NOT be bulk-injected into the semantic-card index or model prompt. The ROP resource SHALL additionally expose its separately approved complete governed browse/filter/relationship capabilities; that approval MUST NOT widen any other resource by analogy.
 
 #### Scenario: User supplies an approved country alias
 - **WHEN** a query includes a country name or code
@@ -137,12 +137,24 @@ The system SHALL provide Qwen only with reviewed summaries, value-domain policy,
 - **THEN** Qwen may explain the resource's reviewed purpose but cannot query or traverse its entries
 
 #### Scenario: User requests an exact ROP definition or code
-- **WHEN** the question maps to the approved phase-one ROP definition/code resolver
-- **THEN** deterministic resolution returns only the canonical exact match or bounded ambiguity state with active-version lineage
+- **WHEN** the question maps to the approved ROP definition/code resolver
+- **THEN** deterministic resolution returns the canonical exact match or bounded ambiguity state with the explicitly labeled resource version
 
-#### Scenario: User requests bulk ROP browsing or an unapproved data operation
-- **WHEN** the user asks Qwen to enumerate the ROP catalog, filter people-group data by an unapproved ROP field, or join ROP entries to data through model-selected keys
-- **THEN** the request is declined or redirected to a separately approved named capability and no catalog traversal, filter, or join executes
+#### Scenario: User traverses the complete ROP resource
+- **WHEN** an authenticated user asks to browse or search beyond one ROP result page
+- **THEN** the typed ROP resource-query service returns a bounded deterministic page and signed continuation state so every permitted matching entry remains reachable without loading the complete resource into one prompt
+
+#### Scenario: User asks for every matching ROP row at once
+- **WHEN** the result exceeds the chat page limit
+- **THEN** chat reports matching/returned counts, supports continued paging, and offers the existing authenticated streamed export rather than serializing the complete payload to Qwen
+
+#### Scenario: ROP entry retrieval uses semantic similarity
+- **WHEN** an optional hybrid ROP entry retriever is considered for names/descriptions
+- **THEN** it is separately benchmarked against deterministic exact/lexical search and can be selected only if exact code/name precedence, permission/version filtering, held-out quality, latency, and Samson capacity gates all pass
+
+#### Scenario: Retrieved text names a physical or unregistered relationship
+- **WHEN** a resource entry or semantic card suggests a table, key, join expression, or relationship absent from the active relationship registry
+- **THEN** planning and compilation reject it even if the text is highly ranked or the requested ROP entry is otherwise accessible
 
 ### Requirement: Retrieval failures and staleness fail safely
 The system SHALL bind retrieval to the active snapshot version/checksum and exact cited source versions. When required context is missing, unhealthy, stale, or fails validation, the system MUST return a bounded retryable semantic-context failure or use only the core catalog when the request does not require retrieved knowledge.
@@ -163,11 +175,15 @@ The system SHALL record the semantic snapshot/index checksum, retriever policy/o
 - **THEN** redacted evidence is sufficient to reproduce the snapshot and ranking policy without exposing the user's question or private data values
 
 ### Requirement: Retrieval quality is independently release-tested
-The system SHALL maintain a human-reviewed, grouped, deduplicated train/dev/holdout relevance corpus covering exact keys/aliases, paraphrases, multi-concept questions, multi-turn state, typed dependencies, examples, ambiguity, hard negatives, conflicts, exclusion, injection, sensitivity, scope, stale versions, failures, and context budgets. It SHALL gate retrieval separately from typed planning, SQL/result execution, evidence-claim precision, answer faithfulness, clarification/abstention, and off-topic refusal. Automated RAG judges MAY be diagnostic only and MUST be calibrated against human labels rather than serving as the sole release gate.
+The system SHALL maintain a human-reviewed, grouped, deduplicated train/dev/holdout relevance corpus covering exact keys/aliases, paraphrases, multi-concept questions, multi-turn state, typed dependencies, examples, ambiguity, hard negatives, conflicts, exclusion, injection, sensitivity, scope, stale versions, failures, context budgets, and the separately scored ROP entry-search domain. It SHALL gate semantic-card retrieval and ROP entry retrieval separately from typed planning, SQL/result execution, evidence-claim precision, answer faithfulness, clarification/abstention, and off-topic refusal. Automated RAG judges MAY be diagnostic only and MUST be calibrated against human labels rather than serving as the sole release gate.
 
 #### Scenario: Retriever ranking changes
 - **WHEN** tokenization, scoring/fusion, aliases, eligibility/dependency rules, prompt ordering, examples, model artifacts/instructions, context limits, or snapshot content changes
 - **THEN** regression tests and the approved live evaluation tier must pass before production activation
+
+#### Scenario: ROP entry ranking changes
+- **WHEN** ROP search tokenization, exact/name precedence, semantic scoring, field weighting, version filtering, or ambiguity handling changes
+- **THEN** exact-code/name, difficult-description, geography, join-issue, pagination, and permission holdouts pass independently from the semantic-card retrieval gate
 
 #### Scenario: Retrieval tier is promoted
 - **WHEN** a candidate tier is considered for production

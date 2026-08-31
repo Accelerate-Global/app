@@ -54,15 +54,46 @@ Chat SHALL answer definition, field-meaning, filter-meaning, unit, null-semantic
 
 #### Scenario: User asks about a known resource purpose
 - **WHEN** a reviewed resource summary is retrieved
-- **THEN** Qwen may explain its Accelerate Global purpose and active version scope without exposing or traversing the unrestricted payload
+- **THEN** Qwen may explain its Accelerate Global purpose and version scope without treating explanatory text as query authority
 
 #### Scenario: User asks for an exact ROP definition or code
-- **WHEN** the request is supported by the reviewed phase-one typed ROP resolver
-- **THEN** chat returns the bounded canonical lookup result without exposing the full catalog or authorizing an ROP data filter/join
+- **WHEN** the request is supported by the reviewed typed ROP resolver
+- **THEN** chat returns the canonical version-labeled result or a bounded ambiguity response and may offer the approved browse/filter operations for that term
 
 #### Scenario: User asks an off-topic or unsupported question
 - **WHEN** no reviewed Accelerate Global semantic evidence supports the request
 - **THEN** Qwen declines or redirects to supported data/definition questions rather than answering from world knowledge
+
+### Requirement: Chat provides complete governed ROP conversational access
+Authenticated ROP access through chat SHALL use a typed read-only resource-query contract with reviewed `search`, `list`, `lookup`, `count`, and `continue` operations. Every permitted ROP row MUST remain reachable through deterministic cursor paging, but one chat turn MUST return no more than 25 resource rows and MUST include the exact resource version, matching count, returned count, and `hasMore`. The server MUST own authorization, search, version selection, result ordering, continuation state, and export links; Qwen MUST NOT receive resource credentials or invent cursors, physical queries, or mutation operations.
+
+#### Scenario: User browses the ROP resource without a search term
+- **WHEN** an authenticated user asks to browse all ROP codes
+- **THEN** chat returns the first deterministic bounded page from the complete active permitted version and provides signed continuation state for the next page
+
+#### Scenario: User searches across ROP fields
+- **WHEN** a user searches by reviewed code, name, source, place, language, status, geography, or join-issue text
+- **THEN** the existing authenticated ROP search projection returns a deterministic bounded result with exact/version/completeness metadata
+
+#### Scenario: User asks to continue a ROP result
+- **WHEN** the request includes valid signed continuation state bound to the same identity, resource version, normalized query, and ordering
+- **THEN** chat returns the next non-overlapping page without asking Qwen to interpret or construct the cursor
+
+#### Scenario: Continuation state is tampered, stale, or belongs to another user
+- **WHEN** signature, identity/session, resource version, query, ordering, or expiry validation fails
+- **THEN** no page executes and chat asks the user to restart or refresh the resource query
+
+#### Scenario: User requests all matching ROP entries at once
+- **WHEN** more than 25 entries match
+- **THEN** chat reports how many match, supports continued browsing, and links to the existing authenticated streamed CSV download for complete export instead of sending all rows to Qwen
+
+#### Scenario: User asks ROP chat to mutate the resource
+- **WHEN** a conversational request attempts refresh, candidate activation, rollback, editing, or another lifecycle mutation
+- **THEN** the read-only chat plan rejects the operation and preserves the existing admin-only resource lifecycle
+
+#### Scenario: User asks a data question using reviewed ROP fields
+- **WHEN** the request can be represented by approved ROP semantic fields and the version-bound relationship registry
+- **THEN** chat uses the typed analytics plan and deterministic compiler, not resource prose or model-authored SQL, and explains any explicit filtering scope
 
 ### Requirement: Chat distinguishes totals from returned pages
 The user-visible response SHALL distinguish matching totals, returned rows, limits, and `hasMore` state. A record page MUST NOT be described as a complete total unless the validated completeness contract proves all matching rows were returned.
@@ -95,11 +126,11 @@ The pilot SHALL keep raw messages, filter values, result rows, retrieved payload
 - **THEN** it does not add a visible “Data provenance” section, while internal signed lineage remains available for authorized audit and reproducibility
 
 ### Requirement: Context-aware chat remains pilot-gated and failure-safe
-Current-view handoff, semantic retrieval, and signed turn state SHALL remain behind server configuration and the existing exact administrator canary. Missing configuration, unhealthy semantic snapshots, retrieval timeouts, invalid tokens, or count/completeness failures MUST produce bounded non-sensitive states and MUST NOT fall back to broader credentials, arbitrary model knowledge, or unsafe queries.
+Current-view handoff, semantic retrieval, ROP conversational operations/relationships, and signed turn state SHALL remain behind server configuration and the existing exact administrator canary. Missing configuration, unhealthy semantic/resource snapshots, retrieval timeouts, invalid tokens, unresolved dataset-to-ROP version binding, or count/completeness/cardinality failures MUST produce bounded non-sensitive states and MUST NOT fall back to broader credentials, the active ROP pointer for a dataset join, arbitrary model knowledge, or unsafe queries.
 
 #### Scenario: Semantic-context feature is disabled
 - **WHEN** the retrieval/current-view flag is off
-- **THEN** the current core-catalog chat path continues without the new context features
+- **THEN** the current core-catalog chat path continues without the new context, ROP conversational, or relationship features
 
 #### Scenario: Retrieval or context validation fails
 - **WHEN** required semantic context cannot be safely obtained

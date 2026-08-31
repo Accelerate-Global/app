@@ -12,6 +12,8 @@ The UUPG filter is authoritative. With both criteria enabled it matches `(global
 
 Accelerate Global maintains richer semantic material that could improve interpretation and explanation: 241 field definitions (82 currently populated), canonical aliases, source links, source priorities, source contracts, named pipeline/filter contracts, filter regions, and seven active reference resources covering country codes, ROP taxonomy, source aliases, people crosswalks, merge priorities, and engagement mappings. This material varies in quality and sensitivity. For example, the current field-definition wording for global engagement conflicts with the forming conversion and approved chat meaning. Runtime mutable metadata therefore cannot be injected directly into prompts.
 
+The authenticated ROP resource already provides complete active-version search, stable cursor paging, details, geography, and streamed export across more than 13,000 current entries. Private chat does not reuse that capability today: its query catalog and read-only analytics projection do not expose the primary dataset's `PG_ROP3`/`pg_rop3` value, ROP hierarchy fields, a resource-query plan, or a registered relationship. This change will add those governed capabilities rather than create a second ROP store.
+
 The design must remain lightweight on Vercel and Samson, avoid a new managed vector service, preserve the single Qwen inference slot, and keep model/database authority separated.
 
 ## Research Synthesis (current through August 31, 2026)
@@ -38,7 +40,7 @@ The detailed evidence and adoption/rejection record is in `research.md`.
 - Use one versioned named-filter definition for both table filtering and deterministic SQL compilation, beginning with UUPG.
 - Distinguish matching totals, returned rows, page limits, and truncation in every result and response.
 - Make user-visible numeric facts derive from typed database evidence rather than unconstrained model strings.
-- Support factual definition questions without widening the set of queryable columns, joins, or actions.
+- Support factual definition questions and complete governed ROP browsing, filtering, and registered relationships without granting Qwen physical database authority.
 - Keep retrieval deterministic, bounded, testable, permission-aware, and checksum/version bound.
 - Select the lightest retrieval tier that meets an approved, held-out Accelerate Global benchmark while preserving an exact-match fast path.
 - Reuse existing metadata and evaluation fixtures without duplicating authority or leaking evaluation holdouts into retrieved demonstrations.
@@ -46,8 +48,9 @@ The detailed evidence and adoption/rejection record is in `research.md`.
 
 **Non-Goals:**
 
-- Sending the full database schema, raw field registry, full crosswalk payloads, SQL, credentials, or unrestricted database values to Qwen.
-- Letting retrieval make a field queryable or authorize a join automatically.
+- Sending the full database schema, raw field registry, complete crosswalk payloads, SQL, credentials, or unbounded database values to Qwen in one prompt.
+- Letting retrieval alone make a field queryable or authorize a relationship; the reviewed query-catalog and relationship-registry additions in this change remain the independent authority.
+- Allowing Qwen to choose physical tables, keys, `JOIN ... ON` expressions, arbitrary uploaded fields, or unregistered cross-resource relationships.
 - Adding an autonomous agent/tool loop or allowing Qwen to call resources directly.
 - Assuming embeddings, reranking, or approximate vector indexes are required before the domain benchmark proves their value.
 - Answering general-knowledge questions outside reviewed Accelerate Global datasets and semantic resources.
@@ -71,7 +74,7 @@ If hybrid retrieval wins, card embeddings are generated only from an approved im
 
 The expected card corpus is small enough for exact pgvector search, which preserves perfect recall. HNSW/IVFFlat are rejected until catalog growth makes exact search miss an explicit latency objective; any future approximate index requires a separate recall benchmark and review.
 
-The nine-field/four-metric core query catalog remains always available to the planner. Retrieval augments it with relevant definitions, named filters, typed dependencies, lineage/resource summaries, and at most two approved semantic-plan examples. Dumping all metadata into every prompt remains rejected because it increases ambiguity, hard-negative distraction, injection surface, and stale/conflicting context.
+The current nine-field/four-metric core query catalog remains always available to the planner. The reviewed ROP catalog/relationship release adds typed ROP capabilities without removing that core. Retrieval augments it with relevant definitions, named filters, typed dependencies, lineage/resource summaries, and at most two approved semantic-plan examples. Dumping all metadata or ROP entries into every prompt remains rejected because it increases ambiguity, hard-negative distraction, injection surface, and stale/conflicting context.
 
 ### 2. Build a reviewed, immutable semantic-context snapshot
 
@@ -87,7 +90,7 @@ The existing private reference-resource candidate/review/activation lifecycle wi
 - summaries and resolver capabilities of active reference resources; and
 - a separately reviewed demonstration pool derived from sanitized semantic-plan fixtures, with evaluation holdouts excluded.
 
-The candidate contains normalized entries and source lineage, not the full country, ROP, PEID, PeopleID3, or other crosswalk payloads. It receives a canonical checksum, schema version, source-version manifest, validation findings, and conflict findings. Activation requires human review. A missing definition may be included as lineage-only, but a contradictory definition cannot become planner- or answer-eligible until resolved or explicitly overridden in the reviewed semantic overlay.
+The candidate contains normalized semantic entries and source lineage, not every country, ROP, PEID, PeopleID3, or other crosswalk value row. Complete ROP entry access remains in the separate typed resource-query projection described below, so a user may traverse the whole permitted resource without bulk-injecting it into the semantic-card index or prompt. The candidate receives a canonical checksum, schema version, source-version manifest, validation findings, and conflict findings. Activation requires human review. A missing definition may be included as lineage-only, but a contradictory definition cannot become planner- or answer-eligible until resolved or explicitly overridden in the reviewed semantic overlay.
 
 Blake is the semantic conflict approver during the pilot. Runtime semantic resources and human guiding documents are not independent masters: they are two synchronized projections of one versioned semantic definition package. A structured-resource edit regenerates the affected guiding-document sections in the same candidate. A supported guiding-document edit is parsed into a candidate diff against the structured package. Review shows both representations together, activation advances them atomically, and CI/activation fails when their canonical semantic checksums diverge.
 
@@ -99,7 +102,7 @@ Each semantic card has a stable shape and deterministic contextual search text:
 concept key, kind, dataset and grain, label, approved definition, aliases,
 value type, unit, null meaning, allowed-value or resolver policy,
 metric formula or named-filter AST summary, typed dependency/relationship edges,
-safe-join capability key if separately approved, examples and counterexamples,
+safe-join and resource-operation capability keys if separately approved, examples and counterexamples,
 source references, versions, freshness, sensitivity, allowed audiences,
 query authority, retrieval tags, contextual search text, and content checksum
 ```
@@ -110,12 +113,12 @@ Planning demonstrations are a separate card kind containing a reviewed user-ques
 
 The `queryAuthority` classification is one of:
 
-- `queryable`: already present in the checksum-bound query catalog;
+- `queryable`: already present in the checksum-bound query catalog, resource-operation allowlist, or relationship registry as applicable;
 - `explanatory-only`: safe to explain but unavailable in typed plans;
 - `resolver-only`: values remain behind deterministic application resolution; or
 - `excluded`: retained only as a validation finding and never sent to Qwen.
 
-Activation never changes queryability. A separate reviewed query-catalog release is still required to add a field, metric, named filter, relationship, or operation.
+Activation never changes queryability. A separate reviewed catalog/registry release is still required to add a field, metric, named filter, relationship, or resource operation; the ROP additions specified by this OpenSpec change follow that independent release path.
 
 ### 3. Assemble minimal context with controlled query views and typed coverage
 
@@ -212,17 +215,27 @@ For common scalar aggregates and completeness statements, the first sentence and
 
 This is preferred over merely adding prompt instructions: the incident passed JSON-schema validation because the wrong `100` was structurally valid and present as a returned-row count.
 
-### 10. Use large reference resources through deterministic resolvers
+### 10. Provide complete governed ROP browsing, filtering, and relationships
 
-The semantic snapshot contains only resource summaries, schemas, versions, value-domain policy, and supported resolution operations. Exact country, ROP, PEID, PeopleID3, source-alias, and engagement-mapping values stay behind existing or new server-side resolvers. Deterministic resolution runs before context assembly when an approved domain is relevant, supplies only the canonical matched identifier/display value and ambiguity status, and records active-version lineage. Neither Qwen nor the retriever receives the full domain.
+For this plan, the owner's approval of “unrestricted browsing, filtering, or joins” means **complete user-facing access within the authenticated ROP and primary-dataset scope**, not arbitrary model or database authority. A user is not restricted to exact-code lookup: every permitted ROP entry and reviewed field can be reached through search and stable pagination, reviewed ROP fields can filter or group primary people-group data, and registered relationships can be used when required. Every individual operation remains typed, read-only, permission-checked, bounded, version-bound, parameterized, and auditable.
 
-The initial release keeps country resolution as the only value resolver used in SQL. Current-view filter values are accepted only from the signed, validated view contract. Phase one also permits reviewed ROP definition and exact-code lookup through a typed deterministic resolver. The resolver returns only the requested canonical match/ambiguity state; it does not hand Qwen the full ROP catalog. ROP and crosswalk resources do not become data filters or joins until separately modeled in the query catalog and analytics projection.
+The semantic snapshot contains resource meanings, field definitions, schemas, versions, value-domain policy, relationship metadata, and supported operations. It does not contain every ROP row. Exact entries and result pages stay behind a deterministic application-owned ROP query service; Qwen receives only the bounded page or canonical resolution needed for the turn.
 
-“No unrestricted browsing, filtering, or joins” means:
+The plan adds a `resource_query` decision branch with `resourceKey=rop-codes` and reviewed operations for `search`, `list`, `lookup`, `count`, and `continue`. It reuses the existing authenticated ROP projection and search behavior, searches all reviewed non-sensitive ROP code/name/source/place/language/status/geography/join-issue fields, returns at most 25 rows to a chat turn, and reports resource version, matching count, returned count, and `hasMore`. Stable continuation state is server-generated, signed, identity/version/query-bound, and opaque to Qwen. Empty search may traverse the complete resource page by page. When the user needs every matching row at once, chat offers the existing authenticated streamed CSV download rather than putting thousands of entries into the prompt.
 
-- **No bulk browsing:** Qwen cannot enumerate or page through the complete ROP catalog merely because exact lookup exists.
-- **No implicit data filtering:** a metadata lookup such as “what is ROP3 code X?” does not authorize “filter all people-group data by arbitrary ROP code X.”
-- **No model-chosen joins:** Qwen cannot choose database keys and connect the ROP catalog to people-group rows. Any future filter/join is a named, reviewed server-owned capability with a trusted projection, deterministic compiler mapping, and tests.
+Exact normalized codes take precedence over name search. A unique exact name/code resolves deterministically before planning; an ambiguous term returns bounded candidates and asks the user to choose. Resource browsing uses the active permitted ROP version and labels it explicitly. The current exact/lexical ROP search is the required baseline. A separate held-out benchmark may evaluate hybrid entry retrieval over ROP names/descriptions, but dense retrieval is adopted only if it materially improves difficult natural-language lookup without weakening exact-code/name behavior or the Samson resource envelope.
+
+The query catalog and safe analytics projection add normalized `rop3_code` plus reviewed classification fields for ROP1, ROP2, ROP25, and ROP3 code/name, ROP3 status, place, language, source, and join/match status. Hierarchy code/name fields may be selected, filtered, grouped, and sorted through the typed semantic plan. Descriptions remain explanatory/resource-detail evidence rather than arbitrary grouping dimensions. User-provided names are deterministically resolved to canonical codes before SQL compilation, and every value remains a parameter.
+
+Combining ROP with primary people-group data uses a registered server-owned relationship key, `people_group_to_bound_rop3`. Application code—not Qwen—owns the normalized six-digit `rop3_code` mapping, physical tables, join expression, selected columns, and cardinality contract. The compiler selects the relationship automatically when an approved ROP field is referenced; Qwen may select only semantic fields/filters and can never emit an `ON` clause.
+
+The relationship must resolve the exact immutable `rop-codes` version bound to the dataset's producer/forming run through its reference-resource set. It MUST NOT silently join the dataset to whichever ROP version is currently active. If the dataset-to-resource-version lineage is absent, ambiguous, stale, or inconsistent, ROP filtering/joining fails closed and explains that the dataset is not safely bound; standalone browsing may still use the labeled active ROP version.
+
+The approved null-preserving rule is implemented as a left relationship from the people-group grain to the version-bound unique ROP3 classification. A blank, malformed, inactive, or unmatched dataset ROP3 value remains in an unfiltered result and exposes a typed `rop_match_status`; it is never silently discarded. An explicit ROP filter may exclude nonmatching rows according to its stated predicate, and the response must disclose that scope. Join-issue status also remains visible instead of being repaired or hidden by Qwen.
+
+ROP3 geography is one-to-many and therefore cannot be flattened into a people-group aggregate without changing its grain and multiplying rows. Geography remains fully browsable in ROP detail/list results. Primary people-group questions may use a registered `EXISTS`-style geography filter that preserves people-group grain, or request a dedicated `rop_geography` result grain. Direct geography flattening, implicit aggregation across geography, and any unregistered relationship remain rejected until separately modeled with explicit grain, metric, and cardinality tests.
+
+Other large country, PEID, PeopleID3, source-alias, merge-priority, and engagement-mapping domains remain behind their currently approved deterministic resolver/resource capabilities. The ROP expansion does not make those resources or arbitrary database relationships queryable by analogy.
 
 ### 11. Separate planner retrieval from answer retrieval
 
@@ -260,7 +273,11 @@ The deterministic and live-Qwen suites will add:
 - retrieved-definition conflicts, prompt-like metadata, and sensitivity filtering;
 - exact/alias/full-text/hybrid/rerank retrieval ranking, typed dependency coverage, deterministic multi-turn rewriting, plan-example selection, hard negatives, and context-budget boundaries;
 - definition-only questions, unsupported concepts, and off-topic refusals;
-- ROP/country resolver-only resources that cannot become arbitrary filters;
+- complete ROP search/list/detail/count/continuation coverage, exact and ambiguous code/name resolution, and full-catalog reachability without full-payload prompt injection;
+- ROP1/ROP2/ROP25/ROP3 field selection, filtering, grouping, sorting, status/place/language/source semantics, and parameterized compilation;
+- dataset-bound ROP version resolution, active-version drift, missing/ambiguous binding failure, null/unmatched/inactive/join-issue preservation, and the many-to-one cardinality contract;
+- ROP geography browsing, grain-preserving `EXISTS` filters, dedicated geography results, and rejection of row-multiplying implicit flattening;
+- tampered/cross-user/stale continuation state, prompt-like resource text, unregistered joins, and attempts to supply physical keys or `ON` conditions;
 - signed prior-turn evidence versus forged assistant prose; and
 - deterministic fallback when Qwen cites the wrong evidence scope.
 
@@ -273,7 +290,7 @@ The exact generative model, embedding/rerank artifacts if used, runtimes, retrie
 ## Risks / Trade-offs
 
 - **[Conflicting metadata could make answers worse]** → Candidate validation separates queryable, explanatory-only, resolver-only, and excluded entries; contradictions require review before activation.
-- **[RAG could silently widen query access]** → Only the independent query catalog and named-filter registry affect typed plans and SQL; retrieved entries carry no compiler mapping.
+- **[RAG could silently widen query access]** → Only the independent query catalog, named-filter registry, resource-operation allowlist, and relationship registry affect execution; retrieved entries carry no compiler mapping.
 - **[UI and SQL predicates could drift]** → Generate/evaluate both from one named-filter AST and require identity-level parity tests.
 - **[Blank-inclusive UUPG behavior may surprise users]** → Treat current behavior as authoritative and render its exact active criteria/blank semantics in the context summary and retrieved definition.
 - **[Signed tokens could be replayed or copied]** → Bind to identity/session, checksum, dataset version, and short expiry; reject cross-user and stale tokens.
@@ -287,26 +304,32 @@ The exact generative model, embedding/rerank artifacts if used, runtimes, retrie
 - **[Exact/full-text retrieval may miss unusual wording]** → Run the frozen bakeoff; select hybrid only when it clears material-gain and resource gates, without changing query authority.
 - **[Benchmark tuning could overfit the retrieval policy]** → Freeze grouped train/dev/holdout partitions before tuning and require untouched holdout plus live-Qwen canary evidence.
 - **[Resource versions can change independently]** → Snapshot checksum binds every cited source version; stale pointer/context checks fail closed.
+- **[A current ROP version could be joined to data produced with an older one]** → Resolve the immutable ROP version from dataset production lineage and fail closed when the binding cannot be proven; use the current active version only for clearly labeled standalone browsing.
+- **[A one-to-many geography join could inflate counts]** → Keep geography at a separate result grain or compile it as a grain-preserving `EXISTS` predicate; prohibit implicit flattening into people-group aggregates.
+- **[Complete resource access could overload prompts or encourage unbounded responses]** → Make the whole ROP catalog reachable through 25-row signed pages and the existing streamed export while preserving per-turn context, byte, query-cost, and rate limits.
 
 ## Migration Plan
 
 1. Freeze the human-reviewed retrieval relevance corpus, grouped train/dev/holdout split, material-gain thresholds, and resource envelope; reconcile UUPG/global-engagement definitions before tuning retrieval.
-2. Add the incident regression cases and result-completeness contract, then introduce the shared named-filter AST and prove table/SQL UUPG parity on fixtures and local Supabase.
-3. Add result shape, matching totals, evidence ledger, deterministic fact rendering, and signed turn-state tokens behind a disabled server flag.
-4. Extend the reference-resource lifecycle with contextual semantic cards, typed dependency edges, the reviewed semantic-plan demonstration pool, validation findings, activation, rollback, and the first immutable snapshot.
-5. Implement exact aliases, PostgreSQL full-text search, deterministic multi-turn query views, dependency-aware coverage assembly, resolver integration, and definition-only answers behind `PRIVATE_DATA_CHAT_SEMANTIC_CONTEXT_ENABLED=false`.
-6. Benchmark the full-text baseline against Qwen3-Embedding-0.6B plus exact pgvector/RRF and optional Qwen3-Reranker-0.6B on Samson. Select and document the smallest passing tier; deploy no dense component if it does not clear the predeclared gates.
-7. Add signed current-view handoff and chat quick-reference UI behind the same pilot flag.
-8. Update planner/answer prompts and schemas, rotate accepted gateway hashes with a bounded rolling overlap, and run the approved static retrieval, planner, answer, security, and end-to-end tiers.
-9. Enable only for the existing production canary, run the exact Sudan/UUPG/count/list flow and hard-negative cases, inspect retrieval/completeness audit evidence, and monitor retrieval latency, Samson headroom, generation queue impact, and error rates.
-10. Remove previous prompt/schema/retriever hashes after the strict canary passes; expand access only through a separate decision.
+2. Freeze the ROP conversational capability contract: complete typed browsing, reviewed filter/group fields, `people_group_to_bound_rop3`, geography grain rules, null preservation, dataset-version lineage, per-turn paging, and failure behavior.
+3. Add the incident regression cases and result-completeness contract, then introduce the shared named-filter AST and prove table/SQL UUPG parity on fixtures and local Supabase.
+4. Add result shape, matching totals, evidence ledger, deterministic fact rendering, and signed turn-state tokens behind a disabled server flag.
+5. Add the typed ROP resource-query branch by reusing existing authenticated ROP search/detail/export services, then add signed continuation state and complete-catalog reachability tests without sending complete payloads to Qwen.
+6. Extend the query catalog and read-only analytics projection with normalized ROP3 and reviewed classification fields; add the immutable dataset-to-ROP-version resolver, registered null-preserving relationship, grain-safe geography operations, least-privilege grants, and database security/cardinality tests.
+7. Extend the reference-resource lifecycle with contextual semantic cards, typed dependency/relationship edges, the reviewed semantic-plan demonstration pool, validation findings, activation, rollback, and the first immutable snapshot.
+8. Implement exact aliases, PostgreSQL full-text search, deterministic multi-turn query views, dependency-aware coverage assembly, resolver/resource-query integration, and definition-only answers behind `PRIVATE_DATA_CHAT_SEMANTIC_CONTEXT_ENABLED=false`.
+9. Benchmark semantic-card retrieval and the separate ROP entry search holdout. Compare the full-text baseline with Qwen3-Embedding-0.6B plus exact pgvector/RRF and optional Qwen3-Reranker-0.6B on Samson; deploy no dense component that fails the predeclared gates.
+10. Add signed current-view handoff, ROP browse/result continuation, and chat quick-reference UI behind the same pilot flag.
+11. Update planner/answer/resource schemas and prompts, rotate accepted gateway hashes with a bounded rolling overlap, and run the approved static retrieval, planner, answer, ROP resource, SQL, security, and end-to-end tiers.
+12. Enable only for the existing production canary, run the exact Sudan/UUPG/count/list flow plus ROP browse/filter/join and hard-negative cases, inspect redacted retrieval/completeness/relationship audit evidence, and monitor retrieval latency, Samson headroom, generation queue impact, database timing, and error rates. Remove prior hashes only after the strict canary passes; expand audience access only through a separate decision.
 
-Rollback disables semantic context and current-view handoff, restores the previous prompt/schema/retriever hashes, stops the optional embedding/reranking sidecars if selected, and leaves immutable snapshots plus redacted audit evidence intact. The existing core catalog, typed planner, compiler, and database projection continue to serve the current pilot.
+Rollback disables semantic context, ROP conversational operations/relationships, and current-view handoff; restores the previous prompt/schema/retriever hashes; stops the optional embedding/reranking sidecars if selected; and leaves additive private projections, immutable snapshots, and redacted audit evidence intact. The existing core catalog, typed planner, compiler, and database projection continue to serve the current pilot without using the new ROP capabilities.
 
 ## Resolved Review Decisions (August 31, 2026)
 
 - View-context lifetime is 30 minutes.
 - Blake approves semantic conflicts during the pilot. Runtime resources and guiding documents change together through one candidate/review/activation workflow, regardless of which representation initiated the edit.
-- Phase one supports deterministic ROP definitions and exact-code lookups, but not bulk catalog browsing, arbitrary ROP data filtering, or model-chosen joins.
-- The visible UUPG quick reference states the blank-inclusive rule and its null-preserving reason, while distinguishing this interactive filter from the stricter Baseline UUPG pipeline.
+- Phase one provides complete governed ROP browsing, reviewed ROP filtering/grouping, and registered server-owned relationships. “Unrestricted” describes the user's ability to reach the complete permitted ROP scope, not permission for Qwen to emit SQL, physical join conditions, or unregistered relationships.
+- Standalone ROP browsing uses the labeled active version; any relationship to primary data uses the exact immutable ROP version bound to that dataset's production lineage and fails closed when the binding cannot be proven.
+- The people-group-to-ROP3 relationship and interactive UUPG behavior are null-preserving for unfiltered results: blank or unmatched values remain visible with typed status rather than being silently removed. The visible UUPG quick reference states the blank-inclusive rule and its reason while distinguishing this interactive filter from the stricter Baseline UUPG pipeline.
 - The proposed retrieval quality, latency, Samson headroom, and generative-impact gates are approved.
