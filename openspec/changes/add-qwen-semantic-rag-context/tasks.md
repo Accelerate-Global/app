@@ -2,8 +2,8 @@
 
 - [ ] 1.1 Run `pnpm run verify:change` and `pnpm run task:kickoff` with ownership covering private-data-chat, dataset filtering/view UI, reference resources, migrations, OpenSpec, and UI journeys; record the required commands, targeted smoke subset, and local Supabase requirement before implementation.
 - [ ] 1.2 Add a sanitized incident fixture representing 180 Sudan rows, 103 frontier matches, 104 authoritative UUPG matches, 67 explicit dual-criterion matches, and a 100-row record limit; preserve no production identifiers or rows.
-- [ ] 1.3 Record the authoritative UUPG v1 definition from the current filter, including enabled criteria and blank matching, and obtain product review of the user-facing definition text.
-- [ ] 1.4 Reconcile the conflicting global-engagement field-definition wording with forming conversion, source contracts, and the approved boolean direction before making that entry retrieval-eligible.
+- [ ] 1.3 Record the authoritative interactive UUPG v1 definition from the current filter, including enabled criteria, blank matching, the null-preserving/no-false-exclusion rationale, and its distinction from the Baseline UUPG pipeline; use the user-approved wording in the visible quick reference.
+- [ ] 1.4 Reconcile the conflicting global-engagement field-definition wording with forming conversion, source contracts, and the approved boolean direction before making that entry retrieval-eligible; route unresolved semantic conflicts to Blake during the pilot.
 - [ ] 1.5 Generate the proposed planner, answer, retrieval, current-view, completeness, and adversarial evaluation corpus for human review without calling Qwen, Samson, Supabase production, Cloudflare, or Vercel.
 - [ ] 1.6 Add human relevance labels for exact, paraphrase, multi-concept, multi-turn, hard-negative, ambiguity, off-topic, and security cases; group/deduplicate by intent and plan skeleton, freeze train/dev/holdout partitions, and keep the holdout sealed from retrieval-example selection.
 - [ ] 1.7 Obtain review of the proposed retrieval promotion and resource gates before tuning: critical Recall@1/set coverage, held-out Recall@6, material-gain rule, context budget, lexical/hybrid/rerank latency, Samson headroom, and generation-queue impact.
@@ -37,6 +37,7 @@
 - [ ] 4.6 Add candidate review, activation, rollback, checksum reuse, active-pointer health, and immutable source-version manifest behavior through the existing reference-resource operational surface.
 - [ ] 4.7 Add Supabase migration/security tests for any extended private resource kinds or projections, including negative grants for `anon`, `authenticated`, `service_role`, and analytics roles.
 - [ ] 4.8 Build zero-to-two-example retrieval cards from sanitized question-to-typed-plan fixtures only; exclude SQL/results/production text, enforce catalog compatibility, and prove grouped holdout isolation and duplicate/paraphrase rejection.
+- [ ] 4.9 Define one versioned semantic definition package with structured-resource and human-guiding-document projections; generate documents from structured edits, parse supported document edits into candidate diffs, review both together, activate/rollback atomically, and add checksum-drift, ambiguous-parse, concurrent-conflict, authority-widening, and Blake-approval tests.
 
 ## 5. Benchmark-Selected Context Retrieval
 
@@ -44,7 +45,7 @@
 - [ ] 5.2 Generate controlled retrieval views from the original utterance plus only verified current-view and prior-turn concept/evidence keys; add tests proving forged prose cannot rewrite retrieval.
 - [ ] 5.3 Implement typed dependency expansion and set-wise coverage selection that pins exact/current-view evidence, includes required formula/filter/grain dependencies, prunes redundant/hard-negative cards, and asks for clarification when required evidence is incomplete.
 - [ ] 5.4 Enforce pre-ranking dataset/audience/sensitivity/authority policy, at most six total items, at most two demonstrations, 8 KiB serialized context, stable ordering, and data-only serialization.
-- [ ] 5.5 Keep large value domains behind typed deterministic resolvers, perform approved resolution before planning, pass only canonical match/ambiguity state, and record exact active-version lineage.
+- [ ] 5.5 Keep large value domains behind typed deterministic resolvers, perform approved resolution before planning, pass only canonical match/ambiguity state, and record exact active-version lineage; add phase-one ROP definition/exact-code lookup while rejecting bulk enumeration, unapproved ROP data filters, and model-selected joins.
 - [ ] 5.6 Add lexical retrieval tests for exact/alias/phrase/paraphrase ranking, multi-concept coverage, ambiguity, examples, excluded/conflicting entries, prompt/SQL-like content, stale snapshots, hard negatives, truncation, repeatability, and p95 performance.
 - [ ] 5.7 Build a local-only Qwen3-Embedding-0.6B candidate on Samson with a fixed domain instruction and no credentials/tools; bind artifact/runtime/instruction/dimension, generate card embeddings only for reviewed snapshots, and store them in a private pgvector projection.
 - [ ] 5.8 Implement exact pgvector similarity plus PostgreSQL full-text reciprocal-rank fusion without HNSW/IVFFlat, while preserving exact alias precedence and policy filtering before ranking.
@@ -60,7 +61,7 @@
 - [ ] 6.3 Add the same-origin guarded handoff endpoint that validates the canary identity, current primary dataset, supported filters/sorts, payload bounds, and registry/catalog versions.
 - [ ] 6.4 Add **Ask Qwen about this view** to the approved primary dataset action surface and store the returned token/summary only in same-origin session storage.
 - [ ] 6.5 Extend the chat request schema/client to include optional current-view and signed prior-turn tokens while retaining bounded message limits and forbidden-role rejection.
-- [ ] 6.6 Render server-generated dataset/filter chips, UUPG criteria/blank semantics, context-aware quick questions, clear-context action, and return-to-view action.
+- [ ] 6.6 Render server-generated dataset/filter chips, UUPG criteria/blank semantics and null-preserving reason, context-aware quick questions, clear-context action, and return-to-view action without presenting the interactive filter as the Baseline UUPG pipeline.
 - [ ] 6.7 Handle direct chat, invalid/stale/expired context, new chat, sign-out, and session closure without implying filters are active or persisting token/filter state.
 - [ ] 6.8 Update route/component tests, accessibility assertions, route registry/smoke markers if needed, and targeted desktop/mobile UI journeys for handoff, chips, clear, stale, and unauthorized states.
 
@@ -69,7 +70,7 @@
 - [ ] 7.1 Assemble planner context from controlled retrieval views, deterministic resolver output, verified current/prior-turn state, typed dependency coverage, and at most two reviewed semantic-plan examples while retaining the full core query catalog and no compiler-only mappings.
 - [ ] 7.2 Extend planner instructions/schema for named-filter selection, context inheritance/override, count-versus-record intent, demonstration handling, and refusal/clarification when retrieved material is incomplete or lacks query authority.
 - [ ] 7.3 Retrieve answer context only for compiled selected concepts, applied named filters, and explicitly requested definitions; include result completeness and the typed evidence ledger.
-- [ ] 7.4 Add grounded definition-only answers for reviewed Accelerate Global concepts/resources and preserve refusal for off-topic, unsupported, or snapshot-unavailable questions.
+- [ ] 7.4 Add grounded definition-only answers for reviewed Accelerate Global concepts/resources, including bounded ROP definition/exact-code lookup, and preserve refusal for bulk resource traversal, unapproved data operations, off-topic, unsupported, or snapshot-unavailable questions.
 - [ ] 7.5 Version and hash the planner prompt, answer prompt, plan schema, answer/evidence schema, retriever policy and ordering, named-filter registry, semantic snapshot/index manifest, demonstration pool, compiler policy, generative model/runtime, and any selected embedding/rerank artifacts, instructions, dimensions, and runtimes.
 - [ ] 7.6 Update the application/Samson gateway contracts and unit tests while keeping HMAC, Cloudflare Access, semantic-context requirement, queue, timeout, size, replay, and single-slot controls intact.
 - [ ] 7.7 Add deterministic fallback and normalized failure states for retrieval, context verification, evidence validation, matching-count, gateway, and database failures.
@@ -78,8 +79,8 @@
 ## 8. Evaluation and Repository Verification
 
 - [ ] 8.1 Run the frozen retrieval holdout and enforce/report exact Recall@1, held-out Recall@6, nDCG@6, MRR, required-set coverage, irrelevant/hard-negative rate, cross-audience/exclusion failures, clarification/abstention, context bytes, latency, and repeatability.
-- [ ] 8.2 Expand planner cases for UUPG, current-view inheritance, controlled multi-turn rewriting, context override, definition-only questions, named-filter options, count/list challenges, retrieved examples, forged prior prose, and unsupported retrieval concepts.
-- [ ] 8.3 Expand answer cases for complete/incomplete record pages, 100-of-103 wording, evidence-reference validation, deterministic facts, UUPG explanation, conflicting metadata, deliberate hard negatives, and off-topic refusal.
+- [ ] 8.2 Expand planner cases for UUPG, current-view inheritance, controlled multi-turn rewriting, context override, definition-only and exact-ROP questions, bulk-ROP/filter/join refusals, named-filter options, count/list challenges, retrieved examples, forged prior prose, and unsupported retrieval concepts.
+- [ ] 8.3 Expand answer cases for complete/incomplete record pages, 100-of-103 wording, evidence-reference validation, deterministic facts, UUPG null-preserving rationale/Baseline distinction, guiding-document/resource conflict handling, deliberate hard negatives, and off-topic refusal.
 - [ ] 8.4 Expand end-to-end cases for signed Sudan+UUPG context, table/SQL count parity, stale/tampered/cross-user context, context clearing, dense-service degradation when selected, and the exact production incident conversation.
 - [ ] 8.5 Regenerate and review the full human-readable retrieval/planner/answer/end-to-end inventory; do not run live model or production canary cases until the corpus, relevance labels, tier, and repetition count receive explicit approval.
 - [ ] 8.6 Calibrate any RAGChecker/RAGAS/ARES-style automated diagnostics against the human-reviewed subset and keep them non-authoritative; preserve deterministic gold plans, compiled SQL/results, and evidence assertions as release gates.

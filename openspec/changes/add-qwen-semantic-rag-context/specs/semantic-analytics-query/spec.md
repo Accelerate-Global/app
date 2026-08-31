@@ -7,6 +7,10 @@ The system SHALL maintain each approved named filter as a versioned typed expres
 - **WHEN** the UUPG named filter enables global-engagement and frontier-group criteria
 - **THEN** both table and SQL execution apply `(global engagement is false or blank) AND (frontier group is true or blank)` exactly
 
+#### Scenario: UUPG blank behavior is explained
+- **WHEN** the filter is rendered or supplied as semantic context
+- **THEN** it explains that blank values are retained because they do not record the disqualifying opposite state, identifies the view as null-preserving, and does not claim that a blank is an affirmative classification or the same rule as the Baseline UUPG pipeline
+
 #### Scenario: One UUPG criterion is disabled
 - **WHEN** validated current-view state disables one supported UUPG criterion
 - **THEN** table evaluation, planner context, description, and SQL compilation apply only the remaining active branch

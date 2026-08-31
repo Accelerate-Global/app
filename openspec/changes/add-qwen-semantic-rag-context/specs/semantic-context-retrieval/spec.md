@@ -15,6 +15,21 @@ The system SHALL build a versioned semantic-context snapshot from approved query
 - **WHEN** a field definition, source mapping, filter, pipeline contract, or resource pointer changes
 - **THEN** the active snapshot remains unchanged until a new candidate is built, reviewed, and activated
 
+### Requirement: Runtime definitions and guiding documents stay synchronized
+The system SHALL represent runtime semantic resources and human guiding documents as synchronized projections of one versioned semantic definition package. A supported change initiated from either representation MUST build one candidate showing both resulting projections, MUST require Blake’s pilot approval for conflicts, and MUST activate or roll back both atomically. Canonical semantic checksum drift, ambiguous document parsing, concurrent conflicts, or attempted authority widening MUST block activation rather than use last-write-wins behavior.
+
+#### Scenario: Structured semantic resource is edited
+- **WHEN** a reviewed definition changes through the structured resource workflow
+- **THEN** the candidate regenerates the affected guiding-document content and cannot activate unless both representations reconcile
+
+#### Scenario: Guiding document is edited
+- **WHEN** a supported definition section changes in a human guiding document
+- **THEN** the system parses it into a structured candidate diff, shows any semantic or authority changes for review, and leaves runtime behavior unchanged until activation
+
+#### Scenario: Document and resource edits conflict
+- **WHEN** concurrent or ambiguous edits produce different canonical meanings
+- **THEN** activation is blocked and Blake selects or writes the reconciled meaning without either side silently overwriting the other
+
 ### Requirement: Every semantic entry declares authority and audience
 Each semantic card SHALL declare a stable concept key, kind, dataset/grain, label, approved definition, aliases, type/unit/null metadata where applicable, allowed-value or resolver policy, metric/filter formula, typed dependency/relationship edges, any separately approved safe-join capability key, examples/counterexamples, exact source/version/freshness lineage, deterministic contextual search text, sensitivity, retrieval tags, permitted planner/answer audiences, and one authority classification of `queryable`, `explanatory-only`, `resolver-only`, or `excluded`.
 
@@ -120,6 +135,14 @@ The system SHALL provide Qwen only with reviewed summaries, value-domain policy,
 #### Scenario: User asks about a resolver-only crosswalk
 - **WHEN** the current query catalog has no approved crosswalk filter or join
 - **THEN** Qwen may explain the resource's reviewed purpose but cannot query or traverse its entries
+
+#### Scenario: User requests an exact ROP definition or code
+- **WHEN** the question maps to the approved phase-one ROP definition/code resolver
+- **THEN** deterministic resolution returns only the canonical exact match or bounded ambiguity state with active-version lineage
+
+#### Scenario: User requests bulk ROP browsing or an unapproved data operation
+- **WHEN** the user asks Qwen to enumerate the ROP catalog, filter people-group data by an unapproved ROP field, or join ROP entries to data through model-selected keys
+- **THEN** the request is declined or redirected to a separately approved named capability and no catalog traversal, filter, or join executes
 
 ### Requirement: Retrieval failures and staleness fail safely
 The system SHALL bind retrieval to the active snapshot version/checksum and exact cited source versions. When required context is missing, unhealthy, stale, or fails validation, the system MUST return a bounded retryable semantic-context failure or use only the core catalog when the request does not require retrieved knowledge.

@@ -89,6 +89,10 @@ The existing private reference-resource candidate/review/activation lifecycle wi
 
 The candidate contains normalized entries and source lineage, not the full country, ROP, PEID, PeopleID3, or other crosswalk payloads. It receives a canonical checksum, schema version, source-version manifest, validation findings, and conflict findings. Activation requires human review. A missing definition may be included as lineage-only, but a contradictory definition cannot become planner- or answer-eligible until resolved or explicitly overridden in the reviewed semantic overlay.
 
+Blake is the semantic conflict approver during the pilot. Runtime semantic resources and human guiding documents are not independent masters: they are two synchronized projections of one versioned semantic definition package. A structured-resource edit regenerates the affected guiding-document sections in the same candidate. A supported guiding-document edit is parsed into a candidate diff against the structured package. Review shows both representations together, activation advances them atomically, and CI/activation fails when their canonical semantic checksums diverge.
+
+“Vice versa” therefore does not mean automatic last-write-wins synchronization. Ambiguous prose, unsupported structure, conflicting concurrent changes, or a document edit that would widen query authority is quarantined for Blake’s decision. This preserves human-editable guidance without allowing documentation text to silently mutate runtime behavior.
+
 Each semantic card has a stable shape and deterministic contextual search text:
 
 ```text
@@ -154,6 +158,10 @@ Qwen never emits arbitrary AND/OR expression trees. It may select only an approv
 
 `uupg` version 1 will encode the current UI filter exactly. Its options identify whether `globalEngagementAnywhere` and `frontierGroup` criteria are enabled. With both enabled, blank values match exactly as they do now. If only one criterion is enabled, only that branch applies. The filter description must state the active branches and blank behavior. The current table filter is the source of truth; the pipeline product with a similar name does not silently replace it.
 
+The visible rationale is that this interactive view is deliberately null-preserving: blank global-engagement data means there is no recorded positive engagement, and a blank frontier value means there is no recorded negative frontier classification. The view keeps those potentially qualifying rows so incomplete source data does not create a false exclusion; explicit `global engagement=true` or `frontier=false` still excludes the row when that criterion is enabled. This rationale is supported by the original filter wording (“no global engagement record” and frontier `TRUE` “when present”) and the repository’s null-preserving regression tests.
+
+This rationale applies to the interactive current-view UUPG filter chosen by the user. It does not redefine the separately versioned Baseline UUPG pipeline, which currently requires explicit `global engagement=false` and applies its source-qualified frontier rule.
+
 Parity tests will execute the same fixture through the TypeScript row evaluator and SQL compiler and require identical record identities and counts. No release may carry two independent UUPG implementations.
 
 ### 6. Hand current dataset views to chat with signed ephemeral context
@@ -208,7 +216,13 @@ This is preferred over merely adding prompt instructions: the incident passed JS
 
 The semantic snapshot contains only resource summaries, schemas, versions, value-domain policy, and supported resolution operations. Exact country, ROP, PEID, PeopleID3, source-alias, and engagement-mapping values stay behind existing or new server-side resolvers. Deterministic resolution runs before context assembly when an approved domain is relevant, supplies only the canonical matched identifier/display value and ambiguity status, and records active-version lineage. Neither Qwen nor the retriever receives the full domain.
 
-The initial release keeps country resolution as the only value resolver used in SQL. Current-view filter values are accepted only from the signed, validated view contract. ROP and crosswalk resources may answer approved metadata-definition or exact-code questions only when a separately typed resolver operation is reviewed; they do not become query filters or joins until separately modeled in the query catalog and analytics projection.
+The initial release keeps country resolution as the only value resolver used in SQL. Current-view filter values are accepted only from the signed, validated view contract. Phase one also permits reviewed ROP definition and exact-code lookup through a typed deterministic resolver. The resolver returns only the requested canonical match/ambiguity state; it does not hand Qwen the full ROP catalog. ROP and crosswalk resources do not become data filters or joins until separately modeled in the query catalog and analytics projection.
+
+“No unrestricted browsing, filtering, or joins” means:
+
+- **No bulk browsing:** Qwen cannot enumerate or page through the complete ROP catalog merely because exact lookup exists.
+- **No implicit data filtering:** a metadata lookup such as “what is ROP3 code X?” does not authorize “filter all people-group data by arbitrary ROP code X.”
+- **No model-chosen joins:** Qwen cannot choose database keys and connect the ROP catalog to people-group rows. Any future filter/join is a named, reviewed server-owned capability with a trusted projection, deterministic compiler mapping, and tests.
 
 ### 11. Separate planner retrieval from answer retrieval
 
@@ -289,10 +303,10 @@ The exact generative model, embedding/rerank artifacts if used, runtimes, retrie
 
 Rollback disables semantic context and current-view handoff, restores the previous prompt/schema/retriever hashes, stops the optional embedding/reranking sidecars if selected, and leaves immutable snapshots plus redacted audit evidence intact. The existing core catalog, typed planner, compiler, and database projection continue to serve the current pilot.
 
-## Open Questions
+## Resolved Review Decisions (August 31, 2026)
 
-- Confirm the 30-minute view-context lifetime or choose a shorter value.
-- Decide which content owner approves conflicts in field-definition wording before semantic snapshot activation.
-- Decide whether the first release should answer ROP definition/code questions or expose only the resource summary while preserving exact ROP lookup for a later phase.
-- Confirm that current UUPG blank matching should be stated explicitly in the visible quick-reference description as well as used internally.
-- Confirm the proposed retrieval gates: 100% critical exact/coverage cases, at least 95% held-out Recall@6, three-point-or-three-material-failure promotion threshold, 250 ms hybrid p95, 500 ms rerank p95, at least 10% free Samson RAM/VRAM, no new queue failures, and no more than 5% generative p95 impact.
+- View-context lifetime is 30 minutes.
+- Blake approves semantic conflicts during the pilot. Runtime resources and guiding documents change together through one candidate/review/activation workflow, regardless of which representation initiated the edit.
+- Phase one supports deterministic ROP definitions and exact-code lookups, but not bulk catalog browsing, arbitrary ROP data filtering, or model-chosen joins.
+- The visible UUPG quick reference states the blank-inclusive rule and its null-preserving reason, while distinguishing this interactive filter from the stricter Baseline UUPG pipeline.
+- The proposed retrieval quality, latency, Samson headroom, and generative-impact gates are approved.

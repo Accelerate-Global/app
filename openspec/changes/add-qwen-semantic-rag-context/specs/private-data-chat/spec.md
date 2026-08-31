@@ -50,11 +50,15 @@ Chat SHALL answer definition, field-meaning, filter-meaning, unit, null-semantic
 
 #### Scenario: User asks what UUPG means
 - **WHEN** the active snapshot contains the reviewed UUPG named-filter definition
-- **THEN** Qwen explains the exact current filter criteria and blank handling without substituting a different pipeline definition
+- **THEN** Qwen explains the exact current filter criteria, states that blanks remain because missing data does not record the disqualifying opposite value, and distinguishes the interactive null-preserving view from the stricter Baseline UUPG pipeline
 
 #### Scenario: User asks about a known resource purpose
 - **WHEN** a reviewed resource summary is retrieved
 - **THEN** Qwen may explain its Accelerate Global purpose and active version scope without exposing or traversing the unrestricted payload
+
+#### Scenario: User asks for an exact ROP definition or code
+- **WHEN** the request is supported by the reviewed phase-one typed ROP resolver
+- **THEN** chat returns the bounded canonical lookup result without exposing the full catalog or authorizing an ROP data filter/join
 
 #### Scenario: User asks an off-topic or unsupported question
 - **WHEN** no reviewed Accelerate Global semantic evidence supports the request

@@ -143,6 +143,10 @@ Decision: do not adopt. PostgreSQL/Supabase already provide the needed full-text
 
 These thresholds are proposed review defaults. They should be frozen before tuning and changed only through a reviewed rationale, never after seeing sealed holdout results.
 
+## Owner review decisions
+
+On August 31, 2026, Blake approved the 30-minute view-context lifetime and all proposed retrieval quality/resource gates. Blake is the semantic conflict approver for the pilot and directed that runtime definition resources and their human guiding documents remain synchronized through one bidirectional candidate workflow. Phase one will provide deterministic ROP definition and exact-code lookup without bulk catalog traversal, unapproved ROP data filtering, or model-selected joins. The UUPG quick reference will visibly explain its null-preserving behavior and distinguish the interactive filter from the stricter Baseline UUPG pipeline.
+
 ## Changes made to the implementation plan
 
 - Replaced the custom in-process lexical scorer as the only planned production method with a PostgreSQL full-text baseline and a predeclared local hybrid/rerank bakeoff.
