@@ -78,7 +78,7 @@
 - [x] 7.5 Extend the chat request schema/client to include optional current-view and signed prior-turn tokens while retaining bounded message limits and forbidden-role rejection.
 - [x] 7.6 Render server-generated dataset/filter chips, UUPG criteria/blank semantics and null-preserving reason, context-aware quick questions, clear-context action, and return-to-view action without presenting the interactive filter as the Baseline UUPG pipeline.
 - [x] 7.7 Handle direct chat, invalid/stale/expired context, new chat, sign-out, and session closure without implying filters are active or persisting token/filter state.
-- [ ] 7.8 Update route/component tests, accessibility assertions, route registry/smoke markers if needed, and targeted desktop/mobile UI journeys for handoff, chips, clear, stale, and unauthorized states.
+- [x] 7.8 Update route/component tests, accessibility assertions, route registry/smoke markers if needed, and targeted desktop/mobile UI journeys for handoff, chips, clear, stale, and unauthorized states.
 
 ## 8. Planner, Narrator, Resource Results, and Definition Answers
 
@@ -89,7 +89,7 @@
 - [x] 8.5 Version and hash the planner prompt, answer prompt, plan/resource/evidence schemas, retriever policy and ordering, resource-operation allowlist, relationship registry, named-filter registry, semantic snapshot/index manifest, demonstration pool, compiler policy, generative model/runtime, and any selected embedding/rerank artifacts/instructions/dimensions/runtimes.
 - [x] 8.6 Update the application/Samson gateway contracts and unit tests while keeping HMAC, Cloudflare Access, semantic-context requirement, queue, timeout, size, replay, and single-slot controls intact.
 - [x] 8.7 Add deterministic fallback and normalized failure states for retrieval, resource paging, version binding, relationship/cardinality checks, context verification, evidence validation, matching-count, gateway, and database failures.
-- [ ] 8.8 Evaluate retrieved-block/resource-result ordering and final instruction reinforcement against hard negatives on the pinned Qwen artifact; freeze the best safe ordering in the retriever/prompt policy.
+- [x] 8.8 Evaluate retrieved-block/resource-result ordering and final instruction reinforcement against hard negatives on the pinned Qwen artifact; freeze the best safe ordering in the retriever/prompt policy.
 
 ## 9. Evaluation and Repository Verification
 
@@ -99,15 +99,15 @@
 - [x] 9.4 Expand end-to-end cases for signed Sudan+UUPG context, table/SQL count parity, ROP browse/filter/relationship/geography flows, stale/tampered/cross-user view and continuation state, active-version drift, context clearing, dense-service degradation when selected, and the exact production incident conversation.
 - [x] 9.5 Regenerate and review the full human-readable retrieval/planner/answer/resource/end-to-end inventory; do not run live model or production canary cases until the corpus, relevance labels, tier, and repetition count receive explicit approval.
 - [x] 9.6 Calibrate any RAGChecker/RAGAS/ARES-style automated diagnostics against the human-reviewed subset and keep them non-authoritative; preserve deterministic gold plans, resource results, compiled SQL/results, relationship/cardinality assertions, and evidence assertions as release gates.
-- [ ] 9.7 Run direct unit/integration tests, `pnpm run verify:fast`, `pnpm run smoke:check`, targeted UI smoke, and local Supabase database-security/parity tests as required by `pnpm run verify:change`.
-- [ ] 9.8 Run `pnpm run verify:change:run` on the final tracked implementation and fix every environment, test-gap, contract/harness, or product failure before closeout.
+- [x] 9.7 Run direct unit/integration tests, `pnpm run verify:fast`, `pnpm run smoke:check`, targeted UI smoke, and local Supabase database-security/parity tests as required by `pnpm run verify:change`.
+- [x] 9.8 Run `pnpm run verify:change:run` on the final tracked implementation and fix every environment, test-gap, contract/harness, or product failure before closeout.
 - [ ] 9.9 Verify implementation completeness/correctness/coherence against OpenSpec, sync the capability specs, archive the completed change, and run `pnpm run verify:ship:local` before release work.
 
 ## 10. Samson Evaluation and Canary Release
 
-- [ ] 10.1 Export the exact approved planner/answer/retrieval/resource/relationship suites and pinned hashes to Samson without raw production prompts, values, rows, or credentials.
+- [x] 10.1 Export the exact approved planner/answer/retrieval/resource/relationship suites and pinned hashes to Samson without raw production prompts, values, rows, or credentials.
 - [x] 10.2 Run the approved semantic-card and ROP entry-search lexical/hybrid/rerank concurrency bakeoffs on Samson, capture sanitized resource/latency receipts, select the smallest passing tier for each domain, and leave unselected sidecars undeployed.
-- [ ] 10.3 Run diagnostic generative-model evaluation, remediate genuine prompt/product failures without weakening rubrics, then run three clean temperature-zero repetitions for planner and answer tiers.
+- [x] 10.3 Run diagnostic generative-model evaluation, remediate genuine prompt/product failures without weakening rubrics, then run three clean temperature-zero repetitions for planner and answer tiers.
 - [ ] 10.4 Run the explicitly approved bounded production end-to-end canary tier, including the exact 100/103/104 regression, ROP browse/filter/relationship cases, and selected retrieval degradation cases, and store only sanitized structural receipts.
 - [ ] 10.5 Install rolling accepted prompt/schema/retriever/resource/relationship hashes in the gateway, keep `REQUIRE_SEMANTIC_CONTEXT=true`, and verify health, signed request, Access, replay, timeout, optional sidecar isolation, and one-slot generative capacity boundaries.
 - [ ] 10.6 Configure the dedicated current-view/continuation signing secrets and feature flags in Vercel Production while retaining the exact administrator canary and disabled-by-default rollout.

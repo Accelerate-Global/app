@@ -208,8 +208,9 @@ compiler policy, or sanitized fixtures change. Live model inference is a release
 receipt, not a public CI dependency.
 
 The retrieval decision and pinned candidate receipts are summarized in
-`docs/operations/private-data-chat-retrieval-benchmark-v1.md`; generative and
-production canary receipts are recorded per released suite revision.
+`docs/operations/private-data-chat-retrieval-benchmark-v1.md`; the pinned v5
+generative and production-canary record is
+`docs/operations/private-data-chat-evaluation-v5.md`.
 
 ## Failure behavior
 
