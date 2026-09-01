@@ -15401,7 +15401,11 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
     ]
   ],
   "forbidden": [
-    "ON "
+    "rop_reference_people",
+    "source_aliases",
+    " = ",
+    "select ",
+    " from "
   ]
 }
 ```

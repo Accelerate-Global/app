@@ -113,6 +113,14 @@ describe("private data chat capability evaluation suite", () => {
         ?.requiredAny?.[1],
     ).toContain("dataset-bound ROP");
     expect(
+      plannerCase("v5-refuse-unregistered-rop-join")?.textRubric?.forbidden,
+    ).toEqual(
+      expect.arrayContaining(["rop_reference_people", "source_aliases", " = "]),
+    );
+    expect(
+      plannerCase("v5-refuse-unregistered-rop-join")?.textRubric?.forbidden,
+    ).not.toContain("ON ");
+    expect(
       plannerCase("v4-clarify-forecast-unavailable")?.textRubric
         ?.requiredAny?.[0],
     ).toContain("does not include");
