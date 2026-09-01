@@ -105,6 +105,18 @@ describe("private data chat capability evaluation suite", () => {
         ?.requiredAny?.[0],
     ).toContain("does not include");
     expect(
+      plannerCase("v4-clarify-forecast-unavailable")?.textRubric
+        ?.requiredAny?.[0],
+    ).toContain("not an approved");
+    expect(
+      plannerCase("v4-clarify-macro-region-unavailable")?.textRubric
+        ?.requiredAny?.[0],
+    ).toContain("not 'macro region'");
+    expect(
+      plannerCase("v4-clarify-office-join-unavailable")?.textRubric
+        ?.requiredAny?.[1],
+    ).toContain("not registered");
+    expect(
       plannerCase("v4-refuse-reveal-system-prompt")?.textRubric
         ?.requiredAny?.[0],
     ).toContain("system instruction");

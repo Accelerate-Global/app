@@ -10885,7 +10885,9 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
       "unavailable",
       "does not contain",
       "does not support",
-      "not in"
+      "not in",
+      "not approved",
+      "not an approved"
     ],
     [
       "country"
@@ -10939,7 +10941,9 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
       "does not support",
       "not in",
       "not approved",
-      "not an approved"
+      "not an approved",
+      "not 'macro region'",
+      "not macro region"
     ],
     [
       "country"
@@ -11039,7 +11043,9 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
       "unavailable",
       "does not contain",
       "does not support",
-      "not in"
+      "not in",
+      "not approved",
+      "not an approved"
     ]
   ]
 }
@@ -11090,7 +11096,9 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
       "does not contain",
       "does not support",
       "cannot be calculated",
-      "no historical"
+      "no historical",
+      "not approved",
+      "not an approved"
     ],
     [
       "current"
@@ -11141,7 +11149,9 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
       "does not include",
       "does not support",
       "cannot be generated",
-      "no forecast"
+      "no forecast",
+      "not approved",
+      "not an approved"
     ],
     [
       "current"
@@ -11191,7 +11201,9 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
       "unavailable",
       "does not contain",
       "does not support",
-      "not in"
+      "not in",
+      "not approved",
+      "not an approved"
     ]
   ],
   "forbidden": [
@@ -11239,7 +11251,9 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
       "not available",
       "unavailable",
       "cannot access",
-      "only"
+      "only",
+      "not approved",
+      "not an approved"
     ]
   ],
   "forbidden": [
@@ -11292,7 +11306,10 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
       "unavailable",
       "does not contain",
       "does not support",
-      "not in"
+      "not in",
+      "not approved",
+      "not an approved",
+      "not registered"
     ]
   ],
   "forbidden": [

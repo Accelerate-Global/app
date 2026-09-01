@@ -14,7 +14,7 @@ import {
 describe("private data chat prompts", () => {
   it("supplies the reviewed semantic catalog and exact revision to planning", () => {
     expect(PRIVATE_DATA_CHAT_PLANNER_PROMPT_VERSION).toBe(
-      "people-groups-planner-v22",
+      "people-groups-planner-v23",
     );
     expect(PRIVATE_DATA_CHAT_PLANNER_SYSTEM_PROMPT).toContain(
       PRIVATE_DATA_CHAT_CATALOG_VERSION,
@@ -120,6 +120,9 @@ describe("private data chat prompts", () => {
     );
     expect(PRIVATE_DATA_CHAT_PLANNER_SYSTEM_PROMPT).toContain(
       "including people_id and people_name",
+    );
+    expect(PRIVATE_DATA_CHAT_PLANNER_SYSTEM_PROMPT).toContain(
+      "Never clarify, predict an empty result, or claim what the current rows contain",
     );
   });
 
