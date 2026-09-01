@@ -80,7 +80,7 @@ describe("private data chat orchestrator", () => {
       status: "ready" as const,
       snapshotChecksum: "a".repeat(64),
       definitionPackageChecksum: "b".repeat(64),
-      policyVersion: "semantic-retrieval-v1.1.exact-fts-coverage",
+      policyVersion: "semantic-retrieval-v1.1.reviewed-exact-anchor-fts-coverage",
       policyChecksum: "c".repeat(64),
       views: [],
       items: [

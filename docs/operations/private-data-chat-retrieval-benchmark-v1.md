@@ -18,8 +18,8 @@ Generated deterministically from the frozen human-labeled semantic-evaluation-v1
 | MRR | 0.6898 |
 | Forbidden selections | 0 |
 | Off-topic clarification/abstention | 100.00% |
-| Maximum serialized context | 5183 bytes |
-| In-process lexical p95 | 1.3634 ms |
+| Maximum serialized context | 5201 bytes |
+| In-process lexical p95 | 1.2390 ms |
 | Repeatable across three runs | Yes |
 
 ## ROP entry-search holdout
@@ -30,7 +30,7 @@ Generated deterministically from the frozen human-labeled semantic-evaluation-v1
 | Exact code/name Recall@1 | 100.00% |
 | Recall@6 | 100.00% |
 | Hard-negative accuracy | 100.00% |
-| In-process p95 after private-index construction | 127.7540 ms |
+| In-process p95 after private-index construction | 86.6147 ms |
 | Repeatable across three runs | Yes |
 
 ## Samson Qwen3 embedding/reranker bakeoff
@@ -39,7 +39,7 @@ The frozen 36-case corpus was also run on Samson against pinned Q8 candidates. T
 
 | Tier | Exact critical Recall@1 | Critical set coverage | Held-out Recall@6 | Held-out nDCG@6 | p95 | Production selection |
 | --- | ---: | ---: | ---: | ---: | ---: | --- |
-| Exact + PostgreSQL lexical | 100.00% | 100.00% | 100.00% | 0.7568 | 1.36 ms in-process | **Selected** |
+| Exact + PostgreSQL lexical | 100.00% | 100.00% | 100.00% | 0.7568 | 1.24 ms in-process | **Selected** |
 | Qwen3 embedding + exact RRF | 100.00% | 100.00% | 100.00% | 0.7885 | 166.08 ms query embedding | Rejected on concurrency |
 | Qwen3 reranker | 83.33% | 90.63% | 81.25% | 0.5711 | 24,526.24 ms | Rejected on quality and latency |
 

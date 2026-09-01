@@ -93,7 +93,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
 {
   "decision": "query",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "filters": [],
@@ -146,7 +146,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
 {
   "decision": "query",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "filters": [],
@@ -207,7 +207,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
 {
   "decision": "query",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "filters": [],
@@ -263,7 +263,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
 {
   "decision": "query",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "filters": [
@@ -323,7 +323,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
 {
   "decision": "query",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "filters": [
@@ -383,7 +383,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
 {
   "decision": "query",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "filters": [],
@@ -439,7 +439,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
 {
   "decision": "query",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "filters": [
@@ -505,7 +505,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
 {
   "decision": "query",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "filters": [
@@ -571,7 +571,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
 {
   "decision": "query",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "filters": [
@@ -635,7 +635,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
 {
   "decision": "query",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "filters": [
@@ -696,7 +696,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
 {
   "decision": "query",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "filters": [
@@ -755,7 +755,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
 {
   "decision": "query",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "filters": [
@@ -1089,7 +1089,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
 {
   "decision": "query",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "filters": [],
@@ -1287,7 +1287,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
 {
   "decision": "query",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "filters": [
@@ -1346,7 +1346,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
 {
   "decision": "query",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "filters": [
@@ -1407,7 +1407,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Use the approved people_group_count metric over the full current dataset.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -1460,7 +1460,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Use the approved people_group_count metric over the full current dataset.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -1513,7 +1513,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Use the approved people_group_count metric over the full current dataset.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -1566,7 +1566,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Use the approved people_group_count metric over the full current dataset.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -1619,7 +1619,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Use the approved people_group_count metric over the full current dataset.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -1672,7 +1672,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Use the approved people_group_count metric over the full current dataset.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -1725,7 +1725,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Use the approved total_population metric over the full current dataset.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -1778,7 +1778,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Use the approved total_population metric over the full current dataset.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -1831,7 +1831,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Use the approved total_population metric over the full current dataset.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -1884,7 +1884,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Use the approved total_population metric over the full current dataset.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -1937,7 +1937,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Use the approved total_population metric over the full current dataset.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -1990,7 +1990,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Use the approved total_population metric over the full current dataset.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -2043,7 +2043,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Use the approved average_population metric over the full current dataset.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -2096,7 +2096,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Use the approved average_population metric over the full current dataset.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -2149,7 +2149,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Use the approved average_population metric over the full current dataset.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -2202,7 +2202,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Use the approved average_population metric over the full current dataset.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -2255,7 +2255,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Use the approved average_population metric over the full current dataset.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -2308,7 +2308,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Use the approved average_population metric over the full current dataset.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -2361,7 +2361,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Use the approved average_percent_evangelical metric over the full current dataset.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -2414,7 +2414,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Use the approved average_percent_evangelical metric over the full current dataset.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -2467,7 +2467,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Use the approved average_percent_evangelical metric over the full current dataset.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -2520,7 +2520,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Use the approved average_percent_evangelical metric over the full current dataset.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -2573,7 +2573,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Use the approved average_percent_evangelical metric over the full current dataset.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -2626,7 +2626,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Use the approved average_percent_evangelical metric over the full current dataset.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -2679,7 +2679,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Group people_group_count by country.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -2735,7 +2735,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Group people_group_count by frontier_group.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -2791,7 +2791,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Group people_group_count by globally_engaged.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -2847,7 +2847,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Group people_group_count by engagement_phase.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -2903,7 +2903,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Group people_group_count by people_id.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -2959,7 +2959,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Group people_group_count by people_name.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -3015,7 +3015,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Group total_population by country.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -3076,7 +3076,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Group total_population by frontier_group.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -3132,7 +3132,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Group total_population by globally_engaged.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -3188,7 +3188,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Group total_population by gsec.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -3244,7 +3244,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Group average_population by country.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -3305,7 +3305,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Group average_population by frontier_group.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -3361,7 +3361,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Group average_population by globally_engaged.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -3417,7 +3417,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Group average_population by engagement_phase.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -3473,7 +3473,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Group average_percent_evangelical by country.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -3534,7 +3534,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Group average_percent_evangelical by frontier_group.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -3590,7 +3590,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Group average_percent_evangelical by globally_engaged.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -3646,7 +3646,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Group average_percent_evangelical by gsec.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -3702,7 +3702,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Return a bounded list containing only people_id.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "records",
@@ -3754,7 +3754,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Select and sort the bounded people_id values in ascending order.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "records",
@@ -3811,7 +3811,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Return a bounded list containing only people_name.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "records",
@@ -3863,7 +3863,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Select and sort the bounded people_name values in ascending order.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "records",
@@ -3920,7 +3920,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Return a bounded list containing only country.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "records",
@@ -3972,7 +3972,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Select and sort the bounded country values in ascending order.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "records",
@@ -4029,7 +4029,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Return a bounded list containing only gsec.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "records",
@@ -4081,7 +4081,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Select and sort the bounded gsec values in ascending order.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "records",
@@ -4138,7 +4138,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Return a bounded list containing only frontier_group.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "records",
@@ -4190,7 +4190,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Select and sort the bounded frontier_group values in ascending order.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "records",
@@ -4247,7 +4247,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Return a bounded list containing only engagement_phase.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "records",
@@ -4299,7 +4299,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Select and sort the bounded engagement_phase values in ascending order.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "records",
@@ -4356,7 +4356,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Return a bounded list containing only globally_engaged.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "records",
@@ -4408,7 +4408,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Select and sort the bounded globally_engaged values in ascending order.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "records",
@@ -4465,7 +4465,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Return a bounded list containing only population.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "records",
@@ -4517,7 +4517,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Select and sort the bounded population values in ascending order.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "records",
@@ -4574,7 +4574,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Return a bounded list containing only percent_evangelical.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "records",
@@ -4626,7 +4626,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Select and sort the bounded percent_evangelical values in ascending order.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "records",
@@ -4683,7 +4683,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Count records using the approved people_id eq filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -4743,7 +4743,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Count records using the approved people_id neq filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -4803,7 +4803,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Count records using the approved people_id in filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -4869,7 +4869,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Count records using the approved people_id eq filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -4928,7 +4928,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Count records using the approved people_id neq filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -4987,7 +4987,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Count records using the approved people_name eq filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -5047,7 +5047,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Count records using the approved people_name neq filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -5107,7 +5107,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Count records using the approved people_name in filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -5173,7 +5173,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Count records using the approved people_name eq filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -5232,7 +5232,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Count records using the approved people_name neq filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -5291,7 +5291,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Count records using the approved country eq filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -5351,7 +5351,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Count records using the approved country neq filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -5411,7 +5411,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Count records using the approved country in filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -5477,7 +5477,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Count records using the approved country eq filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -5536,7 +5536,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Count records using the approved country neq filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -5595,7 +5595,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Count records using the approved numeric gsec eq filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -5655,7 +5655,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Count records using the approved numeric gsec neq filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -5715,7 +5715,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Count records using the approved numeric gsec lt filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -5775,7 +5775,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Count records using the approved numeric gsec lte filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -5835,7 +5835,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Count records using the approved numeric gsec gt filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -5895,7 +5895,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Count records using the approved numeric gsec gte filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -5955,7 +5955,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Count records using the approved numeric gsec in filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -6023,7 +6023,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Count records using the approved numeric gsec eq filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -6082,7 +6082,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Count records using the approved numeric gsec neq filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -6141,7 +6141,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Count records using the approved numeric engagement_phase eq filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -6201,7 +6201,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Count records using the approved numeric engagement_phase neq filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -6261,7 +6261,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Count records using the approved numeric engagement_phase lt filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -6321,7 +6321,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Count records using the approved numeric engagement_phase lte filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -6381,7 +6381,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Count records using the approved numeric engagement_phase gt filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -6441,7 +6441,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Count records using the approved numeric engagement_phase gte filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -6501,7 +6501,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Count records using the approved numeric engagement_phase in filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -6569,7 +6569,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Count records using the approved numeric engagement_phase eq filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -6628,7 +6628,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Count records using the approved numeric engagement_phase neq filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -6687,7 +6687,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Count records using the approved numeric population eq filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -6747,7 +6747,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Count records using the approved numeric population neq filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -6807,7 +6807,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Count records using the approved numeric population lt filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -6867,7 +6867,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Count records using the approved numeric population lte filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -6927,7 +6927,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Count records using the approved numeric population gt filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -6987,7 +6987,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Count records using the approved numeric population gte filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -7047,7 +7047,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Count records using the approved numeric population in filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -7115,7 +7115,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Count records using the approved numeric population eq filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -7174,7 +7174,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Count records using the approved numeric population neq filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -7233,7 +7233,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Count records using the approved numeric percent_evangelical eq filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -7293,7 +7293,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Count records using the approved numeric percent_evangelical neq filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -7353,7 +7353,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Count records using the approved numeric percent_evangelical lt filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -7413,7 +7413,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Count records using the approved numeric percent_evangelical lte filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -7473,7 +7473,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Count records using the approved numeric percent_evangelical gt filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -7533,7 +7533,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Count records using the approved numeric percent_evangelical gte filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -7593,7 +7593,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Count records using the approved numeric percent_evangelical in filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -7661,7 +7661,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Count records using the approved numeric percent_evangelical eq filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -7720,7 +7720,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Count records using the approved numeric percent_evangelical neq filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -7779,7 +7779,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Count records using the approved boolean frontier_group filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -7839,7 +7839,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Count records using the approved boolean frontier_group filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -7899,7 +7899,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Count records using the approved boolean frontier_group filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -7959,7 +7959,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Count records using the approved boolean frontier_group filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -8025,7 +8025,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Count records using the approved boolean frontier_group filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -8084,7 +8084,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Count records using the approved boolean frontier_group filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -8143,7 +8143,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Count records using the approved boolean globally_engaged filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -8203,7 +8203,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Count records using the approved boolean globally_engaged filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -8263,7 +8263,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Count records using the approved boolean globally_engaged filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -8323,7 +8323,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Count records using the approved boolean globally_engaged filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -8389,7 +8389,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Count records using the approved boolean globally_engaged filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -8448,7 +8448,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Count records using the approved boolean globally_engaged filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -8507,7 +8507,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Apply the requested approved sort and bounded result count.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "records",
@@ -8566,7 +8566,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Apply the requested approved sort and bounded result count.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "records",
@@ -8625,7 +8625,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Apply the requested approved sort and bounded result count.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "records",
@@ -8684,7 +8684,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Apply the requested approved sort and bounded result count.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "records",
@@ -8741,7 +8741,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Apply the requested approved sort and bounded result count.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "records",
@@ -8798,7 +8798,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Apply the requested approved sort and bounded result count.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "records",
@@ -8857,7 +8857,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Apply the requested approved sort and bounded result count.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "records",
@@ -8916,7 +8916,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Apply the requested approved sort and bounded result count.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "records",
@@ -8975,7 +8975,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Apply the requested approved sort and bounded result count.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "records",
@@ -9034,7 +9034,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Apply the requested approved sort and bounded result count.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -9095,7 +9095,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Apply the requested approved sort and bounded result count.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -9156,7 +9156,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Apply the requested approved sort and bounded result count.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -9217,7 +9217,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Preserve the country value for deterministic reference-resource resolution.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -9277,7 +9277,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Preserve the country value for deterministic reference-resource resolution.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -9337,7 +9337,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Preserve the country value for deterministic reference-resource resolution.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -9397,7 +9397,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Preserve the country value for deterministic reference-resource resolution.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -9457,7 +9457,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Preserve the country value for deterministic reference-resource resolution.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -9517,7 +9517,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Preserve the country value for deterministic reference-resource resolution.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -9577,7 +9577,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Preserve the country value for deterministic reference-resource resolution.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -9637,7 +9637,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Preserve the country value for deterministic reference-resource resolution.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -9697,7 +9697,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Preserve the country value for deterministic reference-resource resolution.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -9757,7 +9757,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Preserve the country value for deterministic reference-resource resolution.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -9817,7 +9817,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Preserve the country value for deterministic reference-resource resolution.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -9877,7 +9877,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Preserve the country value for deterministic reference-resource resolution.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -9937,7 +9937,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Preserve the country value for deterministic reference-resource resolution.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -9997,7 +9997,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Preserve the country value for deterministic reference-resource resolution.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -10057,7 +10057,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Preserve the country value for deterministic reference-resource resolution.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -10117,7 +10117,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Use the requested maximum-size approved aggregate shape.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -10188,7 +10188,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Use the requested maximum-size approved record shape.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "records",
@@ -11436,7 +11436,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Group people-group count by the approved bound ROP language text.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -11500,7 +11500,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Conversation resolves population ranking and a limit of ten.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "records",
@@ -11567,7 +11567,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Use total population grouped by country with a five-country bound.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -11636,7 +11636,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "The user selected average population.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -11697,7 +11697,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Group the count by frontier-group status.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -11761,7 +11761,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Filter the count by the supplied country value.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -11829,7 +11829,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Use the supplied population threshold and record bound.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "records",
@@ -11898,7 +11898,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "The user accepted the supported current total-population metric.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -11959,7 +11959,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Use the clarified country display name.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "records",
@@ -12026,7 +12026,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Count records with globally_engaged false.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -12094,7 +12094,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Return five records with only people IDs and names.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "records",
@@ -12156,7 +12156,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Rank names by percent evangelical descending with a limit of three.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "records",
@@ -12223,7 +12223,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Apply the prior count intent to Nepal.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -12291,7 +12291,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Keep total population and add frontier_group true.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -12359,7 +12359,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Group frontier total population by country.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -12430,7 +12430,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Use average population by country with the prior bound.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -12494,7 +12494,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Apply the supplied limit to the prior population ranking.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "records",
@@ -12561,7 +12561,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Sort the selected records by population descending.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "records",
@@ -12628,7 +12628,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Use the approved average over valid percent-evangelical values.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -12749,7 +12749,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Count groups with frontier_group false.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -12817,7 +12817,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Return the prior fields with population present.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "records",
@@ -12885,7 +12885,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Count records matching both Thailand and frontier_group true.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -13611,7 +13611,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Preserve the complete user value as a parameterized filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -13671,7 +13671,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Preserve the complete user value as a parameterized filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -13731,7 +13731,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Preserve the complete user value as a parameterized filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -13791,7 +13791,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Preserve the complete user value as a parameterized filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -13851,7 +13851,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Preserve the complete user value as a parameterized filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -13911,7 +13911,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Preserve the complete user value as a parameterized filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -13971,7 +13971,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Preserve the complete user value as a parameterized filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -14031,7 +14031,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Preserve the complete user value as a parameterized filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -14091,7 +14091,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Preserve the complete user value as a parameterized filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -14151,7 +14151,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Preserve the complete user value as a parameterized filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -14561,7 +14561,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Apply both approved UUPG criteria and count matching people groups.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -14625,7 +14625,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Apply only the approved frontier UUPG option.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -14688,7 +14688,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Apply only the approved global-engagement UUPG option.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -14751,7 +14751,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Apply both UUPG criteria plus the explicit country filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "records",
@@ -14823,7 +14823,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Filter through the approved dataset-bound ROP3 classification.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "records",
@@ -14884,7 +14884,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Use the approved bound ROP2 code field.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "records",
@@ -14943,7 +14943,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Group people-group count by approved ROP3 status.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -14999,7 +14999,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Filter by the reviewed bound ROP source.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -15059,7 +15059,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Count the explicit unmatched ROP binding state.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -15119,7 +15119,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Apply the approved nonmultiplying ROP geography filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "records",
@@ -15178,7 +15178,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Return the requested people identifiers and explicit ROP match state.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "records",
@@ -15232,7 +15232,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Group people-group count by the bound ROP1 name.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -15426,7 +15426,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Group the approved people-group count by ROP1 code.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -15482,7 +15482,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Group the approved people-group count by ROP1 name.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -15538,7 +15538,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Group the approved people-group count by ROP2 code.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -15594,7 +15594,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Group the approved people-group count by ROP2 name.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -15650,7 +15650,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Group the approved people-group count by ROP2.5 code.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -15706,7 +15706,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Group the approved people-group count by ROP2.5 name.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -15762,7 +15762,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Group the approved people-group count by ROP3 code.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -15818,7 +15818,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Group the approved people-group count by ROP3 name.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -15874,7 +15874,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Group the approved people-group count by ROP3 status.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -15930,7 +15930,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Group the approved people-group count by ROP place.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -15986,7 +15986,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Group the approved people-group count by ROP language.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -16042,7 +16042,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Group the approved people-group count by ROP source.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -16098,7 +16098,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Group the approved people-group count by ROP join issue.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -16154,7 +16154,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Group the approved people-group count by ROP match status.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -16210,7 +16210,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Return only the requested ROP1 code field through the approved relationship.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "records",
@@ -16262,7 +16262,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Return only the requested ROP1 name field through the approved relationship.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "records",
@@ -16314,7 +16314,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Return only the requested ROP2 code field through the approved relationship.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "records",
@@ -16366,7 +16366,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Return only the requested ROP2 name field through the approved relationship.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "records",
@@ -16418,7 +16418,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Return only the requested ROP2.5 code field through the approved relationship.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "records",
@@ -16470,7 +16470,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Return only the requested ROP2.5 name field through the approved relationship.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "records",
@@ -16522,7 +16522,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Return only the requested ROP3 code field through the approved relationship.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "records",
@@ -16574,7 +16574,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Return only the requested ROP3 name field through the approved relationship.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "records",
@@ -16626,7 +16626,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Return only the requested ROP3 status field through the approved relationship.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "records",
@@ -16678,7 +16678,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Return only the requested ROP place field through the approved relationship.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "records",
@@ -16730,7 +16730,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Return only the requested ROP language field through the approved relationship.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "records",
@@ -16782,7 +16782,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Return only the requested ROP source field through the approved relationship.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "records",
@@ -16834,7 +16834,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Return only the requested ROP join issue field through the approved relationship.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "records",
@@ -16886,7 +16886,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Return only the requested ROP match status field through the approved relationship.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "records",
@@ -16938,7 +16938,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Apply an exact ROP1 code equality filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -16998,7 +16998,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Apply an exact ROP1 code inequality filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -17058,7 +17058,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Apply a bounded ROP1 code set filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -17124,7 +17124,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Filter for an explicitly missing ROP1 code value.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -17183,7 +17183,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Filter for a present ROP1 code value.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -17242,7 +17242,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Apply an exact ROP1 name equality filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -17302,7 +17302,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Apply an exact ROP1 name inequality filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -17362,7 +17362,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Apply a bounded ROP1 name set filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -17428,7 +17428,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Filter for an explicitly missing ROP1 name value.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -17487,7 +17487,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Filter for a present ROP1 name value.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -17546,7 +17546,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Apply an exact ROP2 code equality filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -17606,7 +17606,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Apply an exact ROP2 code inequality filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -17666,7 +17666,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Apply a bounded ROP2 code set filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -17732,7 +17732,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Filter for an explicitly missing ROP2 code value.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -17791,7 +17791,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Filter for a present ROP2 code value.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -17850,7 +17850,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Apply an exact ROP2 name equality filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -17910,7 +17910,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Apply an exact ROP2 name inequality filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -17970,7 +17970,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Apply a bounded ROP2 name set filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -18036,7 +18036,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Filter for an explicitly missing ROP2 name value.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -18095,7 +18095,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Filter for a present ROP2 name value.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -18154,7 +18154,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Apply an exact ROP2.5 code equality filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -18214,7 +18214,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Apply an exact ROP2.5 code inequality filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -18274,7 +18274,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Apply a bounded ROP2.5 code set filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -18340,7 +18340,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Filter for an explicitly missing ROP2.5 code value.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -18399,7 +18399,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Filter for a present ROP2.5 code value.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -18458,7 +18458,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Apply an exact ROP2.5 name equality filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -18518,7 +18518,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Apply an exact ROP2.5 name inequality filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -18578,7 +18578,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Apply a bounded ROP2.5 name set filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -18644,7 +18644,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Filter for an explicitly missing ROP2.5 name value.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -18703,7 +18703,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Filter for a present ROP2.5 name value.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -18762,7 +18762,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Apply an exact ROP3 code equality filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -18822,7 +18822,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Apply an exact ROP3 code inequality filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -18882,7 +18882,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Apply a bounded ROP3 code set filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -18948,7 +18948,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Filter for an explicitly missing ROP3 code value.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -19007,7 +19007,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Filter for a present ROP3 code value.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -19066,7 +19066,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Apply an exact ROP3 name equality filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -19126,7 +19126,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Apply an exact ROP3 name inequality filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -19186,7 +19186,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Apply a bounded ROP3 name set filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -19252,7 +19252,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Filter for an explicitly missing ROP3 name value.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -19311,7 +19311,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Filter for a present ROP3 name value.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -19370,7 +19370,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Apply an exact ROP3 status equality filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -19430,7 +19430,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Apply an exact ROP3 status inequality filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -19490,7 +19490,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Apply a bounded ROP3 status set filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -19556,7 +19556,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Filter for an explicitly missing ROP3 status value.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -19615,7 +19615,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Filter for a present ROP3 status value.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -19674,7 +19674,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Apply an exact ROP place equality filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -19734,7 +19734,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Apply an exact ROP place inequality filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -19794,7 +19794,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Apply a bounded ROP place set filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -19860,7 +19860,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Filter for an explicitly missing ROP place value.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -19919,7 +19919,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Filter for a present ROP place value.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -19978,7 +19978,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Apply an exact ROP language equality filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -20038,7 +20038,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Apply an exact ROP language inequality filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -20098,7 +20098,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Apply a bounded ROP language set filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -20164,7 +20164,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Filter for an explicitly missing ROP language value.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -20223,7 +20223,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Filter for a present ROP language value.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -20282,7 +20282,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Apply an exact ROP source equality filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -20342,7 +20342,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Apply an exact ROP source inequality filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -20402,7 +20402,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Apply a bounded ROP source set filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -20468,7 +20468,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Filter for an explicitly missing ROP source value.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -20527,7 +20527,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Filter for a present ROP source value.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -20586,7 +20586,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Apply an exact ROP join issue equality filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -20646,7 +20646,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Apply an exact ROP join issue inequality filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -20706,7 +20706,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Apply a bounded ROP join issue set filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -20772,7 +20772,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Filter for an explicitly missing ROP join issue value.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -20831,7 +20831,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Filter for a present ROP join issue value.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -20890,7 +20890,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Apply an exact ROP match status equality filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -20950,7 +20950,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Apply an exact ROP match status inequality filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -21010,7 +21010,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Apply a bounded ROP match status set filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -21076,7 +21076,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Filter for an explicitly missing ROP match status value.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -21135,7 +21135,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Filter for a present ROP match status value.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -21194,7 +21194,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Apply an exact ROP geography equality filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -21254,7 +21254,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Apply an exact ROP geography inequality filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -21314,7 +21314,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Apply a bounded ROP geography set filter.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -21380,7 +21380,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Filter for an explicitly missing ROP geography value.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -21439,7 +21439,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "decision": "query",
   "reason": "Filter for a present ROP geography value.",
   "query": {
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "namedFilterRegistryVersion": "named-filters-v1.901b9eb6ad34",
     "dataset": "primary_people_groups",
     "mode": "aggregate",
@@ -21508,7 +21508,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   ],
   "provenance": {
     "queryId": "10000000-0000-4000-8000-000000000001",
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "dataset": "primary_people_groups",
     "datasetId": "20000000-0000-4000-8000-000000000001",
     "datasetVersionCreatedAt": "2026-01-15T12:00:00.000Z",
@@ -21576,7 +21576,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   ],
   "provenance": {
     "queryId": "10000000-0000-4000-8000-000000000002",
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "dataset": "primary_people_groups",
     "datasetId": "20000000-0000-4000-8000-000000000001",
     "datasetVersionCreatedAt": "2026-01-15T12:00:00.000Z",
@@ -21644,7 +21644,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   ],
   "provenance": {
     "queryId": "10000000-0000-4000-8000-000000000003",
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "dataset": "primary_people_groups",
     "datasetId": "20000000-0000-4000-8000-000000000001",
     "datasetVersionCreatedAt": "2026-01-15T12:00:00.000Z",
@@ -21711,7 +21711,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   ],
   "provenance": {
     "queryId": "10000000-0000-4000-8000-000000000004",
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "dataset": "primary_people_groups",
     "datasetId": "20000000-0000-4000-8000-000000000001",
     "datasetVersionCreatedAt": "2026-01-15T12:00:00.000Z",
@@ -21779,7 +21779,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   ],
   "provenance": {
     "queryId": "10000000-0000-4000-8000-000000000005",
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "dataset": "primary_people_groups",
     "datasetId": "20000000-0000-4000-8000-000000000001",
     "datasetVersionCreatedAt": "2026-01-15T12:00:00.000Z",
@@ -21848,7 +21848,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   ],
   "provenance": {
     "queryId": "10000000-0000-4000-8000-000000000006",
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "dataset": "primary_people_groups",
     "datasetId": "20000000-0000-4000-8000-000000000001",
     "datasetVersionCreatedAt": "2026-01-15T12:00:00.000Z",
@@ -21919,7 +21919,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   ],
   "provenance": {
     "queryId": "10000000-0000-4000-8000-000000000007",
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "dataset": "primary_people_groups",
     "datasetId": "20000000-0000-4000-8000-000000000001",
     "datasetVersionCreatedAt": "2026-01-15T12:00:00.000Z",
@@ -21987,7 +21987,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   ],
   "provenance": {
     "queryId": "10000000-0000-4000-8000-000000000008",
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "dataset": "primary_people_groups",
     "datasetId": "20000000-0000-4000-8000-000000000001",
     "datasetVersionCreatedAt": "2026-01-15T12:00:00.000Z",
@@ -22058,7 +22058,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   ],
   "provenance": {
     "queryId": "10000000-0000-4000-8000-000000000009",
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "dataset": "primary_people_groups",
     "datasetId": "20000000-0000-4000-8000-000000000001",
     "datasetVersionCreatedAt": "2026-01-15T12:00:00.000Z",
@@ -22126,7 +22126,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   ],
   "provenance": {
     "queryId": "10000000-0000-4000-8000-000000000010",
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "dataset": "primary_people_groups",
     "datasetId": "20000000-0000-4000-8000-000000000001",
     "datasetVersionCreatedAt": "2026-01-15T12:00:00.000Z",
@@ -22194,7 +22194,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   ],
   "provenance": {
     "queryId": "10000000-0000-4000-8000-000000000011",
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "dataset": "primary_people_groups",
     "datasetId": "20000000-0000-4000-8000-000000000001",
     "datasetVersionCreatedAt": "2026-01-15T12:00:00.000Z",
@@ -22263,7 +22263,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   ],
   "provenance": {
     "queryId": "10000000-0000-4000-8000-000000000012",
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "dataset": "primary_people_groups",
     "datasetId": "20000000-0000-4000-8000-000000000001",
     "datasetVersionCreatedAt": "2026-01-15T12:00:00.000Z",
@@ -22344,7 +22344,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   ],
   "provenance": {
     "queryId": "10000000-0000-4000-8000-000000000013",
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "dataset": "primary_people_groups",
     "datasetId": "20000000-0000-4000-8000-000000000001",
     "datasetVersionCreatedAt": "2026-01-15T12:00:00.000Z",
@@ -22426,7 +22426,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   ],
   "provenance": {
     "queryId": "10000000-0000-4000-8000-000000000014",
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "dataset": "primary_people_groups",
     "datasetId": "20000000-0000-4000-8000-000000000001",
     "datasetVersionCreatedAt": "2026-01-15T12:00:00.000Z",
@@ -22509,7 +22509,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   ],
   "provenance": {
     "queryId": "10000000-0000-4000-8000-000000000015",
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "dataset": "primary_people_groups",
     "datasetId": "20000000-0000-4000-8000-000000000001",
     "datasetVersionCreatedAt": "2026-01-15T12:00:00.000Z",
@@ -22595,7 +22595,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   ],
   "provenance": {
     "queryId": "10000000-0000-4000-8000-000000000016",
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "dataset": "primary_people_groups",
     "datasetId": "20000000-0000-4000-8000-000000000001",
     "datasetVersionCreatedAt": "2026-01-15T12:00:00.000Z",
@@ -22675,7 +22675,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   ],
   "provenance": {
     "queryId": "10000000-0000-4000-8000-000000000017",
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "dataset": "primary_people_groups",
     "datasetId": "20000000-0000-4000-8000-000000000001",
     "datasetVersionCreatedAt": "2026-01-15T12:00:00.000Z",
@@ -22761,7 +22761,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   ],
   "provenance": {
     "queryId": "10000000-0000-4000-8000-000000000018",
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "dataset": "primary_people_groups",
     "datasetId": "20000000-0000-4000-8000-000000000001",
     "datasetVersionCreatedAt": "2026-01-15T12:00:00.000Z",
@@ -22857,7 +22857,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   ],
   "provenance": {
     "queryId": "10000000-0000-4000-8000-000000000019",
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "dataset": "primary_people_groups",
     "datasetId": "20000000-0000-4000-8000-000000000001",
     "datasetVersionCreatedAt": "2026-01-15T12:00:00.000Z",
@@ -22940,7 +22940,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   ],
   "provenance": {
     "queryId": "10000000-0000-4000-8000-000000000020",
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "dataset": "primary_people_groups",
     "datasetId": "20000000-0000-4000-8000-000000000001",
     "datasetVersionCreatedAt": "2026-01-15T12:00:00.000Z",
@@ -23025,7 +23025,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   ],
   "provenance": {
     "queryId": "10000000-0000-4000-8000-000000000021",
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "dataset": "primary_people_groups",
     "datasetId": "20000000-0000-4000-8000-000000000001",
     "datasetVersionCreatedAt": "2026-01-15T12:00:00.000Z",
@@ -23110,7 +23110,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   ],
   "provenance": {
     "queryId": "10000000-0000-4000-8000-000000000022",
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "dataset": "primary_people_groups",
     "datasetId": "20000000-0000-4000-8000-000000000001",
     "datasetVersionCreatedAt": "2026-01-15T12:00:00.000Z",
@@ -23192,7 +23192,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   ],
   "provenance": {
     "queryId": "10000000-0000-4000-8000-000000000023",
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "dataset": "primary_people_groups",
     "datasetId": "20000000-0000-4000-8000-000000000001",
     "datasetVersionCreatedAt": "2026-01-15T12:00:00.000Z",
@@ -23279,7 +23279,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   ],
   "provenance": {
     "queryId": "10000000-0000-4000-8000-000000000024",
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "dataset": "primary_people_groups",
     "datasetId": "20000000-0000-4000-8000-000000000001",
     "datasetVersionCreatedAt": "2026-01-15T12:00:00.000Z",
@@ -23371,7 +23371,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   ],
   "provenance": {
     "queryId": "10000000-0000-4000-8000-000000000025",
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "dataset": "primary_people_groups",
     "datasetId": "20000000-0000-4000-8000-000000000001",
     "datasetVersionCreatedAt": "2026-01-15T12:00:00.000Z",
@@ -23456,7 +23456,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   ],
   "provenance": {
     "queryId": "10000000-0000-4000-8000-000000000026",
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "dataset": "primary_people_groups",
     "datasetId": "20000000-0000-4000-8000-000000000001",
     "datasetVersionCreatedAt": "2026-01-15T12:00:00.000Z",
@@ -23537,7 +23537,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   ],
   "provenance": {
     "queryId": "10000000-0000-4000-8000-000000000027",
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "dataset": "primary_people_groups",
     "datasetId": "20000000-0000-4000-8000-000000000001",
     "datasetVersionCreatedAt": "2026-01-15T12:00:00.000Z",
@@ -23615,7 +23615,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   ],
   "provenance": {
     "queryId": "10000000-0000-4000-8000-000000000028",
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "dataset": "primary_people_groups",
     "datasetId": "20000000-0000-4000-8000-000000000001",
     "datasetVersionCreatedAt": "2026-01-15T12:00:00.000Z",
@@ -23689,7 +23689,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   ],
   "provenance": {
     "queryId": "10000000-0000-4000-8000-000000000029",
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "dataset": "primary_people_groups",
     "datasetId": "20000000-0000-4000-8000-000000000001",
     "datasetVersionCreatedAt": "2026-01-15T12:00:00.000Z",
@@ -23767,7 +23767,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   ],
   "provenance": {
     "queryId": "10000000-0000-4000-8000-000000000030",
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "dataset": "primary_people_groups",
     "datasetId": "20000000-0000-4000-8000-000000000001",
     "datasetVersionCreatedAt": "2026-01-15T12:00:00.000Z",
@@ -23845,7 +23845,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   ],
   "provenance": {
     "queryId": "10000000-0000-4000-8000-000000000031",
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "dataset": "primary_people_groups",
     "datasetId": "20000000-0000-4000-8000-000000000001",
     "datasetVersionCreatedAt": "2026-01-15T12:00:00.000Z",
@@ -23925,7 +23925,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   ],
   "provenance": {
     "queryId": "10000000-0000-4000-8000-000000000032",
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "dataset": "primary_people_groups",
     "datasetId": "20000000-0000-4000-8000-000000000001",
     "datasetVersionCreatedAt": "2026-01-15T12:00:00.000Z",
@@ -23999,7 +23999,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   "rows": [],
   "provenance": {
     "queryId": "10000000-0000-4000-8000-000000000033",
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "dataset": "primary_people_groups",
     "datasetId": "20000000-0000-4000-8000-000000000001",
     "datasetVersionCreatedAt": "2026-01-15T12:00:00.000Z",
@@ -24080,7 +24080,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   ],
   "provenance": {
     "queryId": "10000000-0000-4000-8000-000000000034",
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "dataset": "primary_people_groups",
     "datasetId": "20000000-0000-4000-8000-000000000001",
     "datasetVersionCreatedAt": "2026-01-15T12:00:00.000Z",
@@ -24156,7 +24156,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   ],
   "provenance": {
     "queryId": "10000000-0000-4000-8000-000000000035",
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "dataset": "primary_people_groups",
     "datasetId": "20000000-0000-4000-8000-000000000001",
     "datasetVersionCreatedAt": "2026-01-15T12:00:00.000Z",
@@ -24232,7 +24232,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   ],
   "provenance": {
     "queryId": "10000000-0000-4000-8000-000000000036",
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "dataset": "primary_people_groups",
     "datasetId": "20000000-0000-4000-8000-000000000001",
     "datasetVersionCreatedAt": "2026-01-15T12:00:00.000Z",
@@ -24599,7 +24599,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   ],
   "provenance": {
     "queryId": "10000000-0000-4000-8000-000000000037",
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "dataset": "primary_people_groups",
     "datasetId": "20000000-0000-4000-8000-000000000001",
     "datasetVersionCreatedAt": "2026-01-15T12:00:00.000Z",
@@ -24977,7 +24977,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
   ],
   "provenance": {
     "queryId": "10000000-0000-4000-8000-000000000038",
-    "catalogVersion": "primary-people-groups-v3.a57ff23d45ba",
+    "catalogVersion": "primary-people-groups-v3.1fb6c15a7250",
     "dataset": "primary_people_groups",
     "datasetId": "20000000-0000-4000-8000-000000000001",
     "datasetVersionCreatedAt": "2026-01-15T12:00:00.000Z",

@@ -17,9 +17,9 @@ import {
 
 export const PRIVATE_DATA_CHAT_CATALOG_SCHEMA_VERSION = 3 as const;
 export const PRIVATE_DATA_CHAT_CATALOG_CHECKSUM =
-  "a57ff23d45bad3c6a120a4d6998752812f7491e35460c40762b5745181f332a4" as const;
+  "1fb6c15a7250f241cfaf89b8d7e442584a3cfcd1ec6970f88229adb4b5d916a6" as const;
 export const PRIVATE_DATA_CHAT_CATALOG_VERSION =
-  "primary-people-groups-v3.a57ff23d45ba" as const;
+  "primary-people-groups-v3.1fb6c15a7250" as const;
 export const PRIVATE_DATA_CHAT_DATASET_KEY = "primary_people_groups" as const;
 export const PRIVATE_DATA_CHAT_VIEW =
   "analytics_ro.primary_people_groups" as const;
@@ -216,7 +216,13 @@ export const PRIVATE_DATA_CHAT_FIELDS = Object.freeze({
     label: "People ID",
     description:
       "Stable identifier for one people-group record in the approved current primary dataset.",
-    aliases: ["people identifier", "people group id", "peid"],
+    aliases: [
+      "people identifier",
+      "people identifiers",
+      "people group id",
+      "people IDs",
+      "peid",
+    ],
     column: "people_id",
     valueType: "text",
     unit: "identifier",

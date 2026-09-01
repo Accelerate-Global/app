@@ -11,7 +11,7 @@ import {
 describe("private data chat runtime contract", () => {
   it("pins schemas, semantic policies, resource operations, and relationships", () => {
     expect(PRIVATE_DATA_CHAT_PLANNER_SCHEMA_CHECKSUM).toBe(
-      "c8ef2f4ec1a1b29067831bc7eca5a0e12bec0814760a9ba34d33fcd47c981d3b",
+      "65f62de2672c4556028c6ca7c45c19a2f536b9fbfb3cc9e99e26d21b435889e6",
     );
     expect(PRIVATE_DATA_CHAT_ANSWER_SCHEMA_CHECKSUM).toBe(
       "0ca0d0870ac2b4c6b1acd80182ce3c02f4d7cbade4b80a58978c1c2debe685bf",

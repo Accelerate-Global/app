@@ -319,9 +319,13 @@ export async function retrievePrivateDataChatSemanticContext(
     views.flatMap((view) => (view.stableKey ? [view.stableKey] : [])),
   );
   for (const key of input.requiredKeys ?? []) pinnedKeys.add(key);
+  const hasReviewedCatalogSignal = cards.some((card) =>
+    isExactMatch(card, input.utterance),
+  );
   const hasDomainAnchor =
     pinnedKeys.size > 0 ||
-    /\b(?:people groups?|people ids?|people identifiers?|peids?|dataset|population|country|nation|gsec|frontier|engagement|evangelical|uupg|unengaged|unreached|rop(?:1|2|25|3)?|registry of peoples|classifications?|analytics|data query|current view|returned|show|showing|rows?|records?|results?|page)\b/u.test(
+    hasReviewedCatalogSignal ||
+    /\b(?:people groups?|dataset|population|country|nation|gsec|frontier|engagement|evangelical|uupg|unengaged|unreached|rop(?:1|2|25|3)?|registry of peoples|classifications?|analytics|data query|current view|returned|show|showing|rows?|records?|results?|page)\b/u.test(
       normalizedUtterance,
     );
   if (!hasDomainAnchor) {
