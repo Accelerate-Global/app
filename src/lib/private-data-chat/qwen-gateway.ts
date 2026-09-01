@@ -15,6 +15,13 @@ import {
   type PrivateDataChatPlan,
   type PrivateDataChatQueryResult,
 } from "@/lib/private-data-chat/schemas";
+import type { PrivateDataChatTurnState } from "@/lib/private-data-chat/turn-state";
+import type { PrivateDataChatViewContext } from "@/lib/private-data-chat/view-context";
+import type { PrivateDataChatRetrievalReady } from "@/lib/private-data-chat/retrieval";
+import {
+  PRIVATE_DATA_CHAT_RUNTIME_CONTRACT,
+  PRIVATE_DATA_CHAT_RUNTIME_CONTRACT_CHECKSUM,
+} from "@/lib/private-data-chat/runtime-contract";
 
 const PRIVATE_QWEN_GATEWAY_TIMEOUT_MS = 90_000;
 const PRIVATE_QWEN_MAX_RESPONSE_BYTES = 128_000;
@@ -27,12 +34,16 @@ export type PrivateQwenConversationMessage = {
 export interface PrivateQwenGateway {
   plan(input: {
     messages: PrivateQwenConversationMessage[];
+    trustedTurnState?: readonly PrivateDataChatTurnState[];
+    trustedCurrentView?: PrivateDataChatViewContext | null;
+    semanticContext?: PrivateDataChatRetrievalReady | null;
     signal?: AbortSignal;
   }): Promise<PrivateDataChatPlan>;
   answer(input: {
     question: string;
     result: PrivateDataChatQueryResult;
     semanticContext: PrivateDataChatAnswerSemanticContext;
+    retrievedSemanticContext?: PrivateDataChatRetrievalReady | null;
     signal?: AbortSignal;
   }): Promise<PrivateDataChatAnswer>;
 }
@@ -249,6 +260,9 @@ export class HttpPrivateQwenGateway implements PrivateQwenGateway {
 
   async plan(input: {
     messages: PrivateQwenConversationMessage[];
+    trustedTurnState?: readonly PrivateDataChatTurnState[];
+    trustedCurrentView?: PrivateDataChatViewContext | null;
+    semanticContext?: PrivateDataChatRetrievalReady | null;
     signal?: AbortSignal;
   }) {
     const data = await this.request({
@@ -256,7 +270,12 @@ export class HttpPrivateQwenGateway implements PrivateQwenGateway {
       signal: input.signal,
       body: {
         systemPrompt: PRIVATE_DATA_CHAT_PLANNER_SYSTEM_PROMPT,
+        runtimeContract: PRIVATE_DATA_CHAT_RUNTIME_CONTRACT,
+        runtimeContractChecksum: PRIVATE_DATA_CHAT_RUNTIME_CONTRACT_CHECKSUM,
         messages: input.messages,
+        trustedTurnState: input.trustedTurnState ?? [],
+        trustedCurrentView: input.trustedCurrentView ?? null,
+        semanticContext: input.semanticContext ?? null,
         responseSchema: PRIVATE_DATA_CHAT_PLAN_JSON_SCHEMA,
         temperature: 0,
         maxTokens: 700,
@@ -278,6 +297,7 @@ export class HttpPrivateQwenGateway implements PrivateQwenGateway {
     question: string;
     result: PrivateDataChatQueryResult;
     semanticContext: PrivateDataChatAnswerSemanticContext;
+    retrievedSemanticContext?: PrivateDataChatRetrievalReady | null;
     signal?: AbortSignal;
   }) {
     const data = await this.request({
@@ -285,8 +305,11 @@ export class HttpPrivateQwenGateway implements PrivateQwenGateway {
       signal: input.signal,
       body: {
         systemPrompt: PRIVATE_DATA_CHAT_ANSWER_SYSTEM_PROMPT,
+        runtimeContract: PRIVATE_DATA_CHAT_RUNTIME_CONTRACT,
+        runtimeContractChecksum: PRIVATE_DATA_CHAT_RUNTIME_CONTRACT_CHECKSUM,
         question: input.question,
         semanticContext: input.semanticContext,
+        retrievedSemanticContext: input.retrievedSemanticContext ?? null,
         result: input.result,
         responseSchema: PRIVATE_DATA_CHAT_ANSWER_JSON_SCHEMA,
         temperature: 0,

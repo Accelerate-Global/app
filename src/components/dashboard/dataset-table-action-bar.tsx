@@ -2,6 +2,7 @@
 
 import {
   DownloadIcon,
+  MessageCircleQuestionIcon,
   PanelRightOpenIcon,
   SaveIcon,
   SlidersHorizontalIcon,
@@ -39,6 +40,8 @@ type DatasetTableActionBarProps = {
   canSaveFilteredTable?: boolean;
   onOpenFilters?: () => void;
   onOpenAssignDerivedView?: () => void;
+  canAskQwenAboutView?: boolean;
+  onNavigateToPrivateDataChat?: () => void;
   variant?: "standalone" | "embedded";
 };
 
@@ -72,14 +75,18 @@ export function DatasetTableActionBar({
   canSaveFilteredTable = true,
   onOpenFilters,
   onOpenAssignDerivedView,
+  canAskQwenAboutView = false,
+  onNavigateToPrivateDataChat,
   variant = "standalone",
 }: DatasetTableActionBarProps) {
   const [isSavingSavedTable, setIsSavingSavedTable] = useState(false);
+  const [isCreatingQwenContext, setIsCreatingQwenContext] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [messageTone, setMessageTone] = useState<"default" | "destructive">(
     "default",
   );
-  const isDisabled = isLoading || hasError || isSavingSavedTable;
+  const isDisabled =
+    isLoading || hasError || isSavingSavedTable || isCreatingQwenContext;
 
   function handleDownload() {
     const csv = serializeDatasetRowsToCsv({
@@ -138,6 +145,66 @@ export function DatasetTableActionBar({
       setMessageTone("destructive");
     } finally {
       setIsSavingSavedTable(false);
+    }
+  }
+
+  async function handleAskQwenAboutView() {
+    if (!canAskQwenAboutView || isCreatingQwenContext) return;
+    setIsCreatingQwenContext(true);
+    setMessage(null);
+    setMessageTone("default");
+    try {
+      const conversationId = globalThis.crypto.randomUUID();
+      const response = await fetch("/api/chat/view-context", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          datasetId: dataset.id,
+          conversationId,
+          filters,
+        }),
+      });
+      const payload = (await response.json().catch(() => null)) as
+        | {
+            token?: string;
+            conversationId?: string;
+            summary?: unknown;
+            expiresAt?: number;
+            error?: string;
+          }
+        | null;
+      if (
+        !response.ok ||
+        !payload?.token ||
+        !payload.conversationId ||
+        !payload.summary ||
+        !payload.expiresAt
+      ) {
+        throw new Error(payload?.error ?? "This view could not be handed to Qwen.");
+      }
+      sessionStorage.setItem(
+        "private-data-chat:view-context:v1",
+        JSON.stringify({
+          schemaVersion: 1,
+          token: payload.token,
+          conversationId: payload.conversationId,
+          summary: payload.summary,
+          expiresAt: payload.expiresAt,
+        }),
+      );
+      if (onNavigateToPrivateDataChat) {
+        onNavigateToPrivateDataChat();
+      } else {
+        window.location.assign("/dashboard/chat");
+      }
+    } catch (error) {
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "This view could not be handed to Qwen.",
+      );
+      setMessageTone("destructive");
+      setIsCreatingQwenContext(false);
     }
   }
 
@@ -225,6 +292,23 @@ export function DatasetTableActionBar({
             >
               <PanelRightOpenIcon />
               Create dataset from current view
+            </Button>
+          ) : null}
+          {canAskQwenAboutView ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="col-span-full w-full text-xs"
+              disabled={isDisabled}
+              data-smoke-trigger="dataset-qwen-view-handoff"
+              data-smoke-write="safe"
+              onClick={() => void handleAskQwenAboutView()}
+            >
+              <MessageCircleQuestionIcon />
+              {isCreatingQwenContext
+                ? "Opening Qwen…"
+                : "Ask Qwen about this view"}
             </Button>
           ) : null}
         </div>

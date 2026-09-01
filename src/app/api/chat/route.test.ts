@@ -136,6 +136,35 @@ describe("/api/chat", () => {
     expect(body).toContain("event: done");
   });
 
+  it("forwards only bounded signed view, turn, and continuation state", async () => {
+    configureFeature();
+    process.env.PRIVATE_DATA_CHAT_SEMANTIC_CONTEXT_ENABLED = "true";
+    process.env.PRIVATE_DATA_CHAT_TURN_STATE_HMAC_KEY = "t".repeat(32);
+    process.env.PRIVATE_DATA_CHAT_VIEW_CONTEXT_HMAC_KEY = "v".repeat(32);
+    process.env.PRIVATE_DATA_CHAT_CONTINUATION_HMAC_KEY = "c".repeat(32);
+    getCurrentIdentityMock.mockResolvedValue(adminIdentity);
+    orchestrateMock.mockResolvedValue({
+      content: "Next ROP page.",
+      facts: [],
+      provenance: null,
+    });
+    const body = {
+      conversationId: "20000000-0000-4000-8000-000000000002",
+      messages: [{ role: "user", content: "Continue." }],
+      turnStateTokens: ["signed-turn"],
+      viewContextToken: "signed-view",
+      resourceContinuationToken: "signed-continuation",
+    };
+    const response = await POST(request(body));
+    await response.text();
+    expect(orchestrateMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        identity: adminIdentity,
+        ...body,
+      }),
+    );
+  });
+
   it("streams a retryable bounded error when semantic values are unavailable", async () => {
     configureFeature();
     getCurrentIdentityMock.mockResolvedValue(adminIdentity);

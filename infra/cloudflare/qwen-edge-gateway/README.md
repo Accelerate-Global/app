@@ -40,13 +40,12 @@ application feature remained disabled:
 6. Sensitive Vercel Production variables for the Worker URL and Access token;
    `PRIVATE_DATA_CHAT_ENABLED=false` remained in force during provisioning.
 
-Workers VPC does not trust the private CA currently installed on Samson.
-Until the origin uses a publicly trusted or Cloudflare Origin CA certificate,
-the VPC Service must use HTTPS with certificate verification disabled. The
-connection remains encrypted, and the origin still independently requires the
-body-bound HMAC, a fresh timestamp, and a one-time nonce. This is an explicit
-temporary exception; migrate to `verify_full` when a trusted origin certificate
-is available.
+On 2026-08-29 the Samson origin moved to a Cloudflare Origin CA certificate for
+its exact configured origin identity and the VPC Service moved to
+`verify_full`. The origin still independently requires the body-bound HMAC, a
+fresh timestamp, and a one-time nonce. Reverify the certificate identity,
+Worker/VPC health, and signed request path after every certificate, service
+token, or gateway-contract rotation.
 
 ## Local verification
 

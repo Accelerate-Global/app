@@ -3,7 +3,10 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { PrivateDataChatClient } from "@/components/chat/private-data-chat-client";
+import {
+  PrivateDataChatClient,
+  parsePrivateDataChatStoredViewContext,
+} from "@/components/chat/private-data-chat-client";
 
 const fetchMock = vi.fn();
 
@@ -25,6 +28,7 @@ describe("PrivateDataChatClient", () => {
   beforeEach(() => {
     vi.stubGlobal("fetch", fetchMock);
     fetchMock.mockReset();
+    sessionStorage.clear();
   });
 
   afterEach(() => {
@@ -87,18 +91,23 @@ describe("PrivateDataChatClient", () => {
     ).toBeNull();
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/chat",
-      expect.objectContaining({
-        method: "POST",
-        body: JSON.stringify({
-          messages: [
-            {
-              role: "user",
-              content:
-                "How many people groups are in the current primary dataset?",
-            },
-          ],
-        }),
-      }),
+      expect.objectContaining({ method: "POST" }),
+    );
+    const request = JSON.parse(
+      String(fetchMock.mock.calls[0]?.[1]?.body),
+    ) as Record<string, unknown>;
+    expect(request).toMatchObject({
+      messages: [
+        {
+          role: "user",
+          content:
+            "How many people groups are in the current primary dataset?",
+        },
+      ],
+      turnStateTokens: [],
+    });
+    expect(request.conversationId).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u,
     );
   });
 
@@ -120,6 +129,160 @@ describe("PrivateDataChatClient", () => {
         "Private data chat is unavailable.",
       );
     });
+  });
+
+  it("loads signed current-view quick references from session storage and clears them locally", async () => {
+    sessionStorage.setItem(
+      "private-data-chat:view-context:v1",
+      JSON.stringify({
+        schemaVersion: 1,
+        token: "signed-view-token",
+        conversationId: "20000000-0000-4000-8000-000000000002",
+        expiresAt: Date.now() + 60_000,
+        summary: {
+          chips: [
+            { label: "All People Groups", detail: null },
+            { label: "Sudan", detail: "Country filter" },
+            { label: "UUPG", detail: "Current interactive filter" },
+          ],
+          quickQuestions: ["How many people groups match this view?"],
+          returnUrl: "/dashboard/datasets/10000000-0000-4000-8000-000000000001",
+          uupgRationale:
+            "Blank values remain eligible so incomplete source data does not create a false exclusion.",
+        },
+      }),
+    );
+    fetchMock.mockResolvedValue(
+      sseResponse([
+        {
+          type: "message",
+          message: { content: "104 match.", facts: [], provenance: null },
+        },
+        { type: "done" },
+      ]),
+    );
+    render(<PrivateDataChatClient available />);
+    await screen.findByText("Sudan");
+    expect(screen.getByText("UUPG")).toBeTruthy();
+    expect(screen.getByText(/false exclusion/iu)).toBeTruthy();
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "How many people groups match this view?",
+      }),
+    );
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    const request = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
+    expect(request).toMatchObject({
+      conversationId: "20000000-0000-4000-8000-000000000002",
+      viewContextToken: "signed-view-token",
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Clear context" }));
+    expect(sessionStorage.getItem("private-data-chat:view-context:v1")).toBeNull();
+    expect(screen.queryByText("Sudan")).toBeNull();
+  });
+
+  it("rejects forged or unsafe browser-stored view summaries", async () => {
+    expect(
+      parsePrivateDataChatStoredViewContext({
+        schemaVersion: 1,
+        token: "signed-view-token",
+        conversationId: "20000000-0000-4000-8000-000000000002",
+        expiresAt: Date.now() + 60_000,
+        summary: {
+          chips: [{ label: "All People Groups", detail: null }],
+          quickQuestions: [],
+          returnUrl: "javascript:alert(1)",
+          uupgRationale: null,
+        },
+      }),
+    ).toBeNull();
+
+    sessionStorage.setItem(
+      "private-data-chat:view-context:v1",
+      JSON.stringify({
+        schemaVersion: 1,
+        token: "signed-view-token",
+        conversationId: "20000000-0000-4000-8000-000000000002",
+        expiresAt: Date.now() + 60_000,
+        summary: {
+          chips: [{ label: "Forged", detail: null }],
+          quickQuestions: [],
+          returnUrl: "https://attacker.invalid/",
+          uupgRationale: null,
+        },
+      }),
+    );
+    render(<PrivateDataChatClient available />);
+    await waitFor(() =>
+      expect(sessionStorage.getItem("private-data-chat:view-context:v1")).toBeNull(),
+    );
+    expect(screen.queryByText("Forged")).toBeNull();
+  });
+
+  it("renders a bounded ROP page with version, full export, and opaque continuation", async () => {
+    fetchMock
+      .mockResolvedValueOnce(
+        sseResponse([
+          {
+            type: "message",
+            message: {
+              content: "52 ROP entries match; showing 1–2.",
+              facts: ["119434 — Tassomi · Active"],
+              provenance: null,
+              resourceResult: {
+                resourceKey: "rop-codes",
+                operation: "search",
+                normalizedQuery: "sudan",
+                requestedLimit: 25,
+                pageOffset: 0,
+                returnedCount: 2,
+                matchingCount: 52,
+                hasMore: true,
+                resourceVersion: {
+                  id: "10000000-0000-4000-8000-000000000001",
+                  versionNumber: 7,
+                  contentChecksum: "a".repeat(64),
+                },
+                entries: [],
+                ambiguityChoices: [],
+                continuationToken: "opaque-signed-continuation",
+                exportUrl:
+                  "/api/reference-resources/rop-codes/download?search=sudan",
+              },
+            },
+          },
+          { type: "done" },
+        ]),
+      )
+      .mockResolvedValueOnce(
+        sseResponse([
+          {
+            type: "message",
+            message: {
+              content: "Showing the final page.",
+              facts: [],
+              provenance: null,
+            },
+          },
+          { type: "done" },
+        ]),
+      );
+    render(<PrivateDataChatClient available />);
+    fireEvent.change(screen.getByRole("textbox", { name: "Question for Qwen" }), {
+      target: { value: "Search ROP for Sudan" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Ask Qwen" }));
+    await screen.findByText("52 ROP entries match; showing 1–2.");
+    expect(screen.getByText("ROP version 7")).toBeTruthy();
+    expect(
+      screen.getByRole("link", { name: "Download all matches" }).getAttribute("href"),
+    ).toBe("/api/reference-resources/rop-codes/download?search=sudan");
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    const request = JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body));
+    expect(request.resourceContinuationToken).toBe(
+      "opaque-signed-continuation",
+    );
   });
 
   it.each([

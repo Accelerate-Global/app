@@ -14,28 +14,47 @@ import type {
   PrivateDataChatFilter,
   PrivateDataChatQuery,
 } from "@/lib/private-data-chat/schemas";
+import { PRIVATE_DATA_CHAT_NAMED_FILTER_REGISTRY_VERSION } from "@/lib/private-data-chat/named-filters";
 
 type AggregateQuery = Extract<PrivateDataChatQuery, { mode: "aggregate" }>;
 type RecordsQuery = Extract<PrivateDataChatQuery, { mode: "records" }>;
 
 function aggregateQuery(
-  input: Omit<AggregateQuery, "catalogVersion" | "dataset" | "mode">,
+  input: Omit<
+    AggregateQuery,
+    | "catalogVersion"
+    | "namedFilterRegistryVersion"
+    | "dataset"
+    | "mode"
+    | "namedFilters"
+  >,
 ): AggregateQuery {
   return {
     catalogVersion: PRIVATE_DATA_CHAT_CATALOG_VERSION,
+    namedFilterRegistryVersion: PRIVATE_DATA_CHAT_NAMED_FILTER_REGISTRY_VERSION,
     dataset: PRIVATE_DATA_CHAT_DATASET_KEY,
     mode: "aggregate",
+    namedFilters: [],
     ...input,
   };
 }
 
 function recordsQuery(
-  input: Omit<RecordsQuery, "catalogVersion" | "dataset" | "mode">,
+  input: Omit<
+    RecordsQuery,
+    | "catalogVersion"
+    | "namedFilterRegistryVersion"
+    | "dataset"
+    | "mode"
+    | "namedFilters"
+  >,
 ): RecordsQuery {
   return {
     catalogVersion: PRIVATE_DATA_CHAT_CATALOG_VERSION,
+    namedFilterRegistryVersion: PRIVATE_DATA_CHAT_NAMED_FILTER_REGISTRY_VERSION,
     dataset: PRIVATE_DATA_CHAT_DATASET_KEY,
     mode: "records",
+    namedFilters: [],
     ...input,
   };
 }

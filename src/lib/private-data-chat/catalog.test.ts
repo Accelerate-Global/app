@@ -22,15 +22,17 @@ describe("private data chat catalog", () => {
       PRIVATE_DATA_CHAT_CATALOG_CHECKSUM,
     );
     expect(PRIVATE_DATA_CHAT_CATALOG_VERSION).toBe(
-      `primary-people-groups-v2.${PRIVATE_DATA_CHAT_CATALOG_CHECKSUM.slice(0, 12)}`,
+      `primary-people-groups-v3.${PRIVATE_DATA_CHAT_CATALOG_CHECKSUM.slice(0, 12)}`,
     );
-    expect(PRIVATE_DATA_CHAT_CATALOG.joinCapabilities).toEqual([]);
+    expect(PRIVATE_DATA_CHAT_CATALOG.joinCapabilities).toEqual([
+      "people_group_to_bound_rop3",
+    ]);
   });
 
   it("maps every approved use to complete semantic and compiler metadata", () => {
     for (const key of PRIVATE_DATA_CHAT_FILTER_KEYS) {
       const field = PRIVATE_DATA_CHAT_CATALOG.fields[key];
-      expect(field.column).toMatch(/^[a-z_]+$/);
+      expect(field.column).toMatch(/^[a-z0-9_]+$/);
       expect(field.description.length).toBeGreaterThan(20);
       expect(field.aliases.length).toBeGreaterThan(0);
       expect(field.nullMeaning.length).toBeGreaterThan(10);
@@ -69,7 +71,10 @@ describe("private data chat catalog", () => {
     expect(context).toContain(PRIVATE_DATA_CHAT_CATALOG_VERSION);
     expect(context).toContain("One row per current primary people-group record");
     expect(context).toContain("null is not zero");
-    expect(context).toContain("Approved joins: none");
+    expect(context).toContain(
+      "Approved relationship: people_group_to_bound_rop3",
+    );
+    expect(context).toContain("Physical or unregistered joins remain unavailable");
     expect(context).not.toContain(PRIVATE_DATA_CHAT_VIEW);
     expect(context).not.toContain("count(*)");
     expect(context).not.toContain("Geo_Country_Name");

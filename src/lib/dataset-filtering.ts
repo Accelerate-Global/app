@@ -38,6 +38,7 @@ import {
   isWatchlistEngagementPhaseMatch,
   normalizeWatchlistEngagementPhaseRule,
 } from "@/lib/watchlist-engagement-phase";
+import { evaluatePrivateDataChatNamedFilter } from "@/lib/private-data-chat/named-filters";
 
 type DatasetRow = DatasetRowsResponse["rows"][number];
 const WATCHLIST_FRONTIER_GROUP_DATASET_COLUMN_KEYS =
@@ -877,11 +878,17 @@ function filterDatasetRowsByUupg(
   );
 }
 
-function matchesExpectedBooleanOrBlank(
-  value: string,
-  expectedValue: "false" | "true",
-) {
-  return value.length === 0 || value === expectedValue;
+function normalizeNamedFilterBooleanValue(value: string) {
+  if (value.length === 0) {
+    return null;
+  }
+  if (value === "true") {
+    return true;
+  }
+  if (value === "false") {
+    return false;
+  }
+  return "invalid" as const;
 }
 
 export function normalizeDatasetUupgCriteriaState(
@@ -930,11 +937,22 @@ function matchesUupgDatasetRow(
 ) {
   const normalizedCriteria = normalizeDatasetUupgCriteriaState(uupgFilter);
 
-  return (
-    (!normalizedCriteria.globalEngagementAnywhereEnabled ||
-      matchesExpectedBooleanOrBlank(row.uupgValue, "false")) &&
-    (!normalizedCriteria.frontierGroupEnabled ||
-      matchesExpectedBooleanOrBlank(row.watchlistFrontierGroupValue, "true"))
+  return evaluatePrivateDataChatNamedFilter(
+    {
+      key: "uupg",
+      version: 1,
+      options: {
+        globalEngagementAnywhereEnabled:
+          normalizedCriteria.globalEngagementAnywhereEnabled,
+        frontierGroupEnabled: normalizedCriteria.frontierGroupEnabled,
+      },
+    },
+    {
+      globally_engaged: normalizeNamedFilterBooleanValue(row.uupgValue),
+      frontier_group: normalizeNamedFilterBooleanValue(
+        row.watchlistFrontierGroupValue,
+      ),
+    },
   );
 }
 

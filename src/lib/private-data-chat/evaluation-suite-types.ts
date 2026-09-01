@@ -5,7 +5,7 @@ import type {
 } from "@/lib/private-data-chat/schemas";
 
 export const PRIVATE_DATA_CHAT_CAPABILITY_SUITE_VERSION =
-  "private-data-chat-capabilities-v4.review-1" as const;
+  "private-data-chat-capabilities-v5.review-1" as const;
 
 export const PRIVATE_DATA_CHAT_EVALUATION_TIERS = [
   "smoke",
@@ -38,7 +38,13 @@ export type PrivateDataChatEvaluationCapability =
   | "null-and-zero"
   | "empty-result"
   | "untrusted-result-content"
-  | "end-to-end-read-only";
+  | "end-to-end-read-only"
+  | "named-filter"
+  | "resource-query"
+  | "registered-relationship"
+  | "current-view"
+  | "completeness"
+  | "definition-grounding";
 
 export type PrivateDataChatEvaluationMessage = Readonly<{
   role: "user" | "assistant";

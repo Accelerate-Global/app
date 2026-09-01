@@ -15,6 +15,10 @@ describe("getReferenceResourceRoutePath", () => {
       "/dashboard/resources/tier1-merge-priorities",
     ],
     ["engagement-mappings", "/dashboard/resources/engagement-mappings"],
+    [
+      "semantic-context-catalog",
+      "/dashboard/resources/semantic-context-catalog",
+    ],
   ] satisfies Array<[ReferenceResourceKey, string]>)(
     "maps %s to its canonical detail route",
     (resourceKey, routePath) => {

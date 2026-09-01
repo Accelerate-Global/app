@@ -83,6 +83,18 @@ function validatePlannerCase(
     return;
   }
 
+  if (plan.data.decision === "resource_query") {
+    if (testCase.expectedCompilation) {
+      issue(
+        issues,
+        "resource-compilation",
+        "A governed resource query must not declare SQL compilation expectations.",
+        testCase.id,
+      );
+    }
+    return;
+  }
+
   if (plan.data.decision !== "query") {
     if (testCase.expectedCompilation) {
       issue(
@@ -460,7 +472,7 @@ export function validatePrivateDataChatCapabilitySuite(
   }
 
   for (const testCase of cases) {
-    if (!/^(v3|v4)-[a-z0-9][a-z0-9-]*$/u.test(testCase.id)) {
+    if (!/^(v3|v4|v5)-[a-z0-9][a-z0-9-]*$/u.test(testCase.id)) {
       issue(issues, "case-id", "Case ID is not stable kebab-case.", testCase.id);
     }
     if (ids.has(testCase.id)) {

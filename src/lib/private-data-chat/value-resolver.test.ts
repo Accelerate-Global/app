@@ -5,6 +5,7 @@ import {
   type IsoCountryCodeEntry,
 } from "@/lib/iso-country-codes";
 import { PRIVATE_DATA_CHAT_CATALOG_VERSION } from "@/lib/private-data-chat/catalog";
+import { PRIVATE_DATA_CHAT_NAMED_FILTER_REGISTRY_VERSION } from "@/lib/private-data-chat/named-filters";
 import {
   PrivateDataChatValueResolutionError,
   resolvePrivateDataChatQueryValues,
@@ -64,6 +65,7 @@ const entries = [
 function recordsQuery(countryValue: string | string[]) {
   return {
     catalogVersion: PRIVATE_DATA_CHAT_CATALOG_VERSION,
+    namedFilterRegistryVersion: PRIVATE_DATA_CHAT_NAMED_FILTER_REGISTRY_VERSION,
     dataset: "primary_people_groups" as const,
     mode: "records" as const,
     fields: ["people_id" as const],
@@ -74,6 +76,7 @@ function recordsQuery(countryValue: string | string[]) {
         value: countryValue,
       },
     ],
+    namedFilters: [],
     sort: [],
     limit: 25,
   };
@@ -84,11 +87,13 @@ describe("private data chat controlled value resolution", () => {
     const loadCountryValues = vi.fn();
     const query = {
       catalogVersion: PRIVATE_DATA_CHAT_CATALOG_VERSION,
+      namedFilterRegistryVersion: PRIVATE_DATA_CHAT_NAMED_FILTER_REGISTRY_VERSION,
       dataset: "primary_people_groups" as const,
       mode: "aggregate" as const,
       metrics: ["people_group_count" as const],
       dimensions: [],
       filters: [{ field: "frontier_group" as const, operator: "eq" as const, value: true }],
+      namedFilters: [],
       sort: [],
       limit: 1,
     };
@@ -177,5 +182,61 @@ describe("private data chat controlled value resolution", () => {
         },
       }),
     ).rejects.toBeInstanceOf(PrivateDataChatValueResolutionError);
+  });
+
+  it("resolves reviewed ROP names to canonical bound-query values with version lineage", async () => {
+    const query = {
+      catalogVersion: PRIVATE_DATA_CHAT_CATALOG_VERSION,
+      namedFilterRegistryVersion: PRIVATE_DATA_CHAT_NAMED_FILTER_REGISTRY_VERSION,
+      dataset: "primary_people_groups" as const,
+      mode: "records" as const,
+      fields: ["people_id" as const, "rop2_code" as const],
+      filters: [
+        { field: "rop2_code" as const, operator: "eq" as const, value: "Cluster" },
+        { field: "rop_geography" as const, operator: "eq" as const, value: "SDN" },
+      ],
+      namedFilters: [],
+      sort: [],
+      limit: 25,
+    };
+    const ropVersion = {
+      id: "bd000001-1337-403d-8eb5-b7c44a1be131",
+      versionNumber: 4,
+      contentChecksum: "b".repeat(64),
+    };
+    const resolution = await resolvePrivateDataChatQueryValues(query, {
+      loadRopValues: async () => ({
+        version: ropVersion,
+        payload: {
+          entries: [
+            {
+              rop2: { code: "12", name: "Cluster", display: "12 — Cluster" },
+              status: "Active",
+              place: null,
+              language: null,
+              source: null,
+              joinIssue: null,
+              joinIssueLabel: null,
+            },
+          ],
+          geoIndexByRop3: {
+            "119434": [
+              { geoName: "Sudan", isoAlpha3: "SDN", rog: "AFR" },
+            ],
+          },
+        },
+      } as never),
+    });
+
+    expect(resolution).toMatchObject({
+      status: "resolved",
+      query: {
+        filters: [{ value: "12" }, { value: "SDN" }],
+      },
+      valueBindings: [
+        { field: "rop2_code", resourceKey: "rop-codes", resourceVersionId: ropVersion.id },
+        { field: "rop_geography", resourceKey: "rop-codes", resourceVersionId: ropVersion.id },
+      ],
+    });
   });
 });

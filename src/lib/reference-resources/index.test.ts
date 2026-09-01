@@ -17,7 +17,10 @@ import {
 import sourceAliasesFixture from "./fixtures/source-aliases.sanitized.json";
 import { preparePipelineResource } from "./pipeline-adapters";
 import { SOURCE_ALIASES_RESOURCE_KEY } from "./pipeline-types";
-import { COUNTRY_RESOURCE_KEY } from "./types";
+import {
+  COUNTRY_RESOURCE_KEY,
+  SEMANTIC_CONTEXT_RESOURCE_KEY,
+} from "./types";
 
 const entry: IsoCountryCodeEntry = {
   displayName: "Example, Territory",
@@ -127,5 +130,40 @@ describe("reference resource catalog", () => {
     expect(catalog[0]?.routePath).toBe(
       "/dashboard/resources/source-aliases",
     );
+  });
+
+  it("publishes the semantic catalog only at its reviewed admin route", async () => {
+    getDbMock
+      .mockReturnValueOnce({
+        select: () => ({
+          from: () => ({
+            orderBy: async () => [
+              {
+                id: "semantic-resource-id",
+                resourceKey: SEMANTIC_CONTEXT_RESOURCE_KEY,
+                resourceKind: "semantic-catalog",
+                label: "Private Qwen semantic context",
+                description: "Reviewed definitions",
+                routePath: "/stale",
+                sortOrder: 99,
+                activeVersionId: null,
+              },
+            ],
+          }),
+        }),
+      })
+      .mockReturnValueOnce({
+        select: () => ({
+          from: () => ({
+            innerJoin: () => ({ where: async () => [] }),
+          }),
+        }),
+      });
+    await expect(listReferenceResourceCatalog()).resolves.toEqual([
+      expect.objectContaining({
+        resourceKey: SEMANTIC_CONTEXT_RESOURCE_KEY,
+        routePath: "/dashboard/resources/semantic-context-catalog",
+      }),
+    ]);
   });
 });

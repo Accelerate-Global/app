@@ -7,6 +7,7 @@ import { getCurrentIdentity } from "@/lib/auth";
 import {
   getReferenceResourcePage,
   listReferenceResourceCatalog,
+  listReferenceResourceVersions,
 } from "@/lib/reference-resources";
 import PipelineReferenceResourcePage from "./page";
 
@@ -26,6 +27,7 @@ vi.mock("@/lib/auth", () => ({
 vi.mock("@/lib/reference-resources", () => ({
   getReferenceResourcePage: vi.fn(),
   listReferenceResourceCatalog: vi.fn(),
+  listReferenceResourceVersions: vi.fn(),
 }));
 
 vi.mock("@/components/dashboard/pipeline-reference-resource-client", () => ({
@@ -44,10 +46,19 @@ vi.mock("@/components/dashboard/pipeline-reference-resource-client", () => ({
   ),
 }));
 
+vi.mock("@/components/dashboard/semantic-context-resource-client", () => ({
+  SemanticContextResourceClient: () => (
+    <div data-testid="semantic-context-resource-client" />
+  ),
+}));
+
 const getCurrentIdentityMock = vi.mocked(getCurrentIdentity);
 const getReferenceResourcePageMock = vi.mocked(getReferenceResourcePage);
 const listReferenceResourceCatalogMock = vi.mocked(
   listReferenceResourceCatalog,
+);
+const listReferenceResourceVersionsMock = vi.mocked(
+  listReferenceResourceVersions,
 );
 
 const version = {
@@ -71,6 +82,7 @@ const version = {
 describe("/dashboard/resources/[resourceKey]", () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    listReferenceResourceVersionsMock.mockResolvedValue([]);
     listReferenceResourceCatalogMock.mockResolvedValue([{
       id: "20000000-0000-4000-8000-000000000001",
       resourceKey: "source-aliases",

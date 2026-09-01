@@ -886,7 +886,9 @@ test("admin can ask private data chat synthetic question", async ({
           name: "How many people groups are in the current primary dataset?",
         })
         .click();
-      await expect(page.getByText("people_group_count: 3")).toBeVisible();
+      await expect(
+        page.getByText("People-group count: 3 people groups", { exact: true }),
+      ).toBeVisible();
       await expect(page.getByText("Data provenance")).toHaveCount(0);
     },
   );

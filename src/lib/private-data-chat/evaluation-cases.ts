@@ -1,6 +1,10 @@
 import { PRIVATE_DATA_CHAT_CATALOG_VERSION } from "@/lib/private-data-chat/catalog";
 import type { PrivateQwenConversationMessage } from "@/lib/private-data-chat/qwen-gateway";
-import type { PrivateDataChatPlan } from "@/lib/private-data-chat/schemas";
+import {
+  privateDataChatPlanSchema,
+  type PrivateDataChatPlan,
+  type PrivateDataChatPlanInput,
+} from "@/lib/private-data-chat/schemas";
 
 type GoldenParameter = string | number | boolean | null | Array<string | number | boolean>;
 
@@ -26,7 +30,14 @@ export type PrivateDataChatEvaluationCase = {
   };
 };
 
-export const PRIVATE_DATA_CHAT_EVALUATION_CASES: PrivateDataChatEvaluationCase[] = [
+type RawPrivateDataChatEvaluationCase = Omit<
+  PrivateDataChatEvaluationCase,
+  "expectedPlan"
+> & {
+  expectedPlan: PrivateDataChatPlanInput;
+};
+
+const RAW_PRIVATE_DATA_CHAT_EVALUATION_CASES: RawPrivateDataChatEvaluationCase[] = [
   {
     id: "count-all-people-groups",
     category: "aggregation",
@@ -482,3 +493,9 @@ export const PRIVATE_DATA_CHAT_EVALUATION_CASES: PrivateDataChatEvaluationCase[]
     },
   },
 ];
+
+export const PRIVATE_DATA_CHAT_EVALUATION_CASES: PrivateDataChatEvaluationCase[] =
+  RAW_PRIVATE_DATA_CHAT_EVALUATION_CASES.map((testCase) => ({
+    ...testCase,
+    expectedPlan: privateDataChatPlanSchema.parse(testCase.expectedPlan),
+  }));

@@ -229,6 +229,10 @@ describe("AccountControl", () => {
   });
 
   it("signs out through the existing auth route", async () => {
+    sessionStorage.setItem(
+      "private-data-chat:view-context:v1",
+      "signed-view-context",
+    );
     render(
       <AccountControl
         identity={{
@@ -249,6 +253,9 @@ describe("AccountControl", () => {
       expect(fetchMock).toHaveBeenCalledWith("/auth/sign-out", { method: "POST" });
     });
     expect(assignMock).toHaveBeenCalledWith("/");
+    expect(
+      sessionStorage.getItem("private-data-chat:view-context:v1"),
+    ).toBeNull();
     expect(pushMock).not.toHaveBeenCalled();
     expect(refreshMock).not.toHaveBeenCalled();
   });

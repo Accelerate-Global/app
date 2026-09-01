@@ -11,6 +11,7 @@ import type {
 import type {
   PrivateDataChatPlan,
   PrivateDataChatQuery,
+  PrivateDataChatResourceQuery,
 } from "@/lib/private-data-chat/schemas";
 
 type PlannerCaseMetadata = Readonly<{
@@ -101,18 +102,63 @@ export function plannerTextCase(
   };
 }
 
+export function plannerResourceCase(
+  input: PlannerCaseMetadata &
+    Readonly<{
+      question?: string;
+      messages?: readonly PrivateDataChatEvaluationMessage[];
+      reason: string;
+      resourceQuery: PrivateDataChatResourceQuery;
+    }>,
+): PrivateDataChatPlannerEvaluationCase {
+  const messages =
+    input.messages ??
+    ([{ role: "user", content: input.question ?? "" }] as const);
+  return {
+    id: input.id,
+    kind: "planner",
+    source: "v4-expansion",
+    tier: input.tier,
+    capability: input.capability,
+    risk: input.risk ?? "standard",
+    rationale: input.rationale,
+    tags: input.tags ?? [],
+    messages,
+    expectedPlan: {
+      decision: "resource_query",
+      reason: input.reason,
+      resourceQuery: input.resourceQuery,
+    },
+  };
+}
+
 const baselineTextRubrics: Readonly<Record<string, PrivateDataChatTextRubric>> = {
   "macro-region-not-country": {
     requiredAll: ["macro region"],
     requiredAny: [
-      ["not available", "unavailable", "does not contain", "does not support", "not in"],
+      [
+        "not available",
+        "unavailable",
+        "does not contain",
+        "does not support",
+        "not in",
+        "not 'macro region'",
+        'not "macro region"',
+      ],
       ["country"],
     ],
     forbidden: ["executed", "joined"],
   },
   "time-series-unavailable": {
     requiredAny: [
-      ["historical", "time series", "yearly"],
+      [
+        "historical",
+        "time series",
+        "yearly",
+        "temporal",
+        "year-over-year",
+        "year over year",
+      ],
       ["not available", "unavailable", "does not contain", "does not support", "no time-series"],
       ["current", "present"],
     ],
@@ -121,13 +167,33 @@ const baselineTextRubrics: Readonly<Record<string, PrivateDataChatTextRubric>> =
   "macro-country-join-unavailable": {
     requiredAll: ["regional office"],
     requiredAny: [
-      ["not available", "unavailable", "does not contain", "no join"],
-      ["country"],
+      [
+        "not available",
+        "unavailable",
+        "does not contain",
+        "does not support",
+        "no join",
+        "not a registered",
+        "not registered",
+      ],
+      [
+        "country",
+        "ROP classification",
+        "ROP3 classification",
+        "ROP3 name",
+        "ROP3 code",
+        "rop1_code",
+        "rop3_code",
+        "available grouping",
+      ],
     ],
     forbidden: ["join completed"],
   },
   "ambiguous-largest": {
-    requiredAll: ["population", "how many"],
+    requiredAll: ["population"],
+    requiredAny: [
+      ["how many", "number of results", "result count", "limit", "number of"],
+    ],
   },
   "largest-missing-count": {
     requiredAny: [["how many", "number of", "result count", "limit"]],

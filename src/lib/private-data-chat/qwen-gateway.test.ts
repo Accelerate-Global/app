@@ -11,6 +11,10 @@ import {
   PrivateQwenGatewayError,
   signPrivateQwenGatewayRequest,
 } from "@/lib/private-data-chat/qwen-gateway";
+import {
+  PRIVATE_DATA_CHAT_RUNTIME_CONTRACT,
+  PRIVATE_DATA_CHAT_RUNTIME_CONTRACT_CHECKSUM,
+} from "@/lib/private-data-chat/runtime-contract";
 
 const originalEnvironment = { ...process.env };
 
@@ -58,6 +62,12 @@ describe("private Qwen gateway", () => {
     const gateway = new HttpPrivateQwenGateway(fetcher);
     const plan = await gateway.plan({
       messages: [{ role: "user", content: "Show the groups there." }],
+      trustedTurnState: [{ selectedConcepts: ["country"] }] as never,
+      trustedCurrentView: { filters: [{ field: "country" }] } as never,
+      semanticContext: {
+        status: "ready",
+        items: [{ stableKey: "field.country" }],
+      } as never,
     });
 
     expect(plan.decision).toBe("clarify");
@@ -74,6 +84,16 @@ describe("private Qwen gateway", () => {
       "analytics_ro.primary_people_groups",
     );
     expect(String(body.systemPrompt)).not.toContain("count(*)");
+    expect(body).toMatchObject({
+      runtimeContract: PRIVATE_DATA_CHAT_RUNTIME_CONTRACT,
+      runtimeContractChecksum: PRIVATE_DATA_CHAT_RUNTIME_CONTRACT_CHECKSUM,
+      trustedTurnState: [{ selectedConcepts: ["country"] }],
+      trustedCurrentView: { filters: [{ field: "country" }] },
+      semanticContext: {
+        status: "ready",
+        items: [{ stableKey: "field.country" }],
+      },
+    });
   });
 
   it("sends only selected safe semantic definitions with grounded results", async () => {
@@ -93,7 +113,18 @@ describe("private Qwen gateway", () => {
         "country",
         "total_population",
       ]),
+      retrievedSemanticContext: {
+        status: "ready",
+        items: [{ stableKey: "result.matched_count" }],
+      } as never,
       result: {
+        mode: "aggregate",
+        requestedLimit: 1,
+        returnedCount: 1,
+        matchingCount: 1,
+        hasMore: false,
+        selectedConcepts: ["country", "total_population"],
+        appliedNamedFilters: [],
         rows: [{ country: "India", total_population: "4000" }],
         provenance: {
           queryId: "8a000001-1337-403d-8eb5-b7c44a1be131",
@@ -115,6 +146,14 @@ describe("private Qwen gateway", () => {
     expect(serialized).not.toContain("average_percent_evangelical");
     expect(serialized).not.toContain("analytics_ro");
     expect(serialized).not.toContain("sum(p.population)");
+    expect(body.retrievedSemanticContext).toMatchObject({
+      status: "ready",
+      items: [{ stableKey: "result.matched_count" }],
+    });
+    expect(body.runtimeContract).toEqual(PRIVATE_DATA_CHAT_RUNTIME_CONTRACT);
+    expect(body.runtimeContractChecksum).toBe(
+      PRIVATE_DATA_CHAT_RUNTIME_CONTRACT_CHECKSUM,
+    );
   });
 
   it("normalizes busy and invalid response failures", async () => {

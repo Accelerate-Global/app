@@ -1,4 +1,5 @@
 import type { PrivateDataChatProvenanceSchema } from "@/lib/private-data-chat/event-types";
+import type { PrivateDataChatResourceQueryResult } from "@/lib/private-data-chat/schemas";
 
 export type PrivateDataChatStage =
   | "interpreting"
@@ -10,6 +11,8 @@ export type PrivateDataChatTurnMessage = {
   content: string;
   facts: string[];
   provenance: PrivateDataChatProvenanceSchema | null;
+  turnStateToken?: string | null;
+  resourceResult?: PrivateDataChatResourceQueryResult | null;
 };
 
 export type PrivateDataChatStreamEvent =

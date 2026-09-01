@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { DatasetRowsResponse, DatasetSummary } from "@/lib/api-types";
 import { REGION_COUNTRY_OPTIONS } from "@/lib/region-country-options";
+import { evaluatePrivateDataChatNamedFilter } from "@/lib/private-data-chat/named-filters";
 import {
   applyDatasetFilterSections,
   getDatasetCountryNames,
@@ -2078,6 +2079,47 @@ describe("dataset-filtering", () => {
       "row-blank-frontier",
       "row-missing-frontier",
     ]);
+  });
+
+  it("keeps the table UUPG result identical to the shared named-filter authority", () => {
+    const candidates = [
+      { id: "false-true", global: "FALSE", frontier: "TRUE", typedGlobal: false, typedFrontier: true },
+      { id: "blank-true", global: "", frontier: "TRUE", typedGlobal: null, typedFrontier: true },
+      { id: "false-blank", global: "FALSE", frontier: "", typedGlobal: false, typedFrontier: null },
+      { id: "true-true", global: "TRUE", frontier: "TRUE", typedGlobal: true, typedFrontier: true },
+      { id: "false-false", global: "FALSE", frontier: "FALSE", typedGlobal: false, typedFrontier: false },
+      { id: "invalid-true", global: "unknown", frontier: "TRUE", typedGlobal: "invalid", typedFrontier: true },
+    ] as const;
+    const filtered = filterDatasetRowsByUupg(
+      candidates.map((candidate, rowIndex) => ({
+        id: candidate.id,
+        rowIndex,
+        data: {
+          engage_global_engagement_anywhere: candidate.global,
+          christianity_frontier_group: candidate.frontier,
+        },
+      })),
+      createUupgFilter(),
+    );
+    const authoritative = candidates
+      .filter((candidate) =>
+        evaluatePrivateDataChatNamedFilter(
+          {
+            key: "uupg",
+            version: 1,
+            options: {
+              globalEngagementAnywhereEnabled: true,
+              frontierGroupEnabled: true,
+            },
+          },
+          {
+            globally_engaged: candidate.typedGlobal,
+            frontier_group: candidate.typedFrontier,
+          },
+        ),
+      )
+      .map((candidate) => candidate.id);
+    expect(filtered.map((row) => row.id)).toEqual(authoritative);
   });
 
   it("supports mixed normalized and raw UUPG and frontier keys in the same batch", () => {

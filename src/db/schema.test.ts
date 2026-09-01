@@ -40,6 +40,23 @@ import {
 } from "./schema";
 
 describe("datasets schema", () => {
+  it("adds private semantic retrieval, exact vector candidate, and redacted audit storage", async () => {
+    const migration = await readFile(
+      path.join(
+        process.cwd(),
+        "supabase/migrations/20260831190140_add_qwen_semantic_context.sql",
+      ),
+      "utf8",
+    );
+    expect(migration).toContain("resource_kind = 'semantic-catalog'");
+    expect(migration).toContain(
+      "create table if not exists private.analytics_semantic_context_embeddings",
+    );
+    expect(migration).toContain("embedding extensions.vector(1024) not null");
+    expect(migration).not.toMatch(/using\s+(?:hnsw|ivfflat)/iu);
+    expect(migration).toContain("retrieved_card_keys jsonb");
+    expect(migration).toContain("resource_operation text");
+  });
   it("declares the compact Samson archive catalog without payload fields", () => {
     expect(dataArchiveBackupRuns.runKey.name).toBe("run_key");
     expect(dataArchiveBackupRuns.archiveAllocatedBytes.name).toBe(
