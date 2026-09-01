@@ -10510,6 +10510,9 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
       "which",
       "in total",
       "specific criteria",
+      "criteria",
+      "filter",
+      "grouping",
       "scope",
       "filtered"
     ],
@@ -11255,6 +11258,8 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
       "not available",
       "unavailable",
       "cannot access",
+      "do not have access",
+      "no access",
       "only",
       "not approved",
       "not an approved"

@@ -98,6 +98,14 @@ describe("private data chat capability evaluation suite", () => {
       question: expect.stringContaining("What does there refer to"),
     });
     expect(
+      plannerCase("v4-clarify-geographic-referent-missing")?.textRubric
+        ?.requiredAny?.[0],
+    ).toContain("filter");
+    expect(
+      plannerCase("v4-clarify-dataset-comparison-unavailable")?.textRubric
+        ?.requiredAny?.[0],
+    ).toContain("do not have access");
+    expect(
       plannerCase("v3-mutation-refusal")?.textRubric?.requiredAny?.[0],
     ).toContain("deleting");
     expect(

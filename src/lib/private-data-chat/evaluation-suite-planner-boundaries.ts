@@ -110,6 +110,9 @@ const clarificationDefinitions: readonly Readonly<{
           "which",
           "in total",
           "specific criteria",
+          "criteria",
+          "filter",
+          "grouping",
           "scope",
           "filtered",
         ],
@@ -293,7 +296,7 @@ const clarificationDefinitions: readonly Readonly<{
     response: "Prior uploaded datasets are not available to this chat. I can analyze only the approved current primary dataset.",
     reason: "The pilot exposes one current projection.",
     capability: "unsupported-concept",
-    rubric: { requiredAll: ["current"], requiredAny: [["not available", "unavailable", "cannot access", "only", "not approved", "not an approved"]], forbidden: ["difference is"] },
+    rubric: { requiredAll: ["current"], requiredAny: [["not available", "unavailable", "cannot access", "do not have access", "no access", "only", "not approved", "not an approved"]], forbidden: ["difference is"] },
   },
   {
     id: "office-join-unavailable",
