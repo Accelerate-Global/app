@@ -20,7 +20,7 @@ describe("semantic guiding-document route", () => {
     vi.resetAllMocks();
     vi.mocked(getCurrentIdentity).mockResolvedValue({
       ownerId: "admin-1",
-      email: "blake@risencode.org",
+      email: "admin@example.com",
       fullName: null,
       workspaceRole: "admin",
       isDatasetAdmin: true,

@@ -14,7 +14,7 @@ vi.mock("@/lib/private-data-chat/config", () => ({
   getPrivateDataChatConfiguration: () => ({
     enabled: true,
     semanticContextEnabled: true,
-    canaryEmails: ["blake@risencode.org"],
+    canaryEmails: ["admin@example.com"],
     analyticsDatabaseUrl: "postgres://example",
     auditHmacKey: "a".repeat(32),
     turnStateHmacKey: "b".repeat(32),
@@ -48,7 +48,7 @@ describe("private data chat view-context route", () => {
     vi.resetAllMocks();
     vi.mocked(getCurrentIdentity).mockResolvedValue({
       ownerId: "owner-1",
-      email: "blake@risencode.org",
+      email: "admin@example.com",
       fullName: null,
       workspaceRole: "admin",
       isDatasetAdmin: true,

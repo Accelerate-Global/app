@@ -8,7 +8,7 @@ import type { RopCodeEntry } from "@/lib/rop-codes";
 
 const identity = {
   ownerId: "owner-1",
-  email: "blake@risencode.org",
+  email: "admin@example.com",
   fullName: null,
   workspaceRole: "admin" as const,
   isDatasetAdmin: true,
