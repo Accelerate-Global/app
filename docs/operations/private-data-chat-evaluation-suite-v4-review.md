@@ -25349,7 +25349,7 @@ This case is defined for later execution only after separate approval.
 [
   {
     "role": "user",
-    "content": "List 10 people IDs in US, ordered by people ID."
+    "content": "List 10 people IDs in U.S., ordered by people ID."
   }
 ]
 ```

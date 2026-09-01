@@ -14,7 +14,7 @@ import {
 describe("private data chat prompts", () => {
   it("supplies the reviewed semantic catalog and exact revision to planning", () => {
     expect(PRIVATE_DATA_CHAT_PLANNER_PROMPT_VERSION).toBe(
-      "people-groups-planner-v24",
+      "people-groups-planner-v25",
     );
     expect(PRIVATE_DATA_CHAT_PLANNER_SYSTEM_PROMPT).toContain(
       PRIVATE_DATA_CHAT_CATALOG_VERSION,

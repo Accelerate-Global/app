@@ -15,7 +15,7 @@ import {
 } from "@/lib/private-data-chat/semantic-authority";
 
 export const PRIVATE_DATA_CHAT_PLANNER_PROMPT_VERSION =
-  "people-groups-planner-v24" as const;
+  "people-groups-planner-v25" as const;
 export const PRIVATE_DATA_CHAT_ANSWER_PROMPT_VERSION =
   "grounded-answer-v6" as const;
 export const PRIVATE_QWEN_MODEL_SHA256 =

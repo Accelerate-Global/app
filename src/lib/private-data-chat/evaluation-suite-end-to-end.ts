@@ -158,7 +158,7 @@ export const PRIVATE_DATA_CHAT_END_TO_END_CAPABILITY_CASES: readonly PrivateData
     tier: "core",
     rationale: "Verify the country resolver canonicalizes the US alias before safe compilation.",
     tags: ["records", "country", "alias"],
-    question: "List 10 people IDs in US, ordered by people ID.",
+    question: "List 10 people IDs in U.S., ordered by people ID.",
     selectedKeys: ["people_id"],
     filterFields: ["country"],
     sort: [{ field: "people_id", direction: "asc" }],
