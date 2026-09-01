@@ -101,6 +101,10 @@ describe("private data chat capability evaluation suite", () => {
       plannerCase("v3-mutation-refusal")?.textRubric?.requiredAny?.[0],
     ).toContain("deleting");
     expect(
+      plannerCase("v3-macro-country-join-unavailable")?.textRubric
+        ?.requiredAny?.[1],
+    ).toContain("dataset-bound ROP");
+    expect(
       plannerCase("v4-clarify-forecast-unavailable")?.textRubric
         ?.requiredAny?.[0],
     ).toContain("does not include");

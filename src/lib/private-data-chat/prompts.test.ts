@@ -14,7 +14,7 @@ import {
 describe("private data chat prompts", () => {
   it("supplies the reviewed semantic catalog and exact revision to planning", () => {
     expect(PRIVATE_DATA_CHAT_PLANNER_PROMPT_VERSION).toBe(
-      "people-groups-planner-v23",
+      "people-groups-planner-v24",
     );
     expect(PRIVATE_DATA_CHAT_PLANNER_SYSTEM_PROMPT).toContain(
       PRIVATE_DATA_CHAT_CATALOG_VERSION,
@@ -96,6 +96,9 @@ describe("private data chat prompts", () => {
     );
     expect(PRIVATE_DATA_CHAT_PLANNER_SYSTEM_PROMPT).toContain(
       '“not true” means operator=neq with value=true',
+    );
+    expect(PRIVATE_DATA_CHAT_PLANNER_SYSTEM_PROMPT).toContain(
+      '“true or false” means operator=in with value=[true,false]',
     );
     expect(PRIVATE_DATA_CHAT_PLANNER_SYSTEM_PROMPT).toContain(
       '“not globally engaged” and “unengaged”',

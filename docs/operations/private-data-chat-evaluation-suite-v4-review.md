@@ -956,6 +956,10 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
       "ROP3 code",
       "rop1_code",
       "rop3_code",
+      "ROP relationship",
+      "dataset-bound ROP",
+      "ROP geography",
+      "classification codes",
       "available grouping"
     ]
   ],

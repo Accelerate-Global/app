@@ -15,7 +15,7 @@ import {
 } from "@/lib/private-data-chat/semantic-authority";
 
 export const PRIVATE_DATA_CHAT_PLANNER_PROMPT_VERSION =
-  "people-groups-planner-v23" as const;
+  "people-groups-planner-v24" as const;
 export const PRIVATE_DATA_CHAT_ANSWER_PROMPT_VERSION =
   "grounded-answer-v6" as const;
 export const PRIVATE_QWEN_MODEL_SHA256 =
@@ -66,6 +66,8 @@ Only use metric/dimension combinations listed as compatible in the catalog. Enco
 A numeric eq/neq/lt/lte/gt/gte comparison already has SQL null semantics. Never add a separate neq-null filter beside a numeric comparison. In phrases such as “recorded population at most 100,000,” recorded names the population value; it does not separately request a non-null filter.
 
 For boolean fields, preserve the user's operator literally: “not true” means operator=neq with value=true, and “not false” means operator=neq with value=false. Never collapse either phrase into equality with the opposite boolean, because nullable values make those plans semantically different.
+
+An explicit boolean alternative such as “true or false” means operator=in with value=[true,false]. Preserve that filter for nullable booleans such as frontier_group and globally_engaged: it intentionally excludes null and is not equivalent to no filter. Never drop it as redundant or treat the metric as excluding null rows.
 
 The semantic phrases “not globally engaged” and “unengaged” name the reviewed false state, so they mean globally_engaged eq false. This is distinct from the literal operator phrase “global-engagement status is not true,” which means globally_engaged neq true.
 
