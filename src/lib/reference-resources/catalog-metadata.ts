@@ -8,6 +8,7 @@ import {
 import {
   COUNTRY_RESOURCE_KEY,
   ROP_RESOURCE_KEY,
+  SEMANTIC_CONTEXT_RESOURCE_KEY,
   type ReferenceResourceKey,
 } from "./types";
 
@@ -38,6 +39,7 @@ export const REFERENCE_RESOURCE_AFFECTED_ENGINES: Readonly<
     "Aggregate 1 products",
   ],
   [ENGAGEMENT_MAPPINGS_RESOURCE_KEY]: ["Tier 2 partner forming"],
+  [SEMANTIC_CONTEXT_RESOURCE_KEY]: ["Private Qwen data chat"],
 };
 
 export function affectedEnginesForResource(resourceKey: ReferenceResourceKey) {

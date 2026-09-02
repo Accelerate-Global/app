@@ -15,8 +15,16 @@ import {
   type PrivateDataChatQuery,
 } from "@/lib/private-data-chat/schemas";
 import type { PrivateDataChatValueBinding } from "@/lib/private-data-chat/value-resolver";
+import {
+  compilePrivateDataChatNamedFilterExpression,
+  getPrivateDataChatNamedFilterExpression,
+} from "@/lib/private-data-chat/named-filters";
+import {
+  PRIVATE_DATA_CHAT_ROP_GEOGRAPHY_FILTER,
+  PRIVATE_DATA_CHAT_ROP_QUERYABLE_FIELD_KEYS,
+} from "@/lib/private-data-chat/semantic-authority";
 
-export const PRIVATE_DATA_CHAT_POLICY_VERSION = "query-policy-v2" as const;
+export const PRIVATE_DATA_CHAT_POLICY_VERSION = "query-policy-v4" as const;
 
 export class PrivateDataChatQueryPolicyError extends Error {
   constructor(message: string) {
@@ -42,6 +50,9 @@ export type CompiledPrivateDataChatQuery = {
   maxResultBytes: typeof PRIVATE_DATA_CHAT_MAX_RESULT_BYTES;
   query: PrivateDataChatQuery;
   valueBindings: readonly PrivateDataChatValueBinding[];
+  appliedNamedFilterKeys: readonly string[];
+  appliedRelationshipKeys: readonly string[];
+  requiresRopBinding: boolean;
 };
 
 function quoteIdentifier(value: string) {
@@ -67,6 +78,37 @@ function compileFilter(
   const field = PRIVATE_DATA_CHAT_FIELDS[filter.field];
   const expression = fieldExpression(filter.field);
   const scalar = Array.isArray(filter.value) ? null : filter.value;
+
+  if (filter.field === "rop_geography") {
+    if (filter.operator === "eq" && scalar === null) {
+      return `coalesce(cardinality(${expression}), 0) = 0`;
+    }
+    if (filter.operator === "neq" && scalar === null) {
+      return `coalesce(cardinality(${expression}), 0) > 0`;
+    }
+    if (filter.operator === "in") {
+      if (!Array.isArray(filter.value) || filter.value.some((value) => value === null)) {
+        throw new PrivateDataChatQueryPolicyError(
+          "ROP geography in filters require text values.",
+        );
+      }
+      parameters.push(filter.value as string[]);
+      return `${expression} && $${parameters.length}::text[]`;
+    }
+    if (scalar === null || typeof scalar !== "string") {
+      throw new PrivateDataChatQueryPolicyError(
+        "ROP geography filters require text values.",
+      );
+    }
+    if (filter.operator !== "eq" && filter.operator !== "neq") {
+      throw new PrivateDataChatQueryPolicyError(
+        "ROP geography supports only equality, inequality, and in filters.",
+      );
+    }
+    parameters.push(scalar);
+    const match = `$${parameters.length}::text = ANY(coalesce(${expression}, '{}'::text[]))`;
+    return filter.operator === "eq" ? match : `NOT (${match})`;
+  }
 
   if (filter.operator === "eq" && scalar === null) {
     return `${expression} IS NULL`;
@@ -177,6 +219,54 @@ export function compilePrivateDataChatQuery(
   const query = parsed.data;
   const parameters: PrivateDataChatSqlParameter[] = [];
   const where = query.filters.map((filter) => compileFilter(filter, parameters));
+  const ropKeys = new Set<string>([
+    ...PRIVATE_DATA_CHAT_ROP_QUERYABLE_FIELD_KEYS,
+    PRIVATE_DATA_CHAT_ROP_GEOGRAPHY_FILTER.key,
+  ]);
+  const referencedKeys = [
+    ...query.filters.map((filter) => filter.field),
+    ...query.sort.map((sort) => sort.field),
+    ...(query.mode === "aggregate"
+      ? [...query.dimensions, ...query.metrics]
+      : query.fields),
+  ];
+  const requiresRopBinding = referencedKeys.some((key) => ropKeys.has(key));
+  if (requiresRopBinding) {
+    where.unshift('p."rop_binding_status" = \'bound\'');
+  }
+  const namedFilterKeys = new Set<string>();
+
+  for (const namedFilter of query.namedFilters) {
+    if (namedFilterKeys.has(namedFilter.key)) {
+      throw new PrivateDataChatQueryPolicyError(
+        `Named filter ${namedFilter.key} cannot be applied more than once.`,
+      );
+    }
+    namedFilterKeys.add(namedFilter.key);
+
+    try {
+      where.push(
+        compilePrivateDataChatNamedFilterExpression({
+          expression: getPrivateDataChatNamedFilterExpression(namedFilter),
+          fields: {
+            globally_engaged: {
+              valueExpression: 'p."globally_engaged"',
+              missingExpression: 'p."globally_engaged_is_missing" = true',
+            },
+            frontier_group: {
+              valueExpression: 'p."frontier_group"',
+              missingExpression: 'p."frontier_group_is_missing" = true',
+            },
+          },
+          parameters,
+        }),
+      );
+    } catch {
+      throw new PrivateDataChatQueryPolicyError(
+        `Named filter ${namedFilter.key} is not approved.`,
+      );
+    }
+  }
   let selectedKeys: string[];
   let select: string;
   let groupBy = "";
@@ -221,9 +311,13 @@ export function compilePrivateDataChatQuery(
   const whereClause = where.length > 0 ? `\nWHERE ${where.join("\n  AND ")}` : "";
   const orderClause = orderBy ? `\nORDER BY ${orderBy}` : "";
   parameters.push(query.limit);
+  const innerQuery = `SELECT\n  ${select}\nFROM ${PRIVATE_DATA_CHAT_VIEW} AS p${whereClause}${groupBy}`;
 
   return {
-    text: `SELECT\n  ${select}\nFROM ${PRIVATE_DATA_CHAT_VIEW} AS p${whereClause}${groupBy}${orderClause}\nLIMIT $${parameters.length}`,
+    text: `SELECT\n  q.*,\n  count(*) over()::bigint AS "__matched_count"\nFROM (\n${innerQuery
+      .split("\n")
+      .map((line) => `  ${line}`)
+      .join("\n")}\n) AS q${orderClause}\nLIMIT $${parameters.length}`,
     parameters,
     selectedKeys,
     catalogVersion: PRIVATE_DATA_CHAT_CATALOG_VERSION,
@@ -232,5 +326,10 @@ export function compilePrivateDataChatQuery(
     maxResultBytes: PRIVATE_DATA_CHAT_MAX_RESULT_BYTES,
     query,
     valueBindings: [...(options.valueBindings ?? [])],
+    appliedNamedFilterKeys: [...namedFilterKeys],
+    appliedRelationshipKeys: requiresRopBinding
+      ? ["people_group_to_bound_rop3"]
+      : [],
+    requiresRopBinding,
   };
 }

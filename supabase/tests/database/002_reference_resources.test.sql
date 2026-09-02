@@ -114,8 +114,8 @@ select is(
 
 select is(
   (select count(*)::bigint from private.reference_resources),
-  7::bigint,
-  'Country/ROG, ROP, and all five pipeline resource definitions are registered'
+  8::bigint,
+  'Country/ROG, ROP, five pipeline resources, and semantic context are registered'
 );
 
 select ok(

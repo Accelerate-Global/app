@@ -4,10 +4,35 @@ import { pathToFileURL } from "node:url";
 
 import { runCommand } from "./lib/command";
 
+export const VERIFY_APP_TEST_ARGS = [
+  "exec",
+  "vitest",
+  "run",
+  "--maxWorkers=1",
+] as const;
+
 type VerifyAppCommand = {
   label: string;
-  promise: Promise<Awaited<ReturnType<typeof runCommand>>>;
+  run: () => Promise<unknown>;
 };
+
+export async function runVerifyAppCommands(commands: VerifyAppCommand[]) {
+  const failures: string[] = [];
+
+  for (const command of commands) {
+    try {
+      await command.run();
+    } catch (error) {
+      failures.push(
+        `${command.label}: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  }
+
+  if (failures.length > 0) {
+    throw new Error(`verify:app failed.\n${failures.join("\n")}`);
+  }
+}
 
 export function parseVerifyAppArgs(argv: string[]) {
   const lint = argv.includes("--lint");
@@ -46,7 +71,7 @@ async function main() {
   if (selectedTasks.lint) {
     commands.push({
       label: "lint",
-      promise: runCommand(
+      run: () => runCommand(
         "pnpm",
         [
           "exec",
@@ -64,14 +89,18 @@ async function main() {
   if (selectedTasks.test) {
     commands.push({
       label: "test",
-      promise: runCommand("pnpm", ["run", "test"], { env: commandEnvironment }),
+      run: () =>
+        runCommand("pnpm", [...VERIFY_APP_TEST_ARGS], {
+          env: commandEnvironment,
+        }),
     });
   }
 
   if (selectedTasks.build) {
     commands.push({
       label: "build",
-      promise: runCommand("pnpm", ["run", "build"], { env: commandEnvironment }),
+      run: () =>
+        runCommand("pnpm", ["run", "build"], { env: commandEnvironment }),
     });
   }
 
@@ -80,16 +109,7 @@ async function main() {
     return;
   }
 
-  const results = await Promise.allSettled(commands.map((command) => command.promise));
-  const failures = results.flatMap((result, index) =>
-    result.status === "rejected"
-      ? [`${commands[index]?.label ?? "unknown"}: ${result.reason instanceof Error ? result.reason.message : String(result.reason)}`]
-      : [],
-  );
-
-  if (failures.length > 0) {
-    throw new Error(`verify:app failed.\n${failures.join("\n")}`);
-  }
+  await runVerifyAppCommands(commands);
 
   console.log("verify:app passed.");
 }

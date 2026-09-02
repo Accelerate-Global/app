@@ -18,6 +18,12 @@ import type {
   RopGeoIndexEntry,
   RopTermDetail,
 } from "@/lib/rop-codes";
+import {
+  privateDataChatSemanticContextPackageSchema,
+  validatePrivateDataChatSemanticCards,
+  type PrivateDataChatSemanticCard,
+  type PrivateDataChatSemanticContextPackage,
+} from "@/lib/private-data-chat/semantic-context";
 
 import { canonicalizeReferenceResource } from "./canonical";
 import {
@@ -32,6 +38,7 @@ import {
 import {
   COUNTRY_RESOURCE_KEY,
   ROP_RESOURCE_KEY,
+  SEMANTIC_CONTEXT_RESOURCE_KEY,
   type ReferenceResourceDiffSummary,
   type ReferenceResourceKey,
   type ReferenceResourcePayloadByKey,
@@ -106,6 +113,17 @@ export const ROP_CSV_COLUMNS = [
   "Ethnic ID",
 ] as const;
 
+export const SEMANTIC_CONTEXT_CSV_COLUMNS = [
+  "Stable key",
+  "Kind",
+  "Label",
+  "Authority",
+  "Definition",
+  "Aliases",
+  "Audiences",
+  "Checksum",
+] as const;
+
 function escapeCsvValue(value: unknown) {
   const text = value === null || value === undefined ? "" : String(value);
   return /[",\n\r]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
@@ -164,6 +182,26 @@ export function serializeRopCsvRows(
       entry.language,
       entry.source,
       entry.ethnicId,
+    ]),
+  );
+  return options.includeHeader === false ? csv.slice(csv.indexOf("\n") + 1) : csv;
+}
+
+export function serializeSemanticContextCsvRows(
+  entries: PrivateDataChatSemanticCard[],
+  options: { includeHeader?: boolean } = {},
+) {
+  const csv = buildCsv(
+    SEMANTIC_CONTEXT_CSV_COLUMNS,
+    entries.map((entry) => [
+      entry.stableKey,
+      entry.kind,
+      entry.label,
+      entry.queryAuthority,
+      entry.definition,
+      entry.aliases.join("; "),
+      entry.audiences.join("; "),
+      entry.contentChecksum,
     ]),
   );
   return options.includeHeader === false ? csv.slice(csv.indexOf("\n") + 1) : csv;
@@ -493,6 +531,47 @@ function preparePipeline(
   };
 }
 
+function prepareSemanticContext(
+  payload: PrivateDataChatSemanticContextPackage,
+): PreparedReferenceResource {
+  const resource = privateDataChatSemanticContextPackageSchema.parse(payload);
+  const findings = validatePrivateDataChatSemanticCards(resource.entries).map(
+    (finding) => ({
+      severity: finding.severity,
+      ruleCode: finding.ruleCode,
+      message: finding.message,
+      stableEntryKey: finding.stableEntryKey,
+      fieldName: finding.fieldName,
+    }),
+  );
+
+  return {
+    sourceRetrievedAt: new Date(resource.sourceRetrievedAt),
+    sourceMetadata: {
+      sourceName: resource.sourceName,
+      definitionPackageChecksum: resource.definitionPackageChecksum,
+      guidingDocumentChecksum: resource.guidingDocumentChecksum,
+      sourceVersionManifest: resource.sourceVersionManifest,
+    },
+    entryCount: resource.entries.length,
+    stableEntries: new Map(
+      resource.entries.map((entry) => [entry.stableKey, entry]),
+    ),
+    countryEntries: [],
+    ropTerms: [],
+    ropPeople: [],
+    ropGeographies: [],
+    pipelineEntries: resource.entries.map((entry) => ({
+      stableKey: entry.stableKey,
+      active: entry.queryAuthority !== "excluded",
+      data: entry,
+      searchText: entry.contextualSearchText.toLocaleLowerCase(),
+    })),
+    findings,
+    csv: serializeSemanticContextCsvRows(resource.entries),
+  };
+}
+
 export function prepareReferenceResource<K extends ReferenceResourceKey>(
   resourceKey: K,
   payload: ReferenceResourcePayloadByKey[K],
@@ -503,6 +582,11 @@ export function prepareReferenceResource<K extends ReferenceResourceKey>(
   }
   if (resourceKey === ROP_RESOURCE_KEY) {
     return prepareRop(payload as RopCodeResource);
+  }
+  if (resourceKey === SEMANTIC_CONTEXT_RESOURCE_KEY) {
+    return prepareSemanticContext(
+      payload as PrivateDataChatSemanticContextPackage,
+    );
   }
   return preparePipeline(
     resourceKey,
@@ -522,6 +606,12 @@ export function getStableEntries(
   if (resourceKey === ROP_RESOURCE_KEY) {
     const rop = payload as RopCodeResource;
     return new Map(rop.entries.map((entry) => [entry.id, entry]));
+  }
+  if (resourceKey === SEMANTIC_CONTEXT_RESOURCE_KEY) {
+    const semantic = payload as PrivateDataChatSemanticContextPackage;
+    return new Map(
+      semantic.entries.map((entry) => [entry.stableKey, entry]),
+    );
   }
   if (isPipelineResourceKey(resourceKey)) {
     const prepared = preparePipelineResource(

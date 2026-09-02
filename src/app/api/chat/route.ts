@@ -10,6 +10,7 @@ import { PrivateDataChatBrokerError } from "@/lib/private-data-chat/broker";
 import { PrivateQwenGatewayError } from "@/lib/private-data-chat/qwen-gateway";
 import { privateDataChatRequestSchema } from "@/lib/private-data-chat/schemas";
 import { PrivateDataChatValueResolutionError } from "@/lib/private-data-chat/value-resolver";
+import { PrivateDataChatSignedStateError } from "@/lib/private-data-chat/signed-state";
 import { withRoute } from "@/lib/route-guard";
 
 const PRIVATE_DATA_CHAT_MAX_REQUEST_BYTES = 30_000;
@@ -39,6 +40,15 @@ function streamError(error: unknown): Extract<PrivateDataChatStreamEvent, { type
       code: error.code,
       message: "The approved semantic value resource is temporarily unavailable.",
       retryable: error.retryable,
+    };
+  }
+
+  if (error instanceof PrivateDataChatSignedStateError) {
+    return {
+      type: "error",
+      code: error.code,
+      message: "The trusted conversation context is invalid or expired.",
+      retryable: false,
     };
   }
 
@@ -100,6 +110,10 @@ export const POST = withRoute(
         void orchestratePrivateDataChatTurn({
           identity,
           messages: parsed.data.messages,
+          conversationId: parsed.data.conversationId,
+          viewContextToken: parsed.data.viewContextToken,
+          turnStateTokens: parsed.data.turnStateTokens,
+          resourceContinuationToken: parsed.data.resourceContinuationToken,
           signal: request.signal,
           onStage: (stage) => send({ type: "status", stage }),
         })

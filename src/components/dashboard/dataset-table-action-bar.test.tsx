@@ -58,6 +58,7 @@ describe("DatasetTableActionBar", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     vi.stubGlobal("fetch", fetchMock);
+    sessionStorage.clear();
   });
 
   afterEach(() => {
@@ -243,5 +244,56 @@ describe("DatasetTableActionBar", () => {
         }),
       });
     });
+  });
+
+  it("hands only filter state—not the displayed count—to Qwen session storage", async () => {
+    const conversationId = "20000000-0000-4000-8000-000000000002";
+    vi.stubGlobal("crypto", { randomUUID: () => conversationId });
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          token: "signed-view-token",
+          conversationId,
+          summary: {
+            chips: [{ label: "All People Groups", detail: null }],
+            quickQuestions: [],
+            returnUrl: `/dashboard/datasets/${dataset.id}`,
+            uupgRationale: null,
+          },
+          expiresAt: Date.now() + 60_000,
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    const navigate = vi.fn();
+    render(
+      <DatasetTableActionBar
+        dataset={dataset}
+        filters={filters}
+        recordCount={12507}
+        getSortedRows={() => []}
+        visibleColumns={[]}
+        isLoading={false}
+        hasError={false}
+        fieldDefinitionPresentationByColumnKey={{}}
+        canAskQwenAboutView
+        onNavigateToPrivateDataChat={navigate}
+      />,
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Ask Qwen about this view" }),
+    );
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    const request = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
+    expect(request).toEqual({ datasetId: dataset.id, conversationId, filters });
+    expect(JSON.stringify(request)).not.toContain("12507");
+    await waitFor(() =>
+      expect(
+        JSON.parse(
+          sessionStorage.getItem("private-data-chat:view-context:v1") ?? "null",
+        ),
+      ).toMatchObject({ token: "signed-view-token", conversationId }),
+    );
+    expect(navigate).toHaveBeenCalledOnce();
   });
 });

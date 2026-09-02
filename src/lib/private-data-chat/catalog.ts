@@ -5,13 +5,21 @@ import {
   IMB_FIELD_CONTRACT_VERSION,
   type ImbFieldSemanticType,
 } from "@/lib/imb-forming/field-contract";
-import { COUNTRY_RESOURCE_KEY } from "@/lib/reference-resources/types";
+import {
+  PRIVATE_DATA_CHAT_ROP_FIELD_DEFINITIONS,
+  PRIVATE_DATA_CHAT_ROP_GEOGRAPHY_FILTER,
+  PRIVATE_DATA_CHAT_ROP_QUERYABLE_FIELD_KEYS,
+} from "@/lib/private-data-chat/semantic-authority";
+import {
+  COUNTRY_RESOURCE_KEY,
+  ROP_RESOURCE_KEY,
+} from "@/lib/reference-resources/types";
 
-export const PRIVATE_DATA_CHAT_CATALOG_SCHEMA_VERSION = 2 as const;
+export const PRIVATE_DATA_CHAT_CATALOG_SCHEMA_VERSION = 3 as const;
 export const PRIVATE_DATA_CHAT_CATALOG_CHECKSUM =
-  "ac1c90c20f2dce52e95307a857ba66273e3a0d6699402326b6a40fce74ac59a6" as const;
+  "1fb6c15a7250f241cfaf89b8d7e442584a3cfcd1ec6970f88229adb4b5d916a6" as const;
 export const PRIVATE_DATA_CHAT_CATALOG_VERSION =
-  "primary-people-groups-v2.ac1c90c20f2d" as const;
+  "primary-people-groups-v3.1fb6c15a7250" as const;
 export const PRIVATE_DATA_CHAT_DATASET_KEY = "primary_people_groups" as const;
 export const PRIVATE_DATA_CHAT_VIEW =
   "analytics_ro.primary_people_groups" as const;
@@ -24,6 +32,7 @@ export const PRIVATE_DATA_CHAT_DIMENSION_KEYS = [
   "frontier_group",
   "engagement_phase",
   "globally_engaged",
+  ...PRIVATE_DATA_CHAT_ROP_QUERYABLE_FIELD_KEYS,
 ] as const;
 
 export const PRIVATE_DATA_CHAT_METRIC_KEYS = [
@@ -37,6 +46,7 @@ export const PRIVATE_DATA_CHAT_FILTER_KEYS = [
   ...PRIVATE_DATA_CHAT_DIMENSION_KEYS,
   "population",
   "percent_evangelical",
+  PRIVATE_DATA_CHAT_ROP_GEOGRAPHY_FILTER.key,
 ] as const;
 export const PRIVATE_DATA_CHAT_RECORD_FIELD_KEYS = [
   ...PRIVATE_DATA_CHAT_DIMENSION_KEYS,
@@ -83,6 +93,12 @@ type CatalogValueDomain =
         "fips",
         "rog3",
       ];
+    }>
+  | Readonly<{
+      kind: "reference";
+      resourceKey: typeof ROP_RESOURCE_KEY;
+      matching: "exact-code-or-name";
+      acceptedIdentifiers: readonly ["code", "name"];
     }>;
 
 type CatalogSourceContract = Readonly<{
@@ -155,12 +171,58 @@ function imbSourceContract(
   };
 }
 
+function ropCatalogField(
+  key: (typeof PRIVATE_DATA_CHAT_ROP_QUERYABLE_FIELD_KEYS)[number],
+): CatalogField {
+  const metadata = PRIVATE_DATA_CHAT_ROP_FIELD_DEFINITIONS[key];
+  return {
+    label: metadata.label,
+    description: metadata.definition,
+    aliases: metadata.aliases,
+    column: key,
+    valueType: "text",
+    unit: key.endsWith("_code") ? "classification code" : "classification",
+    nullable: true,
+    nullMeaning:
+      "No valid dataset-bound ROP value is available; use rop_match_status to distinguish blank, malformed, inactive, unmatched, join_issue, and unbound states.",
+    uses: ["dimension", "filter", "record"],
+    operators: textOperators,
+    valueDomain: {
+      kind: "reference",
+      resourceKey: ROP_RESOURCE_KEY,
+      matching: "exact-code-or-name",
+      acceptedIdentifiers: ["code", "name"],
+    },
+    sensitivity: "private-internal",
+    provenance: {
+      canonicalFieldDefinitionKeys: [`semantic-authority:${key}`],
+      sourceContracts: [],
+    },
+  };
+}
+
+const PRIVATE_DATA_CHAT_ROP_FIELDS = Object.fromEntries(
+  PRIVATE_DATA_CHAT_ROP_QUERYABLE_FIELD_KEYS.map((key) => [
+    key,
+    ropCatalogField(key),
+  ]),
+) as Record<
+  (typeof PRIVATE_DATA_CHAT_ROP_QUERYABLE_FIELD_KEYS)[number],
+  CatalogField
+>;
+
 export const PRIVATE_DATA_CHAT_FIELDS = Object.freeze({
   people_id: {
     label: "People ID",
     description:
       "Stable identifier for one people-group record in the approved current primary dataset.",
-    aliases: ["people identifier", "people group id", "peid"],
+    aliases: [
+      "people identifier",
+      "people identifiers",
+      "people group id",
+      "people IDs",
+      "peid",
+    ],
     column: "people_id",
     valueType: "text",
     unit: "identifier",
@@ -352,6 +414,30 @@ export const PRIVATE_DATA_CHAT_FIELDS = Object.freeze({
       sourceContracts: [],
     },
   },
+  ...PRIVATE_DATA_CHAT_ROP_FIELDS,
+  rop_geography: {
+    label: PRIVATE_DATA_CHAT_ROP_GEOGRAPHY_FILTER.label,
+    description: PRIVATE_DATA_CHAT_ROP_GEOGRAPHY_FILTER.definition,
+    aliases: PRIVATE_DATA_CHAT_ROP_GEOGRAPHY_FILTER.aliases,
+    column: "rop_geographies",
+    valueType: "text",
+    unit: "geography name or code",
+    nullable: true,
+    nullMeaning: "The bound ROP3 classification has no reviewed geography value.",
+    uses: ["filter"],
+    operators: textOperators,
+    valueDomain: {
+      kind: "reference",
+      resourceKey: ROP_RESOURCE_KEY,
+      matching: "exact-code-or-name",
+      acceptedIdentifiers: ["code", "name"],
+    },
+    sensitivity: "private-internal",
+    provenance: {
+      canonicalFieldDefinitionKeys: ["semantic-authority:rop_geography"],
+      sourceContracts: [],
+    },
+  },
 } satisfies Record<PrivateDataChatFilterKey, CatalogField>);
 
 export const PRIVATE_DATA_CHAT_METRICS = Object.freeze({
@@ -442,7 +528,7 @@ const PRIVATE_DATA_CHAT_CATALOG_CONTENT = Object.freeze({
   },
   fields: PRIVATE_DATA_CHAT_FIELDS,
   metrics: PRIVATE_DATA_CHAT_METRICS,
-  joinCapabilities: [] as const,
+  joinCapabilities: ["people_group_to_bound_rop3"] as const,
 });
 
 export function calculatePrivateDataChatCatalogChecksum() {
@@ -600,7 +686,7 @@ export function buildPrivateDataChatPlannerCatalogContext() {
     ...fields,
     "Approved metrics:",
     ...metrics,
-    "Approved joins: none. Macro region, continent, time series, and cross-dataset relationships are unavailable.",
+    "Approved relationship: people_group_to_bound_rop3 is server-owned, many-to-one, dataset-version-bound, and left/null-preserving. ROP geography filters use a registered EXISTS-style predicate. Physical or unregistered joins remain unavailable.",
   ].join("\n");
 }
 

@@ -2,10 +2,11 @@ import type { PrivateDataChatSelectedKey } from "@/lib/private-data-chat/catalog
 import type {
   PrivateDataChatPlan,
   PrivateDataChatQueryResult,
+  PrivateDataChatResourceQuery,
 } from "@/lib/private-data-chat/schemas";
 
 export const PRIVATE_DATA_CHAT_CAPABILITY_SUITE_VERSION =
-  "private-data-chat-capabilities-v4.review-1" as const;
+  "private-data-chat-capabilities-v5.review-1" as const;
 
 export const PRIVATE_DATA_CHAT_EVALUATION_TIERS = [
   "smoke",
@@ -38,7 +39,13 @@ export type PrivateDataChatEvaluationCapability =
   | "null-and-zero"
   | "empty-result"
   | "untrusted-result-content"
-  | "end-to-end-read-only";
+  | "end-to-end-read-only"
+  | "named-filter"
+  | "resource-query"
+  | "registered-relationship"
+  | "current-view"
+  | "completeness"
+  | "definition-grounding";
 
 export type PrivateDataChatEvaluationMessage = Readonly<{
   role: "user" | "assistant";
@@ -102,10 +109,24 @@ export type PrivateDataChatEndToEndQueryExpectation = Readonly<{
   decision: "query";
   selectedKeys: readonly PrivateDataChatSelectedKey[];
   filterFields: readonly string[];
+  namedFilterKeys?: readonly string[];
   sort: readonly Readonly<{ field: string; direction: "asc" | "desc" }>[];
   rowCount: Readonly<{ minimum: number; maximum: number }>;
+  matchingCount?: Readonly<{ minimum: number; maximum: number }>;
+  hasMore?: boolean;
   requireCatalogVersion: true;
   requireProvenance: true;
+  textRubric?: PrivateDataChatTextRubric;
+}>;
+
+export type PrivateDataChatEndToEndResourceExpectation = Readonly<{
+  decision: "resource_query";
+  operation: PrivateDataChatResourceQuery["operation"];
+  rowCount: Readonly<{ minimum: number; maximum: number }>;
+  matchingCount: Readonly<{ minimum: number; maximum: number }>;
+  hasMore?: boolean;
+  requireContinuation?: boolean;
+  requireResourceVersion: true;
   textRubric?: PrivateDataChatTextRubric;
 }>;
 
@@ -122,6 +143,7 @@ export type PrivateDataChatEndToEndEvaluationCase =
       messages: readonly PrivateDataChatEvaluationMessage[];
       expected:
         | PrivateDataChatEndToEndQueryExpectation
+        | PrivateDataChatEndToEndResourceExpectation
         | PrivateDataChatEndToEndClarifyExpectation;
     }>;
 

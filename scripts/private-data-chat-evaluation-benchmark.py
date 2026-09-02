@@ -94,6 +94,11 @@ def evaluate_plan(
             return False, "query_mismatch"
         return True, None
 
+    if expected_decision == "resource_query":
+        if output.get("resourceQuery") != case["expected_resource_query"]:
+            return False, "resource_query_mismatch"
+        return True, None
+
     text_field = "question" if expected_decision == "clarify" else "answer"
     response_text = output.get(text_field)
     if not isinstance(response_text, str) or not response_text.strip():
@@ -102,6 +107,11 @@ def evaluate_plan(
 
 
 NUMBER_PATTERN = re.compile(r"-?\d+(?:,\d{3})*(?:\.\d+)?")
+VISIBLE_PROVENANCE_PATTERN = re.compile(
+    r"\b(?:query[ _-]?id|catalog[ _-]?version|dataset[ _-]?version|datasetversioncreatedat)\b"
+    r"|\b20\d{2}-\d{2}-\d{2}t\d{2}:\d{2}:\d{2}",
+    re.IGNORECASE,
+)
 
 
 def extract_numbers(value: str) -> set[str]:
@@ -127,6 +137,8 @@ def evaluate_answer(
     combined = " ".join([output["answer"], facts_text])
     facts_normalized = facts_text.casefold()
     combined_normalized = combined.casefold()
+    if VISIBLE_PROVENANCE_PATTERN.search(combined):
+        return False, "visible_provenance"
 
     available_concepts = {
         concept["key"] for concept in case["semantic_context"].get("concepts", [])

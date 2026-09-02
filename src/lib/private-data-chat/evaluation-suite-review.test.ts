@@ -17,8 +17,8 @@ describe("private data chat evaluation review inventory", () => {
     const second = renderPrivateDataChatEvaluationReview();
 
     expect(first).toBe(second);
-    expect(first).toContain("Status: PROPOSED — NOT RUN");
-    expect(first).toContain("Total proposed cases:** 306");
+    expect(first).toContain("Status: APPROVED FOR EXECUTION");
+    expect(first).toContain("Total proposed cases:** 450");
     expect(first).not.toMatch(/\n\n$/u);
     expect(first.match(/^### \d+\. /gmu)).toHaveLength(
       PRIVATE_DATA_CHAT_CAPABILITY_EVALUATION_CASES.length,

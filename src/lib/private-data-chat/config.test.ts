@@ -57,4 +57,25 @@ describe("private data chat configuration", () => {
       }).canaryEmails,
     ).toEqual(["pilot@example.com"]);
   });
+
+  it("requires dedicated signed-state keys only when semantic context is enabled", () => {
+    const common = {
+      PRIVATE_DATA_CHAT_ENABLED: "true",
+      PRIVATE_DATA_CHAT_SEMANTIC_CONTEXT_ENABLED: "true",
+      PRIVATE_DATA_CHAT_CANARY_EMAILS: "admin@example.com",
+      ANALYTICS_DATABASE_URL: "postgresql://localhost/postgres",
+      PRIVATE_DATA_CHAT_AUDIT_HMAC_KEY: "a".repeat(32),
+      PRIVATE_QWEN_FAKE: "true",
+    };
+
+    expect(getPrivateDataChatConfiguration(common).ready).toBe(false);
+    expect(
+      getPrivateDataChatConfiguration({
+        ...common,
+        PRIVATE_DATA_CHAT_TURN_STATE_HMAC_KEY: "b".repeat(32),
+        PRIVATE_DATA_CHAT_VIEW_CONTEXT_HMAC_KEY: "c".repeat(32),
+        PRIVATE_DATA_CHAT_CONTINUATION_HMAC_KEY: "d".repeat(32),
+      }).ready,
+    ).toBe(true);
+  });
 });

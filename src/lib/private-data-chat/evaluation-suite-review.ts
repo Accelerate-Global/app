@@ -128,9 +128,9 @@ function renderCapabilityTable() {
 export function renderPrivateDataChatEvaluationReview() {
   const summary = summarizePrivateDataChatCapabilitySuite("extended");
   const sections = [
-    "# Private Data Chat Capability Evaluation Suite v4 — Review Inventory",
+    "# Private Data Chat Capability Evaluation Suite v5 — Review Inventory",
     "",
-    "> **Status: PROPOSED — NOT RUN.** Generating and validating this document does not contact Qwen, Samson, Cloudflare, Vercel, Supabase, the production chat API, or any database.",
+    "> **Status: APPROVED FOR EXECUTION.** This sanitized inventory remains generation-only; live execution is recorded separately in hash-bound receipts.",
     "",
     `- **Suite version:** \`${PRIVATE_DATA_CHAT_CAPABILITY_SUITE_VERSION}\``,
     `- **Total proposed cases:** ${summary.totalCases}`,

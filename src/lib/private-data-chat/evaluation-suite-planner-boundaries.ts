@@ -11,28 +11,47 @@ import type {
   PrivateDataChatTextRubric,
 } from "@/lib/private-data-chat/evaluation-suite-types";
 import type { PrivateDataChatQuery } from "@/lib/private-data-chat/schemas";
+import { PRIVATE_DATA_CHAT_NAMED_FILTER_REGISTRY_VERSION } from "@/lib/private-data-chat/named-filters";
 
 type AggregateQuery = Extract<PrivateDataChatQuery, { mode: "aggregate" }>;
 type RecordsQuery = Extract<PrivateDataChatQuery, { mode: "records" }>;
 
 function aggregateQuery(
-  input: Omit<AggregateQuery, "catalogVersion" | "dataset" | "mode">,
+  input: Omit<
+    AggregateQuery,
+    | "catalogVersion"
+    | "namedFilterRegistryVersion"
+    | "dataset"
+    | "mode"
+    | "namedFilters"
+  >,
 ): AggregateQuery {
   return {
     catalogVersion: PRIVATE_DATA_CHAT_CATALOG_VERSION,
+    namedFilterRegistryVersion: PRIVATE_DATA_CHAT_NAMED_FILTER_REGISTRY_VERSION,
     dataset: PRIVATE_DATA_CHAT_DATASET_KEY,
     mode: "aggregate",
+    namedFilters: [],
     ...input,
   };
 }
 
 function recordsQuery(
-  input: Omit<RecordsQuery, "catalogVersion" | "dataset" | "mode">,
+  input: Omit<
+    RecordsQuery,
+    | "catalogVersion"
+    | "namedFilterRegistryVersion"
+    | "dataset"
+    | "mode"
+    | "namedFilters"
+  >,
 ): RecordsQuery {
   return {
     catalogVersion: PRIVATE_DATA_CHAT_CATALOG_VERSION,
+    namedFilterRegistryVersion: PRIVATE_DATA_CHAT_NAMED_FILTER_REGISTRY_VERSION,
     dataset: PRIVATE_DATA_CHAT_DATASET_KEY,
     mode: "records",
+    namedFilters: [],
     ...input,
   };
 }
@@ -83,7 +102,24 @@ const clarificationDefinitions: readonly Readonly<{
     response: "What does there refer to, and which count or metric do you want?",
     reason: "The subject and count meaning are missing from the conversation.",
     capability: "clarification",
-    rubric: { requiredAny: [["what", "refer", "which"], ["metric", "how many what", "count"]], forbidden: ["there are"] },
+    rubric: {
+      requiredAny: [
+        [
+          "what",
+          "refer",
+          "which",
+          "in total",
+          "specific criteria",
+          "criteria",
+          "filter",
+          "grouping",
+          "scope",
+          "filtered",
+        ],
+        ["metric", "how many what", "count"],
+      ],
+      forbidden: ["there are"],
+    },
   },
   {
     id: "show-more-missing-bound",
@@ -115,7 +151,13 @@ const clarificationDefinitions: readonly Readonly<{
     response: "Top by people-group count, total population, average population, or average evangelical percentage, and how many countries?",
     reason: "The ranking metric and result count are missing.",
     capability: "clarification",
-    rubric: { requiredAll: ["how many"], requiredAny: [["count", "population", "percentage"]], forbidden: ["top 10"] },
+    rubric: {
+      requiredAny: [
+        ["how many", "number of results", "result count", "limit", "number of"],
+        ["count", "population", "percentage"],
+      ],
+      forbidden: ["top 10"],
+    },
   },
   {
     id: "engaged-meaning-ambiguous",
@@ -123,7 +165,13 @@ const clarificationDefinitions: readonly Readonly<{
     response: "Do you mean globally engaged equals true, or a particular numeric engagement phase?",
     reason: "The catalog contains both a boolean engagement status and numeric phase.",
     capability: "clarification",
-    rubric: { requiredAll: ["globally engaged", "phase"], forbidden: ["engaged count is"] },
+    rubric: {
+      requiredAll: ["phase"],
+      requiredAny: [
+        ["globally engaged", "globally_engaged", "global engagement"],
+      ],
+      forbidden: ["engaged count is"],
+    },
   },
   {
     id: "biggest-five-metric-missing",
@@ -147,7 +195,7 @@ const clarificationDefinitions: readonly Readonly<{
     response: "Continent is not available in the approved catalog. Would country grouping meet your need?",
     reason: "The pilot exposes country but not continent.",
     capability: "unsupported-concept",
-    rubric: { requiredAll: ["continent"], requiredAny: [["not available", "unavailable", "does not contain", "does not support", "not in"], ["country"]], forbidden: ["Africa"] },
+    rubric: { requiredAll: ["continent"], requiredAny: [["not available", "unavailable", "does not contain", "does not support", "not in", "not approved", "not an approved"], ["country"]], forbidden: ["Africa"] },
   },
   {
     id: "macro-region-unavailable",
@@ -155,15 +203,23 @@ const clarificationDefinitions: readonly Readonly<{
     response: "Macro region is not available. I can show average population by country instead.",
     reason: "Macro region is outside the approved grain.",
     capability: "unsupported-concept",
-    rubric: { requiredAll: ["macro region"], requiredAny: [["not available", "unavailable", "does not contain", "does not support", "not in"], ["country"]] },
-  },
-  {
-    id: "language-unavailable",
-    question: "How many people groups speak each language?",
-    response: "Language is not available in the approved pilot catalog. Would a count by country help?",
-    reason: "No language field or relationship is approved.",
-    capability: "unsupported-concept",
-    rubric: { requiredAll: ["language"], requiredAny: [["not available", "unavailable", "does not contain", "does not support", "not in"]], forbidden: ["languages are"] },
+    rubric: {
+      requiredAll: ["macro region"],
+      requiredAny: [
+        [
+          "not available",
+          "unavailable",
+          "does not contain",
+          "does not support",
+          "not in",
+          "not approved",
+          "not an approved",
+          "not 'macro region'",
+          "not macro region",
+        ],
+        ["country"],
+      ],
+    },
   },
   {
     id: "religion-unavailable",
@@ -171,7 +227,21 @@ const clarificationDefinitions: readonly Readonly<{
     response: "Primary religion is not available in the approved pilot catalog.",
     reason: "The requested field is not approved.",
     capability: "unsupported-concept",
-    rubric: { requiredAll: ["religion"], requiredAny: [["not available", "unavailable", "does not contain", "does not support", "not in"]], forbidden: ["Christianity"] },
+    rubric: {
+      requiredAll: ["religion"],
+      requiredAny: [
+        [
+          "not available",
+          "unavailable",
+          "does not contain",
+          "does not support",
+          "not in",
+          "not approved",
+          "not an approved",
+        ],
+      ],
+      forbidden: ["Christianity"],
+    },
   },
   {
     id: "team-ownership-unavailable",
@@ -179,7 +249,7 @@ const clarificationDefinitions: readonly Readonly<{
     response: "Assigned ministry teams are not available in the approved catalog, and cross-dataset joins are not supported.",
     reason: "The requested ownership data and join are unavailable.",
     capability: "unsupported-concept",
-    rubric: { requiredAll: ["team"], requiredAny: [["not available", "unavailable", "does not contain", "does not support", "not in"]] },
+    rubric: { requiredAll: ["team"], requiredAny: [["not available", "unavailable", "does not contain", "does not support", "not in", "not approved", "not an approved"]] },
   },
   {
     id: "historical-trend-unavailable",
@@ -187,7 +257,22 @@ const clarificationDefinitions: readonly Readonly<{
     response: "Historical annual snapshots are not available. I can provide the current people-group count.",
     reason: "Only the current approved projection is available.",
     capability: "unsupported-concept",
-    rubric: { requiredAll: ["historical"], requiredAny: [["not available", "unavailable", "does not contain", "does not support", "no historical"], ["current"]] },
+    rubric: {
+      requiredAny: [
+        ["historical", "annual", "time", "year", "temporal"],
+        [
+          "not available",
+          "unavailable",
+          "does not contain",
+          "does not support",
+          "cannot be calculated",
+          "no historical",
+          "not approved",
+          "not an approved",
+        ],
+        ["current"],
+      ],
+    },
   },
   {
     id: "forecast-unavailable",
@@ -195,7 +280,7 @@ const clarificationDefinitions: readonly Readonly<{
     response: "Forecasting and future population data are not available. I can report the current total population.",
     reason: "The catalog contains no forecasting capability.",
     capability: "unsupported-concept",
-    rubric: { requiredAll: ["forecast"], requiredAny: [["not available", "unavailable", "does not contain", "does not include", "does not support", "cannot be generated", "no forecast"], ["current"]] },
+    rubric: { requiredAll: ["forecast"], requiredAny: [["not available", "unavailable", "does not contain", "does not include", "does not support", "cannot be generated", "no forecast", "not approved", "not an approved"], ["current"]] },
   },
   {
     id: "coordinates-unavailable",
@@ -203,7 +288,7 @@ const clarificationDefinitions: readonly Readonly<{
     response: "Latitude and longitude are not available in the approved catalog.",
     reason: "Coordinate fields are not approved.",
     capability: "unsupported-concept",
-    rubric: { requiredAll: ["latitude", "longitude"], requiredAny: [["not available", "unavailable", "does not contain", "does not support", "not in"]], forbidden: ["coordinates:"] },
+    rubric: { requiredAll: ["latitude", "longitude"], requiredAny: [["not available", "unavailable", "does not contain", "does not support", "not in", "not approved", "not an approved"]], forbidden: ["coordinates:"] },
   },
   {
     id: "dataset-comparison-unavailable",
@@ -211,7 +296,7 @@ const clarificationDefinitions: readonly Readonly<{
     response: "Prior uploaded datasets are not available to this chat. I can analyze only the approved current primary dataset.",
     reason: "The pilot exposes one current projection.",
     capability: "unsupported-concept",
-    rubric: { requiredAll: ["current"], requiredAny: [["not available", "unavailable", "cannot access", "only"]], forbidden: ["difference is"] },
+    rubric: { requiredAll: ["current"], requiredAny: [["not available", "unavailable", "cannot access", "do not have access", "no access", "only", "not approved", "not an approved"]], forbidden: ["difference is"] },
   },
   {
     id: "office-join-unavailable",
@@ -219,7 +304,28 @@ const clarificationDefinitions: readonly Readonly<{
     response: "Regional-office data and cross-dataset joins are not available in the approved pilot.",
     reason: "The catalog approves no joins.",
     capability: "unsupported-concept",
-    rubric: { requiredAny: [["join", "cross-dataset", "regional-office"], ["not available", "unavailable", "does not contain", "does not support", "not in"]], forbidden: ["director:"] },
+    rubric: {
+      requiredAny: [
+        [
+          "join",
+          "relationship",
+          "cross-dataset",
+          "regional-office",
+          "regional office",
+        ],
+        [
+          "not available",
+          "unavailable",
+          "does not contain",
+          "does not support",
+          "not in",
+          "not approved",
+          "not an approved",
+          "not registered",
+        ],
+      ],
+      forbidden: ["director:"],
+    },
   },
   {
     id: "weighted-average-unavailable",
@@ -254,6 +360,28 @@ const clarificationCases = clarificationDefinitions.map((definition, index) =>
     textRubric: definition.rubric,
   }),
 );
+
+const newlySupportedBoundaryCases: readonly PrivateDataChatPlannerEvaluationCase[] = [
+  plannerQueryCase({
+    id: "v5-rop-language-count-by-language",
+    tier: "extended",
+    capability: "registered-relationship",
+    rationale:
+      "Replace the legacy language-unavailable boundary after the reviewed dataset-bound ROP language field became queryable.",
+    tags: ["rop", "language", "grouping", "capability-evolution"],
+    question: "How many people groups speak each language?",
+    reason: "Group people-group count by the approved bound ROP language text.",
+    query: aggregateQuery({
+      metrics: ["people_group_count"],
+      dimensions: ["rop_language"],
+      filters: [],
+      sort: [],
+      limit: 100,
+    }),
+    selectedKeys: ["rop_language", "people_group_count"],
+    parameters: [100],
+  }),
+];
 
 const multiTurnCases: readonly PrivateDataChatPlannerEvaluationCase[] = [
   plannerQueryCase({
@@ -691,6 +819,7 @@ const inertValueCases = inertValueDefinitions.map((definition) =>
 
 export const PRIVATE_DATA_CHAT_BOUNDARY_PLANNER_CASES: readonly PrivateDataChatPlannerEvaluationCase[] = [
   ...clarificationCases,
+  ...newlySupportedBoundaryCases,
   ...multiTurnCases,
   ...refusalCases,
   ...inertValueCases,

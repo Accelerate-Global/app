@@ -19,6 +19,7 @@ const suiteSourceFiles = [
   "evaluation-suite-planner-helpers.ts",
   "evaluation-suite-planner-supported.ts",
   "evaluation-suite-planner-boundaries.ts",
+  "evaluation-suite-planner-semantic-rag.ts",
   "evaluation-suite-answer.ts",
   "evaluation-suite-end-to-end.ts",
   "evaluation-suite-validation.ts",
@@ -27,20 +28,20 @@ const suiteSourceFiles = [
 ] as const;
 
 describe("private data chat capability evaluation suite", () => {
-  it("contains 306 reviewable cases across the three isolated evaluation kinds", () => {
+  it("contains 450 reviewable cases across the three isolated evaluation kinds", () => {
     const summary = summarizePrivateDataChatCapabilitySuite("extended");
 
-    expect(summary.totalCases).toBe(306);
-    expect(summary.estimatedInferenceCalls).toBe(327);
+    expect(summary.totalCases).toBe(450);
+    expect(summary.estimatedInferenceCalls).toBe(478);
     expect(summary.byKind).toEqual({
-      planner: 246,
-      answer: 36,
-      "end-to-end": 24,
+      planner: 374,
+      answer: 38,
+      "end-to-end": 38,
     });
     expect(summary.byDeclaredTier).toEqual({
-      smoke: 31,
-      core: 139,
-      extended: 136,
+      smoke: 46,
+      core: 170,
+      extended: 234,
     });
   });
 
@@ -49,10 +50,10 @@ describe("private data chat capability evaluation suite", () => {
     const core = summarizePrivateDataChatCapabilitySuite("core");
     const extended = summarizePrivateDataChatCapabilitySuite("extended");
 
-    expect(smoke.totalCases).toBe(31);
-    expect(smoke.estimatedInferenceCalls).toBe(33);
-    expect(core.totalCases).toBe(170);
-    expect(core.estimatedInferenceCalls).toBe(183);
+    expect(smoke.totalCases).toBe(46);
+    expect(smoke.estimatedInferenceCalls).toBe(51);
+    expect(core.totalCases).toBe(216);
+    expect(core.estimatedInferenceCalls).toBe(235);
     expect(extended.totalCases).toBeGreaterThan(core.totalCases);
   });
 
@@ -97,12 +98,58 @@ describe("private data chat capability evaluation suite", () => {
       question: expect.stringContaining("What does there refer to"),
     });
     expect(
+      plannerCase("v4-clarify-geographic-referent-missing")?.textRubric
+        ?.requiredAny?.[0],
+    ).toContain("filter");
+    expect(
+      plannerCase("v4-clarify-dataset-comparison-unavailable")?.textRubric
+        ?.requiredAny?.[0],
+    ).toContain("do not have access");
+    expect(
       plannerCase("v3-mutation-refusal")?.textRubric?.requiredAny?.[0],
     ).toContain("deleting");
+    expect(
+      plannerCase("v3-macro-country-join-unavailable")?.textRubric
+        ?.requiredAny?.[1],
+    ).toContain("dataset-bound ROP");
+    expect(
+      plannerCase("v5-refuse-unregistered-rop-join")?.textRubric?.forbidden,
+    ).toEqual(
+      expect.arrayContaining(["rop_reference_people", "source_aliases", " = "]),
+    );
+    expect(
+      plannerCase("v5-refuse-unregistered-rop-join")?.textRubric?.forbidden,
+    ).not.toContain("ON ");
+    expect(
+      PRIVATE_DATA_CHAT_END_TO_END_CAPABILITY_CASES.find(
+        (testCase) => testCase.id === "v4-e2e-ambiguous-largest",
+      )?.expected.textRubric?.requiredAny,
+    ).toEqual(
+      expect.arrayContaining([
+        expect.arrayContaining(["number of results", "result count"]),
+      ]),
+    );
+    expect(
+      PRIVATE_DATA_CHAT_END_TO_END_CAPABILITY_CASES.find(
+        (testCase) => testCase.id === "v4-e2e-macro-region-unavailable",
+      )?.expected.textRubric?.requiredAny?.[0],
+    ).toContain("not 'macro region'");
     expect(
       plannerCase("v4-clarify-forecast-unavailable")?.textRubric
         ?.requiredAny?.[0],
     ).toContain("does not include");
+    expect(
+      plannerCase("v4-clarify-forecast-unavailable")?.textRubric
+        ?.requiredAny?.[0],
+    ).toContain("not an approved");
+    expect(
+      plannerCase("v4-clarify-macro-region-unavailable")?.textRubric
+        ?.requiredAny?.[0],
+    ).toContain("not 'macro region'");
+    expect(
+      plannerCase("v4-clarify-office-join-unavailable")?.textRubric
+        ?.requiredAny?.[1],
+    ).toContain("not registered");
     expect(
       plannerCase("v4-refuse-reveal-system-prompt")?.textRubric
         ?.requiredAny?.[0],
@@ -112,6 +159,11 @@ describe("private data chat capability evaluation suite", () => {
         (testCase) => testCase.id === "v4-e2e-average-evangelical",
       )?.expected.textRubric,
     ).toEqual({ requiredAny: [["percent", "percentage"]] });
+    expect(
+      PRIVATE_DATA_CHAT_END_TO_END_CAPABILITY_CASES.find(
+        (testCase) => testCase.id === "v4-e2e-weighted-average-unavailable",
+      )?.expected.textRubric?.forbidden,
+    ).toBeUndefined();
     expect(
       PRIVATE_DATA_CHAT_END_TO_END_CAPABILITY_CASES.find(
         (testCase) => testCase.id === "v4-e2e-congo-display-name-records",

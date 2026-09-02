@@ -268,6 +268,10 @@ describe("/dashboard/datasets/[datasetId]", () => {
     expect(props.workspaceRole).toBe("admin");
     expect(props.sourceRowCount).toBe(10);
     expect(props.toolbarAction).toBeTruthy();
+    expect(
+      (props as typeof props & { canAskQwenAboutView?: boolean })
+        .canAskQwenAboutView,
+    ).toBe(false);
     expect(datasetAdminActionsSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         datasetId: "dataset-1",
@@ -275,6 +279,32 @@ describe("/dashboard/datasets/[datasetId]", () => {
         sourceColumns: createDataset().columns,
       }),
     );
+  });
+
+  it("enables current-view handoff only for the configured administrator canary", async () => {
+    const previous = { ...process.env };
+    try {
+      process.env.PRIVATE_DATA_CHAT_ENABLED = "true";
+      process.env.PRIVATE_DATA_CHAT_SEMANTIC_CONTEXT_ENABLED = "true";
+      process.env.PRIVATE_DATA_CHAT_CANARY_EMAILS = "admin@example.com";
+      process.env.ANALYTICS_DATABASE_URL = "postgresql://example.test/postgres";
+      process.env.PRIVATE_DATA_CHAT_AUDIT_HMAC_KEY = "a".repeat(32);
+      process.env.PRIVATE_DATA_CHAT_TURN_STATE_HMAC_KEY = "t".repeat(32);
+      process.env.PRIVATE_DATA_CHAT_VIEW_CONTEXT_HMAC_KEY = "v".repeat(32);
+      process.env.PRIVATE_DATA_CHAT_CONTINUATION_HMAC_KEY = "c".repeat(32);
+      process.env.PRIVATE_QWEN_FAKE = "true";
+      render(
+        await DatasetPage({
+          params: Promise.resolve({ datasetId: "dataset-1" }),
+          searchParams: Promise.resolve({}),
+        }),
+      );
+      expect(datasetDetailClientSpy.mock.lastCall?.[0]).toMatchObject({
+        canAskQwenAboutView: true,
+      });
+    } finally {
+      process.env = previous;
+    }
   });
 
   it("does not hydrate default filters for pro users when none are configured", async () => {

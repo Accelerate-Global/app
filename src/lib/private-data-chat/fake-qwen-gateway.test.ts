@@ -30,6 +30,13 @@ describe("fake private Qwen gateway", () => {
       question: "Anything in Antarctica?",
       semanticContext: getPrivateDataChatAnswerSemanticContext(["people_id"]),
       result: {
+        mode: "records",
+        requestedLimit: 25,
+        returnedCount: 0,
+        matchingCount: 0,
+        hasMore: false,
+        selectedConcepts: ["people_id"],
+        appliedNamedFilters: [],
         rows: [],
         provenance: {
           queryId: "8a000001-1337-403d-8eb5-b7c44a1be131",

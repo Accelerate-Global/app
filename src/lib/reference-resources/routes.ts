@@ -10,6 +10,8 @@ const REFERENCE_RESOURCE_ROUTES = {
     "/dashboard/resources/tier1-merge-priorities",
   "engagement-mappings":
     "/dashboard/resources/engagement-mappings",
+  "semantic-context-catalog":
+    "/dashboard/resources/semantic-context-catalog",
 } as const satisfies Record<ReferenceResourceKey, string>;
 
 export function getReferenceResourceRoutePath(

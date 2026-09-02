@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { refreshIsoCountryCodeResourceFromOfficialSource } from "@/lib/iso-country-codes";
 import { refreshRopCodeResourceFromHis } from "@/lib/rop-codes";
+import { createPrivateDataChatSemanticContextCandidate } from "@/lib/private-data-chat/semantic-context-candidate";
 
 import {
   createReferenceResourceCandidate,
@@ -13,6 +14,9 @@ vi.mock("@/lib/iso-country-codes", () => ({
   refreshIsoCountryCodeResourceFromOfficialSource: vi.fn(),
 }));
 vi.mock("@/lib/rop-codes", () => ({ refreshRopCodeResourceFromHis: vi.fn() }));
+vi.mock("@/lib/private-data-chat/semantic-context-candidate", () => ({
+  createPrivateDataChatSemanticContextCandidate: vi.fn(),
+}));
 vi.mock("./index", () => ({
   createReferenceResourceCandidate: vi.fn(),
   getActiveReferenceResource: vi.fn(),
@@ -60,6 +64,23 @@ describe("refreshReferenceResourceCandidate", () => {
     });
     expect(JSON.stringify(candidate)).not.toContain("provider secret");
     expect(candidate.payload.sourceRetrievedAt).not.toBe("2026-05-07T22:27:43.000Z");
+  });
+
+  it("routes semantic refresh through the reviewed candidate builder", async () => {
+    vi.mocked(createPrivateDataChatSemanticContextCandidate).mockResolvedValue({
+      unchanged: false,
+      version: { id: "semantic-candidate" },
+    } as never);
+    await expect(
+      refreshReferenceResourceCandidate({
+        resourceKey: "semantic-context-catalog",
+        actorOwnerId: "admin-1",
+      }),
+    ).resolves.toMatchObject({ version: { id: "semantic-candidate" } });
+    expect(createPrivateDataChatSemanticContextCandidate).toHaveBeenCalledWith({
+      actorOwnerId: "admin-1",
+    });
+    expect(refreshRopCodeResourceFromHis).not.toHaveBeenCalled();
   });
 
   it("passes a successful country refresh to the shared candidate lifecycle", async () => {

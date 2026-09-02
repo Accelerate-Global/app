@@ -23,6 +23,10 @@ import {
   PRIVATE_DATA_CHAT_ANSWER_JSON_SCHEMA,
   PRIVATE_DATA_CHAT_PLAN_JSON_SCHEMA,
 } from "@/lib/private-data-chat/schemas";
+import {
+  PRIVATE_DATA_CHAT_RUNTIME_CONTRACT,
+  PRIVATE_DATA_CHAT_RUNTIME_CONTRACT_CHECKSUM,
+} from "@/lib/private-data-chat/runtime-contract";
 
 function canonicalize(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(canonicalize);
@@ -72,6 +76,10 @@ function plannerDocument() {
       expected_decision: expectedDecision,
       expected_query:
         expectedDecision === "query" ? testCase.expectedPlan.query : null,
+      expected_resource_query:
+        expectedDecision === "resource_query"
+          ? testCase.expectedPlan.resourceQuery
+          : null,
       expected_compilation: testCase.expectedCompilation ?? null,
       reference_text: referenceText ?? null,
       text_rubric: testCase.textRubric ?? null,
@@ -175,6 +183,8 @@ export function buildPrivateDataChatLiveEvaluationBundle(input: Readonly<{
         compiler_policy_version: PRIVATE_DATA_CHAT_POLICY_VERSION,
         model_artifact_sha256: PRIVATE_QWEN_MODEL_SHA256,
         runtime_revision: PRIVATE_QWEN_RUNTIME_REVISION,
+        runtime_contract: PRIVATE_DATA_CHAT_RUNTIME_CONTRACT,
+        runtime_contract_checksum: PRIVATE_DATA_CHAT_RUNTIME_CONTRACT_CHECKSUM,
       },
       hashes: {
         complete_suite_sha256: hashPrivateDataChatEvaluationValue(
@@ -195,6 +205,7 @@ export function buildPrivateDataChatLiveEvaluationBundle(input: Readonly<{
         answer_schema_sha256: hashPrivateDataChatEvaluationValue(
           PRIVATE_DATA_CHAT_ANSWER_JSON_SCHEMA,
         ),
+        runtime_contract_sha256: PRIVATE_DATA_CHAT_RUNTIME_CONTRACT_CHECKSUM,
         compiler_source_sha256: input.compilerSourceSha256,
         review_document_sha256: input.reviewDocumentSha256,
         benchmark_source_sha256: input.benchmarkSourceSha256,

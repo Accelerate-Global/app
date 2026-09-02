@@ -10,9 +10,10 @@ import {
   Square,
   User,
 } from "lucide-react";
-import { FormEvent, useMemo, useRef, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 
-import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -24,6 +25,7 @@ import type {
   PrivateDataChatStage,
   PrivateDataChatStreamEvent,
 } from "@/lib/private-data-chat/events";
+import type { PrivateDataChatResourceQueryResult } from "@/lib/private-data-chat/schemas";
 import { cn } from "@/lib/utils";
 
 type TranscriptMessage = {
@@ -31,7 +33,74 @@ type TranscriptMessage = {
   role: "user" | "assistant";
   content: string;
   facts?: string[];
+  turnStateToken?: string | null;
+  resourceResult?: PrivateDataChatResourceQueryResult | null;
 };
+
+type StoredViewContext = {
+  schemaVersion: 1;
+  token: string;
+  conversationId: string;
+  expiresAt: number;
+  summary: {
+    chips: Array<{ label: string; detail: string | null }>;
+    quickQuestions: string[];
+    returnUrl: string;
+    uupgRationale: string | null;
+  };
+};
+
+const VIEW_CONTEXT_STORAGE_KEY = "private-data-chat:view-context:v1";
+
+function isBoundedString(value: unknown, maximum: number): value is string {
+  return typeof value === "string" && value.length > 0 && value.length <= maximum;
+}
+
+export function parsePrivateDataChatStoredViewContext(
+  value: unknown,
+): StoredViewContext | null {
+  if (!value || typeof value !== "object") return null;
+  const candidate = value as Partial<StoredViewContext>;
+  if (
+    candidate.schemaVersion !== 1 ||
+    !isBoundedString(candidate.token, 12_000) ||
+    !isBoundedString(candidate.conversationId, 100) ||
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(
+      candidate.conversationId,
+    ) ||
+    typeof candidate.expiresAt !== "number" ||
+    !Number.isSafeInteger(candidate.expiresAt) ||
+    !candidate.summary ||
+    typeof candidate.summary !== "object" ||
+    !Array.isArray(candidate.summary.chips) ||
+    candidate.summary.chips.length < 1 ||
+    candidate.summary.chips.length > 12 ||
+    candidate.summary.chips.some(
+      (chip) =>
+        !chip ||
+        typeof chip !== "object" ||
+        !isBoundedString(chip.label, 100) ||
+        (chip.detail !== null &&
+          chip.detail !== undefined &&
+          !isBoundedString(chip.detail, 500)),
+    ) ||
+    !Array.isArray(candidate.summary.quickQuestions) ||
+    candidate.summary.quickQuestions.length > 6 ||
+    candidate.summary.quickQuestions.some(
+      (question) => !isBoundedString(question, 300),
+    ) ||
+    !isBoundedString(candidate.summary.returnUrl, 500) ||
+    !/^\/dashboard\/datasets\/[0-9a-f-]{36}$/iu.test(
+      candidate.summary.returnUrl,
+    ) ||
+    (candidate.summary.uupgRationale !== null &&
+      candidate.summary.uupgRationale !== undefined &&
+      !isBoundedString(candidate.summary.uupgRationale, 2_000))
+  ) {
+    return null;
+  }
+  return candidate as StoredViewContext;
+}
 
 const stageLabels: Record<PrivateDataChatStage, string> = {
   interpreting: "Interpreting your question",
@@ -69,6 +138,8 @@ function createTranscriptId() {
 
 export function PrivateDataChatClient({ available }: { available: boolean }) {
   const [messages, setMessages] = useState<TranscriptMessage[]>([]);
+  const [conversationId, setConversationId] = useState(createTranscriptId);
+  const [viewContext, setViewContext] = useState<StoredViewContext | null>(null);
   const [input, setInput] = useState("");
   const [stage, setStage] = useState<PrivateDataChatStage | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -78,6 +149,26 @@ export function PrivateDataChatClient({ available }: { available: boolean }) {
     () => messages.map(({ role, content }) => ({ role, content })),
     [messages],
   );
+
+  useEffect(() => {
+    const stored = sessionStorage.getItem(VIEW_CONTEXT_STORAGE_KEY);
+    if (!stored) return;
+    try {
+      const parsed = parsePrivateDataChatStoredViewContext(JSON.parse(stored));
+      if (!parsed || parsed.expiresAt <= Date.now()) {
+        throw new Error("stale");
+      }
+      setViewContext(parsed);
+      setConversationId(parsed.conversationId);
+    } catch {
+      sessionStorage.removeItem(VIEW_CONTEXT_STORAGE_KEY);
+    }
+  }, []);
+
+  function clearViewContext() {
+    sessionStorage.removeItem(VIEW_CONTEXT_STORAGE_KEY);
+    setViewContext(null);
+  }
 
   function applyStreamEvent(event: PrivateDataChatStreamEvent) {
     if (event.type === "status") {
@@ -93,6 +184,8 @@ export function PrivateDataChatClient({ available }: { available: boolean }) {
           role: "assistant",
           content: event.message.content,
           facts: event.message.facts,
+          turnStateToken: event.message.turnStateToken,
+          resourceResult: event.message.resourceResult,
         },
       ]);
       setStage(null);
@@ -100,12 +193,16 @@ export function PrivateDataChatClient({ available }: { available: boolean }) {
     }
 
     if (event.type === "error") {
+      if (event.code.startsWith("view_context")) clearViewContext();
       setError(event.message);
       setStage(null);
     }
   }
 
-  async function submitQuestion(question: string) {
+  async function submitQuestion(
+    question: string,
+    resourceContinuationToken?: string,
+  ) {
     const normalized = question.trim();
     if (!normalized || !available || isRunning) {
       return;
@@ -132,7 +229,16 @@ export function PrivateDataChatClient({ available }: { available: boolean }) {
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: nextRequestMessages }),
+        body: JSON.stringify({
+          conversationId,
+          ...(viewContext ? { viewContextToken: viewContext.token } : {}),
+          messages: nextRequestMessages,
+          turnStateTokens: messages
+            .map((message) => message.turnStateToken)
+            .filter((token): token is string => Boolean(token))
+            .slice(-4),
+          ...(resourceContinuationToken ? { resourceContinuationToken } : {}),
+        }),
         signal: controller.signal,
       });
 
@@ -193,6 +299,8 @@ export function PrivateDataChatClient({ available }: { available: boolean }) {
   function resetConversation() {
     abortRef.current?.abort();
     setMessages([]);
+    setConversationId(createTranscriptId());
+    clearViewContext();
     setInput("");
     setError(null);
     setStage(null);
@@ -241,6 +349,44 @@ export function PrivateDataChatClient({ available }: { available: boolean }) {
           </div>
         </CardHeader>
         <CardContent className="flex min-h-[28rem] flex-col gap-5 p-5 sm:p-6">
+          {viewContext ? (
+            <section
+              className="space-y-3 rounded-xl border bg-accent/30 p-4"
+              aria-label="Current dataset view context"
+              data-smoke-surface="dataset-qwen-view-handoff"
+              data-smoke-ready="dataset-qwen-view-handoff"
+            >
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="space-y-2">
+                  <p className="text-sm font-semibold">Current view</p>
+                  <div className="flex flex-wrap gap-2">
+                    {viewContext.summary.chips.map((chip) => (
+                      <Badge key={`${chip.label}:${chip.detail ?? ""}`} variant="outline" title={chip.detail ?? undefined}>
+                        {chip.label}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button type="button" variant="ghost" size="sm" onClick={clearViewContext}>
+                    Clear context
+                  </Button>
+                  <a
+                    href={viewContext.summary.returnUrl}
+                    className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+                  >
+                    Return to view
+                  </a>
+                </div>
+              </div>
+              {viewContext.summary.uupgRationale ? (
+                <p className="text-xs leading-5 text-muted-foreground">
+                  <span className="font-semibold text-foreground">UUPG quick reference: </span>
+                  {viewContext.summary.uupgRationale}
+                </p>
+              ) : null}
+            </section>
+          ) : null}
           <div
             className="flex flex-1 flex-col gap-4"
             aria-label="Conversation"
@@ -287,6 +433,36 @@ export function PrivateDataChatClient({ available }: { available: boolean }) {
                       <li key={fact}>{fact}</li>
                     ))}
                   </ul>
+                ) : null}
+                {message.role === "assistant" && message.resourceResult ? (
+                  <div className="mt-3 flex flex-wrap items-center gap-2 border-t pt-3 text-xs">
+                    <span className="text-muted-foreground">
+                      ROP version {message.resourceResult.resourceVersion.versionNumber}
+                    </span>
+                    <a
+                      href={message.resourceResult.exportUrl}
+                      download
+                      className={cn(buttonVariants({ variant: "outline", size: "xs" }))}
+                    >
+                      Download all matches
+                    </a>
+                    {message.resourceResult.continuationToken ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="xs"
+                        disabled={isRunning}
+                        onClick={() =>
+                          void submitQuestion(
+                            "Show the next ROP page.",
+                            message.resourceResult!.continuationToken!,
+                          )
+                        }
+                      >
+                        Continue
+                      </Button>
+                    ) : null}
+                  </div>
                 ) : null}
               </article>
             ))}
@@ -355,7 +531,7 @@ export function PrivateDataChatClient({ available }: { available: boolean }) {
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-2">
-            {exampleQuestions.map((question) => (
+            {(viewContext?.summary.quickQuestions ?? exampleQuestions).map((question) => (
               <Button
                 key={question}
                 type="button"
@@ -375,7 +551,8 @@ export function PrivateDataChatClient({ available }: { available: boolean }) {
           </CardHeader>
           <CardContent className="space-y-2 text-sm text-muted-foreground">
             <p>Read-only approved people-groups data.</p>
-            <p>No publication, deletion, export, or account actions.</p>
+            <p>No publication, deletion, or account actions.</p>
+            <p>Complete ROP exports use the authenticated download link.</p>
             <p>Conversation history is cleared when you start a new chat.</p>
           </CardContent>
         </Card>

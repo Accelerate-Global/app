@@ -4,6 +4,7 @@ import { PRIVATE_DATA_CHAT_CATALOG_VERSION } from "@/lib/private-data-chat/catal
 import { compilePrivateDataChatQuery } from "@/lib/private-data-chat/compiler";
 import { PRIVATE_DATA_CHAT_EVALUATION_CASES } from "@/lib/private-data-chat/evaluation-cases";
 import { privateDataChatPlanSchema } from "@/lib/private-data-chat/schemas";
+import { PRIVATE_DATA_CHAT_NAMED_FILTER_REGISTRY_VERSION } from "@/lib/private-data-chat/named-filters";
 
 describe("private data chat evaluation cases", () => {
   it("covers the required semantic and adversarial behavior classes", () => {
@@ -43,6 +44,10 @@ describe("private data chat evaluation cases", () => {
         expect(testCase.expectedPlan.query.catalogVersion).toBe(
           PRIVATE_DATA_CHAT_CATALOG_VERSION,
         );
+        expect(testCase.expectedPlan.query.namedFilterRegistryVersion).toBe(
+          PRIVATE_DATA_CHAT_NAMED_FILTER_REGISTRY_VERSION,
+        );
+        expect(testCase.expectedPlan.query.namedFilters).toEqual([]);
         expect(testCase.expectedCompilation).toBeDefined();
       } else {
         expect(testCase.expectedCompilation).toBeUndefined();

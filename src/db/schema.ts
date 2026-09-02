@@ -365,7 +365,15 @@ export const referenceResources = privateSchema.table(
     id: uuid("id").defaultRandom().primaryKey(),
     resourceKey: text("resource_key").notNull(),
     resourceKind: text("resource_kind")
-      .$type<"country-geography" | "rop-taxonomy">()
+      .$type<
+        | "country-geography"
+        | "rop-taxonomy"
+        | "source-registry"
+        | "people-crosswalk"
+        | "merge-priority"
+        | "field-mapping"
+        | "semantic-catalog"
+      >()
       .notNull(),
     label: text("label").notNull(),
     description: text("description").notNull(),
