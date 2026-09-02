@@ -526,7 +526,10 @@ export const PRIVATE_DATA_CHAT_END_TO_END_CAPABILITY_CASES: readonly PrivateData
     minimumMatching: 312,
     maximumMatching: 312,
     hasMore: true,
-    textRubric: { requiredAny: [["ROP", "entries"], ["match", "showing"]] },
+    textRubric: {
+      requiredAll: ["312"],
+      requiredAny: [["ROP", "entries"], ["match", "showing"]],
+    },
   }),
   resourceCase({
     id: "rop-lookup-code",
@@ -604,6 +607,10 @@ export const PRIVATE_DATA_CHAT_END_TO_END_CAPABILITY_CASES: readonly PrivateData
     minimumMatching: 234,
     maximumMatching: 234,
     hasMore: true,
+    textRubric: {
+      requiredAll: ["25", "234"],
+      requiredAny: [["showing", "shown", "returned"], ["match", "matching"]],
+    },
   }),
   queryCase({
     id: "rop-null-preserving-match-status",
@@ -618,6 +625,10 @@ export const PRIVATE_DATA_CHAT_END_TO_END_CAPABILITY_CASES: readonly PrivateData
     minimumMatching: 12_507,
     maximumMatching: 12_507,
     hasMore: true,
+    textRubric: {
+      requiredAll: ["25", "12,507"],
+      requiredAny: [["showing", "shown", "returned"], ["match", "matching"]],
+    },
   }),
   clarifyCase({
     id: "uupg-reviewed-definition",

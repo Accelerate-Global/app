@@ -26423,6 +26423,9 @@ This case is defined for later execution only after separate approval.
   "hasMore": true,
   "requireResourceVersion": true,
   "textRubric": {
+    "requiredAll": [
+      "312"
+    ],
     "requiredAny": [
       [
         "ROP",
@@ -26683,7 +26686,24 @@ This case is defined for later execution only after separate approval.
   },
   "hasMore": true,
   "requireCatalogVersion": true,
-  "requireProvenance": true
+  "requireProvenance": true,
+  "textRubric": {
+    "requiredAll": [
+      "25",
+      "234"
+    ],
+    "requiredAny": [
+      [
+        "showing",
+        "shown",
+        "returned"
+      ],
+      [
+        "match",
+        "matching"
+      ]
+    ]
+  }
 }
 ```
 
@@ -26728,7 +26748,24 @@ This case is defined for later execution only after separate approval.
   },
   "hasMore": true,
   "requireCatalogVersion": true,
-  "requireProvenance": true
+  "requireProvenance": true,
+  "textRubric": {
+    "requiredAll": [
+      "25",
+      "12,507"
+    ],
+    "requiredAny": [
+      [
+        "showing",
+        "shown",
+        "returned"
+      ],
+      [
+        "match",
+        "matching"
+      ]
+    ]
+  }
 }
 ```
 
