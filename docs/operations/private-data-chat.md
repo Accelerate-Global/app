@@ -86,10 +86,18 @@ not a second data platform:
   continuation, stable ordering, immutable version labels, and an authenticated
   full-export action. Full ROP values are never put in model context.
 - `people_group_to_bound_rop3` is the one approved server-owned many-to-one
-  relationship. It is dataset-production-version-bound and left/null-preserving;
-  Qwen never supplies a physical key or join predicate. One-to-many geography
-  uses an `EXISTS`-style filter or explicit resource detail grain so it cannot
-  multiply people-group rows.
+  relationship. It normally uses immutable producer resource-set lineage. The
+  pre-publication production dataset instead has one private forced-RLS,
+  append-only binding for its exact dataset version and the reviewed complete
+  ROP version; runtime never derives it from the active pointer, and any later
+  producer publication takes precedence. The relationship remains
+  left/null-preserving, and Qwen never supplies a physical key or join
+  predicate. One-to-many geography uses an `EXISTS`-style filter or explicit
+  resource detail grain so it cannot multiply people-group rows. Exact ROP
+  geography values resolve first; natural-language country names fall back to
+  the reviewed country catalog and become only a verified code present in the
+  reviewed ROP package. Both resource versions are retained as internal
+  evidence, and an ROP-version mismatch fails closed.
 - A signed current-view handoff can carry only supported country, UUPG, and sort
   semantics. Counts remain server-derived, and client summaries are bounded,
   same-origin, versioned display data.
@@ -197,7 +205,7 @@ test password.
 - `pnpm run verify:change:run`
 - `pnpm run verify:ship:local` before a release request
 
-The 436-case v5 suite covers supported aggregates and records, every approved
+The 450-case v5 suite covers supported aggregates and records, every approved
 ROP dimension/record/filter operator/null boundary, resource operations, UUPG
 options, signed current-view and continuation boundaries, completeness, aliases,
 ambiguous and unsupported requests, multi-turn resolution, empty results,

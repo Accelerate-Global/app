@@ -111,8 +111,41 @@ function toIsoString(value: Date | string | null | undefined) {
   return value instanceof Date ? value.toISOString() : new Date(value).toISOString();
 }
 
+type ReferenceResourceVersionSummaryRecord = Pick<
+  typeof referenceResourceVersions.$inferSelect,
+  | "id"
+  | "versionNumber"
+  | "lifecycleState"
+  | "schemaVersion"
+  | "contentChecksum"
+  | "sourceRetrievedAt"
+  | "entryCount"
+  | "validationSummary"
+  | "diffSummary"
+  | "createdByOwnerId"
+  | "createdAt"
+  | "finalizedAt"
+  | "rejectionReason"
+>;
+
+const referenceResourceVersionSummarySelection = {
+  id: referenceResourceVersions.id,
+  versionNumber: referenceResourceVersions.versionNumber,
+  lifecycleState: referenceResourceVersions.lifecycleState,
+  schemaVersion: referenceResourceVersions.schemaVersion,
+  contentChecksum: referenceResourceVersions.contentChecksum,
+  sourceRetrievedAt: referenceResourceVersions.sourceRetrievedAt,
+  entryCount: referenceResourceVersions.entryCount,
+  validationSummary: referenceResourceVersions.validationSummary,
+  diffSummary: referenceResourceVersions.diffSummary,
+  createdByOwnerId: referenceResourceVersions.createdByOwnerId,
+  createdAt: referenceResourceVersions.createdAt,
+  finalizedAt: referenceResourceVersions.finalizedAt,
+  rejectionReason: referenceResourceVersions.rejectionReason,
+};
+
 function toVersionSummary(input: {
-  version: typeof referenceResourceVersions.$inferSelect;
+  version: ReferenceResourceVersionSummaryRecord;
   resourceKey: ReferenceResourceKey;
   activeVersionId: string | null;
 }): ReferenceResourceVersionSummary {
@@ -729,7 +762,7 @@ export async function listReferenceResourceCatalog(input?: { includeAdminState?:
   );
   const activeVersions = activeIds.length
     ? await getDb()
-        .select()
+        .select(referenceResourceVersionSummarySelection)
         .from(referenceResourceVersions)
         .where(inArray(referenceResourceVersions.id, activeIds))
     : [];

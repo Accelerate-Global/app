@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   consumePrivateDataChatContinuationToken,
   createPrivateDataChatContinuationToken,
+  privateDataChatContinuationExpiryParameter,
   verifyPrivateDataChatContinuationToken,
 } from "@/lib/private-data-chat/continuation";
 
@@ -29,6 +30,15 @@ function token() {
 }
 
 describe("private data chat ROP continuation state", () => {
+  it("binds the database expiry as an encodable ISO timestamp", () => {
+    expect(privateDataChatContinuationExpiryParameter(1_000)).toBe(
+      "1970-01-01T00:00:01.000Z",
+    );
+    expect(privateDataChatContinuationExpiryParameter(1_000)).not.toBeInstanceOf(
+      Date,
+    );
+  });
+
   it("binds cursor, ordering, query, identity, conversation, and exact version", () => {
     expect(
       verifyPrivateDataChatContinuationToken({

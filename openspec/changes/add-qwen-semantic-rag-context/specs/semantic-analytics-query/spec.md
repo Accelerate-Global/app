@@ -43,18 +43,26 @@ The approved primary people-group analytics projection SHALL expose a normalized
 - **THEN** validation rejects it before compilation even when a retrieved resource entry contains that attribute
 
 ### Requirement: ROP relationships are registered, version-bound, grain-safe, and null-preserving
-Combining primary people-group data with ROP SHALL use only the server-owned `people_group_to_bound_rop3` relationship. The relationship registry MUST own its physical projection, normalized key mapping, selected columns, many-to-one cardinality, and deterministic left-relationship compilation. Execution MUST resolve the exact immutable `rop-codes` version bound to the dataset producer/forming run through its reference-resource set and MUST fail closed if that binding cannot be proven. Qwen MUST NOT emit physical tables, join keys, join types, or `ON` expressions.
+Combining primary people-group data with ROP SHALL use only the server-owned `people_group_to_bound_rop3` relationship. The relationship registry MUST own its physical projection, normalized key mapping, selected columns, many-to-one cardinality, and deterministic left-relationship compilation. Execution MUST resolve the exact immutable `rop-codes` version bound to the dataset producer/forming run through its reference-resource set. For an independently reviewed dataset version that predates publication lineage, execution MAY instead use one exact private append-only legacy binding to a complete valid ROP version, but only when no producer publication exists for that dataset. Runtime resolution MUST never derive that legacy binding from the active pointer and MUST fail closed if neither binding can be proven. Qwen MUST NOT emit physical tables, join keys, join types, or `ON` expressions.
 
 #### Scenario: Dataset has an immutable ROP resource binding
 - **WHEN** an approved ROP concept is selected for a primary dataset whose production lineage resolves one exact ROP version
 - **THEN** the compiler uses `people_group_to_bound_rop3` with that version and does not consult the current active ROP pointer
+
+#### Scenario: Reviewed pre-publication dataset has an explicit legacy binding
+- **WHEN** the exact current dataset version predates publication lineage and a private append-only review record pins one complete valid ROP version
+- **THEN** the compiler uses that exact version without consulting or mutating the active pointer, and the legacy binding exposes no direct application, provider, or analytics-role grants
+
+#### Scenario: Producer publication supersedes a legacy path
+- **WHEN** producer publication exists for a dataset that also has a historical legacy binding record
+- **THEN** resolution uses only producer resource-set lineage and does not fall back to the legacy record
 
 #### Scenario: Active ROP version has advanced
 - **WHEN** standalone browsing uses a newer active ROP version than the version bound to the dataset
 - **THEN** standalone results label the active version while dataset filters/relationships continue to use the immutable bound version
 
 #### Scenario: Dataset ROP binding is absent or ambiguous
-- **WHEN** producer/forming-run lineage cannot prove one exact ROP resource version
+- **WHEN** producer/forming-run lineage cannot prove one exact ROP resource version and no eligible exact reviewed legacy binding exists
 - **THEN** ROP analytics fails closed with a bounded explanation and no relationship or fallback-to-active-version query executes
 
 #### Scenario: Dataset ROP3 is blank, malformed, inactive, or unmatched
@@ -68,6 +76,10 @@ Combining primary people-group data with ROP SHALL use only the server-owned `pe
 #### Scenario: User filters primary data by ROP geography
 - **WHEN** an approved geography predicate is requested
 - **THEN** the compiler uses a registered `EXISTS`-style predicate against the bound ROP version so the people-group grain and counts are not multiplied
+
+#### Scenario: User names a country in a ROP geography filter
+- **WHEN** the value is not an exact stored ROP geography value but uniquely matches a reviewed country name or alias
+- **THEN** deterministic application code resolves it to a canonical country code present in the reviewed ROP resource, records both resource versions, and compiles only the parameterized grain-preserving predicate
 
 #### Scenario: User requests ROP geography rows
 - **WHEN** the request requires listing one-to-many ROP3 geography records

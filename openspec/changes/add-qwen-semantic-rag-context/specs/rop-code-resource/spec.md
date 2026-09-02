@@ -19,16 +19,20 @@ The system SHALL serve conversational ROP browsing from the same persisted typed
 - **WHEN** no healthy active persisted ROP version can serve a standalone conversational query
 - **THEN** chat returns a bounded resource-unavailable state and does not substitute another ROP version or generated artifact
 
-### Requirement: Dataset use preserves immutable ROP production lineage
-Standalone ROP resource queries SHALL use the labeled active ROP version, while any query combining ROP classification with a primary dataset SHALL resolve the exact immutable ROP version recorded in that dataset's producer/forming-run reference-resource set. Active-version changes MUST NOT alter historical dataset query meaning.
+### Requirement: Dataset use preserves immutable ROP version binding
+Standalone ROP resource queries SHALL use the labeled active ROP version, while any query combining ROP classification with a primary dataset SHALL resolve the exact immutable ROP version recorded in that dataset's producer/forming-run reference-resource set. An independently reviewed dataset version that predates publication lineage MAY use one exact private append-only legacy binding to a complete valid ROP version only while no producer publication exists. Runtime lookup MUST NOT derive that record from the active pointer. Active-version changes MUST NOT alter historical dataset query meaning.
 
 #### Scenario: Dataset and active resource use different versions
 - **WHEN** the active ROP pointer advances after a primary dataset was produced
 - **THEN** standalone browsing uses the new labeled active version and dataset classification queries continue to use the older bound version
 
 #### Scenario: Dataset lineage cannot identify one ROP version
-- **WHEN** the producer/forming run has no ROP member, multiple inconsistent members, or unverifiable resource-set lineage
+- **WHEN** the producer/forming run has no ROP member, multiple inconsistent members, or unverifiable resource-set lineage and no eligible exact reviewed legacy binding exists
 - **THEN** dataset ROP filtering/relationships fail closed while standalone active-version browsing remains independently available
+
+#### Scenario: Reviewed pre-publication dataset uses an exact legacy binding
+- **WHEN** no producer publication exists and a private immutable review record binds the exact current dataset version to one complete valid ROP version
+- **THEN** dataset classification queries use that exact version, the active pointer remains irrelevant, and a later producer publication disables the legacy resolution path
 
 ### Requirement: Conversational access does not widen ROP lifecycle mutation authority
 The conversational ROP adapter SHALL be read-only. Search, list, lookup, count, continuation, and authenticated export MAY be exposed to eligible chat users, but candidate building, refresh, activation, rejection, rollback, and all resource writes MUST remain on the existing admin-only, same-origin-protected lifecycle surfaces.

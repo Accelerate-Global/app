@@ -253,8 +253,56 @@ function resolveCountryValue(
   }
   return {
     status: "resolved" as const,
-    value: matches.values().next().value!.displayName,
+    entry: matches.values().next().value!,
   };
+}
+
+function ropGeographyCountryCode(
+  resource: RopCodeResource,
+  entry: IsoCountryCodeEntry,
+) {
+  const available = new Map<string, string>();
+  for (const geography of Object.values(resource.geoIndexByRop3).flat()) {
+    for (const candidate of [geography.isoAlpha3, geography.rog]) {
+      const key = candidate
+        ? normalizeAccentPunctuationInsensitiveLookup(candidate)
+        : "";
+      if (key && candidate) available.set(key, candidate);
+    }
+  }
+
+  for (const candidate of [
+    entry.officialIsoAlpha3,
+    entry.primaryAlpha3,
+    entry.gencAlpha3,
+    entry.fips,
+    entry.rog3,
+    entry.officialIsoAlpha2,
+    entry.gencAlpha2,
+  ]) {
+    const key = candidate
+      ? normalizeAccentPunctuationInsensitiveLookup(candidate)
+      : "";
+    const canonical = key ? available.get(key) : undefined;
+    if (canonical) return canonical;
+  }
+
+  return null;
+}
+
+function needsCountryBackedRopGeographyResolution(
+  query: PrivateDataChatQuery,
+  resource: RopCodeResource,
+) {
+  return query.filters.some((filter) => {
+    if (filter.field !== "rop_geography") return false;
+    const values = Array.isArray(filter.value) ? filter.value : [filter.value];
+    return values.some(
+      (value) =>
+        typeof value === "string" &&
+        ropCanonicalValues(resource, filter.field, value).length === 0,
+    );
+  });
 }
 
 export async function resolvePrivateDataChatQueryValues(
@@ -279,6 +327,18 @@ export async function resolvePrivateDataChatQueryValues(
     throw new PrivateDataChatValueResolutionError();
   }
 
+  if (
+    !countryResource &&
+    ropResource &&
+    needsCountryBackedRopGeographyResolution(query, ropResource.payload)
+  ) {
+    try {
+      countryResource = await resolvedDependencies.loadCountryValues();
+    } catch {
+      throw new PrivateDataChatValueResolutionError();
+    }
+  }
+
   const index = countryResource
     ? buildCountryValueIndex(countryResource.entries)
     : new Map();
@@ -296,7 +356,9 @@ export async function resolvePrivateDataChatQueryValues(
     if (!originalValues.every((value) => typeof value === "string")) {
       return filter;
     }
-    let matched = false;
+    const matchedResources = new Set<
+      typeof COUNTRY_RESOURCE_KEY | typeof ROP_RESOURCE_KEY
+    >();
     const values = originalValues.map((value) => {
       if (filter.field === "country" && countryResource) {
         const resolution = resolveCountryValue(value, index);
@@ -307,8 +369,8 @@ export async function resolvePrivateDataChatQueryValues(
           return value;
         }
         if (resolution.status === "resolved") {
-          matched = true;
-          return resolution.value;
+          matchedResources.add(COUNTRY_RESOURCE_KEY);
+          return resolution.entry.displayName;
         }
         return value;
       }
@@ -325,18 +387,40 @@ export async function resolvePrivateDataChatQueryValues(
           return value;
         }
         if (matches.length === 1) {
-          matched = true;
+          matchedResources.add(ROP_RESOURCE_KEY);
           return matches[0]!;
+        }
+        if (filter.field === "rop_geography" && countryResource) {
+          const countryResolution = resolveCountryValue(value, index);
+          if (countryResolution.status === "ambiguous") {
+            if (ambiguities.length === 0) {
+              ambiguities.push({
+                field: filter.field,
+                matches: countryResolution.matches,
+              });
+            }
+            return value;
+          }
+          if (countryResolution.status === "resolved") {
+            const canonical = ropGeographyCountryCode(
+              ropResource.payload,
+              countryResolution.entry,
+            );
+            if (canonical) {
+              matchedResources.add(COUNTRY_RESOURCE_KEY);
+              matchedResources.add(ROP_RESOURCE_KEY);
+              return canonical;
+            }
+          }
         }
       }
       return value;
     });
 
-    if (matched) {
-      const version =
-        filter.field === "country" ? countryResource?.version : ropResource?.version;
-      const resourceKey =
-        filter.field === "country" ? COUNTRY_RESOURCE_KEY : ROP_RESOURCE_KEY;
+    for (const resourceKey of matchedResources) {
+      const version = resourceKey === COUNTRY_RESOURCE_KEY
+        ? countryResource?.version
+        : ropResource?.version;
       if (!version) return filter;
       valueBindings.push({
         field: filter.field,

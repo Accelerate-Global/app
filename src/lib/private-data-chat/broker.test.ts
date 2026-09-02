@@ -4,6 +4,7 @@ import type { CurrentIdentity } from "@/lib/auth";
 import { PRIVATE_DATA_CHAT_CATALOG_VERSION } from "@/lib/private-data-chat/catalog";
 import {
   executePrivateDataChatQuery,
+  PRIVATE_DATA_CHAT_STATEMENT_TIMEOUT,
   stripPrivateDataChatInternalColumns,
 } from "@/lib/private-data-chat/broker";
 import { compilePrivateDataChatQuery } from "@/lib/private-data-chat/compiler";
@@ -29,6 +30,10 @@ const compiled = compilePrivateDataChatQuery({
 });
 
 describe("executePrivateDataChatQuery", () => {
+  it("keeps the production statement ceiling bounded with measured scan headroom", () => {
+    expect(PRIVATE_DATA_CHAT_STATEMENT_TIMEOUT).toBe("10s");
+  });
+
   it("returns bounded rows with provenance and a redacted audit template", async () => {
     const appendAudit = vi.fn().mockResolvedValue(undefined);
     const result = await executePrivateDataChatQuery({

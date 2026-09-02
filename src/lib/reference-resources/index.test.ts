@@ -95,6 +95,52 @@ describe("reference resource CSV streaming", () => {
 });
 
 describe("reference resource catalog", () => {
+  it("does not load heavyweight normalized resources for active-version summaries", async () => {
+    const activeVersionSelect = vi.fn((selection: Record<string, unknown>) => {
+      void selection;
+      return {
+        from: () => ({
+          where: async () => [],
+        }),
+      };
+    });
+    getDbMock
+      .mockReturnValueOnce({
+        select: () => ({
+          from: () => ({
+            orderBy: async () => [
+              {
+                id: "resource-id",
+                resourceKey: COUNTRY_RESOURCE_KEY,
+                resourceKind: "country-geography",
+                label: "Countries",
+                description: "Countries",
+                routePath: "/dashboard/resources/country-territory-codes",
+                sortOrder: 1,
+                activeVersionId: "version-id",
+              },
+            ],
+          }),
+        }),
+      })
+      .mockReturnValueOnce({ select: activeVersionSelect })
+      .mockReturnValueOnce({
+        select: () => ({
+          from: () => ({
+            innerJoin: () => ({ where: async () => [] }),
+          }),
+        }),
+      });
+
+    await listReferenceResourceCatalog();
+
+    const selection = activeVersionSelect.mock.calls[0]?.[0];
+    expect(selection).toBeDefined();
+    expect(Object.keys(selection ?? {})).not.toContain("normalizedResource");
+    expect(Object.keys(selection ?? {})).not.toContain("artifactManifest");
+    expect(Object.keys(selection ?? {})).not.toContain("sourceMetadata");
+  });
+
   it("replaces a stale stored route with the canonical resource detail route", async () => {
     getDbMock
       .mockReturnValueOnce({

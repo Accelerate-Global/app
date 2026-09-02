@@ -333,6 +333,34 @@ function validateEndToEndCase(
     return;
   }
 
+  if (testCase.expected.decision === "resource_query") {
+    if (
+      testCase.expected.rowCount.minimum < 0 ||
+      testCase.expected.rowCount.maximum > 25 ||
+      testCase.expected.rowCount.minimum > testCase.expected.rowCount.maximum
+    ) {
+      issue(
+        issues,
+        "e2e-resource-row-bound",
+        "End-to-end resource row assertions must remain within the 0-25 page bound.",
+        testCase.id,
+      );
+    }
+    if (
+      testCase.expected.matchingCount.minimum < testCase.expected.rowCount.minimum ||
+      testCase.expected.matchingCount.minimum >
+        testCase.expected.matchingCount.maximum
+    ) {
+      issue(
+        issues,
+        "e2e-resource-matching-bound",
+        "End-to-end resource matching-count bounds are inconsistent.",
+        testCase.id,
+      );
+    }
+    return;
+  }
+
   if (
     testCase.expected.rowCount.minimum < 0 ||
     testCase.expected.rowCount.maximum > 100 ||
@@ -344,6 +372,29 @@ function validateEndToEndCase(
       "End-to-end row assertions must remain within the broker's 0-100 row bound.",
       testCase.id,
     );
+  }
+  if (
+    testCase.expected.matchingCount &&
+    (testCase.expected.matchingCount.minimum < testCase.expected.rowCount.minimum ||
+      testCase.expected.matchingCount.minimum >
+        testCase.expected.matchingCount.maximum)
+  ) {
+    issue(
+      issues,
+      "e2e-matching-bound",
+      "End-to-end matching-count bounds are inconsistent with returned rows.",
+      testCase.id,
+    );
+  }
+  for (const namedFilter of testCase.expected.namedFilterKeys ?? []) {
+    if (namedFilter !== "uupg") {
+      issue(
+        issues,
+        "e2e-named-filter",
+        `End-to-end named filter ${namedFilter} is not approved.`,
+        testCase.id,
+      );
+    }
   }
   if (testCase.expected.selectedKeys.length === 0) {
     issue(

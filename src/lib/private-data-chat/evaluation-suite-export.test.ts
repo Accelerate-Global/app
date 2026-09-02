@@ -56,15 +56,15 @@ describe("private data chat live evaluation export", () => {
 
     expect(first).toEqual(second);
     expect(first.manifest.counts).toEqual({
-      total: 436,
+      total: 450,
       planner: 374,
       answer: 38,
-      end_to_end: 24,
+      end_to_end: 38,
       clean_model_calls: 1236,
     });
     expect(first.documents.plans.cases).toHaveLength(374);
     expect(first.documents.answers.cases).toHaveLength(38);
-    expect(first.documents.endToEnd.cases).toHaveLength(24);
+    expect(first.documents.endToEnd.cases).toHaveLength(38);
     expect(first.manifest.approved_execution).toEqual({
       tier: "extended",
       diagnostic_repetitions: 1,

@@ -21,6 +21,7 @@ import { ROP_RESOURCE_KEY } from "@/lib/reference-resources/types";
 import type { PrivateDataChatRetrievalAudit } from "@/lib/private-data-chat/retrieval";
 
 const PRIVATE_DATA_CHAT_MAX_ESTIMATED_COST = 100_000;
+export const PRIVATE_DATA_CHAT_STATEMENT_TIMEOUT = "10s" as const;
 
 export type PrivateDataChatAuditDecision =
   | "admitted"
@@ -172,7 +173,9 @@ async function runProductionReadOnlyQuery(
   return sql.begin("read only", async (transaction) => {
     await transaction`select set_config('request.jwt.claims', ${claims}, true)`;
     await transaction.unsafe("set local role analytics_chat_reader");
-    await transaction.unsafe("set local statement_timeout = '5s'");
+    await transaction.unsafe(
+      `set local statement_timeout = '${PRIVATE_DATA_CHAT_STATEMENT_TIMEOUT}'`,
+    );
     await transaction.unsafe("set local lock_timeout = '500ms'");
     await transaction.unsafe(
       "set local idle_in_transaction_session_timeout = '5s'",

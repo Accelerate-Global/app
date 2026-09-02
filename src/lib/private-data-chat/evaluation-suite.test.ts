@@ -28,20 +28,20 @@ const suiteSourceFiles = [
 ] as const;
 
 describe("private data chat capability evaluation suite", () => {
-  it("contains 436 reviewable cases across the three isolated evaluation kinds", () => {
+  it("contains 450 reviewable cases across the three isolated evaluation kinds", () => {
     const summary = summarizePrivateDataChatCapabilitySuite("extended");
 
-    expect(summary.totalCases).toBe(436);
-    expect(summary.estimatedInferenceCalls).toBe(457);
+    expect(summary.totalCases).toBe(450);
+    expect(summary.estimatedInferenceCalls).toBe(478);
     expect(summary.byKind).toEqual({
       planner: 374,
       answer: 38,
-      "end-to-end": 24,
+      "end-to-end": 38,
     });
     expect(summary.byDeclaredTier).toEqual({
-      smoke: 40,
-      core: 164,
-      extended: 232,
+      smoke: 46,
+      core: 170,
+      extended: 234,
     });
   });
 
@@ -50,10 +50,10 @@ describe("private data chat capability evaluation suite", () => {
     const core = summarizePrivateDataChatCapabilitySuite("core");
     const extended = summarizePrivateDataChatCapabilitySuite("extended");
 
-    expect(smoke.totalCases).toBe(40);
-    expect(smoke.estimatedInferenceCalls).toBe(42);
-    expect(core.totalCases).toBe(204);
-    expect(core.estimatedInferenceCalls).toBe(217);
+    expect(smoke.totalCases).toBe(46);
+    expect(smoke.estimatedInferenceCalls).toBe(51);
+    expect(core.totalCases).toBe(216);
+    expect(core.estimatedInferenceCalls).toBe(235);
     expect(extended.totalCases).toBeGreaterThan(core.totalCases);
   });
 
@@ -121,6 +121,20 @@ describe("private data chat capability evaluation suite", () => {
       plannerCase("v5-refuse-unregistered-rop-join")?.textRubric?.forbidden,
     ).not.toContain("ON ");
     expect(
+      PRIVATE_DATA_CHAT_END_TO_END_CAPABILITY_CASES.find(
+        (testCase) => testCase.id === "v4-e2e-ambiguous-largest",
+      )?.expected.textRubric?.requiredAny,
+    ).toEqual(
+      expect.arrayContaining([
+        expect.arrayContaining(["number of results", "result count"]),
+      ]),
+    );
+    expect(
+      PRIVATE_DATA_CHAT_END_TO_END_CAPABILITY_CASES.find(
+        (testCase) => testCase.id === "v4-e2e-macro-region-unavailable",
+      )?.expected.textRubric?.requiredAny?.[0],
+    ).toContain("not 'macro region'");
+    expect(
       plannerCase("v4-clarify-forecast-unavailable")?.textRubric
         ?.requiredAny?.[0],
     ).toContain("does not include");
@@ -145,6 +159,11 @@ describe("private data chat capability evaluation suite", () => {
         (testCase) => testCase.id === "v4-e2e-average-evangelical",
       )?.expected.textRubric,
     ).toEqual({ requiredAny: [["percent", "percentage"]] });
+    expect(
+      PRIVATE_DATA_CHAT_END_TO_END_CAPABILITY_CASES.find(
+        (testCase) => testCase.id === "v4-e2e-weighted-average-unavailable",
+      )?.expected.textRubric?.forbidden,
+    ).toBeUndefined();
     expect(
       PRIVATE_DATA_CHAT_END_TO_END_CAPABILITY_CASES.find(
         (testCase) => testCase.id === "v4-e2e-congo-display-name-records",

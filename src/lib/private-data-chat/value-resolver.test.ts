@@ -185,6 +185,7 @@ describe("private data chat controlled value resolution", () => {
   });
 
   it("resolves reviewed ROP names to canonical bound-query values with version lineage", async () => {
+    const loadCountryValues = vi.fn();
     const query = {
       catalogVersion: PRIVATE_DATA_CHAT_CATALOG_VERSION,
       namedFilterRegistryVersion: PRIVATE_DATA_CHAT_NAMED_FILTER_REGISTRY_VERSION,
@@ -205,6 +206,7 @@ describe("private data chat controlled value resolution", () => {
       contentChecksum: "b".repeat(64),
     };
     const resolution = await resolvePrivateDataChatQueryValues(query, {
+      loadCountryValues,
       loadRopValues: async () => ({
         version: ropVersion,
         payload: {
@@ -236,6 +238,66 @@ describe("private data chat controlled value resolution", () => {
       valueBindings: [
         { field: "rop2_code", resourceKey: "rop-codes", resourceVersionId: ropVersion.id },
         { field: "rop_geography", resourceKey: "rop-codes", resourceVersionId: ropVersion.id },
+      ],
+    });
+    expect(loadCountryValues).not.toHaveBeenCalled();
+  });
+
+  it("canonicalizes a country name used as ROP geography to the reviewed ISO code", async () => {
+    const query = {
+      catalogVersion: PRIVATE_DATA_CHAT_CATALOG_VERSION,
+      namedFilterRegistryVersion: PRIVATE_DATA_CHAT_NAMED_FILTER_REGISTRY_VERSION,
+      dataset: "primary_people_groups" as const,
+      mode: "records" as const,
+      fields: ["people_id" as const],
+      filters: [
+        {
+          field: "rop_geography" as const,
+          operator: "eq" as const,
+          value: "Sudan",
+        },
+      ],
+      namedFilters: [],
+      sort: [],
+      limit: 25,
+    };
+    const ropVersion = {
+      id: "bd000002-1337-403d-8eb5-b7c44a1be131",
+      versionNumber: 4,
+      contentChecksum: "c".repeat(64),
+    };
+    const resolution = await resolvePrivateDataChatQueryValues(query, {
+      loadCountryValues: async () => ({
+        entries: [country("Sudan", "SDN", { fips: "SU" })],
+        version,
+      }),
+      loadRopValues: async () => ({
+        version: ropVersion,
+        payload: {
+          entries: [],
+          geoIndexByRop3: {
+            "100090": [
+              { geoName: "Afitti", isoAlpha3: "SDN", rog: "SU" },
+            ],
+          },
+        },
+      } as never),
+    });
+
+    expect(resolution).toMatchObject({
+      status: "resolved",
+      query: { filters: [{ value: "SDN" }] },
+      valueBindings: [
+        {
+          field: "rop_geography",
+          resourceKey: "country-territory-codes",
+          resourceVersionId: version.id,
+        },
+        {
+          field: "rop_geography",
+          resourceKey: "rop-codes",
+          resourceVersionId: ropVersion.id,
+        },
       ],
     });
   });

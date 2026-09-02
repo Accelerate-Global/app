@@ -3,9 +3,9 @@
 > **Status: APPROVED FOR EXECUTION.** This sanitized inventory remains generation-only; live execution is recorded separately in hash-bound receipts.
 
 - **Suite version:** `private-data-chat-capabilities-v5.review-1`
-- **Total proposed cases:** 436
+- **Total proposed cases:** 450
 - **Compatibility baseline:** 23 unchanged v3 planner cases
-- **Full one-repetition estimate:** 457 model calls
+- **Full one-repetition estimate:** 478 model calls
 - **Private production values committed:** none; answer fixtures are synthetic and full-path cases use structural assertions
 
 ## What the three kinds measure
@@ -20,9 +20,9 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
 
 | Cumulative tier | Cases | Planner | Grounded answer | End to end | Estimated model calls for one repetition | Three repetitions |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| smoke | 40 | 31 | 7 | 2 | 42 | 126 |
-| core | 204 | 170 | 20 | 14 | 217 | 651 |
-| extended | 436 | 374 | 38 | 24 | 457 | 1371 |
+| smoke | 46 | 31 | 7 | 8 | 51 | 153 |
+| core | 216 | 170 | 20 | 26 | 235 | 705 |
+| extended | 450 | 374 | 38 | 38 | 478 | 1434 |
 
 ## Coverage by capability
 
@@ -33,7 +33,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
 | completeness | 2 |
 | controlled-values | 15 |
 | empty-result | 1 |
-| end-to-end-read-only | 24 |
+| end-to-end-read-only | 38 |
 | filter-operator | 45 |
 | grounded-answer | 17 |
 | grouping | 18 |
@@ -25955,9 +25955,17 @@ This case is defined for later execution only after separate approval.
   "decision": "clarify",
   "requireNoQuery": true,
   "textRubric": {
-    "requiredAll": [
-      "population",
-      "how many"
+    "requiredAny": [
+      [
+        "population",
+        "metric"
+      ],
+      [
+        "how many",
+        "number of results",
+        "result count",
+        "limit"
+      ]
     ]
   }
 }
@@ -25999,7 +26007,10 @@ This case is defined for later execution only after separate approval.
         "unavailable",
         "does not contain",
         "does not support",
-        "not in"
+        "not in",
+        "not macro region",
+        "not 'macro region'",
+        "not \"macro region\""
       ],
       [
         "country"
@@ -26044,9 +26055,6 @@ This case is defined for later execution only after separate approval.
       [
         "unweighted"
       ]
-    ],
-    "forbidden": [
-      "weighted average is"
     ]
   }
 }
@@ -26090,6 +26098,736 @@ This case is defined for later execution only after separate approval.
   },
   "requireCatalogVersion": true,
   "requireProvenance": true
+}
+```
+
+This case is defined for later execution only after separate approval.
+
+### 437. `v5-e2e-incident-frontier-sudan-count`
+
+- **Kind:** end-to-end
+- **Declared tier:** smoke
+- **Capability:** end-to-end-read-only
+- **Risk:** critical
+- **Tags:** `approval-required`, `read-only`, `incident-regression`, `sudan`, `frontier`, `count`
+- **Why this case exists:** Regress the production incident's authoritative 103-row Sudan frontier count.
+
+**Conversation**
+```json
+[
+  {
+    "role": "user",
+    "content": "How many people groups in Sudan have Frontier Group equal to true?"
+  }
+]
+```
+
+**Structural full-path assertion**
+```json
+{
+  "decision": "query",
+  "selectedKeys": [
+    "people_group_count"
+  ],
+  "filterFields": [
+    "country",
+    "frontier_group"
+  ],
+  "sort": [],
+  "rowCount": {
+    "minimum": 1,
+    "maximum": 1
+  },
+  "matchingCount": {
+    "minimum": 1,
+    "maximum": 1
+  },
+  "requireCatalogVersion": true,
+  "requireProvenance": true,
+  "textRubric": {
+    "requiredAll": [
+      "103"
+    ]
+  }
+}
+```
+
+This case is defined for later execution only after separate approval.
+
+### 438. `v5-e2e-incident-uupg-sudan-count`
+
+- **Kind:** end-to-end
+- **Declared tier:** smoke
+- **Capability:** end-to-end-read-only
+- **Risk:** critical
+- **Tags:** `approval-required`, `read-only`, `incident-regression`, `sudan`, `uupg`, `count`
+- **Why this case exists:** Regress the authoritative null-preserving UUPG count of 104 for Sudan.
+
+**Conversation**
+```json
+[
+  {
+    "role": "user",
+    "content": "How many UUPG people groups are in Sudan using both current criteria?"
+  }
+]
+```
+
+**Structural full-path assertion**
+```json
+{
+  "decision": "query",
+  "selectedKeys": [
+    "people_group_count"
+  ],
+  "filterFields": [
+    "country"
+  ],
+  "namedFilterKeys": [
+    "uupg"
+  ],
+  "sort": [],
+  "rowCount": {
+    "minimum": 1,
+    "maximum": 1
+  },
+  "matchingCount": {
+    "minimum": 1,
+    "maximum": 1
+  },
+  "requireCatalogVersion": true,
+  "requireProvenance": true,
+  "textRubric": {
+    "requiredAll": [
+      "104"
+    ],
+    "requiredAny": [
+      [
+        "UUPG",
+        "people group"
+      ]
+    ]
+  }
+}
+```
+
+This case is defined for later execution only after separate approval.
+
+### 439. `v5-e2e-incident-explicit-dual-sudan-count`
+
+- **Kind:** end-to-end
+- **Declared tier:** core
+- **Capability:** end-to-end-read-only
+- **Risk:** critical
+- **Tags:** `approval-required`, `read-only`, `incident-regression`, `sudan`, `explicit-booleans`, `count`
+- **Why this case exists:** Distinguish the 67 explicit true/false dual-criterion rows from null-preserving UUPG.
+
+**Conversation**
+```json
+[
+  {
+    "role": "user",
+    "content": "How many people groups in Sudan have Frontier Group true and Global Engagement Anywhere false?"
+  }
+]
+```
+
+**Structural full-path assertion**
+```json
+{
+  "decision": "query",
+  "selectedKeys": [
+    "people_group_count"
+  ],
+  "filterFields": [
+    "country",
+    "frontier_group",
+    "globally_engaged"
+  ],
+  "sort": [],
+  "rowCount": {
+    "minimum": 1,
+    "maximum": 1
+  },
+  "matchingCount": {
+    "minimum": 1,
+    "maximum": 1
+  },
+  "requireCatalogVersion": true,
+  "requireProvenance": true,
+  "textRubric": {
+    "requiredAll": [
+      "67"
+    ]
+  }
+}
+```
+
+This case is defined for later execution only after separate approval.
+
+### 440. `v5-e2e-incident-uupg-sudan-complete-page`
+
+- **Kind:** end-to-end
+- **Declared tier:** smoke
+- **Capability:** end-to-end-read-only
+- **Risk:** critical
+- **Tags:** `approval-required`, `read-only`, `incident-regression`, `sudan`, `uupg`, `completeness`, `100-of-104`
+- **Why this case exists:** Prove a 100-row page is narrated as 100 shown from 104 UUPG matches.
+
+**Conversation**
+```json
+[
+  {
+    "role": "user",
+    "content": "List 100 people IDs and names for UUPG people groups in Sudan."
+  }
+]
+```
+
+**Structural full-path assertion**
+```json
+{
+  "decision": "query",
+  "selectedKeys": [
+    "people_id",
+    "people_name"
+  ],
+  "filterFields": [
+    "country"
+  ],
+  "namedFilterKeys": [
+    "uupg"
+  ],
+  "sort": [],
+  "rowCount": {
+    "minimum": 100,
+    "maximum": 100
+  },
+  "matchingCount": {
+    "minimum": 104,
+    "maximum": 104
+  },
+  "hasMore": true,
+  "requireCatalogVersion": true,
+  "requireProvenance": true,
+  "textRubric": {
+    "requiredAll": [
+      "100",
+      "104"
+    ],
+    "requiredAny": [
+      [
+        "showing",
+        "shown",
+        "returned"
+      ],
+      [
+        "match",
+        "matching"
+      ]
+    ],
+    "forbidden": [
+      "total is 100",
+      "only 100 match",
+      "100 UUPG total"
+    ]
+  }
+}
+```
+
+This case is defined for later execution only after separate approval.
+
+### 441. `v5-e2e-rop-browse-first-page`
+
+- **Kind:** end-to-end
+- **Declared tier:** smoke
+- **Capability:** end-to-end-read-only
+- **Risk:** elevated
+- **Tags:** `approval-required`, `read-only`, `resource-query`, `rop`, `browse`, `paging`
+- **Why this case exists:** Browse the complete governed ROP catalog through a bounded first page.
+
+**Conversation**
+```json
+[
+  {
+    "role": "user",
+    "content": "Browse all ROP entries."
+  }
+]
+```
+
+**Structural full-path assertion**
+```json
+{
+  "decision": "resource_query",
+  "operation": "list",
+  "rowCount": {
+    "minimum": 25,
+    "maximum": 25
+  },
+  "matchingCount": {
+    "minimum": 13069,
+    "maximum": 13069
+  },
+  "hasMore": true,
+  "requireContinuation": true,
+  "requireResourceVersion": true,
+  "textRubric": {
+    "requiredAll": [
+      "13,069"
+    ],
+    "requiredAny": [
+      [
+        "showing",
+        "match"
+      ]
+    ]
+  }
+}
+```
+
+This case is defined for later execution only after separate approval.
+
+### 442. `v5-e2e-rop-search-sudan`
+
+- **Kind:** end-to-end
+- **Declared tier:** core
+- **Capability:** end-to-end-read-only
+- **Risk:** elevated
+- **Tags:** `approval-required`, `read-only`, `resource-query`, `rop`, `search`, `geography`
+- **Why this case exists:** Search all reviewed ROP entry fields through the typed resource adapter.
+
+**Conversation**
+```json
+[
+  {
+    "role": "user",
+    "content": "Search the ROP catalog for Sudan."
+  }
+]
+```
+
+**Structural full-path assertion**
+```json
+{
+  "decision": "resource_query",
+  "operation": "search",
+  "rowCount": {
+    "minimum": 25,
+    "maximum": 25
+  },
+  "matchingCount": {
+    "minimum": 312,
+    "maximum": 312
+  },
+  "hasMore": true,
+  "requireResourceVersion": true,
+  "textRubric": {
+    "requiredAny": [
+      [
+        "ROP",
+        "entries"
+      ],
+      [
+        "match",
+        "showing"
+      ]
+    ]
+  }
+}
+```
+
+This case is defined for later execution only after separate approval.
+
+### 443. `v5-e2e-rop-lookup-code`
+
+- **Kind:** end-to-end
+- **Declared tier:** smoke
+- **Capability:** end-to-end-read-only
+- **Risk:** elevated
+- **Tags:** `approval-required`, `read-only`, `resource-query`, `rop`, `lookup`, `exact-code`
+- **Why this case exists:** Give an exact ROP3 code deterministic lookup precedence in production.
+
+**Conversation**
+```json
+[
+  {
+    "role": "user",
+    "content": "Look up ROP3 code 100425."
+  }
+]
+```
+
+**Structural full-path assertion**
+```json
+{
+  "decision": "resource_query",
+  "operation": "lookup",
+  "rowCount": {
+    "minimum": 1,
+    "maximum": 1
+  },
+  "matchingCount": {
+    "minimum": 1,
+    "maximum": 1
+  },
+  "hasMore": false,
+  "requireResourceVersion": true,
+  "textRubric": {
+    "requiredAny": [
+      [
+        "100425",
+        "ROP"
+      ]
+    ]
+  }
+}
+```
+
+This case is defined for later execution only after separate approval.
+
+### 444. `v5-e2e-rop-count-all`
+
+- **Kind:** end-to-end
+- **Declared tier:** core
+- **Capability:** end-to-end-read-only
+- **Risk:** elevated
+- **Tags:** `approval-required`, `read-only`, `resource-query`, `rop`, `count`
+- **Why this case exists:** Count the complete active ROP resource without returning its rows.
+
+**Conversation**
+```json
+[
+  {
+    "role": "user",
+    "content": "How many entries are in the ROP catalog?"
+  }
+]
+```
+
+**Structural full-path assertion**
+```json
+{
+  "decision": "resource_query",
+  "operation": "count",
+  "rowCount": {
+    "minimum": 0,
+    "maximum": 0
+  },
+  "matchingCount": {
+    "minimum": 13069,
+    "maximum": 13069
+  },
+  "hasMore": false,
+  "requireResourceVersion": true,
+  "textRubric": {
+    "requiredAll": [
+      "13,069"
+    ],
+    "requiredAny": [
+      [
+        "ROP",
+        "entries"
+      ]
+    ]
+  }
+}
+```
+
+This case is defined for later execution only after separate approval.
+
+### 445. `v5-e2e-rop-continue-second-page`
+
+- **Kind:** end-to-end
+- **Declared tier:** extended
+- **Capability:** end-to-end-read-only
+- **Risk:** elevated
+- **Tags:** `approval-required`, `read-only`, `resource-query`, `rop`, `continue`, `signed-state`, `paging`
+- **Why this case exists:** Continue ROP results only with the server-issued identity/version-bound token.
+
+**Conversation**
+```json
+[
+  {
+    "role": "user",
+    "content": "Browse all ROP entries."
+  },
+  {
+    "role": "assistant",
+    "content": "I can show a bounded first ROP page."
+  },
+  {
+    "role": "user",
+    "content": "Show the next ROP page."
+  }
+]
+```
+
+**Structural full-path assertion**
+```json
+{
+  "decision": "resource_query",
+  "operation": "continue",
+  "rowCount": {
+    "minimum": 25,
+    "maximum": 25
+  },
+  "matchingCount": {
+    "minimum": 13069,
+    "maximum": 13069
+  },
+  "hasMore": true,
+  "requireContinuation": true,
+  "requireResourceVersion": true,
+  "textRubric": {
+    "requiredAll": [
+      "13,069"
+    ],
+    "requiredAny": [
+      [
+        "26",
+        "50",
+        "showing"
+      ]
+    ]
+  }
+}
+```
+
+This case is defined for later execution only after separate approval.
+
+### 446. `v5-e2e-rop3-registered-filter`
+
+- **Kind:** end-to-end
+- **Declared tier:** core
+- **Capability:** end-to-end-read-only
+- **Risk:** elevated
+- **Tags:** `approval-required`, `read-only`, `rop3`, `registered-relationship`, `filter`
+- **Why this case exists:** Use only the server-owned dataset-bound ROP3 relationship for filtering.
+
+**Conversation**
+```json
+[
+  {
+    "role": "user",
+    "content": "List 20 people IDs and names classified as ROP3 100425."
+  }
+]
+```
+
+**Structural full-path assertion**
+```json
+{
+  "decision": "query",
+  "selectedKeys": [
+    "people_id",
+    "people_name"
+  ],
+  "filterFields": [
+    "rop3_code"
+  ],
+  "sort": [],
+  "rowCount": {
+    "minimum": 1,
+    "maximum": 1
+  },
+  "matchingCount": {
+    "minimum": 1,
+    "maximum": 1
+  },
+  "hasMore": false,
+  "requireCatalogVersion": true,
+  "requireProvenance": true
+}
+```
+
+This case is defined for later execution only after separate approval.
+
+### 447. `v5-e2e-rop-geography-nonmultiplying-filter`
+
+- **Kind:** end-to-end
+- **Declared tier:** core
+- **Capability:** end-to-end-read-only
+- **Risk:** elevated
+- **Tags:** `approval-required`, `read-only`, `rop`, `geography`, `registered-relationship`, `exists`
+- **Why this case exists:** Use the registered EXISTS-style ROP geography filter without multiplying people-group rows.
+
+**Conversation**
+```json
+[
+  {
+    "role": "user",
+    "content": "List 25 people IDs whose bound ROP geography includes Sudan."
+  }
+]
+```
+
+**Structural full-path assertion**
+```json
+{
+  "decision": "query",
+  "selectedKeys": [
+    "people_id"
+  ],
+  "filterFields": [
+    "rop_geography"
+  ],
+  "sort": [],
+  "rowCount": {
+    "minimum": 25,
+    "maximum": 25
+  },
+  "matchingCount": {
+    "minimum": 234,
+    "maximum": 234
+  },
+  "hasMore": true,
+  "requireCatalogVersion": true,
+  "requireProvenance": true
+}
+```
+
+This case is defined for later execution only after separate approval.
+
+### 448. `v5-e2e-rop-null-preserving-match-status`
+
+- **Kind:** end-to-end
+- **Declared tier:** extended
+- **Capability:** end-to-end-read-only
+- **Risk:** elevated
+- **Tags:** `approval-required`, `read-only`, `rop`, `match-status`, `null-preserving`, `registered-relationship`
+- **Why this case exists:** Return explicit ROP match states without dropping unmatched or malformed primary rows.
+
+**Conversation**
+```json
+[
+  {
+    "role": "user",
+    "content": "List 25 people IDs and their ROP match status."
+  }
+]
+```
+
+**Structural full-path assertion**
+```json
+{
+  "decision": "query",
+  "selectedKeys": [
+    "people_id",
+    "rop_match_status"
+  ],
+  "filterFields": [],
+  "sort": [],
+  "rowCount": {
+    "minimum": 25,
+    "maximum": 25
+  },
+  "matchingCount": {
+    "minimum": 12507,
+    "maximum": 12507
+  },
+  "hasMore": true,
+  "requireCatalogVersion": true,
+  "requireProvenance": true
+}
+```
+
+This case is defined for later execution only after separate approval.
+
+### 449. `v5-e2e-uupg-reviewed-definition`
+
+- **Kind:** end-to-end
+- **Declared tier:** core
+- **Capability:** end-to-end-read-only
+- **Risk:** elevated
+- **Tags:** `approval-required`, `read-only`, `no-query`, `definition`, `uupg`, `null-preserving`
+- **Why this case exists:** Ground the visible UUPG explanation in the reviewed definition package.
+
+**Conversation**
+```json
+[
+  {
+    "role": "user",
+    "content": "What does UUPG mean in this app?"
+  }
+]
+```
+
+**Structural full-path assertion**
+```json
+{
+  "decision": "clarify",
+  "requireNoQuery": true,
+  "textRubric": {
+    "requiredAny": [
+      [
+        "Global Engagement Anywhere",
+        "global engagement",
+        "globally engaged"
+      ],
+      [
+        "Frontier Group",
+        "frontier"
+      ],
+      [
+        "blank",
+        "missing",
+        "null"
+      ],
+      [
+        "Baseline UUPG",
+        "baseline"
+      ]
+    ]
+  }
+}
+```
+
+This case is defined for later execution only after separate approval.
+
+### 450. `v5-e2e-off-topic-photosynthesis`
+
+- **Kind:** end-to-end
+- **Declared tier:** smoke
+- **Capability:** end-to-end-read-only
+- **Risk:** elevated
+- **Tags:** `approval-required`, `read-only`, `no-query`, `off-topic`, `hard-negative`, `abstention`
+- **Why this case exists:** Keep a hard-negative general-knowledge request outside the governed data domain.
+
+**Conversation**
+```json
+[
+  {
+    "role": "user",
+    "content": "Explain photosynthesis."
+  }
+]
+```
+
+**Structural full-path assertion**
+```json
+{
+  "decision": "clarify",
+  "requireNoQuery": true,
+  "textRubric": {
+    "requiredAny": [
+      [
+        "cannot",
+        "can't",
+        "only"
+      ],
+      [
+        "Accelerate Global",
+        "people group",
+        "data"
+      ]
+    ],
+    "forbidden": [
+      "chlorophyll",
+      "sunlight",
+      "carbon dioxide"
+    ]
+  }
 }
 ```
 

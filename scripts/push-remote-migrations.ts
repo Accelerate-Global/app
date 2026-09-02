@@ -1,6 +1,29 @@
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 
 import { loadEnvironmentFile, runCommand } from "./lib/command";
+
+export function buildRemoteMigrationPushInvocation(
+  databaseUrl: string,
+  environment: NodeJS.ProcessEnv = process.env,
+) {
+  const password = decodeURIComponent(new URL(databaseUrl).password);
+
+  if (!password) {
+    throw new Error("DATABASE_URL must include the remote database password.");
+  }
+
+  return {
+    command: "supabase",
+    args: ["db", "push", "--include-all"],
+    options: {
+      env: {
+        ...environment,
+        SUPABASE_DB_PASSWORD: password,
+      },
+    },
+  } as const;
+}
 
 async function main() {
   const envFromFile = await loadEnvironmentFile(
@@ -12,16 +35,20 @@ async function main() {
     throw new Error("DATABASE_URL is required in the environment or .env.local.");
   }
 
-  const password = new URL(databaseUrl).password;
-
-  if (!password) {
-    throw new Error("DATABASE_URL must include the remote database password.");
-  }
-
-  await runCommand("supabase", ["db", "push", "--include-all", "-p", password]);
+  const invocation = buildRemoteMigrationPushInvocation(databaseUrl);
+  await runCommand(
+    invocation.command,
+    [...invocation.args],
+    invocation.options,
+  );
 }
 
-main().catch((error) => {
-  console.error(error instanceof Error ? error.message : error);
-  process.exit(1);
-});
+if (
+  process.argv[1] &&
+  pathToFileURL(path.resolve(process.argv[1])).href === import.meta.url
+) {
+  main().catch((error) => {
+    console.error(error instanceof Error ? error.message : error);
+    process.exit(1);
+  });
+}

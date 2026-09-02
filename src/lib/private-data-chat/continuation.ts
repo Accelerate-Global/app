@@ -120,6 +120,10 @@ export function privateDataChatContinuationTokenHash(token: string) {
   return createHash("sha256").update(token).digest("hex");
 }
 
+export function privateDataChatContinuationExpiryParameter(expiresAt: number) {
+  return new Date(expiresAt).toISOString();
+}
+
 export async function recordPrivateDataChatContinuationUse(input: {
   tokenHash: string;
   expiresAt: number;
@@ -127,7 +131,7 @@ export async function recordPrivateDataChatContinuationUse(input: {
   const rows = await getDb().execute<{ consumed: boolean }>(sql`
     select private.consume_analytics_chat_continuation_token(
       ${input.tokenHash},
-      ${new Date(input.expiresAt)}::timestamptz
+      ${privateDataChatContinuationExpiryParameter(input.expiresAt)}::timestamptz
     ) as consumed
   `);
   return rows[0]?.consumed === true;
