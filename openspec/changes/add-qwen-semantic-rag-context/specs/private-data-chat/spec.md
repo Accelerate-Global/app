@@ -139,3 +139,12 @@ Current-view handoff, semantic retrieval, ROP conversational operations/relation
 #### Scenario: First planner request follows a Qwen restart
 - **WHEN** the pinned model is ready but its long reviewed planner prefix is not yet cached
 - **THEN** the signed origin and application deadlines remain bounded, leave margin inside the verified hosting-function duration, and allow the measured cold planner request to complete or return a normalized retryable timeout
+
+## MODIFIED Requirements
+
+### Requirement: Data chat clarifies, queries, or answers without unsafe agency
+The system SHALL support structured `clarify`, catalog-version-bound `query`, and non-data `answer` decisions and MUST NOT offer database writes, pipeline actions, account actions, arbitrary tools, silent semantic substitutions, or exports other than a server-generated link to the existing authenticated streamed ROP CSV for an approved resource query. The system SHALL resolve approved controlled-value aliases deterministically and SHALL ask a focused clarification when an alias, metric, grouping, result size, or conversational reference is genuinely ambiguous.
+
+#### Scenario: Approved ROP query has more matches than one chat page
+- **WHEN** an eligible chat user requests every row matching an approved ROP resource query
+- **THEN** chat may provide the server-owned authenticated streamed CSV link and does not serialize the complete export through Qwen

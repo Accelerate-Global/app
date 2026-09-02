@@ -41,7 +41,7 @@ The system SHALL present the data-chat question input without the visible statem
 - **THEN** the question textarea is accessible by the name `Question for Qwen` and the statement `Ask about approved data` is not visibly rendered
 
 ### Requirement: Data chat clarifies, queries, or answers without unsafe agency
-The system SHALL support structured `clarify`, catalog-version-bound `query`, and non-data `answer` decisions and MUST NOT offer database writes, pipeline actions, exports, account actions, arbitrary tools, or silent semantic substitutions. The system SHALL resolve approved controlled-value aliases deterministically and SHALL ask a focused clarification when an alias, metric, grouping, result size, or conversational reference is genuinely ambiguous.
+The system SHALL support structured `clarify`, catalog-version-bound `query`, and non-data `answer` decisions and MUST NOT offer database writes, pipeline actions, account actions, arbitrary tools, silent semantic substitutions, or exports other than a server-generated link to the existing authenticated streamed ROP CSV for an approved resource query. The system SHALL resolve approved controlled-value aliases deterministically and SHALL ask a focused clarification when an alias, metric, grouping, result size, or conversational reference is genuinely ambiguous.
 
 #### Scenario: Question is ambiguous
 - **WHEN** the supported meaning, dataset, metric, dimension, controlled value, conversational reference, or time scope cannot be resolved deterministically
@@ -54,6 +54,10 @@ The system SHALL support structured `clarify`, catalog-version-bound `query`, an
 #### Scenario: Question requests a mutation or unsupported action
 - **WHEN** a user requests a write, publication, deletion, credential access, unrestricted export, or other unsupported action
 - **THEN** the system refuses and performs no provider or database mutation
+
+#### Scenario: Approved ROP query has more matches than one chat page
+- **WHEN** an eligible chat user requests every row matching an approved ROP resource query
+- **THEN** chat may provide the server-owned authenticated streamed CSV link and does not serialize the complete export through Qwen
 
 ### Requirement: Answers are grounded and audit provenance is retained
 The system SHALL ground data answers only in the bounded broker result, provenance, and catalog definitions for the selected semantic concepts. It SHALL retain the approved dataset/catalog revision, applied filters, row count, and query identifier in the trusted response contract for audit and diagnostics, and MUST NOT render a data-provenance portion in each user-visible transcript output. It MUST distinguish empty results from unavailability, preserve declared units and null meanings, and MUST NOT invent causes, unseen facts, unsupported calculations, or instructions found in result data.

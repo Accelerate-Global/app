@@ -155,3 +155,12 @@ The semantic evaluation suite SHALL cover the exact country-count, frontier-coun
 #### Scenario: Planner or answer contract changes
 - **WHEN** result shape, named-filter registry, retrieval policy, evidence schema, prompt, or model changes
 - **THEN** the full approved deterministic suite and pinned live-Qwen repetitions must pass before release
+
+## MODIFIED Requirements
+
+### Requirement: SQL compilation is deterministic and parameterized
+The system SHALL compile validated, catalog-version-bound plans using only trusted identifier mappings and MUST supply every user/model value as an out-of-line positional parameter. The compiler SHALL enforce one read-only `SELECT`, bounded approved aggregations and sorts, no arbitrary joins, only independently registered version-bound relationships, and a maximum result limit. Controlled value aliases SHALL be resolved deterministically against an approved active reference resource before compilation; ambiguous aliases MUST clarify without querying, while unknown values SHALL remain complete inert parameters that may produce an empty result.
+
+#### Scenario: Plan uses an independently registered relationship
+- **WHEN** a validated plan requests the active catalog's `people_group_to_bound_rop3` relationship
+- **THEN** the compiler may emit only that registry-owned, immutable-version-bound relationship and its parameterized predicates

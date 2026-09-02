@@ -38,7 +38,7 @@ The system SHALL constrain model planning to a strict schema containing a decisi
 - **THEN** it can distinguish the approved concepts from their catalog definitions and aliases without seeing compiler-only mappings or raw database values
 
 ### Requirement: SQL compilation is deterministic and parameterized
-The system SHALL compile validated, catalog-version-bound plans using only trusted identifier mappings and MUST supply every user/model value as an out-of-line positional parameter. The compiler SHALL enforce one read-only `SELECT`, bounded approved aggregations and sorts, no joins for the single-dataset pilot, and a maximum result limit. Controlled value aliases SHALL be resolved deterministically against an approved active reference resource before compilation; ambiguous aliases MUST clarify without querying, while unknown values SHALL remain complete inert parameters that may produce an empty result.
+The system SHALL compile validated, catalog-version-bound plans using only trusted identifier mappings and MUST supply every user/model value as an out-of-line positional parameter. The compiler SHALL enforce one read-only `SELECT`, bounded approved aggregations and sorts, no arbitrary joins, only independently registered version-bound relationships, and a maximum result limit. Controlled value aliases SHALL be resolved deterministically against an approved active reference resource before compilation; ambiguous aliases MUST clarify without querying, while unknown values SHALL remain complete inert parameters that may produce an empty result.
 
 #### Scenario: Filter contains adversarial text
 - **WHEN** a filter value contains quotes, comments, SQL keywords, Unicode, statement delimiters, or prompt instructions
@@ -59,6 +59,10 @@ The system SHALL compile validated, catalog-version-bound plans using only trust
 #### Scenario: Plan exceeds policy limits
 - **WHEN** a plan exceeds approved dimensions, filters, joins, sorts, or result limits
 - **THEN** compilation fails before database access
+
+#### Scenario: Plan uses an independently registered relationship
+- **WHEN** a validated plan requests the active catalog's `people_group_to_bound_rop3` relationship
+- **THEN** the compiler may emit only that registry-owned, immutable-version-bound relationship and its parameterized predicates
 
 ### Requirement: Semantic metadata reuses trusted Accelerate Global vocabulary without widening access
 The system SHALL associate approved catalog entries with existing canonical field-definition keys, source-contract fields and versions, or versioned reference-resource keys where applicable. A reviewed catalog overlay SHALL remain authoritative for queryability, metric formulas, units, null semantics, sensitivity, and allowed operations. Runtime mutable metadata MUST NOT directly alter prompts, schemas, compiler mappings, or authorization.
