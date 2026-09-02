@@ -8,6 +8,7 @@ import {
 } from "@/lib/private-data-chat/catalog";
 import {
   HttpPrivateQwenGateway,
+  PRIVATE_QWEN_GATEWAY_TIMEOUT_MS,
   PrivateQwenGatewayError,
   signPrivateQwenGatewayRequest,
 } from "@/lib/private-data-chat/qwen-gateway";
@@ -173,12 +174,23 @@ describe("private Qwen gateway", () => {
   });
 
   it("normalizes unavailable, deadline, and caller cancellation failures", async () => {
+    expect(PRIVATE_QWEN_GATEWAY_TIMEOUT_MS).toBe(180_000);
+
     const unavailable = new HttpPrivateQwenGateway(
       vi.fn().mockResolvedValue(new Response("", { status: 503 })),
     );
     await expect(
       unavailable.plan({ messages: [{ role: "user", content: "Count all." }] }),
     ).rejects.toMatchObject({ code: "unavailable", retryable: true });
+
+    const upstreamDeadline = new HttpPrivateQwenGateway(
+      vi.fn().mockResolvedValue(new Response("", { status: 504 })),
+    );
+    await expect(
+      upstreamDeadline.plan({
+        messages: [{ role: "user", content: "Count all." }],
+      }),
+    ).rejects.toMatchObject({ code: "timeout", retryable: true });
 
     const abortingFetch = vi.fn((_: URL, init?: RequestInit) =>
       new Promise<Response>((_resolve, reject) => {

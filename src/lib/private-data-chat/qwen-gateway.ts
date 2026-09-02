@@ -23,7 +23,7 @@ import {
   PRIVATE_DATA_CHAT_RUNTIME_CONTRACT_CHECKSUM,
 } from "@/lib/private-data-chat/runtime-contract";
 
-const PRIVATE_QWEN_GATEWAY_TIMEOUT_MS = 90_000;
+export const PRIVATE_QWEN_GATEWAY_TIMEOUT_MS = 180_000;
 const PRIVATE_QWEN_MAX_RESPONSE_BYTES = 128_000;
 
 export type PrivateQwenConversationMessage = {
@@ -91,6 +91,14 @@ export function signPrivateQwenGatewayRequest(input: {
 }
 
 function gatewayErrorForStatus(status: number) {
+  if (status === 504) {
+    return new PrivateQwenGatewayError(
+      "timeout",
+      "Private Qwen exceeded its response deadline.",
+      true,
+    );
+  }
+
   if (status === 429 || status === 503) {
     return new PrivateQwenGatewayError(
       status === 429 ? "busy" : "unavailable",

@@ -135,3 +135,7 @@ Current-view handoff, semantic retrieval, ROP conversational operations/relation
 #### Scenario: Retrieval or context validation fails
 - **WHEN** required semantic context cannot be safely obtained
 - **THEN** the request fails or asks for refresh without exposing internal hosts, secrets, raw metadata, or provider errors
+
+#### Scenario: First planner request follows a Qwen restart
+- **WHEN** the pinned model is ready but its long reviewed planner prefix is not yet cached
+- **THEN** the signed origin and application deadlines remain bounded, leave margin inside the verified hosting-function duration, and allow the measured cold planner request to complete or return a normalized retryable timeout

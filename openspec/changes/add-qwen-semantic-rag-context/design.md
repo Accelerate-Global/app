@@ -253,6 +253,13 @@ Vercel caches the immutable active snapshot pointer and card manifest by version
 
 The lexical path targets p95 below 25 ms. A selected hybrid path must add no more than 250 ms p95 retrieval latency, must not cause swap, must leave at least 10% of allocated Samson RAM/VRAM free under sustained canary load, must introduce no new generative queue failures, and must not worsen generative Qwen p95 by more than 5%. A selected reranker has a separate 500 ms p95 ceiling and must demonstrate additional held-out value. The total model context remains limited to six retrieved items and 8 KiB.
 
+Generation stays single-slot and bounded, but its deadline must also cover the
+measured first reviewed planner prefix after a Qwen restart. The Samson gateway
+therefore stops one llama.cpp call at 165 seconds, the application stops its
+signed gateway call at 180 seconds, and the complete streamed turn remains
+inside the verified 300-second Vercel function window. An origin 504 is
+normalized as a retryable timeout rather than an unexplained internal failure.
+
 If the active snapshot is unavailable or unhealthy, data queries may continue with the current core catalog only when no retrieved or named-filter knowledge is required. If a selected dense/rerank service is unavailable, the independently qualified exact/full-text path may serve only when its confidence/coverage policy is satisfied; otherwise the request fails closed with a retryable semantic-context error. A definition question or context requiring the unavailable snapshot never falls back to model world knowledge.
 
 ### 13. Preserve existing authorization and provider boundaries
