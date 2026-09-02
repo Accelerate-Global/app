@@ -45,9 +45,11 @@ and 100-of-104 page outcomes; complete ROP browse/search/lookup/count/continue;
 dataset-bound ROP3, natural-language geography, and null-preserving match-status
 filters; the reviewed UUPG definition; and off-topic refusal. The first clean
 canary result was deliberately executed after a controlled Qwen restart and
-passed with an empty prompt cache. The final production deployment is
+passed with an empty prompt cache. The canary-qualified deployment is
 `dpl_4PMS9uyXwhskcFumr8LKYjxzvhPF`, sourced from commit
-`7a19ea094d66ced8cde7d3730e70eaef80fac2f6` and aliased to
+`7a19ea094d66ced8cde7d3730e70eaef80fac2f6`. The post-canary UI-copy release
+was verified on deployment `dpl_CSZayZd3RtFsVaBn1i3xTA4TC1Qh`, sourced from
+commit `02ba361c5d55f5241dbcecb604a5a3b5cb31d7e6` and aliased to
 `https://data.accelerateglobal.org`.
 
 ## Retrieval selection
