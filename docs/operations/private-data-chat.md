@@ -226,7 +226,10 @@ generative and production-canary record is
   admin page shows a disabled state; the API returns unavailable.
 - Qwen busy/unavailable/timeout: no query runs unless a valid plan was already
   obtained. If only the explanation call fails, the verified bounded rows are
-  returned through the deterministic fallback.
+  returned through the deterministic fallback. A single Samson model call is
+  bounded at 195 seconds and the application call at 210 seconds, leaving
+  margin inside the verified 300-second Vercel function window; an origin 504
+  is exposed only as a normalized retryable timeout.
 - Database denial/offline/timeout/cost/size limit: fail closed and return a
   normalized query error; no broader database credential is attempted.
 - Empty result: report that the bounded query found no matching records; do not
@@ -264,9 +267,11 @@ reviewed follow-up migration is required.
 - The Vercel Production environment contains the Worker URL and replacement
   Access service-token values as sensitive variables. The feature is enabled
   only for the exact canary stored in provider-side sensitive configuration.
-  Production acceptance on 2026-08-28 verified the complete Vercel, Cloudflare
-  Access, Worker, VPC Service, Samson Qwen, and read-only analytics path with a
-  grounded answer and provenance; all other users continue to fail closed.
+  Production acceptance completed on 2026-09-02 with 114/114 frozen
+  end-to-end results across the complete Vercel, Cloudflare Access, Worker, VPC
+  Service, Samson Qwen, reviewed semantic/resource layer, and read-only
+  analytics path. The first expanded result passed after a controlled Qwen
+  restart with an empty prompt cache. All other users continue to fail closed.
 - Exact production primary dataset/catalog revision approved for the pilot.
 - Acceptable queue depth, p95 latency, availability target, and support owner
   for the single-slot Samson service.

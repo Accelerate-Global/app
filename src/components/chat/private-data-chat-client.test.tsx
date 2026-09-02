@@ -277,6 +277,10 @@ describe("PrivateDataChatClient", () => {
     expect(
       screen.getByRole("link", { name: "Download all matches" }).getAttribute("href"),
     ).toBe("/api/reference-resources/rop-codes/download?search=sudan");
+    expect(
+      screen.getByText("Complete ROP exports use the authenticated download link."),
+    ).toBeTruthy();
+    expect(screen.queryByText(/No publication, deletion, export/iu)).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
     const request = JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body));

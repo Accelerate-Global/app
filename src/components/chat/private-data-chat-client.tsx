@@ -551,7 +551,8 @@ export function PrivateDataChatClient({ available }: { available: boolean }) {
           </CardHeader>
           <CardContent className="space-y-2 text-sm text-muted-foreground">
             <p>Read-only approved people-groups data.</p>
-            <p>No publication, deletion, export, or account actions.</p>
+            <p>No publication, deletion, or account actions.</p>
+            <p>Complete ROP exports use the authenticated download link.</p>
             <p>Conversation history is cleared when you start a new chat.</p>
           </CardContent>
         </Card>
