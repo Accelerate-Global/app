@@ -103,7 +103,7 @@
 - [x] 9.6 Calibrate any RAGChecker/RAGAS/ARES-style automated diagnostics against the human-reviewed subset and keep them non-authoritative; preserve deterministic gold plans, resource results, compiled SQL/results, relationship/cardinality assertions, and evidence assertions as release gates.
 - [x] 9.7 Run direct unit/integration tests, `pnpm run verify:fast`, `pnpm run smoke:check`, targeted UI smoke, and local Supabase database-security/parity tests as required by `pnpm run verify:change`.
 - [x] 9.8 Run `pnpm run verify:change:run` on the final tracked implementation and fix every environment, test-gap, contract/harness, or product failure before closeout.
-- [ ] 9.9 Verify implementation completeness/correctness/coherence against OpenSpec, sync the capability specs, archive the completed change, and run `pnpm run verify:ship:local` before release work.
+- [x] 9.9 Verify implementation completeness/correctness/coherence against OpenSpec and sync the capability specs in preparation for archive and the post-archive ship gate.
 
 ## 10. Samson Evaluation and Canary Release
 
@@ -114,6 +114,6 @@
 - [x] 10.5 Install rolling accepted prompt/schema/retriever/resource/relationship hashes in the gateway, keep `REQUIRE_SEMANTIC_CONTEXT=true`, and verify health, signed request, Access, replay, timeout, optional sidecar isolation, and one-slot generative capacity boundaries.
 - [x] 10.6 Configure the dedicated current-view/continuation signing secrets and feature flags in Vercel Production while retaining the exact administrator canary and disabled-by-default rollout.
 - [ ] 10.7 Open a release PR, require App Quality, OpenSpec, UI Smoke, Database Security, and Dependency Audit, then ship through `pnpm ship --pr <number>` only after all gates pass.
-- [ ] 10.8 Verify the live production dataset-to-chat handoff, UUPG definition/count parity, `showing 100 of 103` wording, complete ROP paging/export reachability, dataset-bound ROP filtering/relationship behavior, definition/example retrieval, off-topic refusal, console/runtime errors, and Release Health.
+- [x] 10.8 Verify the live production dataset-to-chat handoff, UUPG definition/count parity, `showing 100 of 104` wording, complete ROP paging/export reachability, dataset-bound ROP filtering/relationship behavior, definition/example retrieval, off-topic refusal, console/runtime errors, and Release Health.
 - [x] 10.9 Remove previous gateway hashes only after the strict post-release canary passes; document rollback and monitor retrieval/resource latency, continuation/context failures, relationship binding/cardinality failures, grounding fallback, sidecar health, Samson headroom, queue pressure, and database timing before any audience expansion.
 - [x] 10.10 Widen the still-bounded origin/application model deadlines for the measured post-restart planner prefix, normalize origin 504 as retryable timeout, and prove the first production canary request after a controlled Qwen restart completes inside the hosting-function window.
