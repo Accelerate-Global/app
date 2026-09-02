@@ -174,7 +174,7 @@ describe("private Qwen gateway", () => {
   });
 
   it("normalizes unavailable, deadline, and caller cancellation failures", async () => {
-    expect(PRIVATE_QWEN_GATEWAY_TIMEOUT_MS).toBe(180_000);
+    expect(PRIVATE_QWEN_GATEWAY_TIMEOUT_MS).toBe(210_000);
 
     const unavailable = new HttpPrivateQwenGateway(
       vi.fn().mockResolvedValue(new Response("", { status: 503 })),

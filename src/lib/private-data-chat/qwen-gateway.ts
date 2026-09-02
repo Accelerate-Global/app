@@ -23,7 +23,7 @@ import {
   PRIVATE_DATA_CHAT_RUNTIME_CONTRACT_CHECKSUM,
 } from "@/lib/private-data-chat/runtime-contract";
 
-export const PRIVATE_QWEN_GATEWAY_TIMEOUT_MS = 180_000;
+export const PRIVATE_QWEN_GATEWAY_TIMEOUT_MS = 210_000;
 const PRIVATE_QWEN_MAX_RESPONSE_BYTES = 128_000;
 
 export type PrivateQwenConversationMessage = {

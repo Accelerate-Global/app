@@ -255,8 +255,8 @@ The lexical path targets p95 below 25 ms. A selected hybrid path must add no mor
 
 Generation stays single-slot and bounded, but its deadline must also cover the
 measured first reviewed planner prefix after a Qwen restart. The Samson gateway
-therefore stops one llama.cpp call at 165 seconds, the application stops its
-signed gateway call at 180 seconds, and the complete streamed turn remains
+therefore stops one llama.cpp call at 195 seconds, the application stops its
+signed gateway call at 210 seconds, and the complete streamed turn remains
 inside the verified 300-second Vercel function window. An origin 504 is
 normalized as a retryable timeout rather than an unexplained internal failure.
 
