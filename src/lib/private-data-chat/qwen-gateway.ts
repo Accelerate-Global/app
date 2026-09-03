@@ -37,10 +37,17 @@ export function buildPrivateQwenModelSemanticContext(
   if (!retrieval) return null;
 
   return {
+    status: retrieval.status,
     type: "reviewed-semantic-evidence" as const,
+    snapshotChecksum: retrieval.snapshotChecksum,
+    definitionPackageChecksum: retrieval.definitionPackageChecksum,
     policyVersion: retrieval.policyVersion,
+    policyChecksum: retrieval.policyChecksum,
     instructionAuthority: false as const,
+    views: retrieval.views,
     items: retrieval.items,
+    bytes: retrieval.bytes,
+    exactKeys: retrieval.exactKeys,
   };
 }
 

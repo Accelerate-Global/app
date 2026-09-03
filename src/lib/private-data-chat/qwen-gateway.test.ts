@@ -68,11 +68,22 @@ describe("private Qwen gateway", () => {
       trustedCurrentView: { filters: [{ field: "country" }] } as never,
       semanticContext: {
         status: "ready",
+        snapshotChecksum: "a".repeat(64),
+        definitionPackageChecksum: "b".repeat(64),
         policyVersion: "semantic-retrieval-v1",
+        policyChecksum: "c".repeat(64),
         items: [{ stableKey: "field.country" }],
-        views: [{ source: "utterance", text: "Show the groups there." }],
+        views: [
+          {
+            source: "utterance",
+            text: "Show the groups there.",
+            stableKey: null,
+          },
+        ],
         serialized:
           '{"type":"reviewed-semantic-evidence","items":[{"stableKey":"field.country"}]}',
+        bytes: 100,
+        exactKeys: ["field.country"],
       } as never,
     });
 
@@ -96,17 +107,29 @@ describe("private Qwen gateway", () => {
       trustedTurnState: [{ selectedConcepts: ["country"] }],
       trustedCurrentView: { filters: [{ field: "country" }] },
       semanticContext: {
+        status: "ready",
         type: "reviewed-semantic-evidence",
+        snapshotChecksum: "a".repeat(64),
+        definitionPackageChecksum: "b".repeat(64),
         policyVersion: "semantic-retrieval-v1",
+        policyChecksum: "c".repeat(64),
         instructionAuthority: false,
+        views: [
+          {
+            source: "utterance",
+            text: "Show the groups there.",
+            stableKey: null,
+          },
+        ],
         items: [{ stableKey: "field.country" }],
+        bytes: 100,
+        exactKeys: ["field.country"],
       },
     });
-    expect(body.semanticContext).not.toHaveProperty("views");
     expect(body.semanticContext).not.toHaveProperty("serialized");
   });
 
-  it("sends one canonical semantic evidence envelope without audit-only metadata", () => {
+  it("preserves retrieval metadata while omitting only duplicate serialization", () => {
     const semanticContext = buildPrivateQwenModelSemanticContext({
       status: "ready",
       snapshotChecksum: "a".repeat(64),
@@ -122,12 +145,26 @@ describe("private Qwen gateway", () => {
     } as never);
 
     expect(semanticContext).toEqual({
+      status: "ready",
       type: "reviewed-semantic-evidence",
+      snapshotChecksum: "a".repeat(64),
+      definitionPackageChecksum: "b".repeat(64),
       policyVersion: "semantic-retrieval-v1",
+      policyChecksum: "c".repeat(64),
       instructionAuthority: false,
+      views: [
+        {
+          source: "utterance",
+          text: "Count people groups.",
+          stableKey: null,
+        },
+      ],
       items: [{ stableKey: "metric.people_group_count" }],
+      bytes: 100,
+      exactKeys: ["metric.people_group_count"],
     });
-    expect(JSON.stringify(semanticContext).match(/metric\.people_group_count/gu)).toHaveLength(1);
+    expect(semanticContext?.items).toHaveLength(1);
+    expect(semanticContext).not.toHaveProperty("serialized");
   });
 
   it("sends only selected safe semantic definitions with grounded results", async () => {
