@@ -7,6 +7,7 @@ import {
   getPrivateDataChatAnswerSemanticContext,
 } from "@/lib/private-data-chat/catalog";
 import {
+  buildPrivateQwenModelSemanticContext,
   HttpPrivateQwenGateway,
   PRIVATE_QWEN_GATEWAY_TIMEOUT_MS,
   PrivateQwenGatewayError,
@@ -67,7 +68,11 @@ describe("private Qwen gateway", () => {
       trustedCurrentView: { filters: [{ field: "country" }] } as never,
       semanticContext: {
         status: "ready",
+        policyVersion: "semantic-retrieval-v1",
         items: [{ stableKey: "field.country" }],
+        views: [{ source: "utterance", text: "Show the groups there." }],
+        serialized:
+          '{"type":"reviewed-semantic-evidence","items":[{"stableKey":"field.country"}]}',
       } as never,
     });
 
@@ -91,10 +96,38 @@ describe("private Qwen gateway", () => {
       trustedTurnState: [{ selectedConcepts: ["country"] }],
       trustedCurrentView: { filters: [{ field: "country" }] },
       semanticContext: {
-        status: "ready",
+        type: "reviewed-semantic-evidence",
+        policyVersion: "semantic-retrieval-v1",
+        instructionAuthority: false,
         items: [{ stableKey: "field.country" }],
       },
     });
+    expect(body.semanticContext).not.toHaveProperty("views");
+    expect(body.semanticContext).not.toHaveProperty("serialized");
+  });
+
+  it("sends one canonical semantic evidence envelope without audit-only metadata", () => {
+    const semanticContext = buildPrivateQwenModelSemanticContext({
+      status: "ready",
+      snapshotChecksum: "a".repeat(64),
+      definitionPackageChecksum: "b".repeat(64),
+      policyVersion: "semantic-retrieval-v1",
+      policyChecksum: "c".repeat(64),
+      views: [{ source: "utterance", text: "Count people groups.", stableKey: null }],
+      items: [{ stableKey: "metric.people_group_count" }],
+      serialized:
+        '{"type":"reviewed-semantic-evidence","items":[{"stableKey":"metric.people_group_count"}]}',
+      bytes: 100,
+      exactKeys: ["metric.people_group_count"],
+    } as never);
+
+    expect(semanticContext).toEqual({
+      type: "reviewed-semantic-evidence",
+      policyVersion: "semantic-retrieval-v1",
+      instructionAuthority: false,
+      items: [{ stableKey: "metric.people_group_count" }],
+    });
+    expect(JSON.stringify(semanticContext).match(/metric\.people_group_count/gu)).toHaveLength(1);
   });
 
   it("sends only selected safe semantic definitions with grounded results", async () => {

@@ -31,6 +31,19 @@ export type PrivateQwenConversationMessage = {
   content: string;
 };
 
+export function buildPrivateQwenModelSemanticContext(
+  retrieval: PrivateDataChatRetrievalReady | null | undefined,
+) {
+  if (!retrieval) return null;
+
+  return {
+    type: "reviewed-semantic-evidence" as const,
+    policyVersion: retrieval.policyVersion,
+    instructionAuthority: false as const,
+    items: retrieval.items,
+  };
+}
+
 export interface PrivateQwenGateway {
   plan(input: {
     messages: PrivateQwenConversationMessage[];
@@ -283,7 +296,9 @@ export class HttpPrivateQwenGateway implements PrivateQwenGateway {
         messages: input.messages,
         trustedTurnState: input.trustedTurnState ?? [],
         trustedCurrentView: input.trustedCurrentView ?? null,
-        semanticContext: input.semanticContext ?? null,
+        semanticContext: buildPrivateQwenModelSemanticContext(
+          input.semanticContext,
+        ),
         responseSchema: PRIVATE_DATA_CHAT_PLAN_JSON_SCHEMA,
         temperature: 0,
         maxTokens: 700,
