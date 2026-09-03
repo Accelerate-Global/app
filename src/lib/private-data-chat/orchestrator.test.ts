@@ -8,7 +8,6 @@ import {
 import { PRIVATE_DATA_CHAT_NAMED_FILTER_REGISTRY_VERSION } from "@/lib/private-data-chat/named-filters";
 import { PrivateDataChatBrokerError } from "@/lib/private-data-chat/broker";
 import { PRIVATE_DATA_CHAT_CATALOG_VERSION } from "@/lib/private-data-chat/catalog";
-import { PrivateQwenGatewayError } from "@/lib/private-data-chat/qwen-gateway";
 
 const identity: CurrentIdentity = {
   ownerId: "owner-1",
@@ -94,6 +93,11 @@ describe("private data chat orchestrator", () => {
       exactKeys: ["metric.people_group_count"],
     };
     const executeQuery = vi.fn().mockResolvedValue(aggregateResult);
+    const retrieveSemanticContext = vi.fn().mockResolvedValue(retrieval);
+    const answer = vi.fn().mockResolvedValue({
+      answer: "There are 3 people groups.",
+      facts: ["people_group_count: 3"],
+    });
     await orchestratePrivateDataChatTurn({
       identity,
       messages: [{ role: "user", content: "Count people groups." }],
@@ -103,7 +107,7 @@ describe("private data chat orchestrator", () => {
           version: { contentChecksum: "a".repeat(64) },
           payload: {},
         }),
-        retrieveSemanticContext: vi.fn().mockResolvedValue(retrieval),
+        retrieveSemanticContext,
         gateway: {
           plan: vi.fn().mockResolvedValue({
             decision: "query",
@@ -119,10 +123,7 @@ describe("private data chat orchestrator", () => {
               limit: 1,
             },
           }),
-          answer: vi.fn().mockResolvedValue({
-            answer: "There are 3 people groups.",
-            facts: ["people_group_count: 3"],
-          }),
+          answer,
         },
         executeQuery,
       } as never,
@@ -143,6 +144,11 @@ describe("private data chat orchestrator", () => {
     expect(JSON.stringify(executeQuery.mock.calls)).not.toContain(
       "Count people groups.",
     );
+    expect(retrieveSemanticContext).toHaveBeenCalledOnce();
+    expect(retrieveSemanticContext).toHaveBeenCalledWith(
+      expect.objectContaining({ audience: "planner" }),
+    );
+    expect(answer).not.toHaveBeenCalled();
   });
 
   it("answers exact reviewed region population questions without calling Qwen", async () => {
@@ -337,7 +343,7 @@ describe("private data chat orchestrator", () => {
     expect(executeQuery).not.toHaveBeenCalled();
   });
 
-  it("emits stages and grounds the final answer in broker results", async () => {
+  it("emits stages and returns the deterministic broker result without narrator inference", async () => {
     const stages: string[] = [];
     const answer = vi.fn().mockResolvedValue({
       answer: "There are 3 people groups.",
@@ -383,24 +389,11 @@ describe("private data chat orchestrator", () => {
       "explaining",
     ]);
     expect(result).toEqual({
-      content:
-        "People-group count: 3 people groups\n\nThere are 3 people groups.",
-      facts: ["People-group count: 3 people groups"],
+      content: "People-group count: 3 people groups",
+      facts: [],
       provenance,
     });
-    expect(answer).toHaveBeenCalledWith(
-      expect.objectContaining({
-        semanticContext: expect.objectContaining({
-          catalogVersion: PRIVATE_DATA_CHAT_CATALOG_VERSION,
-          concepts: [
-            expect.objectContaining({
-              key: "people_group_count",
-              unit: "people groups",
-            }),
-          ],
-        }),
-      }),
-    );
+    expect(answer).not.toHaveBeenCalled();
   });
 
   it("returns deterministic value ambiguity without querying or asking Qwen again", async () => {
@@ -441,7 +434,8 @@ describe("private data chat orchestrator", () => {
     expect(executeQuery).not.toHaveBeenCalled();
   });
 
-  it("keeps a verified result when explanation inference fails", async () => {
+  it("keeps a verified result without consulting an unavailable narrator", async () => {
+    const answer = vi.fn().mockRejectedValue(new Error("must not be called"));
     const result = await orchestratePrivateDataChatTurn({
       identity,
       messages: [{ role: "user", content: "Count all." }],
@@ -461,11 +455,7 @@ describe("private data chat orchestrator", () => {
               limit: 1,
             },
           }),
-          answer: vi
-            .fn()
-            .mockRejectedValue(
-              new PrivateQwenGatewayError("timeout", "timed out", true),
-            ),
+          answer,
         },
         executeQuery: vi.fn().mockResolvedValue({
           ...aggregateResult,
@@ -474,8 +464,9 @@ describe("private data chat orchestrator", () => {
     });
 
     expect(result.content).toBe("People-group count: 3 people groups");
-    expect(result.facts).toEqual(["People-group count: 3 people groups"]);
+    expect(result.facts).toEqual([]);
     expect(result.provenance).toEqual(provenance);
+    expect(answer).not.toHaveBeenCalled();
   });
 
   it("fails closed when the analytical database is offline", async () => {

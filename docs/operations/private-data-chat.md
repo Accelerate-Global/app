@@ -118,11 +118,15 @@ parameter that may return zero rows. The country resource itself is never sent t
 Qwen, and the application does not discover unrestricted values with database
 `DISTINCT` queries.
 
-Final narration receives only the semantic definitions selected by the compiled
-query, completeness/evidence state, and bounded rows. Internal provenance remains
-auditable and signed but is intentionally not rendered in each chat response. In
-particular, null values keep their catalog meaning and are not silently treated
-as zero or false.
+Analytical query results are rendered directly from the deterministic evidence
+ledger after the typed plan, compiler, constrained query, completeness checks,
+and signed turn state succeed. This avoids a redundant second model call and
+keeps the planner prefix resident in the single llama.cpp KV cache. The retained
+grounded-answer endpoint and frozen synthetic answer suite remain available for
+compatibility and future explicitly reviewed workflows, but routine analytical
+turns do not invoke them. Internal provenance remains auditable and signed but is
+intentionally not rendered in each chat response. Null values keep their catalog
+meaning and are not silently treated as zero or false.
 
 ### Catalog promotion checklist
 
@@ -236,9 +240,9 @@ extension and its exact compatibility proof are recorded in
 - Missing/invalid configuration: page is hidden from navigation and the direct
   admin page shows a disabled state; the API returns unavailable.
 - Qwen busy/unavailable/timeout: no query runs unless a valid plan was already
-  obtained. If only the explanation call fails, the verified bounded rows are
-  returned through the deterministic fallback. A single Samson model call is
-  bounded at 195 seconds and the application call at 210 seconds, leaving
+  obtained. A verified analytical result does not depend on a second Qwen call
+  and is returned through the deterministic evidence renderer. A Samson planner
+  call is bounded at 195 seconds and the application call at 210 seconds, leaving
   margin inside the verified 300-second Vercel function window; an origin 504
   is exposed only as a normalized retryable timeout.
 - Database denial/offline/timeout/cost/size limit: fail closed and return a

@@ -1,9 +1,6 @@
 import type { CurrentIdentity } from "@/lib/auth";
 import { executePrivateDataChatQuery } from "@/lib/private-data-chat/broker";
-import {
-  getPrivateDataChatAnswerSemanticContext,
-  PRIVATE_DATA_CHAT_METRIC_KEYS,
-} from "@/lib/private-data-chat/catalog";
+import { PRIVATE_DATA_CHAT_METRIC_KEYS } from "@/lib/private-data-chat/catalog";
 import {
   compilePrivateDataChatQuery,
   PrivateDataChatQueryPolicyError,
@@ -13,10 +10,9 @@ import type {
   PrivateDataChatTurnMessage,
 } from "@/lib/private-data-chat/events";
 import { getPrivateQwenGateway } from "@/lib/private-data-chat/get-qwen-gateway";
-import {
-  PrivateQwenGatewayError,
-  type PrivateQwenConversationMessage,
-  type PrivateQwenGateway,
+import type {
+  PrivateQwenConversationMessage,
+  PrivateQwenGateway,
 } from "@/lib/private-data-chat/qwen-gateway";
 import type {
   PrivateDataChatQuery,
@@ -66,8 +62,12 @@ export type PrivateDataChatOrchestratorDependencies = {
 const PRIVATE_DATA_CHAT_REPAIR_MESSAGE =
   "The previous semantic plan could not pass the deterministic query policy. Re-evaluate the original user question and return one complete corrected decision using only the approved catalog. Do not explain the failed plan.";
 
-function deterministicQueryFallback(result: PrivateDataChatQueryResult) {
-  return renderPrivateDataChatGroundedAnswer({ result });
+function deterministicQueryAnswer(result: PrivateDataChatQueryResult) {
+  const answer = renderPrivateDataChatGroundedAnswer({ result });
+  return {
+    ...answer,
+    facts: answer.facts.filter((fact) => fact !== answer.answer),
+  };
 }
 
 function currentViewWithoutCountryScope(
@@ -513,77 +513,20 @@ export async function orchestratePrivateDataChatTurn(input: {
         })
       : null;
   input.onStage?.("explaining");
-
   if (resolvedGeography) {
-    const fallback = deterministicQueryFallback(result);
+    const answer = renderPrivateDataChatGroundedAnswer({ result });
     return {
-      content: `${resolvedGeography.scope.displayName}: ${fallback.answer}`,
-      facts: fallback.facts,
+      content: `${resolvedGeography.scope.displayName}: ${answer.answer}`,
+      facts: answer.facts,
       provenance: result.provenance,
       ...(turnStateToken ? { turnStateToken } : {}),
     };
   }
-
-  let answerSemanticContext: PrivateDataChatRetrievalReady | null = null;
-  if (activeSemanticContext && semanticSnapshotChecksum) {
-    const answerRetrieval = await dependencies.retrieveSemanticContext({
-      utterance: question,
-      audience: "answer",
-      package: activeSemanticContext.payload,
-      snapshotChecksum: semanticSnapshotChecksum,
-      expectedSnapshotChecksum: semanticSnapshotChecksum,
-      requiredKeys: [
-        ...compiled.selectedKeys.map(semanticCardKey),
-        ...compiled.appliedNamedFilterKeys.map((key) => `filter.${key}`),
-        ...compiled.appliedRelationshipKeys.map((key) => `relationship.${key}`),
-      ],
-    });
-    if (answerRetrieval.status === "ready") {
-      answerSemanticContext = answerRetrieval;
-    }
-  }
-
-  try {
-    if (activeSemanticContext && !answerSemanticContext) {
-      throw new PrivateQwenGatewayError(
-        "unavailable",
-        "Reviewed answer context is unavailable.",
-        true,
-      );
-    }
-    const answer = await dependencies.gateway.answer({
-      question,
-      result,
-      semanticContext: getPrivateDataChatAnswerSemanticContext(
-        compiled.selectedKeys,
-      ),
-      retrievedSemanticContext: answerSemanticContext,
-      signal: input.signal,
-    });
-    const grounded = renderPrivateDataChatGroundedAnswer({
-      result,
-      modelAnswer: answer,
-    });
-    return {
-      content: grounded.answer,
-      facts: grounded.facts,
-      provenance: result.provenance,
-      ...(turnStateToken ? { turnStateToken } : {}),
-    };
-  } catch (error) {
-    if (
-      error instanceof PrivateQwenGatewayError &&
-      input.signal?.aborted
-    ) {
-      throw error;
-    }
-
-    const fallback = deterministicQueryFallback(result);
-    return {
-      content: fallback.answer,
-      facts: fallback.facts,
-      provenance: result.provenance,
-      ...(turnStateToken ? { turnStateToken } : {}),
-    };
-  }
+  const answer = deterministicQueryAnswer(result);
+  return {
+    content: answer.answer,
+    facts: answer.facts,
+    provenance: result.provenance,
+    ...(turnStateToken ? { turnStateToken } : {}),
+  };
 }

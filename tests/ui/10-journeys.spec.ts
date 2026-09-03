@@ -813,23 +813,33 @@ test("admin can edit dataset details", async ({ page }, testInfo) => {
       .locator(`[data-smoke-dataset-id="${bootstrap.datasets.primary.id}"]`)
       .click();
     await expect(page.locator('[data-smoke-page="dataset-edit"]')).toBeVisible();
-    await page.locator("[data-smoke-dataset-name-input]").fill(nextDatasetName);
+    const datasetNameInput = page.locator("[data-smoke-dataset-name-input]");
+    const currentDatasetName = await datasetNameInput.inputValue();
+    const firstDatasetName =
+      currentDatasetName === nextDatasetName
+        ? originalDatasetName
+        : nextDatasetName;
+    await datasetNameInput.fill(firstDatasetName);
     await page.locator("[data-smoke-dataset-save]").click();
     await expect(page.locator('[data-smoke-page="dashboard"]')).toBeVisible();
     await expect(
       getDatasetNameLocator(page, bootstrap.datasets.primary.id),
-    ).toHaveText(nextDatasetName);
+    ).toHaveText(firstDatasetName);
 
-    await page
-      .locator(`[data-smoke-dataset-id="${bootstrap.datasets.primary.id}"]`)
-      .click();
-    await expect(page.locator('[data-smoke-page="dataset-edit"]')).toBeVisible();
-    await page.locator("[data-smoke-dataset-name-input]").fill(originalDatasetName);
-    await page.locator("[data-smoke-dataset-save]").click();
-    await expect(page.locator('[data-smoke-page="dashboard"]')).toBeVisible();
-    await expect(
-      getDatasetNameLocator(page, bootstrap.datasets.primary.id),
-    ).toHaveText(originalDatasetName);
+    if (firstDatasetName !== originalDatasetName) {
+      await page
+        .locator(`[data-smoke-dataset-id="${bootstrap.datasets.primary.id}"]`)
+        .click();
+      await expect(page.locator('[data-smoke-page="dataset-edit"]')).toBeVisible();
+      await page
+        .locator("[data-smoke-dataset-name-input]")
+        .fill(originalDatasetName);
+      await page.locator("[data-smoke-dataset-save]").click();
+      await expect(page.locator('[data-smoke-page="dashboard"]')).toBeVisible();
+      await expect(
+        getDatasetNameLocator(page, bootstrap.datasets.primary.id),
+      ).toHaveText(originalDatasetName);
+    }
 
     const secondaryRow = page.locator(
       `[data-smoke-dataset-row="${bootstrap.datasets.secondary.id}"]`,
