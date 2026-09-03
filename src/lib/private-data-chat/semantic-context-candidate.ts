@@ -6,8 +6,6 @@ import {
   fieldDefinitionSources,
   fieldDefinitions,
   fieldSourceTypes,
-  filterRegionCountries,
-  filterRegions,
 } from "@/db/schema";
 import {
   IMB_FIELD_CONTRACT,
@@ -20,6 +18,7 @@ import {
   type PrivateDataChatSemanticSourceFieldDefinition,
 } from "@/lib/private-data-chat/semantic-context";
 import { buildPrivateDataChatSemanticCandidateFromGuidingDocument } from "@/lib/private-data-chat/semantic-guiding-documents";
+import { loadPrivateDataChatFilterRegionSource } from "@/lib/private-data-chat/filter-region-source";
 import {
   createReferenceResourceCandidate,
   getActiveReferenceResource,
@@ -30,6 +29,19 @@ import { SEMANTIC_CONTEXT_RESOURCE_KEY } from "@/lib/reference-resources/types";
 
 function checksum(value: unknown) {
   return createHash("sha256").update(JSON.stringify(value)).digest("hex");
+}
+
+export function buildPrivateDataChatAdditionalSourceVersions(input: {
+  fieldSourceMappings: unknown;
+  filterRegionChecksum: string;
+}) {
+  return {
+    fieldSourceMappings: checksum(input.fieldSourceMappings),
+    filterRegions: input.filterRegionChecksum,
+    imbFieldContract: `${IMB_FIELD_CONTRACT_VERSION}:${checksum(
+      IMB_FIELD_CONTRACT,
+    )}`,
+  };
 }
 
 function latestSourceTimestamp(input: Awaited<
@@ -45,7 +57,7 @@ function latestSourceTimestamp(input: Awaited<
 }
 
 export async function loadPrivateDataChatSemanticContextSources() {
-  const [definitions, mappings, regions, countries, catalog] = await Promise.all([
+  const [definitions, mappings, regionSource, catalog] = await Promise.all([
     getDb()
       .select({
         canonicalKey: fieldDefinitions.canonicalKey,
@@ -75,26 +87,7 @@ export async function loadPrivateDataChatSemanticContextSources() {
         asc(fieldDefinitions.canonicalKey),
         asc(fieldSourceTypes.key),
       ),
-    getDb()
-      .select({
-        id: filterRegions.id,
-        name: filterRegions.name,
-        description: filterRegions.description,
-        sortOrder: filterRegions.sortOrder,
-        updatedAt: filterRegions.updatedAt,
-      })
-      .from(filterRegions)
-      .orderBy(asc(filterRegions.sortOrder), asc(filterRegions.name)),
-    getDb()
-      .select({
-        regionId: filterRegionCountries.regionId,
-        countryName: filterRegionCountries.countryName,
-      })
-      .from(filterRegionCountries)
-      .orderBy(
-        asc(filterRegionCountries.regionId),
-        asc(filterRegionCountries.countryName),
-      ),
+    loadPrivateDataChatFilterRegionSource(),
     listReferenceResourceCatalog(),
   ]);
 
@@ -125,13 +118,10 @@ export async function loadPrivateDataChatSemanticContextSources() {
   return {
     fieldDefinitions: fieldDefinitionInputs,
     resourceSummaries,
-    additionalSourceVersions: {
-      fieldSourceMappings: checksum(mappings),
-      filterRegions: checksum({ regions, countries }),
-      imbFieldContract: `${IMB_FIELD_CONTRACT_VERSION}:${checksum(
-        IMB_FIELD_CONTRACT,
-      )}`,
-    },
+    additionalSourceVersions: buildPrivateDataChatAdditionalSourceVersions({
+      fieldSourceMappings: mappings,
+      filterRegionChecksum: regionSource.checksum,
+    }),
   };
 }
 

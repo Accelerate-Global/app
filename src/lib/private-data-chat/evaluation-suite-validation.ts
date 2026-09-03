@@ -523,7 +523,7 @@ export function validatePrivateDataChatCapabilitySuite(
   }
 
   for (const testCase of cases) {
-    if (!/^(v3|v4|v5)-[a-z0-9][a-z0-9-]*$/u.test(testCase.id)) {
+    if (!/^(v3|v4|v5|v6)-[a-z0-9][a-z0-9-]*$/u.test(testCase.id)) {
       issue(issues, "case-id", "Case ID is not stable kebab-case.", testCase.id);
     }
     if (ids.has(testCase.id)) {

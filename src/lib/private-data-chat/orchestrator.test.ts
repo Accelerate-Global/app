@@ -144,6 +144,118 @@ describe("private data chat orchestrator", () => {
       "Count people groups.",
     );
   });
+
+  it("answers exact reviewed region population questions without calling Qwen", async () => {
+    vi.stubEnv("PRIVATE_DATA_CHAT_SEMANTIC_CONTEXT_ENABLED", "true");
+    vi.stubEnv("PRIVATE_DATA_CHAT_TURN_STATE_HMAC_KEY", "t".repeat(40));
+    vi.stubEnv("PRIVATE_DATA_CHAT_VIEW_CONTEXT_HMAC_KEY", "v".repeat(40));
+    vi.stubEnv("PRIVATE_DATA_CHAT_CONTINUATION_HMAC_KEY", "c".repeat(40));
+    const plan = vi.fn();
+    const answer = vi.fn();
+    const retrieveSemanticContext = vi.fn().mockResolvedValue({
+      status: "ready",
+      snapshotChecksum: "a".repeat(64),
+      definitionPackageChecksum: "b".repeat(64),
+      policyVersion: "semantic-retrieval-v1.1.reviewed-exact-anchor-fts-coverage",
+      policyChecksum: "c".repeat(64),
+      views: [],
+      items: [
+        { stableKey: "field.country", contentChecksum: "d".repeat(64) },
+        { stableKey: "metric.total_population", contentChecksum: "e".repeat(64) },
+      ],
+      serialized: "{}",
+      bytes: 2,
+      exactKeys: [],
+    });
+    const resolveGeographyIntent = vi.fn().mockResolvedValue({
+      status: "resolved",
+      metric: "total_population",
+      scope: {
+        kind: "region",
+        canonicalName: "Asia, South",
+        displayName: "South Asia",
+        countries: ["India", "Nepal"],
+        global: false,
+        sourceChecksum: "r".repeat(64),
+      },
+      requiredSemanticKeys: ["field.country", "metric.total_population"],
+      resolverViews: [
+        { stableKey: "field.country", text: "Reviewed filter region: Asia, South" },
+        { stableKey: "metric.total_population", text: "Resolved metric: Total population" },
+      ],
+    });
+    const resolveValues = vi.fn(async (query) => ({
+      status: "resolved" as const,
+      query,
+      valueBindings: [],
+    }));
+    const executeQuery = vi.fn().mockResolvedValue({
+      ...aggregateResult,
+      selectedConcepts: ["total_population"],
+      rows: [{ total_population: "123" }],
+    });
+
+    const result = await orchestratePrivateDataChatTurn({
+      identity,
+      messages: [{ role: "user", content: "How many people are in South Asia?" }],
+      conversationId: "20000000-0000-4000-8000-000000000006",
+      viewContextToken: "server-signed-view-token",
+      dependencies: {
+        gateway: { plan, answer },
+        loadSemanticContext: vi.fn().mockResolvedValue({
+          version: { contentChecksum: "a".repeat(64) },
+          payload: {
+            sourceVersionManifest: { filterRegions: "r".repeat(64) },
+          },
+        }),
+        retrieveSemanticContext,
+        resolveGeographyIntent,
+        verifyViewContext: vi.fn().mockResolvedValue({
+          filters: [{ field: "country", operator: "eq", value: "Sudan" }],
+          namedFilters: [
+            {
+              key: "uupg",
+              version: 1,
+              options: {
+                globalEngagementAnywhereEnabled: true,
+                frontierGroupEnabled: true,
+              },
+            },
+          ],
+          sort: [],
+        }),
+        resolveValues,
+        executeQuery,
+      } as never,
+    });
+
+    expect(resolveGeographyIntent).toHaveBeenCalledWith({
+      question: "How many people are in South Asia?",
+      expectedFilterRegionChecksum: "r".repeat(64),
+    });
+    expect(retrieveSemanticContext).toHaveBeenCalledWith(
+      expect.objectContaining({
+        requiredKeys: ["field.country", "metric.total_population"],
+        verifiedResolverViews: expect.arrayContaining([
+          expect.objectContaining({ stableKey: "field.country" }),
+        ]),
+      }),
+    );
+    expect(resolveValues).toHaveBeenCalledWith(
+      expect.objectContaining({
+        mode: "aggregate",
+        metrics: ["total_population"],
+        filters: [
+          { field: "country", operator: "in", value: ["India", "Nepal"] },
+        ],
+        namedFilters: [expect.objectContaining({ key: "uupg" })],
+      }),
+    );
+    expect(plan).not.toHaveBeenCalled();
+    expect(answer).not.toHaveBeenCalled();
+    expect(result.content).toBe("South Asia: Total population: 123 people");
+    expect(result.facts).toEqual(["Total population: 123 people"]);
+  });
   it("inherits verified current-view filters, overrides the same field, and supports explicit all-data replacement", () => {
     const currentView = {
       filters: [{ field: "country", operator: "eq", value: "Sudan" }],

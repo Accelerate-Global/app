@@ -6,7 +6,7 @@ import type {
 } from "@/lib/private-data-chat/schemas";
 
 export const PRIVATE_DATA_CHAT_CAPABILITY_SUITE_VERSION =
-  "private-data-chat-capabilities-v5.review-1" as const;
+  "private-data-chat-capabilities-v6.review-1" as const;
 
 export const PRIVATE_DATA_CHAT_EVALUATION_TIERS = [
   "smoke",
@@ -73,6 +73,7 @@ type PrivateDataChatEvaluationCaseBase = Readonly<{
   risk: PrivateDataChatEvaluationRisk;
   rationale: string;
   tags: readonly string[];
+  expectedModelCalls?: 0 | 1 | 2;
 }>;
 
 export type PrivateDataChatPlannerEvaluationCase =

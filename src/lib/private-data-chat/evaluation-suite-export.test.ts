@@ -10,7 +10,10 @@ import path from "node:path";
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { buildPrivateDataChatLiveEvaluationBundle } from "@/lib/private-data-chat/evaluation-suite-export";
+import {
+  buildPrivateDataChatLiveEvaluationBundle,
+  hashPrivateDataChatEvaluationValue,
+} from "@/lib/private-data-chat/evaluation-suite-export";
 import { runPrivateDataChatEvaluationExport } from "../../../scripts/private-data-chat-evaluation-export";
 
 const temporaryDirectories: string[] = [];
@@ -56,21 +59,42 @@ describe("private data chat live evaluation export", () => {
 
     expect(first).toEqual(second);
     expect(first.manifest.counts).toEqual({
-      total: 450,
+      total: 455,
       planner: 374,
       answer: 38,
-      end_to_end: 38,
+      end_to_end: 43,
       clean_model_calls: 1236,
     });
     expect(first.documents.plans.cases).toHaveLength(374);
     expect(first.documents.answers.cases).toHaveLength(38);
-    expect(first.documents.endToEnd.cases).toHaveLength(38);
+    expect(first.documents.endToEnd.cases).toHaveLength(43);
     expect(first.manifest.approved_execution).toEqual({
       tier: "extended",
       diagnostic_repetitions: 1,
       clean_model_repetitions: 3,
       end_to_end_repetitions: 3,
     });
+  });
+
+  it("preserves the fully evaluated v5 planner and answer case payloads", () => {
+    const bundle = buildPrivateDataChatLiveEvaluationBundle(sourceInputs());
+    const planner = {
+      ...bundle.documents.plans,
+      suite_id: "private-data-chat-capabilities-v5.review-1.planner",
+      suite_version: "private-data-chat-capabilities-v5.review-1",
+    };
+    const answer = {
+      ...bundle.documents.answers,
+      suite_id: "private-data-chat-capabilities-v5.review-1.answer",
+      suite_version: "private-data-chat-capabilities-v5.review-1",
+    };
+
+    expect(hashPrivateDataChatEvaluationValue(planner)).toBe(
+      "fb443628c2dc5e867293c06c087c45f7a48e9654264e3d9f66438cde5af77bea",
+    );
+    expect(hashPrivateDataChatEvaluationValue(answer)).toBe(
+      "05170a0dc4667f545b2076b06b5cfb488370a433c97b96f210ce6a5cadc844df",
+    );
   });
 
   it("writes files whose bytes match the generated manifest", () => {

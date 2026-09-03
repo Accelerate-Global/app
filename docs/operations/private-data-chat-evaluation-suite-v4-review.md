@@ -1,9 +1,9 @@
-# Private Data Chat Capability Evaluation Suite v5 — Review Inventory
+# Private Data Chat Capability Evaluation Suite v6 — Review Inventory
 
 > **Status: APPROVED FOR EXECUTION.** This sanitized inventory remains generation-only; live execution is recorded separately in hash-bound receipts.
 
-- **Suite version:** `private-data-chat-capabilities-v5.review-1`
-- **Total proposed cases:** 450
+- **Suite version:** `private-data-chat-capabilities-v6.review-1`
+- **Total proposed cases:** 455
 - **Compatibility baseline:** 23 unchanged v3 planner cases
 - **Full one-repetition estimate:** 478 model calls
 - **Private production values committed:** none; answer fixtures are synthetic and full-path cases use structural assertions
@@ -16,13 +16,13 @@
 
 ## Proposed execution tiers
 
-Tiers are cumulative. The model-call estimate counts one planner or answer call per isolated case and two calls for an end-to-end query that reaches grounded narration.
+Tiers are cumulative. The model-call estimate counts one planner or answer call per isolated case and two calls for an end-to-end query that reaches grounded narration, except explicitly deterministic cases that declare zero model calls.
 
 | Cumulative tier | Cases | Planner | Grounded answer | End to end | Estimated model calls for one repetition | Three repetitions |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| smoke | 46 | 31 | 7 | 8 | 51 | 153 |
-| core | 216 | 170 | 20 | 26 | 235 | 705 |
-| extended | 450 | 374 | 38 | 38 | 478 | 1434 |
+| smoke | 49 | 31 | 7 | 11 | 51 | 153 |
+| core | 221 | 170 | 20 | 31 | 235 | 705 |
+| extended | 455 | 374 | 38 | 43 | 478 | 1434 |
 
 ## Coverage by capability
 
@@ -33,7 +33,7 @@ Tiers are cumulative. The model-call estimate counts one planner or answer call 
 | completeness | 2 |
 | controlled-values | 15 |
 | empty-result | 1 |
-| end-to-end-read-only | 38 |
+| end-to-end-read-only | 43 |
 | filter-operator | 45 |
 | grounded-answer | 17 |
 | grouping | 18 |
@@ -25131,7 +25131,259 @@ This case is defined for later execution only after separate approval.
 
 This case is defined for later execution only after separate approval.
 
-### 415. `v4-e2e-average-population`
+### 415. `v6-e2e-india-total-population-fast-path`
+
+- **Kind:** end-to-end
+- **Declared tier:** smoke
+- **Capability:** end-to-end-read-only
+- **Risk:** critical
+- **Tags:** `approval-required`, `read-only`, `country`, `population`, `deterministic-fast-path`, `incident-regression`
+- **Why this case exists:** Regress the production refusal for a natural population question about an approved country.
+- **Expected model calls:** 0
+
+**Conversation**
+```json
+[
+  {
+    "role": "user",
+    "content": "How many people are in India?"
+  }
+]
+```
+
+**Structural full-path assertion**
+```json
+{
+  "decision": "query",
+  "selectedKeys": [
+    "total_population"
+  ],
+  "filterFields": [
+    "country"
+  ],
+  "sort": [],
+  "rowCount": {
+    "minimum": 1,
+    "maximum": 1
+  },
+  "requireCatalogVersion": true,
+  "requireProvenance": true,
+  "textRubric": {
+    "requiredAll": [
+      "India"
+    ],
+    "requiredAny": [
+      [
+        "people",
+        "population"
+      ]
+    ],
+    "forbidden": [
+      "only help with Accelerate Global"
+    ]
+  }
+}
+```
+
+This case is defined for later execution only after separate approval.
+
+### 416. `v6-e2e-south-asia-total-population-fast-path`
+
+- **Kind:** end-to-end
+- **Declared tier:** smoke
+- **Capability:** end-to-end-read-only
+- **Risk:** critical
+- **Tags:** `approval-required`, `read-only`, `filter-region`, `population`, `deterministic-fast-path`, `incident-regression`
+- **Why this case exists:** Regress the production refusal for a natural population question about the reviewed South Asia filter region.
+- **Expected model calls:** 0
+
+**Conversation**
+```json
+[
+  {
+    "role": "user",
+    "content": "How many people are in South Asia?"
+  }
+]
+```
+
+**Structural full-path assertion**
+```json
+{
+  "decision": "query",
+  "selectedKeys": [
+    "total_population"
+  ],
+  "filterFields": [
+    "country"
+  ],
+  "sort": [],
+  "rowCount": {
+    "minimum": 1,
+    "maximum": 1
+  },
+  "requireCatalogVersion": true,
+  "requireProvenance": true,
+  "textRubric": {
+    "requiredAll": [
+      "South Asia"
+    ],
+    "requiredAny": [
+      [
+        "people",
+        "population"
+      ]
+    ],
+    "forbidden": [
+      "only help with Accelerate Global"
+    ]
+  }
+}
+```
+
+This case is defined for later execution only after separate approval.
+
+### 417. `v6-e2e-india-people-group-count-fast-path`
+
+- **Kind:** end-to-end
+- **Declared tier:** core
+- **Capability:** end-to-end-read-only
+- **Risk:** critical
+- **Tags:** `approval-required`, `read-only`, `country`, `people-group-count`, `deterministic-fast-path`
+- **Why this case exists:** Keep natural people-group count semantics distinct from summed population for the same approved country.
+- **Expected model calls:** 0
+
+**Conversation**
+```json
+[
+  {
+    "role": "user",
+    "content": "How many people groups are in India?"
+  }
+]
+```
+
+**Structural full-path assertion**
+```json
+{
+  "decision": "query",
+  "selectedKeys": [
+    "people_group_count"
+  ],
+  "filterFields": [
+    "country"
+  ],
+  "sort": [],
+  "rowCount": {
+    "minimum": 1,
+    "maximum": 1
+  },
+  "requireCatalogVersion": true,
+  "requireProvenance": true,
+  "textRubric": {
+    "requiredAll": [
+      "India"
+    ],
+    "requiredAny": [
+      [
+        "people group",
+        "people-group"
+      ]
+    ]
+  }
+}
+```
+
+This case is defined for later execution only after separate approval.
+
+### 418. `v6-e2e-mixed-country-region-fast-path`
+
+- **Kind:** end-to-end
+- **Declared tier:** core
+- **Capability:** end-to-end-read-only
+- **Risk:** elevated
+- **Tags:** `approval-required`, `read-only`, `no-query`, `country`, `filter-region`, `ambiguity`, `deterministic-fast-path`
+- **Why this case exists:** Prevent an exact country and reviewed region in one scalar request from being silently unioned or intersected.
+- **Expected model calls:** 0
+
+**Conversation**
+```json
+[
+  {
+    "role": "user",
+    "content": "How many people are in India and South Asia?"
+  }
+]
+```
+
+**Structural full-path assertion**
+```json
+{
+  "decision": "clarify",
+  "requireNoQuery": true,
+  "textRubric": {
+    "requiredAny": [
+      [
+        "which",
+        "more than one",
+        "geography"
+      ]
+    ]
+  }
+}
+```
+
+This case is defined for later execution only after separate approval.
+
+### 419. `v6-e2e-unknown-geography-fast-path-negative`
+
+- **Kind:** end-to-end
+- **Declared tier:** smoke
+- **Capability:** end-to-end-read-only
+- **Risk:** elevated
+- **Tags:** `approval-required`, `read-only`, `no-query`, `unknown-geography`, `hard-negative`, `deterministic-fast-path`
+- **Why this case exists:** Keep an unknown place from gaining query authority or falling back to model world knowledge.
+- **Expected model calls:** 0
+
+**Conversation**
+```json
+[
+  {
+    "role": "user",
+    "content": "How many people are in Atlantis?"
+  }
+]
+```
+
+**Structural full-path assertion**
+```json
+{
+  "decision": "clarify",
+  "requireNoQuery": true,
+  "textRubric": {
+    "requiredAny": [
+      [
+        "only help",
+        "cannot",
+        "can't"
+      ],
+      [
+        "Accelerate Global",
+        "reviewed",
+        "data"
+      ]
+    ],
+    "forbidden": [
+      "estimated population",
+      "mythical city"
+    ]
+  }
+}
+```
+
+This case is defined for later execution only after separate approval.
+
+### 420. `v4-e2e-average-population`
 
 - **Kind:** end-to-end
 - **Declared tier:** core
@@ -25170,7 +25422,7 @@ This case is defined for later execution only after separate approval.
 
 This case is defined for later execution only after separate approval.
 
-### 416. `v4-e2e-average-evangelical`
+### 421. `v4-e2e-average-evangelical`
 
 - **Kind:** end-to-end
 - **Declared tier:** core
@@ -25217,7 +25469,7 @@ This case is defined for later execution only after separate approval.
 
 This case is defined for later execution only after separate approval.
 
-### 417. `v4-e2e-population-by-country-top-ten`
+### 422. `v4-e2e-population-by-country-top-ten`
 
 - **Kind:** end-to-end
 - **Declared tier:** core
@@ -25262,7 +25514,7 @@ This case is defined for later execution only after separate approval.
 
 This case is defined for later execution only after separate approval.
 
-### 418. `v4-e2e-count-by-frontier`
+### 423. `v4-e2e-count-by-frontier`
 
 - **Kind:** end-to-end
 - **Declared tier:** core
@@ -25302,7 +25554,7 @@ This case is defined for later execution only after separate approval.
 
 This case is defined for later execution only after separate approval.
 
-### 419. `v4-e2e-thailand-records`
+### 424. `v4-e2e-thailand-records`
 
 - **Kind:** end-to-end
 - **Declared tier:** core
@@ -25344,7 +25596,7 @@ This case is defined for later execution only after separate approval.
 
 This case is defined for later execution only after separate approval.
 
-### 420. `v4-e2e-us-alias-records`
+### 425. `v4-e2e-us-alias-records`
 
 - **Kind:** end-to-end
 - **Declared tier:** core
@@ -25390,7 +25642,7 @@ This case is defined for later execution only after separate approval.
 
 This case is defined for later execution only after separate approval.
 
-### 421. `v4-e2e-npl-alias-count`
+### 426. `v4-e2e-npl-alias-count`
 
 - **Kind:** end-to-end
 - **Declared tier:** core
@@ -25431,7 +25683,7 @@ This case is defined for later execution only after separate approval.
 
 This case is defined for later execution only after separate approval.
 
-### 422. `v4-e2e-missing-population-count`
+### 427. `v4-e2e-missing-population-count`
 
 - **Kind:** end-to-end
 - **Declared tier:** core
@@ -25477,7 +25729,7 @@ This case is defined for later execution only after separate approval.
 
 This case is defined for later execution only after separate approval.
 
-### 423. `v4-e2e-zero-percentage-count`
+### 428. `v4-e2e-zero-percentage-count`
 
 - **Kind:** end-to-end
 - **Declared tier:** core
@@ -25518,7 +25770,7 @@ This case is defined for later execution only after separate approval.
 
 This case is defined for later execution only after separate approval.
 
-### 424. `v4-e2e-frontier-total-population`
+### 429. `v4-e2e-frontier-total-population`
 
 - **Kind:** end-to-end
 - **Declared tier:** core
@@ -25559,7 +25811,7 @@ This case is defined for later execution only after separate approval.
 
 This case is defined for later execution only after separate approval.
 
-### 425. `v4-e2e-unengaged-count`
+### 430. `v4-e2e-unengaged-count`
 
 - **Kind:** end-to-end
 - **Declared tier:** core
@@ -25600,7 +25852,7 @@ This case is defined for later execution only after separate approval.
 
 This case is defined for later execution only after separate approval.
 
-### 426. `v4-e2e-population-threshold-records`
+### 431. `v4-e2e-population-threshold-records`
 
 - **Kind:** end-to-end
 - **Declared tier:** extended
@@ -25643,7 +25895,7 @@ This case is defined for later execution only after separate approval.
 
 This case is defined for later execution only after separate approval.
 
-### 427. `v4-e2e-two-country-count`
+### 432. `v4-e2e-two-country-count`
 
 - **Kind:** end-to-end
 - **Declared tier:** extended
@@ -25684,7 +25936,7 @@ This case is defined for later execution only after separate approval.
 
 This case is defined for later execution only after separate approval.
 
-### 428. `v4-e2e-empty-antarctica`
+### 433. `v4-e2e-empty-antarctica`
 
 - **Kind:** end-to-end
 - **Declared tier:** extended
@@ -25738,7 +25990,7 @@ This case is defined for later execution only after separate approval.
 
 This case is defined for later execution only after separate approval.
 
-### 429. `v4-e2e-largest-five-population`
+### 434. `v4-e2e-largest-five-population`
 
 - **Kind:** end-to-end
 - **Declared tier:** extended
@@ -25783,7 +26035,7 @@ This case is defined for later execution only after separate approval.
 
 This case is defined for later execution only after separate approval.
 
-### 430. `v4-e2e-average-evangelical-country`
+### 435. `v4-e2e-average-evangelical-country`
 
 - **Kind:** end-to-end
 - **Declared tier:** extended
@@ -25828,7 +26080,7 @@ This case is defined for later execution only after separate approval.
 
 This case is defined for later execution only after separate approval.
 
-### 431. `v4-e2e-multi-turn-ranking`
+### 436. `v4-e2e-multi-turn-ranking`
 
 - **Kind:** end-to-end
 - **Declared tier:** extended
@@ -25881,7 +26133,7 @@ This case is defined for later execution only after separate approval.
 
 This case is defined for later execution only after separate approval.
 
-### 432. `v4-e2e-multi-turn-country-switch`
+### 437. `v4-e2e-multi-turn-country-switch`
 
 - **Kind:** end-to-end
 - **Declared tier:** extended
@@ -25930,7 +26182,7 @@ This case is defined for later execution only after separate approval.
 
 This case is defined for later execution only after separate approval.
 
-### 433. `v4-e2e-ambiguous-largest`
+### 438. `v4-e2e-ambiguous-largest`
 
 - **Kind:** end-to-end
 - **Declared tier:** core
@@ -25973,7 +26225,7 @@ This case is defined for later execution only after separate approval.
 
 This case is defined for later execution only after separate approval.
 
-### 434. `v4-e2e-macro-region-unavailable`
+### 439. `v4-e2e-macro-region-unavailable`
 
 - **Kind:** end-to-end
 - **Declared tier:** extended
@@ -26022,7 +26274,7 @@ This case is defined for later execution only after separate approval.
 
 This case is defined for later execution only after separate approval.
 
-### 435. `v4-e2e-weighted-average-unavailable`
+### 440. `v4-e2e-weighted-average-unavailable`
 
 - **Kind:** end-to-end
 - **Declared tier:** extended
@@ -26062,7 +26314,7 @@ This case is defined for later execution only after separate approval.
 
 This case is defined for later execution only after separate approval.
 
-### 436. `v4-e2e-congo-display-name-records`
+### 441. `v4-e2e-congo-display-name-records`
 
 - **Kind:** end-to-end
 - **Declared tier:** extended
@@ -26103,7 +26355,7 @@ This case is defined for later execution only after separate approval.
 
 This case is defined for later execution only after separate approval.
 
-### 437. `v5-e2e-incident-frontier-sudan-count`
+### 442. `v5-e2e-incident-frontier-sudan-count`
 
 - **Kind:** end-to-end
 - **Declared tier:** smoke
@@ -26154,7 +26406,7 @@ This case is defined for later execution only after separate approval.
 
 This case is defined for later execution only after separate approval.
 
-### 438. `v5-e2e-incident-uupg-sudan-count`
+### 443. `v5-e2e-incident-uupg-sudan-count`
 
 - **Kind:** end-to-end
 - **Declared tier:** smoke
@@ -26213,7 +26465,7 @@ This case is defined for later execution only after separate approval.
 
 This case is defined for later execution only after separate approval.
 
-### 439. `v5-e2e-incident-explicit-dual-sudan-count`
+### 444. `v5-e2e-incident-explicit-dual-sudan-count`
 
 - **Kind:** end-to-end
 - **Declared tier:** core
@@ -26265,7 +26517,7 @@ This case is defined for later execution only after separate approval.
 
 This case is defined for later execution only after separate approval.
 
-### 440. `v5-e2e-incident-uupg-sudan-complete-page`
+### 445. `v5-e2e-incident-uupg-sudan-complete-page`
 
 - **Kind:** end-to-end
 - **Declared tier:** smoke
@@ -26337,7 +26589,7 @@ This case is defined for later execution only after separate approval.
 
 This case is defined for later execution only after separate approval.
 
-### 441. `v5-e2e-rop-browse-first-page`
+### 446. `v5-e2e-rop-browse-first-page`
 
 - **Kind:** end-to-end
 - **Declared tier:** smoke
@@ -26388,7 +26640,7 @@ This case is defined for later execution only after separate approval.
 
 This case is defined for later execution only after separate approval.
 
-### 442. `v5-e2e-rop-search-sudan`
+### 447. `v5-e2e-rop-search-sudan`
 
 - **Kind:** end-to-end
 - **Declared tier:** core
@@ -26442,7 +26694,7 @@ This case is defined for later execution only after separate approval.
 
 This case is defined for later execution only after separate approval.
 
-### 443. `v5-e2e-rop-lookup-code`
+### 448. `v5-e2e-rop-lookup-code`
 
 - **Kind:** end-to-end
 - **Declared tier:** smoke
@@ -26489,7 +26741,7 @@ This case is defined for later execution only after separate approval.
 
 This case is defined for later execution only after separate approval.
 
-### 444. `v5-e2e-rop-count-all`
+### 449. `v5-e2e-rop-count-all`
 
 - **Kind:** end-to-end
 - **Declared tier:** core
@@ -26539,7 +26791,7 @@ This case is defined for later execution only after separate approval.
 
 This case is defined for later execution only after separate approval.
 
-### 445. `v5-e2e-rop-continue-second-page`
+### 450. `v5-e2e-rop-continue-second-page`
 
 - **Kind:** end-to-end
 - **Declared tier:** extended
@@ -26599,7 +26851,7 @@ This case is defined for later execution only after separate approval.
 
 This case is defined for later execution only after separate approval.
 
-### 446. `v5-e2e-rop3-registered-filter`
+### 451. `v5-e2e-rop3-registered-filter`
 
 - **Kind:** end-to-end
 - **Declared tier:** core
@@ -26646,7 +26898,7 @@ This case is defined for later execution only after separate approval.
 
 This case is defined for later execution only after separate approval.
 
-### 447. `v5-e2e-rop-geography-nonmultiplying-filter`
+### 452. `v5-e2e-rop-geography-nonmultiplying-filter`
 
 - **Kind:** end-to-end
 - **Declared tier:** core
@@ -26709,7 +26961,7 @@ This case is defined for later execution only after separate approval.
 
 This case is defined for later execution only after separate approval.
 
-### 448. `v5-e2e-rop-null-preserving-match-status`
+### 453. `v5-e2e-rop-null-preserving-match-status`
 
 - **Kind:** end-to-end
 - **Declared tier:** extended
@@ -26771,7 +27023,7 @@ This case is defined for later execution only after separate approval.
 
 This case is defined for later execution only after separate approval.
 
-### 449. `v5-e2e-uupg-reviewed-definition`
+### 454. `v5-e2e-uupg-reviewed-definition`
 
 - **Kind:** end-to-end
 - **Declared tier:** core
@@ -26822,7 +27074,7 @@ This case is defined for later execution only after separate approval.
 
 This case is defined for later execution only after separate approval.
 
-### 450. `v5-e2e-off-topic-photosynthesis`
+### 455. `v5-e2e-off-topic-photosynthesis`
 
 - **Kind:** end-to-end
 - **Declared tier:** smoke

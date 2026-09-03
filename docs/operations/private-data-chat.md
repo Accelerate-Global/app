@@ -98,6 +98,14 @@ not a second data platform:
   the reviewed country catalog and become only a verified code present in the
   reviewed ROP package. Both resource versions are retained as internal
   evidence, and an ROP-version mismatch fails closed.
+- Exact scalar questions in the form “how many people/people groups in
+  [approved country or reviewed filter region]” use an application-owned typed
+  fast path. Country aliases resolve against the active country resource;
+  region aliases resolve to the exact checksum-bound `filter_regions` country
+  set. The query still uses the normal value resolver, parameterized compiler,
+  authorization-preserving broker, audit evidence, and result validator, but it
+  makes no Qwen planning or narration call. Unknown, mixed, stale, empty, or
+  oversized geography fails closed or asks for clarification.
 - A signed current-view handoff can carry only supported country, UUPG, and sort
   semantics. Counts remain server-derived, and client summaries are bounded,
   same-origin, versioned display data.
@@ -205,11 +213,12 @@ test password.
 - `pnpm run verify:change:run`
 - `pnpm run verify:ship:local` before a release request
 
-The 450-case v5 suite covers supported aggregates and records, every approved
+The 455-case v6 suite covers supported aggregates and records, every approved
 ROP dimension/record/filter operator/null boundary, resource operations, UUPG
 options, signed current-view and continuation boundaries, completeness, aliases,
 ambiguous and unsupported requests, multi-turn resolution, empty results,
-mutations, prompt exfiltration, and SQL-looking inert values. Regenerate the
+mutations, prompt exfiltration, SQL-looking inert values, and deterministic
+country/filter-region scalar questions. Regenerate the
 real-Qwen receipt whenever the model artifact,
 llama.cpp runtime, planner or answer prompt, response schema, semantic catalog,
 compiler policy, or sanitized fixtures change. Live model inference is a release
@@ -218,7 +227,9 @@ receipt, not a public CI dependency.
 The retrieval decision and pinned candidate receipts are summarized in
 `docs/operations/private-data-chat-retrieval-benchmark-v1.md`; the pinned v5
 generative and production-canary record is
-`docs/operations/private-data-chat-evaluation-v5.md`.
+`docs/operations/private-data-chat-evaluation-v5.md`; the app-only geography
+extension and its exact compatibility proof are recorded in
+`docs/operations/private-data-chat-evaluation-v6.md`.
 
 ## Failure behavior
 
