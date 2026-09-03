@@ -1,8 +1,23 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { buildPrivateDataChatSemanticContextPackage } from "@/lib/private-data-chat/semantic-context";
+import { buildPrivateDataChatAdditionalSourceVersions } from "@/lib/private-data-chat/semantic-context-candidate";
 
 describe("private data chat semantic context candidate inputs", () => {
+  it("uses the shared filter-region checksum without rehashing it", () => {
+    const filterRegionChecksum = "f".repeat(64);
+    expect(
+      buildPrivateDataChatAdditionalSourceVersions({
+        fieldSourceMappings: [{ canonicalKey: "geo_country_name" }],
+        filterRegionChecksum,
+      }),
+    ).toMatchObject({
+      fieldSourceMappings: expect.stringMatching(/^[0-9a-f]{64}$/u),
+      filterRegions: filterRegionChecksum,
+      imbFieldContract: expect.stringMatching(/^\d+:[0-9a-f]{64}$/u),
+    });
+  });
+
   it("binds field definitions, source mappings, filter regions, contracts, and resources in one manifest", () => {
     const built = buildPrivateDataChatSemanticContextPackage({
       sourceRetrievedAt: "2026-08-31T12:00:00.000Z",

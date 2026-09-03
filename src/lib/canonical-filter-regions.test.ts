@@ -4,6 +4,7 @@ import { REGION_COUNTRY_OPTIONS } from "@/lib/region-country-options";
 
 import {
   CANONICAL_FILTER_REGION_DEFINITIONS,
+  getCompatibleFilterRegionAliases,
   normalizeCompatibleRegionName,
 } from "./canonical-filter-regions";
 
@@ -43,5 +44,15 @@ describe("canonical filter regions", () => {
       "Asia, Southeast",
     );
     expect(normalizeCompatibleRegionName("America, Latin")).toBe("America, Latin");
+  });
+
+  it("exposes only aliases owned by each canonical filter region", () => {
+    expect(getCompatibleFilterRegionAliases("Asia, South")).toEqual([
+      "south asia",
+    ]);
+    expect(getCompatibleFilterRegionAliases("Asia, Southeast")).toEqual([
+      "south east asia",
+    ]);
+    expect(getCompatibleFilterRegionAliases("America, Latin")).toEqual([]);
   });
 });

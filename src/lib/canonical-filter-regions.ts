@@ -23,16 +23,28 @@ export type CanonicalFilterRegionDefinition = {
   countries: string[];
 };
 
-const LEGACY_REGION_NAME_ALIASES = new Map<string, string>([
+export const COMPATIBLE_FILTER_REGION_NAME_ALIASES = [
   ["globe", "Global"],
   ["south asia", "Asia, South"],
   ["south east asia", "Asia, Southeast"],
-]);
+] as const;
+
+const LEGACY_REGION_NAME_ALIASES = new Map<string, string>(
+  COMPATIBLE_FILTER_REGION_NAME_ALIASES,
+);
 
 export function normalizeCompatibleRegionName(name: string) {
   const trimmedName = name.trim();
   const alias = LEGACY_REGION_NAME_ALIASES.get(trimmedName.toLowerCase());
   return alias ?? trimmedName;
+}
+
+export function getCompatibleFilterRegionAliases(name: string) {
+  const normalizedName = name.trim().toLocaleLowerCase();
+  return COMPATIBLE_FILTER_REGION_NAME_ALIASES.flatMap(
+    ([alias, canonicalName]) =>
+      canonicalName.toLocaleLowerCase() === normalizedName ? [alias] : [],
+  );
 }
 
 export const CANONICAL_FILTER_REGION_DEFINITIONS = [

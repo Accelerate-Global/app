@@ -10,7 +10,7 @@ import type { PrivateDataChatResourceQuery } from "@/lib/private-data-chat/schem
 
 function queryCase(input: Readonly<{
   id: string;
-  version?: "v4" | "v5";
+  version?: "v4" | "v5" | "v6";
   tier: PrivateDataChatEvaluationTier;
   risk?: PrivateDataChatEvaluationRisk;
   rationale: string;
@@ -27,6 +27,7 @@ function queryCase(input: Readonly<{
   maximumMatching?: number;
   hasMore?: boolean;
   textRubric?: PrivateDataChatTextRubric;
+  expectedModelCalls?: 0 | 1 | 2;
 }>): PrivateDataChatEndToEndEvaluationCase {
   return {
     id: `${input.version ?? "v4"}-e2e-${input.id}`,
@@ -36,6 +37,7 @@ function queryCase(input: Readonly<{
     risk: input.risk ?? "elevated",
     rationale: input.rationale,
     tags: ["approval-required", "read-only", ...input.tags],
+    expectedModelCalls: input.expectedModelCalls,
     messages:
       input.messages ??
       ([{ role: "user", content: input.question ?? "" }] as const),
@@ -113,13 +115,14 @@ function resourceCase(input: Readonly<{
 
 function clarifyCase(input: Readonly<{
   id: string;
-  version?: "v4" | "v5";
+  version?: "v4" | "v5" | "v6";
   tier: PrivateDataChatEvaluationTier;
   rationale: string;
   tags: readonly string[];
   question?: string;
   messages?: readonly PrivateDataChatEvaluationMessage[];
   textRubric: PrivateDataChatTextRubric;
+  expectedModelCalls?: 0 | 1 | 2;
 }>): PrivateDataChatEndToEndEvaluationCase {
   return {
     id: `${input.version ?? "v4"}-e2e-${input.id}`,
@@ -129,6 +132,7 @@ function clarifyCase(input: Readonly<{
     risk: "elevated",
     rationale: input.rationale,
     tags: ["approval-required", "read-only", "no-query", ...input.tags],
+    expectedModelCalls: input.expectedModelCalls,
     messages:
       input.messages ??
       ([{ role: "user", content: input.question ?? "" }] as const),
@@ -162,6 +166,90 @@ export const PRIVATE_DATA_CHAT_END_TO_END_CAPABILITY_CASES: readonly PrivateData
     minimumRows: 1,
     maximumRows: 1,
     textRubric: { requiredAny: [["people", "population"]], forbidden: ["people groups total"] },
+  }),
+  queryCase({
+    id: "india-total-population-fast-path",
+    version: "v6",
+    tier: "smoke",
+    risk: "critical",
+    rationale: "Regress the production refusal for a natural population question about an approved country.",
+    tags: ["country", "population", "deterministic-fast-path", "incident-regression"],
+    expectedModelCalls: 0,
+    question: "How many people are in India?",
+    selectedKeys: ["total_population"],
+    filterFields: ["country"],
+    minimumRows: 1,
+    maximumRows: 1,
+    textRubric: {
+      requiredAll: ["India"],
+      requiredAny: [["people", "population"]],
+      forbidden: ["only help with Accelerate Global"],
+    },
+  }),
+  queryCase({
+    id: "south-asia-total-population-fast-path",
+    version: "v6",
+    tier: "smoke",
+    risk: "critical",
+    rationale: "Regress the production refusal for a natural population question about the reviewed South Asia filter region.",
+    tags: ["filter-region", "population", "deterministic-fast-path", "incident-regression"],
+    expectedModelCalls: 0,
+    question: "How many people are in South Asia?",
+    selectedKeys: ["total_population"],
+    filterFields: ["country"],
+    minimumRows: 1,
+    maximumRows: 1,
+    textRubric: {
+      requiredAll: ["South Asia"],
+      requiredAny: [["people", "population"]],
+      forbidden: ["only help with Accelerate Global"],
+    },
+  }),
+  queryCase({
+    id: "india-people-group-count-fast-path",
+    version: "v6",
+    tier: "core",
+    risk: "critical",
+    rationale: "Keep natural people-group count semantics distinct from summed population for the same approved country.",
+    tags: ["country", "people-group-count", "deterministic-fast-path"],
+    expectedModelCalls: 0,
+    question: "How many people groups are in India?",
+    selectedKeys: ["people_group_count"],
+    filterFields: ["country"],
+    minimumRows: 1,
+    maximumRows: 1,
+    textRubric: {
+      requiredAll: ["India"],
+      requiredAny: [["people group", "people-group"]],
+    },
+  }),
+  clarifyCase({
+    id: "mixed-country-region-fast-path",
+    version: "v6",
+    tier: "core",
+    rationale: "Prevent an exact country and reviewed region in one scalar request from being silently unioned or intersected.",
+    tags: ["country", "filter-region", "ambiguity", "deterministic-fast-path"],
+    expectedModelCalls: 0,
+    question: "How many people are in India and South Asia?",
+    textRubric: {
+      requiredAny: [["which", "more than one", "geography"]],
+    },
+  }),
+  clarifyCase({
+    id: "unknown-geography-fast-path-negative",
+    version: "v6",
+    tier: "smoke",
+    rationale: "Keep an unknown place from gaining query authority or falling back to model world knowledge.",
+    tags: ["unknown-geography", "hard-negative", "deterministic-fast-path"],
+    expectedModelCalls: 0,
+    question: "How many people are in Atlantis?",
+    textRubric: {
+      requiredAny: [
+        ["only help", "cannot", "can't"],
+        ["Accelerate Global", "reviewed", "data"],
+      ],
+      forbidden: ["estimated population", "mythical city"],
+    },
   }),
   queryCase({
     id: "average-population",

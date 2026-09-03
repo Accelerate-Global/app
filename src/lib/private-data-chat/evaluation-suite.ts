@@ -32,6 +32,9 @@ function increment(record: Record<string, number>, key: string) {
 }
 
 function estimatedInferenceCalls(testCase: PrivateDataChatCapabilityEvaluationCase) {
+  if (testCase.expectedModelCalls !== undefined) {
+    return testCase.expectedModelCalls;
+  }
   if (testCase.kind !== "end-to-end") return 1;
   return testCase.expected.decision === "query" ? 2 : 1;
 }

@@ -86,6 +86,9 @@ function renderCase(testCase: PrivateDataChatCapabilityEvaluationCase, index: nu
     `- **Risk:** ${testCase.risk}`,
     `- **Tags:** ${testCase.tags.map((tag) => `\`${tag}\``).join(", ")}`,
     `- **Why this case exists:** ${testCase.rationale}`,
+    ...(testCase.expectedModelCalls === undefined
+      ? []
+      : [`- **Expected model calls:** ${testCase.expectedModelCalls}`]),
     "",
   ];
 
@@ -128,7 +131,7 @@ function renderCapabilityTable() {
 export function renderPrivateDataChatEvaluationReview() {
   const summary = summarizePrivateDataChatCapabilitySuite("extended");
   const sections = [
-    "# Private Data Chat Capability Evaluation Suite v5 — Review Inventory",
+    "# Private Data Chat Capability Evaluation Suite v6 — Review Inventory",
     "",
     "> **Status: APPROVED FOR EXECUTION.** This sanitized inventory remains generation-only; live execution is recorded separately in hash-bound receipts.",
     "",
@@ -146,7 +149,7 @@ export function renderPrivateDataChatEvaluationReview() {
     "",
     "## Proposed execution tiers",
     "",
-    "Tiers are cumulative. The model-call estimate counts one planner or answer call per isolated case and two calls for an end-to-end query that reaches grounded narration.",
+    "Tiers are cumulative. The model-call estimate counts one planner or answer call per isolated case and two calls for an end-to-end query that reaches grounded narration, except explicitly deterministic cases that declare zero model calls.",
     "",
     renderTierTable(),
     "",

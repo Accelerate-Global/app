@@ -28,19 +28,19 @@ const suiteSourceFiles = [
 ] as const;
 
 describe("private data chat capability evaluation suite", () => {
-  it("contains 450 reviewable cases across the three isolated evaluation kinds", () => {
+  it("contains 455 reviewable cases across the three isolated evaluation kinds", () => {
     const summary = summarizePrivateDataChatCapabilitySuite("extended");
 
-    expect(summary.totalCases).toBe(450);
+    expect(summary.totalCases).toBe(455);
     expect(summary.estimatedInferenceCalls).toBe(478);
     expect(summary.byKind).toEqual({
       planner: 374,
       answer: 38,
-      "end-to-end": 38,
+      "end-to-end": 43,
     });
     expect(summary.byDeclaredTier).toEqual({
-      smoke: 46,
-      core: 170,
+      smoke: 49,
+      core: 172,
       extended: 234,
     });
   });
@@ -50,9 +50,9 @@ describe("private data chat capability evaluation suite", () => {
     const core = summarizePrivateDataChatCapabilitySuite("core");
     const extended = summarizePrivateDataChatCapabilitySuite("extended");
 
-    expect(smoke.totalCases).toBe(46);
+    expect(smoke.totalCases).toBe(49);
     expect(smoke.estimatedInferenceCalls).toBe(51);
-    expect(core.totalCases).toBe(216);
+    expect(core.totalCases).toBe(221);
     expect(core.estimatedInferenceCalls).toBe(235);
     expect(extended.totalCases).toBeGreaterThan(core.totalCases);
   });

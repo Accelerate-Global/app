@@ -36,10 +36,20 @@ export type PrivateDataChatRetrievalAudit = Readonly<{
 }>;
 
 export type PrivateDataChatControlledRetrievalView = Readonly<{
-  source: "utterance" | "current-view" | "prior-turn";
+  source: "utterance" | "resolver" | "current-view" | "prior-turn";
   text: string;
   stableKey: string | null;
 }>;
+
+const PRIVATE_DATA_CHAT_RESOLVER_VIEW_MAX_CHARACTERS = 300;
+
+function isBoundedResolverViewText(value: string) {
+  return (
+    value.length > 0 &&
+    value.length <= PRIVATE_DATA_CHAT_RESOLVER_VIEW_MAX_CHARACTERS &&
+    !/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/u.test(value)
+  );
+}
 
 export type PrivateDataChatRetrievedItem = Readonly<{
   stableKey: string;
@@ -221,6 +231,10 @@ function serializedItems(items: readonly PrivateDataChatRetrievedItem[]) {
 export function buildPrivateDataChatControlledRetrievalViews(input: {
   utterance: string;
   cards: readonly PrivateDataChatSemanticCard[];
+  verifiedResolverViews?: readonly Readonly<{
+    stableKey: string;
+    text: string;
+  }>[];
   verifiedCurrentViewKeys?: readonly string[];
   verifiedPriorTurnKeys?: readonly string[];
 }) {
@@ -228,6 +242,16 @@ export function buildPrivateDataChatControlledRetrievalViews(input: {
   const views: PrivateDataChatControlledRetrievalView[] = [
     { source: "utterance", text: input.utterance, stableKey: null },
   ];
+  for (const view of input.verifiedResolverViews ?? []) {
+    if (!byKey.has(view.stableKey) || !isBoundedResolverViewText(view.text)) {
+      continue;
+    }
+    views.push({
+      source: "resolver",
+      text: view.text,
+      stableKey: view.stableKey,
+    });
+  }
   for (const [source, keys] of [
     ["current-view", input.verifiedCurrentViewKeys ?? []],
     ["prior-turn", input.verifiedPriorTurnKeys ?? []],
@@ -245,6 +269,10 @@ export async function retrievePrivateDataChatSemanticContext(
   input: {
     utterance: string;
     audience: PrivateDataChatRetrievalAudience;
+    verifiedResolverViews?: readonly Readonly<{
+      stableKey: string;
+      text: string;
+    }>[];
     verifiedCurrentViewKeys?: readonly string[];
     verifiedPriorTurnKeys?: readonly string[];
     requiredKeys?: readonly string[];
@@ -312,6 +340,7 @@ export async function retrievePrivateDataChatSemanticContext(
   const views = buildPrivateDataChatControlledRetrievalViews({
     utterance: input.utterance,
     cards,
+    verifiedResolverViews: input.verifiedResolverViews,
     verifiedCurrentViewKeys: input.verifiedCurrentViewKeys,
     verifiedPriorTurnKeys: input.verifiedPriorTurnKeys,
   });

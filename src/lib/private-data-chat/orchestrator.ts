@@ -46,6 +46,11 @@ import {
   type PrivateDataChatRetrievalReady,
 } from "@/lib/private-data-chat/retrieval";
 import { getActivePrivateDataChatSemanticContext } from "@/lib/private-data-chat/semantic-context-candidate";
+import {
+  buildPrivateDataChatGeographyQuery,
+  resolvePrivateDataChatGeographyIntent,
+  type PrivateDataChatResolvedGeographyIntent,
+} from "@/lib/private-data-chat/geography-resolver";
 
 export type PrivateDataChatOrchestratorDependencies = {
   gateway: PrivateQwenGateway;
@@ -55,6 +60,7 @@ export type PrivateDataChatOrchestratorDependencies = {
   verifyViewContext: typeof verifyPrivateDataChatViewContextAgainstCurrentDataset;
   loadSemanticContext: typeof getActivePrivateDataChatSemanticContext;
   retrieveSemanticContext: typeof retrievePrivateDataChatSemanticContext;
+  resolveGeographyIntent: typeof resolvePrivateDataChatGeographyIntent;
 };
 
 const PRIVATE_DATA_CHAT_REPAIR_MESSAGE =
@@ -62,6 +68,17 @@ const PRIVATE_DATA_CHAT_REPAIR_MESSAGE =
 
 function deterministicQueryFallback(result: PrivateDataChatQueryResult) {
   return renderPrivateDataChatGroundedAnswer({ result });
+}
+
+function currentViewWithoutCountryScope(
+  currentView: PrivateDataChatViewContext | null,
+) {
+  return currentView
+    ? {
+        ...currentView,
+        filters: currentView.filters.filter((filter) => filter.field !== "country"),
+      }
+    : null;
 }
 
 function shouldReplaceCurrentView(question: string) {
@@ -179,6 +196,7 @@ export async function orchestratePrivateDataChatTurn(input: {
       verifyPrivateDataChatViewContextAgainstCurrentDataset,
     loadSemanticContext: getActivePrivateDataChatSemanticContext,
     retrieveSemanticContext: retrievePrivateDataChatSemanticContext,
+    resolveGeographyIntent: resolvePrivateDataChatGeographyIntent,
     ...input.dependencies,
   };
   const configuration = getPrivateDataChatConfiguration();
@@ -264,6 +282,31 @@ export async function orchestratePrivateDataChatTurn(input: {
     return { ...rendered, provenance: null, resourceResult };
   }
 
+  const geographyResolution =
+    activeSemanticContext && semanticSnapshotChecksum
+      ? await dependencies.resolveGeographyIntent({
+          question,
+          expectedFilterRegionChecksum:
+            activeSemanticContext.payload.sourceVersionManifest?.filterRegions,
+        })
+      : ({ status: "none" } as const);
+  if (geographyResolution.status === "clarify") {
+    return {
+      content: geographyResolution.question,
+      facts: [],
+      provenance: null,
+    };
+  }
+  if (geographyResolution.status === "unavailable") {
+    return {
+      content: geographyResolution.message,
+      facts: [],
+      provenance: null,
+    };
+  }
+  const resolvedGeography: PrivateDataChatResolvedGeographyIntent | null =
+    geographyResolution.status === "resolved" ? geographyResolution : null;
+
   let plannerSemanticContext: PrivateDataChatRetrievalReady | null = null;
   let plannerRetrievalAudit: PrivateDataChatRetrievalAudit | null = null;
   if (activeSemanticContext && semanticSnapshotChecksum) {
@@ -276,6 +319,12 @@ export async function orchestratePrivateDataChatTurn(input: {
       expectedSnapshotChecksum: semanticSnapshotChecksum,
       verifiedCurrentViewKeys: currentViewSemanticKeys(trustedCurrentView),
       verifiedPriorTurnKeys: priorTurnSemanticKeys(trustedTurnState),
+      ...(resolvedGeography
+        ? {
+            requiredKeys: resolvedGeography.requiredSemanticKeys,
+            verifiedResolverViews: resolvedGeography.resolverViews,
+          }
+        : {}),
     });
     if (retrieval.status !== "ready") {
       return {
@@ -296,55 +345,62 @@ export async function orchestratePrivateDataChatTurn(input: {
   }
 
   input.onStage?.("interpreting");
-  let plan = await dependencies.gateway.plan({
-    messages: input.messages,
-    trustedTurnState,
-    trustedCurrentView,
-    semanticContext: plannerSemanticContext,
-    signal: input.signal,
-  });
-
-  if (plan.decision === "clarify") {
-    return { content: plan.question, facts: [], provenance: null };
-  }
-
-  if (plan.decision === "answer") {
-    if (plannerSemanticContext) {
-      const definition = renderReviewedDefinition(plannerSemanticContext);
-      if (definition) return definition;
-      if (!/\b(?:cannot|can't|not available|only help|outside)\b/iu.test(plan.answer)) {
-        return {
-          content:
-            "I can only answer from Accelerate Global's reviewed data and definitions.",
-          facts: [],
-          provenance: null,
-        };
-      }
-    }
-    return { content: plan.answer, facts: [], provenance: null };
-  }
-
-  if (plan.decision === "resource_query") {
-    if (!configuration.continuationHmacKey || !input.conversationId) {
-      throw new PrivateDataChatSignedStateError(
-        "continuation_unavailable",
-        "Bounded ROP continuation is unavailable.",
-      );
-    }
-    input.onStage?.("querying");
-    const resourceResult = await dependencies.executeResourceQuery({
-      identity: input.identity,
-      conversationId: input.conversationId,
-      resourceQuery: plan.resourceQuery,
-      continuationKey: configuration.continuationHmacKey,
-      retrievalAudit: plannerRetrievalAudit,
+  let plan: Awaited<ReturnType<PrivateQwenGateway["plan"]>> | null = null;
+  let plannedQuery: PrivateDataChatQuery;
+  if (resolvedGeography) {
+    plannedQuery = buildPrivateDataChatGeographyQuery(resolvedGeography);
+  } else {
+    plan = await dependencies.gateway.plan({
+      messages: input.messages,
+      trustedTurnState,
+      trustedCurrentView,
+      semanticContext: plannerSemanticContext,
+      signal: input.signal,
     });
-    const rendered = renderPrivateDataChatResourceResult(resourceResult);
-    return {
-      ...rendered,
-      provenance: null,
-      resourceResult,
-    };
+
+    if (plan.decision === "clarify") {
+      return { content: plan.question, facts: [], provenance: null };
+    }
+
+    if (plan.decision === "answer") {
+      if (plannerSemanticContext) {
+        const definition = renderReviewedDefinition(plannerSemanticContext);
+        if (definition) return definition;
+        if (!/\b(?:cannot|can't|not available|only help|outside)\b/iu.test(plan.answer)) {
+          return {
+            content:
+              "I can only answer from Accelerate Global's reviewed data and definitions.",
+            facts: [],
+            provenance: null,
+          };
+        }
+      }
+      return { content: plan.answer, facts: [], provenance: null };
+    }
+
+    if (plan.decision === "resource_query") {
+      if (!configuration.continuationHmacKey || !input.conversationId) {
+        throw new PrivateDataChatSignedStateError(
+          "continuation_unavailable",
+          "Bounded ROP continuation is unavailable.",
+        );
+      }
+      input.onStage?.("querying");
+      const resourceResult = await dependencies.executeResourceQuery({
+        identity: input.identity,
+        conversationId: input.conversationId,
+        resourceQuery: plan.resourceQuery,
+        continuationKey: configuration.continuationHmacKey,
+        retrievalAudit: plannerRetrievalAudit,
+      });
+      const rendered = renderPrivateDataChatResourceResult(resourceResult);
+      return {
+        ...rendered,
+        provenance: null,
+        resourceResult,
+      };
+    }
+    plannedQuery = plan.query;
   }
 
   input.onStage?.("validating");
@@ -352,8 +408,10 @@ export async function orchestratePrivateDataChatTurn(input: {
   try {
     const resolution = await dependencies.resolveValues(
       inheritPrivateDataChatViewContext({
-        query: plan.query,
-        currentView: trustedCurrentView,
+        query: plannedQuery,
+        currentView: resolvedGeography
+          ? currentViewWithoutCountryScope(trustedCurrentView)
+          : trustedCurrentView,
         question,
       }),
     );
@@ -369,6 +427,10 @@ export async function orchestratePrivateDataChatTurn(input: {
     });
   } catch (error) {
     if (!(error instanceof PrivateDataChatQueryPolicyError)) {
+      throw error;
+    }
+
+    if (resolvedGeography) {
       throw error;
     }
 
@@ -451,6 +513,16 @@ export async function orchestratePrivateDataChatTurn(input: {
         })
       : null;
   input.onStage?.("explaining");
+
+  if (resolvedGeography) {
+    const fallback = deterministicQueryFallback(result);
+    return {
+      content: `${resolvedGeography.scope.displayName}: ${fallback.answer}`,
+      facts: fallback.facts,
+      provenance: result.provenance,
+      ...(turnStateToken ? { turnStateToken } : {}),
+    };
+  }
 
   let answerSemanticContext: PrivateDataChatRetrievalReady | null = null;
   if (activeSemanticContext && semanticSnapshotChecksum) {
