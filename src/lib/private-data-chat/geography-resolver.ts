@@ -22,6 +22,7 @@ import { COUNTRY_RESOURCE_KEY } from "@/lib/reference-resources/types";
 import { normalizeAccentPunctuationInsensitiveLookup } from "@/lib/source-forming/primitives";
 
 const MAX_FILTER_REGION_COUNTRIES = 50;
+const MIN_CONTAINED_GEOGRAPHY_ALIAS_CHARACTERS = 4;
 const SAFE_GEOGRAPHY_CANDIDATE =
   /^[\p{L}\p{M}\p{N}][\p{L}\p{M}\p{N} ,.'’()&/-]{0,199}$/u;
 
@@ -153,6 +154,22 @@ function containsPhrase(text: string, phrase: string) {
   return (` ${text} `).includes(` ${phrase} `);
 }
 
+function isOnlyGeographyPhrases(
+  candidate: string,
+  matchedAliases: readonly string[],
+) {
+  let remainder = ` ${normalizeAccentPunctuationInsensitiveLookup(candidate)} `;
+  for (const alias of [...matchedAliases].sort(
+    (left, right) => right.length - left.length,
+  )) {
+    remainder = remainder.replaceAll(` ${alias} `, " ");
+  }
+  return normalizeAccentPunctuationInsensitiveLookup(remainder)
+    .split(" ")
+    .filter(Boolean)
+    .every((token) => token === "and" || token === "or");
+}
+
 function resolveIndexMatch(
   candidate: string,
   index: ReadonlyMap<string, ReadonlyMap<string, CandidateScope>>,
@@ -166,11 +183,14 @@ function resolveIndexMatch(
     return { status: "ambiguous" as const };
   }
   const contained = new Map<string, CandidateScope>();
+  const matchedAliases = new Set<string>();
   for (const [alias, scopes] of index) {
+    if (alias.length < MIN_CONTAINED_GEOGRAPHY_ALIAS_CHARACTERS) continue;
     if (!containsPhrase(normalized, alias)) continue;
+    matchedAliases.add(alias);
     for (const [key, scope] of scopes) contained.set(key, scope);
   }
-  return contained.size > 1
+  return contained.size > 1 && isOnlyGeographyPhrases(normalized, [...matchedAliases])
     ? { status: "ambiguous" as const }
     : { status: "none" as const };
 }
