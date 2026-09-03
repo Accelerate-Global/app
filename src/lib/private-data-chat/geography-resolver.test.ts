@@ -32,6 +32,9 @@ const regionSource = {
 const approvedCountries = [
   { displayName: "India", aliases: ["India", "Republic of India", "IND"] },
   { displayName: "Nepal", aliases: ["Nepal", "NPL"] },
+  { displayName: "Sudan", aliases: ["Sudan", "SDN"] },
+  { displayName: "Tonga", aliases: ["Tonga", "TO", "TON"] },
+  { displayName: "Andorra", aliases: ["Andorra", "AD", "AND"] },
 ] as const;
 
 function resolve(question: string, expectedFilterRegionChecksum = checksum) {
@@ -140,6 +143,20 @@ describe("private data chat geography resolver", () => {
     ]) {
       await expect(resolve(question)).resolves.toMatchObject({ status: "none" });
     }
+  });
+
+  it("does not confuse geography aliases inside richer analytical prose", async () => {
+    for (const question of [
+      "How many people groups in Sudan have Frontier Group equal to true?",
+      "How many people groups in Sudan have Frontier Group true and Global Engagement Anywhere false?",
+    ]) {
+      await expect(resolve(question)).resolves.toEqual({ status: "none" });
+    }
+
+    await expect(resolve("How many people are in TO?")).resolves.toMatchObject({
+      status: "resolved",
+      scope: { kind: "country", canonicalName: "Tonga" },
+    });
   });
 
   it("distinguishes unavailable region and country authorities", async () => {
