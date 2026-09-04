@@ -65,8 +65,7 @@ jobs:
       - if: always() && steps.preinstall_selection.outputs.run_ui_smoke == 'true' && steps.selection.outputs.ui_smoke_mode != 'none'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: ui-smoke-report
-          path: |
-            output/playwright/ui-smoke
-            test-results/ui-smoke
+          name: ui-smoke-results
+          path: output/playwright/safe-smoke-results/results.json
           if-no-files-found: ignore
+          retention-days: 7

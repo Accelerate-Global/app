@@ -191,18 +191,21 @@ test password.
    identities with non-mutating queries.
 5. Install the gateway unit and credentials from the Samson project. Keep
    llama.cpp on `127.0.0.1:8080`; expose only the gateway listener to the
-   connector host.
+   connector host. Install the Cloudflare Origin CA certificate for only
+   `samson.risencode.org`, with its private key root-only on Samson.
 6. In the selected personal Cloudflare account, enable Zero Trust Free; create the
    remotely managed `accelerate-qwen-samson` Tunnel and the exact
    `10.77.0.30:8443` Workers VPC Service; deploy
-   `accelerate-qwen-edge-gateway` to `workers.dev`; and protect the Worker with
-   a Service Auth policy containing only the Vercel service token. Do not
-   create a public tunnel hostname or publish llama.cpp.
+   `accelerate-qwen-edge-gateway` to `workers.dev`; configure the Worker origin
+   identity as `https://samson.risencode.org`; set the VPC Service to
+   `verify_full`; and protect the Worker with a Service Auth policy containing
+   only the Vercel service token. Do not create a public DNS record or public
+   Tunnel hostname for the private origin, and do not publish llama.cpp.
 7. Configure the Vercel server-only values with the Worker URL and one-time
    Access service-token pair while the feature remains disabled.
 8. Verify health, signed-request rejection/replay behavior, one-user data flow,
-   empty results, unavailable/timeout/busy states, audit redaction, and role
-   denial.
+   strict origin certificate and hostname validation, empty results,
+   unavailable/timeout/busy states, audit redaction, and role denial.
 9. Set `PRIVATE_DATA_CHAT_ENABLED=true` only after the exact approved canary is
    present in `PRIVATE_DATA_CHAT_CANARY_EMAILS`, then monitor
    latency, queue pressure, gateway failures, database timeouts, and audit
@@ -265,6 +268,13 @@ The typed view and redacted audit rows may remain because existing application
 behavior does not depend on them. Avoid destructive database rollback unless a
 reviewed follow-up migration is required.
 
+For a TLS-only cutover failure while the application feature is disabled,
+first restore the previous Worker origin hostname and the root-only Samson
+certificate/key rollback pair, then restart and verify the gateway. Return the
+VPC Service to certificate verification `disabled` only as a time-bounded
+emergency recovery step when strict validation itself prevents restoration;
+record the exception and restore `verify_full` before enabling the feature.
+
 ## Provider state and remaining decisions
 
 - Personal Cloudflare account `06281b845d00a5b3857bf215dec00782` is enrolled
@@ -275,18 +285,30 @@ reviewed follow-up migration is required.
   `accelerate-qwen-gateway` (`01a04934-2091-7de1-9f7c-6c686698cbd8`), and
   Access-protected Worker
   `https://accelerate-qwen-edge-gateway.blake-062.workers.dev` are live.
-- The Samson origin uses a Cloudflare Origin CA certificate for its exact
-  configured origin identity, and the VPC Service uses `verify_full`.
-  The independent application HMAC, fresh timestamp, and one-time nonce remain
+- The private origin presents a Cloudflare Origin CA certificate for only
+  `samson.risencode.org`, and VPC Service certificate verification is
+  `verify_full`. The certificate expires at `2028-08-28 21:57 UTC`; begin
+  renewal no later than `2028-07-29`. No public DNS record or public Tunnel
+  hostname exists for this certificate-only identity.
+- The Origin CA certificate belongs to `risencode.org` in WMTEK account
+  `d6457eba65c9b6d71c9acd60b4b58bb7`; the Worker/Tunnel/VPC/Access resources
+  remain in personal account `06281b845d00a5b3857bf215dec00782`.
+- The 2026-08-29 cutover acceptance kept the write-only Production Access token
+  inside Vercel: the production Worker denied an unauthenticated request, a
+  randomized health-only Worker proved the same VPC Service succeeded under
+  `verify_full`, and that probe was deleted and confirmed absent. The
+  independent application HMAC, fresh timestamp, and one-time nonce remain
   required in addition to Access service authentication.
 - The Vercel Production environment contains the Worker URL and replacement
   Access service-token values as sensitive variables. The feature is enabled
   only for the exact canary stored in provider-side sensitive configuration.
-  Production acceptance completed on 2026-09-02 with 114/114 frozen
-  end-to-end results across the complete Vercel, Cloudflare Access, Worker, VPC
-  Service, Samson Qwen, reviewed semantic/resource layer, and read-only
-  analytics path. The first expanded result passed after a controlled Qwen
-  restart with an empty prompt cache. All other users continue to fail closed.
+  The v6 contract contains 455 reviewable cases and inherits the unchanged
+  1,122/1,122 planner plus 114/114 answer repetitions. The subsequent complete
+  production latency qualification passed every expected outcome across the
+  Vercel, Access, Worker, VPC, Samson Qwen, semantic/resource, and read-only
+  analytics path; its retained transient and exact retry are documented in
+  `docs/operations/private-data-chat-latency-v1.md`. All other users continue to
+  fail closed.
 - Exact production primary dataset/catalog revision approved for the pilot.
 - Acceptable queue depth, p95 latency, availability target, and support owner
   for the single-slot Samson service.

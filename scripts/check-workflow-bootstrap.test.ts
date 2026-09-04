@@ -28,10 +28,10 @@ jobs:
   it("flags pnpm-cached workflows that bypass the shared bootstrap action", () => {
     const issues = findWorkflowBootstrapIssues([
       {
-        name: "ui-smoke.yml",
+        name: "app-quality.yml",
         content: `
 jobs:
-  ui-smoke:
+  app-quality:
     steps:
       - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
@@ -41,9 +41,99 @@ jobs:
     ]);
 
     expect(issues).toEqual([
-      "ui-smoke.yml: must use ./.github/actions/setup-pnpm-node.",
-      "ui-smoke.yml: must not call pnpm/action-setup directly; use ./.github/actions/setup-pnpm-node instead.",
-      "ui-smoke.yml: must not call actions/setup-node directly; use ./.github/actions/setup-pnpm-node instead.",
+      "app-quality.yml: must use ./.github/actions/setup-pnpm-node.",
+      "app-quality.yml: must not call pnpm/action-setup directly; use ./.github/actions/setup-pnpm-node instead.",
+      "app-quality.yml: must not call actions/setup-node directly; use ./.github/actions/setup-pnpm-node instead.",
+    ]);
+  });
+
+  it("accepts UI smoke sanitized result artifact uploads", () => {
+    const issues = findWorkflowBootstrapIssues([
+      {
+        name: "ui-smoke.yml",
+        content: `
+jobs:
+  ui-smoke:
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      - uses: ./.github/actions/setup-pnpm-node
+      - if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: ui-smoke-results
+          path: output/playwright/safe-smoke-results/results.json
+          if-no-files-found: ignore
+          retention-days: 7
+`,
+      },
+    ]);
+
+    expect(issues).toEqual([]);
+  });
+
+  it("flags unsafe UI smoke artifact uploads", () => {
+    const issues = findWorkflowBootstrapIssues([
+      {
+        name: "ui-smoke.yml",
+        content: `
+jobs:
+  ui-smoke:
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      - uses: ./.github/actions/setup-pnpm-node
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: ui-smoke-report
+          path: |
+            output/playwright/ui-smoke
+            test-results/ui-smoke
+            trace.zip
+            screenshot.png
+            video.webm
+`,
+      },
+    ]);
+
+    expect(issues).toEqual([
+      "ui-smoke.yml: UI smoke artifact must be named ui-smoke-results.",
+      "ui-smoke.yml: UI smoke artifact path must be output/playwright/safe-smoke-results/results.json.",
+      "ui-smoke.yml: UI smoke artifact retention must be 7 days.",
+      "ui-smoke.yml: must not use multi-path artifact uploads.",
+      "ui-smoke.yml: must not upload Playwright test-results.",
+      "ui-smoke.yml: must not upload the HTML report directory.",
+      "ui-smoke.yml: must not upload Playwright trace archives.",
+      "ui-smoke.yml: must not upload screenshots or videos.",
+    ]);
+  });
+
+  it("rejects additional UI smoke artifact uploads or path keys", () => {
+    const issues = findWorkflowBootstrapIssues([
+      {
+        name: "ui-smoke.yml",
+        content: `
+jobs:
+  ui-smoke:
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      - uses: ./.github/actions/setup-pnpm-node
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: ui-smoke-results
+          path: output/playwright/safe-smoke-results/results.json
+          path: output/extra-summary.json
+          retention-days: 7
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: extra-results
+          path: output/extra-summary.json
+          retention-days: 7
+`,
+      },
+    ]);
+
+    expect(issues).toEqual([
+      "ui-smoke.yml: must define exactly one sanitized UI smoke artifact upload.",
+      "ui-smoke.yml: must define exactly one UI smoke artifact path.",
     ]);
   });
 

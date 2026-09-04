@@ -20,6 +20,8 @@ Canonical source repository: `Accelerate-Global/app`. The former
 - [Current-state architecture](docs/architecture/current-state.md)
 - [Developer getting started](docs/developer/getting-started.md)
 - [Contributing](docs/developer/contributing.md)
+- [Access governance](docs/operations/access-governance.md)
+- [API connection governance](docs/operations/api-connection-governance.md)
 - [User quickstart](docs/user/quickstart.md)
 - [Google Sheets and partner exports](docs/user/partner-exports.md)
 - [Open questions](docs/open-questions.md)
@@ -67,9 +69,9 @@ Viewer, then paste the Sheet link in the admin API Connections flow. Store the
 service-account private key only in server-side environment variables; escaped
 `\n` private-key newlines are supported.
 
-Bootstrap for the first admin remains an environment-specific migration or
-provider task. Review that bootstrap path manually for each environment instead
-of assuming a repo-local email setting controls it.
+Bootstrap for the first admin remains an environment-specific provider task.
+Follow [Access governance](docs/operations/access-governance.md); no repo-local
+email setting or seed grants production administration.
 
 Start the local Supabase stack:
 
@@ -127,6 +129,10 @@ For branded Supabase auth emails and password reset links, use the runbook in
 ## Signup Allowlist
 
 Only emails present in `public.signup_email_allowlist` can create accounts.
+Global self-signup remains disabled, so the allowlist is an invitation guard,
+not a public signup mechanism. A `super_admin` owns approval and an administrator
+executes the documented User Management flow; see
+[Access governance](docs/operations/access-governance.md).
 Add rows in Supabase before a user signs up:
 
 ```sql

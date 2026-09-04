@@ -1,22 +1,31 @@
 # Open Questions
 
-- [ ] What exact provider procedure creates or restores the first admin in each environment?
-  Evidence: README and AGENTS state first-admin bootstrap is manual/provider-owned, but no tracked runbook defines the steps.
+- [x] What exact provider procedure creates or restores the first admin in each environment?
+  Evidence: `docs/operations/access-governance.md` defines owner approval,
+  allowlist ordering, provider invitation, server-only app-metadata promotion,
+  fresh-session verification, recovery, and offboarding.
 
 - [x] What are the production Supabase backup, restore, retention, and incident response expectations?
   Evidence: `docs/operations/samson-data-archive.md`, the archive OpenSpec, the
   local backup/prune/rehydration engines, the signed receipt route, and the
   provisioned Samson guest define the policy and implementation.
 
-- [ ] What physically separate destination will become the off-site Restic copy?
-  Evidence: Samson is intentionally reported as single-site and the owner has
-  confirmed that no off-site destination is currently available.
+- [x] What physically separate destination will become the off-site Restic copy?
+  Decision: none is currently selected. Samson remains an explicitly accepted
+  single-site recovery location; adding an off-site copy is a future resilience
+  project that begins only after the owner selects and authorizes a provider.
 
-- [ ] Are GitHub branch protection rules enforcing the release checks listed in `docs/release.md`?
-  Evidence: Release docs call this out as manual follow-up; repository settings are not represented in tracked files.
+- [x] Are GitHub branch protection rules enforcing the release checks listed in `docs/release.md`?
+  Evidence: the 2026-09-04 readiness cleanup verified strict required checks on
+  `main`, administrator enforcement, force-push/deletion protection, and the
+  repository security controls listed in `docs/release.md`.
 
-- [ ] What is the ownership process for approving signup allowlist additions?
-  Evidence: README documents the table and SQL shape, but not who approves access.
+- [x] What is the ownership process for approving signup allowlist additions?
+  Evidence: `docs/operations/access-governance.md` assigns approval to a
+  `super_admin`, execution to an administrator, least-privilege role selection,
+  session refresh, and separate account removal.
 
-- [ ] What external API endpoints are approved for admin API connections?
-  Evidence: API connection code exists and validates requests, but no policy document defines allowed providers or data governance rules.
+- [x] What external API endpoints are approved for admin API connections?
+  Evidence: `docs/operations/api-connection-governance.md` names the supported
+  code-managed and Google Sheets providers and requires an OpenSpec/code review
+  before any new host, credential, method, or purpose reaches production.

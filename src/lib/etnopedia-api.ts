@@ -203,8 +203,6 @@ const RE_INTERLANG_LINE = /^\s*\[\[[a-z]{2,3}(?:-[a-z0-9]+)?:[^\]]+\]\]\s*$/gim;
 const RE_DEFAULTSORT = /^\s*\{\{\s*DEFAULTSORT:[^}]+\}\}\s*$/gim;
 const RE_REF_TAG = /<ref[^>]*>[\s\S]*?<\/ref>/gi;
 const RE_REFS_SELF = /<references\s*\/\s*>/gi;
-const RE_COMMENT = /<!--[\s\S]*?-->/g;
-const RE_HTML_TAG = /<[^>]+>/g;
 const RE_MAPFRAME_TAG = /<mapframe\b([^>]*)>/i;
 const RE_SECTION_LABEL = /'''([^'\n]{2,50}?)\s*:\s*'''/gm;
 const RE_EXTERNALDATA_BLOCK = /\{\s*"type"\s*:\s*"ExternalData"[\s\S]*?\}\s*/gi;
@@ -258,9 +256,66 @@ function decodeHtmlEntities(value: string) {
   });
 }
 
+function removeHtmlComments(value: string) {
+  let current = value;
+
+  while (true) {
+    let cursor = 0;
+    let next = "";
+
+    while (cursor < current.length) {
+      const start = current.indexOf("<!--", cursor);
+      if (start === -1) {
+        next += current.slice(cursor);
+        break;
+      }
+
+      next += current.slice(cursor, start);
+      const end = current.indexOf("-->", start + 4);
+      if (end === -1) {
+        cursor = current.length;
+        break;
+      }
+
+      cursor = end + 3;
+    }
+
+    if (next === current || !next.includes("<!--")) {
+      return next;
+    }
+
+    current = next;
+  }
+}
+
+function stripMarkupTags(value: string) {
+  let plain = "";
+  let insideTag = false;
+
+  for (const character of value) {
+    if (character === "<") {
+      if (!insideTag && plain && !/\s$/u.test(plain)) {
+        plain += " ";
+      }
+      insideTag = true;
+      continue;
+    }
+
+    if (character === ">") {
+      insideTag = false;
+      continue;
+    }
+
+    if (!insideTag) {
+      plain += character;
+    }
+  }
+
+  return plain;
+}
+
 function stripNoiseLines(wikitext: string) {
-  return wikitext
-    .replace(RE_COMMENT, "")
+  return removeHtmlComments(wikitext)
     .replace(RE_REF_TAG, "")
     .replace(RE_REFS_SELF, "")
     .replace(RE_CAT_LINK_LINE, "")
@@ -276,8 +331,7 @@ function wikitextToPlain(value: string) {
     return "";
   }
 
-  text = text
-    .replace(RE_COMMENT, "")
+  text = removeHtmlComments(decodeHtmlEntities(text))
     .replace(RE_REF_TAG, "")
     .replace(RE_REFS_SELF, "")
     .replace(/<mapframe\b[\s\S]*?<\/mapframe>/gi, "")
@@ -294,10 +348,9 @@ function wikitextToPlain(value: string) {
     .replace(/\[\[(?:File|Image):[^\]]+\]\]/gi, "")
     .replace(/\[\[Category:[^\]]+\]\]/gi, "")
     .replace(/'''/g, "")
-    .replace(/''/g, "")
-    .replace(RE_HTML_TAG, "");
+    .replace(/''/g, "");
 
-  text = decodeHtmlEntities(text);
+  text = stripMarkupTags(text);
 
   return text
     .replace(/\r/g, "\n")

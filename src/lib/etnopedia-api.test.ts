@@ -87,6 +87,23 @@ describe("Etnopedia wikitext parsing", () => {
     expect(result.progressOverallFile).toBe("U002.gif");
     expect(result.progressOverallYear).toBe("xxxx");
   });
+
+  it("keeps encoded and overlapping source markup inert", () => {
+    const result = parseEtnopediaMainWikitext(
+      "Unsafe People",
+      `
+'''Photo Source: &lt;em&gt;Visible source&lt;/em&gt;'''
+'''Introduction:''' &lt;scr&lt;script&gt;ipt&gt;alert&lt;/script&gt; Visible prose
+&lt;!&lt;!--- hidden ---&gt;&gt;
+`,
+    );
+
+    expect(result.photoSource).toBe("Visible source");
+    expect(result.sections.Introduction).toContain("Visible prose");
+    expect(result.sections.Introduction).not.toMatch(/[<>]/u);
+    expect(JSON.stringify(result)).not.toContain("<!--");
+    expect(JSON.stringify(result)).not.toContain("<script");
+  });
 });
 
 describe("fetchEtnopediaPeopleGroups", () => {

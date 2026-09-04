@@ -15,6 +15,7 @@ const eslintConfig = defineConfig([
     ".tmp/**",
     "output/**",
     "test-results/**",
+    "src/app/.well-known/workflow/v1/**",
   ]),
 ]);
 

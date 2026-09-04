@@ -435,8 +435,8 @@ describeDatabase("private data chat broker database integration", () => {
       ],
       dependencies: { gateway, executeQuery, resolveValues },
     });
-    expect(count.content).toContain("1 result row");
-    expect(count.facts).toEqual(["People-group count: 2 people groups"]);
+    expect(count.content).toBe("People-group count: 2 people groups");
+    expect(count.facts).toEqual([]);
     expect(count.provenance).toMatchObject({ datasetId, rowCount: 1 });
 
     const empty = await orchestratePrivateDataChatTurn({

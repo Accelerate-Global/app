@@ -2,6 +2,12 @@
 
 Date: 2026-04-15
 
+> Historical record. The 2026-09-04 readiness cleanup closed every executable
+> item in this report: GitHub now enforces the release checks for administrators,
+> local Supabase verification is part of the current terminal gate, repo-local
+> GitHub identity is configured, and release-critical database clients close
+> cleanly. The dated investigation below remains as provenance, not current work.
+
 This report captures the items that were not fully completed during the
 release-process hardening work, along with the reason each item was blocked and
 the practical next step.

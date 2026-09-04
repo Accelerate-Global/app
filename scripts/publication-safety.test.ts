@@ -8,7 +8,7 @@ const BINARY_OR_GENERATED_EXTENSIONS = /\.(ico|jpg|jpeg|lock|png|webp)$/i;
 const DISALLOWED_PUBLICATION_PATTERNS = [
   {
     label: "personal admin email domain",
-    pattern: new RegExp(["risen", "code\\.org"].join(""), "i"),
+    pattern: new RegExp(["@[a-z0-9.-]*risen", "code\\.org\\b"].join(""), "i"),
   },
   {
     label: "legacy personal admin email prefix",

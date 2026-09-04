@@ -1,4 +1,4 @@
-const ORIGIN_BASE_URL = "https://accelerate-qwen-gateway.internal";
+const ORIGIN_BASE_URL = "https://samson.risencode.org";
 const MAX_REQUEST_BYTES = 256_000;
 const MAX_RESPONSE_BYTES = 128_000;
 
