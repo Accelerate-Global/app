@@ -11,6 +11,7 @@ import {
   applyIsoCountryCodeEntryOverrides,
   getGeneratedIsoCountryCodeResource,
   normalizeCountryCodeAlternativeNames,
+  parseLegacyFipsCountryCodeEntries,
   parseM49CountryCodeEntries,
   parseCountryCodeOverlayCsv,
   parseRog3CountryCodeEntriesWorkbook,
@@ -514,6 +515,39 @@ Country Alt Names 12,,,,
         alpha3: "AFG",
       },
     ]);
+  });
+
+  it("keeps encoded M49 markup out of normalized country names", () => {
+    const [entry] = parseM49CountryCodeEntries(
+      toM49Html([
+        {
+          countryOrArea:
+            "&lt;strong&gt;Afghanistan&lt;/strong&gt; &lt;script&gt;ignored&lt;/script&gt;",
+          m49Code: "004",
+          alpha3: "AFG",
+        },
+      ]),
+      1,
+    );
+
+    expect(entry.countryOrArea).toBe("Afghanistan ignored");
+    expect(entry.countryOrArea).not.toMatch(/[<>]/u);
+  });
+
+  it("decodes legacy FIPS entities once and strips markup boundaries", () => {
+    const sourceEntries = createFipsEntries(200);
+    sourceEntries[0] = {
+      code: sourceEntries[0].code,
+      name: "&lt;strong&gt;A&amp;quot;land&lt;/strong&gt;",
+    };
+    const html = sourceEntries
+      .map((entry) => `<tr><td>${entry.code}</td><td>${entry.name}</td></tr>`)
+      .join("");
+
+    const entries = parseLegacyFipsCountryCodeEntries(html);
+
+    expect(entries[0].name).toBe("A&quot;land");
+    expect(entries[0].name).not.toMatch(/[<>]/u);
   });
 
   it("normalizes legacy aliases for one-way bootstrap fold-in without mutating the seed", () => {

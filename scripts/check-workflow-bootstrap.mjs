@@ -15,6 +15,8 @@ const REQUIRED_WORKFLOWS = [
   "dependency-audit.yml",
   "ui-smoke.yml",
 ];
+const UI_SMOKE_SAFE_RESULTS_PATH =
+  "output/playwright/safe-smoke-results/results.json";
 
 function parseUsesReferences(content) {
   return [...content.matchAll(/uses:\s*([^\s#]+)\s*(?:#.*)?$/gm)].map(
@@ -48,6 +50,82 @@ function findPinnedActionIssues(name, content) {
     );
 }
 
+function findActionStepBlocks(content, actionName) {
+  const lines = content.split("\n");
+  const starts = lines.flatMap((line, index) => {
+    const stepMatch = /^(\s*)-\s+/u.exec(line);
+    return stepMatch
+      ? [{ index, indentation: stepMatch[1].length }]
+      : [];
+  });
+
+  return starts
+    .map(({ index, indentation }) => {
+      let end = index + 1;
+      while (end < lines.length) {
+        const nextStep = /^(\s*)-\s+/u.exec(lines[end]);
+        if (nextStep && nextStep[1].length === indentation) {
+          break;
+        }
+        end += 1;
+      }
+      return lines.slice(index, end).join("\n");
+    })
+    .filter((block) =>
+      new RegExp(`^\\s*(?:-\\s+)?uses:\\s*${actionName}@`, "mu").test(block),
+    );
+}
+
+function findUiSmokeArtifactPolicyIssues(content) {
+  const issues = [];
+  const uploadBlocks = findActionStepBlocks(content, "actions/upload-artifact");
+  const uploadBlock = uploadBlocks.join("\n");
+
+  if (uploadBlocks.length !== 1) {
+    issues.push(
+      "ui-smoke.yml: must define exactly one sanitized UI smoke artifact upload.",
+    );
+  }
+
+  if (!/^\s*name:\s*ui-smoke-results\s*$/mu.test(uploadBlock)) {
+    issues.push("ui-smoke.yml: UI smoke artifact must be named ui-smoke-results.");
+  }
+
+  const artifactPaths = [...uploadBlock.matchAll(/^\s*path:\s*(.*?)\s*$/gmu)].map(
+    (match) => match[1],
+  );
+  if (artifactPaths.length !== 1) {
+    issues.push("ui-smoke.yml: must define exactly one UI smoke artifact path.");
+  } else if (artifactPaths[0] !== UI_SMOKE_SAFE_RESULTS_PATH) {
+    issues.push(
+      `ui-smoke.yml: UI smoke artifact path must be ${UI_SMOKE_SAFE_RESULTS_PATH}.`,
+    );
+  }
+
+  if (!/^\s*retention-days:\s*7\s*$/mu.test(uploadBlock)) {
+    issues.push("ui-smoke.yml: UI smoke artifact retention must be 7 days.");
+  }
+
+  const unsafePatterns = [
+    [/path:\s*\|/u, "must not use multi-path artifact uploads."],
+    [/test-results\/ui-smoke/u, "must not upload Playwright test-results."],
+    [
+      /output\/playwright\/ui-smoke(?:\s|$)/u,
+      "must not upload the HTML report directory.",
+    ],
+    [/trace\.zip/u, "must not upload Playwright trace archives."],
+    [/\.(?:png|webm)(?:\s|$)/u, "must not upload screenshots or videos."],
+  ];
+
+  for (const [pattern, message] of unsafePatterns) {
+    if (pattern.test(uploadBlock)) {
+      issues.push(`ui-smoke.yml: ${message}`);
+    }
+  }
+
+  return issues;
+}
+
 export function findWorkflowBootstrapIssues(workflows) {
   return workflows.flatMap(({ name, content }) => {
     if (!REQUIRED_WORKFLOWS.includes(name)) {
@@ -79,6 +157,7 @@ export function findWorkflowBootstrapIssues(workflows) {
 
     return [
       ...issues,
+      ...(name === "ui-smoke.yml" ? findUiSmokeArtifactPolicyIssues(content) : []),
       ...findPinnedActionIssues(name, content),
     ];
   });

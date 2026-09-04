@@ -9,6 +9,13 @@ Production pruning remains disabled except for one explicitly reviewed plan.
 Samson is a single-site recovery location; its mirrored disks do not provide
 protection from loss of the server or site.
 
+Provider inspection on 2026-09-04 found 12 verified backup receipts (latest at
+`2026-09-04 09:15 UTC`), 14 cold packages, one completed reviewed prune, and one
+verified rehydration. Five retained early failure receipts, most recently on
+2026-08-29, remain audit evidence rather than active incidents. No physically
+separate off-site destination has been selected; that owner decision remains
+the only unresolved resilience gap.
+
 ## Approved architecture
 
 - Vercel remains the live application host.

@@ -128,7 +128,7 @@ describe("private Qwen edge gateway", () => {
     expect(origin.calls).toHaveLength(1);
     const [forwarded] = origin.calls;
     expect(forwarded.resource).toBe(
-      "https://accelerate-qwen-gateway.internal/v1/private-data-chat/plan",
+      "https://samson.risencode.org/v1/private-data-chat/plan",
     );
     expect(forwarded.options.headers["x-ag-signature"]).toBe("v1=example");
     expect(forwarded.options.headers["cf-access-client-id"]).toBeUndefined();
@@ -165,7 +165,7 @@ describe("private Qwen edge gateway", () => {
     const [forwarded] = origin.calls;
     expect(forwarded.options.method).toBe("GET");
     expect(forwarded.resource).toBe(
-      "https://accelerate-qwen-gateway.internal/health",
+      "https://samson.risencode.org/health",
     );
   });
 

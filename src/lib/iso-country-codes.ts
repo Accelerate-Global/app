@@ -289,18 +289,45 @@ function decodeXmlText(value: string) {
     .replace(/&amp;/g, "&");
 }
 
+function stripMarkupTags(value: string) {
+  let plain = "";
+  let insideTag = false;
+
+  for (const character of value) {
+    if (character === "<") {
+      if (!insideTag && plain && !/\s$/u.test(plain)) {
+        plain += " ";
+      }
+      insideTag = true;
+      continue;
+    }
+
+    if (character === ">") {
+      insideTag = false;
+      continue;
+    }
+
+    if (!insideTag) {
+      plain += character;
+    }
+  }
+
+  return plain;
+}
+
 function decodeHtmlText(value: string) {
-  return decodeXmlText(
-    value
-      .replace(/&#(\d+);/g, (_match, codePoint: string) =>
-        String.fromCodePoint(Number(codePoint)),
-      )
-      .replace(/&#x([0-9a-f]+);/giu, (_match, codePoint: string) =>
-        String.fromCodePoint(Number.parseInt(codePoint, 16)),
-      )
-      .replace(/&nbsp;/g, " "),
+  return stripMarkupTags(
+    decodeXmlText(
+      value
+        .replace(/&#(\d+);/g, (_match, codePoint: string) =>
+          String.fromCodePoint(Number(codePoint)),
+        )
+        .replace(/&#x([0-9a-f]+);/giu, (_match, codePoint: string) =>
+          String.fromCodePoint(Number.parseInt(codePoint, 16)),
+        )
+        .replace(/&nbsp;/g, " "),
+    ),
   )
-    .replace(/<[^>]+>/g, "")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -1779,11 +1806,15 @@ export async function fetchGencCountryCodeEntriesFromSource() {
 }
 
 function decodeHtmlEntities(value: string) {
-  return value
-    .replace(/&amp;/g, "&")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&nbsp;/g, " ");
+  return stripMarkupTags(
+    value
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/&nbsp;/g, " ")
+      .replace(/&amp;/g, "&"),
+  );
 }
 
 export function parseLegacyFipsCountryCodeEntries(text: string) {

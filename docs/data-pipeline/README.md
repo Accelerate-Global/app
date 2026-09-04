@@ -2,6 +2,16 @@
 
 This directory is the AX Online source of truth for its current data pipeline.
 
+## Production readiness boundary
+
+As of 2026-09-04, the linked production schema contains the ten supported flow
+definitions but no source-profile bindings, flow runs, schedule state,
+publications, or release sets. That empty operational state is intentional: the
+runtime and contracts are present, but Plan 002 production onboarding/cutover is
+a separate P1 delivery program requiring real source ownership, per-flow canary
+evidence, review, and rollback approval. It is not hidden repository cleanup and
+must not be started by a release or migration check alone.
+
 - [Flow inventory](flow-inventory.md) records every discovered legacy source,
   transform, identity rule, merge, aggregate, resource, and publication path.
 - [Decision log](decision-log.md) separates approved online replacements from

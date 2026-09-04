@@ -5,6 +5,8 @@ import {
   UI_SMOKE_STORAGE_STATES,
 } from "./tests/ui/support/smoke-data";
 
+const isCi = Boolean(process.env.CI);
+
 export default defineConfig({
   testDir: "./tests/ui",
   testMatch: "*.spec.ts",
@@ -17,16 +19,24 @@ export default defineConfig({
   expect: {
     timeout: 10_000,
   },
-  reporter: [
-    ["list"],
-    ["html", { open: "never", outputFolder: "output/playwright/ui-smoke" }],
-  ],
+  reporter: isCi
+    ? [
+        ["list"],
+        [
+          "./tests/ui/support/safe-smoke-reporter.ts",
+          { outputFile: "output/playwright/safe-smoke-results/results.json" },
+        ],
+      ]
+    : [
+        ["list"],
+        ["html", { open: "never", outputFolder: "output/playwright/ui-smoke" }],
+      ],
   outputDir: "test-results/ui-smoke",
   use: {
     baseURL: UI_SMOKE_BASE_URL,
-    trace: "retain-on-failure",
-    screenshot: "only-on-failure",
-    video: "retain-on-failure",
+    trace: isCi ? "off" : "retain-on-failure",
+    screenshot: isCi ? "off" : "only-on-failure",
+    video: isCi ? "off" : "retain-on-failure",
     headless: true,
   },
   globalSetup: "./tests/ui/global.setup.ts",

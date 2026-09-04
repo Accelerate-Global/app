@@ -30,9 +30,10 @@ configuration, not intended future architecture.
   include restricted datasets
   for admins. Saved dataset tables remain owner-scoped and also require access
   to the underlying dataset.
-- First-admin account creation or restoration is not repo-owned; it remains an
-  environment/provider procedure. Legacy local-reset migrations use neutral
-  example identities only and must not publish real bootstrap account details.
+- First-admin account creation or restoration is not repo-owned; it remains the
+  environment/provider procedure in `docs/operations/access-governance.md`.
+  Legacy local-reset migrations use neutral example identities only and must
+  not publish real bootstrap account details.
 
 ## Data And Storage
 
@@ -59,6 +60,10 @@ configuration, not intended future architecture.
 
 - API handlers live under `src/app/api`.
 - API connection runs are orchestrated by `src/lib/api-connections/index.ts`; upstream-specific fetch/parse behavior lives behind the `ConnectionProvider` seam in `src/lib/api-connections/provider.ts` with adapters under `src/lib/api-connections/providers/` (google-sheets, etnopedia, arcgis, generic-http; registry order is precedence, generic-http last).
+- Production connection governance admits only the code-managed IMB,
+  Etnopedia, and Joshua Project definitions plus reviewed private Google Sheets
+  onboarding. Generic HTTP creation/mutation is disabled; new external
+  endpoints require a repo-reviewed behavior change.
 - IMB imports stop at immutable, checksummed run artifacts. `src/lib/imb-forming/` builds reviewable candidates pinned to an exact resource set and rule checksums; an explicit admin decision publishes through normal dataset versioning. See `docs/operations/imb-forming.md`.
 - Dataset row filtering is owned by `src/lib/dataset-filtering.ts` behind `applyDatasetFilterSections` (canonical state: `DatasetFilterSections`); saved views parse the persisted wire format through `getDatasetFilterSectionsFromSavedView` in `src/lib/saved-dataset-filters.ts`. Domain vocabulary lives in `CONTEXT.md`.
 - Dataset APIs cover listing, upload registration, replacement, row reads, batch row writes, downloads, ordering, derived-view assignment, version listing, and version revert.
@@ -83,8 +88,9 @@ configuration, not intended future architecture.
 
 - Vercel is the deployment platform.
 - `Accelerate-Global/app` is the canonical public GitHub source repository.
-- `Accelerate-Global/online` is private historical archive state and should not
-  be made public because old GitHub pull-request refs are provider-retained.
+- `Accelerate-Global/online` is an archived private historical repository and
+  should not be made public because old GitHub pull-request refs are
+  provider-retained.
 - The standard release flow treats merge to `main` as the production deployment trigger.
 - The repo does not maintain a supported Vercel staging environment; PR checks
   are the validation layer before merge, and production is deployed from `main`.
@@ -92,10 +98,11 @@ configuration, not intended future architecture.
 - Release Health polls the current GitHub repository's deployment records rather
   than a hardcoded historical repository name.
 - Supabase is the database, auth, and storage provider for deployed environments.
-- Samson guest 104 is the provisioned single-site recovery worker. Its dedicated
+- Samson guest 104 is the live single-site recovery worker. Its dedicated
   50 GiB ZFS dataset holds an encrypted Restic repository and compact current
-  package pointers. The 2:00 AM Pacific timer remains disabled until production
-  migration, credentials, receipt deployment, and restore gates pass.
+  package pointers. The 2:00 AM Pacific nightly timer and missed-run monitor are
+  enabled; verified backups, a complete read check, an isolated restore, one
+  reviewed prune, and one verified rehydration have completed.
 - Vercel environment variables can be pulled locally with `vercel env pull .env.local`.
 - Release and production-health behavior is documented in `docs/release.md`.
 - Exact production provider settings are outside the tracked repo unless reflected in docs or scripts.
@@ -107,17 +114,21 @@ configuration, not intended future architecture.
   `accelerate-qwen-edge-gateway.blake-062.workers.dev`, VPC Service
   `accelerate-qwen-gateway` (`01a04934-2091-7de1-9f7c-6c686698cbd8`), and
   outbound-only Tunnel `accelerate-qwen-samson`
-  (`3587b7cf-e928-4f57-9e98-d6e74547c0b6`). The VPC Service reaches only the
-  signed HTTPS gateway at `10.77.0.30:8443`; no custom DNS zone or public
-  tunnel hostname exists. Cloudflare Access admits only the dedicated Vercel
+  (`3587b7cf-e928-4f57-9e98-d6e74547c0b6`). The Worker uses
+  `samson.risencode.org` as HTTP Host and TLS SNI; the VPC Service routes only
+  to `10.77.0.30:8443` and validates the Origin CA chain and hostname with
+  `verify_full`. No public DNS record or public tunnel hostname exists for that
+  certificate-only identity. Cloudflare Access admits only the dedicated Vercel
   service token, whose values are stored as sensitive Production variables in
-  the linked Vercel project. On 2026-09-02, the v5 semantic/resource release
-  passed 114/114 frozen end-to-end results, including a controlled empty-cache
-  Qwen restart, exact Sudan/UUPG count and list parity, complete bounded ROP
-  operations, registered dataset-to-ROP relationships, reviewed definitions,
-  and off-topic refusal. The final model/application deadlines are bounded at
-  195/210 seconds inside the verified 300-second hosting window. Everyone
-  outside the exact provider-side canary continues to fail closed.
+  the linked Vercel project. The current v6 contract contains 455 reviewable
+  cases and inherits the unchanged 1,122/1,122 planner plus 114/114 answer
+  repetitions; its bounded geography additions passed deterministically. The
+  subsequent Blake-only production latency qualification passed every expected
+  outcome, retained the documented transient/retry evidence, and reduced varied
+  analytical p50/p95 without changing the containment contract. The final
+  model/application deadlines remain bounded at 195/210 seconds inside the
+  verified 300-second hosting window. Everyone outside the exact provider-side
+  canary continues to fail closed.
 
 ## Verification Architecture
 
@@ -125,4 +136,7 @@ configuration, not intended future architecture.
 - `pnpm run verify:change` is the planning gate for tracked edits.
 - `pnpm run verify:change:run` is the terminal gate for candidate tracked trees.
 - UI smoke coverage is route-registry driven from `tests/ui/route-registry.ts`.
+- CI UI smoke disables trace, screenshot, video, and HTML publication and
+  uploads only a sanitized count/status summary for seven days. Local runs keep
+  full diagnostics under ignored output paths.
 - Database security tests use Supabase local services and pgTAP under `supabase/tests/database`.

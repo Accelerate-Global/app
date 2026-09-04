@@ -113,20 +113,19 @@ git config user.name "ricky"
 git config user.email "116130409+II-ricky-bobby-II@users.noreply.github.com"
 ```
 
-## Required Checks
+## Required Checks And Repository Controls
 
-The repo now publishes `App Quality`, `OpenSpec`, `UI Smoke`, `Database Security`,
-`Dependency Audit`, and `Release Health` workflow signals. `pnpm ship` waits
-for the first five checks before merge, but GitHub UI merges can still bypass
-that CLI gate unless repository settings enforce required checks.
+The protected `main` branch requires current successful `App Quality`,
+`OpenSpec`, `UI Smoke`, `Database Security`, and `Dependency Audit` checks.
+Required-check enforcement applies to administrators; force pushes and branch
+deletion are disabled. Zero mandatory human approvals preserve the current
+single-maintainer release path, while required checks and conversation
+resolution remain mandatory. `pnpm ship` is still the supported merge path
+because it also verifies remote migration parity and post-merge release health.
 
-Manual GitHub follow-up:
-
-1. Add a branch protection rule or ruleset for `main`.
-2. Require `App Quality`, `OpenSpec`, `UI Smoke`, `Database Security`, and
-   `Dependency Audit` before merge.
-3. Restrict direct pushes and manual bypasses to the smallest practical admin
-   set.
-
-Until that repository-level enforcement exists, treat `pnpm ship` as the
-required release path rather than a convenience wrapper.
+The public repository also enables secret scanning, push protection, private
+vulnerability reporting, CodeQL default setup, full-SHA Actions enforcement,
+seven-day Actions artifact/log retention, and automatic deletion of merged head branches. These
+provider settings are verified operational controls; the workflow policy in
+`scripts/check-workflow-bootstrap.mjs` separately protects the tracked CI
+configuration.
