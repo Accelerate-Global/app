@@ -15,17 +15,11 @@ export type PrivateDataChatTurnMessage = {
   resourceResult?: PrivateDataChatResourceQueryResult | null;
 };
 
-export type PrivateDataChatStreamEvent =
-  | { type: "status"; stage: PrivateDataChatStage }
+export type PrivateDataChatResponse =
   | { type: "message"; message: PrivateDataChatTurnMessage }
   | {
       type: "error";
       code: string;
       message: string;
       retryable: boolean;
-    }
-  | { type: "done" };
-
-export function encodePrivateDataChatSse(event: PrivateDataChatStreamEvent) {
-  return `event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`;
-}
+    };

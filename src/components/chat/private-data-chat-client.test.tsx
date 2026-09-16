@@ -10,18 +10,8 @@ import {
 
 const fetchMock = vi.fn();
 
-function sseResponse(events: unknown[]) {
-  const body = events
-    .map((event) => {
-      const type = (event as { type: string }).type;
-      return `event: ${type}\ndata: ${JSON.stringify(event)}\n\n`;
-    })
-    .join("");
-
-  return new Response(body, {
-    status: 200,
-    headers: { "Content-Type": "text/event-stream" },
-  });
+function chatResponse(payload: unknown) {
+  return Response.json(payload);
 }
 
 describe("PrivateDataChatClient", () => {
@@ -47,29 +37,24 @@ describe("PrivateDataChatClient", () => {
     ).toBeNull();
   });
 
-  it("streams progress and displays a grounded answer without provenance chrome", async () => {
+  it("shows local progress and displays a grounded JSON answer without provenance chrome", async () => {
     fetchMock.mockResolvedValue(
-      sseResponse([
-        { type: "status", stage: "interpreting" },
-        { type: "status", stage: "querying" },
-        {
-          type: "message",
-          message: {
-            content: "There are 3 people groups.",
-            facts: ["people_group_count: 3"],
-            provenance: {
-              queryId: "8a000001-1337-403d-8eb5-b7c44a1be131",
-              catalogVersion: "primary-people-groups-v1",
-              dataset: "primary_people_groups",
-              datasetId: "7a000001-1337-403d-8eb5-b7c44a1be131",
-              datasetVersionCreatedAt: "2026-08-26T00:00:00.000Z",
-              rowCount: 1,
-              filters: [],
-            },
+      chatResponse({
+        type: "message",
+        message: {
+          content: "There are 3 people groups.",
+          facts: ["people_group_count: 3"],
+          provenance: {
+            queryId: "8a000001-1337-403d-8eb5-b7c44a1be131",
+            catalogVersion: "primary-people-groups-v1",
+            dataset: "primary_people_groups",
+            datasetId: "7a000001-1337-403d-8eb5-b7c44a1be131",
+            datasetVersionCreatedAt: "2026-08-26T00:00:00.000Z",
+            rowCount: 1,
+            filters: [],
           },
         },
-        { type: "done" },
-      ]),
+      }),
     );
     render(<PrivateDataChatClient available />);
     expect(screen.queryByText("Ask about approved data")).toBeNull();
@@ -153,13 +138,10 @@ describe("PrivateDataChatClient", () => {
       }),
     );
     fetchMock.mockResolvedValue(
-      sseResponse([
-        {
-          type: "message",
-          message: { content: "104 match.", facts: [], provenance: null },
-        },
-        { type: "done" },
-      ]),
+      chatResponse({
+        type: "message",
+        message: { content: "104 match.", facts: [], provenance: null },
+      }),
     );
     render(<PrivateDataChatClient available />);
     await screen.findByText("Sudan");
@@ -222,50 +204,44 @@ describe("PrivateDataChatClient", () => {
   it("renders a bounded ROP page with version, full export, and opaque continuation", async () => {
     fetchMock
       .mockResolvedValueOnce(
-        sseResponse([
-          {
-            type: "message",
-            message: {
-              content: "52 ROP entries match; showing 1–2.",
-              facts: ["119434 — Tassomi · Active"],
-              provenance: null,
-              resourceResult: {
-                resourceKey: "rop-codes",
-                operation: "search",
-                normalizedQuery: "sudan",
-                requestedLimit: 25,
-                pageOffset: 0,
-                returnedCount: 2,
-                matchingCount: 52,
-                hasMore: true,
-                resourceVersion: {
-                  id: "10000000-0000-4000-8000-000000000001",
-                  versionNumber: 7,
-                  contentChecksum: "a".repeat(64),
-                },
-                entries: [],
-                ambiguityChoices: [],
-                continuationToken: "opaque-signed-continuation",
-                exportUrl:
-                  "/api/reference-resources/rop-codes/download?search=sudan",
+        chatResponse({
+          type: "message",
+          message: {
+            content: "52 ROP entries match; showing 1–2.",
+            facts: ["119434 — Tassomi · Active"],
+            provenance: null,
+            resourceResult: {
+              resourceKey: "rop-codes",
+              operation: "search",
+              normalizedQuery: "sudan",
+              requestedLimit: 25,
+              pageOffset: 0,
+              returnedCount: 2,
+              matchingCount: 52,
+              hasMore: true,
+              resourceVersion: {
+                id: "10000000-0000-4000-8000-000000000001",
+                versionNumber: 7,
+                contentChecksum: "a".repeat(64),
               },
+              entries: [],
+              ambiguityChoices: [],
+              continuationToken: "opaque-signed-continuation",
+              exportUrl:
+                "/api/reference-resources/rop-codes/download?search=sudan",
             },
           },
-          { type: "done" },
-        ]),
+        }),
       )
       .mockResolvedValueOnce(
-        sseResponse([
-          {
-            type: "message",
-            message: {
-              content: "Showing the final page.",
-              facts: [],
-              provenance: null,
-            },
+        chatResponse({
+          type: "message",
+          message: {
+            content: "Showing the final page.",
+            facts: [],
+            provenance: null,
           },
-          { type: "done" },
-        ]),
+        }),
       );
     render(<PrivateDataChatClient available />);
     fireEvent.change(screen.getByRole("textbox", { name: "Question for Qwen" }), {
@@ -292,12 +268,9 @@ describe("PrivateDataChatClient", () => {
   it.each([
     ["busy", "Private Qwen capacity is currently full."],
     ["timeout", "Private Qwen exceeded its response deadline."],
-  ])("renders streamed %s failures", async (code, message) => {
+  ])("renders JSON %s failures", async (code, message) => {
     fetchMock.mockResolvedValue(
-      sseResponse([
-        { type: "error", code, message, retryable: true },
-        { type: "done" },
-      ]),
+      chatResponse({ type: "error", code, message, retryable: true }),
     );
     render(<PrivateDataChatClient available />);
     fireEvent.change(screen.getByRole("textbox", { name: "Question for Qwen" }), {
@@ -325,6 +298,7 @@ describe("PrivateDataChatClient", () => {
       target: { value: "Count all." },
     });
     fireEvent.click(screen.getByRole("button", { name: "Ask Qwen" }));
+    expect(screen.getByText("Interpreting your question")).toBeTruthy();
     fireEvent.click(await screen.findByRole("button", { name: "Cancel" }));
 
     await waitFor(() => {
