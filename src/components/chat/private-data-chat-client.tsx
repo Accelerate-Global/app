@@ -21,10 +21,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import type {
-  PrivateDataChatStage,
-  PrivateDataChatStreamEvent,
-} from "@/lib/private-data-chat/events";
+import type { PrivateDataChatResponse } from "@/lib/private-data-chat/events";
 import type { PrivateDataChatResourceQueryResult } from "@/lib/private-data-chat/schemas";
 import { cn } from "@/lib/utils";
 
@@ -102,35 +99,11 @@ export function parsePrivateDataChatStoredViewContext(
   return candidate as StoredViewContext;
 }
 
-const stageLabels: Record<PrivateDataChatStage, string> = {
-  interpreting: "Interpreting your question",
-  validating: "Validating the analytical plan",
-  querying: "Querying approved data",
-  explaining: "Preparing a grounded answer",
-};
-
 const exampleQuestions = [
   "How many people groups are in the current primary dataset?",
   "Show total population by country, largest first.",
   "List people IDs and names for people groups in Antarctica.",
 ] as const;
-
-function parseEventBlock(block: string) {
-  const data = block
-    .split("\n")
-    .find((line) => line.startsWith("data: "))
-    ?.slice(6);
-
-  if (!data) {
-    return null;
-  }
-
-  try {
-    return JSON.parse(data) as PrivateDataChatStreamEvent;
-  } catch {
-    return null;
-  }
-}
 
 function createTranscriptId() {
   return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
@@ -141,7 +114,6 @@ export function PrivateDataChatClient({ available }: { available: boolean }) {
   const [conversationId, setConversationId] = useState(createTranscriptId);
   const [viewContext, setViewContext] = useState<StoredViewContext | null>(null);
   const [input, setInput] = useState("");
-  const [stage, setStage] = useState<PrivateDataChatStage | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isRunning, setIsRunning] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
@@ -170,12 +142,7 @@ export function PrivateDataChatClient({ available }: { available: boolean }) {
     setViewContext(null);
   }
 
-  function applyStreamEvent(event: PrivateDataChatStreamEvent) {
-    if (event.type === "status") {
-      setStage(event.stage);
-      return;
-    }
-
+  function applyResponse(event: PrivateDataChatResponse) {
     if (event.type === "message") {
       setMessages((current) => [
         ...current,
@@ -188,15 +155,11 @@ export function PrivateDataChatClient({ available }: { available: boolean }) {
           resourceResult: event.message.resourceResult,
         },
       ]);
-      setStage(null);
       return;
     }
 
-    if (event.type === "error") {
-      if (event.code.startsWith("view_context")) clearViewContext();
-      setError(event.message);
-      setStage(null);
-    }
+    if (event.code.startsWith("view_context")) clearViewContext();
+    setError(event.message);
   }
 
   async function submitQuestion(
@@ -222,7 +185,6 @@ export function PrivateDataChatClient({ available }: { available: boolean }) {
     setMessages((current) => [...current, userMessage]);
     setInput("");
     setError(null);
-    setStage("interpreting");
     setIsRunning(true);
 
     try {
@@ -242,38 +204,23 @@ export function PrivateDataChatClient({ available }: { available: boolean }) {
         signal: controller.signal,
       });
 
-      if (!response.ok || !response.body) {
-        const payload = (await response.json().catch(() => null)) as
-          | { error?: string }
-          | null;
-        throw new Error(payload?.error || "Private data chat is unavailable.");
+      const payload = (await response.json().catch(() => null)) as
+        | PrivateDataChatResponse
+        | { error?: string }
+        | null;
+
+      if (!response.ok) {
+        throw new Error(
+          payload && "error" in payload && typeof payload.error === "string"
+            ? payload.error
+            : "Private data chat is unavailable.",
+        );
       }
 
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-
-      while (true) {
-        const { value, done } = await reader.read();
-        buffer += decoder.decode(value, { stream: !done });
-        const blocks = buffer.split("\n\n");
-        buffer = blocks.pop() ?? "";
-
-        for (const block of blocks) {
-          const event = parseEventBlock(block);
-          if (event) {
-            applyStreamEvent(event);
-          }
-        }
-
-        if (done) {
-          const finalEvent = parseEventBlock(buffer);
-          if (finalEvent) {
-            applyStreamEvent(finalEvent);
-          }
-          break;
-        }
+      if (!payload || !("type" in payload)) {
+        throw new Error("Private data chat is unavailable.");
       }
+      applyResponse(payload);
     } catch (requestError) {
       if (controller.signal.aborted) {
         setError("The request was cancelled.");
@@ -284,7 +231,6 @@ export function PrivateDataChatClient({ available }: { available: boolean }) {
             : "Private data chat is unavailable.",
         );
       }
-      setStage(null);
     } finally {
       abortRef.current = null;
       setIsRunning(false);
@@ -303,7 +249,6 @@ export function PrivateDataChatClient({ available }: { available: boolean }) {
     clearViewContext();
     setInput("");
     setError(null);
-    setStage(null);
     setIsRunning(false);
   }
 
@@ -467,10 +412,10 @@ export function PrivateDataChatClient({ available }: { available: boolean }) {
               </article>
             ))}
 
-            {stage ? (
+            {isRunning ? (
               <div className="mr-auto flex items-center gap-2 rounded-full border px-3 py-2 text-sm text-muted-foreground">
                 <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-                {stageLabels[stage]}
+                Interpreting your question
               </div>
             ) : null}
 

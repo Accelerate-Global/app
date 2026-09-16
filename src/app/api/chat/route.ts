@@ -1,10 +1,7 @@
 import { jsonError } from "@/lib/http";
 import { canUsePrivateDataChat } from "@/lib/private-data-chat/access";
 import { getPrivateDataChatConfiguration } from "@/lib/private-data-chat/config";
-import {
-  encodePrivateDataChatSse,
-  type PrivateDataChatStreamEvent,
-} from "@/lib/private-data-chat/events";
+import type { PrivateDataChatResponse } from "@/lib/private-data-chat/events";
 import { orchestratePrivateDataChatTurn } from "@/lib/private-data-chat/orchestrator";
 import { PrivateDataChatBrokerError } from "@/lib/private-data-chat/broker";
 import { PrivateQwenGatewayError } from "@/lib/private-data-chat/qwen-gateway";
@@ -14,8 +11,11 @@ import { PrivateDataChatSignedStateError } from "@/lib/private-data-chat/signed-
 import { withRoute } from "@/lib/route-guard";
 
 const PRIVATE_DATA_CHAT_MAX_REQUEST_BYTES = 30_000;
+export const maxDuration = 300;
 
-function streamError(error: unknown): Extract<PrivateDataChatStreamEvent, { type: "error" }> {
+function responseError(
+  error: unknown,
+): Extract<PrivateDataChatResponse, { type: "error" }> {
   if (error instanceof PrivateQwenGatewayError) {
     return {
       type: "error",
@@ -100,44 +100,23 @@ export const POST = withRoute(
       return jsonError("Conversation payload is invalid.");
     }
 
-    const encoder = new TextEncoder();
-    const stream = new ReadableStream<Uint8Array>({
-      start(controller) {
-        const send = (event: PrivateDataChatStreamEvent) => {
-          controller.enqueue(encoder.encode(encodePrivateDataChatSse(event)));
-        };
+    try {
+      const message = await orchestratePrivateDataChatTurn({
+        identity,
+        messages: parsed.data.messages,
+        conversationId: parsed.data.conversationId,
+        viewContextToken: parsed.data.viewContextToken,
+        turnStateTokens: parsed.data.turnStateTokens,
+        resourceContinuationToken: parsed.data.resourceContinuationToken,
+        signal: request.signal,
+      });
 
-        void orchestratePrivateDataChatTurn({
-          identity,
-          messages: parsed.data.messages,
-          conversationId: parsed.data.conversationId,
-          viewContextToken: parsed.data.viewContextToken,
-          turnStateTokens: parsed.data.turnStateTokens,
-          resourceContinuationToken: parsed.data.resourceContinuationToken,
-          signal: request.signal,
-          onStage: (stage) => send({ type: "status", stage }),
-        })
-          .then((message) => {
-            send({ type: "message", message });
-          })
-          .catch((error) => {
-            send(streamError(error));
-          })
-          .finally(() => {
-            send({ type: "done" });
-            controller.close();
-          });
-      },
-    });
-
-    return new Response(stream, {
-      status: 200,
-      headers: {
-        "Content-Type": "text/event-stream; charset=utf-8",
-        "Cache-Control": "private, no-store, no-cache, must-revalidate",
-        Connection: "keep-alive",
-        "X-Accel-Buffering": "no",
-      },
-    });
+      return Response.json({
+        type: "message",
+        message,
+      } satisfies PrivateDataChatResponse);
+    } catch (error) {
+      return Response.json(responseError(error));
+    }
   },
 );

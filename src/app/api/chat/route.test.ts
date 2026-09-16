@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getCurrentIdentity } from "@/lib/auth";
 import { orchestratePrivateDataChatTurn } from "@/lib/private-data-chat/orchestrator";
 import { PrivateDataChatValueResolutionError } from "@/lib/private-data-chat/value-resolver";
-import { POST } from "./route";
+import { maxDuration, POST } from "./route";
 
 vi.mock("@/lib/auth", () => ({ getCurrentIdentity: vi.fn() }));
 vi.mock("@/lib/private-data-chat/orchestrator", () => ({
@@ -111,29 +111,60 @@ describe("/api/chat", () => {
     expect(orchestrateMock).not.toHaveBeenCalled();
   });
 
-  it("streams progress, one grounded message, and completion", async () => {
+  it("returns one grounded JSON message when orchestration completes", async () => {
     configureFeature();
     getCurrentIdentityMock.mockResolvedValue(adminIdentity);
-    orchestrateMock.mockImplementation(async (input) => {
-      input.onStage?.("interpreting");
-      input.onStage?.("querying");
-      return {
-        content: "There are 3 people groups.",
-        facts: ["people_group_count: 3"],
-        provenance: null,
-      };
+    orchestrateMock.mockResolvedValue({
+      content: "There are 3 people groups.",
+      facts: ["people_group_count: 3"],
+      provenance: null,
     });
     const response = await POST(
       request({ messages: [{ role: "user", content: "Count all." }] }),
     );
-    const body = await response.text();
 
     expect(response.status).toBe(200);
-    expect(response.headers.get("content-type")).toContain("text/event-stream");
-    expect(body).toContain('"stage":"interpreting"');
-    expect(body).toContain('"stage":"querying"');
-    expect(body).toContain("There are 3 people groups.");
-    expect(body).toContain("event: done");
+    expect(response.headers.get("content-type")).toContain("application/json");
+    expect(response.headers.get("cache-control")).toContain("private");
+    await expect(response.json()).resolves.toEqual({
+      type: "message",
+      message: {
+        content: "There are 3 people groups.",
+        facts: ["people_group_count: 3"],
+        provenance: null,
+      },
+    });
+    expect(maxDuration).toBe(300);
+  });
+
+  it("keeps the HTTP response pending only until orchestration settles", async () => {
+    configureFeature();
+    getCurrentIdentityMock.mockResolvedValue(adminIdentity);
+    let resolveTurn!: (
+      value: Awaited<ReturnType<typeof orchestratePrivateDataChatTurn>>,
+    ) => void;
+    orchestrateMock.mockReturnValue(
+      new Promise((resolve) => {
+        resolveTurn = resolve;
+      }),
+    );
+
+    const responsePromise = POST(
+      request({ messages: [{ role: "user", content: "Count all." }] }),
+    );
+    await vi.waitFor(() => expect(orchestrateMock).toHaveBeenCalledOnce());
+
+    resolveTurn({
+      content: "There are 3 people groups.",
+      facts: [],
+      provenance: null,
+    });
+
+    const response = await responsePromise;
+    await expect(response.json()).resolves.toMatchObject({
+      type: "message",
+      message: { content: "There are 3 people groups." },
+    });
   });
 
   it("forwards only bounded signed view, turn, and continuation state", async () => {
@@ -156,7 +187,7 @@ describe("/api/chat", () => {
       resourceContinuationToken: "signed-continuation",
     };
     const response = await POST(request(body));
-    await response.text();
+    await response.json();
     expect(orchestrateMock).toHaveBeenCalledWith(
       expect.objectContaining({
         identity: adminIdentity,
@@ -165,7 +196,7 @@ describe("/api/chat", () => {
     );
   });
 
-  it("streams a retryable bounded error when semantic values are unavailable", async () => {
+  it("returns a retryable bounded JSON error when semantic values are unavailable", async () => {
     configureFeature();
     getCurrentIdentityMock.mockResolvedValue(adminIdentity);
     orchestrateMock.mockRejectedValue(new PrivateDataChatValueResolutionError());
@@ -173,11 +204,12 @@ describe("/api/chat", () => {
     const response = await POST(
       request({ messages: [{ role: "user", content: "List groups in US." }] }),
     );
-    const body = await response.text();
-
     expect(response.status).toBe(200);
-    expect(body).toContain('"code":"semantic_resource_unavailable"');
-    expect(body).toContain('"retryable":true');
-    expect(body).not.toContain("provider details");
+    await expect(response.json()).resolves.toEqual({
+      type: "error",
+      code: "semantic_resource_unavailable",
+      message: "The approved semantic value resource is temporarily unavailable.",
+      retryable: true,
+    });
   });
 });
