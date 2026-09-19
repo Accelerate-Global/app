@@ -95,7 +95,6 @@ type DatasetDetailClientProps = {
   assignableDatasets?: DatasetSummary[];
   workspaceRole?: WorkspaceRole;
   toolbarAction?: ReactNode;
-  canAskQwenAboutView?: boolean;
 };
 
 type DatasetDetailViewMode = "table" | "map";
@@ -233,7 +232,6 @@ export function DatasetDetailClient({
   assignableDatasets = [],
   workspaceRole = "pro",
   toolbarAction = null,
-  canAskQwenAboutView = false,
 }: DatasetDetailClientProps) {
   useDatasetPerfRenderTrace("DatasetDetailClient");
   const watchlistThresholdDefinition =
@@ -977,9 +975,6 @@ export function DatasetDetailClient({
                   }
                   canSaveFilteredTable={
                     canSaveFilteredTable && !temporaryTableScope
-                  }
-                  canAskQwenAboutView={
-                    canAskQwenAboutView && dataset.isPrimary && !temporaryTableScope
                   }
                   onOpenFilters={handleOpenFilters}
                   onOpenAssignDerivedView={

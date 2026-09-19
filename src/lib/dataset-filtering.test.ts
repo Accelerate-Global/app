@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { DatasetRowsResponse, DatasetSummary } from "@/lib/api-types";
 import { REGION_COUNTRY_OPTIONS } from "@/lib/region-country-options";
-import { evaluatePrivateDataChatNamedFilter } from "@/lib/private-data-chat/named-filters";
+import { evaluateUupgFilter } from "@/lib/uupg-filter";
 import {
   applyDatasetFilterSections,
   getDatasetCountryNames,
@@ -2103,18 +2103,14 @@ describe("dataset-filtering", () => {
     );
     const authoritative = candidates
       .filter((candidate) =>
-        evaluatePrivateDataChatNamedFilter(
+        evaluateUupgFilter(
           {
-            key: "uupg",
-            version: 1,
-            options: {
-              globalEngagementAnywhereEnabled: true,
-              frontierGroupEnabled: true,
-            },
+            globalEngagementAnywhereEnabled: true,
+            frontierGroupEnabled: true,
           },
           {
-            globally_engaged: candidate.typedGlobal,
-            frontier_group: candidate.typedFrontier,
+            globallyEngaged: candidate.typedGlobal,
+            frontierGroup: candidate.typedFrontier,
           },
         ),
       )

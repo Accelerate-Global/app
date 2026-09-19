@@ -23,8 +23,6 @@ import { listFilterRegions } from "@/lib/filter-settings";
 import { buildDatasetOpenPreset } from "@/lib/saved-dataset-filters";
 import { getSavedDatasetTable } from "@/lib/saved-dataset-tables";
 import { cn } from "@/lib/utils";
-import { canUsePrivateDataChat } from "@/lib/private-data-chat/access";
-import { getPrivateDataChatConfiguration } from "@/lib/private-data-chat/config";
 
 type DatasetPageProps = {
   params: Promise<{
@@ -114,8 +112,6 @@ export default async function DatasetPage({
           !pipelineManagedDatasetIdSet.has(candidate.id),
       )
     : [];
-  const privateDataChatConfiguration = getPrivateDataChatConfiguration();
-
   return (
     <div
       data-smoke-page="dataset-detail"
@@ -152,10 +148,6 @@ export default async function DatasetPage({
           initialSorting={initialSorting}
           assignableDatasets={assignableDatasets}
           workspaceRole={identity.workspaceRole}
-          canAskQwenAboutView={
-            privateDataChatConfiguration.semanticContextEnabled &&
-            canUsePrivateDataChat(identity, privateDataChatConfiguration)
-          }
           toolbarAction={
             identity.isDatasetAdmin ? (
               <DatasetAdminActions

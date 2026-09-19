@@ -40,23 +40,6 @@ import {
 } from "./schema";
 
 describe("datasets schema", () => {
-  it("adds private semantic retrieval, exact vector candidate, and redacted audit storage", async () => {
-    const migration = await readFile(
-      path.join(
-        process.cwd(),
-        "supabase/migrations/20260831190140_add_qwen_semantic_context.sql",
-      ),
-      "utf8",
-    );
-    expect(migration).toContain("resource_kind = 'semantic-catalog'");
-    expect(migration).toContain(
-      "create table if not exists private.analytics_semantic_context_embeddings",
-    );
-    expect(migration).toContain("embedding extensions.vector(1024) not null");
-    expect(migration).not.toMatch(/using\s+(?:hnsw|ivfflat)/iu);
-    expect(migration).toContain("retrieved_card_keys jsonb");
-    expect(migration).toContain("resource_operation text");
-  });
   it("declares the compact Samson archive catalog without payload fields", () => {
     expect(dataArchiveBackupRuns.runKey.name).toBe("run_key");
     expect(dataArchiveBackupRuns.archiveAllocatedBytes.name).toBe(
@@ -852,6 +835,26 @@ describe("apiConnections schema", () => {
     expect(migration).toContain(`drop table if exists ${staleDraftTable}`);
     expect(migration).toContain(`drop column if exists ${staleCredentialColumn}`);
     expect(migration).toContain(`drop table if exists ${staleCredentialTable}`);
+  });
+
+  it("removes the retired private-model database surface without broad cascades", async () => {
+    const migration = await readFile(
+      path.join(
+        process.cwd(),
+        "supabase/migrations/20260919205348_remove_private_qwen_data_chat.sql",
+      ),
+      "utf8",
+    );
+
+    expect(migration).toContain("analytics_chat_login still has active sessions");
+    expect(migration).toContain("Semantic context is present in a shared resource set");
+    expect(migration).toContain("The vector extension has non-Qwen column dependencies");
+    expect(migration).toContain("drop schema if exists analytics_ro");
+    expect(migration).toContain("drop table if exists private.analytics_chat_audit");
+    expect(migration).toContain("drop extension if exists vector");
+    expect(migration).toContain("create or replace function private.activate_reference_resource");
+    expect(migration).not.toContain("drop schema private");
+    expect(migration).not.toContain("cascade");
   });
 });
 

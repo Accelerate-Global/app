@@ -248,7 +248,6 @@ describe("DatasetDetailClient", () => {
         }}
         regions={[]}
         fieldDefinitionPresentationByColumnKey={{}}
-        canAskQwenAboutView
       />,
     );
 
@@ -263,7 +262,6 @@ describe("DatasetDetailClient", () => {
     const actionBarProps = actionBarSpy.mock.calls[0]?.[0] as {
       onOpenFilters?: () => void;
       onOpenAssignDerivedView?: () => void;
-      canAskQwenAboutView?: boolean;
       variant?: string;
     };
 
@@ -281,7 +279,6 @@ describe("DatasetDetailClient", () => {
     expect(mainColumn?.className).toContain("xl:row-start-1");
     expect(actionBarProps.onOpenFilters).toEqual(expect.any(Function));
     expect(actionBarProps.onOpenAssignDerivedView).toBeUndefined();
-    expect(actionBarProps.canAskQwenAboutView).toBe(true);
     expect(actionBarProps.variant).toBe("embedded");
     expect(assignDerivedViewSheetSpy).not.toHaveBeenCalled();
   });

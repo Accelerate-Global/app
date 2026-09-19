@@ -5,7 +5,6 @@ import {
   getGeneratedRopCodeResource,
   type RopCodeEntry,
 } from "@/lib/rop-codes";
-import { buildPrivateDataChatSemanticContextPackage } from "@/lib/private-data-chat/semantic-context";
 
 import {
   diffReferenceResources,
@@ -21,7 +20,6 @@ import {
 import {
   COUNTRY_RESOURCE_KEY,
   ROP_RESOURCE_KEY,
-  SEMANTIC_CONTEXT_RESOURCE_KEY,
 } from "./types";
 
 describe("reference resource adapters", () => {
@@ -89,27 +87,6 @@ describe("reference resource adapters", () => {
       "example registry source",
     );
     expect(prepared.csv).toContain("Stable key,Field ID,Source key");
-  });
-
-  it("projects reviewed semantic cards into private searchable rows and CSV", () => {
-    const semantic = buildPrivateDataChatSemanticContextPackage({
-      sourceRetrievedAt: "2026-08-31T00:00:00.000Z",
-    }).package;
-    const prepared = prepareReferenceResource(
-      SEMANTIC_CONTEXT_RESOURCE_KEY,
-      semantic,
-    );
-    expect(prepared.entryCount).toBe(semantic.entries.length);
-    expect(prepared.pipelineEntries).toHaveLength(semantic.entries.length);
-    expect(prepared.pipelineEntries).toContainEqual(
-      expect.objectContaining({
-        stableKey: "filter.uupg",
-        active: true,
-        searchText: expect.stringContaining("null preserving"),
-      }),
-    );
-    expect(prepared.csv.split("\n")[0]).toContain("Stable key,Kind,Label");
-    expect(prepared.csv).not.toContain("analytics_ro");
   });
 
   it("projects a bounded missing ROP2 code without inventing a term or ROP1 parent", () => {
