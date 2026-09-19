@@ -23,7 +23,6 @@ import {
 } from "../src/lib/canonical-filter-regions";
 import { getPostgresConnectionConfig } from "../src/lib/postgres-connection";
 import { runBootstrapReferenceResources } from "./bootstrap-reference-resources";
-import { runBootstrapPrivateDataChatSemanticContext } from "./bootstrap-private-data-chat-semantic-context";
 import {
   MAP_PREPRODUCTION_DEFAULT_FILTERED_ROW_COUNT,
   MAP_PREPRODUCTION_FOCUSED_PEOPLE_NAME,
@@ -990,9 +989,6 @@ async function main() {
   });
   try {
     await mkdir(UI_SMOKE_TMP_DIR, { recursive: true });
-    await sql.unsafe(
-      "alter role analytics_chat_login password 'ui-smoke-private-data-chat'",
-    );
     await ensureBucket(storageAdmin, smokeEnv.storageBucket);
     await resetSmokeData(sql);
     await insertAllowlist(sql);
@@ -1003,7 +999,6 @@ async function main() {
       if (!referenceResult.health.healthy) {
         throw new Error("Reference-resource smoke bootstrap health check failed.");
       }
-      await runBootstrapPrivateDataChatSemanticContext();
     }
 
     const adminUser = await recreateUser({

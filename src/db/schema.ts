@@ -372,7 +372,6 @@ export const referenceResources = privateSchema.table(
         | "people-crosswalk"
         | "merge-priority"
         | "field-mapping"
-        | "semantic-catalog"
       >()
       .notNull(),
     label: text("label").notNull(),

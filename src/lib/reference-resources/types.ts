@@ -1,9 +1,5 @@
 import type { IsoCountryCodeResource } from "@/lib/iso-country-codes";
 import type { RopCodeResource } from "@/lib/rop-codes";
-import type {
-  PrivateDataChatSemanticCard,
-  PrivateDataChatSemanticContextPackage,
-} from "@/lib/private-data-chat/semantic-context";
 
 import {
   PIPELINE_RESOURCE_KEYS,
@@ -14,19 +10,16 @@ import {
 
 export const COUNTRY_RESOURCE_KEY = "country-territory-codes" as const;
 export const ROP_RESOURCE_KEY = "rop-codes" as const;
-export const SEMANTIC_CONTEXT_RESOURCE_KEY = "semantic-context-catalog" as const;
 
 export type ReferenceResourceKey =
   | typeof COUNTRY_RESOURCE_KEY
   | typeof ROP_RESOURCE_KEY
-  | typeof SEMANTIC_CONTEXT_RESOURCE_KEY
   | PipelineResourceKey;
 
 export function isReferenceResourceKey(value: string): value is ReferenceResourceKey {
   return (
     value === COUNTRY_RESOURCE_KEY ||
     value === ROP_RESOURCE_KEY ||
-    value === SEMANTIC_CONTEXT_RESOURCE_KEY ||
     (PIPELINE_RESOURCE_KEYS as readonly string[]).includes(value)
   );
 }
@@ -37,8 +30,7 @@ export type ReferenceResourceKind =
   | "source-registry"
   | "people-crosswalk"
   | "merge-priority"
-  | "field-mapping"
-  | "semantic-catalog";
+  | "field-mapping";
 export type ReferenceResourceLifecycleState =
   | "building"
   | "valid"
@@ -53,7 +45,6 @@ export type ReferenceResourceValidationSeverity = "info" | "warning" | "error";
 export type ReferenceResourcePayloadByKey = {
   [COUNTRY_RESOURCE_KEY]: IsoCountryCodeResource;
   [ROP_RESOURCE_KEY]: RopCodeResource;
-  [SEMANTIC_CONTEXT_RESOURCE_KEY]: PrivateDataChatSemanticContextPackage;
 } & PipelineResourcePayloadByKey;
 
 export type ReferenceResourcePayload =
@@ -62,7 +53,6 @@ export type ReferenceResourcePayload =
 export type ReferenceResourceEntryByKey = {
   [COUNTRY_RESOURCE_KEY]: IsoCountryCodeResource["entries"][number];
   [ROP_RESOURCE_KEY]: RopCodeResource["entries"][number];
-  [SEMANTIC_CONTEXT_RESOURCE_KEY]: PrivateDataChatSemanticCard;
 } & PipelineResourceEntryByKey;
 
 export type ReferenceResourceValidationFinding = {
@@ -134,9 +124,6 @@ export type ReferenceResourcePageByKey = {
   [ROP_RESOURCE_KEY]: ReferenceResourceQueryResult<
     RopCodeResource["entries"][number]
   > & { resource: RopCodeResource };
-  [SEMANTIC_CONTEXT_RESOURCE_KEY]: ReferenceResourceQueryResult<
-    PrivateDataChatSemanticCard
-  > & { resource: PrivateDataChatSemanticContextPackage };
 } & {
   [Key in PipelineResourceKey]: ReferenceResourceQueryResult<
     PipelineResourceEntryByKey[Key]

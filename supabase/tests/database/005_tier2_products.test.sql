@@ -302,14 +302,22 @@ insert into private.reference_resource_versions (
   '83500000-0000-4000-8000-000000000001',
   (select id from private.reference_resources
    where resource_key = 'country-territory-codes'),
-  1, 'valid', 1, repeat('a', 64), now(), '{}'::jsonb, '{}'::jsonb,
+  (select coalesce(max(version.version_number), 0) + 1
+   from private.reference_resource_versions as version
+   join private.reference_resources as resource on resource.id = version.resource_id
+   where resource.resource_key = 'country-territory-codes'),
+  'valid', 1, repeat('a', 64), now(), '{}'::jsonb, '{}'::jsonb,
   '{}'::jsonb, '{"errorCount":0}'::jsonb, '{}'::jsonb, 0,
   'tier2-test-admin', now()
 ),
 (
   '83500000-0000-4000-8000-000000000002',
   (select id from private.reference_resources where resource_key = 'rop-codes'),
-  1, 'valid', 1, repeat('b', 64), now(), '{}'::jsonb, '{}'::jsonb,
+  (select coalesce(max(version.version_number), 0) + 1
+   from private.reference_resource_versions as version
+   join private.reference_resources as resource on resource.id = version.resource_id
+   where resource.resource_key = 'rop-codes'),
+  'valid', 1, repeat('b', 64), now(), '{}'::jsonb, '{}'::jsonb,
   '{}'::jsonb, '{"errorCount":0}'::jsonb, '{}'::jsonb, 0,
   'tier2-test-admin', now()
 ),
@@ -317,7 +325,11 @@ insert into private.reference_resource_versions (
   '83500000-0000-4000-8000-000000000003',
   (select id from private.reference_resources
    where resource_key = 'source-aliases'),
-  1, 'valid', 1, repeat('c', 64), now(), '{}'::jsonb,
+  (select coalesce(max(version.version_number), 0) + 1
+   from private.reference_resource_versions as version
+   join private.reference_resources as resource on resource.id = version.resource_id
+   where resource.resource_key = 'source-aliases'),
+  'valid', 1, repeat('c', 64), now(), '{}'::jsonb,
   '{"schemaVersion":1,"resourceKey":"source-aliases","sourceName":"fixture","sourceRetrievedAt":"2026-07-22T00:00:00.000Z","entries":[{"fieldId":"F_1","canonicalSourceKey":"alpha","displayName":"Partner Alpha","initials":"pa","aliases":["alpha"],"active":true}]}'::jsonb,
   '{}'::jsonb, '{"errorCount":0}'::jsonb, '{}'::jsonb, 1,
   'tier2-test-admin', now()

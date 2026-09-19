@@ -31,10 +31,6 @@ import {
 } from "@/db/schema";
 import type { IsoCountryCodeEntry, IsoCountryCodeResource } from "@/lib/iso-country-codes";
 import type { RopCodeEntry, RopCodeResource } from "@/lib/rop-codes";
-import type {
-  PrivateDataChatSemanticCard,
-  PrivateDataChatSemanticContextPackage,
-} from "@/lib/private-data-chat/semantic-context";
 
 import {
   diffReferenceResources,
@@ -42,7 +38,6 @@ import {
   prepareReferenceResource,
   serializeCountryCsvRows,
   serializeRopCsvRows,
-  serializeSemanticContextCsvRows,
 } from "./adapters";
 import {
   canonicalizeReferenceResource,
@@ -72,7 +67,6 @@ import {
 import {
   COUNTRY_RESOURCE_KEY,
   ROP_RESOURCE_KEY,
-  SEMANTIC_CONTEXT_RESOURCE_KEY,
   type ReferenceResourceActivationAction,
   type ReferenceResourceCandidateResult,
   type ReferenceResourceCatalogItem,
@@ -1040,10 +1034,7 @@ export async function queryReferenceResourceEntries<K extends ReferenceResourceK
     };
   }
 
-  if (
-    isPipelineResourceKey(input.resourceKey) ||
-    input.resourceKey === SEMANTIC_CONTEXT_RESOURCE_KEY
-  ) {
+  if (isPipelineResourceKey(input.resourceKey)) {
     const rows = await getDb()
       .select()
       .from(pipelineReferenceEntries)
@@ -1100,53 +1091,6 @@ export async function queryReferenceResourceEntries<K extends ReferenceResourceK
   };
 }
 
-export async function searchSemanticContextCards(input: {
-  query: string;
-  audience: "planner" | "answer";
-  limit?: number;
-  versionId?: string;
-}) {
-  const resource = await getResourceDefinition(SEMANTIC_CONTEXT_RESOURCE_KEY);
-  const versionId = input.versionId ?? resource.activeVersionId;
-  if (!versionId) {
-    throw new ReferenceResourceNotFoundError(
-      "Semantic context has no active reviewed version.",
-    );
-  }
-  const query = input.query.trim();
-  if (!query) return [];
-  const limit = Math.max(1, Math.min(input.limit ?? 24, 100));
-  const rows = await getDb().execute<{
-    stable_key: string;
-    data: PrivateDataChatSemanticCard;
-    rank: number | string;
-  }>(sql`
-    select
-      stable_key,
-      data,
-      ts_rank_cd(
-        search_document,
-        pg_catalog.plainto_tsquery('english'::regconfig, ${query})
-      ) as rank
-    from private.pipeline_reference_entries
-    where version_id = ${versionId}::uuid
-      and active
-      and data ->> 'sensitivity' = 'private-internal'
-      and data ->> 'queryAuthority' <> 'excluded'
-      and data -> 'audiences' ? ${input.audience}
-      and search_document @@ pg_catalog.plainto_tsquery(
-        'english'::regconfig,
-        ${query}
-      )
-    order by rank desc, stable_key asc
-    limit ${limit}
-  `);
-  return rows.map((row) => ({
-    card: row.data,
-    score: Number(row.rank),
-  }));
-}
-
 export async function countReferenceResourceEntries(input: {
   resourceKey: ReferenceResourceKey;
   search?: string;
@@ -1174,10 +1118,7 @@ export async function countReferenceResourceEntries(input: {
       );
     return value;
   }
-  if (
-    isPipelineResourceKey(input.resourceKey) ||
-    input.resourceKey === SEMANTIC_CONTEXT_RESOURCE_KEY
-  ) {
+  if (isPipelineResourceKey(input.resourceKey)) {
     const [{ value }] = await getDb()
       .select({ value: count() })
       .from(pipelineReferenceEntries)
@@ -1259,15 +1200,6 @@ export async function getReferenceResourcePage<K extends ReferenceResourceKey>(i
       ),
     } as unknown as ReferenceResourcePageByKey[K];
   }
-  if (input.resourceKey === SEMANTIC_CONTEXT_RESOURCE_KEY) {
-    return {
-      ...query,
-      resource: {
-        ...(payload as PrivateDataChatSemanticContextPackage),
-        entries: query.entries as PrivateDataChatSemanticCard[],
-      },
-    } as unknown as ReferenceResourcePageByKey[K];
-  }
   return {
     ...query,
     resource: {
@@ -1297,12 +1229,6 @@ export async function getReferenceResourceCsv(input: {
         ),
       ),
     }).csv;
-  }
-  if (input.resourceKey === SEMANTIC_CONTEXT_RESOURCE_KEY) {
-    const matching = prepared.pipelineEntries
-      .filter((entry) => entry.searchText.includes(query))
-      .map((entry) => entry.data as unknown as PrivateDataChatSemanticCard);
-    return serializeSemanticContextCsvRows(matching);
   }
   if (isPipelineResourceKey(input.resourceKey)) {
     const query = input.search.trim().toLocaleLowerCase();
@@ -1346,9 +1272,7 @@ export function createReferenceResourceCsvStream(input: {
             ? serializeCountryCsvRows([])
             : input.resourceKey === ROP_RESOURCE_KEY
               ? serializeRopCsvRows([])
-              : input.resourceKey === SEMANTIC_CONTEXT_RESOURCE_KEY
-                ? serializeSemanticContextCsvRows([])
-                : serializePipelineResourceCsv(input.resourceKey, []);
+              : serializePipelineResourceCsv(input.resourceKey, []);
           controller.enqueue(encoder.encode(header));
           headerSent = true;
           return;
@@ -1363,12 +1287,7 @@ export function createReferenceResourceCsvStream(input: {
           ? serializeCountryCsvRows(page.entries as IsoCountryCodeEntry[], { includeHeader: false })
           : input.resourceKey === ROP_RESOURCE_KEY
             ? serializeRopCsvRows(page.entries as RopCodeEntry[], { includeHeader: false })
-            : input.resourceKey === SEMANTIC_CONTEXT_RESOURCE_KEY
-              ? serializeSemanticContextCsvRows(
-                  page.entries as PrivateDataChatSemanticCard[],
-                  { includeHeader: false },
-                )
-              : serializePipelineResourceCsv(input.resourceKey, page.entries as never)
+            : serializePipelineResourceCsv(input.resourceKey, page.entries as never)
                 .split("\n")
                 .slice(1)
                 .join("\n");
@@ -1423,9 +1342,7 @@ export async function checkReferenceResourceHealth(
   for (const item of catalog) {
     const problems: string[] = [];
     if (!item.activeVersion) {
-      if (item.resourceKind !== "semantic-catalog") {
-        problems.push("missing-active-version");
-      }
+      problems.push("missing-active-version");
     } else {
       const record = await getVersionRecord(item.activeVersion.id);
       if (!record || record.lifecycleState !== "valid") problems.push("active-version-not-valid");
@@ -1478,10 +1395,7 @@ export async function checkReferenceResourceHealth(
           }
         }
       }
-      if (
-        item.resourceKind !== "semantic-catalog" &&
-        members.get(item.id) !== item.activeVersion.id
-      ) {
+      if (members.get(item.id) !== item.activeVersion.id) {
         problems.push("current-set-mismatch");
       }
     }

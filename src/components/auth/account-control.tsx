@@ -137,7 +137,6 @@ export function AccountControl({ identity }: AccountControlProps) {
     } catch {}
 
     if (typeof window !== "undefined") {
-      window.sessionStorage.removeItem("private-data-chat:view-context:v1");
       window.location.assign("/");
       return;
     }

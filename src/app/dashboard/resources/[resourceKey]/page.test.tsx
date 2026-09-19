@@ -46,12 +46,6 @@ vi.mock("@/components/dashboard/pipeline-reference-resource-client", () => ({
   ),
 }));
 
-vi.mock("@/components/dashboard/semantic-context-resource-client", () => ({
-  SemanticContextResourceClient: () => (
-    <div data-testid="semantic-context-resource-client" />
-  ),
-}));
-
 const getCurrentIdentityMock = vi.mocked(getCurrentIdentity);
 const getReferenceResourcePageMock = vi.mocked(getReferenceResourcePage);
 const listReferenceResourceCatalogMock = vi.mocked(

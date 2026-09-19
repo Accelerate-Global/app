@@ -3,26 +3,19 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { PipelineReferenceResourceClient } from "@/components/dashboard/pipeline-reference-resource-client";
-import { SemanticContextResourceClient } from "@/components/dashboard/semantic-context-resource-client";
 import { DashboardPageShell } from "@/components/layout/dashboard-page-shell";
 import { buttonVariants } from "@/components/ui/button";
 import { getCurrentIdentity } from "@/lib/auth";
 import { formatUtcTimestamp } from "@/lib/date-time";
-import type {
-  PrivateDataChatSemanticCard,
-  PrivateDataChatSemanticContextPackage,
-} from "@/lib/private-data-chat/semantic-context";
 import {
   getReferenceResourcePage,
   listReferenceResourceCatalog,
-  listReferenceResourceVersions,
 } from "@/lib/reference-resources";
 import {
   isPipelineResourceKey,
   type PipelineResourceEntryByKey,
   type PipelineResourceKey,
 } from "@/lib/reference-resources/pipeline-types";
-import { SEMANTIC_CONTEXT_RESOURCE_KEY } from "@/lib/reference-resources/types";
 import { cn } from "@/lib/utils";
 
 type PipelineReferenceResourcePageProps = {
@@ -39,30 +32,19 @@ export default async function PipelineReferenceResourcePage({
   }
 
   const { resourceKey } = await params;
-  const isSemanticContext = resourceKey === SEMANTIC_CONTEXT_RESOURCE_KEY;
-  if (!isPipelineResourceKey(resourceKey) && !isSemanticContext) {
+  if (!isPipelineResourceKey(resourceKey)) {
     notFound();
   }
 
-  const [catalog, page, versions] = await Promise.all([
+  const [catalog, page] = await Promise.all([
     listReferenceResourceCatalog(),
     getReferenceResourcePage({ resourceKey, limit: 100 }),
-    isSemanticContext
-      ? listReferenceResourceVersions(SEMANTIC_CONTEXT_RESOURCE_KEY)
-      : Promise.resolve([]),
   ]);
   const catalogItem = catalog.find((item) => item.resourceKey === resourceKey);
 
   if (!catalogItem?.activeVersion) {
     notFound();
   }
-  const semanticResource = isSemanticContext
-    ? (page.resource as PrivateDataChatSemanticContextPackage)
-    : null;
-  const semanticCandidateVersion = versions.find(
-    (version) => !version.isActive && version.lifecycleState === "valid",
-  );
-
   return (
     <div
       data-smoke-page="pipeline-reference-resource"
@@ -120,34 +102,15 @@ export default async function PipelineReferenceResourcePage({
           </div>
         </section>
 
-        {isSemanticContext ? (
-          <SemanticContextResourceClient
-            initialEntries={page.entries as PrivateDataChatSemanticCard[]}
-            activeVersion={page.version}
-            initialNextCursor={page.nextCursor}
-            canManageLifecycle={identity.isDatasetAdmin}
-            guidingDocument={semanticResource!.guidingDocument}
-            definitionPackageChecksum={semanticResource!.definitionPackageChecksum}
-            initialCandidate={
-              semanticCandidateVersion
-                ? {
-                    unchanged: false,
-                    version: semanticCandidateVersion,
-                  }
-                : null
-            }
-          />
-        ) : (
-          <PipelineReferenceResourceClient
-            resourceKey={resourceKey}
-            initialEntries={
-              page.entries as PipelineResourceEntryByKey[PipelineResourceKey][]
-            }
-            activeVersion={page.version}
-            initialNextCursor={page.nextCursor}
-            canManageLifecycle={identity.isDatasetAdmin}
-          />
-        )}
+        <PipelineReferenceResourceClient
+          resourceKey={resourceKey}
+          initialEntries={
+            page.entries as PipelineResourceEntryByKey[PipelineResourceKey][]
+          }
+          activeVersion={page.version}
+          initialNextCursor={page.nextCursor}
+          canManageLifecycle={identity.isDatasetAdmin}
+        />
       </DashboardPageShell>
     </div>
   );

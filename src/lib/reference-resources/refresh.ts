@@ -3,7 +3,6 @@ import {
   type IsoCountryCodeResource,
 } from "@/lib/iso-country-codes";
 import { normalizeErrorForLogging } from "@/lib/error-logging";
-import { createPrivateDataChatSemanticContextCandidate } from "@/lib/private-data-chat/semantic-context-candidate";
 import {
   refreshRopCodeResourceFromHis,
   type RopCodeResource,
@@ -17,7 +16,6 @@ import {
 import {
   COUNTRY_RESOURCE_KEY,
   ROP_RESOURCE_KEY,
-  SEMANTIC_CONTEXT_RESOURCE_KEY,
   type ReferenceResourceKey,
   type ReferenceResourcePayloadByKey,
   type ReferenceResourceValidationFinding,
@@ -107,12 +105,6 @@ export async function refreshReferenceResourceCandidate(input: {
   resourceKey: ReferenceResourceKey;
   actorOwnerId: string;
 }) {
-  if (input.resourceKey === SEMANTIC_CONTEXT_RESOURCE_KEY) {
-    return createPrivateDataChatSemanticContextCandidate({
-      actorOwnerId: input.actorOwnerId,
-    });
-  }
-
   if (input.resourceKey === COUNTRY_RESOURCE_KEY) {
     let payload: IsoCountryCodeResource;
     try {

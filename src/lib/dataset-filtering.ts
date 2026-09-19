@@ -38,7 +38,7 @@ import {
   isWatchlistEngagementPhaseMatch,
   normalizeWatchlistEngagementPhaseRule,
 } from "@/lib/watchlist-engagement-phase";
-import { evaluatePrivateDataChatNamedFilter } from "@/lib/private-data-chat/named-filters";
+import { evaluateUupgFilter } from "@/lib/uupg-filter";
 
 type DatasetRow = DatasetRowsResponse["rows"][number];
 const WATCHLIST_FRONTIER_GROUP_DATASET_COLUMN_KEYS =
@@ -937,19 +937,15 @@ function matchesUupgDatasetRow(
 ) {
   const normalizedCriteria = normalizeDatasetUupgCriteriaState(uupgFilter);
 
-  return evaluatePrivateDataChatNamedFilter(
+  return evaluateUupgFilter(
     {
-      key: "uupg",
-      version: 1,
-      options: {
-        globalEngagementAnywhereEnabled:
-          normalizedCriteria.globalEngagementAnywhereEnabled,
-        frontierGroupEnabled: normalizedCriteria.frontierGroupEnabled,
-      },
+      globalEngagementAnywhereEnabled:
+        normalizedCriteria.globalEngagementAnywhereEnabled,
+      frontierGroupEnabled: normalizedCriteria.frontierGroupEnabled,
     },
     {
-      globally_engaged: normalizeNamedFilterBooleanValue(row.uupgValue),
-      frontier_group: normalizeNamedFilterBooleanValue(
+      globallyEngaged: normalizeNamedFilterBooleanValue(row.uupgValue),
+      frontierGroup: normalizeNamedFilterBooleanValue(
         row.watchlistFrontierGroupValue,
       ),
     },
