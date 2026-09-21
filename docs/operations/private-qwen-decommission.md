@@ -1,8 +1,9 @@
 # Private Qwen decommission receipt
 
-Status: in progress  
-Started: 2026-09-19  
-OpenSpec change: `remove-private-qwen-data-chat`
+Status: completed
+Started: 2026-09-19
+Completed: 2026-09-21
+OpenSpec archive: `2026-09-19-remove-private-qwen-data-chat`
 
 This receipt records identifiers and outcome checks only. It must not contain
 secret values, database URLs, raw prompts, generated responses, result rows,
@@ -96,7 +97,9 @@ signed tokens, or private semantic payloads.
 - Semantic Storage dry run: passed; the database manifests and exact Storage
   prefix matched at 10 objects, with no missing, unexpected, duplicate, or
   out-of-prefix path
-- Repository candidate verified: pending
+- Repository candidate verified: passed; 356 test files ran 2,236 tests (three
+  skipped), 557 pgTAP assertions passed, the production build passed, and the
+  full UI smoke suite passed
 - Semantic Storage removed: passed; exactly 10 reviewed objects were deleted
   through the Storage API and the exact prefix re-listed empty
 - Supabase migration applied: passed; migration `20260919205348` removed all
@@ -104,9 +107,66 @@ signed tokens, or private semantic payloads.
   the Qwen-only vector extension
 - Retained reference resources: passed; all seven are active and healthy after
   migration, with no activation or replacement required
-- Qwen-free application deployed: pending
-- Vercel variables removed: pending
-- Cloudflare ingress removed: pending
-- Samson services and assets scrubbed: pending
-- Samson guests 105 and 200 deleted: pending explicit confirmation
-- Final negative inventory: pending
+- Qwen-free application deployed: passed through pull request
+  [#63](https://github.com/Accelerate-Global/app/pull/63), merge
+  `66653abe53f0f8da1bf7f231dc10c2c82db6a9b1`; Release Health passed,
+  `/dashboard/chat` returns `404`, and `POST /api/chat` resolves to the Next.js
+  not-found handler
+- Vercel variables removed: passed; the final name-only inventory found zero
+  Qwen/private-chat variables in Production, Preview, or Development
+- Cloudflare ingress removed: passed; Access application
+  `05b8d75d-5119-4fcf-8abb-ba05462ed2f9`, policy
+  `ae9c2d0f-0038-4f0a-bc8d-59d3378a9397`, service token
+  `2eda0704-f529-4f1d-ab65-e057afac5c6e`, Worker, VPC Service, Tunnel, and the
+  `samson.risencode.org` Origin CA certificate were removed; the former Worker
+  URL now returns `404`
+- Samson services and assets scrubbed: passed; the model, retrieval candidates,
+  llama.cpp runtime/source, gateway source/configuration, evaluation material,
+  credentials, systemd units, connector package, and tunnel configuration were
+  removed before guest deletion, with the retired listeners verified closed
+- Samson guests 105 and 200 deleted: passed after explicit confirmation on
+  2026-09-21; both guest configurations and virtual disks are absent
+- Final negative inventory: passed across the repository, production Supabase,
+  all Vercel environments, Cloudflare, Samson, and the MikroTik worker network
+
+## Final negative inventory
+
+### Repository and production application
+
+- No deployable Qwen/private-chat runtime, UI, route, edge relay, package, or
+  environment contract remains. The only current-code references are negative
+  assertions that prevent retired files and resource keys from returning.
+- Production root remains healthy. `/dashboard/chat` returns `404`; the former
+  chat API matches `/_not-found` and returns HTML rather than a chat response.
+- Historical migrations, archived OpenSpec changes, Git/PR history, and this
+  sanitized receipt remain under the approved retention boundary.
+
+### Supabase and Vercel
+
+- Production contains zero Qwen database roles, `analytics_ro` schemas, Qwen
+  relations, semantic resource rows, semantic Storage objects, or `vector`
+  extensions.
+- All seven retained reference resources have active, valid versions.
+- Production, Preview, and Development each contain zero matching
+  Qwen/private-chat environment-variable names.
+
+### Cloudflare
+
+- The Worker and VPC Service APIs return not-found, the active Tunnel list is
+  empty, the Access application/policy/token lists contain no retired object,
+  and the Origin Certificates page contains no `samson.risencode.org`
+  certificate.
+- The former Worker hostname returns the platform's generic `404` response.
+
+### Samson and worker network
+
+- Proxmox contains neither LXC 105 nor VM 200, their volumes, guest firewall
+  files, active monitoring records, or backup-job references.
+- RouterOS contains no matching DHCP lease, ARP cache entry, host-specific
+  firewall/NAT rule, address-list entry, or DNS record for `10.77.0.30`,
+  `10.77.0.31`, or the retired guest MAC addresses.
+- LXC 104 (`ax-data-archive`) remained running and healthy. Proxmox management,
+  metrics, and router-to-Samson connectivity passed after cleanup.
+- Existing external backup archives and their ordinary retention were not
+  changed. Guest-local disk snapshots were removed with the explicitly
+  approved guest disks.

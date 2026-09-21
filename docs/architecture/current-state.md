@@ -96,10 +96,9 @@ configuration, not intended future architecture.
 - Vercel environment variables can be pulled locally with `vercel env pull .env.local`.
 - Release and production-health behavior is documented in `docs/release.md`.
 - Exact production provider settings are outside the tracked repo unless reflected in docs or scripts.
-- The former private-model pilot is disabled and is being removed under the
-  sanitized decommission procedure in
-  `docs/operations/private-qwen-decommission.md`. It is not a supported product
-  capability or deployment dependency.
+- The former private-model pilot was fully removed under the sanitized
+  decommission procedure in `docs/operations/private-qwen-decommission.md`.
+  It is not a supported product capability or deployment dependency.
 
 ## Verification Architecture
 
