@@ -13,6 +13,7 @@ import {
   assignDatasetDerivedView,
   createDataset,
   DatasetStoragePathConflictError,
+  DerivedDatasetSourceConflictError,
   deleteDataset,
   insertDatasetRowBatch,
   PipelineManagedDatasetMutationError,
@@ -587,6 +588,53 @@ describe("publishPreparedDataset", () => {
         classification: "PGIC",
       }),
     ).rejects.toBeInstanceOf(DatasetStoragePathConflictError);
+  });
+});
+
+describe("derived dataset visibility", () => {
+  it("rejects assigning a restricted source to a visible view before mutation", async () => {
+    const target = createStoredDataset({ id: "visible-view", rowCount: 0 });
+    const source = createStoredDataset({
+      id: "restricted-source",
+      isWorkspaceVisible: false,
+    });
+    let selectCount = 0;
+    const execute = vi.fn().mockResolvedValue([]);
+    const update = vi.fn();
+    const tx = {
+      execute,
+      update,
+      select: () => ({
+        from: () => ({
+          where: () => ({
+            limit: () => {
+              const rows = selectCount++ === 0 ? [target] : [source];
+              return Object.assign(Promise.resolve(rows), {
+                for: () => Promise.resolve(rows),
+              });
+            },
+          }),
+        }),
+      }),
+    };
+    getDbMock.mockReturnValue({ transaction: (fn: (value: typeof tx) => Promise<unknown>) => fn(tx) } as never);
+
+    await expect(
+      assignDatasetDerivedView({
+        datasetId: target.id,
+        sourceDatasetId: source.id,
+        filters: {
+          region: { enabled: false, selectedRegionIds: [], selectedRegionNames: [], enabledCountryNames: [] },
+          country: { enabled: false, selectedCountryNames: [], includeAlternateCountries: false },
+          watchlist: { enabled: false, thresholdEnabled: false, threshold: 2, engagementPhaseEnabled: false, engagementPhaseThreshold: 6, jpOnlyEvangelicalCriteriaEnabled: false, evangelicalPopulationBelieversRuleEnabled: false, evangelicalPopulationBelieversRule: { tiers: [] }, frontierGroupEnabled: false, frontierGroupValue: true },
+          uupg: { enabled: false, globalEngagementAnywhereEnabled: false, frontierGroupEnabled: false },
+          hotspots: { enabled: false, metric: "unique_uupgs", countryCount: 10 },
+          sorting: [],
+        },
+      }),
+    ).rejects.toBeInstanceOf(DerivedDatasetSourceConflictError);
+
+    expect(update).not.toHaveBeenCalled();
   });
 });
 

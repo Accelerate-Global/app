@@ -37,6 +37,7 @@ The repository SHALL update or override moderate and low advisory paths when the
 - **THEN** the system retains the compatible version and records the advisory rather than silently breaking the application
 
 ### Requirement: Protected dependency audit clears the release threshold
+
 The repository SHALL resolve the complete installed production and developer dependency graph without critical or high-severity advisories before a release can merge.
 
 #### Scenario: Release candidate is audited
@@ -48,3 +49,7 @@ The repository SHALL resolve the complete installed production and developer dep
 - **WHEN** clearing an advisory requires a transitive override outside the parent package declared range
 - **THEN** the package-dependent workflow and full application verification MUST pass with the exact resolved lockfile
 - **AND** the protected dependency audit MUST pass before merge
+
+#### Scenario: September 2026 high-severity advisories are resolved
+- **WHEN** the repository audits the resolved Next.js, workflow, undici, and brace-expansion dependency paths
+- **THEN** no critical or high-severity advisory remains in the installed tree

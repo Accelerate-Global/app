@@ -120,6 +120,14 @@ insert into auth.users (
   now()
 );
 
+insert into auth.sessions (id, user_id, created_at, updated_at)
+values (
+  '99100000-0000-4000-8000-000000000099',
+  '99000000-0000-4000-8000-000000000099',
+  now(),
+  now()
+);
+
 insert into public.datasets (
   id, owner_id, file_name, blob_url, blob_path, current_version_action,
   current_version_actor_owner_id, current_version_actor_email,
@@ -421,6 +429,7 @@ select set_config(
   '99000000-0000-4000-8000-000000000099',
   true
 );
+select set_config('request.jwt.claims', '{"sub":"99000000-0000-4000-8000-000000000099","role":"authenticated","session_id":"99100000-0000-4000-8000-000000000099"}', true);
 set local role authenticated;
 
 select lives_ok(
