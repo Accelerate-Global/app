@@ -2,6 +2,7 @@ import { and, count, desc, eq } from "drizzle-orm";
 
 import { getDb } from "@/db";
 import { datasets, savedDatasetTables } from "@/db/schema";
+import { workspaceVisibleDataset } from "@/lib/dataset-access";
 import type {
   SavedDatasetFilterState,
   SavedDatasetTable,
@@ -52,7 +53,7 @@ function getSavedDatasetTableQuery(input: {
   const predicates = [eq(savedDatasetTables.ownerId, input.ownerId)];
 
   if (!input.includeDisabled) {
-    predicates.push(eq(datasets.isWorkspaceVisible, true));
+    predicates.push(workspaceVisibleDataset());
   }
 
   if (input.savedTableId) {
@@ -111,7 +112,7 @@ export async function createSavedDatasetTable(input: {
     const datasetPredicates = [eq(datasets.id, input.datasetId)];
 
     if (!input.includeDisabled) {
-      datasetPredicates.push(eq(datasets.isWorkspaceVisible, true));
+      datasetPredicates.push(workspaceVisibleDataset());
     }
 
     const [dataset] = await tx

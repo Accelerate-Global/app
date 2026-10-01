@@ -384,6 +384,17 @@ where not exists (
   where lower(email) = 'pending-basic@example.com'
 );
 
+insert into auth.sessions (id, user_id, created_at, updated_at)
+select ('9b' || substring(id::text from 3))::uuid, id, now(), now()
+from auth.users
+where id in (
+  '9a000001-1337-403d-8eb5-b7c44a1be131',
+  '9a000002-1337-403d-8eb5-b7c44a1be131',
+  '9a000003-1337-403d-8eb5-b7c44a1be131',
+  '9a000004-1337-403d-8eb5-b7c44a1be131'
+)
+on conflict (id) do nothing;
+
 insert into public.datasets (
   id,
   owner_id,
@@ -718,6 +729,7 @@ select throws_ok($$ select count(*)::bigint from public.signup_email_allowlist $
 reset role;
 
 select set_config('request.jwt.claim.sub', '9a000003-1337-403d-8eb5-b7c44a1be131', true);
+select set_config('request.jwt.claims', '{"sub":"9a000003-1337-403d-8eb5-b7c44a1be131","role":"authenticated","session_id":"9b000003-1337-403d-8eb5-b7c44a1be131"}', true);
 set local role authenticated;
 
 select results_eq($$ select count(*)::bigint from public.datasets where id = '10000000-0000-4000-8000-000000000001' $$, array[1::bigint], 'authenticated users can read datasets');
@@ -801,6 +813,7 @@ select throws_ok(
 reset role;
 
 select set_config('request.jwt.claim.sub', '9a000004-1337-403d-8eb5-b7c44a1be131', true);
+select set_config('request.jwt.claims', '{"sub":"9a000004-1337-403d-8eb5-b7c44a1be131","role":"authenticated","session_id":"9b000004-1337-403d-8eb5-b7c44a1be131"}', true);
 set local role authenticated;
 
 select results_eq($$ select count(*)::bigint from public.datasets where id = '10000000-0000-4000-8000-000000000001' $$, array[1::bigint], 'basic users can read workspace-visible datasets');
@@ -872,6 +885,7 @@ select lives_ok(
 reset role;
 
 select set_config('request.jwt.claim.sub', '9a000002-1337-403d-8eb5-b7c44a1be131', true);
+select set_config('request.jwt.claims', '{"sub":"9a000002-1337-403d-8eb5-b7c44a1be131","role":"authenticated","session_id":"9b000002-1337-403d-8eb5-b7c44a1be131"}', true);
 set local role authenticated;
 
 select is(private.is_dataset_admin(), true, 'super admin app metadata grants dataset admin access');
@@ -879,6 +893,7 @@ select is(private.is_dataset_admin(), true, 'super admin app metadata grants dat
 reset role;
 
 select set_config('request.jwt.claim.sub', '9a000001-1337-403d-8eb5-b7c44a1be131', true);
+select set_config('request.jwt.claims', '{"sub":"9a000001-1337-403d-8eb5-b7c44a1be131","role":"authenticated","session_id":"9b000001-1337-403d-8eb5-b7c44a1be131"}', true);
 set local role authenticated;
 
 select results_eq($$ select count(*)::bigint from public.datasets where id = '10000000-0000-4000-8000-000000000010' $$, array[1::bigint], 'dataset admin can read hidden datasets');

@@ -33,6 +33,7 @@ import type {
   DatasetVersionSummary,
 } from "@/lib/api-types";
 import { countDatasetDefaultRows } from "@/lib/dataset-default-view";
+import { workspaceVisibleDataset } from "@/lib/dataset-access";
 import { normalizeDatasetHiddenColumnKeys } from "@/lib/dataset-column-visibility";
 import { getDatasetStorageObjectUrl } from "@/lib/dataset-storage";
 import {
@@ -344,7 +345,7 @@ async function getAccessibleDatasetRecord(input: {
   const predicates: SQL[] = [eq(datasets.id, input.datasetId)];
 
   if (!input.includeDisabled) {
-    predicates.push(eq(datasets.isWorkspaceVisible, true));
+    predicates.push(workspaceVisibleDataset());
   }
 
   const [dataset] = await executor
@@ -652,7 +653,7 @@ export async function refreshAllDerivedDatasets() {
 export async function listDatasets(options: DatasetAccessOptions = {}) {
   const query = getDb().select().from(datasets);
   const rows = await (
-    options.includeDisabled ? query : query.where(eq(datasets.isWorkspaceVisible, true))
+    options.includeDisabled ? query : query.where(workspaceVisibleDataset())
   ).orderBy(asc(datasets.sortOrder), desc(datasets.createdAt));
 
   return rows.map(toDatasetSummary);
@@ -702,7 +703,7 @@ export async function listDatasetVersions(datasetId: string) {
 export async function getDefaultDataset(options: DatasetAccessOptions = {}) {
   const query = getDb().select().from(datasets);
   const [dataset] = await (
-    options.includeDisabled ? query : query.where(eq(datasets.isWorkspaceVisible, true))
+    options.includeDisabled ? query : query.where(workspaceVisibleDataset())
   )
     .orderBy(desc(datasets.isPrimary), asc(datasets.sortOrder), desc(datasets.createdAt))
     .limit(1);
@@ -1050,6 +1051,17 @@ export async function updateDatasetDetails(input: {
 
     const nextIsWorkspaceVisible =
       updates.isWorkspaceVisible ?? existingDataset.isWorkspaceVisible;
+    if (nextIsWorkspaceVisible && existingDataset.backingDatasetId) {
+      const backingSource = await getDatasetRecord(
+        existingDataset.backingDatasetId,
+        tx,
+      );
+      if (!backingSource?.isWorkspaceVisible) {
+        throw new DerivedDatasetSourceConflictError(
+          "A workspace-visible derived view requires a workspace-visible source.",
+        );
+      }
+    }
     const nextTags = composeDatasetTagsWithWorkspaceVisibility(
       validatedTags,
       nextIsWorkspaceVisible,
@@ -1119,6 +1131,12 @@ export async function assignDatasetDerivedView(input: {
     }
 
     const sourceDataset = resolvedSource.sourceDataset;
+
+    if (targetDataset.isWorkspaceVisible && !sourceDataset.isWorkspaceVisible) {
+      throw new DerivedDatasetSourceConflictError(
+        "A workspace-visible derived view requires a workspace-visible source.",
+      );
+    }
 
     if (sourceDataset.id === targetDataset.id) {
       throw new DerivedDatasetSourceConflictError(

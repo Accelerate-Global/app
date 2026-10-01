@@ -4,6 +4,7 @@ import {
   DatasetClassificationError,
   DatasetDeleteConflictError,
   DerivedDatasetMutationError,
+  DerivedDatasetSourceConflictError,
   PipelineManagedDatasetMutationError,
   deleteDataset,
   getDataset,
@@ -73,6 +74,7 @@ export const PATCH = withRoute(
       if (
         error instanceof DatasetClassificationError ||
         error instanceof DerivedDatasetMutationError ||
+        error instanceof DerivedDatasetSourceConflictError ||
         error instanceof PipelineManagedDatasetMutationError
       ) {
         return jsonError(error.message, error.status);

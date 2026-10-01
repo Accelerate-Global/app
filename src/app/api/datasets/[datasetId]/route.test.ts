@@ -63,6 +63,14 @@ vi.mock("@/lib/datasets", () => ({
       this.name = "DerivedDatasetMutationError";
     }
   },
+  DerivedDatasetSourceConflictError: class DerivedDatasetSourceConflictError extends Error {
+    readonly status = 409;
+
+    constructor(message = "A workspace-visible derived view requires a workspace-visible source.") {
+      super(message);
+      this.name = "DerivedDatasetSourceConflictError";
+    }
+  },
   PipelineManagedDatasetMutationError: class PipelineManagedDatasetMutationError extends Error {
     readonly status = 409;
 
@@ -454,6 +462,24 @@ describe("/api/datasets/[datasetId]", () => {
     expect(response.status).toBe(409);
     await expect(response.json()).resolves.toEqual({
       error: "Derived dataset views cannot be marked as primary.",
+    });
+  });
+
+  it("rejects making a derived view visible over a restricted source", async () => {
+    const { DerivedDatasetSourceConflictError } = await import("@/lib/datasets");
+    updateDatasetDetailsMock.mockRejectedValue(new DerivedDatasetSourceConflictError());
+
+    const response = await PATCH(
+      new Request("http://localhost/api/datasets/f0000000-0000-4000-8000-000000000001", {
+        method: "PATCH",
+        body: JSON.stringify({ isWorkspaceVisible: true }),
+      }),
+      context,
+    );
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual({
+      error: "A workspace-visible derived view requires a workspace-visible source.",
     });
   });
 

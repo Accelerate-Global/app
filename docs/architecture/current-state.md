@@ -30,6 +30,12 @@ configuration, not intended future architecture.
   include restricted datasets
   for admins. Saved dataset tables remain owner-scoped and also require access
   to the underlying dataset.
+- A derived view is readable to non-admins only while both the view and its
+  physical backing source are workspace-visible. Restricting a physical source
+  also restricts its derived views in the same database transaction.
+- Direct Supabase RLS and Storage access for workspace users requires a live
+  Auth session and an enabled account, so an old access JWT cannot retain data
+  access after session revocation or account disablement.
 - First-admin account creation or restoration is not repo-owned; it remains the
   environment/provider procedure in `docs/operations/access-governance.md`.
   Legacy local-reset migrations use neutral example identities only and must
