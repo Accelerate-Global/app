@@ -1,3 +1,7 @@
+## Checkout portability
+
+Resolve repository paths against the current checkout. Absolute Mac paths in older instructions and documentation identify the equivalent repository-relative files when working on Linux or in a worktree; they do not require a Mac-mounted filesystem. The Samson workflow is documented in `docs/operations/samson-development.md`.
+
 ## Docker / Supabase cleanup rules
 
 When working in this repo, agents must treat Docker state as temporary unless the user explicitly asks to keep services running.
