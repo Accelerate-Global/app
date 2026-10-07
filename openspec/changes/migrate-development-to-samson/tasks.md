@@ -22,6 +22,6 @@
 ## 4. Supported HTTPS connection fix
 
 - [x] 4.1 Record the fallback plan and update the capability contract; implement the bounded server/client/service and direct negative boundary tests.
-- [ ] 4.2 Pass the repo gate, install the VM service and verify loopback authorization, worktree edits, fixed checks and persistence.
+- [x] 4.2 Pass the repo gate, install the VM service and verify loopback authorization, worktree edits, fixed checks and persistence.
 - [ ] 4.3 Replace only this Cloud identity's SSH grant with the private HTTPS capability; configure Serve and republish the private Cloud environment with the HTTPS client/start workflow.
 - [ ] 4.4 Qualify a fresh Cloud task through the actual managed HTTP proxy, persist its remote edit/test/denial receipt, reconcile recovery and close 3.2/3.3 only on observed success.

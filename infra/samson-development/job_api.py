@@ -114,19 +114,24 @@ def read_file(root, value, offset=0, length=MAX_READ):
         os.close(parent)
 
 
-def edit_file(root, value, content, expected, delete=False):
+def edit_file(root, value, content, expected, delete=False, executable=None):
     if expected is not None and (not isinstance(expected, str) or not SHA_RE.fullmatch(expected)):
         raise Rejected('An expected SHA256 or null is required')
     if len(content) > MAX_WRITE:
         raise Rejected('File write exceeds limit', 413)
+    if executable is not None and type(executable) is not bool:
+        raise Rejected('Executable must be a boolean')
     parent, name = parent_fd(root, value, create=not delete and expected is None)
     temporary = '.ax-edit-' + uuid.uuid4().hex
+    previous_executable = False
     try:
         try:
             fd = os.open(name, os.O_RDONLY | os.O_NOFOLLOW, dir_fd=parent)
             with os.fdopen(fd, 'rb') as stream:
-                if not stat.S_ISREG(os.fstat(stream.fileno()).st_mode):
+                info = os.fstat(stream.fileno())
+                if not stat.S_ISREG(info.st_mode):
                     raise Rejected('Only regular files may be edited')
+                previous_executable = bool(info.st_mode & 0o111)
                 actual = hashlib.file_digest(stream, 'sha256').hexdigest()
         except FileNotFoundError:
             actual = None
@@ -135,13 +140,14 @@ def edit_file(root, value, content, expected, delete=False):
         if delete:
             os.unlink(name, dir_fd=parent)
             return {'path': value, 'deleted': True}
-        fd = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600, dir_fd=parent)
+        mode = 0o700 if (previous_executable if executable is None else executable) else 0o600
+        fd = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, mode, dir_fd=parent)
         with os.fdopen(fd, 'wb') as stream:
             stream.write(content)
             stream.flush()
             os.fsync(stream.fileno())
         os.replace(temporary, name, src_dir_fd=parent, dst_dir_fd=parent)
-        return {'path': value, 'sha256': hashlib.sha256(content).hexdigest(), 'bytes': len(content)}
+        return {'path': value, 'sha256': hashlib.sha256(content).hexdigest(), 'bytes': len(content), 'executable': bool(mode & 0o100)}
     finally:
         try:
             os.unlink(temporary, dir_fd=parent)
@@ -298,6 +304,26 @@ class Workspace:
             threading.Thread(target=self.worker, args=(job, path), daemon=True).start()
         return job
 
+    def stage(self, task, body):
+        fields(body, ['paths'])
+        _, path = self.task(task)
+        names = body['paths']
+        if not isinstance(names, list) or not 1 <= len(names) <= 200:
+            raise Rejected('Provide a bounded list of exact file paths')
+        for name in names:
+            parent, leaf = parent_fd(path, name)
+            try:
+                try:
+                    info = os.stat(leaf, dir_fd=parent, follow_symlinks=False)
+                    if not stat.S_ISREG(info.st_mode):
+                        raise Rejected('Only individual regular files can be staged')
+                except FileNotFoundError:
+                    run(['git', '--literal-pathspecs', '-C', str(path), 'ls-files', '--error-unmatch', '--', name])
+            finally:
+                os.close(parent)
+        run(['git', '--literal-pathspecs', '-C', str(path), 'add', '--', *names])
+        return {'task': task, 'staged': names}
+
     def worker(self, job, path):
         name = job['job']
         out = self.state / 'jobs' / (name + '.json')
@@ -373,7 +399,7 @@ class Workspace:
                 return self.receipt(body)
             if method == 'GET' and parsed.path.startswith('/v1/jobs/'):
                 return self.job(parsed.path.removeprefix('/v1/jobs/'))
-            match = re.fullmatch(r'/v1/tasks/([^/]+)(?:/(files|file|diff|checks))?', parsed.path)
+            match = re.fullmatch(r'/v1/tasks/([^/]+)(?:/(files|file|diff|checks|stage))?', parsed.path)
             if match:
                 task, action = match.groups()
                 record, path = self.task(task)
@@ -384,12 +410,12 @@ class Workspace:
                 if method == 'GET' and action == 'file':
                     return read_file(path, arg('path'), int(arg('offset', '0')), int(arg('length', str(MAX_READ))))
                 if method == 'POST' and action == 'file':
-                    fields(body, ['path', 'base64', 'expected_sha256'])
+                    fields(body, ['path', 'base64', 'expected_sha256'], ['executable'])
                     try:
                         content = base64.b64decode(body['base64'], validate=True)
                     except (ValueError, TypeError, binascii.Error):
                         raise Rejected('Invalid file encoding')
-                    return edit_file(path, body['path'], content, body['expected_sha256'])
+                    return edit_file(path, body['path'], content, body['expected_sha256'], executable=body.get('executable'))
                 if method == 'DELETE' and action == 'file':
                     fields(body, ['path', 'expected_sha256'])
                     return edit_file(path, body['path'], b'', body['expected_sha256'], delete=True)
@@ -400,6 +426,8 @@ class Workspace:
                     return {'task': task, 'diff': diff}
                 if method == 'POST' and action == 'checks':
                     return self.start_check(task, body)
+                if method == 'POST' and action == 'stage':
+                    return self.stage(task, body)
             if method == 'GET' and parsed.path == '/v1/materials':
                 roots = {'docs': 'docs', 'exports': 'exports', 'meeting': 'uupg+ data meeting'}
                 if arg('root') not in roots:

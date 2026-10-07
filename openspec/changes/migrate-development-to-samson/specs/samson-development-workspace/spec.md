@@ -49,6 +49,10 @@ Cloud access SHALL use the supported managed VPN transport and an authorized exa
 - **WHEN** a Cloud task selects a registered verification recipe
 - **THEN** the VM runs the fixed recipe in that task, persists bounded status/log evidence, serializes shared database ports and stops temporary local services
 
+#### Scenario: New source file verification
+- **WHEN** a task stages reviewed exact file paths before its terminal gate
+- **THEN** new files enter that task's tracked-tree fingerprint, literal bracketed route names are preserved, and directories or credential paths cannot be staged implicitly
+
 ### Requirement: Secrets and development state remain separate
 The migration SHALL preserve legacy credentials and local database recovery material in protected recovery storage outside the Cloud-accessible development guest. Ordinary development MUST use synthetic local data and MUST NOT enable legacy production publication or inherit cached Mac authentication sessions.
 

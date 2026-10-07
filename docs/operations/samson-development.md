@@ -35,6 +35,31 @@ bash -n infra/samson-development/install-tools.sh
 
 ## Cloud setup
 
+### Private HTTPS development API
+
+The reviewed fallback is a private HTTPS API at `https://accelerate-dev.tail13a215.ts.net`, implemented by `job_api.py` and the `accelerate-job-api.service` unit. It runs as `axdev`, listens only on `127.0.0.1:8765`, and uses Tailscale Serve for TLS and the stamped `accelerate.local/cap/develop` capability with role `develop`. Every operation requires that capability. The intended replacement grant is Cloud TCP443 to this VM with the capability, while Cloud SSH becomes denied. Operator SSH remains separate. No Funnel or generic TCP/shell bridge is configured.
+
+The fix plan and the remaining end-to-end gate are in `openspec/changes/migrate-development-to-samson/cloud-fix-plan.md`. Local implementation is qualified; live access replacement and fresh Cloud qualification must also pass before cutover is complete.
+
+The public `cloud-api.py` client needs Python's standard library and the inherited HTTPS proxy. It verifies the exact private HTTPS origin, the supported VPN policy and the default CA trust, forces the proxy even when `NO_PROXY` is present, and rejects redirects. It uses no SSH private key or application bearer secret.
+
+```bash
+python3 /workspace/.samson-client/cloud-api.py GET /v1/identity
+python3 /workspace/.samson-client/cloud-api.py POST /v1/tasks --body-file task.json
+python3 /workspace/.samson-client/cloud-api.py POST /v1/tasks/task-id/checks --body-file check.json
+python3 /workspace/.samson-client/cloud-api.py GET /v1/jobs/job-id
+```
+
+Task creation accepts `task`, `repository` (`online` or `data`) and an exact 40-character commit. Tasks are detached worktrees, never a reset of the canonical checkout. App tasks share the current dependency cache until `app:install` creates private task dependencies, and receive synthetic localhost configuration. File operations reject credential/cache/control paths and symlink traversal. Reads return bounded base64 chunks plus SHA256; edits require the expected SHA256, with `null` allowing only a new file. Supporting `docs`, `meeting` and `exports` roots are read-only. Receipts use create-only `cloud-task-*.md` or `.json` names under `docs/Infrastructure`.
+
+File edits preserve the executable flag by default; an optional boolean `executable` changes only that flag. Before the terminal gate, stage reviewed exact paths with `POST /v1/tasks/ID/stage` and `{"paths":["relative/file"]}`. Staging uses literal Git paths, accepts individual regular files or tracked deletions, and rejects directories, credentials and symlinks. This ensures new source/tests participate in the repo's tracked-tree fingerprint and verification cache.
+
+Registered checks are `helpers:test`, `app:plan`, `app:typecheck`, `app:fast`, `app:verify`, `app:install` and `data:unit`. Job state and bounded logs persist under `.cloud-jobs`; only one verification job runs at a time and holds `.verification.lock`. `app:verify` performs the repo terminal gate and prepares/stops synthetic local Supabase only when the plan requires it. Jobs have a two-hour limit and a 32-MiB output limit. Interrupted jobs are marked interrupted on service restart rather than reported as passed. There is no arbitrary-command, environment-override, Git-push or production-publication endpoint.
+
+This interface grants development authority within the project VM. Executing edited repository code and Docker access retain the previously documented guest-level privilege; the API is not a sandbox for hostile project code. Production/recovery credentials and hypervisor access remain outside this guest.
+
+### Earlier SSH transport qualification
+
 Create a private Cloud environment for the intended repositories. Add the dedicated Tailscale VPN connection in Advanced settings and allow only its required destinations. Cloud's enrollment key is reusable and ephemeral; the guest's persistent node uses its own identity. Review the effective tailnet policy: broad existing grants can defeat a narrow new grant. Restrict the Cloud source tag to this guest's TCP22 and preserve operator access separately. Do not advertise subnet routes, create an exit node or expose the Codex app server publicly.
 
 The current private environment is **Accelerate Global Samson**. VM 137 is enrolled as `accelerate-dev.tail13a215.ts.net`, IPv4 `100.79.143.121`, with `tag:accelerate-dev` and node-key expiry disabled. Cloud enrollment uses `tag:accelerate-cloud`, a reusable ephemeral auth key with the maximum 90-day lifetime, expiring January 4, 2027. Renew that environment's enrollment key before expiry; this deadline governs new Cloud enrollment and does not expire the persistent tagged VM. The saved tailnet policy permits this Cloud tag only to the guest's TCP22 and includes explicit denial tests for other ports, infrastructure and project guests.

@@ -115,6 +115,31 @@ class JobApiTests(unittest.TestCase):
         self.assertEqual(list((self.ws.state / 'jobs').glob('*.json')), [])
         self.assertRejected(lambda: self.ws.dispatch('POST', '/v1/execute', {'command': 'true'}), 404)
 
+    def test_staging_uses_literal_paths_and_includes_new_files_in_the_tracked_tree(self):
+        api.edit_file(self.worktree, 'route[slug].tsx', b'new source', None)
+        api.edit_file(self.worktree, 'routes.tsx', b'other source', None)
+        self.ws.dispatch('POST', '/v1/tasks/proof/stage', {'paths': ['route[slug].tsx']})
+        staged = subprocess.check_output(['git', '-C', str(self.worktree), 'diff', '--cached', '--name-only'], text=True).splitlines()
+        self.assertEqual(staged, ['route[slug].tsx'])
+        self.assertIn('new source', self.ws.dispatch('GET', '/v1/tasks/proof/diff')['diff'])
+
+    def test_staging_rejects_directories_credentials_symlinks_and_command_fields(self):
+        (self.worktree / 'directory').mkdir()
+        (self.worktree / 'link').symlink_to(self.worktree / 'README.md')
+        for names in [['directory'], ['.env.local'], ['link'], ['../online/README.md'], []]:
+            self.assertRejected(lambda names=names: self.ws.stage('proof', {'paths': names}))
+        self.assertRejected(lambda: self.ws.stage('proof', {'paths': ['README.md'], 'command': 'true'}))
+
+    def test_edits_preserve_executable_files_and_allow_only_boolean_mode_changes(self):
+        p = self.worktree / 'script.sh'; p.write_bytes(b'original'); p.chmod(0o700)
+        old = hashlib.sha256(b'original').hexdigest()
+        result = api.edit_file(self.worktree, 'script.sh', b'edited', old)
+        self.assertTrue(result['executable'])
+        self.assertEqual(p.stat().st_mode & 0o777, 0o700)
+        result = api.edit_file(self.worktree, 'script.sh', b'edited', result['sha256'], executable=False)
+        self.assertFalse(result['executable'])
+        self.assertRejected(lambda: api.edit_file(self.worktree, 'script.sh', b'x', result['sha256'], executable='yes'))
+
     def test_job_queue_persists_and_restart_marks_interrupted(self):
         result = self.ws.dispatch('POST', '/v1/tasks/proof/checks', {'check': 'app:plan'})
         self.assertEqual(self.ws.job(result['job'])['status'], 'queued')
