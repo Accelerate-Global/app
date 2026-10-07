@@ -100,7 +100,7 @@ def read_file(root, value, offset=0, length=MAX_READ):
         raise Rejected('Invalid read range')
     parent, name = parent_fd(root, value)
     try:
-        fd = os.open(name, os.O_RDONLY | os.O_NOFOLLOW, dir_fd=parent)
+        fd = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=parent)
         with os.fdopen(fd, 'rb') as stream:
             info = os.fstat(stream.fileno())
             if not stat.S_ISREG(info.st_mode):
@@ -126,7 +126,7 @@ def edit_file(root, value, content, expected, delete=False, executable=None):
     previous_executable = False
     try:
         try:
-            fd = os.open(name, os.O_RDONLY | os.O_NOFOLLOW, dir_fd=parent)
+            fd = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=parent)
             with os.fdopen(fd, 'rb') as stream:
                 info = os.fstat(stream.fileno())
                 if not stat.S_ISREG(info.st_mode):
@@ -464,6 +464,10 @@ class Workspace:
 
 
 class Handler(BaseHTTPRequestHandler):
+    def setup(self):
+        super().setup()
+        self.connection.settimeout(30)
+
     def log_message(self, *_):
         pass  # Never log request headers or bodies.
 

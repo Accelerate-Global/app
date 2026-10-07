@@ -50,7 +50,9 @@ def request(origin, method, path, body=None, policy=None):
         policy = json.loads(Path('/etc/codex/network-policy.json').read_text())
     if not isinstance(policy, dict) or policy.get('version') != 1 or policy.get('vpn_configured') is not True:
         raise ValueError('Supported Cloud VPN runtime policy is required')
-    context = ssl.create_default_context()
+    ca_file = (os.environ.get('SSL_CERT_FILE') or os.environ.get('REQUESTS_CA_BUNDLE')
+               or os.environ.get('CURL_CA_BUNDLE'))
+    context = ssl.create_default_context(cafile=ca_file)
     opener = urllib.request.build_opener(ForceProxy({'https': proxy}),
                                         urllib.request.HTTPSHandler(context=context), NoRedirect())
     data = None if body is None else json.dumps(body).encode()

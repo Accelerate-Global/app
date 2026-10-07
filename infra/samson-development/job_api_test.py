@@ -95,6 +95,11 @@ class JobApiTests(unittest.TestCase):
                 api.edit_file(self.worktree, value, b'overwrite', None)
         self.assertEqual((outside / 'secret').read_text(), 'unavailable')
 
+    def test_fifo_is_rejected_without_waiting_for_a_writer(self):
+        os.mkfifo(self.worktree / 'pipe')
+        self.assertRejected(lambda: api.read_file(self.worktree, 'pipe'))
+        self.assertRejected(lambda: api.edit_file(self.worktree, 'pipe', b'x', None))
+
     def test_compare_and_swap_edit_delete_and_range_read(self):
         first = api.read_file(self.worktree, 'README.md', 2, 3)
         self.assertEqual(base64.b64decode(first['base64']), b'igi')
@@ -218,6 +223,13 @@ class CloudClientTests(unittest.TestCase):
             for policy in [{}, {'version': 2, 'vpn_configured': True}, {'version': 1, 'vpn_configured': False}]:
                 with self.assertRaisesRegex(ValueError, 'runtime policy is required'):
                     client.request('https://' + client.API_HOST, 'GET', '/v1/identity', policy=policy)
+
+    def test_invalid_configured_ca_fails_closed_instead_of_ignoring_the_bundle(self):
+        with tempfile.TemporaryDirectory() as directory:
+            missing = str(Path(directory) / 'missing-ca.pem')
+            with patch.dict(os.environ, {'HTTPS_PROXY': 'http://proxy:8080', 'CURL_CA_BUNDLE': missing}, clear=True):
+                with self.assertRaises(FileNotFoundError):
+                    client.request('https://' + client.API_HOST, 'GET', '/v1/identity', policy=VPN_POLICY)
 
     def test_inherited_proxy_is_used_even_with_no_proxy_wildcard(self):
         seen = []
