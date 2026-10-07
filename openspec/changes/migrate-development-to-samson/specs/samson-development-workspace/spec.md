@@ -23,7 +23,7 @@ The development workspace SHALL use a dedicated VM and explicit project/task pat
 - **THEN** the isolation boundary blocks them while approved operator access and development internet access continue working
 
 ### Requirement: Cloud access is scoped and authenticated
-Cloud access SHALL use the supported managed VPN transport, an authorized exact destination and a dedicated authenticated SSH identity with strict host-key verification. It MUST fail closed when the network policy, target identity or credential-file permissions are invalid.
+Cloud access SHALL use the supported managed VPN transport and an authorized exact destination. SSH, when supported, MUST use a dedicated identity and strict host-key verification. When the account cannot supply raw TCP access, the private HTTPS fallback MUST use verified TLS, a Serve-stamped application capability and the managed HTTP proxy. It MUST fail closed when authorization, destination identity or policy is invalid.
 
 #### Scenario: Missing network grant
 - **WHEN** the selected Cloud policy has no grant for the requested private destination
@@ -32,6 +32,22 @@ Cloud access SHALL use the supported managed VPN transport, an authorized exact 
 #### Scenario: Untrusted host key
 - **WHEN** the server host key differs from the pinned identity
 - **THEN** SSH refuses the connection without disabling verification
+
+#### Scenario: Missing HTTPS application capability
+- **WHEN** a private HTTPS API request lacks the required stamped development capability or has a different role
+- **THEN** the API rejects it before reading project files or starting a job
+
+#### Scenario: Isolated HTTPS development task
+- **WHEN** an authorized Cloud request supplies a unique task ID and an exact retained commit
+- **THEN** the API creates a new detached task worktree without replacing existing worktrees or canonical branches
+
+#### Scenario: Unsafe edit or command
+- **WHEN** a request supplies a traversal/symlink path, credential/cache path, stale expected digest, arbitrary command or unknown verification name
+- **THEN** the API rejects it without writing outside its task or executing that command
+
+#### Scenario: Supported HTTPS checks
+- **WHEN** a Cloud task selects a registered verification recipe
+- **THEN** the VM runs the fixed recipe in that task, persists bounded status/log evidence, serializes shared database ports and stops temporary local services
 
 ### Requirement: Secrets and development state remain separate
 The migration SHALL preserve legacy credentials and local database recovery material in protected recovery storage outside the Cloud-accessible development guest. Ordinary development MUST use synthetic local data and MUST NOT enable legacy production publication or inherit cached Mac authentication sessions.

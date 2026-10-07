@@ -1,0 +1,27 @@
+[Unit]
+Description=Accelerate Global private development job API
+After=network-online.target tailscaled.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=axdev
+Group=axdev
+WorkingDirectory=/srv/accelerate-global
+ExecStart=/usr/bin/python3 -B /opt/accelerate-job-api/job_api.py
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=90
+KillMode=control-group
+UMask=0077
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=full
+ProtectHome=read-only
+Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=DRIVE_UPLOAD=0
+Environment=OPENSPEC_TELEMETRY=0
+Environment=XDG_CACHE_HOME=/srv/accelerate-global/.cloud-jobs/cache
+
+[Install]
+WantedBy=multi-user.target

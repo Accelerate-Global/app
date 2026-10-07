@@ -9,6 +9,7 @@ Accelerate Global source, supporting files, local configuration and useful devel
 - Rebuild Linux tools and development configuration; move protected legacy credentials and local database archives into operator-only recovery storage rather than an agent-accessible environment.
 - Document Cloud Tailscale enrollment, destination grants, pinned OpenSSH authentication, backup/restore and an explicit Mac-independent cutover test.
 - Report partial readiness accurately when account-owned VPN configuration or Cloud transport cannot yet be qualified.
+- Implement the private HTTPS job-interface fallback when the account cannot supply raw TCP: capability-authenticated, task-scoped file operations and fixed verification jobs through the managed HTTP proxy.
 
 ## Capabilities
 
