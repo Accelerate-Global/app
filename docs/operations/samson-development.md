@@ -37,6 +37,8 @@ bash -n infra/samson-development/install-tools.sh
 
 Create a private Cloud environment for the intended repositories. Add the dedicated Tailscale VPN connection in Advanced settings and allow only its required destinations. Cloud's enrollment key is reusable and ephemeral; the guest's persistent node uses its own identity. Review the effective tailnet policy: broad existing grants can defeat a narrow new grant. Restrict the Cloud source tag to this guest's TCP22 and preserve operator access separately. Do not advertise subnet routes, create an exit node or expose the Codex app server publicly.
 
+The current private environment is **Accelerate Global Samson**. VM 137 is enrolled as `accelerate-dev.tail13a215.ts.net`, IPv4 `100.79.143.121`, with `tag:accelerate-dev` and node-key expiry disabled. Cloud enrollment uses `tag:accelerate-cloud`, a reusable ephemeral auth key with the maximum 90-day lifetime, expiring January 4, 2027. Renew that environment's enrollment key before expiry; this deadline governs new Cloud enrollment and does not expire the persistent tagged VM. The saved tailnet policy permits this Cloud tag only to the guest's TCP22 and includes explicit denial tests for other ports, infrastructure and project guests.
+
 Before use, inspect the selected Cloud runtime policy and qualify its TCP CONNECT path. Supply these non-secret selectors:
 
 ```text
@@ -47,6 +49,12 @@ AX_CLOUD_SOCAT=<maintained-runtime-socat-executable>
 ```
 
 Use the runtime's supported socat installer. Its downloads may need the exact vendor host allowed in HTTP policy. Supply SSH key bytes through an appropriate direct-read personal secret at runtime; HTTPS network-secret placeholders cannot authenticate raw SSH. Never publish SSH keys, production service-role keys, Google write credentials, browser state or operator tokens in an environment image.
+
+The environment requests the personal direct variable `AX_SAMSON_SSH_KEY_B64`. Its value is held in Personal vault, scoped only to this environment, and contains the dedicated `axdev` SSH key encoded as base64. Encoding does not encrypt the key. At task startup, decode it without logging into a temporary file owned by the runtime user with mode `0600`, set `AX_CLOUD_KEY_FILE`, and delete that file at task end. Keep the value out of installation scripts and prepared filesystem snapshots. `AX_CLOUD_TARGET=100.79.143.121` is an environment-owned, non-secret variable. The exact IPv4 is also saved under Additional allowed domains; independently check the runtime's effective TCP grant before treating SSH as available.
+
+When editing an unpublished environment, save the configuration with **Save draft** after saving individual field dialogs. Confirm the scripts, personal requirement, destination and **VPN Configured** state before publishing. A saved dialog or auth key alone does not prove the connection. Publish or republish, then verify the updated configuration in a fresh task.
+
+Qualification on October 6, 2026 confirmed the fresh published runtime has VPN enabled, but both TCP-grant lists are empty and `proxy:8088` refuses connections. The current environment editor and runtime tools expose no supported raw TCP-grant control. Cloud SSH and cutover therefore remain blocked until the platform supplies the exact `100.79.143.121/32` TCP grant in a replacement runtime. Additional allowed domains did not supply that grant. Preserve the narrow Tailscale port rule and leave the migration change active; an HTTP tunnel or edited snapshot is not qualification of this connection path.
 
 `cloud-ssh.sh` validates policy and key permissions, uses SSH's supervised stdio ProxyCommand through `proxy:8088`, and enforces the pinned host key. It creates no local listener or persistent forward. Its currently expected policy snapshot has version 1, `vpn_configured: true`, and `tcp_network_access.domains` or `tcp_network_access.ip_ranges`. An unsupported snapshot requires runtime qualification, not editing the snapshot or bypassing its proxy.
 
