@@ -30,4 +30,6 @@ Reject unsafe task IDs, missing commits, traversal, symlink escapes, forbidden c
 
 An unsupported or rejected Cloud HTTP policy/profile remains a real platform dependency. Record the exact current error and do not substitute an unrestricted public shell, alter the policy snapshot, or claim cutover based on a loopback/operator test.
 
+A pending setup runtime, unavailable execution workspace or failed publication is also a platform dependency. Saving a public install-script field does not rebuild a prepared filesystem. Preserve the last working environment and record the draft/version and actual failure; a verified API workload does not prove that its corrected reusable startup was published.
+
 Sources: [OpenAI Cloud environments](https://learn.chatgpt.com/docs/environments/cloud-environments), [Tailscale Serve](https://tailscale.com/docs/features/tailscale-serve), [Serve command](https://tailscale.com/docs/reference/tailscale-cli/serve).

@@ -15,13 +15,15 @@
 ## 3. Recovery and Cloud qualification
 
 - [x] 3.1 Enroll the development guest in backup and verify backup integrity plus an isolated restore and guest reboot.
-- [ ] 3.2 Configure the dedicated Tailscale/Cloud identities and exact destination grants; prove authenticated Cloud access and denied unrelated access.
-- [ ] 3.3 Prove a fresh Cloud task can edit and verify a task worktree independently of the Mac; record cutover evidence while retaining rollback copies.
-- [x] 3.4 Run `pnpm run verify:change:run`, reconcile the operations receipt and update the parent assessment. Keep the change active until Cloud tasks 3.2 and 3.3 pass; then archive after the required final verification. No ship or production release is requested.
+- [x] 3.2 Configure the dedicated Tailscale/Cloud identities and exact destination grants; prove authenticated Cloud access and denied unrelated access.
+- [x] 3.3 Prove a fresh Cloud task can edit and verify a task worktree independently of the Mac; record the qualified API workload evidence while retaining rollback copies.
+- [x] 3.4 Run `pnpm run verify:change:run`, reconcile the operations receipt and update the parent assessment. Keep the change active until the reusable startup/publication tasks also pass; then archive after required final verification. No ship or production release is requested.
 
 ## 4. Supported HTTPS connection fix
 
 - [x] 4.1 Record the fallback plan and update the capability contract; implement the bounded server/client/service and direct negative boundary tests.
 - [x] 4.2 Pass the repo gate, install the VM service and verify loopback authorization, worktree edits, fixed checks and persistence.
 - [ ] 4.3 Replace only this Cloud identity's SSH grant with the private HTTPS capability; configure Serve and republish the private Cloud environment with the HTTPS client/start workflow.
-- [ ] 4.4 Qualify a fresh Cloud task through the actual managed HTTP proxy, persist its remote edit/test/denial receipt, reconcile recovery and close 3.2/3.3 only on observed success.
+- [ ] 4.4 Qualify the corrected published startup and installed client through the actual managed HTTP proxy, persist its receipt and reconcile recovery. The first API workload proof closes 3.2/3.3, but does not close this reusable-startup gate.
+
+Tasks 3.2/3.3 passed in fresh Cloud task `01a119bc-499b-75e3-a38b-d9c9aaa95010`; its API workload receipt is on Samson. Tasks 4.3/4.4 remain blocked by reusable setup: the old snapshot lacks the client, while the corrected draft has sole-URL requirements and a hash-checked startup bootstrap but stays pending without an execution workspace and fails publication. The latest saved draft is `01a119cc-09c3-701b-b7c7-d143c2c140e6`, revision 4. Do not archive or claim reusable startup passed from the successful workload test alone.

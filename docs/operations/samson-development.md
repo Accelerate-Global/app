@@ -1,6 +1,6 @@
 # Samson development workspace
 
-The dedicated `accelerate-dev` Linux guest holds Accelerate Global's app, private data repository and supporting files under `/srv/accelerate-global`. The source Mac remains a rollback copy until a fresh Codex Cloud task has passed the private connection and workload checks independently of the Mac. Migration does not enable production publication or change hosted Vercel/Supabase behavior.
+The dedicated `accelerate-dev` Linux guest holds Accelerate Global's app, private data repository and supporting files under `/srv/accelerate-global`. A fresh Cloud task has passed authenticated HTTPS, isolated edits/reverts and fixed workload checks without Mac files or forwarding. The reusable environment's corrected startup is still blocked by its setup runtime and failed publication; preserve the Mac rollback copy and keep OpenSpec active until that final startup proof passes. Migration does not enable production publication or change hosted Vercel/Supabase behavior.
 
 ## Operator and task boundaries
 
@@ -37,9 +37,13 @@ bash -n infra/samson-development/install-tools.sh
 
 ### Private HTTPS development API
 
-The reviewed fallback is a private HTTPS API at `https://accelerate-dev.tail13a215.ts.net`, implemented by `job_api.py` and the `accelerate-job-api.service` unit. It runs as `axdev`, listens only on `127.0.0.1:8765`, and uses Tailscale Serve for TLS and the stamped `accelerate.local/cap/develop` capability with role `develop`. Every operation requires that capability. The intended replacement grant is Cloud TCP443 to this VM with the capability, while Cloud SSH becomes denied. Operator SSH remains separate. No Funnel or generic TCP/shell bridge is configured.
+The private HTTPS API at `https://accelerate-dev.tail13a215.ts.net` is implemented by `job_api.py` and the `accelerate-job-api.service` unit. It runs as `axdev`, listens only on `127.0.0.1:8765`, and uses Tailscale Serve for TLS and the stamped `accelerate.local/cap/develop` capability with role `develop`. Every operation requires that capability. The applied grant permits Cloud TCP443 only to this VM with the capability and denies Cloud SSH. Operator SSH remains separate. No Funnel or generic TCP/shell bridge is configured.
 
-The fix plan and the remaining end-to-end gate are in `openspec/changes/migrate-development-to-samson/cloud-fix-plan.md`. Local implementation is qualified; live access replacement and fresh Cloud qualification must also pass before cutover is complete.
+The fix plan and remaining reusable-startup gate are in `openspec/changes/migrate-development-to-samson/cloud-fix-plan.md`. Cloud task `01a119bc-499b-75e3-a38b-d9c9aaa95010` passed real managed-proxy identity, a staged runbook edit/revert, all 27 helper tests, the docs-scoped app terminal gate and all 62 data tests. Credential-path access was rejected with HTTP 403, a stale edit with 409, and an unknown check with 400. The excluded remote-access hostname received proxy CONNECT 403; this is destination-policy evidence, not a claim of Cloud Tailscale packet testing. Canonical heads and persistent data were preserved.
+
+Publication captures prepared files; editing an install-script field does not execute it. The last working published image still has historical public SSH helpers and lacks `cloud-api.py`. The corrected draft removes the legacy SSH requirement, keeps only `AX_CLOUD_API_URL`, and embeds the reviewed public installer and client SHA256 in its startup skill so every task prepares the client before authenticated remote work. Its setup runtime remains pending without an execution workspace, and publication failed through the supported UI. Do not report automatic reusable startup as qualified. The current blocked draft is `01a119cc-09c3-701b-b7c7-d143c2c140e6`, revision 4; no platform-policy bypass is authorized.
+
+The existing Cloud key has the original maximum 90-day expiry of January 4, 2027. A same-scope reusable/ephemeral replacement was saved in the corrected draft with the maximum 90-day expiry of January 5, 2027, public key ID `k7k8khNrJm11CNTRL`. Its publication and fresh startup remain unqualified. The VM's persistent tagged node still has expiry disabled. Key values belong only in managed VPN settings; the unused Personal vault SSH recovery entry was preserved without reading its value.
 
 The public `cloud-api.py` client needs Python's standard library and the inherited HTTPS proxy. It verifies the exact private HTTPS origin, the supported VPN policy and the default CA trust, forces the proxy even when `NO_PROXY` is present, and rejects redirects. It uses no SSH private key or application bearer secret.
 
@@ -62,7 +66,7 @@ This interface grants development authority within the project VM. Executing edi
 
 Create a private Cloud environment for the intended repositories. Add the dedicated Tailscale VPN connection in Advanced settings and allow only its required destinations. Cloud's enrollment key is reusable and ephemeral; the guest's persistent node uses its own identity. Review the effective tailnet policy: broad existing grants can defeat a narrow new grant. Restrict the Cloud source tag to this guest's TCP22 and preserve operator access separately. Do not advertise subnet routes, create an exit node or expose the Codex app server publicly.
 
-The current private environment is **Accelerate Global Samson**. VM 137 is enrolled as `accelerate-dev.tail13a215.ts.net`, IPv4 `100.79.143.121`, with `tag:accelerate-dev` and node-key expiry disabled. Cloud enrollment uses `tag:accelerate-cloud`, a reusable ephemeral auth key with the maximum 90-day lifetime, expiring January 4, 2027. Renew that environment's enrollment key before expiry; this deadline governs new Cloud enrollment and does not expire the persistent tagged VM. The saved tailnet policy permits this Cloud tag only to the guest's TCP22 and includes explicit denial tests for other ports, infrastructure and project guests.
+The earlier SSH configuration used the private environment **Accelerate Global Samson**, VM 137 at `accelerate-dev.tail13a215.ts.net`, IPv4 `100.79.143.121`, and the same persistent guest and ephemeral Cloud tags. Its former TCP22 grant has been replaced by the HTTPS capability above. The following SSH selectors and October 6 results are historical troubleshooting/recovery information, not the current Cloud access recipe.
 
 Before use, inspect the selected Cloud runtime policy and qualify its TCP CONNECT path. Supply these non-secret selectors:
 
