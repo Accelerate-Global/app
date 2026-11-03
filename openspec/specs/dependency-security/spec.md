@@ -37,11 +37,13 @@ paths through build or developer tooling.
   through a `package.json` `pnpm.overrides` security pin
 - **AND** `pnpm install --frozen-lockfile` passes with the resulting lockfile
 
-#### Scenario: Patch requires an incompatible major version
+#### Scenario: Toolchain upgrade replaces an unpatchable transitive major
 - **WHEN** an advisory has no patched release in the major version a toolchain
-  package requires, and forcing a newer major breaks that package
-- **THEN** the repository keeps the compatible version and records the advisory
-  as open pending a toolchain upgrade or waiver decision
+  package requires
+- **THEN** the toolchain package is upgraded to a release that accepts the
+  patched major, rather than forcing the newer major onto the older release
+- **AND** the build output is compared before and after to confirm the upgrade
+  causes no visual change
 
 ### Requirement: Compatible lower-severity dependency advisories are remediated
 The repository SHALL update or override moderate and low advisory paths when the patched versions remain compatible with application and verification workflows.

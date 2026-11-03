@@ -1,11 +1,11 @@
 ## Why
 
-After the Next.js 16.4.1 upgrade, the protected Dependency Audit (`pnpm audit --audit-level=high`) still reported one critical and twenty-two high advisories in transitive runtime and toolchain paths (devalue, proxy-addr, body-parser, `@modelcontextprotocol/sdk`, undici 6.x and 7.x, zod 4.x, vite, systeminformation, source-map-js). Each one has a patched release in the same major version.
+After the Next.js 16.4.1 upgrade, the protected Dependency Audit (`pnpm audit --audit-level=high`) still reported one critical and twenty-three high advisories in transitive runtime and toolchain paths (devalue, proxy-addr, body-parser, `@modelcontextprotocol/sdk`, undici 6.x and 7.x, zod, vite, systeminformation, source-map-js). All of them except the zod 3.x copy required by `shadcn@4.7.0` have a patched release in the same major version.
 
 ## What Changes
 
 - Update the existing `package.json` `pnpm.overrides` security pins for devalue and undici, and add same-major pins for `@modelcontextprotocol/sdk`, body-parser, proxy-addr, source-map-js, systeminformation, vite, and zod 4.x, each to the lowest patched release.
-- Regenerate `pnpm-lock.yaml` with pnpm 10. No direct dependency ranges change, and `pnpm-workspace.yaml` is untouched.
+- Regenerate `pnpm-lock.yaml` with pnpm 10. No direct dependency version ranges change, although the app's direct `zod` dependency now resolves 4.4.3 -> 4.6.6 within its existing `^4.3.6` range through the override. `pnpm-workspace.yaml` is untouched.
 - Record that GHSA-mrhx-c7xc-m3w5 remains open for the zod 3.x copy required by `shadcn@4.7.0`. No zod 3.x patch exists, and forcing zod 4 breaks the shadcn CLI, so clearing it needs a separate decision: either a shadcn upgrade or an audit waiver.
 
 ## Capabilities
