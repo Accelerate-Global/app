@@ -31,6 +31,18 @@ paths through build or developer tooling.
 - **THEN** vulnerable transitive packages in the `shadcn` toolchain path resolve
   to patched versions or are otherwise absent from the audited tree
 
+#### Scenario: Same-major security pins are applied
+- **WHEN** an audited transitive package has a patched release in its current major version
+- **THEN** the lockfile resolves it to the lowest patched release in that major
+  through a `package.json` `pnpm.overrides` security pin
+- **AND** `pnpm install --frozen-lockfile` passes with the resulting lockfile
+
+#### Scenario: Patch requires an incompatible major version
+- **WHEN** an advisory has no patched release in the major version a toolchain
+  package requires, and forcing a newer major breaks that package
+- **THEN** the repository keeps the compatible version and records the advisory
+  as open pending a toolchain upgrade or waiver decision
+
 ### Requirement: Compatible lower-severity dependency advisories are remediated
 The repository SHALL update or override moderate and low advisory paths when the patched versions remain compatible with application and verification workflows.
 
